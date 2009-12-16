@@ -24,7 +24,7 @@ package navigators.smart.statemanagment;
  * checkpoint together with all the batches of messages received so far, comprises this replica
  * current state
  * 
- * @author João Sousa
+ * @author Joï¿½o Sousa
  */
 public class StateLog {
 
@@ -60,6 +60,7 @@ public class StateLog {
 
         position = 0;
         nextEid += k;
+        execCounter++;
         this.state = state;
     }
 
@@ -125,7 +126,7 @@ public class StateLog {
     /**
      * Constructs a TransferableState using this log information
      * @param eid Execution ID correspondent to desired state
-     * @return
+     * @return TransferableState Object containing this log information
      */
     public TransferableState getTransferableState(int eid) {
 
@@ -142,4 +143,20 @@ public class StateLog {
         else return null;
     }
 
+    /**
+     * Updates this log, according to the information contained in the TransferableState object
+     * @param transState TransferableState object containing the information which is used to updated this log
+     */
+    public void update(TransferableState transState) {
+
+        for (int i = 0; i < transState.getMessageBatches().length; i++, position = i) {
+            this.messageBatches[i] = transState.getMessageBatches()[i];
+        }
+
+        this.nextEid = transState.getCurrentCheckpointEid() + 1;
+
+        this.state = transState.getState();
+
+        this.execCounter = this.nextEid + position;
+    }
 }
