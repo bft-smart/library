@@ -23,7 +23,7 @@ import navigators.smart.tom.ServiceReplica;
 /**
  * TODO: Não sei se esta classe sera usada. Para já, deixo ficar
  * 
- * @author Jo�o Sousa
+ * @author Jo�o Sousa
  */
 public class StateManager {
 
@@ -40,5 +40,9 @@ public class StateManager {
 
     public void makeCheckpoint() {
         
+    }
+
+    public void teste() {
+        // So para ver se isto funciona
     }
 }
