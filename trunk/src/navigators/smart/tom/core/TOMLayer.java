@@ -44,6 +44,7 @@ import navigators.smart.paxosatwar.executionmanager.ExecutionManager;
 import navigators.smart.paxosatwar.executionmanager.LeaderModule;
 import navigators.smart.paxosatwar.executionmanager.Round;
 import navigators.smart.paxosatwar.roles.Acceptor;
+import navigators.smart.statemanagment.StateLog;
 import navigators.smart.tom.TOMRequestReceiver;
 import navigators.smart.tom.core.messages.TOMMessage;
 import navigators.smart.tom.core.timer.RTInfo;
@@ -157,6 +158,10 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
         this.dt = new DeliveryThread(this, receiver, conf); // Create delivery thread
         this.dt.start();
+
+        /** ISTO E CODIGO DO JOAO, PARA TRATAR DOS CHECKPOINTS */
+        stateLog = new StateLog(this.conf.getCheckpoint_period());
+        /*******************************************************/
     }
 
     /**
@@ -888,11 +893,13 @@ public final class TOMLayer extends Thread implements RequestReceiver {
     }
 
     /** ISTO E CODIGO DO JOAO, PARA TRATAR DOS CHECKPOINTS */
+    private StateLog stateLog = null;
+
     public void saveState(byte[] state) {
-        //TODO: Concretizar o metodo. Possivelmente acrescentar mais parametros
+        stateLog.newCheckpoint(state);
     }
     public void saveBatch(byte[] batch) {
-        //TODO: Concretizar o metodo. Possivelmente acrescentar mais parametros
+        stateLog.addMessageBatch(batch);
     }
     /********************************************************/
 }
