@@ -69,7 +69,15 @@ public class CounterServer extends ServiceReplica {
     /** ISTO E CODIGO DO JOAO, PARA TRATAR DOS CHECKPOINTS */
     @Override
     protected byte[] serializeState() {
-        throw new UnsupportedOperationException("Not supported yet.");
+
+        byte[] b = new byte[4];
+        for (int i = 0; i < 4; i++) {
+            int offset = (b.length - 1 - i) * 8;
+            b[i] = (byte) ((counter >>> offset) & 0xFF);
+        }
+        return b;
+
+        //throw new UnsupportedOperationException("Not supported yet.");
     }
 
     @Override
