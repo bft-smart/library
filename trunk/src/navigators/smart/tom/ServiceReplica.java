@@ -100,7 +100,10 @@ public abstract class ServiceReplica extends TOMReceiver implements Runnable {
                     msg.nonces, msg.getContent());
 
             /** ISTO E CODIGO DO JOAO, PARA TRATAR DOS CHECKPOINTS */
-            //if (requestQueue.isEmpty()) stateCondition.signalAll();
+            if (/*requestQueue.isEmpty() &&*/ stateLock.tryLock()) {
+                stateCondition.signal();
+                stateLock.unlock();
+            }
             /********************************************************/
             
             // send reply to the client

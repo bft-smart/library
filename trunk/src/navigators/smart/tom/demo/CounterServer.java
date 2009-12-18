@@ -47,7 +47,7 @@ public class CounterServer extends ServiceReplica {
         try {
             int increment = new DataInputStream(new ByteArrayInputStream(command)).readInt();
             counter += increment;
-            System.out.println("Counter incremented: " + counter);
+            System.out.println("[server] Counter incremented: " + counter);
             ByteArrayOutputStream out = new ByteArrayOutputStream(4);
             new DataOutputStream(out).writeInt(counter);
             return out.toByteArray();
