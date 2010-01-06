@@ -31,8 +31,10 @@ import navigators.smart.paxosatwar.messages.MessageFactory;
 import navigators.smart.paxosatwar.messages.PaxosMessage;
 import navigators.smart.paxosatwar.roles.Acceptor;
 import navigators.smart.paxosatwar.roles.Proposer;
+import navigators.smart.statemanagment.SMMessage;
 import navigators.smart.tom.core.TOMLayer;
 import navigators.smart.tom.util.Logger;
+import navigators.smart.tom.util.TOMUtil;
 
 
 /**
@@ -232,6 +234,10 @@ public final class ExecutionManager {
             System.out.println("- Last consensus executed: " + lastConsId);
             System.out.println("##################################################################################");
             //TODO: at this point a new state should be recovered from other correct replicas
+
+            /** ISTO E CODIGO DO JOAO, PARA TRATAR DA TRANSFERENCIA DE ESTADO */
+            tomLayer.requestState(me, otherAcceptors, msg.getSender(), consId);
+            /******************************************************************/
         }
         outOfContextLock.unlock();
 

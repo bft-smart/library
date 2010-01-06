@@ -44,7 +44,10 @@ import navigators.smart.paxosatwar.executionmanager.ExecutionManager;
 import navigators.smart.paxosatwar.executionmanager.LeaderModule;
 import navigators.smart.paxosatwar.executionmanager.Round;
 import navigators.smart.paxosatwar.roles.Acceptor;
+import navigators.smart.statemanagment.SMMessage;
 import navigators.smart.statemanagment.StateLog;
+import navigators.smart.statemanagment.StateManager;
+import navigators.smart.statemanagment.TransferableState;
 import navigators.smart.tom.TOMRequestReceiver;
 import navigators.smart.tom.core.messages.TOMMessage;
 import navigators.smart.tom.core.timer.RTInfo;
@@ -159,8 +162,8 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         this.dt = new DeliveryThread(this, receiver, conf); // Create delivery thread
         this.dt.start();
 
-        /** ISTO E CODIGO DO JOAO, PARA TRATAR DOS CHECKPOINTS */
-        stateLog = new StateLog(this.conf.getCheckpoint_period());
+        /** ISTO E CODIGO DO JOAO, PARA TRATAR DOS CHECKPOINTS E TRANSFERENCIA DE ESTADO*/
+        stateManager = new StateManager(this.conf.getCheckpoint_period(), this.conf.getF());
         /*******************************************************/
     }
 
@@ -893,13 +896,40 @@ public final class TOMLayer extends Thread implements RequestReceiver {
     }
 
     /** ISTO E CODIGO DO JOAO, PARA TRATAR DOS CHECKPOINTS */
-    private StateLog stateLog = null;
+    private StateManager stateManager = null;
 
     public void saveState(byte[] state) {
-        stateLog.newCheckpoint(state);
+        stateManager.getLog().newCheckpoint(state);
     }
     public void saveBatch(byte[] batch) {
-        stateLog.addMessageBatch(batch);
+        stateManager.getLog().addMessageBatch(batch);
+    }
+
+    /** ISTO E CODIGO DO JOAO, PARA TRATAR DA TRANSFERENCIA DE ESTADO */
+    
+    public void requestState(int me, int[] otherAcceptors, int sender, int eid) {
+        stateManager.addReplica(sender, eid);
+        if (stateManager.moreThenF(eid)) {
+            SMMessage smsg = new SMMessage(me, eid, TOMUtil.SM_REQUEST, null);
+            communication.send(otherAcceptors, smsg);
+        }
+    }
+
+    public TransferableState getTransferableState(int eid) {
+        return stateManager.getLog().getTransferableState(eid);
+    }
+
+    public void SMRequestDeliver(SMMessage msg) {
+        TransferableState state = getTransferableState(msg.getEid());
+        if (state != null) {
+            int[] targets = { msg.getSender() };
+            SMMessage smsg = new SMMessage(execManager.getProcessId(), -1, TOMUtil.SM_REPLY, state);
+            communication.send(targets, smsg);
+        }
+    }
+
+    public void SMReplyDeliver(SMMessage msg) {
+
     }
     /********************************************************/
 }

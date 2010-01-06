@@ -31,12 +31,14 @@ import java.io.ObjectOutputStream;
 import navigators.smart.paxosatwar.messages.PaxosMessage;
 import navigators.smart.paxosatwar.roles.Acceptor;
 import navigators.smart.paxosatwar.roles.Proposer;
+import navigators.smart.statemanagment.SMMessage;
 import navigators.smart.tom.core.TOMLayer;
 import navigators.smart.tom.core.messages.SystemMessage;
 import navigators.smart.tom.core.messages.TOMMessage;
 import navigators.smart.tom.core.timer.messages.ForwardedMessage;
 import navigators.smart.tom.core.timer.messages.RTMessage;
 import navigators.smart.tom.util.Logger;
+import navigators.smart.tom.util.TOMUtil;
 
 
 /**
@@ -79,6 +81,18 @@ public class MessageHandler {
             TOMMessage request = ((ForwardedMessage) sm).getRequest();
             Logger.println("(MessageHandler.processData) receiving: " + request);
             tomLayer.requestReceived(request);
+
+        /** ISTO E CODIGO DO JOAO, PARA TRATAR DA TRANSFERENCIA DE ESTADO */
+        } else if (sm instanceof SMMessage) {
+
+            SMMessage smsg = (SMMessage) sm;
+            if (smsg.getType() == TOMUtil.SM_REQUEST) {
+                tomLayer.SMRequestDeliver(smsg);
+            }
+            else {
+                tomLayer.SMReplyDeliver(smsg);
+            }
+        /******************************************************************/
         }
     }
 
