@@ -18,7 +18,8 @@
 
 package navigators.smart.statemanagment;
 
-import navigators.smart.tom.ServiceReplica;
+import java.util.HashSet;
+import java.util.Hashtable;
 
 /**
  * TODO: Não sei se esta classe sera usada. Para já, deixo ficar
@@ -27,22 +28,69 @@ import navigators.smart.tom.ServiceReplica;
  */
 public class StateManager {
 
-    public static final int K = 1000;
-
-    private ServiceReplica replica;
     private StateLog log;
+    private HashSet<Message> messages = null;
+    private int f;
 
-    public StateManager(ServiceReplica replica) {
+    public StateManager(int k, int f) {
 
-        this.replica = replica;
-        this.log = new StateLog(K);
+        this.log = new StateLog(k);
+        messages = new HashSet<Message>();
+        this.f = f;
     }
 
-    public void makeCheckpoint() {
-        
+    public void addReplica(int sender, int eid) {
+        messages.add(new Message(sender, eid));
     }
 
-    public void teste() {
-        // So para ver se isto funciona
+    public void emptyReplicas() {
+        messages.clear();
+    }
+
+    public boolean moreThenF(int eid) {
+
+        int count = 0;
+        HashSet<Integer> replicasCounted = new HashSet<Integer>();
+
+        for (Message m : messages) {
+            if (m.eid == eid && !replicasCounted.contains(m.sender)) {
+                replicasCounted.add(m.sender);
+                count++;
+            }
+        }
+
+        return count > f;
+    }
+
+    public StateLog getLog() {
+        return log;
+    }
+
+    private class Message {
+
+        private int sender;
+        private int eid;
+
+        Message(int sender, int eid) {
+            this.sender = sender;
+            this.eid = eid;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj instanceof Message) {
+                Message m = (Message) obj;
+                return (m.eid == this.eid && m.sender == this.sender);
+            }
+            return false;
+        }
+
+        @Override
+        public int hashCode() {
+            int hash = 1;
+            hash = hash * 31 + this.sender;
+            hash = hash * 31 + this.eid;
+            return hash;
+        }
     }
 }

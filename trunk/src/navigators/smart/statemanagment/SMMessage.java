@@ -28,23 +28,26 @@ import navigators.smart.tom.core.messages.SystemMessage;
 /**
  * This classe represents a message used in the state transfer protocol
  * 
- * @author João Sousa
+ * @author Joï¿½o Sousa
  */
 public class SMMessage extends SystemMessage {
 
     private TransferableState state; // State log
+    private int eid; // Execution ID up to which the sender needs to be updated
     private int type; // Message type
 
     /**
      * Constructs a SMMessage
      * @param sender Process Id of the sender
+     * @param eid Execution ID up to which the sender needs to be updated
      * @param type Message type
      * @param state State log
      */
-    public SMMessage(int sender, int type, TransferableState state) {
+    public SMMessage(int sender, int eid, int type, TransferableState state) {
 
         super(sender);
         this.state = state;
+        this.eid = eid;
         this.type = type;
         this.sender = sender;
 
@@ -64,6 +67,14 @@ public class SMMessage extends SystemMessage {
      */
     public int getType() {
         return type;
+    }
+
+        /**
+     * Retrieves the execution ID up to which the sender needs to be updated
+     * @return The execution ID up to which the sender needs to be updated
+     */
+    public int getEid() {
+        return eid;
     }
 
     @Override
