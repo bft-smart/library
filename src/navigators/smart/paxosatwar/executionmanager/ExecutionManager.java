@@ -236,7 +236,7 @@ public final class ExecutionManager {
             //TODO: at this point a new state should be recovered from other correct replicas
 
             /** ISTO E CODIGO DO JOAO, PARA TRATAR DA TRANSFERENCIA DE ESTADO */
-            tomLayer.requestState(me, otherAcceptors, msg.getSender(), consId);
+            tomLayer.requestState(me, otherAcceptors, msg.getSender(), consId - 1);
             /******************************************************************/
         }
         outOfContextLock.unlock();
