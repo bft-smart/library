@@ -18,6 +18,7 @@
 
 package navigators.smart.statemanagment;
 
+import java.io.Externalizable;
 import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
@@ -30,7 +31,7 @@ import navigators.smart.tom.core.messages.SystemMessage;
  * 
  * @author Jo�o Sousa
  */
-public class SMMessage extends SystemMessage {
+public class SMMessage extends SystemMessage implements Externalizable {
 
     private TransferableState state; // State log
     private int eid; // Execution ID up to which the sender needs to be updated
@@ -82,6 +83,7 @@ public class SMMessage extends SystemMessage {
         super.writeExternal(out);
 
         out.writeInt(sender);
+        out.writeInt(eid);
         out.writeInt(type);
         out.writeObject(state);
     }
@@ -91,6 +93,7 @@ public class SMMessage extends SystemMessage {
         super.readExternal(in);
 
         sender = in.readInt();
+        eid = in.readInt();
         type = in.readInt();
         state = (TransferableState) in.readObject();
     }
