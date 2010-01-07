@@ -85,6 +85,9 @@ public class MessageHandler {
         /** ISTO E CODIGO DO JOAO, PARA TRATAR DA TRANSFERENCIA DE ESTADO */
         } else if (sm instanceof SMMessage) {
 
+            System.out.println("Recebi uma mensagem de estado!");
+            System.exit(0);
+            
             SMMessage smsg = (SMMessage) sm;
             if (smsg.getType() == TOMUtil.SM_REQUEST) {
                 tomLayer.SMRequestDeliver(smsg);
