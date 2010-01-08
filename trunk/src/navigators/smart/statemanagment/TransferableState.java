@@ -18,14 +18,16 @@
 
 package navigators.smart.statemanagment;
 
+import java.io.Serializable;
+
 /**
  * This classe represents a state tranfered from a replica to another. The state associated with the last
  * checkpoint together with all the batches of messages received do far, comprises the sender's
  * current state
  * 
- * @author João Sousa
+ * @author Joï¿½o Sousa
  */
-public class TransferableState {
+public class TransferableState implements Serializable {
 
     private byte[][] messageBatches; // batches received since the last checkpoint.
     private int nextEid; // Execution ID for the last checkpoint
@@ -45,6 +47,9 @@ public class TransferableState {
         
     }
 
+    public TransferableState() {
+        
+    }
     /**
      * Retrieves all batches of messages
      * @return Batch of messages

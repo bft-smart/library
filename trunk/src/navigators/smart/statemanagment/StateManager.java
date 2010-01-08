@@ -31,12 +31,14 @@ public class StateManager {
     private StateLog log;
     private HashSet<Message> messages = null;
     private int f;
+    private int lastEid;
 
     public StateManager(int k, int f) {
 
         this.log = new StateLog(k);
         messages = new HashSet<Message>();
         this.f = f;
+        this.lastEid = -1;
     }
 
     public void addReplica(int sender, int eid) {
@@ -45,6 +47,19 @@ public class StateManager {
 
     public void emptyReplicas() {
         messages.clear();
+    }
+
+    public void emptyReplicas(int eid) {
+        for (Message m : messages)
+            if (m.eid <= eid) messages.remove(m);
+    }
+    
+    public void setLastEID(int eid) {
+        lastEid = eid;
+    }
+
+    public int getLastEID() {
+        return lastEid;
     }
 
     public boolean moreThenF(int eid) {

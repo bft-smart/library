@@ -94,6 +94,9 @@ public class StateLog {
 
             messageBatches[position] = batch;
 
+            //System.out.println("posicao: " + position);
+            //System.out.println("execucoes: " + execCounter);
+
             position++;
             execCounter++;
 
