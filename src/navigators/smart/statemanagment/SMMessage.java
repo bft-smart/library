@@ -54,6 +54,9 @@ public class SMMessage extends SystemMessage implements Externalizable {
 
     }
 
+    public SMMessage() {
+        
+    }
     /**
      * Retrieves the state log
      * @return The state Log

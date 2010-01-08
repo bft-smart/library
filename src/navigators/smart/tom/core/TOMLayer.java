@@ -34,6 +34,7 @@ import java.util.Random;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
+import java.util.logging.Level;
 import navigators.smart.clientsmanagement.ClientsManager;
 import navigators.smart.clientsmanagement.PendingRequests;
 import navigators.smart.communication.ServerCommunicationSystem;
@@ -900,6 +901,15 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
     public void saveState(byte[] state) {
         stateManager.getLog().newCheckpoint(state);
+        /************************* TESTE *************************
+        int value = 0;
+        for (int i = 0; i < 4; i++) {
+            int shift = (4 - 1 - i) * 8;
+            value += (stateManager.getLog().getState()[i] & 0x000000FF) << shift;
+        }
+        System.out.println("Estado: " + value);
+        System.out.println("Checkpoint: " + stateManager.getLog().getCurrentCheckpointEid());
+        /************************* TESTE *************************/
     }
     public void saveBatch(byte[] batch) {
         stateManager.getLog().addMessageBatch(batch);
@@ -908,8 +918,12 @@ public final class TOMLayer extends Thread implements RequestReceiver {
     /** ISTO E CODIGO DO JOAO, PARA TRATAR DA TRANSFERENCIA DE ESTADO */
     
     public void requestState(int me, int[] otherAcceptors, int sender, int eid) {
+
         stateManager.addReplica(sender, eid);
-        if (stateManager.moreThenF(eid)) {
+        if (stateManager.moreThenF(eid) && stateManager.getLastEID() < eid) {
+
+            stateManager.setLastEID(eid);
+            //stateManager.emptyReplicas(eid);// isto causa uma excepcao
             SMMessage smsg = new SMMessage(me, eid, TOMUtil.SM_REQUEST, null);
             communication.send(otherAcceptors, smsg);
         }
@@ -920,16 +934,44 @@ public final class TOMLayer extends Thread implements RequestReceiver {
     }
 
     public void SMRequestDeliver(SMMessage msg) {
+
+        /************************* TESTE *************************
+
+        System.out.println("Recebi um pedido de estado!");
+        System.out.println("Quem enviou: " + msg.getSender());
+        System.out.println("Que tipo: " + msg.getType());
+        System.out.println("Que EID: " + msg.getEid());
+        System.exit(0);
+        try {
+            Thread.sleep(10000);
+        } catch (InterruptedException ex) {
+            java.util.logging.Logger.getLogger(TOMLayer.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        /************************* TESTE *************************/
+
         TransferableState state = getTransferableState(msg.getEid());
         if (state != null) {
             int[] targets = { msg.getSender() };
-            SMMessage smsg = new SMMessage(execManager.getProcessId(), -1, TOMUtil.SM_REPLY, state);
+            SMMessage smsg = new SMMessage(execManager.getProcessId(), msg.getEid(), TOMUtil.SM_REPLY, state);
             communication.send(targets, smsg);
         }
     }
 
     public void SMReplyDeliver(SMMessage msg) {
 
+        /************************* TESTE *************************
+
+        System.out.println("Recebi a minha resposta!");
+        System.out.println("Quem enviou: " + msg.getSender());
+        System.out.println("Que tipo: " + msg.getType());
+        System.out.println("Que EID: " + msg.getEid());
+        System.exit(0);
+        try {
+            Thread.sleep(10000);
+        } catch (InterruptedException ex) {
+            java.util.logging.Logger.getLogger(TOMLayer.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        /************************* TESTE *************************/
     }
     /********************************************************/
 }
