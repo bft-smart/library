@@ -96,19 +96,41 @@ public class StateManager {
 
         return count > f;
     }
-    public boolean moreThenF_States(TransferableState state) {
+    public boolean moreThenF_Replies() {
 
         int count = 0;
         HashSet<Integer> replicasCounted = new HashSet<Integer>();
 
         for (SenderState m : senderStates) {
-            if (m.state.equals(state) && !replicasCounted.contains(m.sender)) {
+            if (!replicasCounted.contains(m.sender)) {
                 replicasCounted.add(m.sender);
                 count++;
             }
         }
 
         return count > f;
+    }
+
+    public TransferableState getValidState() {
+        
+        SenderState[] st = new SenderState[senderStates.size()];
+        senderStates.toArray(st);
+        int count = 0;
+
+        for (int i = 0; i < st.length; i++) {
+
+            for (int j = i; j < st.length; j++) {
+
+                if (st[i].state.equals(st[j].state) && st[i].state.getCurrentCheckpointEid() > -1) count++;
+                if (count > f) return st[j].state;
+            }
+        }
+
+        return null;
+    }
+
+    public int getReplies() {
+        return senderStates.size();
     }
 
     public StateLog getLog() {

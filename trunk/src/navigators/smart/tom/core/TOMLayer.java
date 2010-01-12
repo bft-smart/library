@@ -907,8 +907,10 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             int shift = (4 - 1 - i) * 8;
             value += (stateManager.getLog().getState()[i] & 0x000000FF) << shift;
         }
+        System.out.println("//////////////////////////////////////////////////");
         System.out.println("Estado: " + value);
         System.out.println("Checkpoint: " + stateManager.getLog().getCurrentCheckpointEid());
+        System.out.println("//////////////////////////////////////////////////");
         /************************* TESTE *************************/
     }
     public void saveBatch(byte[] batch) {
@@ -967,36 +969,33 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
     public void SMReplyDeliver(SMMessage msg) {
 
-        /************************* TESTE *************************
-
-        System.out.println("Recebi a minha resposta!");
-        System.out.println("Quem enviou: " + msg.getSender());
-        System.out.println("Que tipo: " + msg.getType());
-        System.out.println("Que EID pedido: " + msg.getEid());
-        System.out.println("Que EID do estado: " + msg.getState().getCurrentCheckpointEid());
-        System.exit(0);
-        try {
-            Thread.sleep(10000);
-        } catch (InterruptedException ex) {
-            java.util.logging.Logger.getLogger(TOMLayer.class.getName()).log(Level.SEVERE, null, ex);
-        }
-        /************************* TESTE *************************/
         if (stateManager.isWaiting() && msg.getEid() == stateManager.getLastEID()) {
 
             stateManager.addState(msg.getSender(),msg.getState());
 
-            if (stateManager.moreThenF_States(msg.getState())) {
 
-                if (msg.getState().getCurrentCheckpointEid() > -1) {
+            if (stateManager.moreThenF_Replies()) {
+
+                /************************* TESTE *************************
+                System.out.println("Recebi um estado valido!");
+                System.out.println("Quem enviou: " + msg.getSender());
+                System.out.println("Que tipo: " + msg.getType());
+                System.out.println("Que EID pedido: " + msg.getEid());
+                System.out.println("Que EID do estado: " + msg.getState().getCurrentCheckpointEid());
+                System.exit(0);
+                /************************* TESTE *************************/
+
+                TransferableState state = stateManager.getValidState();
+                
+                if (state != null) {
                     stateManager.getLog().update(msg.getState());
-                    
+                    //receiver.setState(state);
                 }
-                else {
+                else if (stateManager.getReplies() >= (2 * conf.getF())) {
                     
+                    stateManager.setLastEID(-1);
+                    stateManager.setWaiting(false);
                 }
-
-                stateManager.setLastEID(-1);
-                stateManager.setWaiting(false);
             }
         }
     }
