@@ -62,6 +62,21 @@ public class StateLog {
         lastEid += k;
         execCounter++;
         this.state = state;
+       /************************* TESTE *************************
+        System.out.println("###################################");
+        System.out.println("posicao: " + position);
+        System.out.println("execucoes: " + execCounter);
+        System.out.println("tamanho do array de bytes do estado: " + this.state.length);
+        
+        int value = 0;
+        for (int i = 0; i < 4; i++) {
+            int shift = (4 - 1 - i) * 8;
+            value += (this.state[i] & 0x000000FF) << shift;
+        }
+        System.out.println("Valor do estado: " + value);
+        System.out.println("###################################");
+        /************************* TESTE *************************/
+
     }
 
     /**
@@ -93,15 +108,14 @@ public class StateLog {
         if (position < k) {
 
             messageBatches[position] = batch;
-
-            /************************* TESTE *************************
-            System.out.println("posicao: " + position);
-            System.out.println("execucoes: " + execCounter);
-            /************************* TESTE *************************/
-
             position++;
             execCounter++;
 
+            /************************* TESTE *************************/
+            System.out.println("posicao: " + position);
+            System.out.println("execucoes: " + execCounter);
+            /************************* TESTE *************************/
+            
             return true;
         }
 
@@ -142,10 +156,10 @@ public class StateLog {
         //System.exit(0);
 
         if (eid >= lastEid && eid <= execCounter) {
-
+         
             byte[][] batches = new byte[eid - lastEid + 1][];
 
-            for (int i = 0; i < eid - lastEid; i++)
+            for (int i = 0; i < (eid - lastEid + 1); i++)
                 batches[i] = messageBatches[i];
 
             return new TransferableState(batches, lastEid, state);

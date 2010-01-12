@@ -44,7 +44,7 @@ public class CounterClient {
 
         int i=0;
         //sends 1000 requests to replicas and then terminates
-        while(/**i<1000*/true){
+        while(i<1000){
         	int inc = Integer.parseInt(args[1]);
             ByteArrayOutputStream out = new ByteArrayOutputStream(4);
             new DataOutputStream(out).writeInt(inc);
