@@ -18,6 +18,7 @@
 
 package navigators.smart.statemanagment;
 
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Hashtable;
 
@@ -29,31 +30,50 @@ import java.util.Hashtable;
 public class StateManager {
 
     private StateLog log;
-    private HashSet<Message> messages = null;
+    private HashSet<SenderEid> senderEids = null;
+    private HashSet<SenderState> senderStates = null;
     private int f;
     private int lastEid;
+    private boolean wait;
 
     public StateManager(int k, int f) {
 
         this.log = new StateLog(k);
-        messages = new HashSet<Message>();
+        senderEids = new HashSet<SenderEid>();
+        senderStates = new HashSet<SenderState>();
         this.f = f;
         this.lastEid = -1;
+        this.wait = false;
     }
 
-    public void addReplica(int sender, int eid) {
-        messages.add(new Message(sender, eid));
+    public void addEID(int sender, int eid) {
+        senderEids.add(new SenderEid(sender, eid));
     }
 
-    public void emptyReplicas() {
-        messages.clear();
+    public void emptyEIDs() {
+        senderEids.clear();
     }
 
-    public void emptyReplicas(int eid) {
-        for (Message m : messages)
-            if (m.eid <= eid) messages.remove(m);
+    public void emptyEIDs(int eid) {
+        for (SenderEid m : senderEids)
+            if (m.eid <= eid) senderEids.remove(m);
     }
-    
+
+    public void addState(int sender, TransferableState state) {
+        senderStates.add(new SenderState(sender, state));
+    }
+
+    public void emptyStates() {
+        senderStates.clear();
+    }
+
+    public boolean isWaiting() {
+        return wait;
+    }
+
+    public void setWaiting(boolean wait) {
+        this.wait = wait;
+    }
     public void setLastEID(int eid) {
         lastEid = eid;
     }
@@ -62,13 +82,27 @@ public class StateManager {
         return lastEid;
     }
 
-    public boolean moreThenF(int eid) {
+    public boolean moreThenF_EIDs(int eid) {
 
         int count = 0;
         HashSet<Integer> replicasCounted = new HashSet<Integer>();
 
-        for (Message m : messages) {
+        for (SenderEid m : senderEids) {
             if (m.eid == eid && !replicasCounted.contains(m.sender)) {
+                replicasCounted.add(m.sender);
+                count++;
+            }
+        }
+
+        return count > f;
+    }
+    public boolean moreThenF_States(TransferableState state) {
+
+        int count = 0;
+        HashSet<Integer> replicasCounted = new HashSet<Integer>();
+
+        for (SenderState m : senderStates) {
+            if (m.state.equals(state) && !replicasCounted.contains(m.sender)) {
                 replicasCounted.add(m.sender);
                 count++;
             }
@@ -81,20 +115,20 @@ public class StateManager {
         return log;
     }
 
-    private class Message {
+    private class SenderEid {
 
         private int sender;
         private int eid;
 
-        Message(int sender, int eid) {
+        SenderEid(int sender, int eid) {
             this.sender = sender;
             this.eid = eid;
         }
 
         @Override
         public boolean equals(Object obj) {
-            if (obj instanceof Message) {
-                Message m = (Message) obj;
+            if (obj instanceof SenderEid) {
+                SenderEid m = (SenderEid) obj;
                 return (m.eid == this.eid && m.sender == this.sender);
             }
             return false;
@@ -105,6 +139,34 @@ public class StateManager {
             int hash = 1;
             hash = hash * 31 + this.sender;
             hash = hash * 31 + this.eid;
+            return hash;
+        }
+    }
+
+    private class SenderState {
+
+        private int sender;
+        private TransferableState state;
+
+        SenderState(int sender, TransferableState state) {
+            this.sender = sender;
+            this.state = state;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj instanceof SenderState) {
+                SenderState m = (SenderState) obj;
+                return (this.state.equals(m.state) && m.sender == this.sender);
+            }
+            return false;
+        }
+
+        @Override
+        public int hashCode() {
+            int hash = 1;
+            hash = hash * 31 + this.sender;
+            hash = hash * 31 + this.state.hashCode();
             return hash;
         }
     }
