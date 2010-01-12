@@ -919,13 +919,25 @@ public final class TOMLayer extends Thread implements RequestReceiver {
     
     public void requestState(int me, int[] otherAcceptors, int sender, int eid) {
 
-        stateManager.addReplica(sender, eid);
-        if (stateManager.moreThenF(eid) && stateManager.getLastEID() < eid) {
+        if (!stateManager.isWaiting()) {
+            stateManager.addEID(sender, eid);
+            if (stateManager.moreThenF_EIDs(eid) && stateManager.getLastEID() < eid) {
 
-            stateManager.setLastEID(eid);
-            //stateManager.emptyReplicas(eid);// isto causa uma excepcao
-            SMMessage smsg = new SMMessage(me, eid, TOMUtil.SM_REQUEST, null);
-            communication.send(otherAcceptors, smsg);
+                stateManager.setLastEID(eid);
+                stateManager.setWaiting(true);
+                //stateManager.emptyReplicas(eid);// isto causa uma excepcao
+                SMMessage smsg = new SMMessage(me, eid, TOMUtil.SM_REQUEST, null);
+                communication.send(otherAcceptors, smsg);
+
+                /************************* TESTE *************************
+
+                System.out.println("Enviei um pedido!");
+                System.out.println("Quem envia: " + smsg.getSender());
+                System.out.println("Que tipo: " + smsg.getType());
+                System.out.println("Que EID: " + smsg.getEid());
+
+                /************************* TESTE *************************/
+            }
         }
     }
 
@@ -935,26 +947,22 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
     public void SMRequestDeliver(SMMessage msg) {
 
+        TransferableState state = getTransferableState(msg.getEid());
+        if (state == null) state = new TransferableState();
+
+        int[] targets = { msg.getSender() };
+        SMMessage smsg = new SMMessage(execManager.getProcessId(), msg.getEid(), TOMUtil.SM_REPLY, state);
+        communication.send(targets, smsg);
+
         /************************* TESTE *************************
 
         System.out.println("Recebi um pedido de estado!");
-        System.out.println("Quem enviou: " + msg.getSender());
-        System.out.println("Que tipo: " + msg.getType());
-        System.out.println("Que EID: " + msg.getEid());
-        System.exit(0);
-        try {
-            Thread.sleep(10000);
-        } catch (InterruptedException ex) {
-            java.util.logging.Logger.getLogger(TOMLayer.class.getName()).log(Level.SEVERE, null, ex);
-        }
+        System.out.println("Quem envia: " + smsg.getSender());
+        System.out.println("Que tipo: " + smsg.getType());
+        System.out.println("Que EID: " + smsg.getEid());
+        //System.exit(0);
         /************************* TESTE *************************/
 
-        TransferableState state = getTransferableState(msg.getEid());
-        if (state != null) {
-            int[] targets = { msg.getSender() };
-            SMMessage smsg = new SMMessage(execManager.getProcessId(), msg.getEid(), TOMUtil.SM_REPLY, state);
-            communication.send(targets, smsg);
-        }
     }
 
     public void SMReplyDeliver(SMMessage msg) {
@@ -964,7 +972,8 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         System.out.println("Recebi a minha resposta!");
         System.out.println("Quem enviou: " + msg.getSender());
         System.out.println("Que tipo: " + msg.getType());
-        System.out.println("Que EID: " + msg.getEid());
+        System.out.println("Que EID pedido: " + msg.getEid());
+        System.out.println("Que EID do estado: " + msg.getState().getCurrentCheckpointEid());
         System.exit(0);
         try {
             Thread.sleep(10000);
@@ -972,6 +981,24 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             java.util.logging.Logger.getLogger(TOMLayer.class.getName()).log(Level.SEVERE, null, ex);
         }
         /************************* TESTE *************************/
+        if (stateManager.isWaiting() && msg.getEid() == stateManager.getLastEID()) {
+
+            stateManager.addState(msg.getSender(),msg.getState());
+
+            if (stateManager.moreThenF_States(msg.getState())) {
+
+                if (msg.getState().getCurrentCheckpointEid() > -1) {
+                    stateManager.getLog().update(msg.getState());
+                    
+                }
+                else {
+                    
+                }
+
+                stateManager.setLastEID(-1);
+                stateManager.setWaiting(false);
+            }
+        }
     }
     /********************************************************/
 }

@@ -19,6 +19,7 @@
 package navigators.smart.statemanagment;
 
 import java.io.Serializable;
+import java.util.Arrays;
 
 /**
  * This classe represents a state tranfered from a replica to another. The state associated with the last
@@ -48,7 +49,9 @@ public class TransferableState implements Serializable {
     }
 
     public TransferableState() {
-        
+        this.messageBatches = null; // batches received since the last checkpoint.
+        this.nextEid = 0; // Execution ID for the last checkpoint
+        this.state = null; // State associated with the last checkpoint
     }
     /**
      * Retrieves all batches of messages
@@ -85,5 +88,28 @@ public class TransferableState implements Serializable {
      */
     public byte[] getState() {
         return state;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj instanceof TransferableState) {
+            TransferableState tState = (TransferableState) obj;
+            if (this.messageBatches.length != tState.messageBatches.length) return false;
+            for (int i = 0; i < this.messageBatches.length; i++)
+                if (!Arrays.equals(this.messageBatches[i], tState.messageBatches[i])) return false;
+            return (Arrays.equals(this.state, tState.state) && tState.nextEid == this.nextEid);
+        }
+        return false;
+    }
+
+    @Override
+    public int hashCode() {
+        int hash = 1;
+        hash = hash * 31 + this.nextEid;
+        for (int i = 0; i < this.state.length; i++) hash = hash * 31 + (int) this.state[i];
+        for (int i = 0; i < this.messageBatches.length; i++)
+            for (int j = 0; j < this.messageBatches[i].length; j++)
+                hash = hash * 31 + (int) this.messageBatches[i][j];
+        return hash;
     }
 }

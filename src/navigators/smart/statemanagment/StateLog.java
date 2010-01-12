@@ -29,7 +29,7 @@ package navigators.smart.statemanagment;
 public class StateLog {
 
     private byte[][] messageBatches; // batches received since the last checkpoint.
-    private int nextEid; // Execution ID for the last checkpoint
+    private int lastEid; // Execution ID for the last checkpoint
     private byte[] state; // State associated with the last checkpoint
     private int k; // checkpoint period
     private int position; // next position in the array of batches to be written
@@ -43,7 +43,7 @@ public class StateLog {
 
         this.k = k;
         this.messageBatches = new byte[k][];
-        this.nextEid = 0;
+        this.lastEid = 0;
         this.state = null;
         this.position = 0;
         this.execCounter = 0;
@@ -59,7 +59,7 @@ public class StateLog {
             messageBatches[i] = null;
 
         position = 0;
-        nextEid += k;
+        lastEid += k;
         execCounter++;
         this.state = state;
     }
@@ -70,7 +70,7 @@ public class StateLog {
      */
     public int getCurrentCheckpointEid() {
         
-        return nextEid - 1;
+        return lastEid - 1;
     }
 
     /**
@@ -94,8 +94,10 @@ public class StateLog {
 
             messageBatches[position] = batch;
 
-            //System.out.println("posicao: " + position);
-            //System.out.println("execucoes: " + execCounter);
+            /************************* TESTE *************************
+            System.out.println("posicao: " + position);
+            System.out.println("execucoes: " + execCounter);
+            /************************* TESTE *************************/
 
             position++;
             execCounter++;
@@ -112,8 +114,8 @@ public class StateLog {
      * @return The batch of messages associated with the batch correspondent execution ID
      */
     public byte[] getMessageBatch(int eid) {
-        if (eid >= nextEid && eid <= execCounter) {
-            return messageBatches[eid - nextEid];
+        if (eid >= lastEid && eid <= execCounter) {
+            return messageBatches[eid - lastEid];
         }
         else return null;
     }
@@ -133,14 +135,20 @@ public class StateLog {
      */
     public TransferableState getTransferableState(int eid) {
 
-        if (eid >= nextEid && eid <= execCounter) {
+        //System.out.println("A devolver o estado!");
+        //System.out.println("EID pedido: " + eid);
+        //System.out.println("Execucoes feitas ate agora: " + execCounter);
+        //System.out.println("Ultimo checkpoint: " + lastEid);
+        //System.exit(0);
 
-            byte[][] batches = new byte[eid - nextEid + 1][];
+        if (eid >= lastEid && eid <= execCounter) {
 
-            for (int i = 0; i < eid - nextEid; i++)
+            byte[][] batches = new byte[eid - lastEid + 1][];
+
+            for (int i = 0; i < eid - lastEid; i++)
                 batches[i] = messageBatches[i];
 
-            return new TransferableState(batches, nextEid, state);
+            return new TransferableState(batches, lastEid, state);
 
         }
         else return null;
@@ -156,10 +164,10 @@ public class StateLog {
             this.messageBatches[i] = transState.getMessageBatches()[i];
         }
 
-        this.nextEid = transState.getCurrentCheckpointEid() + 1;
+        this.lastEid = transState.getCurrentCheckpointEid() + 1;
 
         this.state = transState.getState();
 
-        this.execCounter = this.nextEid + position;
+        this.execCounter = this.lastEid + position;
     }
 }
