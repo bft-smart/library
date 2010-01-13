@@ -94,9 +94,18 @@ public class TransferableState implements Serializable {
     public boolean equals(Object obj) {
         if (obj instanceof TransferableState) {
             TransferableState tState = (TransferableState) obj;
-            if (this.messageBatches.length != tState.messageBatches.length) return false;
+
+            if (this.messageBatches == null && tState.messageBatches == null) return true;
+
+            if ((this.messageBatches != null && tState.messageBatches == null) ||
+                    (this.messageBatches == null && tState.messageBatches != null)) return false;
+
+            if (this.messageBatches != null && tState.messageBatches != null &&
+                    this.messageBatches.length != tState.messageBatches.length) return false;
+                 
             for (int i = 0; i < this.messageBatches.length; i++)
                 if (!Arrays.equals(this.messageBatches[i], tState.messageBatches[i])) return false;
+            
             return (Arrays.equals(this.state, tState.state) && tState.nextEid == this.nextEid);
         }
         return false;
@@ -106,10 +115,14 @@ public class TransferableState implements Serializable {
     public int hashCode() {
         int hash = 1;
         hash = hash * 31 + this.nextEid;
-        for (int i = 0; i < this.state.length; i++) hash = hash * 31 + (int) this.state[i];
-        for (int i = 0; i < this.messageBatches.length; i++)
-            for (int j = 0; j < this.messageBatches[i].length; j++)
-                hash = hash * 31 + (int) this.messageBatches[i][j];
+        if (this.state != null)
+            for (int i = 0; i < this.state.length; i++) hash = hash * 31 + (int) this.state[i];
+        else hash = hash * 31 + 0;
+        if (this.messageBatches != null)
+            for (int i = 0; i < this.messageBatches.length; i++)
+                for (int j = 0; j < this.messageBatches[i].length; j++)
+                    hash = hash * 31 + (int) this.messageBatches[i][j];
+        else hash = hash * 31 + 0;
         return hash;
     }
 }
