@@ -973,22 +973,29 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
             stateManager.addState(msg.getSender(),msg.getState());
 
-
             if (stateManager.moreThenF_Replies()) {
-
-                /************************* TESTE *************************
-                System.out.println("Recebi um estado valido!");
-                System.out.println("Quem enviou: " + msg.getSender());
-                System.out.println("Que tipo: " + msg.getType());
-                System.out.println("Que EID pedido: " + msg.getEid());
-                System.out.println("Que EID do estado: " + msg.getState().getCurrentCheckpointEid());
-                System.exit(0);
-                /************************* TESTE *************************/
 
                 TransferableState state = stateManager.getValidState();
                 
                 if (state != null) {
                     stateManager.getLog().update(msg.getState());
+
+                    /************************* TESTE *************************
+                    System.out.println("Tenho um estado valido!");
+                    System.out.println("Estado pedido: " + msg.getEid());
+                    System.out.println("EID do estado: " + state.getCurrentCheckpointEid());
+                    System.out.println("Numero de batches: " + state.getMessageBatches().length);
+                    
+                    int value = 0;
+                    for (int i = 0; i < 4; i++) {
+                        int shift = (4 - 1 - i) * 8;
+                        value += (state.getState()[i] & 0x000000FF) << shift;
+                    }
+                    System.out.println("Valor do estado: " + value);
+                    
+                    System.exit(0);
+                    /************************* TESTE *************************/
+
                     //receiver.setState(state);
                 }
                 else if (stateManager.getReplies() >= (2 * conf.getF())) {
