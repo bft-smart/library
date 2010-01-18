@@ -179,12 +179,12 @@ public class DeliveryThread extends Thread {
                     if ((cons.getId() > 0) && (cons.getId() % conf.getCheckpoint_period() == 0)) {
                         Logger.println("(DeliveryThread.run) Performing checkpoint for consensus " + cons.getId());
                         byte[] state = receiver.getState();
-                        tomLayer.saveState(state);
+                        tomLayer.saveState(state, cons.getId());
                         //TODO: possivelmente fazer mais alguma coisa
                     }
                     else {
                         Logger.println("(DeliveryThread.run) Storing message batch in the state log for consensus " + cons.getId());
-                        tomLayer.saveBatch(cons.getDecision());
+                        tomLayer.saveBatch(cons.getDecision(), cons.getId());
                         //TODO: possivelmente fazer mais alguma coisa
                     }
                 }

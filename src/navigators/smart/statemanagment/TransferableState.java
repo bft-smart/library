@@ -31,8 +31,9 @@ import java.util.Arrays;
 public class TransferableState implements Serializable {
 
     private byte[][] messageBatches; // batches received since the last checkpoint.
-    private int nextEid; // Execution ID for the last checkpoint
+    private int lastCheckpointEid; // Execution ID for the last checkpoint
     private byte[] state; // State associated with the last checkpoint
+    private int lastEid = -1; // Execution ID for the last messages batch delivered to the application
 
     /**
      * Constructs a TansferableState
@@ -40,17 +41,18 @@ public class TransferableState implements Serializable {
      * @param nextEid Execution ID for the last checkpoint
      * @param state State associated with the last checkpoint
      */
-    public TransferableState(byte[][] messageBatches, int nextEid, byte[] state) {
+    public TransferableState(byte[][] messageBatches, int lastCheckpointEid, int lastEid, byte[] state) {
 
         this.messageBatches = messageBatches; // batches received since the last checkpoint.
-        this.nextEid = nextEid; // Execution ID for the last checkpoint
+        this.lastCheckpointEid = lastCheckpointEid; // Execution ID for the last checkpoint
+        this.lastEid = lastEid; // Execution ID for the last messages batch delivered to the application
         this.state = state; // State associated with the last checkpoint
         
     }
 
     public TransferableState() {
         this.messageBatches = null; // batches received since the last checkpoint.
-        this.nextEid = 0; // Execution ID for the last checkpoint
+        this.lastCheckpointEid = 0; // Execution ID for the last checkpoint
         this.state = null; // State associated with the last checkpoint
     }
     /**
@@ -67,8 +69,8 @@ public class TransferableState implements Serializable {
      * @return The batch of messages associated with the batch correspondent execution ID
      */
     public byte[] getMessageBatch(int eid) {
-        if (eid >= nextEid && eid < (nextEid + messageBatches.length)) {
-            return messageBatches[eid - nextEid];
+        if (eid >= lastCheckpointEid && eid < (lastCheckpointEid + messageBatches.length)) {
+            return messageBatches[eid - lastCheckpointEid];
         }
         else return null;
     }
@@ -79,7 +81,16 @@ public class TransferableState implements Serializable {
      */
     public int getCurrentCheckpointEid() {
 
-        return nextEid - 1;
+        return lastCheckpointEid;
+    }
+
+    /**
+     * Retrieves the execution ID for the last messages batch delivered to the application
+     * @return Execution ID for the last messages batch delivered to the application
+     */
+    public int getLastEid() {
+
+        return lastEid;
     }
     
     /**
@@ -106,7 +117,8 @@ public class TransferableState implements Serializable {
             for (int i = 0; i < this.messageBatches.length; i++)
                 if (!Arrays.equals(this.messageBatches[i], tState.messageBatches[i])) return false;
             
-            return (Arrays.equals(this.state, tState.state) && tState.nextEid == this.nextEid);
+            return (Arrays.equals(this.state, tState.state) &&
+                    tState.lastCheckpointEid == this.lastCheckpointEid && tState.lastEid == this.lastEid);
         }
         return false;
     }
@@ -114,7 +126,8 @@ public class TransferableState implements Serializable {
     @Override
     public int hashCode() {
         int hash = 1;
-        hash = hash * 31 + this.nextEid;
+        hash = hash * 31 + this.lastCheckpointEid;
+        hash = hash * 31 + this.lastEid;
         if (this.state != null)
             for (int i = 0; i < this.state.length; i++) hash = hash * 31 + (int) this.state[i];
         else hash = hash * 31 + 0;
