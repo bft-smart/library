@@ -121,7 +121,7 @@ public class StateManager {
 
             for (int j = i; j < st.length; j++) {
 
-                if (st[i].state.equals(st[j].state) && st[i].state.getCurrentCheckpointEid() > -1) count++;
+                if (st[i].state.equals(st[j].state) && st[i].state.getLastCheckpointEid() > -1) count++;
                 if (count > f) return st[j].state;
             }
         }

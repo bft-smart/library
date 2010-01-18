@@ -23,6 +23,7 @@ import java.io.DataInputStream;
 import java.util.concurrent.LinkedBlockingQueue;
 
 import navigators.smart.paxosatwar.Consensus;
+import navigators.smart.statemanagment.TransferableState;
 import navigators.smart.tom.TOMRequestReceiver;
 import navigators.smart.tom.core.messages.TOMMessage;
 import navigators.smart.tom.util.BatchReader;
@@ -70,6 +71,136 @@ public class DeliveryThread extends Thread {
             e.printStackTrace(System.out);
         }
     }
+
+    /** ISTO E CODIGO DO JOAO, PARA TRATAR DA TRANSFERENCIA DE ESTADO */
+
+    public void update(TransferableState state) {
+
+        receiver.setState(state.getState());
+            
+        int lastCheckpointEid = state.getLastCheckpointEid();
+        int lastEid = state.getLastEid();
+
+        for (int eid = lastCheckpointEid + 1; eid <= lastEid; eid++){
+
+            try {
+
+                byte[] batch = state.getMessageBatch(eid); // take a batch
+
+                // obtain an array of requests from the taken consensus
+                BatchReader batchReader = new BatchReader(batch, conf.getUseSignatures()==1);
+
+                Logger.println("(DeliveryThread.run) interpreting and verifying batched requests.");
+
+                int numberOfMessages = batchReader.getNumberOfMessages();
+
+                TOMMessage[] requests = new TOMMessage[numberOfMessages];
+
+                for (int i = 0; i < numberOfMessages; i++) {
+                    
+                    //read the message and its signature from the batch
+                    int messageSize = batchReader.getNextMessageSize();
+
+                    byte[] message = new byte[messageSize];
+                    batchReader.getNextMessage(message);
+
+                    byte[] signature = null;
+                    if (conf.getUseSignatures()==1){
+                        signature = new byte[TOMUtil.getSignatureSize()];
+                        batchReader.getNextSignature(signature);
+                   }
+
+                    try {
+                        DataInputStream ois = new DataInputStream(new ByteArrayInputStream(message));
+                        TOMMessage tm = new TOMMessage();
+                        tm.readExternal(ois);
+
+                        /******* Deixo isto comentado, pois nao me parece necessario      ****/
+                        /******* Alem disso, esta informacao nao vem no TransferableState ****
+
+                        tm.consensusStartTime = cons.startTime;
+                        tm.consensusExecutionTime = cons.executionTime;
+                        tm.consensusBatchSize = cons.batchSize;
+
+                        /*********************************************************************/
+
+                        requests[i] = tm;
+                        //requests[i] = (TOMMessage) ois.readObject();
+                        tomLayer.clientsManager.requestOrdered(requests[i]);
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+
+
+                //set this consensus as the last executed
+                tomLayer.setLastExec(eid);
+
+                //define the last stable consensus... the stable consensus can
+                //be removed from the leaderManager and the executionManager
+                if (eid > 2) {
+                    int stableConsensus = eid - 3;
+
+                    tomLayer.lm.removeStableConsenusInfos(stableConsensus);
+                    tomLayer.execManager.removeExecution(stableConsensus);
+                }
+
+                //define that end of this execution
+                tomLayer.setInExec(-1);
+
+                //verify if there is a next proposal to be executed
+                //(it only happens if the previous consensus were decided in a
+                //round > 0
+                int nextExecution = eid + 1;
+                if(tomLayer.acceptor.executeAcceptedPendent(nextExecution)) {
+                    Logger.println("(DeliveryThread.run) Executed propose for " + nextExecution);
+                }
+
+                //obtain the nonce and timestamps to be delivered to the application
+                long timestamp = batchReader.getTimestamp();
+                byte[] nonces = new byte[batchReader.getNumberOfNonces()];
+                if (nonces.length > 0) {
+                    batchReader.getNonces(nonces);
+                }
+
+                //deliver the request to the application (receiver)
+                for (int i = 0; i < requests.length; i++) {
+                    requests[i].timestamp = timestamp;
+                    requests[i].nonces = nonces;
+
+                    /******* Deixo isto comentado, pois nao me parece necessario      **********/
+                    /******* Alem disso, esta informacao nao vem no TransferableState **********
+
+                    requests[i].requestTotalLatency = System.currentTimeMillis()-cons.startTime;
+
+                    /***************************************************************************/
+                    
+                    receiver.receiveOrderedMessage(requests[i]);
+                }
+
+                if (conf.getCheckpoint_period() > 0) {
+                    if ((eid > 0) && (eid % conf.getCheckpoint_period() == 0)) {
+                        Logger.println("(DeliveryThread.run) Performing checkpoint for consensus " + eid);
+                        byte[] state2 = receiver.getState();
+                        tomLayer.saveState(state2, eid);
+                        //TODO: possivelmente fazer mais alguma coisa
+                    }
+                    else {
+                        Logger.println("(DeliveryThread.run) Storing message batch in the state log for consensus " + eid);
+                        tomLayer.saveBatch(batch, eid);
+                        //TODO: possivelmente fazer mais alguma coisa
+                    }
+                }
+
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+
+        }
+
+    }
+    
+    /********************************************************/
 
     /**
      * This is the code for the thread. It delivers decided consensus to the TOM request receiver object (which is the application)
