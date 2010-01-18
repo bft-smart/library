@@ -899,8 +899,10 @@ public final class TOMLayer extends Thread implements RequestReceiver {
     /** ISTO E CODIGO DO JOAO, PARA TRATAR DOS CHECKPOINTS */
     private StateManager stateManager = null;
 
-    public void saveState(byte[] state) {
+    public void saveState(byte[] state, int lastEid) {
         stateManager.getLog().newCheckpoint(state);
+        stateManager.getLog().setLastEid(lastEid);
+        stateManager.getLog().setLastCheckpointEid(lastEid);
         /************************* TESTE *************************
         int value = 0;
         for (int i = 0; i < 4; i++) {
@@ -913,8 +915,9 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         System.out.println("//////////////////////////////////////////////////");
         /************************* TESTE *************************/
     }
-    public void saveBatch(byte[] batch) {
+    public void saveBatch(byte[] batch, int lastEid) {
         stateManager.getLog().addMessageBatch(batch);
+        stateManager.getLog().setLastEid(lastEid);
     }
 
     /** ISTO E CODIGO DO JOAO, PARA TRATAR DA TRANSFERENCIA DE ESTADO */
