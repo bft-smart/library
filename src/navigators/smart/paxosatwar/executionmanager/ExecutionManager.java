@@ -23,6 +23,7 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -218,7 +219,18 @@ public final class ExecutionManager {
                 stoppedMsgsLock.unlock();
             }
 
-            if (consId > (lastConsId + 1)) {
+            if (
+                    /** ISTO E CODIGO DO JOAO, PARA TRATAR DA TRANSFERENCIA DE ESTADO */
+
+                    // Isto serve para re-direccionar as mensagens para o out of context
+                    // enquanto a replica esta a receber o estado das outras e a actualizar-se
+                    tomLayer.isRetrievingState() ||
+                    
+                    /******************************************************************/
+                    
+                    consId > (lastConsId + 1)
+                    
+                ) {
                 Logger.println("(ExecutionManager.checkLimits) adding message for execution "+consId+" to out of context");
                 //store it as an ahead of time message (out of context)
                 addOutOfContextMessage(msg);
@@ -287,6 +299,33 @@ public final class ExecutionManager {
 
         return execution;
     }
+    /** ISTO E CODIGO DO JOAO, PARA TRATAR DA TRANSFERENCIA DE ESTADO */
+    public void removeExecutions(int id) {
+        executionsLock.lock();
+        /******* BEGIN EXECUTIONS CRITICAL SECTION *******/
+
+        Set<Integer> keys = executions.keySet();
+        for (int execution : keys)
+                if (execution <= id) executions.remove(execution);
+
+        /******* END EXECUTIONS CRITICAL SECTION *******/
+        executionsLock.unlock();
+
+        outOfContextLock.lock();
+        /******* BEGIN OUTOFCONTEXT CRITICAL SECTION *******/
+
+        keys = outOfContextProposes.keySet();
+        for (int execution : keys)
+                if (execution <= id) outOfContextProposes.remove(execution);
+
+        keys = outOfContext.keySet();
+        for (int execution : keys)
+                if (execution <= id) outOfContext.remove(execution);
+
+        /******* END OUTOFCONTEXT CRITICAL SECTION *******/
+        outOfContextLock.unlock();
+    }
+    /********************************************************/
 
     /**
      * Returns the specified consensus's execution

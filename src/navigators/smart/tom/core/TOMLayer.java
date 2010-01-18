@@ -901,7 +901,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
     public void saveState(byte[] state, int lastEid) {
         stateManager.getLog().newCheckpoint(state);
-        stateManager.getLog().setLastEid(lastEid);
+        stateManager.getLog().setLastEid(-1);
         stateManager.getLog().setLastCheckpointEid(lastEid);
         /************************* TESTE *************************
         int value = 0;
@@ -981,7 +981,13 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                 TransferableState state = stateManager.getValidState();
                 
                 if (state != null) {
-                    stateManager.getLog().update(msg.getState());
+                    
+                    dt.update(state);
+
+                    execManager.removeExecutions(stateManager.getLastEID());
+
+                    stateManager.setLastEID(-1);
+                    stateManager.setWaiting(false);
 
                     /************************* TESTE *************************
                     System.out.println("Tenho um estado valido!");
@@ -1008,6 +1014,10 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                 }
             }
         }
+    }
+
+    public boolean isRetrievingState() {
+        return stateManager.isWaiting();
     }
     /********************************************************/
 }

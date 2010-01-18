@@ -69,8 +69,8 @@ public class TransferableState implements Serializable {
      * @return The batch of messages associated with the batch correspondent execution ID
      */
     public byte[] getMessageBatch(int eid) {
-        if (eid >= lastCheckpointEid && eid < (lastCheckpointEid + messageBatches.length)) {
-            return messageBatches[eid - lastCheckpointEid];
+        if (eid >= lastCheckpointEid && eid <= lastEid) {
+            return messageBatches[eid - lastCheckpointEid - 1];
         }
         else return null;
     }
@@ -79,7 +79,7 @@ public class TransferableState implements Serializable {
      * Retrieves the execution ID for the last checkpoint
      * @return Execution ID for the last checkpoint, or -1 if no checkpoint was yet executed
      */
-    public int getCurrentCheckpointEid() {
+    public int getLastCheckpointEid() {
 
         return lastCheckpointEid;
     }

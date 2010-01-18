@@ -157,8 +157,8 @@ public class StateLog {
      * @return The batch of messages associated with the batch correspondent execution ID
      */
     public byte[] getMessageBatch(int eid) {
-        if (eid >= lastCheckpointEid && eid <= lastEid) {
-            return messageBatches[eid - lastCheckpointEid];
+        if (eid > lastCheckpointEid && eid <= lastEid) {
+            return messageBatches[eid - lastCheckpointEid - 1];
         }
         else return null;
     }
@@ -184,13 +184,23 @@ public class StateLog {
         //System.out.println("Ultimo checkpoint: " + lastEid);
         //System.exit(0);
 
-        if (eid >= lastCheckpointEid && eid <= lastEid) {
-         
-            byte[][] batches = new byte[eid - lastCheckpointEid + 1][];
+        if (eid >= lastCheckpointEid) {
 
-            for (int i = 0; i < (eid - lastCheckpointEid + 1); i++)
-                batches[i] = messageBatches[i];
+            byte[][] batches = null;
 
+             if  (eid <= lastEid) {
+                int size = eid - lastCheckpointEid ;
+            
+                if (size > 0) {
+                    batches = new byte[size][];
+
+                    for (int i = 0; i < size; i++)
+                        batches[i] = messageBatches[i];
+                }
+             } else {
+
+                batches = messageBatches;
+             }
             return new TransferableState(batches, lastCheckpointEid, lastEid, state);
 
         }
@@ -207,7 +217,7 @@ public class StateLog {
             this.messageBatches[i] = transState.getMessageBatches()[i];
         }
 
-        this.lastCheckpointEid = transState.getCurrentCheckpointEid() + 1;
+        this.lastCheckpointEid = transState.getLastCheckpointEid() + 1;
 
         this.state = transState.getState();
 
