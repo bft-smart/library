@@ -924,17 +924,30 @@ public final class TOMLayer extends Thread implements RequestReceiver {
     
     public void requestState(int me, int[] otherAcceptors, int sender, int eid) {
 
-        if (!stateManager.isWaiting()) {
+        /************************* TESTE *************************/
+        System.out.println("Mensagem adiantada! (eid " + eid + " vindo de " + sender + ") ");
+        /************************* TESTE *************************/
+
+        if (stateManager.getWaiting() == -1) {
+
+            /************************* TESTE *************************/
+            System.out.println("Não estou a espera");
+            /************************* TESTE *************************/
+
             stateManager.addEID(sender, eid);
-            if (stateManager.moreThenF_EIDs(eid) && stateManager.getLastEID() < eid) {
+            if (stateManager.getLastEID() < eid && stateManager.moreThenF_EIDs(eid)) {
+
+                /************************* TESTE *************************/
+                System.out.println("Recebi mais de F mensagens para eid " + eid + " que sao posteriores a " + stateManager.getLastEID());
+                /************************* TESTE *************************/
 
                 stateManager.setLastEID(eid);
-                stateManager.setWaiting(true);
+                stateManager.setWaiting(eid - 1);
                 //stateManager.emptyReplicas(eid);// isto causa uma excepcao
-                SMMessage smsg = new SMMessage(me, eid, TOMUtil.SM_REQUEST, null);
+                SMMessage smsg = new SMMessage(me, eid - 1, TOMUtil.SM_REQUEST, null);
                 communication.send(otherAcceptors, smsg);
 
-                /************************* TESTE *************************
+                /************************* TESTE *************************/
 
                 System.out.println("Enviei um pedido!");
                 System.out.println("Quem envia: " + smsg.getSender());
@@ -946,22 +959,25 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         }
     }
 
-    public TransferableState getTransferableState(int eid) {
-        return stateManager.getLog().getTransferableState(eid);
-    }
-
     public void SMRequestDeliver(SMMessage msg) {
 
-        TransferableState state = getTransferableState(msg.getEid());
-        if (state == null) state = new TransferableState();
+        /************************* TESTE *************************/
+        System.out.println("Recebi um pedido de estado!");
+        /************************* TESTE *************************/
+        
+        TransferableState state = stateManager.getLog().getTransferableState(msg.getEid());
+        if (state == null) {
+            /************************* TESTE *************************/
+            System.out.println("Nao tenho o estado pedido!");
+            /************************* TESTE *************************/
+            state = new TransferableState();
+        }
 
         int[] targets = { msg.getSender() };
         SMMessage smsg = new SMMessage(execManager.getProcessId(), msg.getEid(), TOMUtil.SM_REPLY, state);
         communication.send(targets, smsg);
 
-        /************************* TESTE *************************
-
-        System.out.println("Recebi um pedido de estado!");
+        /************************* TESTE *************************/
         System.out.println("Quem envia: " + smsg.getSender());
         System.out.println("Que tipo: " + smsg.getType());
         System.out.println("Que EID: " + smsg.getEid());
@@ -972,52 +988,83 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
     public void SMReplyDeliver(SMMessage msg) {
 
-        if (stateManager.isWaiting() && msg.getEid() == stateManager.getLastEID()) {
+        /************************* TESTE *************************/
+        System.out.println("Recebi uma resposta de uma replica!");
+        System.out.println("EID do ultimo checkpoint: " + msg.getState().getLastCheckpointEid());
+        System.out.println("EID do ultimo batch recebido: " + msg.getState().getLastEid());
+        if (msg.getState().getMessageBatches() != null)
+            System.out.println("Numero de batches: " + msg.getState().getMessageBatches().length);
+        else System.out.println("Nao ha batches");
+        if (msg.getState().getState() != null)
+            System.out.println("Tamanho do estado em bytes: " + msg.getState().getState().length);
+        else System.out.println("Nao ha estado");
+        //System.exit(0);
+        /************************* TESTE *************************/
+
+        if (stateManager.getWaiting() != -1 && msg.getEid() == stateManager.getWaiting()) {
+
+            /************************* TESTE *************************/
+            System.out.println("A resposta e referente ao eid que estou a espera!");
+            /************************* TESTE *************************/
 
             stateManager.addState(msg.getSender(),msg.getState());
 
             if (stateManager.moreThenF_Replies()) {
 
+                /************************* TESTE *************************/
+                System.out.println("Ja tenho mais que F respostas iguais!");
+                /************************* TESTE *************************/
+
                 TransferableState state = stateManager.getValidState();
                 
                 if (state != null) {
-                    
-                    dt.update(state);
 
-                    execManager.removeExecutions(stateManager.getLastEID());
+                    /************************* TESTE *************************/
+                    System.out.println("As respostas desse estado são validas!");
+                    /************************* TESTE *************************/
 
-                    stateManager.setLastEID(-1);
-                    stateManager.setWaiting(false);
+                    stateManager.getLog().update(state);
 
-                    /************************* TESTE *************************
-                    System.out.println("Tenho um estado valido!");
+                    //dt.update(state);
+                    //execManager.removeExecutions(stateManager.getLastEID());
+
+                    stateManager.setWaiting(-1);
+
+                    /************************* TESTE *************************/
                     System.out.println("Estado pedido: " + msg.getEid());
-                    System.out.println("EID do estado: " + state.getCurrentCheckpointEid());
-                    System.out.println("Numero de batches: " + state.getMessageBatches().length);
+                    System.out.println("EID do ultimo checkpoint: " + state.getLastCheckpointEid());
+                    System.out.println("EID do ultimo batch recebido: " + state.getLastEid());
+                    if (state.getMessageBatches() != null)
+                        System.out.println("Numero de batches: " + state.getMessageBatches().length);
+                    if (state.getState() != null)
+                        System.out.println("Tamanho do estado em bytes: " + state.getState().length);
                     
-                    int value = 0;
-                    for (int i = 0; i < 4; i++) {
-                        int shift = (4 - 1 - i) * 8;
-                        value += (state.getState()[i] & 0x000000FF) << shift;
-                    }
-                    System.out.println("Valor do estado: " + value);
+                    //int value = 0;
+                    //for (int i = 0; i < 4; i++) {
+                    //    int shift = (4 - 1 - i) * 8;
+                    //    value += (state.getState()[i] & 0x000000FF) << shift;
+                    //}
+                    //System.out.println("Valor do estado: " + value);
                     
-                    System.exit(0);
+                    //System.exit(0);
                     /************************* TESTE *************************/
 
                     //receiver.setState(state);
                 }
                 else if (stateManager.getReplies() >= (2 * conf.getF())) {
                     
-                    stateManager.setLastEID(-1);
-                    stateManager.setWaiting(false);
+                    /************************* TESTE *************************/
+                    System.out.println("Tenho mais de 2F respostas que nao servem para nada!");
+                    /************************* TESTE *************************/
+
+                    stateManager.setWaiting(-1);
                 }
             }
         }
     }
 
     public boolean isRetrievingState() {
-        return stateManager.isWaiting();
+        return stateManager.getWaiting() != -1;
     }
     /********************************************************/
 }

@@ -82,7 +82,7 @@ public class CounterServer extends ServiceReplica {
 
     @Override
     protected void deserializeState(byte[] state) {
-        
+
         int value = 0;
         for (int i = 0; i < 4; i++) {
             int shift = (4 - 1 - i) * 8;

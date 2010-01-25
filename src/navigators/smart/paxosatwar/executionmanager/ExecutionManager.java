@@ -224,7 +224,7 @@ public final class ExecutionManager {
 
                     // Isto serve para re-direccionar as mensagens para o out of context
                     // enquanto a replica esta a receber o estado das outras e a actualizar-se
-                    tomLayer.isRetrievingState() ||
+                    //tomLayer.isRetrievingState() ||
                     
                     /******************************************************************/
                     
@@ -239,6 +239,7 @@ public final class ExecutionManager {
                 canProcessTheMessage = true;
             }
         } else if (consId >= (lastConsId + paxosHighMark)) { // Does this message exceeds the high mark?
+
             System.out.println("##################################################################################");
             System.out.println("- Ahead-of-time message (" + msg + ") discarded");
             System.out.println("- If many messages of the same consensus are discarded, the replica can halt!");
@@ -248,7 +249,7 @@ public final class ExecutionManager {
             //TODO: at this point a new state should be recovered from other correct replicas
 
             /** ISTO E CODIGO DO JOAO, PARA TRATAR DA TRANSFERENCIA DE ESTADO */
-            tomLayer.requestState(me, otherAcceptors, msg.getSender(), consId - 1);
+            //tomLayer.requestState(me, otherAcceptors, msg.getSender(), consId);
             /******************************************************************/
         }
         outOfContextLock.unlock();

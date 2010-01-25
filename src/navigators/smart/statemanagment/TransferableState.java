@@ -133,8 +133,9 @@ public class TransferableState implements Serializable {
         else hash = hash * 31 + 0;
         if (this.messageBatches != null)
             for (int i = 0; i < this.messageBatches.length; i++)
-                for (int j = 0; j < this.messageBatches[i].length; j++)
-                    hash = hash * 31 + (int) this.messageBatches[i][j];
+                if (this.messageBatches[i] != null)
+                    for (int j = 0; j < this.messageBatches[i].length; j++)
+                        hash = hash * 31 + (int) this.messageBatches[i][j];
         else hash = hash * 31 + 0;
         return hash;
     }
