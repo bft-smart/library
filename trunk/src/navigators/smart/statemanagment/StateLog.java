@@ -132,9 +132,9 @@ public class StateLog {
      * @param batch The batch of messages to be kept.
      * @return True if the batch was added to the log, false otherwise
      */
-    public boolean addMessageBatch(byte[] batch) {
+    public void addMessageBatch(byte[] batch) {
 
-        if (position < k) {
+        //if (position < k) {
 
             messageBatches[position] = batch;
             position++;
@@ -145,10 +145,10 @@ public class StateLog {
             System.out.println("execucoes: " + lastEid);
             /************************* TESTE *************************/
             
-            return true;
-        }
+            //return true;
+        //}
 
-        return false;
+        //return false;
     }
 
     /**
@@ -184,7 +184,7 @@ public class StateLog {
         //System.out.println("Ultimo checkpoint: " + lastEid);
         //System.exit(0);
 
-        if (eid >= lastCheckpointEid) {
+        if (lastCheckpointEid > -1 && eid >= lastCheckpointEid) {
 
             byte[][] batches = null;
 
@@ -197,7 +197,7 @@ public class StateLog {
                     for (int i = 0; i < size; i++)
                         batches[i] = messageBatches[i];
                 }
-             } else {
+             } else if (lastEid > -1) {
 
                 batches = messageBatches;
              }
@@ -213,14 +213,17 @@ public class StateLog {
      */
     public void update(TransferableState transState) {
 
-        for (int i = 0; i < transState.getMessageBatches().length; i++, position = i) {
-            this.messageBatches[i] = transState.getMessageBatches()[i];
+        position = 0;
+        if (transState.getMessageBatches() != null) {
+            for (int i = 0; i < transState.getMessageBatches().length; i++, position = i) {
+                this.messageBatches[i] = transState.getMessageBatches()[i];
+            }
         }
 
-        this.lastCheckpointEid = transState.getLastCheckpointEid() + 1;
+        this.lastCheckpointEid = transState.getLastCheckpointEid();
 
         this.state = transState.getState();
 
-        this.lastEid = this.lastCheckpointEid + position;
+        this.lastEid = transState.getLastEid();
     }
 }

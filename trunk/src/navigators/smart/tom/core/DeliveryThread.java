@@ -178,6 +178,7 @@ public class DeliveryThread extends Thread {
                     receiver.receiveOrderedMessage(requests[i]);
                 }
 
+                /****** Julgo que isto nao sera necessario ***********
                 if (conf.getCheckpoint_period() > 0) {
                     if ((eid > 0) && (eid % conf.getCheckpoint_period() == 0)) {
                         Logger.println("(DeliveryThread.run) Performing checkpoint for consensus " + eid);
@@ -191,7 +192,7 @@ public class DeliveryThread extends Thread {
                         //TODO: possivelmente fazer mais alguma coisa
                     }
                 }
-
+                */
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -305,9 +306,9 @@ public class DeliveryThread extends Thread {
                     receiver.receiveOrderedMessage(requests[i]);
                 }
 
-                /** ISTO E CODIGO DO JOAO, PARA TRATAR DOS CHECKPOINTS */
+                /** ISTO E CODIGO DO JOAO, PARA TRATAR DOS CHECKPOINTS *
                 if (conf.getCheckpoint_period() > 0) {
-                    if ((cons.getId() > 0) && (cons.getId() % conf.getCheckpoint_period() == 0)) {
+                    if ((cons.getId() > 0) && ((cons.getId() % conf.getCheckpoint_period()) == 0)) {
                         Logger.println("(DeliveryThread.run) Performing checkpoint for consensus " + cons.getId());
                         byte[] state = receiver.getState();
                         tomLayer.saveState(state, cons.getId());

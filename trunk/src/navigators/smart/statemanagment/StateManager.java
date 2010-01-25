@@ -34,7 +34,7 @@ public class StateManager {
     private HashSet<SenderState> senderStates = null;
     private int f;
     private int lastEid;
-    private boolean wait;
+    private int waitingEid;
 
     public StateManager(int k, int f) {
 
@@ -43,7 +43,7 @@ public class StateManager {
         senderStates = new HashSet<SenderState>();
         this.f = f;
         this.lastEid = -1;
-        this.wait = false;
+        this.waitingEid = -1;
     }
 
     public void addEID(int sender, int eid) {
@@ -67,12 +67,12 @@ public class StateManager {
         senderStates.clear();
     }
 
-    public boolean isWaiting() {
-        return wait;
+    public int getWaiting() {
+        return waitingEid;
     }
 
-    public void setWaiting(boolean wait) {
-        this.wait = wait;
+    public void setWaiting(int wait) {
+        this.waitingEid = wait;
     }
     public void setLastEID(int eid) {
         lastEid = eid;
@@ -121,7 +121,8 @@ public class StateManager {
 
             for (int j = i; j < st.length; j++) {
 
-                if (st[i].state.equals(st[j].state) && st[i].state.getLastCheckpointEid() > -1) count++;
+                if (st[i].state.equals(st[j].state)
+                        && st[i].state.getLastEid() > -1 && st[i].state.getLastCheckpointEid() > -1) count++;
                 if (count > f) return st[j].state;
             }
         }
