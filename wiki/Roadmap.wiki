@@ -11,4 +11,4 @@
 
 = SMaRt v0.6 =
 
-  * Integrate with DepSpace to construct a BFT coordination service
+  * Integrate with [http://www.navigators.di.fc.ul.pt/software/depspace/ DepSpace] to construct a BFT coordination service
