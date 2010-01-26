@@ -3,7 +3,7 @@
 
 = SMaRt v0.5 =
 
-* Include JUnit tests (for critical modules)
+  * Include JUnit tests (for critical modules)
 * Include stress tests (for the counter application)
 * Improve authenticated channels: renew keys periodically or (optionaly) use SSL sockets or plain sockets (with IPSec)
 * Make checkpoints to stable memory
@@ -12,4 +12,3 @@
 = SMaRt v0.6 =
 
 * Integrate with DepSpace to construct a BFT coordination service
-
