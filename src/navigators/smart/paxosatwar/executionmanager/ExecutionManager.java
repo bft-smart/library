@@ -240,12 +240,14 @@ public final class ExecutionManager {
             }
         } else if (consId >= (lastConsId + paxosHighMark)) { // Does this message exceeds the high mark?
 
+            /**/
             System.out.println("##################################################################################");
             System.out.println("- Ahead-of-time message (" + msg + ") discarded");
             System.out.println("- If many messages of the same consensus are discarded, the replica can halt!");
             System.out.println("- Try to increase the 'system.paxos.highMarc' configuration parameter.");
             System.out.println("- Last consensus executed: " + lastConsId);
             System.out.println("##################################################################################");
+             /*/
             //TODO: at this point a new state should be recovered from other correct replicas
 
             /** ISTO E CODIGO DO JOAO, PARA TRATAR DA TRANSFERENCIA DE ESTADO */
