@@ -34,9 +34,11 @@ public class TransferableState implements Serializable {
     private int lastCheckpointEid; // Execution ID for the last checkpoint
     private byte[] state; // State associated with the last checkpoint
     private int lastEid = -1; // Execution ID for the last messages batch delivered to the application
+    private boolean hasState; // indicates if the TransferableState object has a valid state
 
     /**
      * Constructs a TansferableState
+     * This constructor should be used when there is a valid state to construct the object with
      * @param messageBatches Batches received since the last checkpoint.
      * @param nextEid Execution ID for the last checkpoint
      * @param state State associated with the last checkpoint
@@ -47,14 +49,29 @@ public class TransferableState implements Serializable {
         this.lastCheckpointEid = lastCheckpointEid; // Execution ID for the last checkpoint
         this.lastEid = lastEid; // Execution ID for the last messages batch delivered to the application
         this.state = state; // State associated with the last checkpoint
-        
+        this.hasState = true;
     }
 
+    /**
+     * Constructs a TansferableState
+     * This constructor should be used when there isn't a valid state to construct the object with
+     */
     public TransferableState() {
         this.messageBatches = null; // batches received since the last checkpoint.
-        this.lastCheckpointEid = 0; // Execution ID for the last checkpoint
+        this.lastCheckpointEid = -1; // Execution ID for the last checkpoint
+        this.lastEid = -1;
         this.state = null; // State associated with the last checkpoint
+        this.hasState = false;
     }
+
+    /**
+     * Indicates if the TransferableState object has a valid state
+     * @return true if it has a valid state, false otherwise
+     */
+    public boolean hasState() {
+        return hasState;
+    }
+
     /**
      * Retrieves all batches of messages
      * @return Batch of messages

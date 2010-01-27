@@ -31,9 +31,7 @@ public class StateLog {
     private byte[][] messageBatches; // batches received since the last checkpoint.
     private int lastCheckpointEid; // Execution ID for the last checkpoint
     private byte[] state; // State associated with the last checkpoint
-    private int k; // checkpoint period
     private int position; // next position in the array of batches to be written
-    //private int execCounter; // number of executions so far
     private int lastEid; // Execution ID for the last messages batch delivered to the application
 
     /**
@@ -42,12 +40,10 @@ public class StateLog {
      */
     public StateLog(int k) {
 
-        this.k = k;
-        this.messageBatches = new byte[k][];
+        this.messageBatches = new byte[k - 1][];
         this.lastCheckpointEid = -1;
         this.state = null;
         this.position = 0;
-        //this.execCounter = 0;
         this.lastEid = -1;
     }
     
@@ -57,27 +53,11 @@ public class StateLog {
      */
     public void newCheckpoint(byte[] state) {
 
-        for (int i = 0; i < k; i++)
+        for (int i = 0; i < this.messageBatches.length; i++)
             messageBatches[i] = null;
 
         position = 0;
-        //lastCheckpointEid += k;
-        //execCounter++;
         this.state = state;
-       /************************* TESTE *************************
-        System.out.println("###################################");
-        System.out.println("posicao: " + position);
-        System.out.println("execucoes: " + execCounter);
-        System.out.println("tamanho do array de bytes do estado: " + this.state.length);
-        
-        int value = 0;
-        for (int i = 0; i < 4; i++) {
-            int shift = (4 - 1 - i) * 8;
-            value += (this.state[i] & 0x000000FF) << shift;
-        }
-        System.out.println("Valor do estado: " + value);
-        System.out.println("###################################");
-        /************************* TESTE *************************/
 
     }
 
@@ -134,21 +114,11 @@ public class StateLog {
      */
     public void addMessageBatch(byte[] batch) {
 
-        //if (position < k) {
+        if (position < messageBatches.length) {
 
             messageBatches[position] = batch;
             position++;
-            //execCounter++;
-
-            /************************* TESTE *************************
-            System.out.println("posicao: " + position);
-            System.out.println("execucoes: " + lastEid);
-            /************************* TESTE *************************/
-            
-            //return true;
-        //}
-
-        //return false;
+        }
     }
 
     /**
@@ -172,17 +142,18 @@ public class StateLog {
     }
 
     /**
+     * Retrieves the total number of stored batches kept since the last checkpoint
+     * @return The total number of stored batches kept since the last checkpoint
+     */
+    public int getNumBatches() {
+        return position;
+    }
+    /**
      * Constructs a TransferableState using this log information
      * @param eid Execution ID correspondent to desired state
      * @return TransferableState Object containing this log information
      */
     public TransferableState getTransferableState(int eid) {
-
-        //System.out.println("A devolver o estado!");
-        //System.out.println("EID pedido: " + eid);
-        //System.out.println("Execucoes feitas ate agora: " + execCounter);
-        //System.out.println("Ultimo checkpoint: " + lastEid);
-        //System.exit(0);
 
         if (lastCheckpointEid > -1 && eid >= lastCheckpointEid) {
 
