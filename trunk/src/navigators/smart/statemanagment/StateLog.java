@@ -172,7 +172,7 @@ public class StateLog {
 
                 batches = messageBatches;
              }
-            return new TransferableState(batches, lastCheckpointEid, lastEid, state);
+            return new TransferableState(batches, lastCheckpointEid, eid, state);
 
         }
         else return null;

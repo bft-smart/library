@@ -898,30 +898,44 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
     /** ISTO E CODIGO DO JOAO, PARA TRATAR DOS CHECKPOINTS */
     private StateManager stateManager = null;
+    private ReentrantLock lockState = new ReentrantLock();
 
     public void saveState(byte[] state, int lastEid) {
-        stateManager.getLog().newCheckpoint(state);
-        stateManager.getLog().setLastEid(-1);
-        stateManager.getLog().setLastCheckpointEid(lastEid);
+
+        StateLog log = stateManager.getLog();
+
+        lockState.lock();
+
+        log.newCheckpoint(state);
+        log.setLastEid(-1);
+        log.setLastCheckpointEid(lastEid);
+
         /************************* TESTE *************************
         int value = 0;
         for (int i = 0; i < 4; i++) {
             int shift = (4 - 1 - i) * 8;
-            value += (stateManager.getLog().getState()[i] & 0x000000FF) << shift;
+            value += (log.getState()[i] & 0x000000FF) << shift;
         }
         System.out.println("//////////////////CHECKPOINT//////////////////////");
         System.out.println("Estado: " + value);
-        System.out.println("Checkpoint: " + stateManager.getLog().getLastCheckpointEid());
-        System.out.println("Ultimo EID: " + stateManager.getLog().getLastEid());
+        System.out.println("Checkpoint: " + log.getLastCheckpointEid());
+        System.out.println("Ultimo EID: " + log.getLastEid());
         System.out.println("//////////////////////////////////////////////////");
         /************************* TESTE *************************/
+        
+        lockState.unlock();
     }
     public void saveBatch(byte[] batch, int lastEid) {
-        stateManager.getLog().addMessageBatch(batch);
-        stateManager.getLog().setLastEid(lastEid);
+
+        StateLog log = stateManager.getLog();
+
+        lockState.lock();
+        
+        log.addMessageBatch(batch);
+        log.setLastEid(lastEid);
 
         /************************* TESTE *************************
-        byte[][] batches = stateManager.getLog().getMessageBatches();
+        byte[][] batches = log.getMessageBatches();
         int count = 0;
         for (int i = 0; i < batches.length; i++)
             if (batches[i] != null) count++;
@@ -929,11 +943,12 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         System.out.println("//////////////////////BATCH///////////////////////");
         //System.out.println("Total batches (according to StateManager): " + stateManager.getLog().getNumBatches());
         System.out.println("Total batches (actually counted by this code): " + count);
-        System.out.println("Ultimo EID: " + stateManager.getLog().getLastEid());
+        System.out.println("Ultimo EID: " + log.getLastEid());
         //System.out.println("Espaco restante para armazenar batches: " + (stateManager.getLog().getMessageBatches().length - count));
         System.out.println("//////////////////////////////////////////////////");
         /************************* TESTE *************************/
 
+        lockState.unlock();
     }
 
     /** ISTO E CODIGO DO JOAO, PARA TRATAR DA TRANSFERENCIA DE ESTADO */
@@ -963,6 +978,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                 stateManager.setLastEID(eid);
                 stateManager.setWaiting(eid - 1);
                 //stateManager.emptyReplicas(eid);// isto causa uma excepcao
+
                 SMMessage smsg = new SMMessage(me, eid - 1, TOMUtil.SM_REQUEST, null);
                 communication.send(otherAcceptors, smsg);
 
@@ -981,6 +997,8 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
     public void SMRequestDeliver(SMMessage msg) {
 
+        lockState.lock();
+
         /************************* TESTE *************************
         System.out.println("Recebi um pedido de estado!");
         System.out.println("Estado pedido: " + msg.getEid());
@@ -989,6 +1007,9 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         /************************* TESTE *************************/
         
         TransferableState state = stateManager.getLog().getTransferableState(msg.getEid());
+
+        lockState.unlock();
+
         if (state == null) {
             /************************* TESTE *************************
             System.out.println("Nao tenho o estado pedido!");
@@ -1004,7 +1025,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         System.out.println("Quem envia: " + smsg.getSender());
         System.out.println("Que tipo: " + smsg.getType());
         System.out.println("Que EID: " + smsg.getEid());
-        System.exit(0);
+        //System.exit(0);
         /************************* TESTE *************************/
 
     }
@@ -1013,22 +1034,29 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
         /************************* TESTE *************************/
         System.out.println("Recebi uma resposta de uma replica!");
-        System.out.println("Esta respsota tem o estado? " + msg.getState().hasState());
-        System.out.println("EID do ultimo checkpoint: " + msg.getState().getLastCheckpointEid());
-        System.out.println("EID do ultimo batch recebido: " + msg.getState().getLastEid());
+        System.out.println("[reply] Esta resposta tem o estado? " + msg.getState().hasState());
+        System.out.println("[reply] EID do ultimo checkpoint: " + msg.getState().getLastCheckpointEid());
+        System.out.println("[reply] EID do ultimo batch recebido: " + msg.getState().getLastEid());
         if (msg.getState().getMessageBatches() != null)
-            System.out.println("Numero de batches: " + msg.getState().getMessageBatches().length);
-        else System.out.println("Nao ha batches");
-        if (msg.getState().getState() != null)
-            System.out.println("Tamanho do estado em bytes: " + msg.getState().getState().length);
-        else System.out.println("Nao ha estado");
-        //System.exit(0);
+            System.out.println("[reply] Numero de batches: " + msg.getState().getMessageBatches().length);
+        else System.out.println("[reply] Nao ha batches");
+        if (msg.getState().getState() != null) {
+            System.out.println("[reply] Tamanho do estado em bytes: " + msg.getState().getState().length);
+
+            int value = 0;
+            for (int i = 0; i < 4; i++) {
+                int shift = (4 - 1 - i) * 8;
+                value += (msg.getState().getState()[i] & 0x000000FF) << shift;
+            }
+            System.out.println("[reply] Valor do estado: " + value);
+        }
+        else System.out.println("[reply] Nao ha estado");
         /************************* TESTE *************************/
 
         if (stateManager.getWaiting() != -1 && msg.getEid() == stateManager.getWaiting()) {
 
             /************************* TESTE *************************/
-            System.out.println("A resposta e referente ao eid que estou a espera!");
+            System.out.println("A resposta e referente ao eid que estou a espera! (" + msg.getEid() + ")");
             /************************* TESTE *************************/
 
             stateManager.addState(msg.getSender(),msg.getState());
@@ -1036,7 +1064,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             if (stateManager.moreThenF_Replies()) {
 
                 /************************* TESTE *************************/
-                System.out.println("Ja tenho mais que F respostas iguais!");
+                System.out.println("Ja tenho mais que " + conf.getF() + " respostas iguais!");
                 /************************* TESTE *************************/
 
                 TransferableState state = stateManager.getValidState();
@@ -1045,43 +1073,67 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
                     /************************* TESTE *************************/
                     System.out.println("As respostas desse estado são validas!");
+
+                    System.out.println("[state] Esta resposta tem o estado? " + state.hasState());
+                    System.out.println("[state] EID do ultimo checkpoint: " + state.getLastCheckpointEid());
+                    System.out.println("[state] EID do ultimo batch recebido: " + state.getLastEid());
+                    if (state.getMessageBatches() != null)
+                        System.out.println("[state] Numero de batches: " + state.getMessageBatches().length);
+                    else System.out.println("[state] Nao ha batches");
+                    if (state.getState() != null) {
+                        System.out.println("[state] Tamanho do estado em bytes: " + state.getState().length);
+
+                        int value = 0;
+                        for (int i = 0; i < 4; i++) {
+                            int shift = (4 - 1 - i) * 8;
+                            value += (state.getState()[i] & 0x000000FF) << shift;
+                        }
+                        System.out.println("[state] Valor do estado: " + value);
+                    }
+                    else System.out.println("[state] Nao ha estado");
+
+                    //System.exit(0);
                     /************************* TESTE *************************/
 
+                    lockState.lock();
                     stateManager.getLog().update(state);
 
+                    /************************* TESTE *************************/
+                    System.out.println("[log] Estado pedido: " + msg.getEid());
+                    System.out.println("[log] EID do ultimo checkpoint: " + stateManager.getLog().getLastCheckpointEid());
+                    System.out.println("[log] EID do ultimo batch recebido: " + stateManager.getLog().getLastEid());
+                    System.out.println("[log] Numero de batches: " + stateManager.getLog().getNumBatches());
+                    if (stateManager.getLog().getState() != null) {
+                        System.out.println("[log] Tamanho do estado em bytes: " + stateManager.getLog().getState().length);
+                    
+                        int value = 0;
+                        for (int i = 0; i < 4; i++) {
+                            int shift = (4 - 1 - i) * 8;
+                            value += (stateManager.getLog().getState()[i] & 0x000000FF) << shift;
+                        }
+                        System.out.println("[log] Valor do estado: " + value);
+                    }
+                    //System.exit(0);
+                    /************************* TESTE *************************/
+
+                    lockState.unlock();
+                    
                     //dt.update(state);
                     //execManager.removeExecutions(stateManager.getLastEID());
 
                     stateManager.setWaiting(-1);
+                    stateManager.emptyStates();
 
-                    /************************* TESTE *************************/
-                    System.out.println("Estado pedido: " + msg.getEid());
-                    System.out.println("EID do ultimo checkpoint: " + state.getLastCheckpointEid());
-                    System.out.println("EID do ultimo batch recebido: " + state.getLastEid());
-                    if (state.getMessageBatches() != null)
-                        System.out.println("Numero de batches: " + state.getMessageBatches().length);
-                    if (state.getState() != null)
-                        System.out.println("Tamanho do estado em bytes: " + state.getState().length);
-                    
-                    //int value = 0;
-                    //for (int i = 0; i < 4; i++) {
-                    //    int shift = (4 - 1 - i) * 8;
-                    //    value += (state.getState()[i] & 0x000000FF) << shift;
-                    //}
-                    //System.out.println("Valor do estado: " + value);
-                    
-                    //System.exit(0);
-                    /************************* TESTE *************************/
 
-                    //receiver.setState(state);
-                }
-                else if (stateManager.getReplies() >= (2 * conf.getF())) {
+                } else if ((conf.getN() / 2) < stateManager.getReplies()) {
                     
                     /************************* TESTE *************************/
                     System.out.println("Tenho mais de 2F respostas que nao servem para nada!");
+                    //System.exit(0);
                     /************************* TESTE *************************/
 
                     stateManager.setWaiting(-1);
+                    stateManager.emptyStates();
                 }
             }
         }
