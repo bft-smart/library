@@ -123,19 +123,19 @@ public class TransferableState implements Serializable {
         if (obj instanceof TransferableState) {
             TransferableState tState = (TransferableState) obj;
 
-            if (this.messageBatches == null && tState.messageBatches == null) return true;
-
             if ((this.messageBatches != null && tState.messageBatches == null) ||
                     (this.messageBatches == null && tState.messageBatches != null)) return false;
 
-            if (this.messageBatches != null && tState.messageBatches != null &&
-                    this.messageBatches.length != tState.messageBatches.length) return false;
+            if (this.messageBatches != null && tState.messageBatches != null) {
+
+                if (this.messageBatches.length != tState.messageBatches.length) return false;
                  
-            for (int i = 0; i < this.messageBatches.length; i++)
-                if (!Arrays.equals(this.messageBatches[i], tState.messageBatches[i])) return false;
-            
+                for (int i = 0; i < this.messageBatches.length; i++)
+                    if (!Arrays.equals(this.messageBatches[i], tState.messageBatches[i])) return false;
+            }
             return (Arrays.equals(this.state, tState.state) &&
-                    tState.lastCheckpointEid == this.lastCheckpointEid && tState.lastEid == this.lastEid);
+                    tState.lastCheckpointEid == this.lastCheckpointEid &&
+                    tState.lastEid == this.lastEid && tState.hasState == this.hasState);
         }
         return false;
     }
@@ -145,15 +145,24 @@ public class TransferableState implements Serializable {
         int hash = 1;
         hash = hash * 31 + this.lastCheckpointEid;
         hash = hash * 31 + this.lastEid;
-        if (this.state != null)
+        hash = hash * 31 + (this.hasState ? 1 : 0);
+        if (this.state != null) {
             for (int i = 0; i < this.state.length; i++) hash = hash * 31 + (int) this.state[i];
-        else hash = hash * 31 + 0;
-        if (this.messageBatches != null)
-            for (int i = 0; i < this.messageBatches.length; i++)
-                if (this.messageBatches[i] != null)
+        } else {
+            hash = hash * 31 + 0;
+        }
+        if (this.messageBatches != null) {
+            for (int i = 0; i < this.messageBatches.length; i++) {
+                if (this.messageBatches[i] != null) {
                     for (int j = 0; j < this.messageBatches[i].length; j++)
                         hash = hash * 31 + (int) this.messageBatches[i][j];
-        else hash = hash * 31 + 0;
+                } else {
+                    hash = hash * 31 + 0;
+                }
+            }
+        } else {
+            hash = hash * 31 + 0;
+        }
         return hash;
     }
 }
