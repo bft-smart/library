@@ -207,7 +207,21 @@ public final class ExecutionManager {
 
         boolean canProcessTheMessage = false;
         
-        if (consId > lastConsId  && (consId < (lastConsId + paxosHighMark))) { // Is this message within the low and high marks?
+        if (
+                
+                /** ISTO E CODIGO DO JOAO, PARA TRATAR DA TRANSFERENCIA DE ESTADO */
+
+                // Isto serve para re-direccionar as mensagens para o out of context
+                // enquanto a replica esta a receber o estado das outras e a actualizar-se
+
+                tomLayer.isRetrievingState() ||
+                    
+                /******************************************************************/
+
+                (consId > lastConsId  && (consId < (lastConsId + paxosHighMark)))
+
+            ) { // Is this message within the low and high marks (or maybe is the replica synchronizing) ?
+
             if(stopped) {//just an optimization to avoid calling the lock in normal case
                 stoppedMsgsLock.lock();
                 if (stopped) {
@@ -225,13 +239,12 @@ public final class ExecutionManager {
                     // Isto serve para re-direccionar as mensagens para o out of context
                     // enquanto a replica esta a receber o estado das outras e a actualizar-se
 
-                    //tomLayer.isRetrievingState() ||
-                    
+                    tomLayer.isRetrievingState() ||
+
                     /******************************************************************/
-                    
+
                     consId > (lastConsId + 1)
-                    
-                ) {
+            ) {
                 Logger.println("(ExecutionManager.checkLimits) adding message for execution "+consId+" to out of context");
                 //store it as an ahead of time message (out of context)
                 addOutOfContextMessage(msg);

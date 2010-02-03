@@ -22,6 +22,7 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * This class manages information about the leader of each round of each consensus
@@ -132,6 +133,7 @@ public class LeaderModule {
      *
      * @param c Execution ID of the consensus
      */
+     /******************* METODO ORIGINAL *************
     public void removeStableConsenusInfos(int c) {
         List list = leaderInfos.get(c + 1);
 
@@ -147,6 +149,73 @@ public class LeaderModule {
             leaderInfos.remove(c);
         }
     }
+    /******************* METODO ORIGINAL *************/
+    
+    /** ISTO E CODIGO DO JOAO, PARA TRATAR DA TRANSFERENCIA DE ESTADO */
+    private ReentrantLock leaderInfosLock = new ReentrantLock();
+
+    public void removeStableConsenusInfos(int c) {
+
+        leaderInfosLock.lock();
+
+        List list = leaderInfos.get(c + 1);
+
+        if (list == null) {//nunca vai acontecer isso!!!
+            System.err.println("- Executing a code that wasn't supposed to be executed :-)");
+            System.err.println("- And we have some reports there is a bug here!");
+            list = new LinkedList();
+            leaderInfos.put(c + 1, list);
+            List rm = leaderInfos.remove(c);
+            if (rm != null) {
+                ConsInfo ci = (ConsInfo) rm.get(rm.size() - 1);
+                list.add(new ConsInfo(0, ci.leaderId));
+            }
+        } else {
+            leaderInfos.remove(c);
+        }
+
+        leaderInfosLock.unlock();
+    }
+
+    public void removeStableMultipleConsenusInfos(int cStart, int cEnd) {
+
+        leaderInfosLock.lock();
+
+        List list = leaderInfos.get(cEnd + 1);
+
+        if (list == null) {//nunca vai acontecer isso!!!
+            //System.err.println("- Executing a code that wasn't supposed to be executed :-)");
+            //System.err.println("- And we have some reports there is a bug here!");
+            list = new LinkedList();
+            leaderInfos.put(cEnd + 1, list);
+            List rm = leaderInfos.get(cEnd);
+            if (rm != null) {
+                    ConsInfo ci = (ConsInfo) rm.get(rm.size() - 1);
+                    list.add(new ConsInfo(0, ci.leaderId));
+            }
+        }
+
+        for (int c = cStart; c < cEnd; c++) {
+
+            //List list = leaderInfos.get(c + 1);
+
+            if (list == null) {//nunca vai acontecer isso!!!
+                //System.err.println("- Executing a code that wasn't supposed to be executed :-)");
+                //System.err.println("- And we have some reports there is a bug here!");
+                list = new LinkedList();
+                leaderInfos.put(c + 1, list);
+                List rm = leaderInfos.remove(c);
+                ConsInfo ci = (ConsInfo) rm.get(rm.size() - 1);
+                list.add(new ConsInfo(0, ci.leaderId));
+            } else {
+                leaderInfos.remove(c);
+            }
+            
+        }
+
+        leaderInfosLock.unlock();
+    }
+    /********************************************************/
 
     /**
      * This class represents a tuple formed by a round number and the replica ID of that round's leader
