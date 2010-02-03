@@ -20,6 +20,6 @@ self explanatory.
 
 You can run the counter demonstration by executing the script "runscripts/launch_CounterDemo.bat". This script can be easily adapted to run the other demos. Note that this script only runs in Windows, but it is easy to derive a shell script that runs in other operating systems.
 
-
+ 
 Feel free to contact us if you have any questions.
 
