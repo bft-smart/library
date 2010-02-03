@@ -77,11 +77,11 @@ public class DeliveryThread extends Thread {
     public void update(TransferableState state) {
 
         receiver.setState(state.getState());
-            
+
         int lastCheckpointEid = state.getLastCheckpointEid();
         int lastEid = state.getLastEid();
 
-        for (int eid = lastCheckpointEid + 1; eid <= lastEid; eid++){
+        for (int eid = lastCheckpointEid + 1; eid <= lastEid; eid++) {
 
             try {
 
@@ -132,30 +132,6 @@ public class DeliveryThread extends Thread {
                     }
                 }
 
-
-                //set this consensus as the last executed
-                tomLayer.setLastExec(eid);
-
-                //define the last stable consensus... the stable consensus can
-                //be removed from the leaderManager and the executionManager
-                if (eid > 2) {
-                    int stableConsensus = eid - 3;
-
-                    tomLayer.lm.removeStableConsenusInfos(stableConsensus);
-                    tomLayer.execManager.removeExecution(stableConsensus);
-                }
-
-                //define that end of this execution
-                tomLayer.setInExec(-1);
-
-                //verify if there is a next proposal to be executed
-                //(it only happens if the previous consensus were decided in a
-                //round > 0
-                int nextExecution = eid + 1;
-                if(tomLayer.acceptor.executeAcceptedPendent(nextExecution)) {
-                    Logger.println("(DeliveryThread.run) Executed propose for " + nextExecution);
-                }
-
                 //obtain the nonce and timestamps to be delivered to the application
                 long timestamp = batchReader.getTimestamp();
                 byte[] nonces = new byte[batchReader.getNumberOfNonces()];
@@ -198,6 +174,31 @@ public class DeliveryThread extends Thread {
             }
 
         }
+
+        //set this consensus as the last executed
+        tomLayer.setLastExec(lastEid);
+
+        //define the last stable consensus... the stable consensus can
+        //be removed from the leaderManager and the executionManager
+        if (lastEid > 2) {
+        int stableConsensus = lastEid - 3;
+
+            //tomLayer.lm.removeStableMultipleConsenusInfos(lastCheckpointEid, stableConsensus);
+            //tomLayer.execManager.removeExecutions(stableConsensus);
+        }
+
+        //define that end of this execution
+        tomLayer.setInExec(-1);
+
+        //verify if there is a next proposal to be executed
+        //(it only happens if the previous consensus were decided in a
+        //round > 0
+        /** Nao consigo perceber se isto tem utilidade neste contexto *****/
+        int nextExecution = lastEid + 1;
+        if(tomLayer.acceptor.executeAcceptedPendent(nextExecution)) {
+            Logger.println("(DeliveryThread.run) Executed propose for " + nextExecution);
+        }
+        /******************************************************************/
 
     }
     

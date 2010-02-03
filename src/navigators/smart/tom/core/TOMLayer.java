@@ -1118,8 +1118,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
                     lockState.unlock();
                     
-                    //dt.update(state);
-                    //execManager.removeExecutions(stateManager.getLastEID());
+                    dt.update(state);
 
                     stateManager.setWaiting(-1);
                     stateManager.emptyStates();
