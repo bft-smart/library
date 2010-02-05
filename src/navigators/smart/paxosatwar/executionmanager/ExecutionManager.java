@@ -265,6 +265,8 @@ public final class ExecutionManager {
             //TODO: at this point a new state should be recovered from other correct replicas
 
             /** ISTO E CODIGO DO JOAO, PARA TRATAR DA TRANSFERENCIA DE ESTADO */
+            Logger.println("(ExecutionManager.checkLimits) adding message for execution "+consId+" to out of context");
+            addOutOfContextMessage(msg);
             tomLayer.requestState(me, otherAcceptors, msg.getSender(), consId);
             /******************************************************************/
         }
@@ -317,21 +319,12 @@ public final class ExecutionManager {
         return execution;
     }
     /** ISTO E CODIGO DO JOAO, PARA TRATAR DA TRANSFERENCIA DE ESTADO */
-    public void removeExecutions(int id) {
-        executionsLock.lock();
-        /******* BEGIN EXECUTIONS CRITICAL SECTION *******/
-
-        Set<Integer> keys = executions.keySet();
-        for (int execution : keys)
-                if (execution <= id) executions.remove(execution);
-
-        /******* END EXECUTIONS CRITICAL SECTION *******/
-        executionsLock.unlock();
+    public void removeOutOfContexts(int id) {
 
         outOfContextLock.lock();
         /******* BEGIN OUTOFCONTEXT CRITICAL SECTION *******/
 
-        keys = outOfContextProposes.keySet();
+        Set<Integer> keys = outOfContextProposes.keySet();
         for (int execution : keys)
                 if (execution <= id) outOfContextProposes.remove(execution);
 

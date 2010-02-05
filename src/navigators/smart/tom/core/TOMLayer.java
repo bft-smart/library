@@ -225,7 +225,11 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
         proposeLock.lock();
         this.inExecution = inEx;
-        if (inEx == -1) {
+        if (inEx == -1
+        /** ISTO E CODIGO DO JOAO, PARA TRATAR DA TRANSFERENCIA DE ESTADO */
+            && !isRetrievingState()
+        /******************************************************************/
+        ) {
             canPropose.signalAll();
         }
         proposeLock.unlock();
@@ -911,6 +915,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         log.setLastCheckpointEid(lastEid);
 
         /************************* TESTE *************************
+        System.out.println("[TOMLayer.saveState]");
         int value = 0;
         for (int i = 0; i < 4; i++) {
             int shift = (4 - 1 - i) * 8;
@@ -921,6 +926,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         System.out.println("Checkpoint: " + log.getLastCheckpointEid());
         System.out.println("Ultimo EID: " + log.getLastEid());
         System.out.println("//////////////////////////////////////////////////");
+        System.out.println("[/TOMLayer.saveState]");
         /************************* TESTE *************************/
         
         lockState.unlock();
@@ -935,6 +941,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         log.setLastEid(lastEid);
 
         /************************* TESTE *************************
+        System.out.println("[TOMLayer.saveBatch]");
         byte[][] batches = log.getMessageBatches();
         int count = 0;
         for (int i = 0; i < batches.length; i++)
@@ -946,6 +953,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         System.out.println("Ultimo EID: " + log.getLastEid());
         //System.out.println("Espaco restante para armazenar batches: " + (stateManager.getLog().getMessageBatches().length - count));
         System.out.println("//////////////////////////////////////////////////");
+        System.out.println("[/TOMLayer.saveBatch]");
         /************************* TESTE *************************/
 
         lockState.unlock();
@@ -955,7 +963,8 @@ public final class TOMLayer extends Thread implements RequestReceiver {
     
     public void requestState(int me, int[] otherAcceptors, int sender, int eid) {
 
-        /************************* TESTE *************************
+        /************************* TESTE *************************/
+        System.out.println("[TOMLayer.requestState]");
         System.out.println("Mensagem adiantada! (eid " + eid + " vindo de " + sender + ") ");
         /************************* TESTE *************************/
 
@@ -963,7 +972,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
             stateManager.addEID(sender, eid);
 
-            /************************* TESTE *************************
+            /************************* TESTE *************************/
             System.out.println("Mensagem adiantada! (eid " + eid + " vindo de " + sender + ") ");
             System.out.println("Nao estou a espera");
             System.out.println("Numero de mensagens recebidas para este EID de replicas diferentes: " + stateManager.moreThenF_EIDs(eid));
@@ -971,7 +980,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
             if (stateManager.getLastEID() < eid && stateManager.moreThenF_EIDs(eid)) {
 
-                /************************* TESTE *************************
+                /************************* TESTE *************************/
                 System.out.println("Recebi mais de " + conf.getF() + " mensagens para eid " + eid + " que sao posteriores a " + stateManager.getLastEID());
                 /************************* TESTE *************************/
 
@@ -982,7 +991,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                 SMMessage smsg = new SMMessage(me, eid - 1, TOMUtil.SM_REQUEST, null);
                 communication.send(otherAcceptors, smsg);
 
-                /************************* TESTE *************************
+                /************************* TESTE *************************/
 
                 System.out.println("Enviei um pedido!");
                 System.out.println("Quem envia: " + smsg.getSender());
@@ -993,13 +1002,17 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                 /************************* TESTE *************************/
             }
         }
+        /************************* TESTE *************************/
+        System.out.println("[/TOMLayer.requestState]");
+        /************************* TESTE *************************/
     }
 
     public void SMRequestDeliver(SMMessage msg) {
 
         lockState.lock();
 
-        /************************* TESTE *************************
+        /************************* TESTE *************************/
+        System.out.println("[TOMLayer.SMRequestDeliver]");
         System.out.println("Recebi um pedido de estado!");
         System.out.println("Estado pedido: " + msg.getEid());
         System.out.println("Checkpoint q eu tenho: " + stateManager.getLog().getLastCheckpointEid());
@@ -1011,7 +1024,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         lockState.unlock();
 
         if (state == null) {
-            /************************* TESTE *************************
+            /************************* TESTE *************************/
             System.out.println("Nao tenho o estado pedido!");
             /************************* TESTE *************************/
             state = new TransferableState();
@@ -1021,18 +1034,21 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         SMMessage smsg = new SMMessage(execManager.getProcessId(), msg.getEid(), TOMUtil.SM_REPLY, state);
         communication.send(targets, smsg);
 
-        /************************* TESTE *************************
+        /************************* TESTE *************************/
         System.out.println("Quem envia: " + smsg.getSender());
         System.out.println("Que tipo: " + smsg.getType());
         System.out.println("Que EID: " + smsg.getEid());
         //System.exit(0);
         /************************* TESTE *************************/
-
+        /************************* TESTE *************************/
+        System.out.println("[/TOMLayer.SMRequestDeliver]");
+       /************************* TESTE *************************/
     }
 
     public void SMReplyDeliver(SMMessage msg) {
 
         /************************* TESTE *************************/
+        System.out.println("[TOMLayer.SMReplyDeliver]");
         System.out.println("Recebi uma resposta de uma replica!");
         System.out.println("[reply] Esta resposta tem o estado? " + msg.getState().hasState());
         System.out.println("[reply] EID do ultimo checkpoint: " + msg.getState().getLastCheckpointEid());
@@ -1117,10 +1133,11 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                     /************************* TESTE *************************/
 
                     lockState.unlock();
-                    
-                    dt.update(state);
 
                     stateManager.setWaiting(-1);
+                    dt.update(state);
+
+                    
                     stateManager.emptyStates();
 
 
@@ -1136,6 +1153,9 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                 }
             }
         }
+        /************************* TESTE *************************/
+        System.out.println("[/TOMLayer.SMReplyDeliver]");
+        /************************* TESTE *************************/
     }
 
     public boolean isRetrievingState() {

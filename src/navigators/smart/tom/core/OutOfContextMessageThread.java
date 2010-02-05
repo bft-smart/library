@@ -58,6 +58,9 @@ public class OutOfContextMessageThread extends Thread {
 
                 int nextExecution = tomLayer.getLastExec() + 1;
                 if (tomLayer.execManager.thereArePendentMessages(nextExecution)) {
+                    System.out.println("[OutOfContextMessageThread.run]");
+                    System.out.println("Vou processar mensagens q estavam fora do contexto para o EID " + nextExecution);
+                    System.out.println("[/OutOfContextMessageThread.run]");
                     Logger.println("(OutOfContextMessageThread.run) starting processing out of context messages for consensus " + nextExecution);
                     execution = tomLayer.execManager.getExecution(nextExecution);
                     Logger.println("(OutOfContextMessageThread.run) finished processing out fo context messages for consensus " + nextExecution);

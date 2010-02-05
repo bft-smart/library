@@ -90,7 +90,7 @@ public class DeliveryThread extends Thread {
                 // obtain an array of requests from the taken consensus
                 BatchReader batchReader = new BatchReader(batch, conf.getUseSignatures()==1);
 
-                Logger.println("(DeliveryThread.run) interpreting and verifying batched requests.");
+                Logger.println("(DeliveryThread.update) interpreting and verifying batched requests.");
 
                 int numberOfMessages = batchReader.getNumberOfMessages();
 
@@ -157,13 +157,13 @@ public class DeliveryThread extends Thread {
                 /****** Julgo que isto nao sera necessario ***********
                 if (conf.getCheckpoint_period() > 0) {
                     if ((eid > 0) && (eid % conf.getCheckpoint_period() == 0)) {
-                        Logger.println("(DeliveryThread.run) Performing checkpoint for consensus " + eid);
+                        Logger.println("(DeliveryThread.update) Performing checkpoint for consensus " + eid);
                         byte[] state2 = receiver.getState();
                         tomLayer.saveState(state2, eid);
                         //TODO: possivelmente fazer mais alguma coisa
                     }
                     else {
-                        Logger.println("(DeliveryThread.run) Storing message batch in the state log for consensus " + eid);
+                        Logger.println("(DeliveryThread.update) Storing message batch in the state log for consensus " + eid);
                         tomLayer.saveBatch(batch, eid);
                         //TODO: possivelmente fazer mais alguma coisa
                     }
@@ -194,10 +194,10 @@ public class DeliveryThread extends Thread {
         //(it only happens if the previous consensus were decided in a
         //round > 0
         /** Nao consigo perceber se isto tem utilidade neste contexto *****/
-        int nextExecution = lastEid + 1;
-        if(tomLayer.acceptor.executeAcceptedPendent(nextExecution)) {
-            Logger.println("(DeliveryThread.run) Executed propose for " + nextExecution);
-        }
+        //int nextExecution = lastEid + 1;
+        //if(tomLayer.acceptor.executeAcceptedPendent(nextExecution)) {
+        //Logger.println("(DeliveryThread.update) Executed propose for " + nextExecution);
+        //}
         /******************************************************************/
 
     }
@@ -308,6 +308,10 @@ public class DeliveryThread extends Thread {
                 }
 
                 /** ISTO E CODIGO DO JOAO, PARA TRATAR DOS CHECKPOINTS */
+
+                System.out.println("[DeliveryThread.run]");
+                System.out.println("Acabei de entregar o batch do EID " + cons.getId());
+                System.out.println("[/DeliveryThread.run]");
                 if (conf.getCheckpoint_period() > 0) {
                     if ((cons.getId() > 0) && ((cons.getId() % conf.getCheckpoint_period()) == 0)) {
                         Logger.println("(DeliveryThread.run) Performing checkpoint for consensus " + cons.getId());
