@@ -28,7 +28,7 @@ package navigators.smart.statemanagment;
  */
 public class StateLog {
 
-    private byte[][] messageBatches; // batches received since the last checkpoint.
+    private BatchInfo[] messageBatches; // batches received since the last checkpoint.
     private int lastCheckpointEid; // Execution ID for the last checkpoint
     private byte[] state; // State associated with the last checkpoint
     private int position; // next position in the array of batches to be written
@@ -40,7 +40,7 @@ public class StateLog {
      */
     public StateLog(int k) {
 
-        this.messageBatches = new byte[k - 1][];
+        this.messageBatches = new BatchInfo[k - 1];
         this.lastCheckpointEid = -1;
         this.state = null;
         this.position = 0;
@@ -112,11 +112,11 @@ public class StateLog {
      * @param batch The batch of messages to be kept.
      * @return True if the batch was added to the log, false otherwise
      */
-    public void addMessageBatch(byte[] batch) {
+    public void addMessageBatch(byte[] batch, int round, int leader) {
 
         if (position < messageBatches.length) {
 
-            messageBatches[position] = batch;
+            messageBatches[position] = new BatchInfo(batch, round, leader);
             position++;
         }
     }
@@ -126,7 +126,7 @@ public class StateLog {
      * @param eid Execution ID associated with the batch to be fetched
      * @return The batch of messages associated with the batch correspondent execution ID
      */
-    public byte[] getMessageBatch(int eid) {
+    public BatchInfo getMessageBatch(int eid) {
         if (eid > lastCheckpointEid && eid <= lastEid) {
             return messageBatches[eid - lastCheckpointEid - 1];
         }
@@ -137,7 +137,7 @@ public class StateLog {
      * Retrieves all the stored batches kept since the last checkpoint
      * @return All the stored batches kept since the last checkpoint
      */
-    public byte[][] getMessageBatches() {
+    public BatchInfo[] getMessageBatches() {
         return messageBatches;
     }
 
@@ -157,20 +157,20 @@ public class StateLog {
 
         if (lastCheckpointEid > -1 && eid >= lastCheckpointEid) {
 
-            byte[][] batches = null;
+            BatchInfo[] batches = null;
 
              if  (eid <= lastEid) {
                 int size = eid - lastCheckpointEid ;
             
                 if (size > 0) {
-                    batches = new byte[size][];
+                    batches = new BatchInfo[size];
 
                     for (int i = 0; i < size; i++)
                         batches[i] = messageBatches[i];
                 }
              } else if (lastEid > -1) {
 
-                batches = messageBatches;
+                    batches = messageBatches;
              }
             return new TransferableState(batches, lastCheckpointEid, eid, state);
 
@@ -197,4 +197,5 @@ public class StateLog {
 
         this.lastEid = transState.getLastEid();
     }
+
 }

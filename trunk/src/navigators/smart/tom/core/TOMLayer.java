@@ -937,7 +937,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
         lockState.lock();
         
-        log.addMessageBatch(batch);
+        log.addMessageBatch(batch, -1, -1);
         log.setLastEid(lastEid);
 
         /************************* TESTE *************************
@@ -973,7 +973,6 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             stateManager.addEID(sender, eid);
 
             /************************* TESTE *************************/
-            System.out.println("Mensagem adiantada! (eid " + eid + " vindo de " + sender + ") ");
             System.out.println("Nao estou a espera");
             System.out.println("Numero de mensagens recebidas para este EID de replicas diferentes: " + stateManager.moreThenF_EIDs(eid));
             /************************* TESTE *************************/
