@@ -1134,9 +1134,12 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
                     lockState.unlock();
 
+                    dt.deliverLock();
                     stateManager.setWaiting(-1);
                     dt.update(state);
 
+                    dt.canDeliver();
+                    dt.deliverUnlock();
                     
                     stateManager.emptyStates();
 
@@ -1159,7 +1162,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
     }
 
     public boolean isRetrievingState() {
-        return stateManager.getWaiting() != -1;
+        return stateManager != null && stateManager.getWaiting() != -1;
     }
     /********************************************************/
 }

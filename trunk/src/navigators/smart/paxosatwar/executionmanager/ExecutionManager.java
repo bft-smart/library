@@ -324,13 +324,15 @@ public final class ExecutionManager {
         outOfContextLock.lock();
         /******* BEGIN OUTOFCONTEXT CRITICAL SECTION *******/
 
-        Set<Integer> keys = outOfContextProposes.keySet();
-        for (int execution : keys)
-                if (execution <= id) outOfContextProposes.remove(execution);
+        Integer[] keys = new Integer[outOfContextProposes.keySet().size()];
+        outOfContextProposes.keySet().toArray(keys);
+        for (int i = 0; i < keys.length; i++)
+                if (keys[i] <= id) outOfContextProposes.remove(keys[i]);
 
-        keys = outOfContext.keySet();
-        for (int execution : keys)
-                if (execution <= id) outOfContext.remove(execution);
+        keys = new Integer[outOfContext.keySet().size()];
+        outOfContext.keySet().toArray(keys);
+        for (int i = 0; i < keys.length; i++)
+                if (keys[i] <= id) outOfContext.remove(keys[i]);
 
         /******* END OUTOFCONTEXT CRITICAL SECTION *******/
         outOfContextLock.unlock();
