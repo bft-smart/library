@@ -22,7 +22,10 @@ import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.util.concurrent.LinkedBlockingQueue;
 
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.ReentrantLock;
 import navigators.smart.paxosatwar.Consensus;
+import navigators.smart.statemanagment.StateManager;
 import navigators.smart.statemanagment.TransferableState;
 import navigators.smart.tom.TOMRequestReceiver;
 import navigators.smart.tom.core.messages.TOMMessage;
@@ -73,9 +76,25 @@ public class DeliveryThread extends Thread {
     }
 
     /** ISTO E CODIGO DO JOAO, PARA TRATAR DA TRANSFERENCIA DE ESTADO */
+    
+    private ReentrantLock deliverLock = new ReentrantLock();
+    private Condition canDeliver = deliverLock.newCondition();
 
+    public void deliverLock() {
+        deliverLock.lock();
+    }
+
+    public void deliverUnlock() {
+        deliverLock.unlock();
+    }
+
+    public void canDeliver() {
+        canDeliver.signalAll();
+    }
     public void update(TransferableState state) {
 
+        //deliverLock.lock();
+        
         receiver.setState(state.getState());
 
         int lastCheckpointEid = state.getLastCheckpointEid();
@@ -181,15 +200,17 @@ public class DeliveryThread extends Thread {
         //define the last stable consensus... the stable consensus can
         //be removed from the leaderManager and the executionManager
         if (lastEid > 2) {
-        int stableConsensus = lastEid - 3;
+            int stableConsensus = lastEid - 3;
 
             //tomLayer.lm.removeStableMultipleConsenusInfos(lastCheckpointEid, stableConsensus);
-            //tomLayer.execManager.removeExecutions(stableConsensus);
+            tomLayer.execManager.removeOutOfContexts(stableConsensus);
         }
 
         //define that end of this execution
+        //stateManager.setWaiting(-1);
         tomLayer.setInExec(-1);
 
+        decided.clear();
         //verify if there is a next proposal to be executed
         //(it only happens if the previous consensus were decided in a
         //round > 0
@@ -200,6 +221,8 @@ public class DeliveryThread extends Thread {
         //}
         /******************************************************************/
 
+        //canDeliver.signalAll();
+        //deliverLock.unlock();
     }
     
     /********************************************************/
@@ -209,8 +232,20 @@ public class DeliveryThread extends Thread {
      */
     @Override
     public void run() {
+
         long startTime;
         while (true) {
+
+            /** ISTO E CODIGO DO JOAO, PARA TRATAR DA TRANSFERENCIA DE ESTADO */
+            deliverLock.lock();
+
+            //if (tomLayer != null) {
+                while (tomLayer.isRetrievingState()) {
+                    canDeliver.awaitUninterruptibly();
+                }
+            //}
+            /******************************************************************/
+
             try {
                 Consensus cons = decided.take(); // take a decided consensus
                 startTime = System.currentTimeMillis();
@@ -331,6 +366,10 @@ public class DeliveryThread extends Thread {
             } catch (Exception e) {
                 e.printStackTrace();
             }
+            /** ISTO E CODIGO DO JOAO, PARA TRATAR DA TRANSFERENCIA DE ESTADO */
+            deliverLock.unlock();
+            /******************************************************************/
+
         }
     }
 }
