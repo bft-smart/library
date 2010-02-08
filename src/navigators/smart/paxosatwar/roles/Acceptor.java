@@ -202,20 +202,29 @@ public class Acceptor {
 
         // If message's round is 0, and the sender is the leader for the message's round,
         // execute the propose
-        if (msg.getRound() == 0 && leaderModule.getLeader(eid, msg.getRound()) == p) {
+        int teste = leaderModule.getLeader(eid, msg.getRound());
+        System.out.println("Quem e o lider: " + teste);
+        if (msg.getRound() == 0 && teste == p) {
+
+            System.out.println("A executar executePropose (1)");
             executePropose(round, value);
         } else {
             Proof proof = (Proof) msg.getProof();
             if (proof != null) {
 
+                System.out.println("As provas nao estao a nulo");
                 // Get valid proofs
                 CollectProof[] collected = verifier.checkValid(eid, msg.getRound() - 1, proof.getProofs());
 
                 if (verifier.isTheLeader(p, collected)) { // Is the replica that sent this message the leader?
+
+                    System.out.println("O proprio lider enviou esta mensagem");
+
                     leaderModule.addLeaderInfo(eid, msg.getRound(), p);
 
                     // Is the proposed value good according to the PaW algorithm?
                     if (value != null && (verifier.good(value, collected, true))) {
+                        System.out.println("A executar executePropose (2)");
                         executePropose(round, value);
                     } else if (checkAndDiscardConsensus(eid, collected, true)) {
                         leaderModule.addLeaderInfo(eid, 0, p);
@@ -228,6 +237,7 @@ public class Acceptor {
                         if (tomLayer.getInExec() == eid + 1) { // Is this message from the previous execution?
                             Execution nextExecution = manager.getExecution(eid + 1);
                             nextExecution.removeRounds(nextRoundNumber - 1);
+                            System.out.println("A executar executePropose (3)");
                             executePropose(nextExecution.getRound(nextRoundNumber), value);
                         } else {
                             nextProp = new AcceptedPropose(eid + 1, round.getNumber(), value, proof);

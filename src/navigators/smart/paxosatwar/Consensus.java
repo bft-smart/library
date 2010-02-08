@@ -73,10 +73,13 @@ public class Consensus {
      * @return Decided Value
      */
     public byte[] getDecision() {
+
+        System.out.println("[Consensus.getDecision]");
         if(decision == null) {
             waitForPropose();
             decision = decisionRound.propValue;
         }
+        System.out.println("[/Consensus.getDecision]");
         return decision;
     }
 
@@ -85,10 +88,13 @@ public class Consensus {
      * @return Deserialized decision
      */
     public Object getDeserializedDecision() {
+
+        System.out.println("[Consensus.getDeserializedDecision]");
         if(deserializedDecision == null) {
             waitForPropose();
             deserializedDecision = decisionRound.deserializedPropValue;
         }
+        System.out.println("[/Consensus.getDeserializedDecision]");
         return deserializedDecision;
     }
 

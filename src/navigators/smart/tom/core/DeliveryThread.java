@@ -104,7 +104,7 @@ public class DeliveryThread extends Thread {
 
             try {
 
-                byte[] batch = state.getMessageBatch(eid); // take a batch
+                byte[] batch = state.getMessageBatch(eid).batch; // take a batch
 
                 // obtain an array of requests from the taken consensus
                 BatchReader batchReader = new BatchReader(batch, conf.getUseSignatures()==1);
@@ -211,6 +211,8 @@ public class DeliveryThread extends Thread {
         tomLayer.setInExec(-1);
 
         decided.clear();
+
+        Logger.println("(DeliveryThread.update) All finished from " + lastCheckpointEid + " to " + lastEid);
         //verify if there is a next proposal to be executed
         //(it only happens if the previous consensus were decided in a
         //round > 0
