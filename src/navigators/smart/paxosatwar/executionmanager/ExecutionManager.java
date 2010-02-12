@@ -204,6 +204,35 @@ public final class ExecutionManager {
         outOfContextLock.lock();
         int consId = msg.getNumber();
         int lastConsId = tomLayer.getLastExec();
+        int msgType = msg.getPaxosType();
+        boolean isRetrievingState = tomLayer.isRetrievingState();
+
+        System.out.println("Esta a obter estado? " + isRetrievingState);
+        System.out.print("Recebi uma mensagem do eid " + consId + " do tipo ");
+
+        switch (msgType) {
+            case MessageFactory.PROPOSE:
+                System.out.println("PROPOSE");
+                break;
+            case MessageFactory.WEAK:
+                System.out.println("WEAK");
+                break;
+            case MessageFactory.STRONG:
+                System.out.println("STRONG");
+                break;
+            case MessageFactory.DECIDE:
+                System.out.println("DECIDE");
+                break;
+            case MessageFactory.FREEZE:
+                System.out.println("FREEZE");
+                break;
+            case MessageFactory.COLLECT:
+                System.out.println("COLLECT");
+                break;
+            default:
+                System.out.println();
+                break;
+        }
 
         boolean canProcessTheMessage = false;
         
@@ -214,7 +243,7 @@ public final class ExecutionManager {
                 // Isto serve para re-direccionar as mensagens para o out of context
                 // enquanto a replica esta a receber o estado das outras e a actualizar-se
 
-                tomLayer.isRetrievingState() ||
+                isRetrievingState ||
                     
                 /******************************************************************/
 
@@ -239,12 +268,13 @@ public final class ExecutionManager {
                     // Isto serve para re-direccionar as mensagens para o out of context
                     // enquanto a replica esta a receber o estado das outras e a actualizar-se
 
-                    tomLayer.isRetrievingState() ||
+                    isRetrievingState ||
 
                     /******************************************************************/
 
                     consId > (lastConsId + 1)
             ) {
+                System.out.println("<Out of context message>");
                 Logger.println("(ExecutionManager.checkLimits) adding message for execution "+consId+" to out of context");
                 //store it as an ahead of time message (out of context)
                 addOutOfContextMessage(msg);
@@ -265,6 +295,7 @@ public final class ExecutionManager {
             //TODO: at this point a new state should be recovered from other correct replicas
 
             /** ISTO E CODIGO DO JOAO, PARA TRATAR DA TRANSFERENCIA DE ESTADO */
+            System.out.println("<Out of highmark>");
             Logger.println("(ExecutionManager.checkLimits) adding message for execution "+consId+" to out of context");
             addOutOfContextMessage(msg);
             tomLayer.requestState(me, otherAcceptors, msg.getSender(), consId);
