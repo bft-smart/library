@@ -36,6 +36,7 @@ import navigators.smart.tom.ServiceReplica;
 public class CounterServer extends ServiceReplica {
     
     private int counter = 0;
+    private int iterations = 0;
     
     public CounterServer(int id) {
         super(id);
@@ -44,10 +45,11 @@ public class CounterServer extends ServiceReplica {
     
     @Override
     public byte[] executeCommand(int clientId, long timestamp, byte[] nonces, byte[] command) {
+        iterations++;
         try {
             int increment = new DataInputStream(new ByteArrayInputStream(command)).readInt();
             counter += increment;
-            System.out.println("[server] Counter incremented: " + counter);
+            System.out.println("[server] (" + iterations + ") Counter incremented: " + counter);
             ByteArrayOutputStream out = new ByteArrayOutputStream(4);
             new DataOutputStream(out).writeInt(counter);
             return out.toByteArray();

@@ -147,7 +147,7 @@ public class DeliveryThread extends Thread {
                         //requests[i] = (TOMMessage) ois.readObject();
                         tomLayer.clientsManager.requestOrdered(requests[i]);
                     } catch (Exception e) {
-                        e.printStackTrace();
+                        e.printStackTrace(System.out);
                     }
                 }
 
@@ -189,7 +189,7 @@ public class DeliveryThread extends Thread {
                 }
                 */
             } catch (Exception e) {
-                e.printStackTrace();
+                e.printStackTrace(System.out);
             }
 
         }
@@ -289,7 +289,7 @@ public class DeliveryThread extends Thread {
                             //requests[i] = (TOMMessage) ois.readObject();
                             tomLayer.clientsManager.requestOrdered(requests[i]);
                         } catch (Exception e) {
-                            e.printStackTrace();
+                            e.printStackTrace(System.out);
                         }
                     }
                 } else {
@@ -311,13 +311,16 @@ public class DeliveryThread extends Thread {
 
                 //define the last stable consensus... the stable consensus can
                 //be removed from the leaderManager and the executionManager
+                /**
                 if (cons.getId() > 2) {
                     int stableConsensus = cons.getId() - 3;
+
+                    System.out.println("Last stable consensus: " + stableConsensus);
 
                     tomLayer.lm.removeStableConsenusInfos(stableConsensus);
                     tomLayer.execManager.removeExecution(stableConsensus);
                 }
-
+                /**/
                 //define that end of this execution
                 tomLayer.setInExec(-1);
 
@@ -366,7 +369,7 @@ public class DeliveryThread extends Thread {
 
                 Logger.println("(DeliveryThread.run) All finished for " + cons.getId() + ", took " + (System.currentTimeMillis() - startTime));
             } catch (Exception e) {
-                e.printStackTrace();
+                e.printStackTrace(System.out);
             }
             /** ISTO E CODIGO DO JOAO, PARA TRATAR DA TRANSFERENCIA DE ESTADO */
             deliverLock.unlock();
