@@ -27,6 +27,7 @@ import java.util.logging.Logger;
 
 import navigators.smart.communication.ServerCommunicationSystem;
 import navigators.smart.tom.core.messages.TOMMessage;
+import navigators.smart.tom.util.DebugInfo;
 import navigators.smart.tom.util.TOMConfiguration;
 
 
@@ -97,7 +98,7 @@ public abstract class ServiceReplica extends TOMReceiver implements Runnable {
             msg.requestTotalLatency = System.currentTimeMillis()-msg.consensusStartTime;
             // Deliver the message to the application, and get the response
             byte[] response = executeCommand(msg.getSender(), msg.timestamp,
-                    msg.nonces, msg.getContent());
+                    msg.nonces, msg.getContent(), msg.getDebugInfo());
 
             /** ISTO E CODIGO DO JOAO, PARA TRATAR DOS CHECKPOINTS */
             if (/*requestQueue.isEmpty() &&*/ stateLock.tryLock()) {
@@ -171,5 +172,5 @@ public abstract class ServiceReplica extends TOMReceiver implements Runnable {
      * @param command The command issue by the client
      * @return the reply for the request issued by the client
      */
-    public abstract byte[] executeCommand(int clientId, long timestamp, byte[] nonces, byte[] command);
+    public abstract byte[] executeCommand(int clientId, long timestamp, byte[] nonces, byte[] command, DebugInfo info);
 }

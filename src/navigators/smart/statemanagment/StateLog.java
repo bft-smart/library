@@ -30,6 +30,8 @@ public class StateLog {
 
     private BatchInfo[] messageBatches; // batches received since the last checkpoint.
     private int lastCheckpointEid; // Execution ID for the last checkpoint
+    private int lastCheckpointRound; // Decision round for the last checkpoint
+    private int lastCheckpointLeader; // Leader for the last checkpoint
     private byte[] state; // State associated with the last checkpoint
     private int position; // next position in the array of batches to be written
     private int lastEid; // Execution ID for the last messages batch delivered to the application
@@ -42,6 +44,8 @@ public class StateLog {
 
         this.messageBatches = new BatchInfo[k - 1];
         this.lastCheckpointEid = -1;
+        this.lastCheckpointRound = -1;
+        this.lastCheckpointLeader = -1;
         this.state = null;
         this.position = 0;
         this.lastEid = -1;
@@ -62,8 +66,8 @@ public class StateLog {
     }
 
     /**
-     * Retrieves the execution ID for the last messages batch delivered to the application
-     * @return Execution ID for the last messages batch delivered to the application, or -1 if none was delivered
+     * Sets the execution ID for the last checkpoint
+     * @param lastCheckpointEid Execution ID for the last checkpoint
      */
     public void setLastCheckpointEid(int lastCheckpointEid) {
 
@@ -71,12 +75,48 @@ public class StateLog {
     }
 
     /**
-     * Retrieves the execution ID for the last messages batch delivered to the application
-     * @return Execution ID for the last messages batch delivered to the application, or -1 if none was delivered
+     * Retrieves the execution ID for the last checkpoint
+     * @return Execution ID for the last checkpoint, or -1 if none was obtained
      */
     public int getLastCheckpointEid() {
         
         return lastCheckpointEid ;
+    }
+
+    /**
+     * Sets the decision round for the last checkpoint
+     * @param lastCheckpointEid Decision round for the last checkpoint
+     */
+    public void setLastCheckpointRound(int lastCheckpointRound) {
+
+        this.lastCheckpointRound = lastCheckpointRound;
+    }
+
+    /**
+     * Retrieves the decision round for the last checkpoint
+     * @return Decision round for the last checkpoint, or -1 if none was obtained
+     */
+    public int getLastCheckpointRound() {
+
+        return lastCheckpointRound ;
+    }
+
+    /**
+     * Sets the leader for the last checkpoint
+     * @param lastCheckpointEid Leader for the last checkpoint
+     */
+    public void setLastCheckpointLeader(int lastCheckpointLeader) {
+
+        this.lastCheckpointLeader = lastCheckpointLeader;
+    }
+
+    /**
+     * Retrieves the leader for the last checkpoint
+     * @return Leader for the last checkpoint, or -1 if none was obtained
+     */
+    public int getLastCheckpointLeader() {
+
+        return lastCheckpointLeader;
     }
 
     /**
@@ -172,7 +212,7 @@ public class StateLog {
 
                     batches = messageBatches;
              }
-            return new TransferableState(batches, lastCheckpointEid, eid, state);
+            return new TransferableState(batches, lastCheckpointEid, lastCheckpointRound, lastCheckpointLeader, eid, state);
 
         }
         else return null;
