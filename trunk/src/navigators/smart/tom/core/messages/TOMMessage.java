@@ -28,6 +28,7 @@ import java.io.Externalizable;
 import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
+import navigators.smart.tom.util.DebugInfo;
 
 /**
  * This class represents a total ordered message
@@ -93,6 +94,27 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
         this.content = content;
         this.readOnlyRequest = readOnlyRequest;
     }
+
+    /** ISTO E CODIGO DO JOAO, PARA TRATAR DE DEBUGGING */
+    private transient DebugInfo info = null; // Debug information
+    
+    /**
+     * Retrieves the debug info from the TOM layer
+     * @return The debug info from the TOM layer
+     */
+    public DebugInfo getDebugInfo() {
+        return info;
+    }
+    
+    /**
+     * Retrieves the debug info from the TOM layer
+     * @return The debug info from the TOM layer
+     */
+    public void  setSequence(DebugInfo info) {
+        this.info = info;
+    }
+
+    /****************************************************/
 
     /**
      * Retrieves the sequence number defined by the client

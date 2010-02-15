@@ -32,6 +32,8 @@ public class TransferableState implements Serializable {
 
     private BatchInfo[] messageBatches; // batches received since the last checkpoint.
     private int lastCheckpointEid; // Execution ID for the last checkpoint
+    private int lastCheckpointRound; // Round for the last checkpoint
+    private int lastCheckpointLeader; // Leader for the last checkpoint
     private byte[] state; // State associated with the last checkpoint
     private int lastEid = -1; // Execution ID for the last messages batch delivered to the application
     private boolean hasState; // indicates if the TransferableState object has a valid state
@@ -43,10 +45,12 @@ public class TransferableState implements Serializable {
      * @param nextEid Execution ID for the last checkpoint
      * @param state State associated with the last checkpoint
      */
-    public TransferableState(BatchInfo[] messageBatches, int lastCheckpointEid, int lastEid, byte[] state) {
+    public TransferableState(BatchInfo[] messageBatches, int lastCheckpointEid, int lastCheckpointRound, int lastCheckpointLeader, int lastEid, byte[] state) {
 
         this.messageBatches = messageBatches; // batches received since the last checkpoint.
         this.lastCheckpointEid = lastCheckpointEid; // Execution ID for the last checkpoint
+        this.lastCheckpointRound = lastCheckpointRound; // Round for the last checkpoint
+        this.lastCheckpointLeader = lastCheckpointLeader; // Leader for the last checkpoint
         this.lastEid = lastEid; // Execution ID for the last messages batch delivered to the application
         this.state = state; // State associated with the last checkpoint
         this.hasState = true;
@@ -59,6 +63,8 @@ public class TransferableState implements Serializable {
     public TransferableState() {
         this.messageBatches = null; // batches received since the last checkpoint.
         this.lastCheckpointEid = -1; // Execution ID for the last checkpoint
+        this.lastCheckpointRound = -1; // Round for the last checkpoint
+        this.lastCheckpointLeader = -1; // Leader for the last checkpoint
         this.lastEid = -1;
         this.state = null; // State associated with the last checkpoint
         this.hasState = false;
@@ -102,6 +108,24 @@ public class TransferableState implements Serializable {
     }
 
     /**
+     * Retrieves the decision round for the last checkpoint
+     * @return Decision round for the last checkpoint, or -1 if no checkpoint was yet executed
+     */
+    public int getLastCheckpointRound() {
+
+        return lastCheckpointRound;
+    }
+
+    /**
+     * Retrieves the leader for the last checkpoint
+     * @return Leader for the last checkpoint, or -1 if no checkpoint was yet executed
+     */
+    public int getLastCheckpointLeader() {
+
+        return lastCheckpointLeader;
+    }
+
+    /**
      * Retrieves the execution ID for the last messages batch delivered to the application
      * @return Execution ID for the last messages batch delivered to the application
      */
@@ -135,6 +159,8 @@ public class TransferableState implements Serializable {
             }
             return (Arrays.equals(this.state, tState.state) &&
                     tState.lastCheckpointEid == this.lastCheckpointEid &&
+                    tState.lastCheckpointRound == this.lastCheckpointRound &&
+                    tState.lastCheckpointLeader == this.lastCheckpointLeader &&
                     tState.lastEid == this.lastEid && tState.hasState == this.hasState);
         }
         return false;
@@ -144,6 +170,8 @@ public class TransferableState implements Serializable {
     public int hashCode() {
         int hash = 1;
         hash = hash * 31 + this.lastCheckpointEid;
+        hash = hash * 31 + this.lastCheckpointRound;
+        hash = hash * 31 + this.lastCheckpointLeader;
         hash = hash * 31 + this.lastEid;
         hash = hash * 31 + (this.hasState ? 1 : 0);
         if (this.state != null) {

@@ -30,6 +30,7 @@ import navigators.smart.statemanagment.TransferableState;
 import navigators.smart.tom.TOMRequestReceiver;
 import navigators.smart.tom.core.messages.TOMMessage;
 import navigators.smart.tom.util.BatchReader;
+import navigators.smart.tom.util.DebugInfo;
 import navigators.smart.tom.util.Logger;
 import navigators.smart.tom.util.TOMConfiguration;
 import navigators.smart.tom.util.TOMUtil;
@@ -133,6 +134,9 @@ public class DeliveryThread extends Thread {
                         DataInputStream ois = new DataInputStream(new ByteArrayInputStream(message));
                         TOMMessage tm = new TOMMessage();
                         tm.readExternal(ois);
+
+                        if (Logger.debug)
+                            tm.setSequence(new DebugInfo(eid, state.getMessageBatch(eid).round, state.getMessageBatch(eid).leader));
 
                         /******* Deixo isto comentado, pois nao me parece necessario      ****/
                         /******* Alem disso, esta informacao nao vem no TransferableState ****
@@ -285,6 +289,12 @@ public class DeliveryThread extends Thread {
                             tm.consensusStartTime = cons.startTime;
                             tm.consensusExecutionTime = cons.executionTime;
                             tm.consensusBatchSize = cons.batchSize;
+
+                            /** ISTO E CODIGO DO JOAO, PARA TRATAR DE DEBUGGING */
+                            if (Logger.debug)
+                                tm.setSequence(new DebugInfo(cons.getId(), cons.getDecisionRound().getNumber(), tomLayer.lm.getLeader(cons.getId(), cons.getDecisionRound().getNumber())));
+                            /****************************************************/
+                            
                             requests[i] = tm;
                             //requests[i] = (TOMMessage) ois.readObject();
                             tomLayer.clientsManager.requestOrdered(requests[i]);
@@ -296,6 +306,12 @@ public class DeliveryThread extends Thread {
                     Logger.println("(DeliveryThread.run) using cached requests from the propose.");
                     tomLayer.clientsManager.getClientsLock().lock();
                     for (int i = 0; i < requests.length; i++) {
+
+                        /** ISTO E CODIGO DO JOAO, PARA TRATAR DE DEBUGGING */
+                        if (Logger.debug)
+                            requests[i].setSequence(new DebugInfo(cons.getId(), cons.getDecisionRound().getNumber(), tomLayer.lm.getLeader(cons.getId(), cons.getDecisionRound().getNumber())));
+                        /****************************************************/
+
                         requests[i].consensusStartTime = cons.startTime;
                         requests[i].consensusExecutionTime = cons.executionTime;
                         requests[i].consensusBatchSize = cons.batchSize;
@@ -356,12 +372,12 @@ public class DeliveryThread extends Thread {
                     if ((cons.getId() > 0) && ((cons.getId() % conf.getCheckpoint_period()) == 0)) {
                         Logger.println("(DeliveryThread.run) Performing checkpoint for consensus " + cons.getId());
                         byte[] state = receiver.getState();
-                        tomLayer.saveState(state, cons.getId());
+                        tomLayer.saveState(state, cons.getId(), cons.getDecisionRound().getNumber(), tomLayer.lm.getLeader(cons.getId(), cons.getDecisionRound().getNumber()));
                         //TODO: possivelmente fazer mais alguma coisa
                     }
                     else {
                         Logger.println("(DeliveryThread.run) Storing message batch in the state log for consensus " + cons.getId());
-                        tomLayer.saveBatch(cons.getDecision(), cons.getId());
+                        tomLayer.saveBatch(cons.getDecision(), cons.getId(), cons.getDecisionRound().getNumber(), tomLayer.lm.getLeader(cons.getId(), cons.getDecisionRound().getNumber()));
                         //TODO: possivelmente fazer mais alguma coisa
                     }
                 }

@@ -904,7 +904,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
     private StateManager stateManager = null;
     private ReentrantLock lockState = new ReentrantLock();
 
-    public void saveState(byte[] state, int lastEid) {
+    public void saveState(byte[] state, int lastEid, int decisionRound, int leader) {
 
         StateLog log = stateManager.getLog();
 
@@ -913,6 +913,8 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         log.newCheckpoint(state);
         log.setLastEid(-1);
         log.setLastCheckpointEid(lastEid);
+        log.setLastCheckpointRound(decisionRound);
+        log.setLastCheckpointLeader(leader);
 
         /************************* TESTE *************************
         System.out.println("[TOMLayer.saveState]");
@@ -931,13 +933,13 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         
         lockState.unlock();
     }
-    public void saveBatch(byte[] batch, int lastEid) {
+    public void saveBatch(byte[] batch, int lastEid, int decisionRound, int leader) {
 
         StateLog log = stateManager.getLog();
 
         lockState.lock();
         
-        log.addMessageBatch(batch, -1, -1);
+        log.addMessageBatch(batch, decisionRound, leader);
         log.setLastEid(lastEid);
 
         /************************* TESTE *************************
