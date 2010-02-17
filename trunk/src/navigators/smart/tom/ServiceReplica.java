@@ -152,7 +152,16 @@ public abstract class ServiceReplica extends TOMReceiver implements Runnable {
     protected abstract byte[] serializeState();
 
     public void setState(byte[] state) {
+        stateLock.lock();
+        while (!requestQueue.isEmpty()) {
+            try {
+                stateCondition.await();
+            } catch (InterruptedException ex) {
+                Logger.getLogger(ServiceReplica.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
         deserializeState(state);
+        stateLock.unlock();
     }
 
     protected abstract void deserializeState(byte[] state);
