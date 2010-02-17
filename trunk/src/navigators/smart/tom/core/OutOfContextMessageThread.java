@@ -18,6 +18,8 @@
 
 package navigators.smart.tom.core;
 
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Level;
 
 import navigators.smart.paxosatwar.executionmanager.Execution;
@@ -30,6 +32,40 @@ import navigators.smart.tom.util.Logger;
 public class OutOfContextMessageThread extends Thread {
 
     private TOMLayer tomLayer; // TOM layer
+
+    /** ISTO E CODIGO DO JOAO, PARA TRATAR DA TRANSFERENCIA DE ESTADO */
+    private int updateCount = 0;
+    private ReentrantLock outOfContextLock = new ReentrantLock();
+    private ReentrantLock updatesLock = new ReentrantLock();
+
+    public void addUpdate() {
+        updatesLock.lock();
+        updateCount++;
+        updatesLock.unlock();
+    }
+
+    private void removeUpdate() {
+        updatesLock.lock();
+        updateCount--;
+        updatesLock.unlock();
+    }
+
+    private int UpdatesCount() {
+        updatesLock.lock();
+        int value = updateCount;
+        updatesLock.unlock();
+        return value;
+    }
+
+    public void OutOfContextLock() {
+        outOfContextLock.lock();
+    }
+
+    public void OutOfContextUnlock() {
+        outOfContextLock.unlock();
+    }
+
+    /******************************************************************/
 
     /**
      * Creates a new instance of OutOfContextMessageThread
@@ -53,8 +89,18 @@ public class OutOfContextMessageThread extends Thread {
         while(true) {
             try {
                 if (execution == null || !execution.isDecided()) {
-                    tomLayer.waitForPaxosToFinish();
+
+                    /** ISTO E CODIGO DO JOAO, PARA TRATAR DA TRANSFERENCIA DE ESTADO */
+                    //if (UpdatesCount() > 0) removeUpdate();
+                    //else
+                    if (!outOfContextLock.isLocked())
+                    /******************************************************************/
+                        tomLayer.waitForPaxosToFinish();
                 }
+
+                /** ISTO E CODIGO DO JOAO, PARA TRATAR DA TRANSFERENCIA DE ESTADO */
+                OutOfContextLock();
+                /******************************************************************/
 
                 int nextExecution = tomLayer.getLastExec() + 1;
                 if (tomLayer.execManager.thereArePendentMessages(nextExecution)) {
@@ -64,6 +110,10 @@ public class OutOfContextMessageThread extends Thread {
                     Logger.println("(OutOfContextMessageThread.run) finished processing out fo context messages for consensus " + nextExecution);
                 }
 
+                /** ISTO E CODIGO DO JOAO, PARA TRATAR DA TRANSFERENCIA DE ESTADO */
+                OutOfContextUnlock();
+                /******************************************************************/
+                
                 Thread.sleep(5);
             } catch (InterruptedException ex) {
                 java.util.logging.Logger.getLogger(OutOfContextMessageThread.class.getName()).log(Level.SEVERE, null, ex);

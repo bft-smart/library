@@ -1136,10 +1136,14 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                     lockState.unlock();
 
                     dt.deliverLock();
+                    ot.OutOfContextLock();
+
                     stateManager.setWaiting(-1);
                     dt.update(state);
 
                     dt.canDeliver();
+
+                    ot.OutOfContextUnlock();
                     dt.deliverUnlock();
                     
                     stateManager.emptyStates();
@@ -1165,5 +1169,16 @@ public final class TOMLayer extends Thread implements RequestReceiver {
     public boolean isRetrievingState() {
         return stateManager != null && stateManager.getWaiting() != -1;
     }
+
+    public void setNoExec() {
+        Logger.println("(TOMLayer.setInExec_Update) modifying inExec from " + this.inExecution + " to " + -1);
+
+        proposeLock.lock();
+        this.inExecution = -1;
+        //ot.addUpdate();
+        canPropose.signalAll();
+        proposeLock.unlock();
+    }
+
     /********************************************************/
 }
