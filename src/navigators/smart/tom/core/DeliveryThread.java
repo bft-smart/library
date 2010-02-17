@@ -212,7 +212,7 @@ public class DeliveryThread extends Thread {
 
         //define that end of this execution
         //stateManager.setWaiting(-1);
-        tomLayer.setInExec(-1);
+        tomLayer.setNoExec();
 
         decided.clear();
 
