@@ -207,32 +207,32 @@ public final class ExecutionManager {
         int msgType = msg.getPaxosType();
         boolean isRetrievingState = tomLayer.isRetrievingState();
 
-        System.out.println("Esta a obter estado? " + isRetrievingState);
-        System.out.print("Recebi uma mensagem do eid " + consId + " do tipo ");
-
+        String type = null;
         switch (msgType) {
             case MessageFactory.PROPOSE:
-                System.out.println("PROPOSE");
+                type = "PROPOSE";
                 break;
             case MessageFactory.WEAK:
-                System.out.println("WEAK");
+                type = "WEAK";
                 break;
             case MessageFactory.STRONG:
-                System.out.println("STRONG");
+                type = "STRONG";
                 break;
             case MessageFactory.DECIDE:
-                System.out.println("DECIDE");
+                type = "DECIDE";
                 break;
             case MessageFactory.FREEZE:
-                System.out.println("FREEZE");
+                type = "FREEZE";
                 break;
             case MessageFactory.COLLECT:
-                System.out.println("COLLECT");
+                type = "COLLECT";
                 break;
             default:
-                System.out.println();
+                type = "";
                 break;
         }
+        System.out.println("Esta a obter estado? " + isRetrievingState);
+        Logger.println("Recebi uma mensagem do eid " + consId + " do tipo " + type);
 
         boolean canProcessTheMessage = false;
         

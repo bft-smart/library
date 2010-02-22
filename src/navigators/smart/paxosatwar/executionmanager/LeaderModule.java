@@ -102,7 +102,7 @@ public class LeaderModule {
      * @return The replica ID of the leader
      */
     public int getLeader(int c, int r) {
-        /***
+        /***/
         List<ConsInfo> list = leaderInfos.get(c);
         if (list == null) {
             //there are no information for the execution c
@@ -128,7 +128,7 @@ public class LeaderModule {
         }
         return -1;
         /***/
-        return 0;
+        //return 0;
     }
 
     /**
@@ -198,21 +198,9 @@ public class LeaderModule {
             }
         }
 
-        for (int c = cStart; c < cEnd; c++) {
-
-            //List list = leaderInfos.get(c + 1);
-
-            if (list == null) {//nunca vai acontecer isso!!!
-                //System.err.println("- Executing a code that wasn't supposed to be executed :-)");
-                //System.err.println("- And we have some reports there is a bug here!");
-                list = new LinkedList();
-                leaderInfos.put(c + 1, list);
-                List rm = leaderInfos.remove(c);
-                ConsInfo ci = (ConsInfo) rm.get(rm.size() - 1);
-                list.add(new ConsInfo(0, ci.leaderId));
-            } else {
+        for (int c = cStart; c <= cEnd; c++) {
+            
                 leaderInfos.remove(c);
-            }
             
         }
 

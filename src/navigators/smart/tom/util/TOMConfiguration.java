@@ -32,6 +32,7 @@ public class TOMConfiguration extends Configuration {
     protected int replyVerificationTime;
     protected int maxBatchSize;
     protected int numberOfNonces;
+    protected int inQueueSize;
     protected boolean decideMessagesEnabled;
     protected boolean verifyTimestamps;
     protected boolean useSenderThread;
@@ -69,6 +70,7 @@ public class TOMConfiguration extends Configuration {
         this.useSignatures = conf.useSignatures;
         this.checkpoint_period = conf.checkpoint_period;
         this.useControlFlow = conf.useControlFlow;
+        this.inQueueSize = inQueueSize;
     }
 
     /** Creates a new instance of TOMConfiguration */
@@ -239,6 +241,13 @@ public class TOMConfiguration extends Configuration {
                 useControlFlow = Integer.parseInt(s);
             }
 
+            s = (String) configs.remove("system.communication.inQueueSize");
+            if (s == null) {
+                inQueueSize = 200;
+            } else {
+                inQueueSize = Integer.parseInt(s);
+            }
+            
             rsaLoader = new RSAKeyLoader(this, TOMConfiguration.configHome);
 
         } catch (Exception e) {
@@ -291,6 +300,11 @@ public class TOMConfiguration extends Configuration {
     public boolean canVerifyTimestamps() {
         return verifyTimestamps;
     }
+
+    public int inQueueSize() {
+        return inQueueSize;
+    }
+
 
     public boolean isUseSenderThread() {
         return useSenderThread;

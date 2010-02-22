@@ -92,7 +92,7 @@ public class RandomServer extends ServiceReplica {
             System.exit(-1);
         }
 
-        new CounterServer(Integer.parseInt(args[0]));
+        new RandomServer(Integer.parseInt(args[0]));
     }
 
     @Override
