@@ -98,6 +98,8 @@ public class DeliveryThread extends Thread {
         
         receiver.setState(state.getState());
 
+        tomLayer.lm.addLeaderInfo(state.getLastCheckpointEid(), state.getLastCheckpointRound(), state.getLastCheckpointLeader());
+
         int lastCheckpointEid = state.getLastCheckpointEid();
         int lastEid = state.getLastEid();
 
@@ -106,6 +108,8 @@ public class DeliveryThread extends Thread {
             try {
 
                 byte[] batch = state.getMessageBatch(eid).batch; // take a batch
+
+                tomLayer.lm.addLeaderInfo(eid, state.getMessageBatch(eid).round, state.getMessageBatch(eid).leader);
 
                 // obtain an array of requests from the taken consensus
                 BatchReader batchReader = new BatchReader(batch, conf.getUseSignatures()==1);
@@ -327,7 +331,7 @@ public class DeliveryThread extends Thread {
 
                 //define the last stable consensus... the stable consensus can
                 //be removed from the leaderManager and the executionManager
-                /**
+                /**/
                 if (cons.getId() > 2) {
                     int stableConsensus = cons.getId() - 3;
 

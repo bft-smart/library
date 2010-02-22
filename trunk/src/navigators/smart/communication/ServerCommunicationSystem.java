@@ -47,9 +47,9 @@ public class ServerCommunicationSystem extends Thread {
     public static int RR_MSG = 4;
     public static int RT_MSG = 5;
 
-    public static int IN_QUEUE_SIZE = 200;
+    //public static int IN_QUEUE_SIZE = 200;
 
-    private LinkedBlockingQueue<SystemMessage> inQueue = new LinkedBlockingQueue<SystemMessage>(IN_QUEUE_SIZE);
+    private LinkedBlockingQueue<SystemMessage> inQueue = null;//new LinkedBlockingQueue<SystemMessage>(IN_QUEUE_SIZE);
 
     protected MessageHandler messageHandler = new MessageHandler();
 
@@ -62,6 +62,8 @@ public class ServerCommunicationSystem extends Thread {
     public ServerCommunicationSystem(TOMConfiguration conf) throws Exception {
         super("Server CS");
 
+        inQueue = new LinkedBlockingQueue<SystemMessage>(conf.inQueueSize());
+        
         //create a new conf, with updated port number for servers
         TOMConfiguration serversConf = new TOMConfiguration(conf.getProcessId(),
                 Configuration.getHomeDir(), "hosts.config");
