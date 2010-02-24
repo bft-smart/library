@@ -24,6 +24,8 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import navigators.smart.tom.ServiceProxy;
 
 
@@ -43,9 +45,15 @@ public class CounterClient {
         ServiceProxy counterProxy = new ServiceProxy(Integer.parseInt(args[0]));
 
         int i=0;
+        int inc = Integer.parseInt(args[1]);
         //sends 1000 requests to replicas and then terminates
-        while(i<1000){
-        	int inc = Integer.parseInt(args[1]);
+        while(i<50){
+            
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException ex) {
+                Logger.getLogger(CounterClient.class.getName()).log(Level.SEVERE, null, ex);
+            }
             ByteArrayOutputStream out = new ByteArrayOutputStream(4);
             new DataOutputStream(out).writeInt(inc);
 

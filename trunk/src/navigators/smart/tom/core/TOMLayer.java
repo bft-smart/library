@@ -1135,10 +1135,19 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
                     lockState.unlock();
 
+                    System.out.println("Desbloqueei o lock para o log do estado");
                     dt.deliverLock();
+
+                    System.out.println("Bloqueei o lock entre esta thread e a delivery thread");
+
                     ot.OutOfContextLock();
 
+                    System.out.println("Bloqueei o lock entre esta thread e a out of context thread");
+
                     stateManager.setWaiting(-1);
+
+                    System.out.println("Ja nao estou a espera de nenhum estado, e vou actualizar-me");
+
                     dt.update(state);
 
                     dt.canDeliver();

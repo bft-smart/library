@@ -75,6 +75,9 @@ public final class ExecutionManager {
     private TOMLayer tomLayer; // TOM layer associated with this execution manager
     private long initialTimeout; // initial timeout for rounds
     private int paxosHighMark; // Paxos high mark for consensus instances
+    /** ISTO E CODIGO DO JOAO, PARA TRATAR DA TRANSFERENCIA DE ESTADO */
+    private int revivalHighMark; // Paxos high mark for consensus instances when this replica EID equals 0
+    /******************************************************************/
 
     /**
      * Creates a new instance of ExecutionManager
@@ -106,6 +109,9 @@ public final class ExecutionManager {
     public void setTOMLayer(TOMLayer tom) {
         this.tomLayer = tom;
         this.paxosHighMark = tom.getConf().getPaxosHighMark();
+        /** ISTO E CODIGO DO JOAO, PARA TRATAR DA TRANSFERENCIA DE ESTADO */
+        this.revivalHighMark = tom.getConf().getRevivalHighMark();
+        /******************************************************************/
     }
 
     /**
@@ -204,6 +210,9 @@ public final class ExecutionManager {
         outOfContextLock.lock();
         int consId = msg.getNumber();
         int lastConsId = tomLayer.getLastExec();
+        /** ISTO E CODIGO DO JOAO, PARA TRATAR DA TRANSFERENCIA DE ESTADO */
+        int currentConsId = tomLayer.getInExec();
+        /******************************************************************/
         int msgType = msg.getPaxosType();
         boolean isRetrievingState = tomLayer.isRetrievingState();
 
@@ -244,7 +253,7 @@ public final class ExecutionManager {
                 // enquanto a replica esta a receber o estado das outras e a actualizar-se
 
                 isRetrievingState ||
-                    
+                //(currentConsId == 0 && consId > lastConsId  && (consId < (lastConsId + revivalHighMark))) ||
                 /******************************************************************/
 
                 (consId > lastConsId  && (consId < (lastConsId + paxosHighMark)))
@@ -282,7 +291,14 @@ public final class ExecutionManager {
                 Logger.println("(ExecutionManager.checkLimits) message for execution "+consId+" can be processed");
                 canProcessTheMessage = true;
             }
-        } else if (consId >= (lastConsId + paxosHighMark)) { // Does this message exceeds the high mark?
+        } else if (
+
+                /** ISTO E CODIGO DO JOAO, PARA TRATAR DA TRANSFERENCIA DE ESTADO *
+                (currentConsId == 0 && consId >= (lastConsId + revivalHighMark)) ||
+                /******************************************************************/
+
+                (consId >= (lastConsId + paxosHighMark))
+                ) { // Does this message exceeds the high mark?
 
             /**
             System.out.println("##################################################################################");
@@ -298,7 +314,7 @@ public final class ExecutionManager {
             System.out.println("<Out of highmark>");
             Logger.println("(ExecutionManager.checkLimits) adding message for execution "+consId+" to out of context");
             addOutOfContextMessage(msg);
-            tomLayer.requestState(me, otherAcceptors, msg.getSender(), consId);
+            tomLayer.requestState(me, getOtherAcceptors(), msg.getSender(), consId);
             /******************************************************************/
         }
         outOfContextLock.unlock();
