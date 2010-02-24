@@ -22,6 +22,7 @@ import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.util.concurrent.LinkedBlockingQueue;
 
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 import navigators.smart.paxosatwar.Consensus;
@@ -83,10 +84,12 @@ public class DeliveryThread extends Thread {
 
     public void deliverLock() {
         deliverLock.lock();
+        Logger.println("Obti o deliver lock");
     }
 
     public void deliverUnlock() {
         deliverLock.unlock();
+        Logger.println("Soltei o deliver lock");
     }
 
     public void canDeliver() {
@@ -95,7 +98,9 @@ public class DeliveryThread extends Thread {
     public void update(TransferableState state) {
 
         //deliverLock.lock();
-        
+
+        System.out.println("Vou actualizar-me");
+
         receiver.setState(state.getState());
 
         tomLayer.lm.addLeaderInfo(state.getLastCheckpointEid(), state.getLastCheckpointRound(), state.getLastCheckpointLeader());
@@ -247,7 +252,7 @@ public class DeliveryThread extends Thread {
         while (true) {
 
             /** ISTO E CODIGO DO JOAO, PARA TRATAR DA TRANSFERENCIA DE ESTADO */
-            deliverLock.lock();
+            deliverLock();
 
             //if (tomLayer != null) {
                 while (tomLayer.isRetrievingState()) {
@@ -257,7 +262,18 @@ public class DeliveryThread extends Thread {
             /******************************************************************/
 
             try {
-                Consensus cons = decided.take(); // take a decided consensus
+                
+                //Consensus cons = decided.take(); // take a decided consensus
+                /** ISTO E CODIGO DO JOAO, PARA TRATAR DA TRANSFERENCIA DE ESTADO */
+                Logger.println("(DeliveryThread.run) Waiting for a consensus to be delivered.");
+                Consensus cons = decided.poll(1500, TimeUnit.MILLISECONDS); // take a decided consensus
+                if (cons == null) {
+                    Logger.println("(DeliveryThread.run) Timeout while waiting for a consensus, starting over.");
+                    deliverUnlock();
+                    continue;
+                }
+                Logger.println("(DeliveryThread.run) A consensus was delivered.");
+                /******************************************************************/
                 startTime = System.currentTimeMillis();
 
                 //TODO: avoid the case in which the received valid proposal is
@@ -392,7 +408,7 @@ public class DeliveryThread extends Thread {
                 e.printStackTrace(System.out);
             }
             /** ISTO E CODIGO DO JOAO, PARA TRATAR DA TRANSFERENCIA DE ESTADO */
-            deliverLock.unlock();
+            deliverUnlock();
             /******************************************************************/
 
         }

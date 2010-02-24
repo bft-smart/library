@@ -29,6 +29,7 @@ public class TOMConfiguration extends Configuration {
     protected int freezeInitialTimeout;
     protected int tomPeriod;
     protected int paxosHighMark;
+    protected int revivalHighMark;
     protected int replyVerificationTime;
     protected int maxBatchSize;
     protected int numberOfNonces;
@@ -56,6 +57,7 @@ public class TOMConfiguration extends Configuration {
         this.freezeInitialTimeout = conf.freezeInitialTimeout;
         this.tomPeriod = conf.tomPeriod;
         this.paxosHighMark = conf.paxosHighMark;
+        this.revivalHighMark = conf.revivalHighMark;
         this.replyVerificationTime = conf.replyVerificationTime;
         this.maxBatchSize = conf.maxBatchSize;
         this.numberOfNonces = conf.numberOfNonces;
@@ -70,7 +72,7 @@ public class TOMConfiguration extends Configuration {
         this.useSignatures = conf.useSignatures;
         this.checkpoint_period = conf.checkpoint_period;
         this.useControlFlow = conf.useControlFlow;
-        this.inQueueSize = inQueueSize;
+        this.inQueueSize = conf.inQueueSize;
     }
 
     /** Creates a new instance of TOMConfiguration */
@@ -130,11 +132,21 @@ public class TOMConfiguration extends Configuration {
 
             s = (String) configs.remove("system.totalordermulticast.highMark");
             if (s == null) {
-                paxosHighMark = 10;
+                paxosHighMark = 10000;
             } else {
                 paxosHighMark = Integer.parseInt(s);
                 if (paxosHighMark < 10) {
                     paxosHighMark = 10;
+                }
+            }
+
+            s = (String) configs.remove("system.totalordermulticast.revival_highMark");
+            if (s == null) {
+                revivalHighMark = 10;
+            } else {
+                revivalHighMark = Integer.parseInt(s);
+                if (revivalHighMark < 1) {
+                    revivalHighMark = 1;
                 }
             }
 
@@ -245,7 +257,12 @@ public class TOMConfiguration extends Configuration {
             if (s == null) {
                 inQueueSize = 200;
             } else {
+
                 inQueueSize = Integer.parseInt(s);
+                if (inQueueSize < 1) {
+                    inQueueSize = 1;
+                }
+
             }
             
             rsaLoader = new RSAKeyLoader(this, TOMConfiguration.configHome);
@@ -289,6 +306,10 @@ public class TOMConfiguration extends Configuration {
         return paxosHighMark;
     }
 
+    public int getRevivalHighMark() {
+        return revivalHighMark;
+    }
+
     public int getMaxBatchSize() {
         return maxBatchSize;
     }
@@ -301,7 +322,7 @@ public class TOMConfiguration extends Configuration {
         return verifyTimestamps;
     }
 
-    public int inQueueSize() {
+    public int getInQueueSize() {
         return inQueueSize;
     }
 

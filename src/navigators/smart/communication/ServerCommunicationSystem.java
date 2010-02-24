@@ -62,7 +62,7 @@ public class ServerCommunicationSystem extends Thread {
     public ServerCommunicationSystem(TOMConfiguration conf) throws Exception {
         super("Server CS");
 
-        inQueue = new LinkedBlockingQueue<SystemMessage>(conf.inQueueSize());
+        inQueue = new LinkedBlockingQueue<SystemMessage>(conf.getInQueueSize());
         
         //create a new conf, with updated port number for servers
         TOMConfiguration serversConf = new TOMConfiguration(conf.getProcessId(),
