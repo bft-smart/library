@@ -242,6 +242,10 @@ public final class ExecutionManager {
         }
         System.out.println("Esta a obter estado? " + isRetrievingState);
         Logger.println("Recebi uma mensagem do eid " + consId + " do tipo " + type);
+        Logger.println("Estou no EID " + currentConsId);
+        Logger.println("Ultimo EID " + lastConsId);
+        Logger.println("Paxos highmark " + paxosHighMark);
+        Logger.println("Revival highmark " + revivalHighMark);
 
         boolean canProcessTheMessage = false;
         
@@ -252,11 +256,13 @@ public final class ExecutionManager {
                 // Isto serve para re-direccionar as mensagens para o out of context
                 // enquanto a replica esta a receber o estado das outras e a actualizar-se
 
-                isRetrievingState ||
-                //(currentConsId == 0 && consId > lastConsId  && (consId < (lastConsId + revivalHighMark))) ||
+                isRetrievingState || // Is this replica retrieving a state?
+
+                // Is this not a revived replica?
+                (!(currentConsId == -1 && lastConsId == -1 && consId >= (lastConsId + revivalHighMark)) &&
                 /******************************************************************/
 
-                (consId > lastConsId  && (consId < (lastConsId + paxosHighMark)))
+                (consId > lastConsId  && (consId < (lastConsId + paxosHighMark))))
 
             ) { // Is this message within the low and high marks (or maybe is the replica synchronizing) ?
 
@@ -293,8 +299,9 @@ public final class ExecutionManager {
             }
         } else if (
 
-                /** ISTO E CODIGO DO JOAO, PARA TRATAR DA TRANSFERENCIA DE ESTADO *
-                (currentConsId == 0 && consId >= (lastConsId + revivalHighMark)) ||
+                /** ISTO E CODIGO DO JOAO, PARA TRATAR DA TRANSFERENCIA DE ESTADO */
+                // Is this replica revived?
+                (currentConsId == -1 && lastConsId == -1 && consId >= (lastConsId + revivalHighMark)) ||
                 /******************************************************************/
 
                 (consId >= (lastConsId + paxosHighMark))
