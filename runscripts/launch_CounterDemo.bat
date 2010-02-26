@@ -9,7 +9,7 @@ start runscripts\smartrun.bat navigators.smart.tom.demo.CounterServer 3
 ping 127.0.0.1
 ping 127.0.0.1
 ping 127.0.0.1
-start runscripts\smartrun.bat navigators.smart.tom.demo.CounterClient 1001 5
-start runscripts\smartrun.bat navigators.smart.tom.demo.CounterClient 5001 7
-start runscripts\smartrun.bat navigators.smart.tom.demo.CounterClient 6001 9 
-start runscripts\smartrun.bat navigators.smart.tom.demo.CounterClient 7001 3 
+start runscripts\smartrun.bat navigators.smart.tom.demo.CounterClient 1001 1
+start runscripts\smartrun.bat navigators.smart.tom.demo.CounterClient 5001 1
+start runscripts\smartrun.bat navigators.smart.tom.demo.CounterClient 6001 1 
+start runscripts\smartrun.bat navigators.smart.tom.demo.CounterClient 7001 1 
