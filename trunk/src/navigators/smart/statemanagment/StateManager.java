@@ -93,7 +93,7 @@ public class StateManager {
                 count++;
             }
         }
-        //System.out.println("Replicas counted for eid " + eid + ": " + count);
+        
         return count > f;
     }
     public boolean moreThenF_Replies() {

@@ -84,12 +84,12 @@ public class DeliveryThread extends Thread {
 
     public void deliverLock() {
         deliverLock.lock();
-        Logger.println("Obti o deliver lock");
+        Logger.println("(DeliveryThread.deliverLock) Deliver lock obtained");
     }
 
     public void deliverUnlock() {
         deliverLock.unlock();
-        Logger.println("Soltei o deliver lock");
+        Logger.println("(DeliveryThread.deliverUnlock) Deliver Released");
     }
 
     public void canDeliver() {
@@ -99,14 +99,14 @@ public class DeliveryThread extends Thread {
 
         //deliverLock.lock();
 
-        System.out.println("Vou actualizar-me");
+        int lastCheckpointEid = state.getLastCheckpointEid();
+        int lastEid = state.getLastEid();
+
+        Logger.println("(DeliveryThread.update) I'm going to update myself from EID " + lastCheckpointEid + " to EID " + lastEid);
 
         receiver.setState(state.getState());
 
-        tomLayer.lm.addLeaderInfo(state.getLastCheckpointEid(), state.getLastCheckpointRound(), state.getLastCheckpointLeader());
-
-        int lastCheckpointEid = state.getLastCheckpointEid();
-        int lastEid = state.getLastEid();
+        tomLayer.lm.addLeaderInfo(lastCheckpointEid, state.getLastCheckpointRound(), state.getLastCheckpointLeader());
 
         for (int eid = lastCheckpointEid + 1; eid <= lastEid; eid++) {
 
@@ -351,8 +351,6 @@ public class DeliveryThread extends Thread {
                 if (cons.getId() > 2) {
                     int stableConsensus = cons.getId() - 3;
 
-                    System.out.println("Last stable consensus: " + stableConsensus);
-
                     tomLayer.lm.removeStableConsenusInfos(stableConsensus);
                     tomLayer.execManager.removeExecution(stableConsensus);
                 }
@@ -385,9 +383,8 @@ public class DeliveryThread extends Thread {
 
                 /** ISTO E CODIGO DO JOAO, PARA TRATAR DOS CHECKPOINTS */
 
-                System.out.println("[DeliveryThread.run]");
-                System.out.println("Acabei de entregar o batch do EID " + cons.getId());
-                System.out.println("[/DeliveryThread.run]");
+                Logger.println("(DeliveryThread.run) I just delivered the batch of EID " + cons.getId());
+
                 if (conf.getCheckpoint_period() > 0) {
                     if ((cons.getId() > 0) && ((cons.getId() % conf.getCheckpoint_period()) == 0)) {
                         Logger.println("(DeliveryThread.run) Performing checkpoint for consensus " + cons.getId());

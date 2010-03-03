@@ -240,12 +240,10 @@ public final class ExecutionManager {
                 type = "";
                 break;
         }
-        System.out.println("Esta a obter estado? " + isRetrievingState);
-        Logger.println("Recebi uma mensagem do eid " + consId + " do tipo " + type);
-        Logger.println("Estou no EID " + currentConsId);
-        Logger.println("Ultimo EID " + lastConsId);
-        Logger.println("Paxos highmark " + paxosHighMark);
-        Logger.println("Revival highmark " + revivalHighMark);
+        if (isRetrievingState) Logger.println("(ExecutionManager.checkLimits) I'm waiting for a state");
+        Logger.println("(ExecutionManager.checkLimits) I received a message for execution " + consId + " of type " + type);
+        Logger.println("(ExecutionManager.checkLimits) I'm at execution " + currentConsId);
+        Logger.println("(ExecutionManager.checkLimits) My last las execution is" + lastConsId);
 
         boolean canProcessTheMessage = false;
         
@@ -289,8 +287,8 @@ public final class ExecutionManager {
 
                     consId > (lastConsId + 1)
             ) {
-                System.out.println("<Out of context message>");
-                Logger.println("(ExecutionManager.checkLimits) adding message for execution "+consId+" to out of context");
+
+                Logger.println("(ExecutionManager.checkLimits) Message for execution "+consId+" is out of context, adding it to out of context set");
                 //store it as an ahead of time message (out of context)
                 addOutOfContextMessage(msg);
             } else {
@@ -318,8 +316,7 @@ public final class ExecutionManager {
             //TODO: at this point a new state should be recovered from other correct replicas
 
             /** ISTO E CODIGO DO JOAO, PARA TRATAR DA TRANSFERENCIA DE ESTADO */
-            System.out.println("<Out of highmark>");
-            Logger.println("(ExecutionManager.checkLimits) adding message for execution "+consId+" to out of context");
+            Logger.println("(ExecutionManager.checkLimits) Message for execution "+consId+" is beyond the paxos highmark, adding it to out of context set");
             addOutOfContextMessage(msg);
             tomLayer.requestState(me, getOtherAcceptors(), msg.getSender(), consId);
             /******************************************************************/
