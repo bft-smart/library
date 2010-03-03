@@ -34,35 +34,16 @@ public class OutOfContextMessageThread extends Thread {
     private TOMLayer tomLayer; // TOM layer
 
     /** ISTO E CODIGO DO JOAO, PARA TRATAR DA TRANSFERENCIA DE ESTADO */
-    private int updateCount = 0;
     private ReentrantLock outOfContextLock = new ReentrantLock();
-    private ReentrantLock updatesLock = new ReentrantLock();
-
-    public void addUpdate() {
-        updatesLock.lock();
-        updateCount++;
-        updatesLock.unlock();
-    }
-
-    private void removeUpdate() {
-        updatesLock.lock();
-        updateCount--;
-        updatesLock.unlock();
-    }
-
-    private int UpdatesCount() {
-        updatesLock.lock();
-        int value = updateCount;
-        updatesLock.unlock();
-        return value;
-    }
 
     public void OutOfContextLock() {
         outOfContextLock.lock();
+        //Logger.println("(OutOfContextMessageThread.OutOfContextLock) Out of context lock obtained");
     }
 
     public void OutOfContextUnlock() {
         outOfContextLock.unlock();
+        //Logger.println("(OutOfContextMessageThread.OutOfContextUnlock) Out of context lock released");
     }
 
     /******************************************************************/
@@ -91,8 +72,6 @@ public class OutOfContextMessageThread extends Thread {
                 if (execution == null || !execution.isDecided()) {
 
                     /** ISTO E CODIGO DO JOAO, PARA TRATAR DA TRANSFERENCIA DE ESTADO */
-                    //if (UpdatesCount() > 0) removeUpdate();
-                    //else
                     if (!outOfContextLock.isLocked())
                     /******************************************************************/
                         tomLayer.waitForPaxosToFinish();
