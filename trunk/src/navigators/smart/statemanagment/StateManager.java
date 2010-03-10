@@ -25,7 +25,7 @@ import java.util.Hashtable;
 /**
  * TODO: Não sei se esta classe sera usada. Para já, deixo ficar
  * 
- * @author Jo�o Sousa
+ * @author Joao Sousa
  */
 public class StateManager {
 
@@ -33,19 +33,45 @@ public class StateManager {
     private HashSet<SenderEid> senderEids = null;
     private HashSet<SenderState> senderStates = null;
     private int f;
+    private int n;
+    private int me;
     private int lastEid;
     private int waitingEid;
+    private int replica;
+    private byte[] state;
 
-    public StateManager(int k, int f) {
+    public StateManager(int k, int f, int n, int me) {
 
         this.log = new StateLog(k);
         senderEids = new HashSet<SenderEid>();
         senderStates = new HashSet<SenderState>();
         this.f = f;
+        this.n = n;
+        this.me = me;
+        this.replica = 0;
+        this.state = null;
         this.lastEid = -1;
         this.waitingEid = -1;
     }
 
+    public int getReplica() {
+        return replica;
+    }
+
+    public void changeReplica() {
+        do {
+            replica = (replica + 1) % n;
+        } while (replica == me);
+    }
+
+    public void setReplicaState(byte[] state) {
+        this.state = state;
+    }
+
+    public byte[] getReplicaState() {
+        return state;
+    }
+    
     public void addEID(int sender, int eid) {
         senderEids.add(new SenderEid(sender, eid));
     }

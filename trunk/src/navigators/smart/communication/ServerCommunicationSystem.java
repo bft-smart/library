@@ -74,7 +74,7 @@ public class ServerCommunicationSystem extends Thread {
 
         clientsConn = CommunicationSystemServerSideFactory.getCommunicationSystemServerSide(conf);
 
-        start();
+        //start();
     }
 
     public void setProposer(Proposer proposer) {

@@ -57,14 +57,14 @@ public class ServerConnection {
     private static final String PASSWORD = "newcs";
     private static final String MAC_ALGORITHM = "HmacMD5";
     private static final long POOL_TIME = 5000;
-    private static final int SEND_QUEUE_SIZE = 50;
+    //private static final int SEND_QUEUE_SIZE = 50;
     private TOMConfiguration conf;
     private Socket socket;
     private DataOutputStream socketOutStream = null;
     private DataInputStream socketInStream = null;
     private int remoteId;
     private boolean useSenderThread;
-    protected LinkedBlockingQueue<byte[]> outQueue = new LinkedBlockingQueue<byte[]>(SEND_QUEUE_SIZE);
+    protected LinkedBlockingQueue<byte[]> outQueue;// = new LinkedBlockingQueue<byte[]>(SEND_QUEUE_SIZE);
     private LinkedBlockingQueue<SystemMessage> inQueue;
     private SecretKey authKey;
     private Mac macSend;
@@ -85,6 +85,8 @@ public class ServerConnection {
         this.remoteId = remoteId;
 
         this.inQueue = inQueue;
+
+        this.outQueue = new LinkedBlockingQueue<byte[]>(this.conf.getOutQueueSize());
 
         if (conf.getProcessId() > remoteId) {
             //I have to connect to the remote server

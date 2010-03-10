@@ -50,6 +50,9 @@ public class LatencyTestServer extends TOMReceiver {
         //build the TOM server stack
 
         this.init(cs,conf);
+        /**IST OE CODIGO DO JOAO, PARA TENTAR RESOLVER UM BUG */
+        cs.start();
+        /******************************************************/
     }
     
     public void receiveOrderedMessage(TOMMessage msg){

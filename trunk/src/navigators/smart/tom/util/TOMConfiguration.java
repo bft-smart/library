@@ -34,6 +34,7 @@ public class TOMConfiguration extends Configuration {
     protected int maxBatchSize;
     protected int numberOfNonces;
     protected int inQueueSize;
+    protected int outQueueSize;
     protected boolean decideMessagesEnabled;
     protected boolean verifyTimestamps;
     protected boolean useSenderThread;
@@ -73,6 +74,7 @@ public class TOMConfiguration extends Configuration {
         this.checkpoint_period = conf.checkpoint_period;
         this.useControlFlow = conf.useControlFlow;
         this.inQueueSize = conf.inQueueSize;
+        this.outQueueSize = conf.outQueueSize;
     }
 
     /** Creates a new instance of TOMConfiguration */
@@ -260,7 +262,19 @@ public class TOMConfiguration extends Configuration {
 
                 inQueueSize = Integer.parseInt(s);
                 if (inQueueSize < 1) {
-                    inQueueSize = 1;
+                    inQueueSize = 200;
+                }
+
+            }
+
+            s = (String) configs.remove("system.communication.outQueueSize");
+            if (s == null) {
+                outQueueSize = 200;
+            } else {
+
+                outQueueSize = Integer.parseInt(s);
+                if (outQueueSize < 1) {
+                    outQueueSize = 200;
                 }
 
             }
@@ -326,6 +340,9 @@ public class TOMConfiguration extends Configuration {
         return inQueueSize;
     }
 
+    public int getOutQueueSize() {
+        return outQueueSize;
+    }
 
     public boolean isUseSenderThread() {
         return useSenderThread;
