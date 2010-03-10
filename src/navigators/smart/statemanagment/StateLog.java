@@ -33,6 +33,7 @@ public class StateLog {
     private int lastCheckpointRound; // Decision round for the last checkpoint
     private int lastCheckpointLeader; // Leader for the last checkpoint
     private byte[] state; // State associated with the last checkpoint
+    private byte[] stateHash; // Hash of the state associated with the last checkpoint
     private int position; // next position in the array of batches to be written
     private int lastEid; // Execution ID for the last messages batch delivered to the application
 
@@ -47,6 +48,7 @@ public class StateLog {
         this.lastCheckpointRound = -1;
         this.lastCheckpointLeader = -1;
         this.state = null;
+        this.stateHash = null;
         this.position = 0;
         this.lastEid = -1;
     }
@@ -55,13 +57,14 @@ public class StateLog {
      * Sets the state associated with the last checkpoint, and updates the execution ID associated with it
      * @param state State associated with the last checkpoint
      */
-    public void newCheckpoint(byte[] state) {
+    public void newCheckpoint(byte[] state, byte[] stateHash) {
 
         for (int i = 0; i < this.messageBatches.length; i++)
             messageBatches[i] = null;
 
         position = 0;
         this.state = state;
+        this.stateHash = stateHash;
 
     }
 
@@ -146,6 +149,14 @@ public class StateLog {
     }
 
     /**
+     * Retrieves the hash of the state associated with the last checkpoint
+     * @return Hash of the state associated with the last checkpoint
+     */
+    public byte[] getStateHash() {
+        return stateHash;
+    }
+
+    /**
      * Adds a message batch to the log. This batches should be added to the log
      * in the same order in which they are delivered to the application. Only
      * the 'k' batches received after the last checkpoint are supposed to be kept
@@ -193,7 +204,7 @@ public class StateLog {
      * @param eid Execution ID correspondent to desired state
      * @return TransferableState Object containing this log information
      */
-    public TransferableState getTransferableState(int eid) {
+    public TransferableState getTransferableState(int eid, boolean setState) {
 
         if (lastCheckpointEid > -1 && eid >= lastCheckpointEid) {
 
@@ -212,7 +223,7 @@ public class StateLog {
 
                     batches = messageBatches;
              }
-            return new TransferableState(batches, lastCheckpointEid, lastCheckpointRound, lastCheckpointLeader, eid, state);
+            return new TransferableState(batches, lastCheckpointEid, lastCheckpointRound, lastCheckpointLeader, eid, (setState ? state : null), stateHash);
 
         }
         else return null;
@@ -234,6 +245,8 @@ public class StateLog {
         this.lastCheckpointEid = transState.getLastCheckpointEid();
 
         this.state = transState.getState();
+
+        this.stateHash = transState.getStateHash();
 
         this.lastEid = transState.getLastEid();
     }

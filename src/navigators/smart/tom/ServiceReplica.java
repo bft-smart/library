@@ -81,6 +81,10 @@ public abstract class ServiceReplica extends TOMReceiver implements Runnable {
 
         this.replicaThread = new Thread(this);
         this.replicaThread.start(); // starts the replica
+
+        /**IST OE CODIGO DO JOAO, PARA TENTAR RESOLVER UM BUG */
+        cs.start();
+        /******************************************************/
     }
 
     /**

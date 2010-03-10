@@ -23,6 +23,7 @@ import java.io.DataInputStream;
 import java.io.IOException;
 import java.security.MessageDigest;
 import java.security.SignedObject;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -164,7 +165,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         this.dt.start();
 
         /** ISTO E CODIGO DO JOAO, PARA TRATAR DOS CHECKPOINTS E TRANSFERENCIA DE ESTADO*/
-        stateManager = new StateManager(this.conf.getCheckpoint_period(), this.conf.getF());
+        stateManager = new StateManager(this.conf.getCheckpoint_period(), this.conf.getF(), this.conf.getN(), this.conf.getProcessId());
         /*******************************************************/
     }
 
@@ -912,7 +913,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
         Logger.println("(TOMLayer.saveState) Saving state of EID " + lastEid + ", round " + decisionRound + " and leader " + leader);
 
-        log.newCheckpoint(state);
+        log.newCheckpoint(state, computeHash(state));
         log.setLastEid(-1);
         log.setLastCheckpointEid(lastEid);
         log.setLastCheckpointRound(decisionRound);
@@ -999,10 +1000,10 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                 stateManager.setWaiting(eid - 1);
                 //stateManager.emptyReplicas(eid);// isto causa uma excepcao
 
-                SMMessage smsg = new SMMessage(me, eid - 1, TOMUtil.SM_REQUEST, null);
+                SMMessage smsg = new SMMessage(me, eid - 1, TOMUtil.SM_REQUEST, stateManager.getReplica(), null);
                 communication.send(otherAcceptors, smsg);
 
-                Logger.println("(TOMLayer.saveBatch) I just sent a request to the other replicas for the state up to EID " + (eid - 1));
+                Logger.println("(TOMLayer.requestState) I just sent a request to the other replicas for the state up to EID " + (eid - 1));
                 /************************* TESTE *************************
 
                 System.out.println("Enviei um pedido!");
@@ -1031,8 +1032,12 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         System.out.println("Checkpoint q eu tenho: " + stateManager.getLog().getLastCheckpointEid());
         System.out.println("Ultimo eid q recebi no log: " + stateManager.getLog().getLastEid());
         /************************* TESTE *************************/
-        
-        TransferableState state = stateManager.getLog().getTransferableState(msg.getEid());
+
+        boolean sendState = msg.getReplica() == conf.getProcessId();
+        if (sendState) Logger.println("(TOMLayer.SMRequestDeliver) I should be the one sending the state");
+
+        TransferableState state = stateManager.getLog().getTransferableState(msg.getEid(), sendState);
+
 
         lockState.unlock();
 
@@ -1043,9 +1048,14 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             /************************* TESTE *************************/
             state = new TransferableState();
         }
+        
+        /** CODIGO MALICIOSO, PARA FORCAR A REPLICA ATRASADA A PEDIR O ESTADO A OUTRA DAS REPLICAS *
+        byte[] badState = {127};
+        if (sendState && conf.getProcessId() == 0) state.setState(badState);
+        /*******************************************************************************************/
 
         int[] targets = { msg.getSender() };
-        SMMessage smsg = new SMMessage(execManager.getProcessId(), msg.getEid(), TOMUtil.SM_REPLY, state);
+        SMMessage smsg = new SMMessage(execManager.getProcessId(), msg.getEid(), TOMUtil.SM_REPLY, -1, state);
         communication.send(targets, smsg);
 
         Logger.println("(TOMLayer.SMRequestDeliver) I sent the state for checkpoint " + state.getLastCheckpointEid() + " with batches until EID " + state.getLastEid());
@@ -1091,8 +1101,12 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             /************************* TESTE *************************
             System.out.println("A resposta e referente ao eid que estou a espera! (" + msg.getEid() + ")");
             /************************* TESTE *************************/
-
             Logger.println("(TOMLayer.SMReplyDeliver) The reply is for the EID that I want!");
+            
+            if (msg.getSender() == stateManager.getReplica() && msg.getState().getState() != null) {
+                Logger.println("(TOMLayer.SMReplyDeliver) I received the state, from the replica that I was expecting");
+                stateManager.setReplicaState(msg.getState().getState());
+            }
 
             stateManager.addState(msg.getSender(),msg.getState());
 
@@ -1104,8 +1118,18 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                 /************************* TESTE *************************/
 
                 TransferableState state = stateManager.getValidState();
-                
-                if (state != null) {
+
+                int haveState = 0;
+                if (stateManager.getReplicaState() != null) {
+                    byte[] hash = null;
+                    hash = computeHash(stateManager.getReplicaState());
+                    if (state != null) {
+                        if (Arrays.equals(hash, state.getStateHash())) haveState = 1;
+                        else haveState = -1;
+                    }
+                }
+
+                if (state != null && haveState == 1) {
 
                     /************************* TESTE *************************
                     System.out.println("As respostas desse estado são validas!");
@@ -1132,6 +1156,8 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                     /************************* TESTE *************************/
 
                     Logger.println("(TOMLayer.SMReplyDeliver) The state of those replies is good!");
+
+                    state.setState(stateManager.getReplicaState());
                     
                     lockState.lock();
 
@@ -1178,11 +1204,15 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                     dt.deliverUnlock();
                     
                     stateManager.emptyStates();
+                    stateManager.setReplicaState(null);
 
 
-                } else if ((conf.getN() / 2) < stateManager.getReplies()) {
 
-                    Logger.println("(TOMLayer.SMReplyDeliver) I have more than " + conf.getN() + " messages that are no good!");
+
+
+                } else if (state == null && (conf.getN() / 2) < stateManager.getReplies()) {
+
+                    Logger.println("(TOMLayer.SMReplyDeliver) I have more than " + (conf.getN() / 2) + " messages that are no good!");
                     /************************* TESTE *************************
                     System.out.println("Tenho mais de 2F respostas que nao servem para nada!");
                     //System.exit(0);
@@ -1190,7 +1220,17 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
                     stateManager.setWaiting(-1);
                     stateManager.emptyStates();
+                    stateManager.setReplicaState(null);
+                } else if (haveState == -1) {
+
+                    Logger.println("(TOMLayer.SMReplyDeliver) The replica from which I expected the state, sent one which doesn't match the hash of the others, or it never sent it at all");
+
+                    stateManager.setWaiting(-1);
+                    stateManager.changeReplica();
+                    stateManager.emptyStates();
+                    stateManager.setReplicaState(null);
                 }
+
             }
         }
         /************************* TESTE *************************

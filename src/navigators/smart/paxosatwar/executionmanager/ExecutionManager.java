@@ -241,9 +241,9 @@ public final class ExecutionManager {
                 break;
         }
         if (isRetrievingState) Logger.println("(ExecutionManager.checkLimits) I'm waiting for a state");
-        Logger.println("(ExecutionManager.checkLimits) I received a message for execution " + consId + " of type " + type);
+        Logger.println("(ExecutionManager.checkLimits) I received a message from replica "+ msg.getSender() + " for execution " + consId + " of type " + type);
         Logger.println("(ExecutionManager.checkLimits) I'm at execution " + currentConsId);
-        Logger.println("(ExecutionManager.checkLimits) My last las execution is" + lastConsId);
+        Logger.println("(ExecutionManager.checkLimits) My last las execution is " + lastConsId);
 
         boolean canProcessTheMessage = false;
         

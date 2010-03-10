@@ -36,20 +36,23 @@ public class SMMessage extends SystemMessage implements Externalizable {
     private TransferableState state; // State log
     private int eid; // Execution ID up to which the sender needs to be updated
     private int type; // Message type
+    private int replica; // Replica that should send the state
 
     /**
      * Constructs a SMMessage
      * @param sender Process Id of the sender
      * @param eid Execution ID up to which the sender needs to be updated
      * @param type Message type
+     * @param replica Replica that should send the state
      * @param state State log
      */
-    public SMMessage(int sender, int eid, int type, TransferableState state) {
+    public SMMessage(int sender, int eid, int type, int replica, TransferableState state) {
 
         super(sender);
         this.state = state;
         this.eid = eid;
         this.type = type;
+        this.replica = replica;
         this.sender = sender;
 
     }
@@ -73,12 +76,20 @@ public class SMMessage extends SystemMessage implements Externalizable {
         return type;
     }
 
-        /**
+    /**
      * Retrieves the execution ID up to which the sender needs to be updated
      * @return The execution ID up to which the sender needs to be updated
      */
     public int getEid() {
         return eid;
+    }
+
+    /**
+     * Retrieves the replica that should send the state
+     * @return The replica that should send the state
+     */
+    public int getReplica() {
+        return replica;
     }
 
     @Override
@@ -88,6 +99,7 @@ public class SMMessage extends SystemMessage implements Externalizable {
         out.writeInt(sender);
         out.writeInt(eid);
         out.writeInt(type);
+        out.writeInt(replica);
         out.writeObject(state);
     }
 
@@ -98,6 +110,7 @@ public class SMMessage extends SystemMessage implements Externalizable {
         sender = in.readInt();
         eid = in.readInt();
         type = in.readInt();
+        replica = in.readInt();
         state = (TransferableState) in.readObject();
     }
 }

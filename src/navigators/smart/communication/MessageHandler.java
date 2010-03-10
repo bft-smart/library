@@ -50,7 +50,7 @@ public class MessageHandler {
     private Proposer proposer;
     private Acceptor acceptor;
     private TOMLayer tomLayer;
-
+   
     public void setProposer(Proposer proposer) {
         this.proposer = proposer;
     }
@@ -85,6 +85,7 @@ public class MessageHandler {
         /** ISTO E CODIGO DO JOAO, PARA TRATAR DA TRANSFERENCIA DE ESTADO */
         } else if (sm instanceof SMMessage) {
 
+            Logger.println("(MessageHandler.processData) receiving a state managment message from replica " + sm.getSender());
             SMMessage smsg = (SMMessage) sm;
             if (smsg.getType() == TOMUtil.SM_REQUEST) {
                 tomLayer.SMRequestDeliver(smsg);
