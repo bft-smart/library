@@ -385,17 +385,20 @@ public class DeliveryThread extends Thread {
 
                 Logger.println("(DeliveryThread.run) I just delivered the batch of EID " + cons.getId());
 
-                if (conf.getCheckpoint_period() > 0) {
-                    if ((cons.getId() > 0) && ((cons.getId() % conf.getCheckpoint_period()) == 0)) {
-                        Logger.println("(DeliveryThread.run) Performing checkpoint for consensus " + cons.getId());
-                        byte[] state = receiver.getState();
-                        tomLayer.saveState(state, cons.getId(), cons.getDecisionRound().getNumber(), tomLayer.lm.getLeader(cons.getId(), cons.getDecisionRound().getNumber()));
-                        //TODO: possivelmente fazer mais alguma coisa
-                    }
-                    else {
-                        Logger.println("(DeliveryThread.run) Storing message batch in the state log for consensus " + cons.getId());
-                        tomLayer.saveBatch(cons.getDecision(), cons.getId(), cons.getDecisionRound().getNumber(), tomLayer.lm.getLeader(cons.getId(), cons.getDecisionRound().getNumber()));
-                        //TODO: possivelmente fazer mais alguma coisa
+                if (conf.isStateTransferEnabled()) {
+                    Logger.println("(DeliveryThread.run) The state transfer protocol is enabled");
+                    if (conf.getCheckpoint_period() > 0) {
+                        if ((cons.getId() > 0) && ((cons.getId() % conf.getCheckpoint_period()) == 0)) {
+                            Logger.println("(DeliveryThread.run) Performing checkpoint for consensus " + cons.getId());
+                            byte[] state = receiver.getState();
+                            tomLayer.saveState(state, cons.getId(), cons.getDecisionRound().getNumber(), tomLayer.lm.getLeader(cons.getId(), cons.getDecisionRound().getNumber()));
+                            //TODO: possivelmente fazer mais alguma coisa
+                        }
+                        else {
+                            Logger.println("(DeliveryThread.run) Storing message batch in the state log for consensus " + cons.getId());
+                            tomLayer.saveBatch(cons.getDecision(), cons.getId(), cons.getDecisionRound().getNumber(), tomLayer.lm.getLeader(cons.getId(), cons.getDecisionRound().getNumber()));
+                            //TODO: possivelmente fazer mais alguma coisa
+                        }
                     }
                 }
                 /********************************************************/

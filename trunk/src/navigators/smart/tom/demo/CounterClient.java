@@ -47,13 +47,8 @@ public class CounterClient {
         int i=0;
         int inc = Integer.parseInt(args[1]);
         //sends 1000 requests to replicas and then terminates
-        while(i<50){
+        while(i<1000){
             
-            try {
-                Thread.sleep(1000);
-            } catch (InterruptedException ex) {
-                Logger.getLogger(CounterClient.class.getName()).log(Level.SEVERE, null, ex);
-            }
             ByteArrayOutputStream out = new ByteArrayOutputStream(4);
             new DataOutputStream(out).writeInt(inc);
 
