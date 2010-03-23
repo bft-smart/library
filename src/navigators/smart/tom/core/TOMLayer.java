@@ -978,42 +978,54 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         System.out.println("[TOMLayer.requestState]");
         System.out.println("Mensagem adiantada! (eid " + eid + " vindo de " + sender + ") ");
         /************************* TESTE *************************/
+        if (conf.isStateTransferEnabled()) {
 
-        if (stateManager.getWaiting() == -1) {
+            Logger.println("(TOMLayer.requestState) The state transfer protocol is enabled");
 
-            Logger.println("(TOMLayer.requestState) I'm not waiting for any state, so I will keep record of this message");
-            stateManager.addEID(sender, eid);
+            if (stateManager.getWaiting() == -1) {
 
-            /************************* TESTE *************************
-            System.out.println("Nao estou a espera");
-            System.out.println("Numero de mensagens recebidas para este EID de replicas diferentes: " + stateManager.moreThenF_EIDs(eid));
-            /************************* TESTE *************************/
+                Logger.println("(TOMLayer.requestState) I'm not waiting for any state, so I will keep record of this message");
+                stateManager.addEID(sender, eid);
 
-            if (stateManager.getLastEID() < eid && stateManager.moreThenF_EIDs(eid)) {
-
-                Logger.println("(TOMLayer.requestState) I have now more than " + conf.getF() + " messages for EID " + eid + " which are beyond EID " + stateManager.getLastEID());
                 /************************* TESTE *************************
-                System.out.println("Recebi mais de " + conf.getF() + " mensagens para eid " + eid + " que sao posteriores a " + stateManager.getLastEID());
+                System.out.println("Nao estou a espera");
+                System.out.println("Numero de mensagens recebidas para este EID de replicas diferentes: " + stateManager.moreThenF_EIDs(eid));
                 /************************* TESTE *************************/
 
-                stateManager.setLastEID(eid);
-                stateManager.setWaiting(eid - 1);
-                //stateManager.emptyReplicas(eid);// isto causa uma excepcao
+                if (stateManager.getLastEID() < eid && stateManager.moreThenF_EIDs(eid)) {
 
-                SMMessage smsg = new SMMessage(me, eid - 1, TOMUtil.SM_REQUEST, stateManager.getReplica(), null);
-                communication.send(otherAcceptors, smsg);
+                    Logger.println("(TOMLayer.requestState) I have now more than " + conf.getF() + " messages for EID " + eid + " which are beyond EID " + stateManager.getLastEID());
+                    /************************* TESTE *************************
+                    System.out.println("Recebi mais de " + conf.getF() + " mensagens para eid " + eid + " que sao posteriores a " + stateManager.getLastEID());
+                    /************************* TESTE *************************/
 
-                Logger.println("(TOMLayer.requestState) I just sent a request to the other replicas for the state up to EID " + (eid - 1));
-                /************************* TESTE *************************
+                    stateManager.setLastEID(eid);
+                    stateManager.setWaiting(eid - 1);
+                    //stateManager.emptyReplicas(eid);// isto causa uma excepcao
 
-                System.out.println("Enviei um pedido!");
-                System.out.println("Quem envia: " + smsg.getSender());
-                System.out.println("Que tipo: " + smsg.getType());
-                System.out.println("Que EID: " + smsg.getEid());
-                System.out.println("Ultimo EID: " + stateManager.getLastEID());
-                System.out.println("A espera do EID: " + stateManager.getWaiting());
-                /************************* TESTE *************************/
+                    SMMessage smsg = new SMMessage(me, eid - 1, TOMUtil.SM_REQUEST, stateManager.getReplica(), null);
+                    communication.send(otherAcceptors, smsg);
+
+                    Logger.println("(TOMLayer.requestState) I just sent a request to the other replicas for the state up to EID " + (eid - 1));
+                    /************************* TESTE *************************
+
+                    System.out.println("Enviei um pedido!");
+                    System.out.println("Quem envia: " + smsg.getSender());
+                    System.out.println("Que tipo: " + smsg.getType());
+                    System.out.println("Que EID: " + smsg.getEid());
+                    System.out.println("Ultimo EID: " + stateManager.getLastEID());
+                    System.out.println("A espera do EID: " + stateManager.getWaiting());
+                    /************************* TESTE *************************/
+                }
             }
+        }
+        else {
+            System.out.println("##################################################################################");
+            System.out.println("- Ahead-of-time message discarded");
+            System.out.println("- If many messages of the same consensus are discarded, the replica can halt!");
+            System.out.println("- Try to increase the 'system.paxos.highMarc' configuration parameter.");
+            System.out.println("- Last consensus executed: " + lastExecuted);
+            System.out.println("##################################################################################");
         }
         /************************* TESTE *************************
         System.out.println("[/TOMLayer.requestState]");
@@ -1022,52 +1034,56 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
     public void SMRequestDeliver(SMMessage msg) {
 
-        lockState.lock();
+        if (conf.isStateTransferEnabled()) {
 
-        Logger.println("(TOMLayer.SMRequestDeliver) I received a state request for EID " + msg.getEid() + " from replica " + msg.getSender());
-        /************************* TESTE *************************
-        System.out.println("[TOMLayer.SMRequestDeliver]");
-        System.out.println("Recebi um pedido de estado!");
-        System.out.println("Estado pedido: " + msg.getEid());
-        System.out.println("Checkpoint q eu tenho: " + stateManager.getLog().getLastCheckpointEid());
-        System.out.println("Ultimo eid q recebi no log: " + stateManager.getLog().getLastEid());
-        /************************* TESTE *************************/
+            Logger.println("(TOMLayer.SMRequestDeliver) The state transfer protocol is enabled");
+            
+            lockState.lock();
 
-        boolean sendState = msg.getReplica() == conf.getProcessId();
-        if (sendState) Logger.println("(TOMLayer.SMRequestDeliver) I should be the one sending the state");
-
-        TransferableState state = stateManager.getLog().getTransferableState(msg.getEid(), sendState);
-
-
-        lockState.unlock();
-
-        if (state == null) {
-            Logger.println("(TOMLayer.SMRequestDeliver) I don't have the state requested :-(");
+            Logger.println("(TOMLayer.SMRequestDeliver) I received a state request for EID " + msg.getEid() + " from replica " + msg.getSender());
             /************************* TESTE *************************
-            System.out.println("Nao tenho o estado pedido!");
+            System.out.println("[TOMLayer.SMRequestDeliver]");
+            System.out.println("Recebi um pedido de estado!");
+            System.out.println("Estado pedido: " + msg.getEid());
+            System.out.println("Checkpoint q eu tenho: " + stateManager.getLog().getLastCheckpointEid());
+            System.out.println("Ultimo eid q recebi no log: " + stateManager.getLog().getLastEid());
             /************************* TESTE *************************/
-            state = new TransferableState();
-        }
+
+            boolean sendState = msg.getReplica() == conf.getProcessId();
+            if (sendState) Logger.println("(TOMLayer.SMRequestDeliver) I should be the one sending the state");
+
+            TransferableState state = stateManager.getLog().getTransferableState(msg.getEid(), sendState);
+
+            lockState.unlock();
+
+            if (state == null) {
+                Logger.println("(TOMLayer.SMRequestDeliver) I don't have the state requested :-(");
+               /************************* TESTE *************************
+               System.out.println("Nao tenho o estado pedido!");
+               /************************* TESTE *************************/
+              state = new TransferableState();
+            }
         
-        /** CODIGO MALICIOSO, PARA FORCAR A REPLICA ATRASADA A PEDIR O ESTADO A OUTRA DAS REPLICAS *
-        byte[] badState = {127};
-        if (sendState && conf.getProcessId() == 0) state.setState(badState);
-        /*******************************************************************************************/
+            /** CODIGO MALICIOSO, PARA FORCAR A REPLICA ATRASADA A PEDIR O ESTADO A OUTRA DAS REPLICAS *
+            byte[] badState = {127};
+            if (sendState && conf.getProcessId() == 0) state.setState(badState);
+            /*******************************************************************************************/
 
-        int[] targets = { msg.getSender() };
-        SMMessage smsg = new SMMessage(execManager.getProcessId(), msg.getEid(), TOMUtil.SM_REPLY, -1, state);
-        communication.send(targets, smsg);
+            int[] targets = { msg.getSender() };
+            SMMessage smsg = new SMMessage(execManager.getProcessId(), msg.getEid(), TOMUtil.SM_REPLY, -1, state);
+            communication.send(targets, smsg);
 
-        Logger.println("(TOMLayer.SMRequestDeliver) I sent the state for checkpoint " + state.getLastCheckpointEid() + " with batches until EID " + state.getLastEid());
-        /************************* TESTE *************************
-        System.out.println("Quem envia: " + smsg.getSender());
-        System.out.println("Que tipo: " + smsg.getType());
-        System.out.println("Que EID: " + smsg.getEid());
-        //System.exit(0);
-        /************************* TESTE *************************/
-        /************************* TESTE *************************
-        System.out.println("[/TOMLayer.SMRequestDeliver]");
-       /************************* TESTE *************************/
+            Logger.println("(TOMLayer.SMRequestDeliver) I sent the state for checkpoint " + state.getLastCheckpointEid() + " with batches until EID " + state.getLastEid());
+            /************************* TESTE *************************
+            System.out.println("Quem envia: " + smsg.getSender());
+            System.out.println("Que tipo: " + smsg.getType());
+            System.out.println("Que EID: " + smsg.getEid());
+            //System.exit(0);
+            /************************* TESTE *************************/
+            /************************* TESTE *************************
+            System.out.println("[/TOMLayer.SMRequestDeliver]");
+            /************************* TESTE *************************/
+        }
     }
 
     public void SMReplyDeliver(SMMessage msg) {
@@ -1093,144 +1109,142 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         }
         else System.out.println("[reply] Nao ha estado");
         /************************* TESTE *************************/
+        if (conf.isStateTransferEnabled()) {
 
-        Logger.println("(TOMLayer.SMReplyDeliver) I received a state reply for EID " + msg.getEid() + " from replica " + msg.getSender());
+            Logger.println("(TOMLayer.SMReplyDeliver) The state transfer protocol is enabled");
+            Logger.println("(TOMLayer.SMReplyDeliver) I received a state reply for EID " + msg.getEid() + " from replica " + msg.getSender());
 
-        if (stateManager.getWaiting() != -1 && msg.getEid() == stateManager.getWaiting()) {
+            if (stateManager.getWaiting() != -1 && msg.getEid() == stateManager.getWaiting()) {
 
-            /************************* TESTE *************************
-            System.out.println("A resposta e referente ao eid que estou a espera! (" + msg.getEid() + ")");
-            /************************* TESTE *************************/
-            Logger.println("(TOMLayer.SMReplyDeliver) The reply is for the EID that I want!");
-            
-            if (msg.getSender() == stateManager.getReplica() && msg.getState().getState() != null) {
-                Logger.println("(TOMLayer.SMReplyDeliver) I received the state, from the replica that I was expecting");
-                stateManager.setReplicaState(msg.getState().getState());
-            }
-
-            stateManager.addState(msg.getSender(),msg.getState());
-
-            if (stateManager.moreThenF_Replies()) {
-
-                Logger.println("(TOMLayer.SMReplyDeliver) I have more than " + conf.getF() + " equal replies!");
                 /************************* TESTE *************************
-                System.out.println("Ja tenho mais que " + conf.getF() + " respostas iguais!");
+                System.out.println("A resposta e referente ao eid que estou a espera! (" + msg.getEid() + ")");
                 /************************* TESTE *************************/
-
-                TransferableState state = stateManager.getValidState();
-
-                int haveState = 0;
-                if (stateManager.getReplicaState() != null) {
-                    byte[] hash = null;
-                    hash = computeHash(stateManager.getReplicaState());
-                    if (state != null) {
-                        if (Arrays.equals(hash, state.getStateHash())) haveState = 1;
-                        else haveState = -1;
-                    }
+                Logger.println("(TOMLayer.SMReplyDeliver) The reply is for the EID that I want!");
+            
+                if (msg.getSender() == stateManager.getReplica() && msg.getState().getState() != null) {
+                    Logger.println("(TOMLayer.SMReplyDeliver) I received the state, from the replica that I was expecting");
+                    stateManager.setReplicaState(msg.getState().getState());
                 }
 
-                if (state != null && haveState == 1) {
+                stateManager.addState(msg.getSender(),msg.getState());
 
+                if (stateManager.moreThenF_Replies()) {
+
+                    Logger.println("(TOMLayer.SMReplyDeliver) I have more than " + conf.getF() + " equal replies!");
                     /************************* TESTE *************************
-                    System.out.println("As respostas desse estado são validas!");
+                    System.out.println("Ja tenho mais que " + conf.getF() + " respostas iguais!");
+                    /************************* TESTE *************************/
 
-                    System.out.println("[state] Esta resposta tem o estado? " + state.hasState());
-                    System.out.println("[state] EID do ultimo checkpoint: " + state.getLastCheckpointEid());
-                    System.out.println("[state] EID do ultimo batch recebido: " + state.getLastEid());
-                    if (state.getMessageBatches() != null)
-                        System.out.println("[state] Numero de batches: " + state.getMessageBatches().length);
-                    else System.out.println("[state] Nao ha batches");
-                    if (state.getState() != null) {
-                        System.out.println("[state] Tamanho do estado em bytes: " + state.getState().length);
+                    TransferableState state = stateManager.getValidState();
 
-                        int value = 0;
-                        for (int i = 0; i < 4; i++) {
-                            int shift = (4 - 1 - i) * 8;
-                            value += (state.getState()[i] & 0x000000FF) << shift;
+                    int haveState = 0;
+                    if (stateManager.getReplicaState() != null) {
+                        byte[] hash = null;
+                        hash = computeHash(stateManager.getReplicaState());
+                        if (state != null) {
+                            if (Arrays.equals(hash, state.getStateHash())) haveState = 1;
+                            else haveState = -1;
                         }
-                        System.out.println("[state] Valor do estado: " + value);
                     }
-                    else System.out.println("[state] Nao ha estado");
 
-                    //System.exit(0);
-                    /************************* TESTE *************************/
+                    if (state != null && haveState == 1) {
 
-                    Logger.println("(TOMLayer.SMReplyDeliver) The state of those replies is good!");
+                        /************************* TESTE *************************
+                        System.out.println("As respostas desse estado são validas!");
 
-                    state.setState(stateManager.getReplicaState());
-                    
-                    lockState.lock();
+                        System.out.println("[state] Esta resposta tem o estado? " + state.hasState());
+                        System.out.println("[state] EID do ultimo checkpoint: " + state.getLastCheckpointEid());
+                        System.out.println("[state] EID do ultimo batch recebido: " + state.getLastEid());
+                        if (state.getMessageBatches() != null)
+                            System.out.println("[state] Numero de batches: " + state.getMessageBatches().length);
+                        else System.out.println("[state] Nao ha batches");
+                        if (state.getState() != null) {
+                            System.out.println("[state] Tamanho do estado em bytes: " + state.getState().length);
 
-                    stateManager.getLog().update(state);
-
-                    /************************* TESTE *************************
-                    System.out.println("[log] Estado pedido: " + msg.getEid());
-                    System.out.println("[log] EID do ultimo checkpoint: " + stateManager.getLog().getLastCheckpointEid());
-                    System.out.println("[log] EID do ultimo batch recebido: " + stateManager.getLog().getLastEid());
-                    System.out.println("[log] Numero de batches: " + stateManager.getLog().getNumBatches());
-                    if (stateManager.getLog().getState() != null) {
-                        System.out.println("[log] Tamanho do estado em bytes: " + stateManager.getLog().getState().length);
-                    
-                        int value = 0;
-                        for (int i = 0; i < 4; i++) {
-                            int shift = (4 - 1 - i) * 8;
-                            value += (stateManager.getLog().getState()[i] & 0x000000FF) << shift;
+                            int value = 0;
+                            for (int i = 0; i < 4; i++) {
+                                int shift = (4 - 1 - i) * 8;
+                                value += (state.getState()[i] & 0x000000FF) << shift;
+                            }
+                            System.out.println("[state] Valor do estado: " + value);
                         }
-                        System.out.println("[log] Valor do estado: " + value);
-                    }
-                    //System.exit(0);
-                    /************************* TESTE *************************/
+                        else System.out.println("[state] Nao ha estado");
 
-                    lockState.unlock();
+                        //System.exit(0);
+                        /************************* TESTE *************************/
 
-                    //System.out.println("Desbloqueei o lock para o log do estado");
-                    dt.deliverLock();
+                        Logger.println("(TOMLayer.SMReplyDeliver) The state of those replies is good!");
 
-                    //System.out.println("Bloqueei o lock entre esta thread e a delivery thread");
-
-                    ot.OutOfContextLock();
-
-                    //System.out.println("Bloqueei o lock entre esta thread e a out of context thread");
-
-                    stateManager.setWaiting(-1);
-
-                    //System.out.println("Ja nao estou a espera de nenhum estado, e vou actualizar-me");
-
-                    dt.update(state);
-
-                    dt.canDeliver();
-
-                    ot.OutOfContextUnlock();
-                    dt.deliverUnlock();
+                        state.setState(stateManager.getReplicaState());
                     
-                    stateManager.emptyStates();
-                    stateManager.setReplicaState(null);
+                        lockState.lock();
 
+                        stateManager.getLog().update(state);
 
+                        /************************* TESTE *************************
+                        System.out.println("[log] Estado pedido: " + msg.getEid());
+                        System.out.println("[log] EID do ultimo checkpoint: " + stateManager.getLog().getLastCheckpointEid());
+                        System.out.println("[log] EID do ultimo batch recebido: " + stateManager.getLog().getLastEid());
+                        System.out.println("[log] Numero de batches: " + stateManager.getLog().getNumBatches());
+                        if (stateManager.getLog().getState() != null) {
+                            System.out.println("[log] Tamanho do estado em bytes: " + stateManager.getLog().getState().length);
+                    
+                            int value = 0;
+                            for (int i = 0; i < 4; i++) {
+                                int shift = (4 - 1 - i) * 8;
+                                value += (stateManager.getLog().getState()[i] & 0x000000FF) << shift;
+                            }
+                            System.out.println("[log] Valor do estado: " + value);
+                        }
+                        //System.exit(0);
+                        /************************* TESTE *************************/
 
+                        lockState.unlock();
 
+                        //System.out.println("Desbloqueei o lock para o log do estado");
+                        dt.deliverLock();
 
-                } else if (state == null && (conf.getN() / 2) < stateManager.getReplies()) {
+                        //System.out.println("Bloqueei o lock entre esta thread e a delivery thread");
 
-                    Logger.println("(TOMLayer.SMReplyDeliver) I have more than " + (conf.getN() / 2) + " messages that are no good!");
-                    /************************* TESTE *************************
-                    System.out.println("Tenho mais de 2F respostas que nao servem para nada!");
-                    //System.exit(0);
-                    /************************* TESTE *************************/
+                        ot.OutOfContextLock();
 
-                    stateManager.setWaiting(-1);
-                    stateManager.emptyStates();
-                    stateManager.setReplicaState(null);
-                } else if (haveState == -1) {
+                        //System.out.println("Bloqueei o lock entre esta thread e a out of context thread");
 
-                    Logger.println("(TOMLayer.SMReplyDeliver) The replica from which I expected the state, sent one which doesn't match the hash of the others, or it never sent it at all");
+                        stateManager.setWaiting(-1);
 
-                    stateManager.setWaiting(-1);
-                    stateManager.changeReplica();
-                    stateManager.emptyStates();
-                    stateManager.setReplicaState(null);
+                        //System.out.println("Ja nao estou a espera de nenhum estado, e vou actualizar-me");
+
+                        dt.update(state);
+
+                        dt.canDeliver();
+
+                        ot.OutOfContextUnlock();
+                        dt.deliverUnlock();
+                    
+                        stateManager.emptyStates();
+                        stateManager.setReplicaState(null);
+
+                    } else if (state == null && (conf.getN() / 2) < stateManager.getReplies()) {
+
+                        Logger.println("(TOMLayer.SMReplyDeliver) I have more than " + (conf.getN() / 2) + " messages that are no good!");
+                        /************************* TESTE *************************
+                        System.out.println("Tenho mais de 2F respostas que nao servem para nada!");
+                        //System.exit(0);
+                        /************************* TESTE *************************/
+
+                        stateManager.setWaiting(-1);
+                        stateManager.emptyStates();
+                        stateManager.setReplicaState(null);
+                    } else if (haveState == -1) {
+
+                        Logger.println("(TOMLayer.SMReplyDeliver) The replica from which I expected the state, sent one which doesn't match the hash of the others, or it never sent it at all");
+
+                        stateManager.setWaiting(-1);
+                        stateManager.changeReplica();
+                        stateManager.emptyStates();
+                        stateManager.setReplicaState(null);
+                    }
                 }
-
             }
         }
         /************************* TESTE *************************

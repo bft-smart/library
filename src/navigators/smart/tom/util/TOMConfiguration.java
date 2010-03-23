@@ -47,6 +47,7 @@ public class TOMConfiguration extends Configuration {
     private int commBuffering;
     private int useMACs;
     private int useSignatures;
+    private boolean  stateTransferEnabled;
     private int checkpoint_period;
     private int useControlFlow;
 
@@ -71,6 +72,7 @@ public class TOMConfiguration extends Configuration {
         this.commBuffering = conf.commBuffering;
         this.useMACs = conf.useMACs;
         this.useSignatures = conf.useSignatures;
+        this.stateTransferEnabled = conf.stateTransferEnabled;
         this.checkpoint_period = conf.checkpoint_period;
         this.useControlFlow = conf.useControlFlow;
         this.inQueueSize = conf.inQueueSize;
@@ -241,9 +243,16 @@ public class TOMConfiguration extends Configuration {
                 useSignatures = Integer.parseInt(s);
             }
 
+            s = (String) configs.remove("system.totalordermulticast.state_transfer");
+            if (s == null) {
+                stateTransferEnabled = false;
+            } else {
+                stateTransferEnabled = Boolean.parseBoolean(s);
+            }
+
             s = (String) configs.remove("system.totalordermulticast.checkpoint_period");
             if (s == null) {
-                checkpoint_period = 0;
+                checkpoint_period = 1;
             } else {
                 checkpoint_period = Integer.parseInt(s);
             }
@@ -330,6 +339,10 @@ public class TOMConfiguration extends Configuration {
 
     public boolean isDecideMessagesEnabled() {
         return decideMessagesEnabled;
+    }
+
+    public boolean isStateTransferEnabled() {
+        return stateTransferEnabled;
     }
 
     public boolean canVerifyTimestamps() {

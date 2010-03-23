@@ -1,4 +1,4 @@
-SMaRt v0.4
+SMaRt v0.5
 ----------
 
 This package contains the SMaRt source code (src/), binary file (bin/), libraries needed (lib/), documentation (doc/), and configuration files (config/).
@@ -20,6 +20,9 @@ self explanatory.
 
 You can run the counter demonstration by executing the script "runscripts/launch_CounterDemo.bat". This script can be easily adapted to run the other demos. Note that this script only runs in Windows, but it is easy to derive a shell script that runs in other operating systems.
 
+Additionally to the counter demo, there is also the random demo. You can run it by launching the script "runscripts/launch_RandomDemo.bat".
+
+This version of SMaRt implements a state transfer protocol, which is still experimental. You can activate/de-activate it by editing the "config/system.config" file, and setting the parameter "system.totalordermulticast.state_transfer" to "false"
  
 Feel free to contact us if you have any questions.
 
