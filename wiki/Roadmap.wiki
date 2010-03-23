@@ -1,7 +1,7 @@
 #summary This page describes the features that will be included in the next releases of SMaRt.
 #labels Featured,Phase-Requirements
 
-= SMaRt v0.5 =
+= SMaRt v0.6 =
 
   * Include JUnit tests (for critical modules).
   * Include stress tests (for the counter application).
@@ -9,6 +9,6 @@
   * Make checkpoints to stable memory.
 
 
-= SMaRt v0.6 =
+= SMaRt v0.7 =
 
   * Integrate with [http://www.navigators.di.fc.ul.pt/software/depspace/ DepSpace] to construct a BFT coordination service.
