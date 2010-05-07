@@ -111,7 +111,7 @@ public class ServersCommunicationLayer extends Thread {
                 Socket newSocket = serverSocket.accept();
                 ServersCommunicationLayer.setSocketOptions(newSocket);
                 int remoteId = new DataInputStream(newSocket.getInputStream()).readInt();
-                if (remoteId >= 0 && remoteId <= connections.length) {
+                if (remoteId >= 0 && remoteId < connections.length) {
                     if (connections[remoteId] == null) {
                         //first time that this connection is being established
                         connections[remoteId] = new ServerConnection(conf, newSocket, remoteId, inQueue);
