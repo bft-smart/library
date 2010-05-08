@@ -321,8 +321,10 @@ public class Acceptor {
             if (eid == tomLayer.getLastExec() + 1) {
                 tomLayer.setInExec(eid);
             }
-
-            if (tomLayer.isProposedValueValid(round, value) && !round.isWeakSetted(me)) {
+            Object deserialised = tomLayer.checkProposedValue(value);
+            if (deserialised != null && !round.isWeakSetted(me)) {
+                round.getExecution().getLearner().setDeserialisedDecision(deserialised);
+                if(Logger.debug)
                 Logger.println("(Acceptor.executePropose) sending weak for " + eid);
 
                 round.setWeak(me, round.propValueHash);

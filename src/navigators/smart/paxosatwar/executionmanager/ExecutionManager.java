@@ -164,6 +164,12 @@ public final class ExecutionManager {
         return acceptor;
     }
 
+    public Proposer getProposer() {
+        return proposer;
+    }
+
+    
+
     /**
      * Stops this execution manager
      */

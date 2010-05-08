@@ -15,30 +15,31 @@
  * 
  * You should have received a copy of the GNU General Public License along with SMaRt.  If not, see <http://www.gnu.org/licenses/>.
  */
-
 package navigators.smart.paxosatwar;
 
-import navigators.smart.paxosatwar.executionmanager.Round;
 import navigators.smart.paxosatwar.roles.Proposer;
 import navigators.smart.tom.util.Logger;
 
 /**
- * This class stands for an instance of a consensus
+ *
+ * This class represents a Consensus Instance.
+ *
+ * @param <E> Type of the decided Object
+ *
+ * @author unkown
+ * @author Christian Spann <christian.spann at uni-ulm.de>
  */
-public class Consensus {
+public class Consensus<E> {
 
-    // TODO: Faz sentido existir aqui um proposer? Porque não ter isto antes no TOM layer?
-    private Proposer proposer; // the proposer role of the PaW algorithm
     private int eid; // execution ID
-    private byte[] proposal = null; // proposed value
+    private int decisionRound = 0;
     private byte[] decision = null; // decided value
-    private Object deserializedDecision = null; // decided value (deserialized)
-    private Round decisionRound = null;
-
+    private E deserializedDecision = null; // decided value (deserialized)
+    private final Object sync = new Object();
     // TODO: Faz sentido ser public?
     public long startTime; // the consensus start time
     public long executionTime; // consensus execution time
-    public int batchSize=0; //number of messages included in the batch
+    public int batchSize = 0; //number of messages included in the batch
 
     /**
      * Creates a new instance of Consensus
@@ -47,9 +48,46 @@ public class Consensus {
      * @param startTime The consensus start time
      */
     public Consensus(Proposer proposer, int eid, long startTime) {
-        this.proposer = proposer;
         this.eid = eid;
         this.startTime = startTime;
+    }
+
+    public void decided(byte[] decision, int round) {
+        synchronized (sync) {
+            this.decision = decision;
+            this.decisionRound = round;
+            sync.notifyAll();
+        }
+    }
+
+    public int getDecisionRound() {
+        return decisionRound;
+    }
+
+    /**
+     * Sets the decided value
+     * @return Decided Value
+     */
+    public byte[] getDecision() {
+        synchronized (sync) {  //TODO is this sync needed? cspann
+            if (decision == null) {
+                waitForPropose();
+            }
+            return decision;
+        }
+    }
+
+    public void setDeserialisedDecision(E deserialised) {
+        this.deserializedDecision = deserialised;
+    }
+
+    public E getDeserializedDecision() {
+        synchronized (sync) {
+            if (deserializedDecision == null) {
+                waitForPropose();
+            }
+        }
+        return deserializedDecision;
     }
 
     /**
@@ -60,72 +98,15 @@ public class Consensus {
         return eid;
     }
 
-    /**
-     * The proposer role of PaW algorithm
-     * @return Proposer role of PaW algorithm
-     */
-    public byte[] getProposal() {
-        return proposal;
-    }
-
-    /**
-     * Sets the decided value
-     * @return Decided Value
-     */
-    public byte[] getDecision() {
-
-        if(decision == null) {
-            waitForPropose();
-            decision = decisionRound.propValue;
-        }
-
-        return decision;
-    }
-
-    /**
-     * The deserialized decision
-     * @return Deserialized decision
-     */
-    public Object getDeserializedDecision() {
-
-        if(deserializedDecision == null) {
-            waitForPropose();
-            deserializedDecision = decisionRound.deserializedPropValue;
-        }
-        return deserializedDecision;
-    }
-
-    /**
-     * The decision round (which contain all information about the decision)
-     * @return the round in which this consensus was decided
-     */
-    public Round getDecisionRound() {
-        return decisionRound;
-    }
-
-    /**
-     * Sets the proposed value
-     * @param value Proposed value
-     */
-    public void propose(byte[] value) {
-        if (value == null) {
-            throw new IllegalArgumentException(
-                    "A proposed value cannot be null!");
-        }
-        proposal = value;
-        proposer.startExecution(eid, value);
-    }
-
-    public void decided(Round round) {
-        decisionRound = round;
-    }
-
     private void waitForPropose() {
-        while(decisionRound.deserializedPropValue == null) {
-            try{
-                Logger.println("waiting for propose for "+eid);
-                Thread.sleep(1);
-            }catch(InterruptedException ie) {}
+        synchronized (sync) {
+            try {
+                Logger.println("waiting for propose for " + eid);
+                sync.wait();
+            } catch (InterruptedException ex) {
+                Logger.println(ex.getMessage());
+                ex.printStackTrace();
+            }
         }
     }
 }

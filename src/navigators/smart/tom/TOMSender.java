@@ -118,7 +118,7 @@ public abstract class TOMSender implements ReplyReceiver {
      * @param m Data to be multicast
      * @param readOnly it is a readonly request
      */
-    public void TOMulticast(byte[] m, boolean readOnly) {
+    public void doTOMulticast(byte[] m, boolean readOnly) {
         cs.send(useSignatures, group, new TOMMessage(me, getNextSequenceNumber(), m, readOnly), false);
     }
 
