@@ -112,7 +112,7 @@ public class ServiceProxy extends TOMSender {
         response = null;
 
         // Send the request to the replicas, and get its ID
-        TOMulticast(request,readOnly);
+        doTOMulticast(request,readOnly);
         reqId = getLastSequenceNumber();
 
         // Critical section ends here. The semaphore can be released

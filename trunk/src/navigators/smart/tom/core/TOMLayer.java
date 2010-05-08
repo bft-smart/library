@@ -94,7 +94,8 @@ public final class TOMLayer extends Thread implements RequestReceiver {
     private MessageDigest md;
 
     //the next two are used to generate non-deterministic data in a deterministic way (by the leader)
-    private Random random = new Random();
+//    private Random random = new Random();
+    private BatchBuilder bb = new BatchBuilder();
     private long lastTimestamp = 0;
 
     /* The locks and conditions used to wait upon creating a propose */
@@ -334,23 +335,11 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             totalMessageSize += messages[i].length;
         }
 
-        // Create a batch of messages
-        BatchBuilder bb = new BatchBuilder(numberOfMessages, numberOfNonces, totalMessageSize, conf.getUseSignatures()==1);
-        for (i = 0; i < numberOfMessages; i++) {
-            bb.putMessage(messages[i], false, signatures[i]);
+        // return the batch
+        return bb.createBatch(System.currentTimeMillis(), numberOfNonces, numberOfMessages, totalMessageSize, conf.getUseSignatures() == 1, messages, signatures);
         }
 
-        //create a timestamp and a number of nonces to be together with the
-        //request to deal with nondeterminism
-        bb.putTimestamp(System.currentTimeMillis());
-        if (numberOfNonces > 0) {
-            byte[] nonces = new byte[numberOfNonces];
-            random.nextBytes(nonces);
-            bb.putNonces(nonces);
-        }
 
-        return bb.getByteArray(); // return the batch
-    }
 
     /**
      * This is the main code for this thread. It basically waits until this replica becomes the leader,
@@ -408,7 +397,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                 //acceptor.leaveMEZone();
                 //Logger.println("(TOMLayer.run) Acceptor semaphore acquired");
 
-                exec.getLearner().propose(createPropose(exec.getLearner()));
+                execManager.getProposer().startExecution(execId,createPropose(exec.getLearner()));
 
             /*
             if (counter>=BENCHMARK_PERIOD/2)
@@ -474,85 +463,72 @@ public final class TOMLayer extends Thread implements RequestReceiver {
      * @param proposedValue the value being proposed
      * @return
      */
-    public boolean isProposedValueValid(Round round, byte[] proposedValue) {
+    public TOMMessage[] checkProposedValue(byte[] proposedValue) {
+        if (Logger.debug) {
         Logger.println("(TOMLayer.isProposedValueValid) starting");
-        BatchReader batchReader = new BatchReader(proposedValue, conf.getUseSignatures()==1);
+        }
+        BatchReader batchReader = new BatchReader(proposedValue, conf.getUseSignatures() == 1);
 
-        int numberOfMessages = batchReader.getNumberOfMessages();
+        TOMMessage[] requests = null;
 
-        TOMMessage[] requests = new TOMMessage[numberOfMessages];
+        try {
+            //deserialize the message
+            //TODO: verify Timestamps and Nonces
+            requests = batchReader.deserialiseRequests();
 
         //Logger.println("(TOMLayer.isProposedValueValid) Waiting for clientsManager lock");
         //clientsManager.getClientsLock().lock();
         //Logger.println("(TOMLayer.isProposedValueValid) Got clientsManager lock");
-        for (int i = 0; i < numberOfMessages; i++) {
-            //read the message and its signature from the batch
-            int messageSize = batchReader.getNextMessageSize();
-
-            byte[] message = new byte[messageSize];
-            batchReader.getNextMessage(message);
-
-            byte[] signature = null;
-            if (conf.getUseSignatures()==1){
-                signature = new byte[TOMUtil.getSignatureSize()];
-                batchReader.getNextSignature(signature);
-            }
-
-            //deserialize the message
-            try {
-                DataInputStream ois = new DataInputStream(new ByteArrayInputStream(message));
-                TOMMessage tm = new TOMMessage();
-                tm.readExternal(ois);
-                requests[i] = tm;
-            //requests[i] = (TOMMessage) ois.readObject();
-            } catch (Exception e) {
-                e.printStackTrace();
-                clientsManager.getClientsLock().unlock();
-                Logger.println("(TOMLayer.isProposedValueValid) finished, return=false");
-                return false;
-            }
-            requests[i].serializedMessage = message;
-            requests[i].serializedMessageSignature = signature;
-
+            for (int i = 0; i < requests.length; i++) {
             //notifies the client manager that this request was received and get
             //the result of its validation
             if (!clientsManager.requestReceived(requests[i], false)) {
                 clientsManager.getClientsLock().unlock();
+                    if (Logger.debug) {
                 Logger.println("(TOMLayer.isProposedValueValid) finished, return=false");
-                return false;
             }
+                    return null;
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            clientsManager.getClientsLock().unlock();
+            if (Logger.debug) {
+                Logger.println("(TOMLayer.isProposedValueValid) finished, return=false");
+            }
+            return null;
         }
         //clientsManager.getClientsLock().unlock();
-        Logger.println("(TOMLayer.isProposedValueValid) finished, return=true");
-        round.deserializedPropValue = requests;
-
-        //TODO: verify Timestamps and Nonces
-        return true;
-    }
-
-    /**
-     * TODO: este metodo nao e usado. Pode desaparecer?
-     * @param br
-     * @return
-     */
-    public final boolean verifyTimestampAndNonces(BatchReader br) {
-        long timestamp = br.getTimestamp();
-
-        if (conf.canVerifyTimestamps()) {
-            //br.ufsc.das.util.tom.Logger.println("(TOMLayer.verifyTimestampAndNonces) verifying timestamp "+timestamp+">"+lastTimestamp+"?");
-            if (timestamp > lastTimestamp) {
-                lastTimestamp = timestamp;
-            } else {
-                System.err.println("########################################################");
-                System.err.println("- timestamp received " + timestamp + " <= " + lastTimestamp);
-                System.err.println("- maybe the proposer have a non-synchronized clock");
-                System.err.println("########################################################");
-                return false;
-            }
+        if (Logger.debug) {
+            Logger.println("(TOMLayer.isProposedValueValid) finished, return=true");
         }
+//        round.deserializedPropValue = requests;
 
-        return br.getNumberOfNonces() == conf.getNumberOfNonces();
+        return requests;
     }
+//    /**
+//     * TODO: este metodo nao e usado. Pode desaparecer?
+//     * @param br
+//     * @return
+//     */
+//    public final boolean verifyTimestampAndNonces(BatchReader br) {
+//        long timestamp = br.getTimestamp();
+//
+//        if (conf.canVerifyTimestamps()) {
+//            //br.ufsc.das.util.tom.Logger.println("(TOMLayer.verifyTimestampAndNonces) verifying timestamp "+timestamp+">"+lastTimestamp+"?");
+//            if (timestamp > lastTimestamp) {
+//                lastTimestamp = timestamp;
+//            } else {
+//                System.err.println("########################################################");
+//                System.err.println("- timestamp received " + timestamp + " <= " + lastTimestamp);
+//                System.err.println("- maybe the proposer have a non-synchronized clock");
+//                System.err.println("########################################################");
+//                return false;
+//            }
+//        }
+//
+//        return br.getNumberOfNonces() == conf.getNumberOfNonces();
+//    }
 
     /**
      * Invoked when a timeout for a TOM message is triggered.

@@ -169,7 +169,7 @@ public class Execution {
             decided = true;
             decisionRound = round.getNumber();
 
-            consensus.decided(round);
+            consensus.decided(value, decisionRound);
             manager.getTOMLayer().decided(consensus);
         }
     }

@@ -106,7 +106,7 @@ public class ThroughputTestClient extends TOMSender implements Runnable {
                         this.TOMulticast(command);
                 //    }
                 //    else {
-                //        this.TOMulticast(generatedMessages.get(i));
+                //        this.doTOMulticast(generatedMessages.get(i));
                 //    }
                     if ((i!=0) && ((i % 1000) == 0)) {
                         long elapsedTime = System.currentTimeMillis() - startTimeInstant;

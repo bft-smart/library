@@ -121,60 +121,10 @@ public class DeliveryThread extends Thread {
 
                 Logger.println("(DeliveryThread.update) interpreting and verifying batched requests.");
 
-                int numberOfMessages = batchReader.getNumberOfMessages();
-
-                TOMMessage[] requests = new TOMMessage[numberOfMessages];
-
-                for (int i = 0; i < numberOfMessages; i++) {
-                    
-                    //read the message and its signature from the batch
-                    int messageSize = batchReader.getNextMessageSize();
-
-                    byte[] message = new byte[messageSize];
-                    batchReader.getNextMessage(message);
-
-                    byte[] signature = null;
-                    if (conf.getUseSignatures()==1){
-                        signature = new byte[TOMUtil.getSignatureSize()];
-                        batchReader.getNextSignature(signature);
-                   }
-
-                    try {
-                        DataInputStream ois = new DataInputStream(new ByteArrayInputStream(message));
-                        TOMMessage tm = new TOMMessage();
-                        tm.readExternal(ois);
-
-                        if (Logger.debug)
-                            tm.setSequence(new DebugInfo(eid, state.getMessageBatch(eid).round, state.getMessageBatch(eid).leader));
-
-                        /******* Deixo isto comentado, pois nao me parece necessario      ****/
-                        /******* Alem disso, esta informacao nao vem no TransferableState ****
-
-                        tm.consensusStartTime = cons.startTime;
-                        tm.consensusExecutionTime = cons.executionTime;
-                        tm.consensusBatchSize = cons.batchSize;
-
-                        /*********************************************************************/
-
-                        requests[i] = tm;
-                        //requests[i] = (TOMMessage) ois.readObject();
-                        tomLayer.clientsManager.requestOrdered(requests[i]);
-                    } catch (Exception e) {
-                        e.printStackTrace(System.out);
-                    }
-                }
-
-                //obtain the nonce and timestamps to be delivered to the application
-                long timestamp = batchReader.getTimestamp();
-                byte[] nonces = new byte[batchReader.getNumberOfNonces()];
-                if (nonces.length > 0) {
-                    batchReader.getNonces(nonces);
-                }
+                TOMMessage[] requests = batchReader.deserialiseRequests();
 
                 //deliver the request to the application (receiver)
                 for (int i = 0; i < requests.length; i++) {
-                    requests[i].timestamp = timestamp;
-                    requests[i].nonces = nonces;
 
                     /******* Deixo isto comentado, pois nao me parece necessario      **********/
                     /******* Alem disso, esta informacao nao vem no TransferableState **********
@@ -182,7 +132,7 @@ public class DeliveryThread extends Thread {
                     requests[i].requestTotalLatency = System.currentTimeMillis()-cons.startTime;
 
                     /***************************************************************************/
-                    
+                    tomLayer.clientsManager.requestOrdered(requests[i]);
                     receiver.receiveOrderedMessage(requests[i]);
                 }
 
@@ -285,51 +235,20 @@ public class DeliveryThread extends Thread {
 
                 if (requests == null) {
                     Logger.println("(DeliveryThread.run) interpreting and verifying batched requests.");
-                    int numberOfMessages = batchReader.getNumberOfMessages();
 
-                    requests = new TOMMessage[numberOfMessages];
+                    requests = batchReader.deserialiseRequests();
 
-                    for (int i = 0; i < numberOfMessages; i++) {
-                        //read the message and its signature from the batch
-                        int messageSize = batchReader.getNextMessageSize();
-
-                        byte[] message = new byte[messageSize];
-                        batchReader.getNextMessage(message);
-
-                        byte[] signature = null;
-                        if (conf.getUseSignatures()==1){
-                            signature = new byte[TOMUtil.getSignatureSize()];
-                            batchReader.getNextSignature(signature);
-                        }
-
-                        try {
-                            DataInputStream ois = new DataInputStream(new ByteArrayInputStream(message));
-                            TOMMessage tm = new TOMMessage();
-                            tm.readExternal(ois);
-                            tm.consensusStartTime = cons.startTime;
-                            tm.consensusExecutionTime = cons.executionTime;
-                            tm.consensusBatchSize = cons.batchSize;
-
-                            /** ISTO E CODIGO DO JOAO, PARA TRATAR DE DEBUGGING */
-                            if (Logger.debug)
-                                tm.setSequence(new DebugInfo(cons.getId(), cons.getDecisionRound().getNumber(), tomLayer.lm.getLeader(cons.getId(), cons.getDecisionRound().getNumber())));
-                            /****************************************************/
-                            
-                            requests[i] = tm;
-                            //requests[i] = (TOMMessage) ois.readObject();
-                            tomLayer.clientsManager.requestOrdered(requests[i]);
-                        } catch (Exception e) {
-                            e.printStackTrace(System.out);
-                        }
-                    }
                 } else {
-                    Logger.println("(DeliveryThread.run) using cached requests from the propose.");
+                    if(Logger.debug)
+                        Logger.println("(DeliveryThread.run) using cached requests from the propose.");
+
+                        }
                     tomLayer.clientsManager.getClientsLock().lock();
                     for (int i = 0; i < requests.length; i++) {
 
                         /** ISTO E CODIGO DO JOAO, PARA TRATAR DE DEBUGGING */
-                        if (Logger.debug)
-                            requests[i].setSequence(new DebugInfo(cons.getId(), cons.getDecisionRound().getNumber(), tomLayer.lm.getLeader(cons.getId(), cons.getDecisionRound().getNumber())));
+//                    if (Logger.debug)
+//                        requests[i].setSequence(new DebugInfo(cons.getId(), cons.getDecisionRound(), lm.getLeader(cons.getId(), cons.getDecisionRound())));
                         /****************************************************/
 
                         requests[i].consensusStartTime = cons.startTime;
@@ -339,8 +258,6 @@ public class DeliveryThread extends Thread {
                     }
                     tomLayer.clientsManager.getClientsLock().unlock();
 
-                    batchReader.skipMessages();
-                }
 
                 //set this consensus as the last executed
                 tomLayer.setLastExec(cons.getId());
@@ -366,17 +283,10 @@ public class DeliveryThread extends Thread {
                     Logger.println("(DeliveryThread.run) Executed propose for " + nextExecution);
                 }
 
-                //obtain the nonce and timestamps to be delivered to the application
-                long timestamp = batchReader.getTimestamp();
-                byte[] nonces = new byte[batchReader.getNumberOfNonces()];
-                if (nonces.length > 0) {
-                    batchReader.getNonces(nonces);
-                }
+                
 
                 //deliver the request to the application (receiver)
                 for (int i = 0; i < requests.length; i++) {
-                    requests[i].timestamp = timestamp;
-                    requests[i].nonces = nonces;
                     requests[i].requestTotalLatency = System.currentTimeMillis()-cons.startTime;
                     receiver.receiveOrderedMessage(requests[i]);
                 }
@@ -391,12 +301,12 @@ public class DeliveryThread extends Thread {
                         if ((cons.getId() > 0) && ((cons.getId() % conf.getCheckpoint_period()) == 0)) {
                             Logger.println("(DeliveryThread.run) Performing checkpoint for consensus " + cons.getId());
                             byte[] state = receiver.getState();
-                            tomLayer.saveState(state, cons.getId(), cons.getDecisionRound().getNumber(), tomLayer.lm.getLeader(cons.getId(), cons.getDecisionRound().getNumber()));
+                            tomLayer.saveState(state, cons.getId(), cons.getDecisionRound(), tomLayer.lm.getLeader(cons.getId(), cons.getDecisionRound()));
                             //TODO: possivelmente fazer mais alguma coisa
                         }
                         else {
                             Logger.println("(DeliveryThread.run) Storing message batch in the state log for consensus " + cons.getId());
-                            tomLayer.saveBatch(cons.getDecision(), cons.getId(), cons.getDecisionRound().getNumber(), tomLayer.lm.getLeader(cons.getId(), cons.getDecisionRound().getNumber()));
+                            tomLayer.saveBatch(cons.getDecision(), cons.getId(), cons.getDecisionRound(), tomLayer.lm.getLeader(cons.getId(), cons.getDecisionRound()));
                             //TODO: possivelmente fazer mais alguma coisa
                         }
                     }
