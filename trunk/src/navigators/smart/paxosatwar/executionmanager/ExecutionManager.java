@@ -260,13 +260,13 @@ public final class ExecutionManager {
                 // Isto serve para re-direccionar as mensagens para o out of context
                 // enquanto a replica esta a receber o estado das outras e a actualizar-se
 
-                isRetrievingState || // Is this replica retrieving a state?
+                /*(me != 3 || consId <= 60) &&*/ (isRetrievingState || // Is this replica retrieving a state?
 
                 // Is this not a revived replica?
                 (!(currentConsId == -1 && lastConsId == -1 && consId >= (lastConsId + revivalHighMark)) &&
                 /******************************************************************/
 
-                (consId > lastConsId  && (consId < (lastConsId + paxosHighMark))))
+                (consId > lastConsId  && (consId < (lastConsId + paxosHighMark)))))
 
             ) { // Is this message within the low and high marks (or maybe is the replica synchronizing) ?
 
@@ -305,10 +305,10 @@ public final class ExecutionManager {
 
                 /** ISTO E CODIGO DO JOAO, PARA TRATAR DA TRANSFERENCIA DE ESTADO */
                 // Is this replica revived?
-                (currentConsId == -1 && lastConsId == -1 && consId >= (lastConsId + revivalHighMark)) ||
+                /*(me == 3 && consId > 60) ||*/ ((currentConsId == -1 && lastConsId == -1 && consId >= (lastConsId + revivalHighMark)) ||
                 /******************************************************************/
 
-                (consId >= (lastConsId + paxosHighMark))
+                (consId >= (lastConsId + paxosHighMark)))
                 ) { // Does this message exceeds the high mark?
 
             /**
