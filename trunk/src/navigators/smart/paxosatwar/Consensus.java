@@ -1,23 +1,25 @@
 /**
  * Copyright (c) 2007-2009 Alysson Bessani, Eduardo Alchieri, Paulo Sousa, and the authors indicated in the @author tags
- * 
+ *
  * This file is part of SMaRt.
- * 
+ *
  * SMaRt is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * SMaRt is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License along with SMaRt.  If not, see <http://www.gnu.org/licenses/>.
  */
 package navigators.smart.paxosatwar;
 
+import navigators.smart.paxosatwar.executionmanager.Round;
 import navigators.smart.paxosatwar.roles.Proposer;
+import navigators.smart.tom.core.messages.TOMMessage;
 import navigators.smart.tom.util.Logger;
 
 /**
@@ -29,13 +31,13 @@ import navigators.smart.tom.util.Logger;
  * @author unkown
  * @author Christian Spann <christian.spann at uni-ulm.de>
  */
-public class Consensus<E> {
+public class Consensus {
 
     private int eid; // execution ID
-    private int decisionRound = 0;
+    private Round decisionRound = null;
     private byte[] decision = null; // decided value
-    private E deserializedDecision = null; // decided value (deserialized)
-    private final Object sync = new Object();
+    private TOMMessage[] deserializedDecision = null; // decided value (deserialized)
+    //private final Object sync = new Object();
     // TODO: Faz sentido ser public?
     public long startTime; // the consensus start time
     public long executionTime; // consensus execution time
@@ -47,20 +49,20 @@ public class Consensus<E> {
      * @param eid The execution ID for this consensus
      * @param startTime The consensus start time
      */
-    public Consensus(Proposer proposer, int eid, long startTime) {
+    public Consensus(int eid, long startTime) {
         this.eid = eid;
         this.startTime = startTime;
     }
 
-    public void decided(byte[] decision, int round) {
-        synchronized (sync) {
-            this.decision = decision;
+    public void decided(Round round) {
+        //synchronized (sync) {
+            //this.decision = decision;
             this.decisionRound = round;
-            sync.notifyAll();
-        }
+            //sync.notifyAll();
+        //}
     }
 
-    public int getDecisionRound() {
+    public Round getDecisionRound() {
         return decisionRound;
     }
 
@@ -69,26 +71,36 @@ public class Consensus<E> {
      * @return Decided Value
      */
     public byte[] getDecision() {
-        synchronized (sync) {  //TODO is this sync needed? cspann
-            if (decision == null) {
-                waitForPropose();
+        //synchronized (sync) {  //TODO is this sync needed? cspann
+            while (decision == null) {
+                waitForPropose(); // Eduardo: deve ter um waitForDecision separando (agora funciona pq é só um sleep)
+                decision = decisionRound.propValue;
             }
             return decision;
-        }
+        //}
     }
 
-    public void setDeserialisedDecision(E deserialised) {
-        this.deserializedDecision = deserialised;
-    }
-
-    public E getDeserializedDecision() {
-        synchronized (sync) {
-            if (deserializedDecision == null) {
+    public TOMMessage[] getDeserializedDecision() {
+        //synchronized (sync) {
+            while (deserializedDecision == null) {
                 waitForPropose();
+                deserializedDecision = decisionRound.deserializedPropValue;
             }
-        }
+        //}
         return deserializedDecision;
     }
+
+    /**public void setDeserialisedDecision(TOMMessage[] deserialised) {
+
+        //System.out.println("Chamou o setDeserialisedDecision......");
+        //synchronized (sync) {
+        if(this.deserializedDecision == null){
+            this.deserializedDecision = deserialised;
+        }
+            //sync.notifyAll();
+        //}
+
+    }*/
 
     /**
      * The Execution ID for this consensus
@@ -97,16 +109,13 @@ public class Consensus<E> {
     public int getId() {
         return eid;
     }
-
     private void waitForPropose() {
-        synchronized (sync) {
-            try {
-                Logger.println("waiting for propose for " + eid);
-                sync.wait();
-            } catch (InterruptedException ex) {
-                Logger.println(ex.getMessage());
-                ex.printStackTrace();
-            }
+        while(decisionRound.deserializedPropValue == null) {
+            try{
+                Logger.println("waiting for propose for "+eid);
+                Thread.sleep(1);
+            }catch(InterruptedException ie) {}
         }
     }
+
 }

@@ -27,10 +27,11 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import navigators.smart.communication.ServerCommunicationSystem;
+import navigators.smart.reconfiguration.ReconfigurationManager;
 import navigators.smart.tom.TOMReceiver;
 import navigators.smart.tom.core.messages.TOMMessage;
 import navigators.smart.tom.util.Storage;
-import navigators.smart.tom.util.TOMConfiguration;
+
 
 
 public class ThroughputLatencyTestServer extends TOMReceiver {
@@ -66,10 +67,10 @@ public class ThroughputLatencyTestServer extends TOMReceiver {
     
     public void run(){
         //create the configuration object
-        TOMConfiguration conf = new TOMConfiguration(id);
+        ReconfigurationManager manager = new ReconfigurationManager(id);
         try {
             //create the communication system
-            cs = new ServerCommunicationSystem(conf);
+            cs = new ServerCommunicationSystem(manager,null);
             System.out.println("#ThroughputLatencyTestServer throughput interval= "+interval+ " msgs");
             System.out.println("#ThroughputLatencyTestServer average throughput interval= "+averageIterations+ " throughput intervals ");
             startTimeInstant = System.currentTimeMillis();
@@ -78,7 +79,7 @@ public class ThroughputLatencyTestServer extends TOMReceiver {
             throw new RuntimeException("Unable to build a communication system.");
         }
         //build the TOM server stack
-        this.init(cs,conf);
+        this.init(cs,manager);
         
         /**IST OE CODIGO DO JOAO, PARA TENTAR RESOLVER UM BUG */
         cs.start();
@@ -115,14 +116,14 @@ public class ThroughputLatencyTestServer extends TOMReceiver {
             }
             System.arraycopy(out.toByteArray(), 0, command, 0, 12);
             TOMMessage reply = new TOMMessage(id,msg.getSequence(),
-                    command);
+                    command,msg.getViewID());
             cs.send(new int[]{msg.getSender()},reply);
         }
         else {
             //echo msg to client
             //System.out.println("Echoing msg to client");
             TOMMessage reply = new TOMMessage(id,msg.getSequence(),
-                    msg.getContent());
+                    msg.getContent(),msg.getViewID());
             cs.send(new int[]{msg.getSender()},reply);
         }
 
@@ -182,7 +183,7 @@ public class ThroughputLatencyTestServer extends TOMReceiver {
     }
     
     public byte[] getState() {
-        return null;
+        return new byte[1];
     }
 
     public void setState(byte[] state) {

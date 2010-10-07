@@ -1,18 +1,18 @@
 /**
  * Copyright (c) 2007-2009 Alysson Bessani, Eduardo Alchieri, Paulo Sousa, and the authors indicated in the @author tags
- * 
+ *
  * This file is part of SMaRt.
- * 
+ *
  * SMaRt is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * SMaRt is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License along with SMaRt.  If not, see <http://www.gnu.org/licenses/>.
  */
 
@@ -32,10 +32,9 @@ import navigators.smart.paxosatwar.messages.MessageFactory;
 import navigators.smart.paxosatwar.messages.PaxosMessage;
 import navigators.smart.paxosatwar.roles.Acceptor;
 import navigators.smart.paxosatwar.roles.Proposer;
-import navigators.smart.statemanagment.SMMessage;
+import navigators.smart.reconfiguration.ReconfigurationManager;
 import navigators.smart.tom.core.TOMLayer;
 import navigators.smart.tom.util.Logger;
-import navigators.smart.tom.util.TOMUtil;
 
 
 /**
@@ -46,11 +45,17 @@ import navigators.smart.tom.util.TOMUtil;
  */
 public final class ExecutionManager {
 
+    private ReconfigurationManager reconfManager;
+
+
     private Acceptor acceptor; // Acceptor role of the PaW algorithm
     private Proposer proposer; // Proposer role of the PaW algorithm
-    private int me; // This process ID
-    private int[] acceptors; // Process ID's of all replicas, including this one
-    private int[] otherAcceptors; // Process ID's of all replicas, except this one
+
+    //******* EDUARDO BEGIN: agora estas variaveis estao todas concentradas na Reconfigurationmanager **************//
+    //private int me; // This process ID
+    //private int[] acceptors; // Process ID's of all replicas, including this one
+    //private int[] otherAcceptors; // Process ID's of all replicas, except this one
+    //******* EDUARDO END **************//
 
     private Map<Integer, Execution> executions = new TreeMap<Integer, Execution>(); // Executions
     private ReentrantLock executionsLock = new ReentrantLock(); //lock for executions table
@@ -67,10 +72,6 @@ public final class ExecutionManager {
     private Round stoppedRound = null; // round at which the current execution was stoppped
     private ReentrantLock stoppedMsgsLock = new ReentrantLock(); //lock for stopped messages
 
-    public final int quorumF; // f replicas
-    public final int quorum2F; // f * 2 replicas
-    public final int quorumStrong; // ((n + f) / 2) replicas
-    public final int quorumFastDecide; // ((n + 3 * f) / 2) replicas
 
     private TOMLayer tomLayer; // TOM layer associated with this execution manager
     private long initialTimeout; // initial timeout for rounds
@@ -89,17 +90,22 @@ public final class ExecutionManager {
      * @param me This process ID
      * @param initialTimeout initial timeout for rounds
      */
-    public ExecutionManager(Acceptor acceptor, Proposer proposer,
-            int[] acceptors, int f, int me, long initialTimeout) {
+    public ExecutionManager(ReconfigurationManager manager, Acceptor acceptor,
+                                Proposer proposer, int me, long initialTimeout) {
+        //******* EDUARDO BEGIN **************//
+        this.reconfManager = manager;
         this.acceptor = acceptor;
         this.proposer = proposer;
-        this.acceptors = acceptors;
-        this.me = me;
+        //this.acceptors = manager.getCurrentViewProcesses();
+        //this.me = me;
         this.initialTimeout = initialTimeout;
-        this.quorumF = f;
-        this.quorum2F = 2 * f;
-        this.quorumStrong = (int) Math.ceil((acceptors.length + f) / 2);
-        this.quorumFastDecide = (int) Math.ceil((acceptors.length + 3 * f) / 2);
+
+        this.paxosHighMark = reconfManager.getStaticConf().getPaxosHighMark();
+        /** ISTO E CODIGO DO JOAO, PARA TRATAR DA TRANSFERENCIA DE ESTADO */
+        this.revivalHighMark = reconfManager.getStaticConf().getRevivalHighMark();
+        /******************************************************************/
+
+        //******* EDUARDO END **************//
     }
 
     /**
@@ -108,10 +114,7 @@ public final class ExecutionManager {
      */
     public void setTOMLayer(TOMLayer tom) {
         this.tomLayer = tom;
-        this.paxosHighMark = tom.getConf().getPaxosHighMark();
-        /** ISTO E CODIGO DO JOAO, PARA TRATAR DA TRANSFERENCIA DE ESTADO */
-        this.revivalHighMark = tom.getConf().getRevivalHighMark();
-        /******************************************************************/
+
     }
 
     /**
@@ -122,27 +125,29 @@ public final class ExecutionManager {
         return tomLayer;
     }
 
+    //******* EDUARDO BEGIN: isso tudo deve ser obtido a partir do ReconfigurationManager **************//
+
     /**
      * Returns this process ID
      * @return This process ID
      */
-    public int getProcessId() {
+   /* public int getProcessId() {
         return me;
-    }
+    }*/
 
     /**
      * Returns the process ID's of all replicas, including this one
      * @return Array of the process ID's of all replicas, including this one
      */
-    public int[] getAcceptors() {
+   /* public int[] getAcceptors() {
         return acceptors;
-    }
+    }*/
 
     /**
      * Returns the process ID's of all replicas, except this one
      * @return Array of the process ID's of all replicas, except this one
      */
-    public int[] getOtherAcceptors() {
+   /*public int[] getOtherAcceptors() {
         if (otherAcceptors == null) {
             otherAcceptors = new int[acceptors.length - 1];
             int c = 0;
@@ -154,7 +159,9 @@ public final class ExecutionManager {
         }
 
         return otherAcceptors;
-    }
+    }*/
+
+    //******* EDUARDO END **************//
 
     /**
      * Returns the acceptor role of the PaW algorithm
@@ -168,7 +175,7 @@ public final class ExecutionManager {
         return proposer;
     }
 
-    
+
 
     /**
      * Stops this execution manager
@@ -252,21 +259,21 @@ public final class ExecutionManager {
         Logger.println("(ExecutionManager.checkLimits) My last las execution is " + lastConsId);
 
         boolean canProcessTheMessage = false;
-        
+
         if (
-                
+
                 /** ISTO E CODIGO DO JOAO, PARA TRATAR DA TRANSFERENCIA DE ESTADO */
 
                 // Isto serve para re-direccionar as mensagens para o out of context
                 // enquanto a replica esta a receber o estado das outras e a actualizar-se
 
-                /*(me != 3 || consId <= 60) &&*/ (isRetrievingState || // Is this replica retrieving a state?
+                isRetrievingState || // Is this replica retrieving a state?
 
                 // Is this not a revived replica?
                 (!(currentConsId == -1 && lastConsId == -1 && consId >= (lastConsId + revivalHighMark)) &&
                 /******************************************************************/
 
-                (consId > lastConsId  && (consId < (lastConsId + paxosHighMark)))))
+                (consId > lastConsId  && (consId < (lastConsId + paxosHighMark))))
 
             ) { // Is this message within the low and high marks (or maybe is the replica synchronizing) ?
 
@@ -305,10 +312,10 @@ public final class ExecutionManager {
 
                 /** ISTO E CODIGO DO JOAO, PARA TRATAR DA TRANSFERENCIA DE ESTADO */
                 // Is this replica revived?
-                /*(me == 3 && consId > 60) ||*/ ((currentConsId == -1 && lastConsId == -1 && consId >= (lastConsId + revivalHighMark)) ||
+                (currentConsId == -1 && lastConsId == -1 && consId >= (lastConsId + revivalHighMark)) ||
                 /******************************************************************/
 
-                (consId >= (lastConsId + paxosHighMark)))
+                (consId >= (lastConsId + paxosHighMark))
                 ) { // Does this message exceeds the high mark?
 
             /**
@@ -324,12 +331,13 @@ public final class ExecutionManager {
             /** ISTO E CODIGO DO JOAO, PARA TRATAR DA TRANSFERENCIA DE ESTADO */
             Logger.println("(ExecutionManager.checkLimits) Message for execution "+consId+" is beyond the paxos highmark, adding it to out of context set");
             addOutOfContextMessage(msg);
-            tomLayer.requestState(me, getOtherAcceptors(), msg.getSender(), consId);
+            tomLayer.requestState(this.reconfManager.getStaticConf().getProcessId(),
+                    this.reconfManager.getCurrentViewOtherAcceptors(), msg.getSender(), consId);
             /******************************************************************/
         }
         outOfContextLock.unlock();
 
-        //br.ufsc.das.util.Logger.println("(checkLimits) Mensagem recebida nao estah dentro dos limites");    
+        //br.ufsc.das.util.Logger.println("(checkLimits) Mensagem recebida nao estah dentro dos limites");
         return canProcessTheMessage;
     }
 
@@ -346,7 +354,7 @@ public final class ExecutionManager {
 
         /******* END OUTOFCONTEXT CRITICAL SECTION *******/
         outOfContextLock.unlock();
-        
+
         return result;
     }
 
@@ -363,7 +371,7 @@ public final class ExecutionManager {
 
         /******* END EXECUTIONS CRITICAL SECTION *******/
         executionsLock.unlock();
-        
+
         outOfContextLock.lock();
         /******* BEGIN OUTOFCONTEXT CRITICAL SECTION *******/
 
@@ -412,7 +420,7 @@ public final class ExecutionManager {
             //there is no execution with the given eid
 
             //let's create one...
-            execution = new Execution(this, new Consensus(proposer, eid, System.currentTimeMillis()),
+            execution = new Execution(this, new Consensus(eid, System.currentTimeMillis()),
                     initialTimeout);
             //...and add it to the executions table
             executions.put(eid, execution);
@@ -451,7 +459,7 @@ public final class ExecutionManager {
             /******* END EXECUTIONS CRITICAL SECTION *******/
             executionsLock.unlock();
         }
-        
+
 
         return execution;
     }

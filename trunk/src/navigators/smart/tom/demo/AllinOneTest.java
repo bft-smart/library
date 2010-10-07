@@ -18,7 +18,7 @@
 
 package navigators.smart.tom.demo;
 
-import navigators.smart.tom.util.TOMConfiguration;
+
 
 
 public class AllinOneTest {
@@ -32,9 +32,9 @@ public class AllinOneTest {
             new ThroughputLatencyTestServer(3,1000,10).run();
             //Thread.sleep(5000);
              
-            TOMConfiguration conf1 = new TOMConfiguration(1001);
+            //TOMConfiguration conf1 = new TOMConfiguration(1001);
             new ThroughputTestClient(1001, 2000000,
-                1, 1, conf1).run();
+                1, 1).run();
         /*} catch (InterruptedException ex) {
             Logger.getLogger(AllinOneTest.class.getName()).log(Level.SEVERE, null, ex);
         }*/

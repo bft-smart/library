@@ -52,9 +52,12 @@ public class ShutdownThread extends Thread {
         System.err.println("Current time: " + System.currentTimeMillis());
         System.err.println("Last executed consensus: " + tomLayer.getLastExec());
         Round r = manager.getExecution(tomLayer.getLastExec()).getLastRound();
-        System.err.println("Last executed leader: " +
-                lm.getLeader(r.getExecution().getId(),r.getNumber()));
-        System.err.println("State of the last executed round: "+r.toString());
+        //******* EDUARDO BEGIN **************//
+        if(r != null){
+            System.err.println("Last executed leader: " + lm.getLeader(r.getExecution().getId(),r.getNumber()));
+            System.err.println("State of the last executed round: "+r.toString());
+        }
+        //******* EDUARDO END **************//
         System.err.println("Consensus in execution: " + tomLayer.getInExec());
         if(tomLayer.getInExec() != -1) {
             Round r2 = manager.getExecution(tomLayer.getInExec()).getLastRound();

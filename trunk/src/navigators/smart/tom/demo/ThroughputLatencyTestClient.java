@@ -33,7 +33,6 @@ import navigators.smart.communication.client.CommunicationSystemClientSideFactor
 import navigators.smart.tom.TOMSender;
 import navigators.smart.tom.core.messages.TOMMessage;
 import navigators.smart.tom.util.Storage;
-import navigators.smart.tom.util.TOMConfiguration;
 
 
 public class ThroughputLatencyTestClient extends TOMSender implements Runnable {
@@ -57,15 +56,14 @@ public class ThroughputLatencyTestClient extends TOMSender implements Runnable {
     private long max;
     private int measurementEpoch;
           
-    public ThroughputLatencyTestClient(int id, int exec, int argSize, int interval, TOMConfiguration conf) {
+    public ThroughputLatencyTestClient(int id, int exec, int argSize, int interval) {
         this.exec = exec;
         this.argSize = argSize;
         
         this.currentId = id;
         this.myId = id;
 
-        this.f = conf.getF();
-        this.n = conf.getN();
+
         this.interval = interval;
         this.st = new Storage(exec/2);  
 
@@ -80,12 +78,14 @@ public class ThroughputLatencyTestClient extends TOMSender implements Runnable {
         measurementEpoch = 0;
 
         //create the communication system
-        cs = CommunicationSystemClientSideFactory.getCommunicationSystemClientSide(conf);
-        this.init(cs, conf);
+        //cs = CommunicationSystemClientSideFactory.getCommunicationSystemClientSide(conf);
+        this.init(this.myId);
         System.out.println("Cliente "+id+" lançado");
     }
 
     public void run(){
+        this.f = getViewManager().getCurrentViewF();
+        this.n = getViewManager().getCurrentViewN();
         try{
             System.out.println("(" + myId + ") A dormir 10 segundos ah espera das outras threads");
             Thread.sleep(10000);
@@ -268,15 +268,15 @@ public class ThroughputLatencyTestClient extends TOMSender implements Runnable {
         int argSize = new Integer(args[3]);
         int interval = new Integer(args[4]);
 
-        TOMConfiguration conf = new TOMConfiguration(startId);
+        //TOMConfiguration conf = new TOMConfiguration(startId);
         Thread[] t = new Thread[numThreads];
         
         for (int i=0; i<numThreads; i++){
-            TOMConfiguration conf1 = new TOMConfiguration(conf,startId);
+            //TOMConfiguration conf1 = new TOMConfiguration(conf,startId);
             //TOMConfiguration conf1 = new TOMConfiguration(startId);
 
             t[i] = new Thread(new ThroughputLatencyTestClient(startId, numMsgs,
-                argSize, interval, conf1));
+                argSize, interval));
             t[i].start();
 
             startId++;

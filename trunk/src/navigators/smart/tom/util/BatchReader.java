@@ -23,6 +23,7 @@ import java.io.DataInputStream;
 import java.io.ObjectInputStream;
 import java.nio.ByteBuffer;
 import java.util.Random;
+import navigators.smart.reconfiguration.ReconfigurationManager;
 import navigators.smart.tom.core.messages.TOMMessage;
 
 /**
@@ -41,7 +42,8 @@ public final class BatchReader {
         this.useSignatures = useSignatures;
     }
 
-    public TOMMessage[] deserialiseRequests() {
+    public TOMMessage[] deserialiseRequests(ReconfigurationManager manager) {
+
         //obtain the timestamps to be delivered to the application
         long timestamp = proposalBuffer.getLong();
 
@@ -66,7 +68,7 @@ public final class BatchReader {
 
             byte[] signature = null;
             if(useSignatures){
-                signature = new byte[TOMUtil.getSignatureSize()];
+                signature = new byte[TOMUtil.getSignatureSize(manager)];
                 proposalBuffer.get(signature);
             }
             //obtain the nonces to be delivered to the application

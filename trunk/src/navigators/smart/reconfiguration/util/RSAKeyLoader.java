@@ -15,12 +15,7 @@
  * 
  * You should have received a copy of the GNU General Public License along with SMaRt.  If not, see <http://www.gnu.org/licenses/>.
  */
-
-
-
-package navigators.smart.tom.util;
-
-
+package navigators.smart.reconfiguration.util;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
@@ -30,152 +25,113 @@ import java.security.PublicKey;
 import java.security.spec.EncodedKeySpec;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
-
-
+import java.util.Hashtable;
 
 /**
-
  * Used to load JCA public and private keys from conf/keys/publickey<id> and
-
  * conf/keys/privatekey<id>
-
  */
-
 public class RSAKeyLoader {
-
-    
 
     private String path;
 
-    private PublicKey[] pubKeys;
-
+    //private PublicKey[] pubKeys;
     private PrivateKey priKey;
-
     private TOMConfiguration conf;
-
-
+    private Hashtable<Integer, PublicKey> pubKeys = new Hashtable<Integer, PublicKey>();
 
     /** Creates a new instance of RSAKeyLoader */
-
     public RSAKeyLoader(TOMConfiguration conf, String configHome) {
 
         this.conf = conf;
 
-        
 
-        if(configHome.equals("")){
 
-            path = "config"+System.getProperty("file.separator")+"keys"+
+        if (configHome.equals("")) {
 
-                      System.getProperty("file.separator");
+            path = "config" + System.getProperty("file.separator") + "keys" +
+                    System.getProperty("file.separator");
 
-        }else{
+        } else {
 
-            path = configHome+System.getProperty("file.separator")+"keys"+
-
-                      System.getProperty("file.separator");
+            path = configHome + System.getProperty("file.separator") + "keys" +
+                    System.getProperty("file.separator");
 
         }
 
     }
 
-
-
     /**
-
      * Load the public keys from processes 0..conf.getN()-1 (all servers).
-
      *
-
      * @return the array of public keys loaded
-
      * @throws Exception problems reading or parsing the keys
-
      */
 
-    public PublicKey[] loadServersPublicKeys() throws Exception {
-
-        if(pubKeys == null){
-
-            pubKeys = new PublicKey[conf.getN()];
-
-            for(int i = 0; i < pubKeys.length; i++){
-
-                pubKeys[i] = loadPublicKey(i);
-
-            }
-
-        }
-
-        return pubKeys;
-
+    /* public PublicKey[] loadServersPublicKeys() throws Exception {
+    if(pubKeys == null){
+    pubKeys = new PublicKey[conf.getN()];
+    for(int i = 0; i < pubKeys.length; i++){
+    pubKeys[i] = loadPublicKey(i);
     }
-
-
-
+    }
+    return pubKeys;
+    }*/
     /**
-
      * Loads the public key of some processes from configuration files
-
      *
-
      * @param id the id of the process that we want to load the public key
-
      * @return the PublicKey loaded from config/keys/publickey<id>
-
      * @throws Exception problems reading or parsing the key
-
      */
-
     public PublicKey loadPublicKey(int id) throws Exception {
 
-        BufferedReader r = new BufferedReader(new FileReader(path+"publickey"+id));
+        PublicKey ret = this.pubKeys.get(id);
 
-        String tmp = "";
+        if (ret == null) {
 
-        String key = "";
 
-        while((tmp = r.readLine()) != null){
-
-            key=key+tmp;
-
-        }
-
-        r.close();
-
-        return getPublicKeyFromString(key);
-
-    }
-
-    
-
-    /**
-
-     * Loads the private key of this process
-
-     *
-
-     * @return the PrivateKey loaded from config/keys/publickey<conf.getProcessId()>
-
-     * @throws Exception problems reading or parsing the key
-
-     */
-
-    public PrivateKey loadPrivateKey() throws Exception {
-
-        if(priKey == null){
-
-            BufferedReader r = new BufferedReader(
-
-                    new FileReader(path+"privatekey"+conf.getProcessId()));
+            BufferedReader r = new BufferedReader(new FileReader(path + "publickey" + id));
 
             String tmp = "";
 
             String key = "";
 
-            while((tmp = r.readLine()) != null){
+            while ((tmp = r.readLine()) != null) {
 
-                key=key+tmp;
+                key = key + tmp;
+
+            }
+
+            r.close();
+
+            ret = getPublicKeyFromString(key);
+            this.pubKeys.put(id, ret);
+        }
+        return ret;
+
+    }
+
+    /**
+     * Loads the private key of this process
+     *
+     * @return the PrivateKey loaded from config/keys/publickey<conf.getProcessId()>
+     * @throws Exception problems reading or parsing the key
+     */
+    public PrivateKey loadPrivateKey() throws Exception {
+
+        if (priKey == null) {
+
+            BufferedReader r = new BufferedReader(
+                    new FileReader(path + "privatekey" + conf.getProcessId()));
+
+            String tmp = "";
+
+            String key = "";
+
+            while ((tmp = r.readLine()) != null) {
+
+                key = key + tmp;
 
             }
 
@@ -189,12 +145,7 @@ public class RSAKeyLoader {
 
     }
 
-
-
     //utility methods for going from string to public/private key
-
-
-
     private PrivateKey getPrivateKeyFromString(String key) throws Exception {
 
         KeyFactory keyFactory = KeyFactory.getInstance("RSA");
@@ -209,8 +160,6 @@ public class RSAKeyLoader {
 
     }
 
-    
-
     private PublicKey getPublicKeyFromString(String key) throws Exception {
 
         sun.misc.BASE64Decoder b64 = new sun.misc.BASE64Decoder();
@@ -224,6 +173,5 @@ public class RSAKeyLoader {
         return publicKey;
 
     }
-
 }
 

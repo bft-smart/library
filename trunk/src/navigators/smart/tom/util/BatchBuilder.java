@@ -20,6 +20,7 @@ package navigators.smart.tom.util;
 
 import java.nio.ByteBuffer;
 import java.util.Random;
+import navigators.smart.reconfiguration.ReconfigurationManager;
 
 /**
  * Batch format: TIMESTAMP(long) + N_NONCES(int) + SEED(long) +
@@ -34,10 +35,10 @@ public final class BatchBuilder {
     private Random rnd = new Random();
 
     /** build buffer */
-    public byte[] createBatch(long timestamp, int numberOfNonces, int numberOfMessages, int totalMessagesSize, boolean useSignatures, byte[][] messages, byte[][] signatures) {
+    public byte[] createBatch(long timestamp, int numberOfNonces, int numberOfMessages, int totalMessagesSize, boolean useSignatures, byte[][] messages, byte[][] signatures, ReconfigurationManager manager) {
         int size = 20 + //timestamp 8, nonces 4, nummessages 4
                 (numberOfNonces > 0 ? 8 : 0) + //seed if needed
-                (numberOfMessages*(4+(useSignatures?TOMUtil.getSignatureSize():0)))+ // msglength + signature for each msg
+                (numberOfMessages*(4+(useSignatures?TOMUtil.getSignatureSize(manager):0)))+ // msglength + signature for each msg
                 totalMessagesSize; //size of all msges
 
         ByteBuffer  proposalBuffer = ByteBuffer.allocate(size);
