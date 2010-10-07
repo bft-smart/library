@@ -15,18 +15,17 @@
  * 
  * You should have received a copy of the GNU General Public License along with SMaRt.  If not, see <http://www.gnu.org/licenses/>.
  */
-
 package navigators.smart.tom;
 
 //import br.ufsc.das.communication.SimpleCommunicationSystem;
 import java.util.Arrays;
 import java.util.concurrent.Semaphore;
 
-import navigators.smart.communication.client.CommunicationSystemClientSideFactory;
+import navigators.smart.reconfiguration.ReconfigurationManager;
+import navigators.smart.reconfiguration.ReconfigureReply;
+import navigators.smart.reconfiguration.View;
 import navigators.smart.tom.core.messages.TOMMessage;
-import navigators.smart.tom.util.TOMConfiguration;
-
-
+import navigators.smart.tom.util.TOMUtil;
 /**
  * This class implements a TOMReplyReceiver, and a proxy to be used on the client side of the application.
  * It sends a request to the replicas, receives the reply, and delivers it to the
@@ -35,27 +34,31 @@ import navigators.smart.tom.util.TOMConfiguration;
  */
 public class ServiceProxy extends TOMSender {
 
-    private int n; // Number of total replicas in the system
-    private int f; // Number of maximum faulty replicas assumed to occur
+    //******* EDUARDO BEGIN **************//
+    // private int n; // Number of total replicas in the system
+    // private int f; // Number of maximum faulty replicas assumed to occur
 
     // Semaphores used to render this object thread-safe
     // TODO: o mutex nao poderia ser antes um reentrantlock, em vez de um semaforo?
+    //Eduardo: Acho que pode até ser um reentrantlock, mas apenas pode ser liberado (no caso do semaforo é a mesma coisa)
+    //após a operação completar (não pode ser liberado após apenas o envio pq reqId será perdido)
     private Semaphore mutex = new Semaphore(1);
+    private Semaphore mutexToSend = new Semaphore(1);
+    //******* EDUARDO END **************//
+    
     private Semaphore sm = new Semaphore(0);
-
     private int reqId = -1; // request id
     private TOMMessage replies[] = null; // Replies from replicas are stored here
-    private byte[] response = null; // Pointer to the reply that is actually delivered to the application
- 
+    private TOMMessage response = null; // Pointer to the reply that is actually delivered to the application
 
     /**
      * Constructor
      * 
      * @param id Process id for this client
      */
-    public ServiceProxy(int id) {
-        TOMConfiguration conf = new TOMConfiguration(id);
-        init(conf);
+    public ServiceProxy(int processId) {
+        init(processId);
+        replies = new TOMMessage[getViewManager().getCurrentViewN()];
     }
 
     /**
@@ -65,19 +68,13 @@ public class ServiceProxy extends TOMSender {
      * @param configHome Configuration directory for JBP
      * TODO: E mesmo a directoria do JBP, ou de alguma biblioteca de terceiros?
      */
-    public ServiceProxy(int id, String configHome) {
-        TOMConfiguration conf = new TOMConfiguration(id,configHome);
-        init(conf);
+    public ServiceProxy(int processId, String configHome) {
+        init(processId, configHome);
+        replies = new TOMMessage[getViewManager().getCurrentViewN()];
     }
 
-    // This method initializes the object
-    private void init(TOMConfiguration conf) {
-        init(CommunicationSystemClientSideFactory.getCommunicationSystemClientSide(conf), conf);
-        n = conf.getN();
-        f = conf.getF();
-        replies = new TOMMessage[n];
-    }
-
+    
+    //******* EDUARDO BEGIN **************//
     /**
      * This method sends a request to the replicas, and returns the related reply. This method is
      * thread-safe.
@@ -86,9 +83,18 @@ public class ServiceProxy extends TOMSender {
      * @return The reply from the replicas related to request
      */
     public byte[] invoke(byte[] request) {
-        return invoke(request,false);
+        return invoke(request, ReconfigurationManager.TOM_NORMAL_REQUEST, false);
     }
 
+    /*public byte[] invoke(byte[] request) {
+    return invoke(request,false);
+    }*/
+    public byte[] invoke(byte[] request, boolean readOnly) {
+        return invoke(request, ReconfigurationManager.TOM_NORMAL_REQUEST, readOnly);
+    }
+    //******* EDUARDO END **************//
+    
+    
     /**
      * This method sends a request to the replicas, and returns the related reply. This method is
      * thread-safe.
@@ -97,26 +103,26 @@ public class ServiceProxy extends TOMSender {
      * @param readOnly it is a read only request (will not be ordered)
      * @return The reply from the replicas related to request
      */
-    public byte[] invoke(byte[] request, boolean readOnly) {
+    public byte[] invoke(byte[] request, int reqType, boolean readOnly) {
 
         // Ahead lies a critical section.
         // This ensures the thread-safety by means of a semaphore
-        try{
-            this.mutex.acquire();
-        }catch(Exception e){
+        try {
+            this.mutexToSend.acquire();
+        } catch (Exception e) {
             e.printStackTrace();
         }
 
         // Discard previous replies
         Arrays.fill(replies, null);
         response = null;
-
         // Send the request to the replicas, and get its ID
-        doTOMulticast(request,readOnly);
+        doTOMulticast(request, reqType, readOnly);
         reqId = getLastSequenceNumber();
 
         // Critical section ends here. The semaphore can be released
-        this.mutex.release();
+        //NAO PODE LIBERAR O SEMAFORO AQUI
+        //this.mutex.release();
 
         // This instruction blocks the thread, until a response is obtained.
         // The thread will be unblocked when the method replyReceived is invoked
@@ -126,61 +132,111 @@ public class ServiceProxy extends TOMSender {
         } catch (InterruptedException ex) {
             ex.printStackTrace();
         }
+        
+        //******* EDUARDO BEGIN **************//
 
-        return response; // return the response
+        if (reqType == ReconfigurationManager.TOM_NORMAL_REQUEST) {
+            //Reply to a normal request!
+            if (response.getViewID() == getViewManager().getCurrentViewId()) {
+                return response.getContent(); // return the response
+            } else { // if(response.getViewID() > getViewManager().getCurrentViewId()){
+                //updated view received
+                reconfigureTo((View) TOMUtil.getObject(response.getContent()));
+                
+                return invoke(request, reqType, readOnly);
+            }
+        } else {
+            //Reply to a reconfigure request!
+            System.out.println("Recebeu reply para uma reconfigure request!");
+            //É "impossivel" ser menor!
+            if (response.getViewID() > getViewManager().getCurrentViewId()) {
+                Object r = TOMUtil.getObject(response.getContent());
+                if(r instanceof View){ //Não executou esta requisição pq a visao estava desatualizada
+                    reconfigureTo((View) r);
+                    return invoke(request, reqType, readOnly);
+                }else{ //Executou a requisição de reconfiguração
+                    reconfigureTo(((ReconfigureReply)r).getView());
+                    return response.getContent();
+                }
+            }else{
+                //Caso a reconfiguração nao foi executada porque algum parametro
+                // da requisição estava incorreto: o processo queria fazer algo que nao é permitido
+                return response.getContent();
+            }
+        }
+        //******* EDUARDO END **************//
     }
 
+    //******* EDUARDO BEGIN **************//
+    private void reconfigureTo(View v){
+        System.out.println("Recebeu uma visão mais atual!");
+        getViewManager().reconfigureTo(v);
+        replies = new TOMMessage[getViewManager().getCurrentViewN()];
+        getCommunicationSystem().updateConnections();
+    }
+    //******* EDUARDO END **************//
     /**
      * This is the method invoked by the client side comunication system.
      *
      * @param reply The reply delivered by the client side comunication system
      */
     public void replyReceived(TOMMessage reply) {
+        
+        
+        // Ahead lies a critical section.
+        // This ensures the thread-safety by means of a semaphore
+        try {
+            this.mutex.acquire();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        
         int sender = reply.getSender();
-        if(sender >= n) { //ignore messages that don't come from replicas
+        
+         //******* EDUARDO BEGIN **************//
+        int pos = getViewManager().getCurrentViewPos(sender);
+         //******* EDUARDO END **************//
+        
+        if (pos < 0) { //ignore messages that don't come from replicas
             return;
         }
 
-        // Ahead lies a critical section.
-        // This ensures the thread-safety by means of a semaphore
-        try{
-            this.mutex.acquire();
-        }catch(Exception e){
-            e.printStackTrace();
-        }
 
-        if(reply.getSequence() == reqId) { // Is this a reply for the last request sent?
-            replies[sender] = reply;
-
+        //System.out.println("Recebeu reply de "+sender+" pos: "+pos+" reqId:"+reply.getSequence());
+        
+        if (reply.getSequence() == reqId) { // Is this a reply for the last request sent?
+            //System.out.println("Vai contar reply de "+sender+" pos: "+pos+" reqId:"+reqId);
+            replies[pos] = reply;
             // Compare the reply just received, to the others
-            for(int i = 0; i<replies.length; i++) {
-                if(replies[i] != null) {
-                    int sameContent = 1;
-                    byte[] content = replies[i].getContent();
-
-                    for(int j = i+1; j<replies.length; j++) {
-                        if(replies[j] != null && Arrays.equals(replies[j].getContent(),content)) {
-                            sameContent++;
-
-                            // if there are more than f equal replies, this cycle can end
-                            if(sameContent >= f+1) {
-                                break;
-                            }
-                        }
-                    }
-
-                    // Is there already more than f equal replies?
-                    if (sameContent >= f + 1) {
-                        response = content;
-                        reqId = -1;
-                        this.sm.release(); // unblocks the thread that is executing the "invoke" method,
-                                           // so it can deliver the reply to the application
+            int sameContent = 1;
+            for (int i = 0; i < replies.length; i++) {
+                if (i != pos && replies[i] != null && Arrays.equals(replies[i].getContent(), reply.getContent())) {
+                    sameContent++;
+                     //******* EDUARDO BEGIN **************//
+                    if (sameContent >= getViewManager().getCurrentViewF() + 1) {
+                     //******* EDUARDO END **************//
                         break;
                     }
-                }
+                }/*else{
+                    if(i != pos && replies[i] != null){
+                    System.out.println("Resposta diferente......... "+sender);
+                    }
+                }*/
             }
+            
+            //System.out.println("contador "+sameContent);
+            
+             //******* EDUARDO BEGIN **************//
+            // Is there already more than f equal replies?
+            if (sameContent >= getViewManager().getCurrentViewF() + 1) {
+                response = reply;
+                reqId = -1;
+                this.mutexToSend.release();
+                this.sm.release(); // unblocks the thread that is executing the "invoke" method,
+            // so it can deliver the reply to the application
+            }
+            //******* EDUARDO END **************// 
         }
-
         // Critical section ends here. The semaphore can be released
         this.mutex.release();
     }

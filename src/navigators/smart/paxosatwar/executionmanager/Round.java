@@ -1,18 +1,18 @@
 /**
  * Copyright (c) 2007-2009 Alysson Bessani, Eduardo Alchieri, Paulo Sousa, and the authors indicated in the @author tags
- * 
+ *
  * This file is part of SMaRt.
- * 
+ *
  * SMaRt is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * SMaRt is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License along with SMaRt.  If not, see <http://www.gnu.org/licenses/>.
  */
 
@@ -23,6 +23,8 @@ import java.security.SignedObject;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.TreeSet;
+import navigators.smart.reconfiguration.ReconfigurationManager;
+import navigators.smart.tom.core.messages.TOMMessage;
 
 /**
  * This class stands for a round of an execution of a consensus
@@ -45,30 +47,33 @@ public class Round implements Serializable {
     private boolean alreadyRemoved = false; // indicates if this round was removed from its execution
 
     public byte[] propValue = null; // proposed value
-    public Object deserializedPropValue = null; //utility var
+    public TOMMessage[] deserializedPropValue = null; //utility var
     public byte[] propValueHash = null; // proposed value hash
     public SignedObject[] proofs; // proof from other processes
-    
+
+
+    private ReconfigurationManager manager;
+
     /**
      * Creates a new instance of Round for acceptors
      * @param parent Execution to which this round belongs
      * @param number Number of the round
      * @param timeout Timeout duration for this round
      */
-    protected Round(Execution parent, int number, long timeout) {
+    protected Round(ReconfigurationManager manager, Execution parent, int number, long timeout) {
         this.execution = parent;
         this.number = number;
+        this.manager = manager;
+        //ExecutionManager manager = execution.getManager();
 
-        ExecutionManager manager = execution.getManager();
+        this.me = manager.getStaticConf().getProcessId();
 
-        this.me = manager.getProcessId();
-
-        int[] acceptors = manager.getAcceptors();
-        int n = acceptors.length;
+        //int[] acceptors = manager.getAcceptors();
+        int n = manager.getCurrentViewN();
 
         weakSetted = new boolean[n];
         strongSetted = new boolean[n];
-        
+
         Arrays.fill(weakSetted, false);
         Arrays.fill(strongSetted, false);
 
@@ -81,7 +86,7 @@ public class Round implements Serializable {
             Arrays.fill((Object[]) strong, null);
             Arrays.fill((Object[]) decide, null);
         } else {
-            Round previousRound = execution.getRound(number - 1);
+            Round previousRound = execution.getRound(number - 1, manager);
 
             this.weak = previousRound.getWeak();
             this.strong = previousRound.getStrong();
@@ -90,7 +95,7 @@ public class Round implements Serializable {
 
         //define the timeout for this round
         this.timeout = (int) Math.pow(2, number) * timeout;
-        manager.getAcceptor().scheduleTimeout(this);
+        execution.getManager().getAcceptor().scheduleTimeout(this);
     }
 
     /**
@@ -119,8 +124,9 @@ public class Round implements Serializable {
             proofs = new SignedObject[weak.length];
             Arrays.fill((SignedObject[]) proofs, null);
         }
-
-        proofs[acceptor] = proof;
+        //******* EDUARDO BEGIN **************//
+        proofs[this.manager.getCurrentViewPos(acceptor)] = proof;
+        //******* EDUARDO END **************//
     }
 
     /**
@@ -169,7 +175,7 @@ public class Round implements Serializable {
      * @return True if there is a weakly accepted value from a replica, false otherwise
      */
     public boolean isWeakSetted(int acceptor) {
-        return weak[acceptor] != null;
+        return weak[this.manager.getCurrentViewPos(acceptor)] != null;
     }
 
     /**
@@ -178,7 +184,9 @@ public class Round implements Serializable {
      * @return True if there is a strongly accepted value from a replica, false otherwise
      */
     public boolean isStrongSetted(int acceptor) {
-        return strong[acceptor] != null;
+        //******* EDUARDO BEGIN **************//
+        return strong[this.manager.getCurrentViewPos(acceptor)] != null;
+        //******* EDUARDO END **************//
     }
 
     /**
@@ -187,7 +195,9 @@ public class Round implements Serializable {
      * @return True if there is a decided value from a replica, false otherwise
      */
     public boolean isDecideSetted(int acceptor) {
-        return decide[acceptor] != null;
+        //******* EDUARDO BEGIN **************//
+        return decide[this.manager.getCurrentViewPos(acceptor)] != null;
+        //******* EDUARDO END **************//
     }
 
     /**
@@ -196,7 +206,9 @@ public class Round implements Serializable {
      * @return The value weakly accepted from the specified replica
      */
     public byte[] getWeak(int acceptor) {
-        return this.weak[acceptor];
+        //******* EDUARDO BEGIN **************//
+        return this.weak[this.manager.getCurrentViewPos(acceptor)];
+        //******* EDUARDO END **************//
     }
 
     /**
@@ -213,10 +225,13 @@ public class Round implements Serializable {
      * @param value The value weakly accepted from the specified replica
      */
     public void setWeak(int acceptor, byte[] value) { // TODO: Condicao de corrida?
-        if (!weakSetted[acceptor] && !isFrozen()) { //it can only be setted once
-            weak[acceptor] = value;
-            weakSetted[acceptor] = true;
+        //******* EDUARDO BEGIN **************//
+        int p = this.manager.getCurrentViewPos(acceptor);
+        if (!weakSetted[p] && !isFrozen()) { //it can only be setted once
+            weak[p] = value;
+            weakSetted[p] = true;
         }
+        //******* EDUARDO END **************//
     }
 
     /**
@@ -225,7 +240,9 @@ public class Round implements Serializable {
      * @return The value strongly accepted from the specified replica
      */
     public byte[] getStrong(int acceptor) {
-        return strong[acceptor];
+        //******* EDUARDO BEGIN **************//
+        return strong[this.manager.getCurrentViewPos(acceptor)];
+        //******* EDUARDO END **************//
     }
 
     /**
@@ -242,10 +259,13 @@ public class Round implements Serializable {
      * @param value The value strongly accepted from the specified replica
      */
     public void setStrong(int acceptor, byte[] value) { // TODO: condicao de corrida?
-        if (!strongSetted[acceptor] && !isFrozen()) { //it can only be setted once
-            strong[acceptor] = value;
-            strongSetted[acceptor] = true;
+        //******* EDUARDO BEGIN **************//
+        int p = this.manager.getCurrentViewPos(acceptor);
+        if (!strongSetted[p] && !isFrozen()) { //it can only be setted once
+            strong[p] = value;
+            strongSetted[p] = true;
         }
+        //******* EDUARDO END **************//
     }
 
     /**
@@ -254,7 +274,9 @@ public class Round implements Serializable {
      * @return The value decided by the specified replica
      */
     public byte[] getDecide(int acceptor) {
-        return decide[acceptor];
+        //******* EDUARDO BEGIN **************//
+        return decide[this.manager.getCurrentViewPos(acceptor)];
+        //******* EDUARDO END **************//
     }
 
     /**
@@ -271,7 +293,9 @@ public class Round implements Serializable {
      * @param value The value decided by the specified replica
      */
     public void setDecide(int acceptor, byte[] value) {
-        decide[acceptor] = value;
+        //******* EDUARDO BEGIN **************//
+        decide[this.manager.getCurrentViewPos(acceptor)] = value;
+        //******* EDUARDO END **************//
     }
 
     /**

@@ -16,10 +16,12 @@
  * You should have received a copy of the GNU General Public License along with SMaRt.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package navigators.smart.tom.util;
+package navigators.smart.reconfiguration.util;
 
+import navigators.smart.tom.util.Logger;
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.util.StringTokenizer;
 
 public class TOMConfiguration extends Configuration {
 
@@ -38,7 +40,7 @@ public class TOMConfiguration extends Configuration {
     protected boolean decideMessagesEnabled;
     protected boolean verifyTimestamps;
     protected boolean useSenderThread;
-    protected static RSAKeyLoader rsaLoader;
+    protected RSAKeyLoader rsaLoader;
     protected Logger log;
     protected int clientServerCommSystem;
     private int maxMessageSize;
@@ -50,35 +52,11 @@ public class TOMConfiguration extends Configuration {
     private boolean  stateTransferEnabled;
     private int checkpoint_period;
     private int useControlFlow;
-
-    public TOMConfiguration(TOMConfiguration conf, int processId) {
-        super(conf, processId);
-        this.n = conf.n;
-        this.f = conf.f;
-        this.requestTimeout = conf.requestTimeout;
-        this.freezeInitialTimeout = conf.freezeInitialTimeout;
-        this.tomPeriod = conf.tomPeriod;
-        this.paxosHighMark = conf.paxosHighMark;
-        this.revivalHighMark = conf.revivalHighMark;
-        this.replyVerificationTime = conf.replyVerificationTime;
-        this.maxBatchSize = conf.maxBatchSize;
-        this.numberOfNonces = conf.numberOfNonces;
-        this.decideMessagesEnabled = conf.decideMessagesEnabled;
-        this.verifyTimestamps = conf.verifyTimestamps;
-        this.useSenderThread = conf.useSenderThread;
-        this.log = conf.log;
-        this.clientServerCommSystem = conf.clientServerCommSystem;
-        this.numNIOThreads = conf.numNIOThreads;
-        this.commBuffering = conf.commBuffering;
-        this.useMACs = conf.useMACs;
-        this.useSignatures = conf.useSignatures;
-        this.stateTransferEnabled = conf.stateTransferEnabled;
-        this.checkpoint_period = conf.checkpoint_period;
-        this.useControlFlow = conf.useControlFlow;
-        this.inQueueSize = conf.inQueueSize;
-        this.outQueueSize = conf.outQueueSize;
-    }
-
+    
+    
+    private int[] initialView;
+    private int ttpId;
+    
     /** Creates a new instance of TOMConfiguration */
     public TOMConfiguration(int processId) {
         super(processId);
@@ -264,6 +242,25 @@ public class TOMConfiguration extends Configuration {
                 useControlFlow = Integer.parseInt(s);
             }
 
+            s = (String) configs.remove("system.initial.view");
+            if (s == null) {
+                //initialView = new int[4];
+                //initialView[0]=0;initialView[1]=1;initialView[2]=2;initialView[3]=3;
+            } else {
+                 StringTokenizer str = new StringTokenizer(s,",");
+                 initialView = new int[str.countTokens()];
+                 for(int i = 0; i < initialView.length; i++){
+                     initialView[i] = Integer.parseInt(str.nextToken());
+                 }
+            }
+
+            s = (String) configs.remove("system.ttp.id");
+            if (s == null) {
+                ttpId = -1;
+            } else {
+                ttpId = Integer.parseInt(s);
+            }
+            
             s = (String) configs.remove("system.communication.inQueueSize");
             if (s == null) {
                 inQueueSize = 200;
@@ -297,6 +294,18 @@ public class TOMConfiguration extends Configuration {
 
     }
 
+    public boolean isTheTTP(){
+        return (this.getTTPId() == this.getProcessId());
+    }
+    
+    public final int[] getInitialView(){
+        return this.initialView;
+    }
+
+    public int getTTPId() {
+        return ttpId;
+    }
+    
     public int getMaxMessageSize() {
         return maxMessageSize;
     }
@@ -416,7 +425,7 @@ public class TOMConfiguration extends Configuration {
         return useControlFlow;
     }
 
-    public static PublicKey[] getRSAServersPublicKeys() {
+   /* public PublicKey[] getRSAServersPublicKeys() {
         try {
             return rsaLoader.loadServersPublicKeys();
         } catch (Exception e) {
@@ -424,9 +433,9 @@ public class TOMConfiguration extends Configuration {
             return null;
         }
 
-    }
+    }*/
 
-    public static PublicKey getRSAPublicKey(int id) {
+    public PublicKey getRSAPublicKey(int id) {
         try {
             return rsaLoader.loadPublicKey(id);
         } catch (Exception e) {
@@ -436,14 +445,14 @@ public class TOMConfiguration extends Configuration {
 
     }
 
-    public void increasePortNumber() {
+   /* public void increasePortNumber() {
         for (int i = 0; i < getN(); i++) {
             hosts.setPort(i, hosts.getPort(i) + 1);
         }
 
     }
-
-    public static PrivateKey getRSAPrivateKey() {
+*/
+    public PrivateKey getRSAPrivateKey() {
         try {
             return rsaLoader.loadPrivateKey();
         } catch (Exception e) {

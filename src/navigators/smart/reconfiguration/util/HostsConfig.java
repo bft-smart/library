@@ -16,11 +16,14 @@
  * You should have received a copy of the GNU General Public License along with SMaRt.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package navigators.smart.tom.util;
+package navigators.smart.reconfiguration.util;
+import navigators.smart.tom.util.*;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.net.InetSocketAddress;
 import java.util.Hashtable;
+import java.util.Iterator;
+import java.util.Set;
 import java.util.StringTokenizer;
 
 
@@ -70,6 +73,12 @@ public class HostsConfig {
         }
     }
     
+    public void add(int id, String host, int port){
+        if(this.servers.get(id) == null){
+            this.servers.put(id, new Config(id,host,port));
+        }
+    }
+    
     public int getNum(){
         return servers.size();
     }
@@ -82,6 +91,16 @@ public class HostsConfig {
         return null;
     }
     
+    
+    public InetSocketAddress getServerToServerRemoteAddress(int id){
+        Config c = (Config) this.servers.get(id);
+        if(c != null){
+            return new InetSocketAddress(c.host,c.port+1);
+        }
+        return null;
+    }
+    
+    
     public int getPort(int id){
         Config c = (Config) this.servers.get(id);
         if(c != null){
@@ -90,6 +109,29 @@ public class HostsConfig {
         return -1;
     }
 
+     public int getServerToServerPort(int id){
+        Config c = (Config) this.servers.get(id);
+        if(c != null){
+            return c.port+1;
+        }
+        return -1;
+    }
+
+    
+    
+    public int[] getHostsIds(){
+         Set s = this.servers.keySet();
+         int[] ret = new int[s.size()];
+         Iterator it = s.iterator();
+         int p = 0;
+         while(it.hasNext()){
+            ret[p] = Integer.parseInt(it.next().toString());
+            p++;
+         }
+         return ret;
+    }
+    
+    
     public void setPort(int id, int port){
         Config c = (Config) this.servers.get(id);
         if(c != null){

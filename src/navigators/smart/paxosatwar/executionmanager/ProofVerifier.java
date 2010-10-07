@@ -1,18 +1,18 @@
 /**
  * Copyright (c) 2007-2009 Alysson Bessani, Eduardo Alchieri, Paulo Sousa, and the authors indicated in the @author tags
- * 
+ *
  * This file is part of SMaRt.
- * 
+ *
  * SMaRt is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * SMaRt is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License along with SMaRt.  If not, see <http://www.gnu.org/licenses/>.
  */
 
@@ -30,34 +30,40 @@ import java.util.LinkedList;
 
 import navigators.smart.paxosatwar.messages.CollectProof;
 import navigators.smart.paxosatwar.messages.FreezeProof;
+import navigators.smart.reconfiguration.ReconfigurationManager;
 import navigators.smart.tom.core.timer.messages.RTCollect;
-import navigators.smart.tom.util.TOMConfiguration;
 
 
 /**
- * This class is used to process data relacioned with freezed rounds. 
+ * This class is used to process data relacioned with freezed rounds.
  * Generate proposes - good values, verify the proposed values and so on...
  */
 public class ProofVerifier {
 
-    private int quorumF; // f replicas
-    private int quorumStrong; // (n + f) / 2 replicas
-    private int numberOfNonces; // Ammount of nonces that have to be delivered to the application
-    private PublicKey[] publickeys; // public keys of the replicas
+    //******* EDUARDO BEGIN: tudo isso deve ser acessado a partir do ReconvigurationManager **************//
+    //private int numberOfNonces; // Ammount of nonces that have to be delivered to the application
+    //private PublicKey[] publickeys; // public keys of the replicas
+    //******* EDUARDO END **************//
+
     private PrivateKey prk = null; // private key for this replica
     private Signature engine; // Signature engine
+
+    private ReconfigurationManager manager;
 
     /**
      * Creates a new instance of ProofVerifier
      * @param conf TOM configuration
      */
-    public ProofVerifier(TOMConfiguration conf) {
-        this.quorumF = conf.getF();
-        this.quorumStrong = (int) ((conf.getN() + quorumF) / 2);
-        this.numberOfNonces = conf.getNumberOfNonces();
+    public ProofVerifier(ReconfigurationManager manager) {
 
-        this.publickeys = TOMConfiguration.getRSAServersPublicKeys();
-        this.prk = TOMConfiguration.getRSAPrivateKey();
+        //******* EDUARDO BEGIN **************//
+        //this.quorumF = conf.getF();
+        //this.quorumStrong = (int) ((conf.getN() + quorumF) / 2);
+        //this.numberOfNonces = manager.getStaticConf().getNumberOfNonces();
+        this.manager = manager;
+        this.prk = manager.getStaticConf().getRSAPrivateKey();
+        //******* EDUARDO END **************//
+
         try {
             this.engine = Signature.getInstance("SHA1withRSA");
         } catch (Exception e) {
@@ -209,7 +215,9 @@ public class ProofVerifier {
                         }
                     }
                 }
-                if (c > quorumF) {
+                //******* EDUARDO BEGIN: nova forma de acessar o f **************//
+                if (c > this.manager.getQuorumF()) {
+                //******* EDUARDO END **************//
                     return r;
                 }
             }
@@ -253,7 +261,7 @@ public class ProofVerifier {
         } catch (Exception e) {
             e.printStackTrace();
         }
-        
+
         return valid.toArray(new CollectProof[0]);
     }
 
@@ -265,7 +273,10 @@ public class ProofVerifier {
      */
     public boolean validSignature(SignedObject so, int sender) {
         try {
-            return so.verify(this.publickeys[sender], engine);
+            //return so.verify(this.publickeys[sender], engine);
+            //******* EDUARDO BEGIN **************//
+            return so.verify(this.manager.getStaticConf().getRSAPublicKey(sender), engine);
+            //******* EDUARDO END **************//
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -288,7 +299,9 @@ public class ProofVerifier {
                 c++;
             }
         }
-        return c > quorumF;
+        //******* EDUARDO BEGIN **************//
+        return c > this.manager.getCurrentViewF();
+        //******* EDUARDO END **************//
     }
 
    /**
@@ -322,7 +335,10 @@ public class ProofVerifier {
                     }
                 }
 
-                if ((countW > quorumStrong || countS > quorumF) && !poss.contains(w)) {
+                //******* EDUARDO BEGIN **************//
+                if ((countW > manager.getQuorumStrong() || countS > manager.getQuorumF())
+                //******* EDUARDO END **************//
+                        && !poss.contains(w)) {
                     poss.add(w);
                 }
             }
@@ -357,8 +373,9 @@ public class ProofVerifier {
                         count++;
                     }
                 }
-
-                if (count > quorumF && !acc.contains(w)) {
+                //******* EDUARDO BEGIN **************//
+                if (count > manager.getQuorumF() && !acc.contains(w)) {
+                //******* EDUARDO END **************//
                     acc.add(w);
                 }
             }

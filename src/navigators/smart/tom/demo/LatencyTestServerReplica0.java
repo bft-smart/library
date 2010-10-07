@@ -22,9 +22,10 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import navigators.smart.communication.ServerCommunicationSystem;
+import navigators.smart.reconfiguration.ReconfigurationManager;
 import navigators.smart.tom.TOMReceiver;
 import navigators.smart.tom.core.messages.TOMMessage;
-import navigators.smart.tom.util.TOMConfiguration;
+
 
 
 public class LatencyTestServerReplica0 extends TOMReceiver {
@@ -39,17 +40,17 @@ public class LatencyTestServerReplica0 extends TOMReceiver {
 
     public void run(){
         //create the configuration object
-        TOMConfiguration conf = new TOMConfiguration(id);
+        ReconfigurationManager manager = new ReconfigurationManager(id);
         try {
             //create the communication system
-            cs = new ServerCommunicationSystem(conf);
+            cs = new ServerCommunicationSystem(manager,null);
         } catch (Exception ex) {
             Logger.getLogger(LatencyTestServer.class.getName()).log(Level.SEVERE, null, ex);
             throw new RuntimeException("Unable to build a communication system.");
         }
         //build the TOM server stack
 
-        this.init(cs,conf);
+        this.init(cs,manager);
         /**IST OE CODIGO DO JOAO, PARA TENTAR RESOLVER UM BUG */
         cs.start();
         /******************************************************/
@@ -57,7 +58,7 @@ public class LatencyTestServerReplica0 extends TOMReceiver {
 
     public void receiveOrderedMessage(TOMMessage msg){
         TOMMessage reply = new TOMMessage(id,msg.getSequence(),
-                msg.getContent());
+                msg.getContent(),msg.getViewID());
 
 //        //Logger.println("request received: "+msg.getSender()+
 //                ","+msg.getSequence());
@@ -78,7 +79,7 @@ public class LatencyTestServerReplica0 extends TOMReceiver {
     }
     
     public byte[] getState() {
-        return null;
+        return new byte[1];
     }
 
     public void setState(byte[] state) {

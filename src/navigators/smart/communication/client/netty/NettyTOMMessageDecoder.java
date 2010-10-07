@@ -1,18 +1,18 @@
 /**
  * Copyright (c) 2007-2009 Alysson Bessani, Eduardo Alchieri, Paulo Sousa, and the authors indicated in the @author tags
- * 
+ *
  * This file is part of SMaRt.
- * 
+ *
  * SMaRt is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * SMaRt is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License along with SMaRt.  If not, see <http://www.gnu.org/licenses/>.
  */
 
@@ -36,9 +36,9 @@ import java.util.logging.Logger;
 import javax.crypto.Mac;
 import javax.crypto.SecretKey;
 
+import navigators.smart.reconfiguration.ViewManager;
 import navigators.smart.tom.core.messages.TOMMessage;
-import navigators.smart.tom.util.Configuration;
-import navigators.smart.tom.util.TOMConfiguration;
+
 
 import org.jboss.netty.buffer.ChannelBuffer;
 import org.jboss.netty.channel.Channel;
@@ -66,24 +66,28 @@ public class NettyTOMMessageDecoder extends FrameDecoder {
     //private Storage st;
     private int macSize;
     private int signatureSize;
-    private Configuration conf;
+    private ViewManager manager;
     private boolean firstTime;
     private ReentrantReadWriteLock rl;
-    private long numReceivedMsgs = 0;
-    private long lastMeasurementStart = 0;
-    private long max=0;
-    private Signature signatureEngine;
+
+    //******* EDUARDO BEGIN: comentei algumas variaveis que nao estavam sendo usadas **************//
+    //private long numReceivedMsgs = 0;
+    //private long lastMeasurementStart = 0;
+    //private long max=0;
     //private Storage st;
-    private int count = 0;
+    //private int count = 0;
+    //******* EDUARDO END **************//
+
+    private Signature signatureEngine;
     private boolean useMAC;
-    
-    public NettyTOMMessageDecoder(boolean isClient, Hashtable sessionTable, SecretKey authKey, int macLength, Configuration conf, ReentrantReadWriteLock rl, int signatureLength, boolean useMAC){
+
+    public NettyTOMMessageDecoder(boolean isClient, Hashtable sessionTable, SecretKey authKey, int macLength, ViewManager manager, ReentrantReadWriteLock rl, int signatureLength, boolean useMAC){
         this.isClient = isClient;
         this.sessionTable = sessionTable;
         this.authKey = authKey;
         //this.st = new Storage(benchmarkPeriod);
         this.macSize = macLength;
-        this.conf = conf;
+        this.manager = manager;
         this.firstTime = true;
         this. rl = rl;
         this.signatureSize = signatureLength;
@@ -120,21 +124,21 @@ public class NettyTOMMessageDecoder extends FrameDecoder {
         byte signed = buffer.readByte();
 
         int authLength = 0;
- 
+
         if (signed==1)
             authLength += signatureSize;
         if (useMAC)
             authLength += macSize;
-        
+
         byte[] data = new byte[totalLength-authLength];
-        buffer.readBytes(data);        
-        
+        buffer.readBytes(data);
+
         byte[] digest = null;
         if (useMAC){
             digest = new byte[macSize];
             buffer.readBytes(digest);
         }
-        
+
         byte[] signature = null;
         if (signed==1){
             signature = new byte[signatureSize];
@@ -164,7 +168,7 @@ public class NettyTOMMessageDecoder extends FrameDecoder {
             }
             if (useMAC)
                 sm.serializedMessageMAC = digest;
-            
+
             if (isClient){
                 //verify MAC
                 if (useMAC) {
@@ -174,11 +178,11 @@ public class NettyTOMMessageDecoder extends FrameDecoder {
                     }
                 }
                 /*
-                if (signed==1){                    
+                if (signed==1){
                     if (!verifySignature(sm.getSender(), data, signature)){
                         Logger.getLogger(NettyTOMMessageDecoder.class.getName()).log(Level.WARNING, "Signature error: message discarded");
                         return null;
-                    }                    
+                    }
                 }
                  */
             }
@@ -204,7 +208,7 @@ public class NettyTOMMessageDecoder extends FrameDecoder {
                          */
                     }
 /*
-                    numReceivedMsgs++;                    
+                    numReceivedMsgs++;
                     if (numReceivedMsgs == 1) {
                         lastMeasurementStart = System.currentTimeMillis();
                     } else if (numReceivedMsgs==BENCHMARK_PERIOD) {
@@ -212,7 +216,7 @@ public class NettyTOMMessageDecoder extends FrameDecoder {
                         double opsPerSec_ = ((double)BENCHMARK_PERIOD)/(elapsedTime/1000.0);
                         long opsPerSec = Math.round(opsPerSec_);
                         if (opsPerSec>max)
-                            max = opsPerSec;                      
+                            max = opsPerSec;
                         br.ufsc.das.tom.util.Logger.println("(Netty decoder) (from: "+sm.getSender()+") Last "+BENCHMARK_PERIOD+" messages were received at a rate of " + opsPerSec + " msgs per second");
                         br.ufsc.das.tom.util.Logger.println("(Netty decoder) (from: "+sm.getSender()+") Maximum throughput until now: " + max + " msgs per second");
                         numReceivedMsgs = 0;
@@ -224,11 +228,15 @@ public class NettyTOMMessageDecoder extends FrameDecoder {
                     //creates MAC/publick key stuff if it's the first message received from the client
                     navigators.smart.tom.util.Logger.println("Creating MAC/public key stuff, first message from client"+sm.getSender());
                     navigators.smart.tom.util.Logger.println("sessionTable size="+sessionTable.size());
-                    Mac macSend = Mac.getInstance(conf.getHmacAlgorithm());
+
+                    //******* EDUARDO BEGIN **************//
+                    Mac macSend = Mac.getInstance(manager.getStaticConf().getHmacAlgorithm());
                     macSend.init(authKey);
-                    Mac macReceive = Mac.getInstance(conf.getHmacAlgorithm());
+                    Mac macReceive = Mac.getInstance(manager.getStaticConf().getHmacAlgorithm());
                     macReceive.init(authKey);
-                    NettyClientServerSession cs = new NettyClientServerSession(channel,macSend,macReceive,sm.getSender(),TOMConfiguration.getRSAPublicKey(sm.getSender()), new ReentrantLock());
+                    NettyClientServerSession cs = new NettyClientServerSession(channel,macSend,macReceive,sm.getSender(),manager.getStaticConf().getRSAPublicKey(sm.getSender()), new ReentrantLock());
+                    //******* EDUARDO END **************//
+
                     rl.writeLock().lock();
                     sessionTable.put(sm.getSender(), cs);
                     System.out.println("#active clients "+sessionTable.size());
@@ -270,7 +278,7 @@ public class NettyTOMMessageDecoder extends FrameDecoder {
             clientLock.lock();
         }
              */
-           
+
         return sm;
     }
         catch (InvalidKeyException ex) {
@@ -284,7 +292,7 @@ public class NettyTOMMessageDecoder extends FrameDecoder {
         }
         return null;
     }
-     
+
      boolean verifyMAC(int id, byte[] data, byte[] digest){
         //long startInstant = System.nanoTime();
         rl.readLock().lock();
@@ -319,7 +327,7 @@ public class NettyTOMMessageDecoder extends FrameDecoder {
         long startTime = System.nanoTime();
         try {
             if (signatureEngine == null) {
-                signatureEngine = Signature.getInstance("SHA1withRSA");                
+                signatureEngine = Signature.getInstance("SHA1withRSA");
             }
 
             signatureEngine.initVerify(key);

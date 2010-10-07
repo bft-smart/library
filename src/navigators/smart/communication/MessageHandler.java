@@ -1,18 +1,18 @@
 /**
  * Copyright (c) 2007-2009 Alysson Bessani, Eduardo Alchieri, Paulo Sousa, and the authors indicated in the @author tags
- * 
+ *
  * This file is part of SMaRt.
- * 
+ *
  * SMaRt is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * SMaRt is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License along with SMaRt.  If not, see <http://www.gnu.org/licenses/>.
  */
 
@@ -24,8 +24,7 @@ import static navigators.smart.communication.ServerCommunicationSystem.TOM_REPLY
 import static navigators.smart.communication.ServerCommunicationSystem.TOM_REQUEST_MSG;
 import static navigators.smart.paxosatwar.messages.MessageFactory.COLLECT;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
+
 import java.io.ObjectOutputStream;
 
 import navigators.smart.paxosatwar.messages.PaxosMessage;
@@ -50,7 +49,7 @@ public class MessageHandler {
     private Proposer proposer;
     private Acceptor acceptor;
     private TOMLayer tomLayer;
-   
+
     public void setProposer(Proposer proposer) {
         this.proposer = proposer;
     }
@@ -107,7 +106,9 @@ public class MessageHandler {
         }
     }
 
-    public byte[] getData(SystemMessage msg) {
+    //******* EDUARDO BEGIN **************//
+    //Nao estava sendo usado pra nada!
+   /* public byte[] getData(SystemMessage msg) {
         ByteArrayOutputStream bOut = new ByteArrayOutputStream();
 
         try {
@@ -119,7 +120,9 @@ public class MessageHandler {
         }
 
         return bOut.toByteArray();
-    }
+    }*/
+    //******* EDUARDO END **************//
+
 
     //utility methods to convert PaxosMessages to bytes and vice-versa
     private void getBytes(PaxosMessage msg, ObjectOutputStream obOut) throws Exception {
