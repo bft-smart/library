@@ -153,7 +153,8 @@ public class DeliveryThread extends Thread {
                         }
                     } else {
                         this.tomLayer.getCommunication().send(new int[]{requests[i].getSender()},
-                                new TOMMessage(this.manager.getStaticConf().getProcessId(), requests[i].getSequence(),
+                                new TOMMessage(this.manager.getStaticConf().getProcessId(),
+                                requests[i].getSession(), requests[i].getSequence(),
                                 TOMUtil.getBytes(this.manager.getCurrentView()), this.manager.getCurrentViewId()));
                     }
                     
@@ -177,7 +178,8 @@ public class DeliveryThread extends Thread {
                     for (int i = 0; i < dests.length; i++) {
                         //System.out.println("Entrou aqui 2");
                         this.tomLayer.getCommunication().send(new int[]{dests[i].getSender()},
-                                new TOMMessage(this.manager.getStaticConf().getProcessId(), dests[i].getSequence(),
+                                new TOMMessage(this.manager.getStaticConf().getProcessId(), 
+                                dests[i].getSession(), dests[i].getSequence(),
                                 response, this.manager.getCurrentViewId()));
 
                     }
@@ -371,7 +373,8 @@ public class DeliveryThread extends Thread {
                         }
                     } else {
                         this.tomLayer.getCommunication().send(new int[]{requests[i].getSender()},
-                                new TOMMessage(this.manager.getStaticConf().getProcessId(), requests[i].getSequence(),
+                                new TOMMessage(this.manager.getStaticConf().getProcessId(),
+                                requests[i].getSession(), requests[i].getSequence(),
                                 TOMUtil.getBytes(this.manager.getCurrentView()), this.manager.getCurrentViewId()));
                     }
                     
@@ -393,8 +396,8 @@ public class DeliveryThread extends Thread {
                     for (int i = 0; i < dests.length; i++) {
                         //System.out.println("Entrou aqui 2");
                         this.tomLayer.getCommunication().send(new int[]{dests[i].getSender()},
-                                new TOMMessage(this.manager.getStaticConf().getProcessId(), dests[i].getSequence(),
-                                response, this.manager.getCurrentViewId()));
+                                new TOMMessage(this.manager.getStaticConf().getProcessId(), dests[i].getSession(),
+                                dests[i].getSequence(), response, this.manager.getCurrentViewId()));
 
                     }
                     

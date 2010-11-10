@@ -244,8 +244,10 @@ public class TOMConfiguration extends Configuration {
 
             s = (String) configs.remove("system.initial.view");
             if (s == null) {
-                //initialView = new int[4];
-                //initialView[0]=0;initialView[1]=1;initialView[2]=2;initialView[3]=3;
+                initialView = new int[n];
+                for(int i=0; i<n; i++) {
+                     initialView[i] = i;
+                }
             } else {
                  StringTokenizer str = new StringTokenizer(s,",");
                  initialView = new int[str.countTokens()];

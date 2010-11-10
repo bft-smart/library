@@ -18,6 +18,7 @@
 
 package navigators.smart.tom.demo;
 
+import java.util.Random;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -32,10 +33,12 @@ public class LatencyTestServerReplica0 extends TOMReceiver {
 
     private ServerCommunicationSystem cs;
     private int id;
+    private int session;
 
     /** Creates a new instance of TOMServerPerformanceTest */
     public LatencyTestServerReplica0(int id) {
         this.id = id;
+        this.session = new Random().nextInt();
     }
 
     public void run(){
@@ -56,8 +59,9 @@ public class LatencyTestServerReplica0 extends TOMReceiver {
         /******************************************************/
     }
 
+    @Override
     public void receiveOrderedMessage(TOMMessage msg){
-        TOMMessage reply = new TOMMessage(id,msg.getSequence(),
+        TOMMessage reply = new TOMMessage(id,session,msg.getSequence(),
                 msg.getContent(),msg.getViewID());
 
 //        //Logger.println("request received: "+msg.getSender()+
@@ -78,14 +82,17 @@ public class LatencyTestServerReplica0 extends TOMReceiver {
         new LatencyTestServerReplica0(0).run();
     }
     
+    @Override
     public byte[] getState() {
         return new byte[1];
     }
 
+    @Override
     public void setState(byte[] state) {
 
     }
 
+    @Override
     public void receiveMessage(TOMMessage msg) {
         throw new UnsupportedOperationException("Not supported yet.");
     }

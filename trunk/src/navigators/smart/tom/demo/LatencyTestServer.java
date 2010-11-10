@@ -18,6 +18,7 @@
 
 package navigators.smart.tom.demo;
 
+import java.util.Random;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -32,10 +33,12 @@ public class LatencyTestServer extends TOMReceiver {
     
     private ServerCommunicationSystem cs;
     private int id;
+    private int session;
     
     /** Creates a new instance of TOMServerPerformanceTest */
     public LatencyTestServer(int id) {
         this.id = id;
+        this.session = new Random().nextInt();
     }
     
     public void run(){
@@ -57,7 +60,7 @@ public class LatencyTestServer extends TOMReceiver {
     }
     
     public void receiveOrderedMessage(TOMMessage msg){
-        TOMMessage reply = new TOMMessage(id,msg.getSequence(),
+        TOMMessage reply = new TOMMessage(id,session,msg.getSequence(),
                 msg.getContent(),msg.getViewID());
 
 //        //Logger.println("request received: "+msg.getSender()+
@@ -66,8 +69,9 @@ public class LatencyTestServer extends TOMReceiver {
         cs.send(new int[]{msg.getSender()},reply);
     }
     
+    @Override
     public void receiveMessage(TOMMessage msg) {
-        TOMMessage reply = new TOMMessage(id,msg.getSequence(),
+        TOMMessage reply = new TOMMessage(id,session,msg.getSequence(),
                 msg.getContent(),msg.getViewID());
 
 //        //Logger.println("request received: "+msg.getSender()+
@@ -76,6 +80,7 @@ public class LatencyTestServer extends TOMReceiver {
         cs.send(new int[]{msg.getSender()},reply);
     }
 
+    @Override
     public byte[] getState() {
         return new byte[1];
     }

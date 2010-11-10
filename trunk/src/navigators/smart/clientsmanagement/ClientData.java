@@ -32,6 +32,8 @@ public class ClientData {
     private int clientId;
     //private PublicKey publicKey = null;
 
+    private int session = -1;
+
     private int lastMessageReceived = -1;
     private long lastMessageReceivedTime = 0;
 
@@ -54,6 +56,14 @@ public class ClientData {
 
     public int getClientId() {
         return clientId;
+    }
+
+    public int getSession() {
+        return session;
+    }
+
+    public void setSession(int session) {
+        this.session = session;
     }
 
     public PendingRequests getPendingRequests() {

@@ -68,7 +68,7 @@ public class ThroughputTestClient extends TOMSender implements Runnable {
         
         //LinkedList<TOMMessage> generatedMessages = null;
         try {
-            System.out.println("(" + currentId + ") A dormir 10 segundos ah espera dos outros clientes");
+            System.out.println("(" + currentId + ") Let's sleep 10 seconds to wait for (possible) other clients");
             Thread.sleep(10000);
             /*
             if (conf.getUseSignatures()==1){
@@ -92,7 +92,6 @@ public class ThroughputTestClient extends TOMSender implements Runnable {
                 System.out.println("Sending requests ...");
                 long startTimeInstant = System.currentTimeMillis();
                 for (int i = 0; i < exec; i++) {
-              //      if (conf.getUseSignatures()==0){
                         int currId = currentId;
                         byte[] command = new byte[4 + argSize];
                         ByteArrayOutputStream out = new ByteArrayOutputStream(4);
@@ -103,10 +102,6 @@ public class ThroughputTestClient extends TOMSender implements Runnable {
                         }
                         System.arraycopy(out.toByteArray(), 0, command, 0, 4);
                         this.TOMulticast(command);
-                //    }
-                //    else {
-                //        this.doTOMulticast(generatedMessages.get(i));
-                //    }
                     if ((i!=0) && ((i % 1000) == 0)) {
                         long elapsedTime = System.currentTimeMillis() - startTimeInstant;
                         double opsPerSec_ = ((double)1000)/(((double)elapsedTime/1000));

@@ -216,10 +216,6 @@ public class ClientsManager {
     public boolean requestReceived(TOMMessage request, boolean fromClient, boolean storeMessage) {
         request.receptionTime = System.currentTimeMillis();
 
-
-
-
-
         int clientId = request.getSender();
         boolean accounted = false;
 
@@ -231,45 +227,43 @@ public class ClientsManager {
         /******* BEGIN CLIENTDATA CRITICAL SECTION ******/
         //Logger.println("(ClientsManager.requestReceived) lock for client "+clientData.getClientId()+" acquired");
 
-        /*
-        //for dealing with restarted clients
-        if ((request.getSequence() == 0) &&
-                (request.receptionTime - clientData.getLastMessageReceivedTime() >
-                conf.getReplyVerificationTime())) {
-            System.out.println("Start accounting messages for client "+clientId);
-            clientData.setLastMessageReceived(-1);
-        }
-        */
-
-/* ################################################ */
+        /* ################################################ */
         //pjsousa: simple flow control mechanism to avoid out of memory exception
-        if (manager.getStaticConf().getUseControlFlow()!=0){
-            if (fromClient && (clientData.getPendingRequests().size()>manager.getStaticConf().getUseControlFlow())){
-                //clients should not have more than 1000 outstanding messages, otherwise they will be dropped
+        if (fromClient && (manager.getStaticConf().getUseControlFlow()!=0)){
+            if (clientData.getPendingRequests().size() > manager.getStaticConf().getUseControlFlow()){
+                //clients should not have more than defined in the config file
+                //outstanding messages, otherwise they will be dropped.
+                //just account for the message reception
                 clientData.setLastMessageReceived(request.getSequence());
                 clientData.setLastMessageReceivedTime(request.receptionTime);
+
                 clientData.clientLock.unlock();
-                accounted = false;
-                return accounted;
+                return false;
             }
         }
-/* ################################################ */
+        /* ################################################ */
 
-        if ((clientData.getLastMessageReceived()==-1) || (clientData.getLastMessageReceived() + 1 == request.getSequence()) || ((request.getSequence()>clientData.getLastMessageReceived()) && !fromClient)) {
+        //new session... just reset the client counter
+        if(clientData.getSession() != request.getSession()) {
+            clientData.setSession(request.getSession());
+            clientData.setLastMessageReceived(-1);
+        }
+
+        if ((clientData.getLastMessageReceived()==-1) || //first message received or new session (see above)
+             (clientData.getLastMessageReceived() + 1 == request.getSequence()) || //message received is the expected
+             ((request.getSequence()>clientData.getLastMessageReceived()) && !fromClient)) {
 
             //it is a new message and I have to verify it's signature
-            if (!request.signed || clientData.verifySignature(
-                    request.serializedMessage,
-                    request.serializedMessageSignature)) {
-                //I don't have the message but it is correctly signed, I will
+            if (!request.signed ||
+                 clientData.verifySignature(request.serializedMessage,
+                                                     request.serializedMessageSignature)) {
+
+                //I don't have the message but it is valid, I will
                 //insert it in the pending requests of this client
                 if(storeMessage) {
                     clientData.getPendingRequests().add(request);
-                    /*
-                    if (request.getSequence()%1000 == 0)
-                        Logger.println("(ClientsManager.requestReceived) client "+clientId+ " pending requests size: "+clientData.getPendingRequests().size());
-                     */
                 }
+
                 clientData.setLastMessageReceived(request.getSequence());
                 clientData.setLastMessageReceivedTime(request.receptionTime);
 
@@ -280,18 +274,13 @@ public class ClientsManager {
 
                 accounted = true;
             }
-        } else {//I will not put this message on the pending requests list
-
+        } else {
+            //I will not put this message on the pending requests list
             if (clientData.getLastMessageReceived() >= request.getSequence()) {
                 //I already have/had this message
                 accounted = true;
             } else {
-                //it is an invalid message if it's being sent by a client (sequence number > last received + 1)
-                /*
-                Logger.println("Ignoring message "+request+" from client "+
-                        clientData.getClientId()+"(last received = "+
-                        clientData.getLastMessageReceived()+"), msg sent by client? "+fromClient);
-                 **/
+                //a too forward message... the client must be malicious
                 accounted = false;
             }
         }
