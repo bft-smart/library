@@ -17,10 +17,7 @@ public class View implements Serializable {
     private int id;
     private int f;
     private int[] processes;
-    
-    
-    
-    
+        
     public View(int id, int[] processes, int f){
         this.id = id;
         this.processes = processes;

@@ -179,6 +179,7 @@ public abstract class ServiceReplica extends TOMReceiver implements Runnable {
     /**
      * This method runs the replica code
      */
+    @Override
     public void run() {
         //******* EDUARDO BEGIN **************//
         if (this.startState != null) {
@@ -213,8 +214,8 @@ public abstract class ServiceReplica extends TOMReceiver implements Runnable {
             }
             /********************************************************/
             // send reply to the client
-            cs.send(new int[]{msg.getSender()}, new TOMMessage(id, msg.getSequence(),
-                    response, this.reconfManager.getCurrentViewId()));
+            cs.send(new int[]{msg.getSender()}, new TOMMessage(id, msg.getSession(),
+                    msg.getSequence(), response, this.reconfManager.getCurrentViewId()));
         }
     }
 
@@ -223,6 +224,7 @@ public abstract class ServiceReplica extends TOMReceiver implements Runnable {
      *
      * @param msg The request delivered by the TOM layer
      */
+    @Override
     public void receiveOrderedMessage(TOMMessage msg) {
         requestQueue.add(msg);
     }
@@ -232,6 +234,7 @@ public abstract class ServiceReplica extends TOMReceiver implements Runnable {
      *
      * @param msg The request delivered by the TOM layer
      */
+    @Override
     public void receiveMessage(TOMMessage msg) {
         requestQueue.add(msg);
     }
@@ -239,6 +242,7 @@ public abstract class ServiceReplica extends TOMReceiver implements Runnable {
     private ReentrantLock stateLock = new ReentrantLock();
     private Condition stateCondition = stateLock.newCondition();
 
+    @Override
     public byte[] getState() {
         stateLock.lock();
         while (!requestQueue.isEmpty()) {
@@ -255,6 +259,7 @@ public abstract class ServiceReplica extends TOMReceiver implements Runnable {
 
     protected abstract byte[] serializeState();
 
+    @Override
     public void setState(byte[] state) {
         stateLock.lock();
         while (!requestQueue.isEmpty()) {

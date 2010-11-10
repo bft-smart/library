@@ -23,6 +23,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.util.Random;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -38,6 +39,7 @@ public class ThroughputLatencyTestServer extends TOMReceiver {
     
     private ServerCommunicationSystem cs;
     private int id;
+    private int session;
     private int interval;
     private long numDecides=0;
     private long lastDecideTimeInstant;
@@ -54,6 +56,7 @@ public class ThroughputLatencyTestServer extends TOMReceiver {
     
     public ThroughputLatencyTestServer(int id, int interval, int averageIterations) {
         this.id = id;
+        this.session = new Random().nextInt();
         this.interval = interval;
         this.totalOps = 0;
         this.averageIterations = averageIterations;
@@ -86,6 +89,7 @@ public class ThroughputLatencyTestServer extends TOMReceiver {
         /******************************************************/
     }
     
+    @Override
     public void receiveOrderedMessage(TOMMessage msg){
         long receiveInstant =  System.currentTimeMillis();          
 
@@ -115,14 +119,14 @@ public class ThroughputLatencyTestServer extends TOMReceiver {
                 Logger.getLogger(ThroughputLatencyTestServer.class.getName()).log(Level.SEVERE, null, ex);
             }
             System.arraycopy(out.toByteArray(), 0, command, 0, 12);
-            TOMMessage reply = new TOMMessage(id,msg.getSequence(),
+            TOMMessage reply = new TOMMessage(id,session,msg.getSequence(),
                     command,msg.getViewID());
             cs.send(new int[]{msg.getSender()},reply);
         }
         else {
             //echo msg to client
             //System.out.println("Echoing msg to client");
-            TOMMessage reply = new TOMMessage(id,msg.getSequence(),
+            TOMMessage reply = new TOMMessage(id,session,msg.getSequence(),
                     msg.getContent(),msg.getViewID());
             cs.send(new int[]{msg.getSender()},reply);
         }
@@ -182,14 +186,17 @@ public class ThroughputLatencyTestServer extends TOMReceiver {
         new ThroughputLatencyTestServer(Integer.parseInt(args[0]),Integer.parseInt(args[1]),Integer.parseInt(args[2])).run();
     }
     
+    @Override
     public byte[] getState() {
         return new byte[1];
     }
 
+    @Override
     public void setState(byte[] state) {
 
     }
 
+    @Override
     public void receiveMessage(TOMMessage msg) {
         throw new UnsupportedOperationException("Not supported yet.");
     }
