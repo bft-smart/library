@@ -77,7 +77,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
     public LeaderModule lm; // Leader module
     public Acceptor acceptor; // Acceptor role of the PaW algorithm
     private ServerCommunicationSystem communication; // Communication system between replicas
-    private OutOfContextMessageThread ot; // Thread which manages messages that do not belong to the current execution
+    //private OutOfContextMessageThread ot; // Thread which manages messages that do not belong to the current execution
     private DeliveryThread dt; // Thread which delivers total ordered messages to the appication
     
     /** Manage timers for pending requests */
@@ -162,8 +162,8 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             e.printStackTrace(System.out);
         }
 
-        this.ot = new OutOfContextMessageThread(this); // Create out of context thread
-        this.ot.start();
+        //this.ot = new OutOfContextMessageThread(this); // Create out of context thread
+        //this.ot.start();
 
         this.dt = new DeliveryThread(this, receiver, this.reconfManager); // Create delivery thread
         this.dt.start();
@@ -1257,7 +1257,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
                         //System.out.println("Bloqueei o lock entre esta thread e a delivery thread");
 
-                        ot.OutOfContextLock();
+                        //ot.OutOfContextLock();
 
                         //System.out.println("Bloqueei o lock entre esta thread e a out of context thread");
 
@@ -1266,10 +1266,11 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                         //System.out.println("Ja nao estou a espera de nenhum estado, e vou actualizar-me");
 
                         dt.update(state);
+                        processOutOfContext();
 
                         dt.canDeliver();
 
-                        ot.OutOfContextUnlock();
+                        //ot.OutOfContextUnlock();
                         dt.deliverUnlock();
                     
                         stateManager.emptyStates();
@@ -1321,4 +1322,24 @@ public final class TOMLayer extends Thread implements RequestReceiver {
     }
 
     /********************************************************/
+
+    /* ISTO SAO MAIS COISAS DO JOAO, PARA RETIRAR A THREAD OUTOFCONTEXT */
+    public void processOutOfContext() {
+
+        Execution execution = null;
+
+        while (true) {
+
+            int nextExecution = getLastExec() + 1;
+            if (execManager.thereArePendentMessages(nextExecution)) {
+                System.out.println("Estou a processar mensagens de out of context!");
+
+                Logger.println("(TOMLayer.processOutOfContext) starting processing out of context messages for consensus " + nextExecution);
+                execution = execManager.getExecution(nextExecution);
+                Logger.println("(TOMLayer.processOutOfContext) finished processing out fo context messages for consensus " + nextExecution);
+            }
+            else break;
+        }
+    }
+    /********************************************************************/
 }

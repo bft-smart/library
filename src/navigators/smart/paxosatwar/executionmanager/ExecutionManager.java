@@ -186,7 +186,7 @@ public final class ExecutionManager {
         this.stopped = true;
         if (tomLayer.getInExec() != -1) {
             stoppedRound = getExecution(tomLayer.getInExec()).getLastRound();
-            stoppedRound.getTimeoutTask().cancel();
+            //stoppedRound.getTimeoutTask().cancel();
             Logger.println("(ExecutionManager.stop) Stoping round " + stoppedRound.getNumber() + " of consensus " + stoppedRound.getExecution().getId());
         }
         stoppedMsgsLock.unlock();
@@ -199,10 +199,12 @@ public final class ExecutionManager {
         Logger.println("(ExecutionManager.restart) Starting execution manager");
         stoppedMsgsLock.lock();
         this.stopped = false;
-        if (stoppedRound != null) {
+
+        // We don't want to use timeouts inside paxos anymore
+        /*if (stoppedRound != null) {
             acceptor.scheduleTimeout(stoppedRound);
             stoppedRound = null;
-        }
+        }*/
 
         //process stopped messages
         for (int i = 0; i < stoppedMsgs.size(); i++) {
@@ -270,7 +272,7 @@ public final class ExecutionManager {
                 isRetrievingState || // Is this replica retrieving a state?
 
                 // Is this not a revived replica?
-                (!(currentConsId == -1 && lastConsId == -1 && consId >= (lastConsId + revivalHighMark)) &&
+                (!(/*currentConsId == -1 &&*/ lastConsId == -1 && consId >= (lastConsId + revivalHighMark)) &&
                 /******************************************************************/
 
                 (consId > lastConsId  && (consId < (lastConsId + paxosHighMark))))
@@ -312,7 +314,7 @@ public final class ExecutionManager {
 
                 /** ISTO E CODIGO DO JOAO, PARA TRATAR DA TRANSFERENCIA DE ESTADO */
                 // Is this replica revived?
-                (currentConsId == -1 && lastConsId == -1 && consId >= (lastConsId + revivalHighMark)) ||
+                (/*currentConsId == -1 &&*/ lastConsId == -1 && consId >= (lastConsId + revivalHighMark)) ||
                 /******************************************************************/
 
                 (consId >= (lastConsId + paxosHighMark))

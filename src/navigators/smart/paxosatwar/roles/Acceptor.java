@@ -265,11 +265,14 @@ public class Acceptor {
      * @return true if the leader have to be changed and false otherwise
      */
     private boolean checkAndDiscardConsensus(int eid, CollectProof[] proof, boolean in) {
+
+        System.out.println("We entered in a weird place in the code :S");
         if (tomLayer.getLastExec() < eid) {
             if (verifier.getGoodValue(proof, in) == null) {
                 //br.ufsc.das.util.//Logger.println("Descartando o consenso "+eid);
                 if (tomLayer.getInExec() == eid) {
                     tomLayer.setInExec(-1);
+                    System.out.println("I think we should process the out of context messages at this point");
                 }
                 Execution exec = manager.removeExecution(eid);
                 if (exec != null) {
@@ -503,12 +506,12 @@ public class Acceptor {
      * Schedules a timeout for a given round. It is called by an Execution when a new round is created.
      * @param round Round to be associated with the timeout
      */
-    public void scheduleTimeout(Round round) {
-        Logger.println("(Acceptor.scheduleTimeout) scheduling timeout of " + round.getTimeout() + " ms for round " + round.getNumber() + " of consensus " + round.getExecution().getId());
+    /*public void scheduleTimeout(Round round) {
+        Logger.println("(Acceptor.scheduleTimeout) (not) scheduling timeout of " + round.getTimeout() + " ms for round " + round.getNumber() + " of consensus " + round.getExecution().getId());
         TimeoutTask task = new TimeoutTask(this, round);
         round.setTimeoutTask(task);
         timer.schedule(task, round.getTimeout());
-    }
+    }*/
 
     /**
      * This mehod is called by timertasks associated with rounds. It will locally freeze
@@ -569,7 +572,7 @@ public class Acceptor {
         //if there is more than 2f+1 timeouts
         if (round.countFreeze() > reconfManager.getQuorum2F() && !round.isCollected()) {
             round.collect();
-            round.getTimeoutTask().cancel();
+            //round.getTimeoutTask().cancel();
 
             Execution exec = round.getExecution();
             Round nextRound = exec.getRound(round.getNumber() + 1,false, this.reconfManager);
@@ -647,7 +650,7 @@ public class Acceptor {
                 leaderModule.getLeader(round.getExecution().getId(),
                 round.getNumber()));
 
-        round.getTimeoutTask().cancel();
+        //round.getTimeoutTask().cancel();
         round.getExecution().decided(round, value);
     }
 

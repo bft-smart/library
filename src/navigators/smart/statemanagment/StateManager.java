@@ -60,6 +60,8 @@ public class StateManager {
         senderEids = new HashSet<SenderEid>();
         senderStates = new HashSet<SenderState>();
         this.replica = 0;
+
+        if (replica == manager.getStaticConf().getProcessId()) changeReplica();
         this.state = null;
         this.lastEid = -1;
         this.waitingEid = -1;

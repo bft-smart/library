@@ -68,13 +68,15 @@ public class MessageHandler {
             //Logger.println("(MessageHandler.processData) PAXOS_MSG received: " + paxosMsg);
             if (paxosMsg.getPaxosType() == COLLECT) {
                 //the proposer layer only handle COLLECT messages
+                Logger.println("(MessageHandler.processData) delivering COLLECT message");
                 proposer.deliver(paxosMsg);
             } else {
+                Logger.println("(MessageHandler.processData) delivering a paxos message");
                 acceptor.deliver(paxosMsg);
             }
         } else if (sm instanceof RTMessage) {
             RTMessage rtMsg = (RTMessage) sm;
-            //Logger.println("(MessageHandler.processData) RT_MSG received: "+rtMsg);
+            Logger.println("(MessageHandler.processData) RT_MSG received: " + rtMsg + " (replica " + rtMsg.getSender() + ")");
             tomLayer.deliverTimeoutRequest(rtMsg);
         } else if (sm instanceof ForwardedMessage) {
             TOMMessage request = ((ForwardedMessage) sm).getRequest();

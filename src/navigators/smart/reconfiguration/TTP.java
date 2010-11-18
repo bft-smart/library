@@ -97,10 +97,11 @@ public class TTP {
         
         TTPMessage msg = new TTPMessage(id,r);
         
-        //int[] dest = new int[addIds.size()];
-        sendResponse(addIds.toArray(new Integer[1]),msg);    
-        
-        addIds.clear();
+        if(addIds.size() > 0){ //ESTE TESTE QUE FALTA!
+            sendResponse(addIds.toArray(new Integer[1]),msg);
+            addIds.clear();
+        }
+
         
    }
 
