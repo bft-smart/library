@@ -408,6 +408,7 @@ public class DeliveryThread extends Thread {
                 
                  //define that end of this execution
                 tomLayer.setInExec(-1);
+                tomLayer.processOutOfContext();
 
                 /** ISTO E CODIGO DO JOAO, PARA TRATAR DOS CHECKPOINTS */
                 Logger.println("(DeliveryThread.run) I just delivered the batch of EID " + cons.getId());

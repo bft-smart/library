@@ -123,6 +123,8 @@ public class RequestsTimer {
                 for (ListIterator<TOMMessage> li = pendingRequests.listIterator(); li.hasNext(); ) {
                     TOMMessage request = li.next();
                     if (!request.timeout) {
+
+                        request.signed = request.serializedMessageSignature != null;
                         tomLayer.forwardRequestToLeader(request);
                         request.timeout = true;
                         li.remove();

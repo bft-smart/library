@@ -131,7 +131,10 @@ public class ServerCommunicationSystem extends Thread {
                 if (count % 1000==0)
                     Logger.println("(ServerCommunicationSystem.run) After "+count+" messages, inQueue size="+inQueue.size());
 
-                messageHandler.processData(inQueue.take());
+                Logger.println("(ServerCommunicationSystem.run) Taking a message form the queue and processing it");
+                SystemMessage sm = inQueue.take();
+                Logger.println("(ServerCommunicationSystem.run) The message received is from replica " + sm.getSender());
+                messageHandler.processData(sm);
                 //System.out.println("Entregou uma msgssssssssss");
             } catch (InterruptedException ex) {
                 java.util.logging.Logger.getLogger(ServerCommunicationSystem.class.getName()).log(Level.SEVERE, null, ex);

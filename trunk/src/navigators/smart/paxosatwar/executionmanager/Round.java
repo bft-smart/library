@@ -32,7 +32,7 @@ import navigators.smart.tom.core.messages.TOMMessage;
 public class Round implements Serializable {
 
     private transient Execution execution; // Execution where the round belongs to
-    private transient TimeoutTask timeoutTask; // Timeout ssociated with this round
+    //private transient TimeoutTask timeoutTask; // Timeout ssociated with this round
     private int number; // Round's number
     private int me; // Process ID
     private boolean[] weakSetted;
@@ -43,7 +43,7 @@ public class Round implements Serializable {
     private Collection<Integer> freeze = null; // processes where this round was freezed
     private boolean frozen = false; // is this round frozen?
     private boolean collected = false; // indicates if a collect message for this round was already sent
-    private long timeout; // duration of the timeout
+    //private long timeout; // duration of the timeout
     private boolean alreadyRemoved = false; // indicates if this round was removed from its execution
 
     public byte[] propValue = null; // proposed value
@@ -93,9 +93,9 @@ public class Round implements Serializable {
             this.decide = previousRound.getDecide();
         }
 
-        //define the timeout for this round
-        this.timeout = (int) Math.pow(2, number) * timeout;
-        execution.getManager().getAcceptor().scheduleTimeout(this);
+        //define the timeout for this round (not used anymore)
+        //this.timeout = (int) Math.pow(2, number) * timeout;
+        //execution.getManager().getAcceptor().scheduleTimeout(this);
     }
 
     /**
@@ -133,9 +133,9 @@ public class Round implements Serializable {
      * Retrieves the duration for the timeout
      * @return Duration for the timeout
      */
-    public long getTimeout() {
+    /*public long getTimeout() {
         return this.timeout;
-    }
+    }*/
 
     /**
      * Retrieves this round's number
@@ -157,17 +157,17 @@ public class Round implements Serializable {
      * Sets the timeout associated with this round
      * @param timeoutTask The timeout associated with this round
      */
-    public void setTimeoutTask(TimeoutTask timeoutTask) {
+    /*public void setTimeoutTask(TimeoutTask timeoutTask) {
         this.timeoutTask = timeoutTask;
-    }
+    }*/
 
     /**
      * Retrieves the timeout associated with this round
      * @param timeoutTask The timeout associated with this round
      */
-    public TimeoutTask getTimeoutTask() {
+    /*public TimeoutTask getTimeoutTask() {
         return timeoutTask;
-    }
+    }*/
 
     /**
      * Informs if there is a weakly accepted value from a replica
