@@ -112,9 +112,77 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
                     bootstrap.setOption("keepAlive", true);
 
                     // Set up the default event pipeline.
-                    bootstrap.setPipelineFactory(new NettyClientPipelineFactory(this, true, sessionTable, authKey, macDummy.getMacLength(), manager, rl, signatureLength, new ReentrantLock()));
+                    bootstrap.setPipelineFactory(new NettyClientPipelineFactory(this, true, sessionTable,
+                        authKey, macDummy.getMacLength(), manager, rl, signatureLength, new ReentrantLock()));
 
                     //******* EDUARDO BEGIN **************//
+
+                    // Start the connection attempt.
+                    ChannelFuture future = bootstrap.connect(manager.getStaticConf().getRemoteAddress(currV[i]));
+
+                    //creates MAC stuff
+                    Mac macSend = Mac.getInstance(manager.getStaticConf().getHmacAlgorithm());
+                    macSend.init(authKey);
+                    Mac macReceive = Mac.getInstance(manager.getStaticConf().getHmacAlgorithm());
+                    macReceive.init(authKey);
+                    NettyClientServerSession cs = new NettyClientServerSession(future.getChannel(), macSend,
+                        macReceive, currV[i], manager.getStaticConf().getRSAPublicKey(currV[i]), new ReentrantLock());
+                    sessionTable.put(currV[i], cs);
+
+                    System.out.println("Connecting to replica " + currV[i] + " at " + manager.getStaticConf().getRemoteAddress(currV[i]));
+                    //******* EDUARDO END **************//
+
+
+                    future.awaitUninterruptibly();
+
+                }catch (java.lang.NullPointerException ex){
+                    System.out.println("Deve resolver o problema, e acho que não trás outras implicações :-), " +
+                            "mas temos que fazer os servidores armazenarem as view em um lugar default.");
+
+                } catch (InvalidKeyException ex) {
+                    Logger.getLogger(NettyClientServerCommunicationSystemClientSide.class.getName()).log(Level.SEVERE, null, ex);
+                }
+            }
+        } catch (InvalidKeySpecException ex) {
+            Logger.getLogger(NettyClientServerCommunicationSystemClientSide.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (NoSuchAlgorithmException ex) {
+            Logger.getLogger(NettyClientServerCommunicationSystemClientSide.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+
+
+
+
+    /*public NettyClientServerCommunicationSystemClientSide(ViewManager manager) {
+        try {
+            SecretKeyFactory fac = SecretKeyFactory.getInstance("PBEWithMD5AndDES");
+            PBEKeySpec spec = new PBEKeySpec(PASSWORD.toCharArray());
+            authKey = fac.generateSecret(spec);
+
+            this.manager = manager;
+            this.sessionTable = new Hashtable();
+            //this.st = new Storage(BENCHMARK_PERIOD);
+            this.rl = new ReentrantReadWriteLock();
+            Mac macDummy = Mac.getInstance(manager.getStaticConf().getHmacAlgorithm());
+            signatureLength = TOMUtil.getSignatureSize(manager);
+
+
+            int[] currV = manager.getCurrentViewProcesses();
+            for (int i = 0; i < currV.length; i++) {
+                try {
+                    // Configure the client.
+                    ClientBootstrap bootstrap = new ClientBootstrap(
+                            new NioClientSocketChannelFactory(
+                            Executors.newCachedThreadPool(),
+                            Executors.newCachedThreadPool()));
+
+                    bootstrap.setOption("tcpNoDelay", true);
+                    bootstrap.setOption("keepAlive", true);
+
+                    // Set up the default event pipeline.
+                    bootstrap.setPipelineFactory(new NettyClientPipelineFactory(this, true, sessionTable, authKey, macDummy.getMacLength(), manager, rl, signatureLength, new ReentrantLock()));
+
+                    //******* EDUARDO BEGIN **************
 
                     // Start the connection attempt.
                     ChannelFuture future = bootstrap.connect(manager.getStaticConf().getRemoteAddress(currV[i]));
@@ -128,7 +196,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
                     sessionTable.put(currV[i], cs);
 
                     System.out.println("Connecting to replica " + currV[i] + " at " + manager.getStaticConf().getRemoteAddress(currV[i]));
-                    //******* EDUARDO END **************//
+                    //******* EDUARDO END **************
 
 
                     future.awaitUninterruptibly();
@@ -143,7 +211,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
         } catch (NoSuchAlgorithmException ex) {
             Logger.getLogger(NettyClientServerCommunicationSystemClientSide.class.getName()).log(Level.SEVERE, null, ex);
         }
-    }
+    }*/
 
     //TODO: Falta fechar as conexoes para servidores q sairam
     public void updateConnections() {

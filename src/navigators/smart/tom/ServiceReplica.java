@@ -238,6 +238,23 @@ public abstract class ServiceReplica extends TOMReceiver implements Runnable {
     public void receiveMessage(TOMMessage msg) {
         requestQueue.add(msg);
     }
+
+    /**
+     * This method makes the replica leave the group
+     */
+    public void leave() {
+        ReconfigureReply r = null;
+        Reconfiguration rec = new Reconfiguration(id);
+        do {
+            //System.out.println("while 1");
+            rec.removeServer(id);
+
+            r = rec.execute();
+        } while (r.getView().isMember(id));
+        rec.close();
+         this.cs.updateServersConnections();
+    }
+
     /** ISTO E CODIGO DO JOAO, PARA TRATAR DOS CHECKPOINTS */
     private ReentrantLock stateLock = new ReentrantLock();
     private Condition stateCondition = stateLock.newCondition();
