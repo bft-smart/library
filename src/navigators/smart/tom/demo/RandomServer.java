@@ -41,14 +41,33 @@ public class RandomServer extends ServiceReplica {
 
     private int value = 0;
     private int iterations = 0;
-
+    /**********ISTO E CODIGO MARTELADO, PARA FAZER AVALIACOES **************/
+    private int id = -1;
+    private long initialTime = -1;
+    private long currentTime = -1;
+    /***********************************************************************/
     public RandomServer(int id) {
         super(id);
+        this.id = id;
     }
 
+    public RandomServer(int id, boolean join) {
+        super(id,join);
+        this.id = id;
+    }
 
     @Override
     public byte[] executeCommand(int clientId, long timestamp, byte[] nonces, byte[] command, DebugInfo info) {
+        /**********ISTO E CODIGO MARTELADO, PARA FAZER AVALIACOES **************/
+        //System.out.println(currentTime);
+        if (initialTime > -1) currentTime = System.currentTimeMillis() - initialTime;
+        else {
+              initialTime = System.currentTimeMillis();
+              currentTime = 0;
+        }
+        if ((this.id == 4) && (currentTime >= 10000)) leave();
+        /***********************************************************************/
+        
         iterations++;
         try {
             DataInputStream input = new DataInputStream(new ByteArrayInputStream(command));
@@ -92,7 +111,12 @@ public class RandomServer extends ServiceReplica {
             System.exit(-1);
         }
 
-        new RandomServer(Integer.parseInt(args[0]));
+        if(args.length > 1) {
+            new RandomServer(Integer.parseInt(args[0]), Boolean.valueOf(args[1]));
+        }else{
+            new RandomServer(Integer.parseInt(args[0]));
+        }
+        //new RandomServer(Integer.parseInt(args[0]));
     }
 
     @Override

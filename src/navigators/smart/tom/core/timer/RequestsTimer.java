@@ -97,6 +97,24 @@ public class RequestsTimer {
         */
     }
 
+    /**
+     * Cancels all timers for all messages
+     */
+    public void clearAll() {
+        TOMMessage[] requests = new TOMMessage[watched.size()];
+        rwLock.writeLock().lock();
+        
+        watched.toArray(requests);
+
+        for (TOMMessage request : requests) {
+            if (watched.remove(request) && watched.isEmpty() && rtTask != null) {
+                rtTask.cancel();
+                rtTask = null;
+            }
+        }
+        rwLock.writeLock().unlock();
+    }
+    
     class RequestTimerTask extends TimerTask {
 
         @Override
