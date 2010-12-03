@@ -59,7 +59,7 @@ public class StateManager {
         this.log = new StateLog(k);
         senderEids = new HashSet<SenderEid>();
         senderStates = new HashSet<SenderState>();
-        this.replica = 0;
+        this.replica = 2;
 
         if (replica == manager.getStaticConf().getProcessId()) changeReplica();
         this.state = null;

@@ -70,22 +70,32 @@ public class TOMUtil {
     //******* EDUARDO BEGIN **************//
     public static byte[] getBytes(Object o) {
         ByteArrayOutputStream bOut = new ByteArrayOutputStream();
+        ObjectOutputStream obOut = null;
         try {
-            ObjectOutputStream obOut = new ObjectOutputStream(bOut);
+            obOut = new ObjectOutputStream(bOut);
 
             obOut.writeObject(o);
+            obOut.close();
+            bOut.close();
+
         } catch (IOException ex) {
             ex.printStackTrace();
         }
+
         return bOut.toByteArray();
     }
 
     public static Object getObject(byte[] b) {
+        if (b == null) System.out.println("O ARRAY E NULL!!!!");
         ByteArrayInputStream bInp = new ByteArrayInputStream(b);
         try {
             ObjectInputStream obInp = new ObjectInputStream(bInp);
-            return obInp.readObject();
+            Object ret = obInp.readObject();
+            obInp.close();
+            bInp.close();
+            return ret;
         } catch (Exception ex) {
+            System.out.println("Isto rebenta aqui!!");
             ex.printStackTrace();
             return null;
         }

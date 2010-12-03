@@ -63,7 +63,7 @@ public class ViewManager {
     }
     
     public boolean isCurrentViewMember(int id){
-        return this.currentView.isMember(id);
+        return currentView.isMember(id);
     }
     
     public int getCurrentViewId() {

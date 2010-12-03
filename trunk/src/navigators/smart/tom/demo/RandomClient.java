@@ -48,7 +48,7 @@ public class RandomClient {
 
         int i=0;
         //sends 1000 requests to replicas and then terminates
-        while(i<1500){
+        while(true){
 
             int argument = generator.nextInt(10000) + 1;
             int operator = generator.nextInt(4);

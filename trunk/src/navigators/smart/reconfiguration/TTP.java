@@ -158,16 +158,31 @@ public class TTP {
         }else{
             ttp = new TTP("");
         }
-        
+
+        System.out.println("ola");
+
         ttp.addServer(4, "127.0.0.1", 11040);
-        
-        
-        
-        ttp.removeServer(3);
-        
         
         ttp.executeUpdates();
         ttp.close();
+        
+        try {
+            Thread.sleep(10000);
+        } catch (InterruptedException ex) {
+            Logger.getLogger(TTP.class.getName()).log(Level.SEVERE, null, ex);
+        }
+
+        if(args.length > 0){
+            ttp = new TTP(args[0]);
+        }else{
+            ttp = new TTP("");
+        }
+
+        ttp.removeServer(4);
+        
+        ttp.executeUpdates();
+        ttp.close();
+
         System.exit(0);
     }
     

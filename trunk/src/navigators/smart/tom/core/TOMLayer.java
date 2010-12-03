@@ -357,7 +357,15 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         long start=-1;
         int counter =0;
          */
+        /**********ISTO E CODIGO MARTELADO, PARA FAZER AVALIACOES **************/
+        long initialTime = -1;
+        long currentTime = -1;
+        /***********************************************************************/
         while (true) {
+            /**********ISTO E CODIGO MARTELADO, PARA FAZER AVALIACOES **************/
+            //System.out.println(currentTime);
+            if (initialTime > -1) currentTime = System.currentTimeMillis() - initialTime;
+            /***********************************************************************/
             Logger.println("(TOMLayer.run) Running."); // TODO: isto n podia passar para fora do ciclo?
 
             // blocks until this replica learns to be the leader for the current round of the current consensus
@@ -397,6 +405,14 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                     (getInExec() == -1 || leaderChanged)) { //there is no consensus in execution
 
                 leaderChanged = false;
+
+                /**********ISTO E CODIGO MARTELADO, PARA FAZER AVALIACOES **************/
+                if (initialTime == -1) {
+                    initialTime = System.currentTimeMillis();
+                    currentTime = 0;
+                }
+                //else if ((this.reconfManager.getStaticConf().getProcessId() == 0) && (currentTime >= 15000)) System.exit(0);
+                /***********************************************************************/
 
                 // Sets the current execution
                 int execId = getLastExec() + 1;
@@ -1029,6 +1045,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                     System.out.println("Recebi mais de " + conf.getF() + " mensagens para eid " + eid + " que sao posteriores a " + stateManager.getLastEID());
                     /************************* TESTE *************************/
 
+                    requestsTimer.clearAll();
                     stateManager.setLastEID(eid);
                     stateManager.setWaiting(eid - 1);
                     //stateManager.emptyReplicas(eid);// isto causa uma excepcao
