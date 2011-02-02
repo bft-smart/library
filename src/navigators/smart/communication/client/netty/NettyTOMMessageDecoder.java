@@ -153,7 +153,7 @@ public class NettyTOMMessageDecoder extends FrameDecoder {
             if (hasClassHeader==0){
                 dis = new DataInputStream(bais);
                 sm = new TOMMessage();
-                sm.readExternal(dis);
+                sm.rExternal(dis);
             }
             else {
                 //if class headers were serialized

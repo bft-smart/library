@@ -43,7 +43,8 @@ public class RandomClient {
             System.exit(-1);
         }
 
-        ServiceProxy counterProxy = new ServiceProxy(Integer.parseInt(args[0]));
+        int id = Integer.parseInt(args[0]);
+        ServiceProxy randomProxy = new ServiceProxy(id);
         Random generator = new Random(Long.parseLong(args[1]));
 
         int i=0;
@@ -57,9 +58,10 @@ public class RandomClient {
             new DataOutputStream(out).writeInt(argument);
             new DataOutputStream(out).writeInt(operator);
 
-	        byte[] reply = counterProxy.invoke(out.toByteArray(),false);
+	        byte[] reply = randomProxy.invoke(out.toByteArray(),false);
 	        int newValue = new DataInputStream(new ByteArrayInputStream(reply)).readInt();
-	        System.out.println("Current value: "+newValue);
+                System.out.println("Last sequence number: " + randomProxy.getLastSequenceNumber());
+	        System.out.println("(" + id + ") Current value: "+newValue);
 	        i++;
         }
         //System.exit(0);

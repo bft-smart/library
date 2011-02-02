@@ -168,6 +168,8 @@ public class DeliveryThread extends Thread {
                 //******* EDUARDO BEGIN: Acho que precisa mudar aqui, como na entrega normal **************//
                 //TODO: verificar se aqui precisa mudar a enterga para as vistas
                 if (this.manager.hasUpdates()) {
+
+                    receiver.waitForProcessingRequests();
                     //System.out.println("Entrou aqui 1");
                     
                     //byte[] response = this.manager.executeUpdates(eid,state.getMessageBatch(eid).round,this.receiver.getState());
@@ -385,7 +387,7 @@ public class DeliveryThread extends Thread {
                 //******* EDUARDO BEGIN **************//
                 if (this.manager.hasUpdates()) {
                     //System.out.println("Entrou aqui 1");
-                    
+                    receiver.waitForProcessingRequests();
                     
                     
                     //byte[] response = this.manager.executeUpdates(cons.getId(),cons.getDecisionRound().getNumber(),this.receiver.getState());
@@ -412,6 +414,8 @@ public class DeliveryThread extends Thread {
 
                 /** ISTO E CODIGO DO JOAO, PARA TRATAR DOS CHECKPOINTS */
                 Logger.println("(DeliveryThread.run) I just delivered the batch of EID " + cons.getId());
+
+                //Thread.sleep(5);
 
                 if (manager.getStaticConf().isStateTransferEnabled()) {
                     Logger.println("(DeliveryThread.run) The state transfer protocol is enabled");

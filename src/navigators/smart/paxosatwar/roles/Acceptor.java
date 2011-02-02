@@ -346,7 +346,7 @@ public class Acceptor {
             if (round.deserializedPropValue != null && !round.isWeakSetted(me)) {
                 //round.getExecution().getLearner().setDeserialisedDecision(deserialised);
                 if(Logger.debug)
-                Logger.println("(Acceptor.executePropose) sending weak for " + eid);
+                    Logger.println("(Acceptor.executePropose) sending weak for " + eid);
 
                 round.setWeak(me, round.propValueHash);
                 communication.send(this.reconfManager.getCurrentViewOtherAcceptors(),

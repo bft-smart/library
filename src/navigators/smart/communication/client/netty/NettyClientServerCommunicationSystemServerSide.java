@@ -275,7 +275,7 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
                 ByteArrayOutputStream baos = new ByteArrayOutputStream();
                 if (!serializeClassHeaders) {
                     dos = new DataOutputStream(baos);
-                    sm.writeExternal(dos);
+                    sm.wExternal(dos);
                     dos.flush();
                     sm.includesClassHeader = false;
                 }

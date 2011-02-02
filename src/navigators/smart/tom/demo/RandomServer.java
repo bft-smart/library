@@ -65,7 +65,7 @@ public class RandomServer extends ServiceReplica {
               initialTime = System.currentTimeMillis();
               currentTime = 0;
         }
-        if ((this.id == 4) && (currentTime >= 10000)) leave();
+        //if ((this.id == 4) && (currentTime >= 60000)) leave();
         /***********************************************************************/
         
         iterations++;
@@ -74,28 +74,28 @@ public class RandomServer extends ServiceReplica {
             int argument = input.readInt();
             int operator = input.readInt();
 
-            System.out.println("[server] Argument: " + argument);
+            System.out.println("(" + id + ")[server] Argument: " + argument);
             switch (operator) {
                 case 0:
                     value = value + argument;
-                    System.out.println("[server] Operator: +");
+                    System.out.println("(" + id + ")[server] Operator: +");
                     break;
                 case 1:
                     value = value - argument;
-                    System.out.println("[server] Operator: -");
+                    System.out.println("(" + id + ")[server] Operator: -");
                     break;
                 case 2:
                     value = value * argument;
-                    System.out.println("[server] Operator: *");
+                    System.out.println("(" + id + ")[server] Operator: *");
                     break;
                 case 3:
                     value = value / argument;
-                    System.out.println("[server] Operator: /");
+                    System.out.println("(" + id + ")[server] Operator: /");
                     break;
             }
             //value += increment;
-            if (info == null) System.out.println("[server] (" + iterations + ") Current value: " + value);
-            else System.out.println("[server] (" + iterations + " / " + info.eid + ") Current value: " + value);
+            if (info == null) System.out.println("(" + id + ")[server] (" + iterations + ") Current value: " + value);
+            else System.out.println("(" + id + ")[server] (" + iterations + " / " + info.eid + ") Current value: " + value);
             ByteArrayOutputStream out = new ByteArrayOutputStream(4);
             new DataOutputStream(out).writeInt(value);
             return out.toByteArray();
@@ -123,6 +123,8 @@ public class RandomServer extends ServiceReplica {
     protected byte[] serializeState() {
 
         byte[] b = new byte[4];
+        //byte[] b = new byte[1024 * 1024 * 30];
+        //for (int i = 0; i > b.length; i++) b[i] = (byte) i;
         for (int i = 0; i < 4; i++) {
             int offset = (b.length - 1 - i) * 8;
             b[i] = (byte) ((value >>> offset) & 0xFF);

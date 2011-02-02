@@ -411,14 +411,14 @@ public class Round implements Serializable {
         //recall that weak.length = strong.length = decide.length
 
         for (int i = 0; i < weak.length - 1; i++) {
-            buffWeak.append(str(weak[i]) + ",");
-            buffStrong.append(str(strong[i]) + ",");
-            buffDecide.append(str(decide[i]) + ",");
+            buffWeak.append(str(weak[i]) + " [" + (weak[i] != null ? weak[i].length : 0) + " bytes] ,");
+            buffStrong.append(str(strong[i]) + " [" + (strong[i] != null ? strong[i].length : 0) + " bytes] ,");
+            buffDecide.append(str(decide[i]) + " [" + (decide[i] != null ? decide[i].length : 0) + " bytes] ,");
         }
 
-        buffWeak.append(str(weak[weak.length - 1]) + ")");
-        buffStrong.append(str(strong[strong.length - 1]) + ")");
-        buffDecide.append(str(decide[decide.length - 1]) + ")");
+        buffWeak.append(str(weak[weak.length - 1]) + " [" + (weak[weak.length - 1] != null ? weak[weak.length - 1].length : 0) + " bytes])");
+        buffStrong.append(str(strong[strong.length - 1]) + " [" + (strong[strong.length - 1] != null ? strong[strong.length - 1].length : 0) + " bytes])");
+        buffDecide.append(str(decide[decide.length - 1]) + " [" + (decide[decide.length - 1] != null ? decide[decide.length - 1].length : 0) + " bytes])");
 
         return "eid=" + execution.getId() + " r=" + getNumber() + " " + buffWeak + " " + buffStrong + " " + buffDecide;
     }

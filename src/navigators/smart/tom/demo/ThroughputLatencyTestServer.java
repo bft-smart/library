@@ -200,4 +200,8 @@ public class ThroughputLatencyTestServer extends TOMReceiver {
     public void receiveMessage(TOMMessage msg) {
         throw new UnsupportedOperationException("Not supported yet.");
     }
+
+    public void waitForProcessingRequests() {
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
 }

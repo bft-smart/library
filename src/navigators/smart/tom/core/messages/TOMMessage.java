@@ -238,7 +238,7 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
         int toRead = in.readInt();
         if (toRead != -1) {
             content = new byte[toRead];
-
+            //in.readFully(content);
             do {
                 toRead -= in.read(content, content.length - toRead, toRead);
             } while (toRead > 0);
@@ -247,7 +247,7 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
         buildId();
     }
 
-    public void writeExternal(DataOutput out) throws IOException {
+    public void wExternal(DataOutput out) throws IOException {
         out.writeInt(sender);
         out.writeInt(viewID);
         out.writeInt(reqType);
@@ -264,7 +264,7 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
         out.writeBoolean(isReadOnlyRequest());
     }
 
-    public void readExternal(DataInput in) throws IOException, ClassNotFoundException {
+    public void rExternal(DataInput in) throws IOException, ClassNotFoundException {
         sender = in.readInt();
         viewID = in.readInt();
         reqType = in.readInt();
@@ -303,7 +303,7 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         DataOutputStream dos = new DataOutputStream(baos);
         try{
-            m.writeExternal(dos);
+            m.wExternal(dos);
             dos.flush();
         }catch(Exception e) {
         }
@@ -316,7 +316,7 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 
         TOMMessage m = new TOMMessage();
         try{
-            m.readExternal(dis);
+            m.rExternal(dis);
         }catch(Exception e) {
             System.out.println("deu merda "+e);
             return null;

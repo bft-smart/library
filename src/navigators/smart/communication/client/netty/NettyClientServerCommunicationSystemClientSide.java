@@ -362,7 +362,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
                 ByteArrayOutputStream baos = new ByteArrayOutputStream();
                 if (!serializeClassHeaders) {
                     dos = new DataOutputStream(baos);
-                    sm.writeExternal(dos);
+                    sm.wExternal(dos);
                     dos.flush();
                     sm.includesClassHeader = false;
                 } else {
@@ -450,7 +450,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
         try {
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             dos = new DataOutputStream(baos);
-            sm.writeExternal(dos);
+            sm.wExternal(dos);
             dos.flush();
             data = baos.toByteArray();
             sm.serializedMessage = data;

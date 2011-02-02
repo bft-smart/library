@@ -59,7 +59,7 @@ public class StateManager {
         this.log = new StateLog(k);
         senderEids = new HashSet<SenderEid>();
         senderStates = new HashSet<SenderState>();
-        this.replica = 2;
+        this.replica = 0;
 
         if (replica == manager.getStaticConf().getProcessId()) changeReplica();
         this.state = null;
@@ -145,7 +145,7 @@ public class StateManager {
         return count > manager.getCurrentViewF();
         //******* EDUARDO END **************//
     }
-    public boolean moreThenF_Replies() {
+    public boolean moreThanF_Replies() {
 
         int count = 0;
         HashSet<Integer> replicasCounted = new HashSet<Integer>();
@@ -162,7 +162,7 @@ public class StateManager {
         //******* EDUARDO END **************//
     }
 
-    public TransferableState getValidState() {
+    public TransferableState getValidHash() {
 
         SenderState[] st = new SenderState[senderStates.size()];
         senderStates.toArray(st);
@@ -180,6 +180,24 @@ public class StateManager {
         }
 
         return null;
+    }
+
+    public int getNumValidHashes() {
+
+        SenderState[] st = new SenderState[senderStates.size()];
+        senderStates.toArray(st);
+        int count = 0;
+
+        for (int i = 0; i < st.length; i++) {
+
+            for (int j = i; j < st.length; j++) {
+
+                if (st[i].state.equals(st[j].state) && st[j].state.hasState()) count++;
+ 
+            }
+        }
+
+        return count;
     }
 
     public int getReplies() {
