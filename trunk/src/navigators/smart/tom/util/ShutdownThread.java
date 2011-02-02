@@ -62,15 +62,15 @@ public class ShutdownThread extends Thread {
         if(tomLayer.getInExec() != -1) {
             Round r2 = manager.getExecution(tomLayer.getInExec()).getLastRound();
             if(r2 != null) {
+                System.out.println("Consensus in execution leader: " + lm.getLeader(r2.getExecution().getId(),r.getNumber()));
                 System.err.println("State of the round in execution: "+r2.toString());
             }
         }
-        System.err.println("Execution manager: "+ tomLayer.execManager);
-        System.err.println("Server communication system queues: "+
-                scs.toString());
+        //System.err.println("Execution manager: "+ tomLayer.execManager);
+        //System.err.println("Server communication system queues: "+scs.toString());
         //System.err.println("Pending requests: " +
         //        tomLayer.clientsManager.getPendingRequests());
-        System.err.println("Requests timers: " + tomLayer.requestsTimer);
+        //System.err.println("Requests timers: " + tomLayer.requestsTimer);
         System.err.println("---------- ---------- ----------");
     }
 }

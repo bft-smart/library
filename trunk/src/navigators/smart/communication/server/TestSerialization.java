@@ -38,7 +38,7 @@ public class TestSerialization {
         ByteArrayOutputStream baos = new ByteArrayOutputStream(4);
         DataOutputStream oos = new DataOutputStream(baos);
 
-        tm.writeExternal(oos);
+        tm.wExternal(oos);
         oos.flush();
         //oos.writeObject(tm);
 
@@ -51,7 +51,7 @@ public class TestSerialization {
 
         //TOMMessage tm2 = (TOMMessage) ois.readObject();
         TOMMessage tm2 = new TOMMessage();
-        tm2.readExternal(ois);
+        tm2.rExternal(ois);
 
 //        System.out.println(new String(tm2.getContent()));
     }

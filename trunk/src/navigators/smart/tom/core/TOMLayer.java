@@ -31,6 +31,8 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -181,13 +183,24 @@ public final class TOMLayer extends Thread implements RequestReceiver {
        // return this.conf;
     //}
 
+    ReentrantLock hashLock = new ReentrantLock();
     /**
      * Computes an hash for a TOM message
      * @param message
      * @return Hash for teh specified TOM message
      */
     public final byte[] computeHash(byte[] data) {
-        return md.digest(data);
+        if (md == null) System.out.println("O hash digester está a null!!");
+        if (data == null) System.out.println("Os dados estam a null!!");
+
+        //synchronized(this) {
+        byte[] ret = null;
+        hashLock.lock();
+            ret = md.digest(data);
+        hashLock.unlock();
+
+        return ret;
+        //}
     }
 
     /**
@@ -411,7 +424,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                     initialTime = System.currentTimeMillis();
                     currentTime = 0;
                 }
-                //else if ((this.reconfManager.getStaticConf().getProcessId() == 0) && (currentTime >= 15000)) System.exit(0);
+                //else if ((this.reconfManager.getStaticConf().getProcessId() == 0) && (currentTime >= 30000)) System.exit(0);
                 /***********************************************************************/
 
                 // Sets the current execution
@@ -712,7 +725,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                             DataInputStream ois = new DataInputStream(
                                     new ByteArrayInputStream(serializedRequest[0]));
                             request = new TOMMessage();
-                            request.readExternal(ois);
+                            request.rExternal(ois);
                         } catch (Exception e) {
                             e.printStackTrace();
                             clientsManager.getClientsLock().unlock();
@@ -948,6 +961,8 @@ public final class TOMLayer extends Thread implements RequestReceiver {
     /** ISTO E CODIGO DO JOAO, PARA TRATAR DOS CHECKPOINTS */
     private StateManager stateManager = null;
     private ReentrantLock lockState = new ReentrantLock();
+    private ReentrantLock lockTimer = new ReentrantLock();
+    private Timer stateTimer = null;
 
     public void saveState(byte[] state, int lastEid, int decisionRound, int leader) {
 
@@ -1054,6 +1069,26 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                     communication.send(otherAcceptors, smsg);
 
                     Logger.println("(TOMLayer.requestState) I just sent a request to the other replicas for the state up to EID " + (eid - 1));
+
+                    TimerTask stateTask =  new TimerTask() {
+                        public void run() {
+
+                        lockTimer.lock();
+
+                        Logger.println("(TimerTask.run) Timeout for the replica that was supposed to send the complete state. Changing desired replica.");
+                        System.out.println("Timeout no timer do estado!");
+
+                        stateManager.setWaiting(-1);
+                        stateManager.changeReplica();
+                        stateManager.emptyStates();
+                        stateManager.setReplicaState(null);
+
+                        lockTimer.unlock();
+                        }
+                    };
+
+                    Timer stateTimer = new Timer("state timer");
+                    stateTimer.schedule(stateTask,1500);
                     /************************* TESTE *************************
 
                     System.out.println("Enviei um pedido!");
@@ -1129,14 +1164,17 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             }
             /************************* TESTE *************************/
 
-            /** CODIGO MALICIOSO, PARA FORCAR A REPLICA ATRASADA A PEDIR O ESTADO A OUTRA DAS REPLICAS *
+            /** CODIGO MALICIOSO, PARA FORCAR A REPLICA ATRASADA A PEDIR O ESTADO A OUTRA DAS REPLICAS */
             byte[] badState = {127};
-            if (sendState && conf.getProcessId() == 0) state.setState(badState);
+            if (sendState && reconfManager.getStaticConf().getProcessId() == 0) state.setState(badState);
             /*******************************************************************************************/
 
             int[] targets = { msg.getSender() };
             SMMessage smsg = new SMMessage(reconfManager.getStaticConf().getProcessId(), 
                     msg.getEid(), TOMUtil.SM_REPLY, -1, state);
+
+            // malicious code, to force the replica not to send the state
+            //if (reconfManager.getStaticConf().getProcessId() != 0 || !sendState)
             communication.send(targets, smsg);
 
             Logger.println("(TOMLayer.SMRequestDeliver) I sent the state for checkpoint " + state.getLastCheckpointEid() + " with batches until EID " + state.getLastEid());
@@ -1149,6 +1187,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             /************************* TESTE *************************
             System.out.println("[/TOMLayer.SMRequestDeliver]");
             /************************* TESTE *************************/
+            System.out.println("Enviei o estado!");
         }
     }
 
@@ -1176,6 +1215,8 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         else System.out.println("[reply] Nao ha estado");
         /************************* TESTE *************************/
         //******* EDUARDO BEGIN **************//
+
+        lockTimer.lock();
         if (reconfManager.getStaticConf().isStateTransferEnabled()) {
         //******* EDUARDO END **************//
 
@@ -1192,18 +1233,19 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                 if (msg.getSender() == stateManager.getReplica() && msg.getState().getState() != null) {
                     Logger.println("(TOMLayer.SMReplyDeliver) I received the state, from the replica that I was expecting");
                     stateManager.setReplicaState(msg.getState().getState());
+                    if (stateTimer != null) stateTimer.cancel();
                 }
 
                 stateManager.addState(msg.getSender(),msg.getState());
 
-                if (stateManager.moreThenF_Replies()) {
+                if (stateManager.moreThanF_Replies()) {
 
-                    Logger.println("(TOMLayer.SMReplyDeliver) I have more than " + reconfManager.getCurrentViewF() + " equal replies!");
+                    Logger.println("(TOMLayer.SMReplyDeliver) I have at least " + reconfManager.getCurrentViewF() + " replies!");
                     /************************* TESTE *************************
                     System.out.println("Ja tenho mais que " + conf.getF() + " respostas iguais!");
                     /************************* TESTE *************************/
 
-                    TransferableState state = stateManager.getValidState();
+                    TransferableState state = stateManager.getValidHash();
 
                     int haveState = 0;
                     if (stateManager.getReplicaState() != null) {
@@ -1211,7 +1253,8 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                         hash = computeHash(stateManager.getReplicaState());
                         if (state != null) {
                             if (Arrays.equals(hash, state.getStateHash())) haveState = 1;
-                            else haveState = -1;
+                            else if (stateManager.getNumValidHashes() > reconfManager.getCurrentViewF()) haveState = -1;
+
                         }
                     }
 
@@ -1293,6 +1336,8 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                         stateManager.emptyStates();
                         stateManager.setReplicaState(null);
 
+                        System.out.println("Actualizei o estado!");
+
                     //******* EDUARDO BEGIN **************//
                     } else if (state == null && (reconfManager.getCurrentViewN() / 2) < stateManager.getReplies()) {
                     //******* EDUARDO END **************//
@@ -1307,6 +1352,8 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                         stateManager.setWaiting(-1);
                         stateManager.emptyStates();
                         stateManager.setReplicaState(null);
+
+                        if (stateTimer != null) stateTimer.cancel();
                     } else if (haveState == -1) {
 
                         Logger.println("(TOMLayer.SMReplyDeliver) The replica from which I expected the state, sent one which doesn't match the hash of the others, or it never sent it at all");
@@ -1315,17 +1362,24 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                         stateManager.changeReplica();
                         stateManager.emptyStates();
                         stateManager.setReplicaState(null);
+
+                        if (stateTimer != null) stateTimer.cancel();
                     }
                 }
             }
         }
+        lockTimer.unlock();
         /************************* TESTE *************************
         System.out.println("[/TOMLayer.SMReplyDeliver]");
         /************************* TESTE *************************/
     }
 
     public boolean isRetrievingState() {
-        return stateManager != null && stateManager.getWaiting() != -1;
+        lockTimer.lock();
+        boolean result =  stateManager != null && stateManager.getWaiting() != -1;
+        lockTimer.unlock();
+
+        return result;
     }
 
     public void setNoExec() {

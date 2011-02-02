@@ -139,5 +139,9 @@ public class ThroughputTestServer extends TOMReceiver {
         throw new UnsupportedOperationException("Not supported yet.");
     }
 
+    public void waitForProcessingRequests() {
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
+
 }
 

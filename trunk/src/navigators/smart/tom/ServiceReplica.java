@@ -19,6 +19,7 @@ package navigators.smart.tom;
 
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Level;
@@ -48,7 +49,11 @@ public abstract class ServiceReplica extends TOMReceiver implements Runnable {
     private boolean isToJoin = false;
     private ReentrantLock waitTTPJoinMsgLock = new ReentrantLock();
     private Condition canProceed = waitTTPJoinMsgLock.newCondition();
-    private byte[] startState = null;
+    //private byte[] startState = null;
+
+    /** ISTO E CODIGO DO JOAO, PARA TRATAR DOS CHECKPOINTS */
+    private boolean isQueueEmpty = true;
+    /*******************************************************/
 
     /**
      * Constructor
@@ -182,10 +187,10 @@ public abstract class ServiceReplica extends TOMReceiver implements Runnable {
     @Override
     public void run() {
         //******* EDUARDO BEGIN **************//
-        if (this.startState != null) {
+        /*if (this.startState != null) {
             setState(this.startState);
             this.startState = null;
-        }
+        }*/
 
         /**ISTO E CODIGO DO JOAO, PARA TENTAR RESOLVER UM BUG */
         cs.start();
@@ -208,10 +213,13 @@ public abstract class ServiceReplica extends TOMReceiver implements Runnable {
                     msg.nonces, msg.getContent(), msg.getDebugInfo());
 
             /** ISTO E CODIGO DO JOAO, PARA TRATAR DOS CHECKPOINTS */
-            if (/*requestQueue.isEmpty() &&*/stateLock.tryLock()) {
-                stateCondition.signal();
-                stateLock.unlock();
+            requestsLock.lock();
+            if (requestQueue.isEmpty()) {
+
+                isQueueEmpty = true;
+                requestsCondition.signalAll();
             }
+            requestsLock.unlock();
             /********************************************************/
             // send reply to the client
             cs.send(new int[]{msg.getSender()}, new TOMMessage(id, msg.getSession(),
@@ -226,6 +234,9 @@ public abstract class ServiceReplica extends TOMReceiver implements Runnable {
      */
     @Override
     public void receiveOrderedMessage(TOMMessage msg) {
+        /** ISTO E CODIGO DO JOAO, PARA TRATAR DOS CHECKPOINTS */
+        isQueueEmpty = false;
+        /*******************************************************/
         requestQueue.add(msg);
     }
 
@@ -236,6 +247,9 @@ public abstract class ServiceReplica extends TOMReceiver implements Runnable {
      */
     @Override
     public void receiveMessage(TOMMessage msg) {
+        /** ISTO E CODIGO DO JOAO, PARA TRATAR DOS CHECKPOINTS */
+        isQueueEmpty = false;
+        /*******************************************************/
         requestQueue.add(msg);
     }
 
@@ -256,40 +270,54 @@ public abstract class ServiceReplica extends TOMReceiver implements Runnable {
     }
 
     /** ISTO E CODIGO DO JOAO, PARA TRATAR DOS CHECKPOINTS */
-    private ReentrantLock stateLock = new ReentrantLock();
-    private Condition stateCondition = stateLock.newCondition();
+    private ReentrantLock requestsLock = new ReentrantLock();
+    private Condition requestsCondition = requestsLock.newCondition();
 
     @Override
-    public byte[] getState() {
-        stateLock.lock();
-        while (!requestQueue.isEmpty()) {
+    public byte[] getState() { //TODO: Ha por aqui uma condicao de corrida!
+        requestsLock.lock();
+
+        while (!isQueueEmpty) {
             try {
-                stateCondition.await();
+                requestsCondition.await(100, TimeUnit.MILLISECONDS);
             } catch (InterruptedException ex) {
                 Logger.getLogger(ServiceReplica.class.getName()).log(Level.SEVERE, null, ex);
             }
         }
         byte[] state = serializeState();
-        stateLock.unlock();
+        requestsLock.unlock();
         return state;
+
     }
 
     protected abstract byte[] serializeState();
 
     @Override
     public void setState(byte[] state) {
-        stateLock.lock();
-        while (!requestQueue.isEmpty()) {
+        requestsLock.lock();
+        while (!isQueueEmpty) {
             try {
-                stateCondition.await();
+                requestsCondition.await(100, TimeUnit.MILLISECONDS);
             } catch (InterruptedException ex) {
                 Logger.getLogger(ServiceReplica.class.getName()).log(Level.SEVERE, null, ex);
             }
         }
         deserializeState(state);
-        stateLock.unlock();
+        requestsLock.unlock();
     }
 
+    public void waitForProcessingRequests() {
+        requestsLock.lock();
+        while (!isQueueEmpty) {
+            try {
+                requestsCondition.await(100, TimeUnit.MILLISECONDS);
+            } catch (InterruptedException ex) {
+                Logger.getLogger(ServiceReplica.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
+
+        requestsLock.unlock();
+    }
     protected abstract void deserializeState(byte[] state);
 
     /********************************************************/

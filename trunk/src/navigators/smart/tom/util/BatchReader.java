@@ -79,7 +79,7 @@ public final class BatchReader {
             try {
                 DataInputStream ois = new DataInputStream(new ByteArrayInputStream(message));
                 TOMMessage tm = new TOMMessage();
-                tm.readExternal(ois);
+                tm.rExternal(ois);
 
                 tm.serializedMessage = message;
                 tm.serializedMessageSignature = signature;

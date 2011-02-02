@@ -98,4 +98,8 @@ public class LatencyTestServer extends TOMReceiver {
         new LatencyTestServer(Integer.parseInt(args[0])).run();
       
     }
+
+    public void waitForProcessingRequests() {
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
 }
