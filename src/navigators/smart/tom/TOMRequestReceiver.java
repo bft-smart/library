@@ -54,10 +54,5 @@ public interface TOMRequestReceiver {
      * a replica is delayed compared to the rest of the group, and when it recovers after a failure.
      */
     public void setState(byte[] state);
-
-    /**
-     * This method waits for the batch of messages to finish being processed
-     */
-    public void waitForProcessingRequests();
 }
 

@@ -1,18 +1,18 @@
 /**
  * Copyright (c) 2007-2009 Alysson Bessani, Eduardo Alchieri, Paulo Sousa, and the authors indicated in the @author tags
- *
+ * 
  * This file is part of SMaRt.
- *
+ * 
  * SMaRt is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- *
+ * 
  * SMaRt is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
  * GNU General Public License for more details.
- *
+ * 
  * You should have received a copy of the GNU General Public License along with SMaRt.  If not, see <http://www.gnu.org/licenses/>.
  */
 
@@ -20,12 +20,10 @@ package navigators.smart.communication.server;
 
 import java.util.concurrent.LinkedBlockingQueue;
 
-
-import navigators.smart.reconfiguration.ReconfigurationManager;
 import navigators.smart.tom.core.messages.SystemMessage;
 import navigators.smart.tom.core.messages.TOMMessage;
 import navigators.smart.tom.util.Storage;
-
+import navigators.smart.tom.util.TOMConfiguration;
 
 
 public class Test {
@@ -35,15 +33,12 @@ public class Test {
      */
     public static void main(String[] args) throws Exception {
 
-        //******* EDUARDO BEGIN **************//
-        ReconfigurationManager manager = new ReconfigurationManager(Integer.parseInt(args[0]));
+        TOMConfiguration conf = new TOMConfiguration(Integer.parseInt(args[0]));
         LinkedBlockingQueue<SystemMessage> inQueue = new LinkedBlockingQueue<SystemMessage>();
-        ServersCommunicationLayer scl = new ServersCommunicationLayer(manager, inQueue,null);
+        ServersCommunicationLayer scl = new ServersCommunicationLayer(conf, inQueue);
 
-        int id = manager.getStaticConf().getProcessId();
-        int n = manager.getCurrentViewN();
-        //******* EDUARDO END **************//
-
+        int id = conf.getProcessId();
+        int n = conf.getN();
 
         int[] targets = new int[n-1];
 
@@ -66,7 +61,7 @@ public class Test {
             if(id == 0) {
                 long time = System.nanoTime();
 
-                scl.send(targets, new TOMMessage(id,0,i,msg.getBytes(),0));
+                scl.send(targets, new TOMMessage(id,i,msg.getBytes()));
                 int rec = 0;
 
                 while(rec < n-1) {
@@ -78,7 +73,7 @@ public class Test {
                 System.out.println("Roundtrip "+((System.nanoTime()-time)/1000.0)+" us");
             } else {
                 TOMMessage m = (TOMMessage) inQueue.take();
-                scl.send(new int[]{m.getSender()}, new TOMMessage(id,0,i,m.getContent(),0));
+                scl.send(new int[]{m.getSender()}, new TOMMessage(id,i,m.getContent()));
             }
         }
 
@@ -90,7 +85,7 @@ public class Test {
             if(id == 0) {
                 long time = System.nanoTime();
 
-                scl.send(targets, new TOMMessage(id,0,i,msg.getBytes(),0));
+                scl.send(targets, new TOMMessage(id,i,msg.getBytes()));
                 int rec = 0;
 
                 while(rec < n-1) {
@@ -101,7 +96,7 @@ public class Test {
                 st.store(System.nanoTime()-time);
             } else {
                 TOMMessage m = (TOMMessage) inQueue.take();
-                scl.send(new int[]{m.getSender()}, new TOMMessage(id,0,i,m.getContent(),0));
+                scl.send(new int[]{m.getSender()}, new TOMMessage(id,i,m.getContent()));
             }
         }
 
@@ -115,3 +110,4 @@ public class Test {
         //scl.shutdown();
     }
 }
+

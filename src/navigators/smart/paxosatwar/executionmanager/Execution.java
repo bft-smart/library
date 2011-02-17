@@ -1,18 +1,18 @@
 /**
  * Copyright (c) 2007-2009 Alysson Bessani, Eduardo Alchieri, Paulo Sousa, and the authors indicated in the @author tags
- *
+ * 
  * This file is part of SMaRt.
- *
+ * 
  * SMaRt is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- *
+ * 
  * SMaRt is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
  * GNU General Public License for more details.
- *
+ * 
  * You should have received a copy of the GNU General Public License along with SMaRt.  If not, see <http://www.gnu.org/licenses/>.
  */
 
@@ -22,7 +22,6 @@ import java.util.HashMap;
 import java.util.concurrent.locks.ReentrantLock;
 
 import navigators.smart.paxosatwar.Consensus;
-import navigators.smart.reconfiguration.ReconfigurationManager;
 
 
 /**
@@ -44,7 +43,7 @@ public class Execution {
 
     /**
      * Creates a new instance of Execution for Acceptor Manager
-     *
+     * 
      * @param manager Execution manager for this execution
      * @param consensus Consensus instance to which this execution works for
      * @param initialTimeout Initial timeout for rounds
@@ -84,8 +83,8 @@ public class Execution {
      * @param number The number of the round
      * @return The round
      */
-    public Round getRound(int number, ReconfigurationManager recManager) {
-        return getRound(number,true, recManager);
+    public Round getRound(int number) {
+        return getRound(number,true);
     }
 
     /**
@@ -94,12 +93,12 @@ public class Execution {
      * @param create if the round is to be created if not existent
      * @return The round
      */
-    public Round getRound(int number, boolean create, ReconfigurationManager recManager) {
+    public Round getRound(int number, boolean create) {
         roundsLock.lock();
 
         Round round = rounds.get(number);
         if(round == null && create){
-            round = new Round(recManager, this, number, initialTimeout);
+            round = new Round(this, number, initialTimeout);
             rounds.put(number, round);
         }
 
@@ -110,7 +109,7 @@ public class Execution {
 
     /**
      * Removes rounds greater than 'limit' from this execution
-     *
+     * 
      * @param limit Rounds that should be kept (from 0 to 'limit')
      */
     public void removeRounds(int limit) {
@@ -120,7 +119,7 @@ public class Execution {
             if(key > limit) {
                 Round round = rounds.remove(key);
                 round.setRemoved();
-                //round.getTimeoutTask().cancel();
+                round.getTimeoutTask().cancel();
             }
         }
 

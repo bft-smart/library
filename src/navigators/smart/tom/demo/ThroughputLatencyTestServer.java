@@ -23,23 +23,20 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.util.Random;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import navigators.smart.communication.ServerCommunicationSystem;
-import navigators.smart.reconfiguration.ReconfigurationManager;
 import navigators.smart.tom.TOMReceiver;
 import navigators.smart.tom.core.messages.TOMMessage;
 import navigators.smart.tom.util.Storage;
-
+import navigators.smart.tom.util.TOMConfiguration;
 
 
 public class ThroughputLatencyTestServer extends TOMReceiver {
     
     private ServerCommunicationSystem cs;
     private int id;
-    private int session;
     private int interval;
     private long numDecides=0;
     private long lastDecideTimeInstant;
@@ -56,7 +53,6 @@ public class ThroughputLatencyTestServer extends TOMReceiver {
     
     public ThroughputLatencyTestServer(int id, int interval, int averageIterations) {
         this.id = id;
-        this.session = new Random().nextInt();
         this.interval = interval;
         this.totalOps = 0;
         this.averageIterations = averageIterations;
@@ -70,10 +66,10 @@ public class ThroughputLatencyTestServer extends TOMReceiver {
     
     public void run(){
         //create the configuration object
-        ReconfigurationManager manager = new ReconfigurationManager(id);
+        TOMConfiguration conf = new TOMConfiguration(id);
         try {
             //create the communication system
-            cs = new ServerCommunicationSystem(manager,null);
+            cs = new ServerCommunicationSystem(conf);
             System.out.println("#ThroughputLatencyTestServer throughput interval= "+interval+ " msgs");
             System.out.println("#ThroughputLatencyTestServer average throughput interval= "+averageIterations+ " throughput intervals ");
             startTimeInstant = System.currentTimeMillis();
@@ -82,14 +78,13 @@ public class ThroughputLatencyTestServer extends TOMReceiver {
             throw new RuntimeException("Unable to build a communication system.");
         }
         //build the TOM server stack
-        this.init(cs,manager);
+        this.init(cs,conf);
         
         /**IST OE CODIGO DO JOAO, PARA TENTAR RESOLVER UM BUG */
         cs.start();
         /******************************************************/
     }
     
-    @Override
     public void receiveOrderedMessage(TOMMessage msg){
         long receiveInstant =  System.currentTimeMillis();          
 
@@ -119,15 +114,15 @@ public class ThroughputLatencyTestServer extends TOMReceiver {
                 Logger.getLogger(ThroughputLatencyTestServer.class.getName()).log(Level.SEVERE, null, ex);
             }
             System.arraycopy(out.toByteArray(), 0, command, 0, 12);
-            TOMMessage reply = new TOMMessage(id,session,msg.getSequence(),
-                    command,msg.getViewID());
+            TOMMessage reply = new TOMMessage(id,msg.getSequence(),
+                    command);
             cs.send(new int[]{msg.getSender()},reply);
         }
         else {
             //echo msg to client
             //System.out.println("Echoing msg to client");
-            TOMMessage reply = new TOMMessage(id,session,msg.getSequence(),
-                    msg.getContent(),msg.getViewID());
+            TOMMessage reply = new TOMMessage(id,msg.getSequence(),
+                    msg.getContent());
             cs.send(new int[]{msg.getSender()},reply);
         }
 
@@ -186,22 +181,15 @@ public class ThroughputLatencyTestServer extends TOMReceiver {
         new ThroughputLatencyTestServer(Integer.parseInt(args[0]),Integer.parseInt(args[1]),Integer.parseInt(args[2])).run();
     }
     
-    @Override
     public byte[] getState() {
-        return new byte[1];
+        return null;
     }
 
-    @Override
     public void setState(byte[] state) {
 
     }
 
-    @Override
     public void receiveMessage(TOMMessage msg) {
-        throw new UnsupportedOperationException("Not supported yet.");
-    }
-
-    public void waitForProcessingRequests() {
         throw new UnsupportedOperationException("Not supported yet.");
     }
 }

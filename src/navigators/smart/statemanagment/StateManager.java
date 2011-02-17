@@ -1,18 +1,18 @@
 /**
  * Copyright (c) 2007-2009 Alysson Bessani, Eduardo Alchieri, Paulo Sousa, and the authors indicated in the @author tags
- *
+ * 
  * This file is part of SMaRt.
- *
+ * 
  * SMaRt is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- *
+ * 
  * SMaRt is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
  * GNU General Public License for more details.
- *
+ * 
  * You should have received a copy of the GNU General Public License along with SMaRt.  If not, see <http://www.gnu.org/licenses/>.
  */
 
@@ -21,12 +21,10 @@ package navigators.smart.statemanagment;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Hashtable;
-import navigators.smart.reconfiguration.ReconfigurationManager;
 
 /**
  * TODO: Não sei se esta classe sera usada. Para já, deixo ficar
- *
- *  Verificar se as alterações para suportar dinamismo estão corretas
+ * 
  * @author Joao Sousa
  */
 public class StateManager {
@@ -34,34 +32,23 @@ public class StateManager {
     private StateLog log;
     private HashSet<SenderEid> senderEids = null;
     private HashSet<SenderState> senderStates = null;
-
-    //******* EDUARDO BEGIN: estas variaveis devem ser acessadas a partir da classe ReconfigurationManager **************//
-    //private int f;
-    //private int n;
-    //private int me;
-    //******* EDUARDO END **************//
-
-
+    private int f;
+    private int n;
+    private int me;
     private int lastEid;
     private int waitingEid;
     private int replica;
     private byte[] state;
 
-    private ReconfigurationManager manager;
-
-    public StateManager(ReconfigurationManager manager) {
-
-        //******* EDUARDO BEGIN **************//
-        this.manager = manager;
-        int k = this.manager.getStaticConf().getCheckpoint_period();
-        //******* EDUARDO END **************//
+    public StateManager(int k, int f, int n, int me) {
 
         this.log = new StateLog(k);
         senderEids = new HashSet<SenderEid>();
         senderStates = new HashSet<SenderState>();
+        this.f = f;
+        this.n = n;
+        this.me = me;
         this.replica = 0;
-
-        if (replica == manager.getStaticConf().getProcessId()) changeReplica();
         this.state = null;
         this.lastEid = -1;
         this.waitingEid = -1;
@@ -72,17 +59,9 @@ public class StateManager {
     }
 
     public void changeReplica() {
-
-        //******* EDUARDO BEGIN **************//
-        int pos = -1;
         do {
-            //TODO: Verificar se continua correto
-            pos = this.manager.getCurrentViewPos(replica);
-            replica = this.manager.getCurrentViewProcesses()[(pos + 1) % manager.getCurrentViewN()];
-
-            //replica = (replica + 1) % manager.getCurrentViewN();
-        //******* EDUARDO END **************//
-        } while (replica == manager.getStaticConf().getProcessId());
+            replica = (replica + 1) % n;
+        } while (replica == me);
     }
 
     public void setReplicaState(byte[] state) {
@@ -92,7 +71,7 @@ public class StateManager {
     public byte[] getReplicaState() {
         return state;
     }
-
+    
     public void addEID(int sender, int eid) {
         senderEids.add(new SenderEid(sender, eid));
     }
@@ -140,12 +119,10 @@ public class StateManager {
                 count++;
             }
         }
-
-        //******* EDUARDO BEGIN **************//
-        return count > manager.getCurrentViewF();
-        //******* EDUARDO END **************//
+        
+        return count > f;
     }
-    public boolean moreThanF_Replies() {
+    public boolean moreThenF_Replies() {
 
         int count = 0;
         HashSet<Integer> replicasCounted = new HashSet<Integer>();
@@ -157,13 +134,11 @@ public class StateManager {
             }
         }
 
-        //******* EDUARDO BEGIN **************//
-        return count > manager.getCurrentViewF();
-        //******* EDUARDO END **************//
+        return count > f;
     }
 
-    public TransferableState getValidHash() {
-
+    public TransferableState getValidState() {
+        
         SenderState[] st = new SenderState[senderStates.size()];
         senderStates.toArray(st);
         int count = 0;
@@ -173,31 +148,11 @@ public class StateManager {
             for (int j = i; j < st.length; j++) {
 
                 if (st[i].state.equals(st[j].state) && st[j].state.hasState()) count++;
-                //******* EDUARDO BEGIN **************//
-                if (count > manager.getCurrentViewF()) return st[j].state;
-                //******* EDUARDO END **************//
+                if (count > f) return st[j].state;
             }
         }
 
         return null;
-    }
-
-    public int getNumValidHashes() {
-
-        SenderState[] st = new SenderState[senderStates.size()];
-        senderStates.toArray(st);
-        int count = 0;
-
-        for (int i = 0; i < st.length; i++) {
-
-            for (int j = i; j < st.length; j++) {
-
-                if (st[i].state.equals(st[j].state) && st[j].state.hasState()) count++;
- 
-            }
-        }
-
-        return count;
     }
 
     public int getReplies() {

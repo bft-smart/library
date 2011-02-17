@@ -52,25 +52,22 @@ public class ShutdownThread extends Thread {
         System.err.println("Current time: " + System.currentTimeMillis());
         System.err.println("Last executed consensus: " + tomLayer.getLastExec());
         Round r = manager.getExecution(tomLayer.getLastExec()).getLastRound();
-        //******* EDUARDO BEGIN **************//
-        if(r != null){
-            System.err.println("Last executed leader: " + lm.getLeader(r.getExecution().getId(),r.getNumber()));
-            System.err.println("State of the last executed round: "+r.toString());
-        }
-        //******* EDUARDO END **************//
+        System.err.println("Last executed leader: " +
+                lm.getLeader(r.getExecution().getId(),r.getNumber()));
+        System.err.println("State of the last executed round: "+r.toString());
         System.err.println("Consensus in execution: " + tomLayer.getInExec());
         if(tomLayer.getInExec() != -1) {
             Round r2 = manager.getExecution(tomLayer.getInExec()).getLastRound();
             if(r2 != null) {
-                System.out.println("Consensus in execution leader: " + lm.getLeader(r2.getExecution().getId(),r.getNumber()));
                 System.err.println("State of the round in execution: "+r2.toString());
             }
         }
-        //System.err.println("Execution manager: "+ tomLayer.execManager);
-        //System.err.println("Server communication system queues: "+scs.toString());
+        System.err.println("Execution manager: "+ tomLayer.execManager);
+        System.err.println("Server communication system queues: "+
+                scs.toString());
         //System.err.println("Pending requests: " +
         //        tomLayer.clientsManager.getPendingRequests());
-        //System.err.println("Requests timers: " + tomLayer.requestsTimer);
+        System.err.println("Requests timers: " + tomLayer.requestsTimer);
         System.err.println("---------- ---------- ----------");
     }
 }

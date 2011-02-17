@@ -16,9 +16,8 @@
  * You should have received a copy of the GNU General Public License along with SMaRt.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package navigators.smart.reconfiguration.util;
+package navigators.smart.tom.util;
 
-import navigators.smart.tom.util.*;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.math.BigInteger;
@@ -43,9 +42,6 @@ public class Configuration {
     protected Map configs;
     protected HostsConfig hosts;
     
-    //protected HostsConfig initialHosts;
-    
-       
     private String hmacAlgorithm = "HmacSha1";
     private int hmacSize = 160;
 
@@ -53,7 +49,7 @@ public class Configuration {
     protected static String hostsFileName = "";
 
 
-    /*public Configuration(Configuration conf, int processId){
+    public Configuration(Configuration conf, int processId){
         this.processId = processId;
         this.authentication = conf.authentication;
         this.channelsBlocking = conf.channelsBlocking;
@@ -62,7 +58,7 @@ public class Configuration {
         this.autoConnectLimit = conf.autoConnectLimit;
         this.configs = conf.configs;
         this.hosts = conf.hosts;
-    }*/
+    }
 
     
     public Configuration(int procId){
@@ -83,16 +79,13 @@ public class Configuration {
         init();
     }
     
-    /*public static String getHomeDir(){
+    public static String getHomeDir(){
        return configHome;
-    }*/
+    }
     
     protected void init(){
         try{
             hosts = new HostsConfig(this.configHome, hostsFileName);
-            
-            //initialHosts = new HostsConfig(this.configHome, "initial.view");
-                    
             loadConfig();
             String s = (String) configs.remove("system.authentication");
             if(s == null){
@@ -196,12 +189,6 @@ public class Configuration {
         return hosts.getRemoteAddress(id);
     }
     
-
-    public final InetSocketAddress getServerToServerRemoteAddress(int id){
-        return hosts.getServerToServerRemoteAddress(id);
-    }
-
-    
     public final InetSocketAddress getLocalAddress(int id){
         return hosts.getLocalAddress(id);
     }
@@ -214,11 +201,6 @@ public class Configuration {
         return hosts.getPort(id);
     }
     
-     public final int getServerToServerPort(int id){
-        return hosts.getServerToServerPort(id);
-    }
-    
-    
     public final int getProcessId(){
         return processId;
     }
@@ -226,12 +208,6 @@ public class Configuration {
     public final void setProcessId(int processId){
         this.processId = processId;
     }
-    
-  
-    public final void addHostInfo(int id, String host, int port){
-        this.hosts.add(id,host,port);
-    }
-    
     
     private void loadConfig(){
         configs = new Hashtable();

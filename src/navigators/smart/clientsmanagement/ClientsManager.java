@@ -1,18 +1,18 @@
 /**
  * Copyright (c) 2007-2009 Alysson Bessani, Eduardo Alchieri, Paulo Sousa, and the authors indicated in the @author tags
- *
+ * 
  * This file is part of SMaRt.
- *
+ * 
  * SMaRt is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- *
+ * 
  * SMaRt is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
  * GNU General Public License for more details.
- *
+ * 
  * You should have received a copy of the GNU General Public License along with SMaRt.  If not, see <http://www.gnu.org/licenses/>.
  */
 
@@ -24,11 +24,10 @@ import java.util.Set;
 import java.util.Map.Entry;
 import java.util.concurrent.locks.ReentrantLock;
 
-import navigators.smart.reconfiguration.ReconfigurationManager;
 import navigators.smart.tom.core.messages.TOMMessage;
 import navigators.smart.tom.core.timer.RequestsTimer;
 import navigators.smart.tom.util.Logger;
-
+import navigators.smart.tom.util.TOMConfiguration;
 
 
 /**
@@ -37,14 +36,14 @@ import navigators.smart.tom.util.Logger;
  */
 public class ClientsManager {
 
-    private ReconfigurationManager manager;
+    private TOMConfiguration conf;
     private RequestsTimer timer;
     private HashMap<Integer, ClientData> clientsData = new HashMap<Integer, ClientData>();
     private ReentrantLock clientsLock = new ReentrantLock();
 
-
-    public ClientsManager(ReconfigurationManager manager, RequestsTimer timer) {
-        this.manager = manager;
+   
+    public ClientsManager(TOMConfiguration conf, RequestsTimer timer) {
+        this.conf = conf;
         this.timer = timer;
     }
 
@@ -64,9 +63,7 @@ public class ClientsManager {
 
         if (clientData == null) {
             Logger.println("(ClientsManager.getClientData) Creating new client data, client id="+clientId);
-             //******* EDUARDO BEGIN **************//
-            clientData = new ClientData(clientId,manager);
-             //******* EDUARDO END **************//
+            clientData = new ClientData(clientId);
             clientsData.put(clientId, clientData);
         }
 
@@ -101,7 +98,7 @@ public class ClientsManager {
 
                 clientData.clientLock.lock();
                 /******* BEGIN CLIENTDATA CRITICAL SECTION ******/
-
+                
                 TOMMessage request = (clientPendingRequests.size() > i) ? clientPendingRequests.get(i) : null;
 
                 /******* END CLIENTDATA CRITICAL SECTION ******/
@@ -112,10 +109,7 @@ public class ClientsManager {
                     allReq.addLast(request);
                     //I inserted a message on the batch, now I must verify if
                     //the max batch size is reached
-
-                    if (allReq.size() == manager.getStaticConf().getMaxBatchSize()) {
-
-
+                    if (allReq.size() == conf.getMaxBatchSize()) {
                         /******* END CLIENTS CRITICAL SECTION ******/
                         clientsLock.unlock();
                         return allReq;
@@ -179,10 +173,7 @@ public class ClientsManager {
     public TOMMessage getPending(int reqId) {
         int clientId = TOMMessage.getSenderFromId(reqId);
 
-        //TODO: Pq deste if??? seria o isCurrentViewMember() ???
-        // Um servidor não pode ser cliente?
-        //if (clientId >= conf.getN()) {
-        //if (!manager.isCurrentViewMember(clientId)) {
+        if (clientId >= conf.getN()) {
             ClientData clientData = getClientData(clientId);
 
             clientData.clientLock.lock();
@@ -192,9 +183,9 @@ public class ClientsManager {
             clientData.clientLock.unlock();
 
             return pendingMessage;
-        //} else {
-          //  return null;
-       // }
+        } else {
+            return null;
+        }
     }
 
     public boolean requestReceived(TOMMessage request, boolean fromClient) {
@@ -227,43 +218,45 @@ public class ClientsManager {
         /******* BEGIN CLIENTDATA CRITICAL SECTION ******/
         //Logger.println("(ClientsManager.requestReceived) lock for client "+clientData.getClientId()+" acquired");
 
-        /* ################################################ */
-        //pjsousa: simple flow control mechanism to avoid out of memory exception
-        if (fromClient && (manager.getStaticConf().getUseControlFlow()!=0)){
-            if (clientData.getPendingRequests().size() > manager.getStaticConf().getUseControlFlow()){
-                //clients should not have more than defined in the config file
-                //outstanding messages, otherwise they will be dropped.
-                //just account for the message reception
-                clientData.setLastMessageReceived(request.getSequence());
-                clientData.setLastMessageReceivedTime(request.receptionTime);
-
-                clientData.clientLock.unlock();
-                return false;
-            }
-        }
-        /* ################################################ */
-
-        //new session... just reset the client counter
-        if(clientData.getSession() != request.getSession()) {
-            clientData.setSession(request.getSession());
+        /*
+        //for dealing with restarted clients
+        if ((request.getSequence() == 0) &&
+                (request.receptionTime - clientData.getLastMessageReceivedTime() >
+                conf.getReplyVerificationTime())) {
+            System.out.println("Start accounting messages for client "+clientId);
             clientData.setLastMessageReceived(-1);
         }
+        */
 
-        if ((clientData.getLastMessageReceived()==-1) || //first message received or new session (see above)
-             (clientData.getLastMessageReceived() + 1 == request.getSequence()) || //message received is the expected
-             ((request.getSequence()>clientData.getLastMessageReceived()) && !fromClient)) {
+/* ################################################ */
+        //pjsousa: simple flow control mechanism to avoid out of memory exception
+        if (conf.getUseControlFlow()!=0){
+            if (fromClient && (clientData.getPendingRequests().size()>conf.getUseControlFlow())){
+                //clients should not have more than 1000 outstanding messages, otherwise they will be dropped
+                clientData.setLastMessageReceived(request.getSequence());
+                clientData.setLastMessageReceivedTime(request.receptionTime);
+                clientData.clientLock.unlock();
+                accounted = false;
+                return accounted;
+            }
+        }
+/* ################################################ */
+
+        if ((clientData.getLastMessageReceived()==-1) || (clientData.getLastMessageReceived() + 1 == request.getSequence()) || ((request.getSequence()>clientData.getLastMessageReceived()) && !fromClient)) {
 
             //it is a new message and I have to verify it's signature
-            if (!request.signed ||
-                 clientData.verifySignature(request.serializedMessage,
-                                                     request.serializedMessageSignature)) {
-
-                //I don't have the message but it is valid, I will
+            if (!request.signed || clientData.verifySignature(
+                    request.serializedMessage,
+                    request.serializedMessageSignature)) {
+                //I don't have the message but it is correctly signed, I will
                 //insert it in the pending requests of this client
                 if(storeMessage) {
                     clientData.getPendingRequests().add(request);
+                    /*
+                    if (request.getSequence()%1000 == 0)
+                        Logger.println("(ClientsManager.requestReceived) client "+clientId+ " pending requests size: "+clientData.getPendingRequests().size());
+                     */
                 }
-
                 clientData.setLastMessageReceived(request.getSequence());
                 clientData.setLastMessageReceivedTime(request.receptionTime);
 
@@ -274,13 +267,18 @@ public class ClientsManager {
 
                 accounted = true;
             }
-        } else {
-            //I will not put this message on the pending requests list
+        } else {//I will not put this message on the pending requests list
+
             if (clientData.getLastMessageReceived() >= request.getSequence()) {
                 //I already have/had this message
                 accounted = true;
             } else {
-                //a too forward message... the client must be malicious
+                //it is an invalid message if it's being sent by a client (sequence number > last received + 1)
+                /*
+                Logger.println("Ignoring message "+request+" from client "+
+                        clientData.getClientId()+"(last received = "+
+                        clientData.getLastMessageReceived()+"), msg sent by client? "+fromClient);
+                 **/
                 accounted = false;
             }
         }
@@ -314,7 +312,7 @@ public class ClientsManager {
 
         //Logger.println("(ClientsManager.requestOrdered) Removing request "+request+" from pending requests");
         if (clientData.getPendingRequests().remove(request) == false){
-            Logger.println("(ClientsManager.requestOrdered) Request "+request+" does not exist in pending requests");
+            Logger.println("(ClientsManager.requestOrdered) Request "+request+" does not exist in pending requests");                        
         }
         clientData.setLastMessageExecuted(request.getSequence());
 
@@ -326,38 +324,4 @@ public class ClientsManager {
         return clientsLock;
     }
 
-     /* JOAO BEGIN: PARA TRATAR DE PEDIDOS QUE NAO VAO SER PROCESSADOS */
-     public boolean removeRequests(TOMMessage[] messages) {
-
-         HashMap<Integer,TOMMessage> lastSequences = new HashMap<Integer,TOMMessage>();
-         int sender = -1;
-         ClientData clientData = null;
-         boolean result = false;
-
-         for (TOMMessage msg : messages) {
-
-            sender = msg.getSender();
-
-            if ((lastSequences.get(sender) == null) ||
-                    (msg.getSequence() > lastSequences.get(sender).getSequence())) lastSequences.put(sender, msg);
-         }
-
-         if (lastSequences.size() > 0) {
-
-            result = true;
-            TOMMessage[] selectedMessages = new TOMMessage[lastSequences.size()];
-            lastSequences.values().toArray(selectedMessages);
-
-            for (TOMMessage msg : selectedMessages) {
-
-                clientData = getClientData(msg.getSender());
-
-                clientData.clientLock.lock();
-                result = result && clientData.removeRequest(msg);
-                clientData.clientLock.unlock();
-            }
-         }
-         return result;
-     }
-     /* JOAO END: PARA TRATAR DE PEDIDOS QUE NAO VAO SER PROCESSADOS */
 }

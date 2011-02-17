@@ -15,19 +15,14 @@
  * 
  * You should have received a copy of the GNU General Public License along with SMaRt.  If not, see <http://www.gnu.org/licenses/>.
  */
+
 package navigators.smart.tom.util;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.Signature;
 import java.util.Arrays;
 import java.util.concurrent.locks.ReentrantLock;
-import navigators.smart.reconfiguration.ViewManager;
 
 public class TOMUtil {
 
@@ -51,56 +46,22 @@ public class TOMUtil {
     private static ReentrantLock lock = new ReentrantLock();
 
     //private static Storage st = new Storage(BENCHMARK_PERIOD);
-    //private static int count=0;
-    public static int getSignatureSize(ViewManager manager) {
-        if (signatureSize > 0) {
+    private static int count=0;
+
+    public static int getSignatureSize() {
+        if(signatureSize > 0) {
             return signatureSize;
         }
 
-        byte[] signature = signMessage(manager.getStaticConf().getRSAPrivateKey(),
+        byte[] signature = signMessage(TOMConfiguration.getRSAPrivateKey(),
                 "a".getBytes());
 
-        if (signature != null) {
+        if(signature != null) {
             signatureSize = signature.length;
         }
 
         return signatureSize;
     }
-    
-    //******* EDUARDO BEGIN **************//
-    public static byte[] getBytes(Object o) {
-        ByteArrayOutputStream bOut = new ByteArrayOutputStream();
-        ObjectOutputStream obOut = null;
-        try {
-            obOut = new ObjectOutputStream(bOut);
-
-            obOut.writeObject(o);
-            obOut.close();
-            bOut.close();
-
-        } catch (IOException ex) {
-            ex.printStackTrace();
-        }
-
-        return bOut.toByteArray();
-    }
-
-    public static Object getObject(byte[] b) {
-        if (b == null) System.out.println("O ARRAY E NULL!!!!");
-        ByteArrayInputStream bInp = new ByteArrayInputStream(b);
-        try {
-            ObjectInputStream obInp = new ObjectInputStream(bInp);
-            Object ret = obInp.readObject();
-            obInp.close();
-            bInp.close();
-            return ret;
-        } catch (Exception ex) {
-            System.out.println("Isto rebenta aqui!!");
-            ex.printStackTrace();
-            return null;
-        }
-    }
-    //******* EDUARDO END **************//
 
     /**
      * Sign a message.
@@ -109,7 +70,7 @@ public class TOMUtil {
      * @param message the message to be signed
      * @return the signature
      */
-    public static byte[] signMessage(PrivateKey key, byte[] message) {
+    public static byte[] signMessage(PrivateKey key, byte[] message) {        
         lock.lock();
         try {
             if (signatureEngine == null) {
@@ -127,7 +88,7 @@ public class TOMUtil {
             lock.unlock();
             e.printStackTrace();
             return null;
-        }
+        }        
     }
 
     /**
@@ -138,9 +99,9 @@ public class TOMUtil {
      * @param signature the signature to be verified
      * @return the signature
      */
-    public static boolean verifySignature(PublicKey key, byte[] message, byte[] signature) {
+    public static boolean verifySignature(PublicKey key, byte[] message, byte[] signature) {       
         lock.lock();
-        //long startTime = System.nanoTime();
+        long startTime = System.nanoTime();
         try {
             if (signatureEngine == null) {
                 signatureEngine = Signature.getInstance("SHA1withRSA");
@@ -156,24 +117,25 @@ public class TOMUtil {
             //statistics about signature execution time
             count++;
             if (count%BENCHMARK_PERIOD==0){                
-            System.out.println("#-- (TOMUtil) Signature verification benchmark:--");
-            System.out.println("#Average time for " + BENCHMARK_PERIOD + " signature verifications (-10%) = " + st.getAverage(true) / 1000 + " us ");
-            System.out.println("#Standard desviation for " + BENCHMARK_PERIOD + " signature verifications (-10%) = " + st.getDP(true) / 1000 + " us ");
-            System.out.println("#Average time for " + BENCHMARK_PERIOD + " signature verifications (all samples) = " + st.getAverage(false) / 1000 + " us ");
-            System.out.println("#Standard desviation for " + BENCHMARK_PERIOD + " signature verifications (all samples) = " + st.getDP(false) / 1000 + " us ");
-            System.out.println("#Maximum time for " + BENCHMARK_PERIOD + " signature verifications (-10%) = " + st.getMax(true) / 1000 + " us ");
-            System.out.println("#Maximum time for " + BENCHMARK_PERIOD + " signature verifications (all samples) = " + st.getMax(false) / 1000 + " us ");
-            count = 0;
-            st = new Storage(BENCHMARK_PERIOD);
+                System.out.println("#-- (TOMUtil) Signature verification benchmark:--");
+                System.out.println("#Average time for " + BENCHMARK_PERIOD + " signature verifications (-10%) = " + st.getAverage(true) / 1000 + " us ");
+                System.out.println("#Standard desviation for " + BENCHMARK_PERIOD + " signature verifications (-10%) = " + st.getDP(true) / 1000 + " us ");
+                System.out.println("#Average time for " + BENCHMARK_PERIOD + " signature verifications (all samples) = " + st.getAverage(false) / 1000 + " us ");
+                System.out.println("#Standard desviation for " + BENCHMARK_PERIOD + " signature verifications (all samples) = " + st.getDP(false) / 1000 + " us ");
+                System.out.println("#Maximum time for " + BENCHMARK_PERIOD + " signature verifications (-10%) = " + st.getMax(true) / 1000 + " us ");
+                System.out.println("#Maximum time for " + BENCHMARK_PERIOD + " signature verifications (all samples) = " + st.getMax(false) / 1000 + " us ");
+                
+                count = 0;
+                st = new Storage(BENCHMARK_PERIOD);
             }
-             */
-            lock.unlock();
+            */
+            lock.unlock();            
             return result;
         } catch (Exception e) {
             lock.unlock();
             e.printStackTrace();
             return false;
-        }
+        }        
     }
 
     public static String byteArrayToString(byte[] b) {

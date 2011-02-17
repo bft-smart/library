@@ -28,7 +28,6 @@ import java.io.Externalizable;
 import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
-import navigators.smart.reconfiguration.ReconfigurationManager;
 import navigators.smart.tom.util.DebugInfo;
 
 /**
@@ -36,12 +35,6 @@ import navigators.smart.tom.util.DebugInfo;
  */
 public class TOMMessage extends SystemMessage implements Externalizable, Comparable {
 
-     //******* EDUARDO BEGIN **************//
-    private int viewID; //current sender view
-    private int reqType; // request type: application or reconfiguration request
-     //******* EDUARDO END **************//
-    
-    private int session; // Sequence number defined by the client
     private int sequence; // Sequence number defined by the client
     private byte[] content = null; // Content of the message
     private boolean readOnlyRequest = false; //this is a read only request
@@ -81,8 +74,8 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
      * @param sequence Sequence number defined by the client
      * @param content Content of the message
      */
-    public TOMMessage(int sender, int session, int sequence, byte[] content, int view) {
-        this(sender,session,sequence,content, view, ReconfigurationManager.TOM_NORMAL_REQUEST, false);
+    public TOMMessage(int sender, int sequence, byte[] content) {
+        this(sender,sequence,content,false);
     }
 
     /**
@@ -91,22 +84,16 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
      * @param sender ID of the process which sent the message
      * @param sequence Sequence number defined by the client
      * @param content Content of the message
-     * @param type Type of the request
      * @param readOnlyRequest it is a read only request
      */
-       
-    public TOMMessage(int sender, int session, int sequence, byte[] content, int view, int type, boolean readOnlyRequest) {
+    public TOMMessage(int sender, int sequence, byte[] content, boolean readOnlyRequest) {
         super(sender);
-        this.session = session;
         this.sequence = sequence;
-        this.viewID = view;
+
         buildId();
         this.content = content;
-        this.reqType = type;
         this.readOnlyRequest = readOnlyRequest;
     }
-
-    
 
     /** ISTO E CODIGO DO JOAO, PARA TRATAR DE DEBUGGING */
     private transient DebugInfo info = null; // Debug information
@@ -123,19 +110,11 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
      * Retrieves the debug info from the TOM layer
      * @return The debug info from the TOM layer
      */
-    public void  setDebugInfo(DebugInfo info) {
+    public void  setSequence(DebugInfo info) {
         this.info = info;
     }
 
     /****************************************************/
-
-    /**
-     * Retrieves the session id of this message
-     * @return The session id of this message
-     */
-    public int getSession() {
-        return session;
-    }
 
     /**
      * Retrieves the sequence number defined by the client
@@ -143,14 +122,6 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
      */
     public int getSequence() {
         return sequence;
-    }
-
-    public int getViewID() {
-        return viewID;
-    }
-
-    public int getReqType() {
-        return reqType;
     }
 
     /**
@@ -194,7 +165,6 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 
         TOMMessage mc = (TOMMessage) o;
 
-        //TODO: não precisa mais verificar se o conteúdo é igual????
         return (mc.getSender() == sender) && (mc.getSequence() == sequence);
         /* return (mc.getSender() == sender) && (mc.getSequence() == sequence) &&
                 Arrays.equals(mc.getContent(), this.content); */
@@ -216,9 +186,6 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
     @Override
     public void writeExternal(ObjectOutput out) throws IOException {
         super.writeExternal(out);
-        out.writeInt(viewID);
-        out.writeInt(reqType);
-        out.writeInt(session);
         out.writeInt(sequence);
         if (content == null) {
             out.writeInt(-1);
@@ -231,14 +198,12 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
     @Override
     public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
         super.readExternal(in);
-        viewID = in.readInt();
-        reqType = in.readInt();
-        session = in.readInt();
         sequence = in.readInt();
+
         int toRead = in.readInt();
         if (toRead != -1) {
             content = new byte[toRead];
-            //in.readFully(content);
+
             do {
                 toRead -= in.read(content, content.length - toRead, toRead);
             } while (toRead > 0);
@@ -247,11 +212,8 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
         buildId();
     }
 
-    public void wExternal(DataOutput out) throws IOException {
+    public void writeExternal(DataOutput out) throws IOException {
         out.writeInt(sender);
-        out.writeInt(viewID);
-        out.writeInt(reqType);
-        out.writeInt(session);
         out.writeInt(sequence);
 
         if (content == null) {
@@ -264,11 +226,8 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
         out.writeBoolean(isReadOnlyRequest());
     }
 
-    public void rExternal(DataInput in) throws IOException, ClassNotFoundException {
+    public void readExternal(DataInput in) throws IOException, ClassNotFoundException {
         sender = in.readInt();
-        viewID = in.readInt();
-        reqType = in.readInt();
-        session = in.readInt();
         sequence = in.readInt();
 
         int toRead = in.readInt();
@@ -282,6 +241,7 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 
         buildId();
     }
+
 
     /**
      * Used to build an unique id for the message
@@ -303,7 +263,7 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         DataOutputStream dos = new DataOutputStream(baos);
         try{
-            m.wExternal(dos);
+            m.writeExternal(dos);
             dos.flush();
         }catch(Exception e) {
         }
@@ -316,7 +276,7 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 
         TOMMessage m = new TOMMessage();
         try{
-            m.rExternal(dis);
+            m.readExternal(dis);
         }catch(Exception e) {
             System.out.println("deu merda "+e);
             return null;
@@ -325,7 +285,6 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
         return m;
     }
 
-    @Override
     public int compareTo(Object o) {
         final int BEFORE = -1;
         final int EQUAL = 0;
@@ -341,11 +300,6 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
         if (this.getSender() > tm.getSender())
             return AFTER;
 
-        if (this.getSession() < tm.getSession())
-            return BEFORE;
-        if (this.getSession() > tm.getSession())
-            return AFTER;
-
         if (this.getSequence() < tm.getSequence())
             return BEFORE;
         if (this.getSequence() > tm.getSequence())
@@ -354,3 +308,4 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
         return EQUAL;
     }
 }
+

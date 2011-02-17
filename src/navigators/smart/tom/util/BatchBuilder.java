@@ -1,66 +1,48 @@
 /**
  * Copyright (c) 2007-2009 Alysson Bessani, Eduardo Alchieri, Paulo Sousa, and the authors indicated in the @author tags
- *
+ * 
  * This file is part of SMaRt.
- *
+ * 
  * SMaRt is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- *
+ * 
  * SMaRt is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
  * GNU General Public License for more details.
- *
+ * 
  * You should have received a copy of the GNU General Public License along with SMaRt.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 package navigators.smart.tom.util;
 
 import java.nio.ByteBuffer;
-import java.util.Random;
-import navigators.smart.reconfiguration.ReconfigurationManager;
 
 /**
- * Batch format: TIMESTAMP(long) + N_NONCES(int) + SEED(long) +
- *               N_MESSAGES(int) + N_MESSAGES*[MSGSIZE(int),MSG(byte),SIG(byte)] +
- *
+ * Batch format: N_MESSAGES(int) + N_MESSAGES*[MSGSIZE(int),MSG(byte),SIG(byte)] +
+ *               TIMESTAMP(long) + N_NONCES(int) + NONCES(byte[])
  *
  * The methods does not try to enforce any constraint, so be correct when using it.
  *
  */
 public final class BatchBuilder {
 
-    private Random rnd = new Random();
+    private ByteBuffer proposalBuffer;
 
     /** build buffer */
-    public byte[] createBatch(long timestamp, int numberOfNonces, int numberOfMessages, int totalMessagesSize, boolean useSignatures, byte[][] messages, byte[][] signatures, ReconfigurationManager manager) {
-        int size = 20 + //timestamp 8, nonces 4, nummessages 4
-                (numberOfNonces > 0 ? 8 : 0) + //seed if needed
-                (numberOfMessages*(4+(useSignatures?TOMUtil.getSignatureSize(manager):0)))+ // msglength + signature for each msg
-                totalMessagesSize; //size of all msges
+    public BatchBuilder(int numberOfMessages, int numberOfNonces, int totalMessagesSize, boolean useSignatures) {
 
-        ByteBuffer  proposalBuffer = ByteBuffer.allocate(size);
+        this.proposalBuffer = ByteBuffer.allocate(16+
+                (numberOfMessages*(4+(useSignatures?TOMUtil.getSignatureSize():0)))+
+                totalMessagesSize+numberOfNonces);
 
-        proposalBuffer.putLong(timestamp);
-
-        proposalBuffer.putInt(numberOfNonces);
-
-        if(numberOfNonces>0){
-            proposalBuffer.putLong(rnd.nextLong());
-        }
-
-        proposalBuffer.putInt(numberOfMessages);
-
-        for (int i = 0; i < numberOfMessages; i++) {
-            putMessage(proposalBuffer,messages[i], false, signatures[i]);
-        }
-
-        return proposalBuffer.array();
+        this.proposalBuffer.putInt(numberOfMessages);
     }
 
-    private void putMessage(ByteBuffer proposalBuffer, byte[] message, boolean isHash, byte[] signature) {
+    /** 1 */
+    public void putMessage(byte[] message, boolean isHash, byte[] signature) {
         proposalBuffer.putInt(isHash?0:message.length);
         proposalBuffer.put(message);
 
@@ -69,4 +51,18 @@ public final class BatchBuilder {
         }
     }
 
+    /** 2 */
+    public void putTimestamp(long timestamp) {
+        proposalBuffer.putLong(timestamp);
+    }
+
+    /** 3 */
+    public void putNonces(byte[] nonces) {
+        proposalBuffer.putInt(nonces.length);
+        proposalBuffer.put(nonces);
+    }
+
+    public byte[] getByteArray() {
+        return proposalBuffer.array();
+    }
 }

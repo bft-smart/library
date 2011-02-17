@@ -53,12 +53,9 @@ public final class ForwardedMessage extends SystemMessage {
 
         out.writeInt(request.serializedMessage.length);
         out.write(request.serializedMessage);
-        out.writeBoolean(request.signed);
 
-        if (request.signed) {
-            out.writeInt(request.serializedMessageSignature.length);
-            out.write(request.serializedMessageSignature);
-        }
+        out.writeInt(request.serializedMessageSignature.length);
+        out.write(request.serializedMessageSignature);
     }
 
     @Override
@@ -68,18 +65,13 @@ public final class ForwardedMessage extends SystemMessage {
         byte[] serReq = new byte[in.readInt()];
         in.readFully(serReq);
 
+        byte[] serReqSign = new byte[in.readInt()];
+        in.readFully(serReqSign);
+
+
         request = TOMMessage.bytesToMessage(serReq);
         request.serializedMessage = serReq;
-
-        boolean signed = in.readBoolean();
-
-        if (signed) {
-
-            byte[] serReqSign = new byte[in.readInt()];
-            in.readFully(serReqSign);
-            request.serializedMessageSignature = serReqSign;
-
-        }
+        request.serializedMessageSignature = serReqSign;
     }
 
 }

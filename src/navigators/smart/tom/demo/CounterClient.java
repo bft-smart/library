@@ -15,17 +15,19 @@
  * 
  * You should have received a copy of the GNU General Public License along with SMaRt.  If not, see <http://www.gnu.org/licenses/>.
  */
+
 package navigators.smart.tom.demo;
 
-import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 
-import java.io.InputStreamReader;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import navigators.smart.tom.ServiceProxy;
+
 
 /**
  * Example client that updates a BFT replicated service (a counter).
@@ -33,9 +35,8 @@ import navigators.smart.tom.ServiceProxy;
  */
 public class CounterClient {
 
-    @SuppressWarnings("static-access")
     public static void main(String[] args) throws IOException {
-        if (args.length < 2) {
+        if(args.length < 2) {
             System.out.println("Usage: java CounterClient <process id> <increment>");
             System.out.println("       if <increment> equals 0 the request will be read-only");
             System.exit(-1);
@@ -43,50 +44,20 @@ public class CounterClient {
 
         ServiceProxy counterProxy = new ServiceProxy(Integer.parseInt(args[0]));
 
-        int i = 0;
+        int i=0;
         int inc = Integer.parseInt(args[1]);
         //sends 1000 requests to replicas and then terminates
-
-        //******* EDUARDO BEGIN **************//
-        boolean wait = true;
-
-        BufferedReader inReader = new BufferedReader(new InputStreamReader(System.in));
-        
-        while (i < 1000) {
-
-
-            if (wait) {
-
-                System.out.println("Press Enter...");
-
-                String lido = inReader.readLine();
-
-                if (lido.equals("exit")) {
-                    counterProxy.close();
-                    break;
-                }else if(lido.equals("go")) {
-                    wait = false;
-                }
-            }
-
-
-            /*try {
-                Thread.currentThread().sleep(1000);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }*/
-
-            //******* EDUARDO END **************//
-
+        while(i<1000){
+            
             ByteArrayOutputStream out = new ByteArrayOutputStream(4);
             new DataOutputStream(out).writeInt(inc);
 
-            System.out.println("Counter sending: " + i);
-            byte[] reply = counterProxy.invoke(out.toByteArray(), (inc == 0));
-            int newValue = new DataInputStream(new ByteArrayInputStream(reply)).readInt();
-            System.out.println("Counter value: " + newValue);
-            i++;
+	        byte[] reply = counterProxy.invoke(out.toByteArray(),(inc == 0));	
+	        int newValue = new DataInputStream(new ByteArrayInputStream(reply)).readInt();	
+	        System.out.println("Counter value: "+newValue);
+	        i++;
         }
-    //System.exit(0);
+        //System.exit(0);
     }
+
 }

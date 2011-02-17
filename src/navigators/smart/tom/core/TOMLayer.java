@@ -31,12 +31,11 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Timer;
-import java.util.TimerTask;
+import java.util.Random;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
-
+import java.util.logging.Level;
 import navigators.smart.clientsmanagement.ClientsManager;
 import navigators.smart.clientsmanagement.PendingRequests;
 import navigators.smart.communication.ServerCommunicationSystem;
@@ -47,7 +46,6 @@ import navigators.smart.paxosatwar.executionmanager.ExecutionManager;
 import navigators.smart.paxosatwar.executionmanager.LeaderModule;
 import navigators.smart.paxosatwar.executionmanager.Round;
 import navigators.smart.paxosatwar.roles.Acceptor;
-import navigators.smart.reconfiguration.ReconfigurationManager;
 import navigators.smart.statemanagment.SMMessage;
 import navigators.smart.statemanagment.StateLog;
 import navigators.smart.statemanagment.StateManager;
@@ -64,7 +62,7 @@ import navigators.smart.tom.util.BatchBuilder;
 import navigators.smart.tom.util.BatchReader;
 import navigators.smart.tom.util.Logger;
 import navigators.smart.tom.util.Storage;
-
+import navigators.smart.tom.util.TOMConfiguration;
 import navigators.smart.tom.util.TOMUtil;
 
 
@@ -79,9 +77,9 @@ public final class TOMLayer extends Thread implements RequestReceiver {
     public LeaderModule lm; // Leader module
     public Acceptor acceptor; // Acceptor role of the PaW algorithm
     private ServerCommunicationSystem communication; // Communication system between replicas
-    //private OutOfContextMessageThread ot; // Thread which manages messages that do not belong to the current execution
+    private OutOfContextMessageThread ot; // Thread which manages messages that do not belong to the current execution
     private DeliveryThread dt; // Thread which delivers total ordered messages to the appication
-    
+    private TOMConfiguration conf; // TOM configuration
     /** Manage timers for pending requests */
     public RequestsTimer requestsTimer;
     /** Store requests received but still not ordered */
@@ -96,8 +94,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
     private MessageDigest md;
 
     //the next two are used to generate non-deterministic data in a deterministic way (by the leader)
-//    private Random random = new Random();
-    private BatchBuilder bb = new BatchBuilder();
+    private Random random = new Random();
     private long lastTimestamp = 0;
 
     /* The locks and conditions used to wait upon creating a propose */
@@ -115,13 +112,10 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
     /* The next fields are used only for benchmarking */
     private static final int BENCHMARK_PERIOD = 100;
-    //private long numMsgsReceived;
-    //private Storage stConsensusDuration;
-    //private Storage stConsensusBatch;
+    private long numMsgsReceived;
+    private Storage stConsensusDuration;
+    private Storage stConsensusBatch;
 
-    
-    private ReconfigurationManager reconfManager;
-    
     /**
      * Creates a new instance of TOMulticastLayer
      * @param manager Execution manager
@@ -136,7 +130,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             LeaderModule lm,
             Acceptor a,
             ServerCommunicationSystem cs,
-            ReconfigurationManager recManager) {
+            TOMConfiguration conf) {
 
         super("TOM Layer");
 
@@ -145,18 +139,18 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         this.lm = lm;
         this.acceptor = a;
         this.communication = cs;
-        this.reconfManager = recManager;
-//        this.numMsgsReceived = 0;
-        //this.stConsensusBatch = new Storage(BENCHMARK_PERIOD);
-        //this.stConsensusDuration = new Storage(BENCHMARK_PERIOD);
+        this.conf = conf;
+        this.numMsgsReceived = 0;
+        this.stConsensusBatch = new Storage(BENCHMARK_PERIOD);
+        this.stConsensusDuration = new Storage(BENCHMARK_PERIOD);
 
         //do not create a timer manager if the timeout is 0
-        if (reconfManager.getStaticConf().getRequestTimeout()==0){
+        if (conf.getRequestTimeout()==0){
             this.requestsTimer = null;
         }
-        else this.requestsTimer = new RequestsTimer(this, reconfManager.getStaticConf().getRequestTimeout()); // Create requests timers manager (a thread)
+        else this.requestsTimer = new RequestsTimer(this, conf.getRequestTimeout()); // Create requests timers manager (a thread)
 
-        this.clientsManager = new ClientsManager(reconfManager, requestsTimer); // Create clients manager
+        this.clientsManager = new ClientsManager(conf, requestsTimer); // Create clients manager
 
         try {
             this.md = MessageDigest.getInstance("MD5"); // TODO: nao devia ser antes SHA?
@@ -164,14 +158,14 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             e.printStackTrace(System.out);
         }
 
-        //this.ot = new OutOfContextMessageThread(this); // Create out of context thread
-        //this.ot.start();
+        this.ot = new OutOfContextMessageThread(this); // Create out of context thread
+        this.ot.start();
 
-        this.dt = new DeliveryThread(this, receiver, this.reconfManager); // Create delivery thread
+        this.dt = new DeliveryThread(this, receiver, conf); // Create delivery thread
         this.dt.start();
 
         /** ISTO E CODIGO DO JOAO, PARA TRATAR DOS CHECKPOINTS E TRANSFERENCIA DE ESTADO*/
-        stateManager = new StateManager(this.reconfManager);
+        stateManager = new StateManager(this.conf.getCheckpoint_period(), this.conf.getF(), this.conf.getN(), this.conf.getProcessId());
         /*******************************************************/
     }
 
@@ -179,28 +173,17 @@ public final class TOMLayer extends Thread implements RequestReceiver {
      * Retrieve TOM configuration
      * @return TOM configuration
      */
-    //public final TOMConfiguration getConf() {
-       // return this.conf;
-    //}
+    public final TOMConfiguration getConf() {
+        return this.conf;
+    }
 
-    ReentrantLock hashLock = new ReentrantLock();
     /**
      * Computes an hash for a TOM message
      * @param message
      * @return Hash for teh specified TOM message
      */
     public final byte[] computeHash(byte[] data) {
-        if (md == null) System.out.println("O hash digester está a null!!");
-        if (data == null) System.out.println("Os dados estam a null!!");
-
-        //synchronized(this) {
-        byte[] ret = null;
-        hashLock.lock();
-            ret = md.digest(data);
-        hashLock.unlock();
-
-        return ret;
-        //}
+        return md.digest(data);
     }
 
     /**
@@ -323,9 +306,8 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         PendingRequests pendingRequests = clientsManager.getPendingRequests();
 
         int numberOfMessages = pendingRequests.size(); // number of messages retrieved
-        //******* EDUARDO BEGIN **************//
-        int numberOfNonces = this.reconfManager.getStaticConf().getNumberOfNonces(); // ammount of nonces to be generated
-        //******* EDUARDO END **************//
+        int numberOfNonces = conf.getNumberOfNonces(); // ammount of nonces to be generated
+
         cons.batchSize = numberOfMessages;
         /*
         // These instructions are used only for benchmarking
@@ -352,12 +334,23 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             totalMessageSize += messages[i].length;
         }
 
-        // return the batch
-        return bb.createBatch(System.currentTimeMillis(), numberOfNonces, numberOfMessages, totalMessageSize, 
-                this.reconfManager.getStaticConf().getUseSignatures() == 1, messages, signatures,this.reconfManager);
+        // Create a batch of messages
+        BatchBuilder bb = new BatchBuilder(numberOfMessages, numberOfNonces, totalMessageSize, conf.getUseSignatures()==1);
+        for (i = 0; i < numberOfMessages; i++) {
+            bb.putMessage(messages[i], false, signatures[i]);
         }
 
+        //create a timestamp and a number of nonces to be together with the
+        //request to deal with nondeterminism
+        bb.putTimestamp(System.currentTimeMillis());
+        if (numberOfNonces > 0) {
+            byte[] nonces = new byte[numberOfNonces];
+            random.nextBytes(nonces);
+            bb.putNonces(nonces);
+        }
 
+        return bb.getByteArray(); // return the batch
+    }
 
     /**
      * This is the main code for this thread. It basically waits until this replica becomes the leader,
@@ -370,27 +363,15 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         long start=-1;
         int counter =0;
          */
-        /**********ISTO E CODIGO MARTELADO, PARA FAZER AVALIACOES **************/
-        long initialTime = -1;
-        long currentTime = -1;
-        /***********************************************************************/
         while (true) {
-            /**********ISTO E CODIGO MARTELADO, PARA FAZER AVALIACOES **************/
-            //System.out.println(currentTime);
-            if (initialTime > -1) currentTime = System.currentTimeMillis() - initialTime;
-            /***********************************************************************/
             Logger.println("(TOMLayer.run) Running."); // TODO: isto n podia passar para fora do ciclo?
 
             // blocks until this replica learns to be the leader for the current round of the current consensus
             leaderLock.lock();
             Logger.println("(TOMLayer.run) Next leader for eid=" + (getLastExec() + 1) + ": " + lm.getLeader(getLastExec() + 1, 0));
-            
-            //******* EDUARDO BEGIN **************//
-            if (lm.getLeader(getLastExec() + 1, 0) != this.reconfManager.getStaticConf().getProcessId()) {
+            if (lm.getLeader(getLastExec() + 1, 0) != conf.getProcessId()) {
                 iAmLeader.awaitUninterruptibly();
             }
-            //******* EDUARDO END **************//
-            
             leaderLock.unlock();
             Logger.println("(TOMLayer.run) I'm the leader.");
 
@@ -411,21 +392,11 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             proposeLock.unlock();
 
             Logger.println("(TOMLayer.run) I can try to propose.");
-                //******* EDUARDO BEGIN **************//
-            if ((lm.getLeader(getLastExec() + 1, 0) == this.reconfManager.getStaticConf().getProcessId()) && //I'm the leader
-                    //******* EDUARDO END **************//
+            if ((lm.getLeader(getLastExec() + 1, 0) == conf.getProcessId()) && //I'm the leader
                     (clientsManager.havePendingRequests()) && //there are messages to be ordered
                     (getInExec() == -1 || leaderChanged)) { //there is no consensus in execution
 
                 leaderChanged = false;
-
-                /**********ISTO E CODIGO MARTELADO, PARA FAZER AVALIACOES **************/
-                if (initialTime == -1) {
-                    initialTime = System.currentTimeMillis();
-                    currentTime = 0;
-                }
-                //else if ((this.reconfManager.getStaticConf().getProcessId() == 0) && (currentTime >= 30000)) System.exit(0);
-                /***********************************************************************/
 
                 // Sets the current execution
                 int execId = getLastExec() + 1;
@@ -437,7 +408,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                 //acceptor.leaveMEZone();
                 //Logger.println("(TOMLayer.run) Acceptor semaphore acquired");
 
-                execManager.getProposer().startExecution(execId,createPropose(exec.getLearner()));
+                exec.getLearner().propose(createPropose(exec.getLearner()));
 
             /*
             if (counter>=BENCHMARK_PERIOD/2)
@@ -489,11 +460,6 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             stConsensusDuration.reset();
         }
         */
-        
-        
-        //System.out.println("TOMLayer: decided "+cons.getId());
-        
-        
         cons.executionTime = System.currentTimeMillis() - cons.startTime;
         this.dt.delivery(cons); // Delivers the consensus to the delivery thread
     }
@@ -508,76 +474,85 @@ public final class TOMLayer extends Thread implements RequestReceiver {
      * @param proposedValue the value being proposed
      * @return
      */
-    public TOMMessage[] checkProposedValue(byte[] proposedValue) {
-        if (Logger.debug) {
+    public boolean isProposedValueValid(Round round, byte[] proposedValue) {
         Logger.println("(TOMLayer.isProposedValueValid) starting");
-        }
-        BatchReader batchReader = new BatchReader(proposedValue, 
-                this.reconfManager.getStaticConf().getUseSignatures() == 1);
+        BatchReader batchReader = new BatchReader(proposedValue, conf.getUseSignatures()==1);
 
-        TOMMessage[] requests = null;
+        int numberOfMessages = batchReader.getNumberOfMessages();
 
-        try {
-
-                //******* EDUARDO BEGIN **************//
-            //deserialize the message
-            //TODO: verify Timestamps and Nonces
-            requests = batchReader.deserialiseRequests(this.reconfManager);
-                //******* EDUARDO END **************//
+        TOMMessage[] requests = new TOMMessage[numberOfMessages];
 
         //Logger.println("(TOMLayer.isProposedValueValid) Waiting for clientsManager lock");
         //clientsManager.getClientsLock().lock();
         //Logger.println("(TOMLayer.isProposedValueValid) Got clientsManager lock");
-            for (int i = 0; i < requests.length; i++) {
+        for (int i = 0; i < numberOfMessages; i++) {
+            //read the message and its signature from the batch
+            int messageSize = batchReader.getNextMessageSize();
+
+            byte[] message = new byte[messageSize];
+            batchReader.getNextMessage(message);
+
+            byte[] signature = null;
+            if (conf.getUseSignatures()==1){
+                signature = new byte[TOMUtil.getSignatureSize()];
+                batchReader.getNextSignature(signature);
+            }
+
+            //deserialize the message
+            try {
+                DataInputStream ois = new DataInputStream(new ByteArrayInputStream(message));
+                TOMMessage tm = new TOMMessage();
+                tm.readExternal(ois);
+                requests[i] = tm;
+            //requests[i] = (TOMMessage) ois.readObject();
+            } catch (Exception e) {
+                e.printStackTrace();
+                clientsManager.getClientsLock().unlock();
+                Logger.println("(TOMLayer.isProposedValueValid) finished, return=false");
+                return false;
+            }
+            requests[i].serializedMessage = message;
+            requests[i].serializedMessageSignature = signature;
+
             //notifies the client manager that this request was received and get
             //the result of its validation
             if (!clientsManager.requestReceived(requests[i], false)) {
                 clientsManager.getClientsLock().unlock();
-                    if (Logger.debug) {
                 Logger.println("(TOMLayer.isProposedValueValid) finished, return=false");
+                return false;
             }
-                    return null;
-                }
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-            clientsManager.getClientsLock().unlock();
-            if (Logger.debug) {
-                Logger.println("(TOMLayer.isProposedValueValid) finished, return=false");
-            }
-            return null;
         }
         //clientsManager.getClientsLock().unlock();
-        if (Logger.debug) {
-            Logger.println("(TOMLayer.isProposedValueValid) finished, return=true");
-        }
-//        round.deserializedPropValue = requests;
+        Logger.println("(TOMLayer.isProposedValueValid) finished, return=true");
+        round.deserializedPropValue = requests;
 
-        return requests;
+        //TODO: verify Timestamps and Nonces
+        return true;
     }
-//    /**
-//     * TODO: este metodo nao e usado. Pode desaparecer?
-//     * @param br
-//     * @return
-//     */
-//    public final boolean verifyTimestampAndNonces(BatchReader br) {
-//        long timestamp = br.getTimestamp();
-//
-//        if (conf.canVerifyTimestamps()) {
-//            //br.ufsc.das.util.tom.Logger.println("(TOMLayer.verifyTimestampAndNonces) verifying timestamp "+timestamp+">"+lastTimestamp+"?");
-//            if (timestamp > lastTimestamp) {
-//                lastTimestamp = timestamp;
-//            } else {
-//                System.err.println("########################################################");
-//                System.err.println("- timestamp received " + timestamp + " <= " + lastTimestamp);
-//                System.err.println("- maybe the proposer have a non-synchronized clock");
-//                System.err.println("########################################################");
-//                return false;
-//            }
-//        }
-//
-//        return br.getNumberOfNonces() == conf.getNumberOfNonces();
-//    }
+
+    /**
+     * TODO: este metodo nao e usado. Pode desaparecer?
+     * @param br
+     * @return
+     */
+    public final boolean verifyTimestampAndNonces(BatchReader br) {
+        long timestamp = br.getTimestamp();
+
+        if (conf.canVerifyTimestamps()) {
+            //br.ufsc.das.util.tom.Logger.println("(TOMLayer.verifyTimestampAndNonces) verifying timestamp "+timestamp+">"+lastTimestamp+"?");
+            if (timestamp > lastTimestamp) {
+                lastTimestamp = timestamp;
+            } else {
+                System.err.println("########################################################");
+                System.err.println("- timestamp received " + timestamp + " <= " + lastTimestamp);
+                System.err.println("- maybe the proposer have a non-synchronized clock");
+                System.err.println("########################################################");
+                return false;
+            }
+        }
+
+        return br.getNumberOfNonces() == conf.getNumberOfNonces();
+    }
 
     /**
      * Invoked when a timeout for a TOM message is triggered.
@@ -593,10 +568,10 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             TOMMessage request = i.next();
             if (clientsManager.isPending(request.getId())) {
                 RTInfo rti = getTimeoutInfo(request.getId());
-                if (!rti.isTimeout(this.reconfManager.getStaticConf().getProcessId())) {
+                if (!rti.isTimeout(conf.getProcessId())) {
                     serializedRequestList.add(
                             new byte[][]{request.serializedMessage, request.serializedMessageSignature});
-                    timeout(this.reconfManager.getStaticConf().getProcessId(), request, rti);
+                    timeout(conf.getProcessId(), request, rti);
                     Logger.println("(TOMLayer.requestTimeout) Must send timeout for reqId=" + request.getId());
                 }
             }
@@ -613,11 +588,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
     public void forwardRequestToLeader(TOMMessage request) {
         int leaderId = lm.getLeader(getLastExec() + 1, 0);
         Logger.println("(TOMLayer.forwardRequestToLeader) forwarding " + request + " to " + leaderId);
-        
-            //******* EDUARDO BEGIN **************//
-        communication.send(new int[]{leaderId}, 
-                new ForwardedMessage(this.reconfManager.getStaticConf().getProcessId(), request));
-            //******* EDUARDO END **************//
+        communication.send(new int[]{leaderId}, new ForwardedMessage(conf.getProcessId(), request));
     }
 
     /**
@@ -626,10 +597,8 @@ public final class TOMLayer extends Thread implements RequestReceiver {
      * @param request the message that caused the timeout
      */
     public void sendTimeoutMessage(List<byte[][]> serializedRequestList) {
-        //******* EDUARDO BEGIN **************//
-        communication.send(this.reconfManager.getCurrentViewOtherAcceptors(),
-                new RTMessage(TOMUtil.RT_TIMEOUT, -1, this.reconfManager.getStaticConf().getProcessId(), serializedRequestList));
-       //******* EDUARDO END **************//
+        communication.send(execManager.getOtherAcceptors(),
+                new RTMessage(TOMUtil.RT_TIMEOUT, -1, conf.getProcessId(), serializedRequestList));
     }
 
     /**
@@ -639,20 +608,17 @@ public final class TOMLayer extends Thread implements RequestReceiver {
      * @param collect Proof for the timeout
      */
     public void sendCollectMessage(int reqId, RTCollect collect) {
-            //******* EDUARDO BEGIN **************//
         RTMessage rtm = new RTMessage(TOMUtil.RT_COLLECT, reqId,
-                this.reconfManager.getStaticConf().getProcessId(), acceptor.sign(collect));
+                conf.getProcessId(), acceptor.sign(collect));
 
-        if (collect.getNewLeader() == this.reconfManager.getStaticConf().getProcessId()) {
+        if (collect.getNewLeader() == conf.getProcessId()) {
             RTInfo rti = getTimeoutInfo(reqId);
-            collect((SignedObject) rtm.getContent(), this.reconfManager.getStaticConf().getProcessId(), rti);
-            //******* EDUARDO END **************//
+            collect((SignedObject) rtm.getContent(), conf.getProcessId(), rti);
         } else {
             int[] target = {collect.getNewLeader()};
             this.communication.send(target, rtm);
         }
 
-        
     }
 
     /**
@@ -663,14 +629,11 @@ public final class TOMLayer extends Thread implements RequestReceiver {
      * @param rtLC Proofs for the leader change
      */
     public void sendNewLeaderMessage(int reqId, RTLeaderChange rtLC) {
-        
-         //******* EDUARDO BEGIN **************//
-        RTMessage rtm = new RTMessage(TOMUtil.RT_LEADER, reqId, this.reconfManager.getStaticConf().getProcessId(), rtLC);
+        RTMessage rtm = new RTMessage(TOMUtil.RT_LEADER, reqId, conf.getProcessId(), rtLC);
         //br.ufsc.das.util.Logger.println("Atualizando leader para "+rtLC.newLeader+" a partir de "+rtLC.start);
         updateLeader(reqId, rtLC.start, rtLC.newLeader);
 
-        communication.send(this.reconfManager.getCurrentViewOtherAcceptors(), rtm);
-        //******* EDUARDO END **************//
+        communication.send(execManager.getOtherAcceptors(), rtm);
     }
 
     /**
@@ -687,11 +650,9 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         leaderChanged = true;
 
         leaderLock.lock(); // Signal the TOMlayer thread, if this replica is the leader
-        //******* EDUARDO BEGIN **************//
-        if (lm.getLeader(getLastExec() + 1, 0) == this.reconfManager.getStaticConf().getProcessId()) {
+        if (lm.getLeader(getLastExec() + 1, 0) == conf.getProcessId()) {
             iAmLeader.signal();
         }
-        //******* EDUARDO END **************//
         leaderLock.unlock();
 
         removeTimeoutInfo(reqId); // remove timeout infos
@@ -725,7 +686,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                             DataInputStream ois = new DataInputStream(
                                     new ByteArrayInputStream(serializedRequest[0]));
                             request = new TOMMessage();
-                            request.rExternal(ois);
+                            request.readExternal(ois);
                         } catch (Exception e) {
                             e.printStackTrace();
                             clientsManager.getClientsLock().unlock();
@@ -754,9 +715,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
                             int nl = chooseNewLeader();
 
-                            //******* EDUARDO BEGIN **************//
-                            if (nl == this.reconfManager.getStaticConf().getProcessId() && nl == rtc.getNewLeader()) { // If this is process the new leader?
-                            //******* EDUARDO END **************//
+                            if (nl == conf.getProcessId() && nl == rtc.getNewLeader()) { // If this is process the new leader?
                                 RTInfo rti = getTimeoutInfo(reqId);
                                 collect(so, msg.getSender(), rti);
                             }
@@ -774,7 +733,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                     RTLeaderChange rtLC = (RTLeaderChange) msg.getContent();
                     RTCollect[] rtc = getValid(msg.getReqId(), rtLC.proof);
 
-                    if (rtLC.isAGoodStartLeader(rtc, this.reconfManager.getCurrentViewF())) { // Is it a legitm and valid leader?
+                    if (rtLC.isAGoodStartLeader(rtc, conf.getF())) { // Is it a legitm and valid leader?
                         Logger.println("Atualizando leader para " + rtLC.newLeader + " a partir de " + rtLC.start);
                         updateLeader(msg.getReqId(), rtLC.start, rtLC.newLeader);
                     //FALTA... eliminar dados referentes a consensos maiores q start.
@@ -795,7 +754,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         lockTI.lock();
         RTInfo ti = timeoutInfo.get(reqId);
         if (ti == null) {
-            ti = new RTInfo(this.reconfManager, reqId, this);
+            ti = new RTInfo(this.conf, reqId, this);
             timeoutInfo.put(reqId, ti);
         }
         lockTI.unlock();
@@ -826,12 +785,9 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
         int reqId = rti.getRequestId();
 
-        //******* EDUARDO BEGIN **************//
-        if (rti.countTimeouts() > reconfManager.getQuorumF() && 
-                !rti.isTimeout(reconfManager.getStaticConf().getProcessId())) {
-            rti.setTimeout(reconfManager.getStaticConf().getProcessId());
-        //******* EDUARDO END **************//
-            
+        if (rti.countTimeouts() > execManager.quorumF && !rti.isTimeout(conf.getProcessId())) {
+            rti.setTimeout(conf.getProcessId());
+
             List<byte[][]> serializedRequestList = new LinkedList<byte[][]>();
             serializedRequestList.add(
                     new byte[][]{request.serializedMessage, request.serializedMessageSignature});
@@ -844,9 +800,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
          */
         }
 
-        //******* EDUARDO BEGIN **************//
-        if (rti.countTimeouts() > reconfManager.getQuorumStrong() && !rti.isCollected()) {
-        //******* EDUARDO END **************//
+        if (rti.countTimeouts() > execManager.quorumStrong && !rti.isCollected()) {
             rti.setCollected();
             /*
             requestsTimer.stopTimer(clientsManager.getPending(reqId));
@@ -878,9 +832,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         Logger.println("COLLECT 1");
         rti.setCollect(a, c);
 
-        //******* EDUARDO BEGIN **************//
-        if (rti.countCollect() > 2 * reconfManager.getCurrentViewF() && !rti.isNewLeaderSent()) {
-        //******* EDUARDO END **************//
+        if (rti.countCollect() > 2 * conf.getF() && !rti.isNewLeaderSent()) {
             rti.setNewLeaderSent();
             Logger.println("COLLECT 2");
 
@@ -898,10 +850,8 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             }
 
             Logger.println("COLLECT 3");
-            //******* EDUARDO BEGIN **************//
             RTInfo.NextLeaderAndConsensusInfo nextLeaderCons =
-                    rti.getStartLeader(rtc, reconfManager.getCurrentViewF());
-            //******* EDUARDO END **************//
+                    rti.getStartLeader(rtc, conf.getF());
             RTLeaderChange rtLC = new RTLeaderChange(collect, nextLeaderCons.leader,
                     nextLeaderCons.cons);
 
@@ -920,14 +870,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             }
         }
 
-        
-        //******* EDUARDO BEGIN **************//
-        int pos = reconfManager.getCurrentViewPos(lm.getLeader(getLastExec(), lastRoundNumber));
-        
-        return this.reconfManager.getCurrentViewProcesses()[(pos + 1) % reconfManager.getCurrentViewN()];
-        
-        //return (lm.getLeader(getLastExec(), lastRoundNumber) + 1) % reconfManager.getCurrentViewN();
-        //******* EDUARDO END **************//
+        return (lm.getLeader(getLastExec(), lastRoundNumber) + 1) % conf.getN();
     }
 
     /**
@@ -961,8 +904,6 @@ public final class TOMLayer extends Thread implements RequestReceiver {
     /** ISTO E CODIGO DO JOAO, PARA TRATAR DOS CHECKPOINTS */
     private StateManager stateManager = null;
     private ReentrantLock lockState = new ReentrantLock();
-    private ReentrantLock lockTimer = new ReentrantLock();
-    private Timer stateTimer = null;
 
     public void saveState(byte[] state, int lastEid, int decisionRound, int leader) {
 
@@ -1037,9 +978,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         System.out.println("[TOMLayer.requestState]");
         System.out.println("Mensagem adiantada! (eid " + eid + " vindo de " + sender + ") ");
         /************************* TESTE *************************/
-        //******* EDUARDO BEGIN **************//
-        if (reconfManager.getStaticConf().isStateTransferEnabled()) {
-        //******* EDUARDO END **************//
+        if (conf.isStateTransferEnabled()) {
 
             Logger.println("(TOMLayer.requestState) The state transfer protocol is enabled");
 
@@ -1055,12 +994,11 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
                 if (stateManager.getLastEID() < eid && stateManager.moreThenF_EIDs(eid)) {
 
-                    Logger.println("(TOMLayer.requestState) I have now more than " + reconfManager.getCurrentViewF() + " messages for EID " + eid + " which are beyond EID " + stateManager.getLastEID());
+                    Logger.println("(TOMLayer.requestState) I have now more than " + conf.getF() + " messages for EID " + eid + " which are beyond EID " + stateManager.getLastEID());
                     /************************* TESTE *************************
                     System.out.println("Recebi mais de " + conf.getF() + " mensagens para eid " + eid + " que sao posteriores a " + stateManager.getLastEID());
                     /************************* TESTE *************************/
 
-                    requestsTimer.clearAll();
                     stateManager.setLastEID(eid);
                     stateManager.setWaiting(eid - 1);
                     //stateManager.emptyReplicas(eid);// isto causa uma excepcao
@@ -1069,26 +1007,6 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                     communication.send(otherAcceptors, smsg);
 
                     Logger.println("(TOMLayer.requestState) I just sent a request to the other replicas for the state up to EID " + (eid - 1));
-
-                    TimerTask stateTask =  new TimerTask() {
-                        public void run() {
-
-                        lockTimer.lock();
-
-                        Logger.println("(TimerTask.run) Timeout for the replica that was supposed to send the complete state. Changing desired replica.");
-                        System.out.println("Timeout no timer do estado!");
-
-                        stateManager.setWaiting(-1);
-                        stateManager.changeReplica();
-                        stateManager.emptyStates();
-                        stateManager.setReplicaState(null);
-
-                        lockTimer.unlock();
-                        }
-                    };
-
-                    Timer stateTimer = new Timer("state timer");
-                    stateTimer.schedule(stateTask,1500);
                     /************************* TESTE *************************
 
                     System.out.println("Enviei um pedido!");
@@ -1116,9 +1034,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
     public void SMRequestDeliver(SMMessage msg) {
 
-        //******* EDUARDO BEGIN **************//
-        if (reconfManager.getStaticConf().isStateTransferEnabled()) {
-        //******* EDUARDO END **************//
+        if (conf.isStateTransferEnabled()) {
 
             Logger.println("(TOMLayer.SMRequestDeliver) The state transfer protocol is enabled");
             
@@ -1133,7 +1049,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             System.out.println("Ultimo eid q recebi no log: " + stateManager.getLog().getLastEid());
             /************************* TESTE *************************/
 
-            boolean sendState = msg.getReplica() == reconfManager.getStaticConf().getProcessId();
+            boolean sendState = msg.getReplica() == conf.getProcessId();
             if (sendState) Logger.println("(TOMLayer.SMRequestDeliver) I should be the one sending the state");
 
             TransferableState state = stateManager.getLog().getTransferableState(msg.getEid(), sendState);
@@ -1148,33 +1064,13 @@ public final class TOMLayer extends Thread implements RequestReceiver {
               state = new TransferableState();
             }
         
-            /************************* TESTE *************************
-            else {
-
-                for (int eid = state.getLastCheckpointEid() + 1; eid <= state.getLastEid(); eid++) {
-                    byte[] batch = state.getMessageBatch(eid).batch;
-
-                    if (batch == null) System.out.println("isto esta nulo!!!");
-                    else System.out.println("isto nao esta nulo");
-                
-                    BatchReader batchReader = new BatchReader(batch,reconfManager.getStaticConf().getUseSignatures() == 1);
-                    TOMMessage[] requests = batchReader.deserialiseRequests(reconfManager);
-                    System.out.println("tudo correu bem");
-                }
-            }
-            /************************* TESTE *************************/
-
-            /** CODIGO MALICIOSO, PARA FORCAR A REPLICA ATRASADA A PEDIR O ESTADO A OUTRA DAS REPLICAS */
+            /** CODIGO MALICIOSO, PARA FORCAR A REPLICA ATRASADA A PEDIR O ESTADO A OUTRA DAS REPLICAS *
             byte[] badState = {127};
-            if (sendState && reconfManager.getStaticConf().getProcessId() == 0) state.setState(badState);
+            if (sendState && conf.getProcessId() == 0) state.setState(badState);
             /*******************************************************************************************/
 
             int[] targets = { msg.getSender() };
-            SMMessage smsg = new SMMessage(reconfManager.getStaticConf().getProcessId(), 
-                    msg.getEid(), TOMUtil.SM_REPLY, -1, state);
-
-            // malicious code, to force the replica not to send the state
-            //if (reconfManager.getStaticConf().getProcessId() != 0 || !sendState)
+            SMMessage smsg = new SMMessage(execManager.getProcessId(), msg.getEid(), TOMUtil.SM_REPLY, -1, state);
             communication.send(targets, smsg);
 
             Logger.println("(TOMLayer.SMRequestDeliver) I sent the state for checkpoint " + state.getLastCheckpointEid() + " with batches until EID " + state.getLastEid());
@@ -1187,7 +1083,6 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             /************************* TESTE *************************
             System.out.println("[/TOMLayer.SMRequestDeliver]");
             /************************* TESTE *************************/
-            System.out.println("Enviei o estado!");
         }
     }
 
@@ -1214,11 +1109,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         }
         else System.out.println("[reply] Nao ha estado");
         /************************* TESTE *************************/
-        //******* EDUARDO BEGIN **************//
-
-        lockTimer.lock();
-        if (reconfManager.getStaticConf().isStateTransferEnabled()) {
-        //******* EDUARDO END **************//
+        if (conf.isStateTransferEnabled()) {
 
             Logger.println("(TOMLayer.SMReplyDeliver) The state transfer protocol is enabled");
             Logger.println("(TOMLayer.SMReplyDeliver) I received a state reply for EID " + msg.getEid() + " from replica " + msg.getSender());
@@ -1233,19 +1124,18 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                 if (msg.getSender() == stateManager.getReplica() && msg.getState().getState() != null) {
                     Logger.println("(TOMLayer.SMReplyDeliver) I received the state, from the replica that I was expecting");
                     stateManager.setReplicaState(msg.getState().getState());
-                    if (stateTimer != null) stateTimer.cancel();
                 }
 
                 stateManager.addState(msg.getSender(),msg.getState());
 
-                if (stateManager.moreThanF_Replies()) {
+                if (stateManager.moreThenF_Replies()) {
 
-                    Logger.println("(TOMLayer.SMReplyDeliver) I have at least " + reconfManager.getCurrentViewF() + " replies!");
+                    Logger.println("(TOMLayer.SMReplyDeliver) I have more than " + conf.getF() + " equal replies!");
                     /************************* TESTE *************************
                     System.out.println("Ja tenho mais que " + conf.getF() + " respostas iguais!");
                     /************************* TESTE *************************/
 
-                    TransferableState state = stateManager.getValidHash();
+                    TransferableState state = stateManager.getValidState();
 
                     int haveState = 0;
                     if (stateManager.getReplicaState() != null) {
@@ -1253,8 +1143,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                         hash = computeHash(stateManager.getReplicaState());
                         if (state != null) {
                             if (Arrays.equals(hash, state.getStateHash())) haveState = 1;
-                            else if (stateManager.getNumValidHashes() > reconfManager.getCurrentViewF()) haveState = -1;
-
+                            else haveState = -1;
                         }
                     }
 
@@ -1317,7 +1206,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
                         //System.out.println("Bloqueei o lock entre esta thread e a delivery thread");
 
-                        //ot.OutOfContextLock();
+                        ot.OutOfContextLock();
 
                         //System.out.println("Bloqueei o lock entre esta thread e a out of context thread");
 
@@ -1326,24 +1215,18 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                         //System.out.println("Ja nao estou a espera de nenhum estado, e vou actualizar-me");
 
                         dt.update(state);
-                        processOutOfContext();
 
                         dt.canDeliver();
 
-                        //ot.OutOfContextUnlock();
+                        ot.OutOfContextUnlock();
                         dt.deliverUnlock();
                     
                         stateManager.emptyStates();
                         stateManager.setReplicaState(null);
 
-                        System.out.println("Actualizei o estado!");
+                    } else if (state == null && (conf.getN() / 2) < stateManager.getReplies()) {
 
-                    //******* EDUARDO BEGIN **************//
-                    } else if (state == null && (reconfManager.getCurrentViewN() / 2) < stateManager.getReplies()) {
-                    //******* EDUARDO END **************//
-                        
-                        Logger.println("(TOMLayer.SMReplyDeliver) I have more than " + 
-                                (reconfManager.getCurrentViewN() / 2) + " messages that are no good!");
+                        Logger.println("(TOMLayer.SMReplyDeliver) I have more than " + (conf.getN() / 2) + " messages that are no good!");
                         /************************* TESTE *************************
                         System.out.println("Tenho mais de 2F respostas que nao servem para nada!");
                         //System.exit(0);
@@ -1352,8 +1235,6 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                         stateManager.setWaiting(-1);
                         stateManager.emptyStates();
                         stateManager.setReplicaState(null);
-
-                        if (stateTimer != null) stateTimer.cancel();
                     } else if (haveState == -1) {
 
                         Logger.println("(TOMLayer.SMReplyDeliver) The replica from which I expected the state, sent one which doesn't match the hash of the others, or it never sent it at all");
@@ -1362,24 +1243,17 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                         stateManager.changeReplica();
                         stateManager.emptyStates();
                         stateManager.setReplicaState(null);
-
-                        if (stateTimer != null) stateTimer.cancel();
                     }
                 }
             }
         }
-        lockTimer.unlock();
         /************************* TESTE *************************
         System.out.println("[/TOMLayer.SMReplyDeliver]");
         /************************* TESTE *************************/
     }
 
     public boolean isRetrievingState() {
-        lockTimer.lock();
-        boolean result =  stateManager != null && stateManager.getWaiting() != -1;
-        lockTimer.unlock();
-
-        return result;
+        return stateManager != null && stateManager.getWaiting() != -1;
     }
 
     public void setNoExec() {
@@ -1393,24 +1267,4 @@ public final class TOMLayer extends Thread implements RequestReceiver {
     }
 
     /********************************************************/
-
-    /* ISTO SAO MAIS COISAS DO JOAO, PARA RETIRAR A THREAD OUTOFCONTEXT */
-    public void processOutOfContext() {
-
-        Execution execution = null;
-
-        while (true) {
-
-            int nextExecution = getLastExec() + 1;
-            if (execManager.thereArePendentMessages(nextExecution)) {
-                System.out.println("Estou a processar mensagens de out of context!");
-
-                Logger.println("(TOMLayer.processOutOfContext) starting processing out of context messages for consensus " + nextExecution);
-                execution = execManager.getExecution(nextExecution);
-                Logger.println("(TOMLayer.processOutOfContext) finished processing out fo context messages for consensus " + nextExecution);
-            }
-            else break;
-        }
-    }
-    /********************************************************************/
 }

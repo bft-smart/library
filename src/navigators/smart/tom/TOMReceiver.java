@@ -25,9 +25,9 @@ import navigators.smart.paxosatwar.executionmanager.ProofVerifier;
 import navigators.smart.paxosatwar.messages.MessageFactory;
 import navigators.smart.paxosatwar.roles.Acceptor;
 import navigators.smart.paxosatwar.roles.Proposer;
-import navigators.smart.reconfiguration.ReconfigurationManager;
 import navigators.smart.tom.core.TOMLayer;
 import navigators.smart.tom.util.ShutdownThread;
+import navigators.smart.tom.util.TOMConfiguration;
 
 /**
  * This class is used to
@@ -38,76 +38,55 @@ public abstract class TOMReceiver implements TOMRequestReceiver {
 
     private boolean tomStackCreated = false;
 
-   
-    public void init(ServerCommunicationSystem cs, ReconfigurationManager reconfManager) {
-        this.init(cs, reconfManager,-1,-1);
-    }
-    
     /**
      * This metohd initializes the object
      * 
      * @param cs Server side comunication System
      * @param conf Total order messaging configuration
      */
-    //public void init(ServerCommunicationSystem cs, TOMConfiguration conf) {
-    public void init(ServerCommunicationSystem cs, ReconfigurationManager reconfManager, 
-            int lastExec, int lastLeader) {
+    public void init(ServerCommunicationSystem cs, TOMConfiguration conf) {
         if (tomStackCreated) { // if this object was already initialized, don't do it again
             return;
         }
-       
-        //******* EDUARDO BEGIN **************//
-        
+
         // Get group of replicas
-        //int[] group = new int[conf.getN()];
-        //for (int i = 0; i < group.length; i++) {
-          //  group[i] = i;
-        //}
+        int[] group = new int[conf.getN()];
+        for (int i = 0; i < group.length; i++) {
+            group[i] = i;
+        }
 
-        int me = reconfManager.getStaticConf().getProcessId(); // this process ID
+        int me = conf.getProcessId(); // this process ID
 
-        if (!reconfManager.isInCurrentView()) {
+        if (me >= group.length) {
             throw new RuntimeException("I'm not an acceptor!");
         }
 
-        //******* EDUARDO END **************//
-        
         // Assemble the total order messaging layer
         MessageFactory messageFactory = new MessageFactory(me);
-        
-        
-        ProofVerifier proofVerifier = new ProofVerifier(reconfManager);
-        
+        ProofVerifier proofVerifier = new ProofVerifier(conf);
         LeaderModule lm = new LeaderModule();
-        
-        
-        Acceptor acceptor = new Acceptor(cs, messageFactory, proofVerifier, lm, reconfManager);
-        Proposer proposer = new Proposer(cs, messageFactory, proofVerifier, reconfManager);
+        Acceptor acceptor = new Acceptor(cs, messageFactory, proofVerifier, lm, conf);
 
-        ExecutionManager manager = new ExecutionManager(reconfManager, acceptor, proposer,
-                               me, reconfManager.getStaticConf().getFreezeInitialTimeout());
+        Proposer proposer = new Proposer(cs, messageFactory, proofVerifier, conf);
+
+        ExecutionManager manager = new ExecutionManager(acceptor, proposer,
+                group, conf.getF(), me, conf.getFreezeInitialTimeout());
 
         acceptor.setManager(manager);
         proposer.setManager(manager);
 
-        TOMLayer tomLayer = new TOMLayer(manager, this, lm, acceptor, cs, reconfManager);
-
-        //tomLayer.setLastExec(lastExec);
-        //tomLayer.lm.decided(lastExec, lastLeader);
-        
+        TOMLayer tomLayer = new TOMLayer(manager, this, lm, acceptor, cs, conf);
         manager.setTOMLayer(tomLayer);
-        
-        //******* EDUARDO BEGIN **************//
-        reconfManager.setTomLayer(tomLayer);
-        //******* EDUARDO END **************//
-        
+
         cs.setTOMLayer(tomLayer);
         cs.setRequestReceiver(tomLayer);
 
         acceptor.setTOMLayer(tomLayer);
 
         Runtime.getRuntime().addShutdownHook(new ShutdownThread(cs,lm,acceptor,manager,tomLayer));
+
         tomLayer.start(); // start the layer execution
+
         tomStackCreated = true;
     }
 }

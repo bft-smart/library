@@ -1,18 +1,18 @@
 /**
  * Copyright (c) 2007-2009 Alysson Bessani, Eduardo Alchieri, Paulo Sousa, and the authors indicated in the @author tags
- *
+ * 
  * This file is part of SMaRt.
- *
+ * 
  * SMaRt is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- *
+ * 
  * SMaRt is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
  * GNU General Public License for more details.
- *
+ * 
  * You should have received a copy of the GNU General Public License along with SMaRt.  If not, see <http://www.gnu.org/licenses/>.
  */
 
@@ -153,7 +153,7 @@ public class LeaderModule {
         }
     }
     /******************* METODO ORIGINAL *************/
-
+    
     /** ISTO E CODIGO DO JOAO, PARA TRATAR DA TRANSFERENCIA DE ESTADO */
     private ReentrantLock leaderInfosLock = new ReentrantLock();
 
@@ -161,8 +161,7 @@ public class LeaderModule {
 
         leaderInfosLock.lock();
 
-        //******* EDUARDO BEGIN: se é instável remove e pronto! **************//
-        /*List list = leaderInfos.get(c + 1);
+        List list = leaderInfos.get(c + 1);
 
         if (list == null) {//nunca vai acontecer isso!!!
             System.err.println("- Executing a code that wasn't supposed to be executed :-)");
@@ -174,13 +173,11 @@ public class LeaderModule {
                 ConsInfo ci = (ConsInfo) rm.get(rm.size() - 1);
                 list.add(new ConsInfo(0, ci.leaderId));
             }
-        } else {*/
+        } else {
             leaderInfos.remove(c);
-        //}
+        }
 
         leaderInfosLock.unlock();
-
-        //******* EDUARDO BEGIN **************//
     }
 
     public void removeStableMultipleConsenusInfos(int cStart, int cEnd) {
@@ -202,9 +199,9 @@ public class LeaderModule {
         }
 
         for (int c = cStart; c <= cEnd; c++) {
-
+            
                 leaderInfos.remove(c);
-
+            
         }
 
         leaderInfosLock.unlock();

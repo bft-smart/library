@@ -22,10 +22,9 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.Semaphore;
 
-import navigators.smart.reconfiguration.ReconfigurationManager;
 import navigators.smart.tom.core.messages.RequestRecoveryMessage;
 import navigators.smart.tom.core.messages.TOMMessage;
-
+import navigators.smart.tom.util.TOMConfiguration;
 
 
 /**
@@ -36,38 +35,31 @@ public class RequestRecover {
 
     private Semaphore wait = new Semaphore(0);
     private Semaphore mutex = new Semaphore(1);
-    //private int[] group;
+    private int[] group;
     private TOMMessage msg;
     private TOMLayer tomLayer;
     private byte[] hash;
-    private ReconfigurationManager manager;
+    private TOMConfiguration conf;
 
     /** Creates a new instance of RequestRecover */
-    public RequestRecover(TOMLayer tomLayer, ReconfigurationManager manager) {
+    public RequestRecover(TOMLayer tomLayer, TOMConfiguration conf) {
         this.tomLayer = tomLayer;
-        
-        //******* EDUARDO BEGIN **************//
-        this.manager = manager;
-        //group = new int[conf.getN() - 1];
+        this.conf = conf;
+        group = new int[conf.getN() - 1];
 
-        //int c = 0;
-       // for (int i = 0; i < conf.getN(); i++) {
-            //if (i != conf.getProcessId()) {
-              //  group[c++] = i;
-           // }
-      //  }
-        //******* EDUARDO END **************//
-        
+        int c = 0;
+        for (int i = 0; i < conf.getN(); i++) {
+            if (i != conf.getProcessId()) {
+                group[c++] = i;
+            }
+        }
     }
 
     public void recover(byte[] hash) {
         this.msg = null;
         this.hash = hash;
-        
-        //******* EDUARDO BEGIN **************//
-        this.tomLayer.getCommunication().send(manager.getCurrentViewOtherAcceptors(),
-                new RequestRecoveryMessage(hash, manager.getStaticConf().getProcessId()));
-        //******* EDUARDO END **************//
+        this.tomLayer.getCommunication().send(group,
+                new RequestRecoveryMessage(hash, conf.getProcessId()));
     }
 
     public void receive(TOMMessage msg, byte[] msgHash) {
@@ -217,11 +209,8 @@ public class RequestRecover {
                     c++;
                 }
             }
-            //******* EDUARDO BEGIN **************//
-            if (c > manager.getCurrentViewF()) {
-            //******* EDUARDO END **************//
+            if (c > conf.getF()) {
                 return comp;
-                
             }
         }
 

@@ -1,18 +1,18 @@
 /**
  * Copyright (c) 2007-2009 Alysson Bessani, Eduardo Alchieri, Paulo Sousa, and the authors indicated in the @author tags
- *
+ * 
  * This file is part of SMaRt.
- *
+ * 
  * SMaRt is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- *
+ * 
  * SMaRt is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
  * GNU General Public License for more details.
- *
+ * 
  * You should have received a copy of the GNU General Public License along with SMaRt.  If not, see <http://www.gnu.org/licenses/>.
  */
 
@@ -29,9 +29,8 @@ import navigators.smart.paxosatwar.messages.CollectProof;
 import navigators.smart.paxosatwar.messages.MessageFactory;
 import navigators.smart.paxosatwar.messages.PaxosMessage;
 import navigators.smart.paxosatwar.messages.Proof;
-import navigators.smart.reconfiguration.ReconfigurationManager;
 import navigators.smart.tom.util.Logger;
-
+import navigators.smart.tom.util.TOMConfiguration;
 
 
 /**
@@ -43,9 +42,7 @@ public class Proposer {
     private MessageFactory factory; // Factory for PaW messages
     private ProofVerifier verifier; // Verifier for proofs
     private ServerCommunicationSystem communication; // Replicas comunication system
-    //private TOMConfiguration conf; // TOM configuration
-
-    private ReconfigurationManager reconfManager;
+    private TOMConfiguration conf; // TOM configuration
 
     /**
      * Creates a new instance of Proposer
@@ -55,12 +52,12 @@ public class Proposer {
      * @param conf TOM configuration
      */
     public Proposer(ServerCommunicationSystem communication, MessageFactory factory,
-            ProofVerifier verifier, ReconfigurationManager manager) {
+            ProofVerifier verifier, TOMConfiguration conf) {
         this.communication = communication;
         this.communication.setProposer(this);
         this.verifier = verifier;
         this.factory = factory;
-        this.reconfManager = manager;
+        this.conf = conf;
     }
 
     /**
@@ -74,21 +71,13 @@ public class Proposer {
     /**
      * This method is called by the TOMLayer (or any other)
      * to start the execution of one instance of the paxos protocol.
-     *
+     * 
      * @param eid ID for the consensus's execution to be started
      * @param value Value to be proposed
      */
     public void startExecution(int eid, byte[] value) {
-
-        /*System.out.println("tam "+this.reconfManager.getCurrentViewAcceptors().length);
-        for(int i = 0; i < this.reconfManager.getCurrentViewAcceptors().length;i++){
-            System.out.println("i "+this.reconfManager.getCurrentViewAcceptors()[i]);
-        }*/
-
-        //******* EDUARDO BEGIN **************//
-        communication.send(this.reconfManager.getCurrentViewAcceptors(),
+        communication.send(manager.getAcceptors(),
                 factory.createPropose(eid, 0, value, null));
-        //******* EDUARDO END **************//
     }
 
     /**
@@ -126,25 +115,23 @@ public class Proposer {
 
             Logger.println("(Proposer.collectReceived) signed COLLECT for "+
                          msg.getNumber()+","+msg.getRound()+" received.");
-
+            
             if ((cp != null) && (cp.getProofs(true) != null) &&
                     // the received proof (that the round was frozen) should be valid
                     verifier.validProof(execution.getId(), msg.getRound(), cp.getProofs(true)) &&
                     // this replica is the current leader
-                    (cp.getLeader() == reconfManager.getStaticConf().getProcessId())) {
+                    (cp.getLeader() == conf.getProcessId())) {
 
                 int nextRoundNumber = msg.getRound() + 1;
 
                 Logger.println("(Proposer.collectReceived) valid COLLECT for starting "+
                          execution.getId()+","+nextRoundNumber+" received.");
 
-                Round round = execution.getRound(nextRoundNumber, this.reconfManager);
-
+                Round round = execution.getRound(nextRoundNumber);
+                
                 round.setCollectProof(msg.getSender(),proof);
 
-                //******* EDUARDO BEGIN **************//
-                if (verifier.countProofs(round.proofs) > reconfManager.getQuorumStrong()) {
-                //******* EDUARDO END **************//
+                if (verifier.countProofs(round.proofs) > manager.quorumStrong) {
                     Logger.println("(Proposer.collectReceived) proposing for "+
                             execution.getId()+","+nextRoundNumber);
 
@@ -153,11 +140,9 @@ public class Proposer {
 
                     manager.getTOMLayer().imAmTheLeader();
 
-                    //******* EDUARDO BEGIN **************//
-                    communication.send(this.reconfManager.getCurrentViewAcceptors(),
+                    communication.send(manager.getAcceptors(),
                             factory.createPropose(execution.getId(), nextRoundNumber,
                             inProp, new Proof(round.proofs, nextProp)));
-                    //******* EDUARDO END **************//
                 }
             }
         }

@@ -1,20 +1,21 @@
 /**
  * Copyright (c) 2007-2009 Alysson Bessani, Eduardo Alchieri, Paulo Sousa, and the authors indicated in the @author tags
- *
+ * 
  * This file is part of SMaRt.
- *
+ * 
  * SMaRt is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- *
+ * 
  * SMaRt is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
  * GNU General Public License for more details.
- *
+ * 
  * You should have received a copy of the GNU General Public License along with SMaRt.  If not, see <http://www.gnu.org/licenses/>.
  */
+
 package navigators.smart.communication.client.netty;
 
 import java.io.ByteArrayOutputStream;
@@ -43,8 +44,8 @@ import javax.crypto.spec.PBEKeySpec;
 
 import navigators.smart.communication.client.CommunicationSystemClientSide;
 import navigators.smart.communication.client.ReplyReceiver;
-import navigators.smart.reconfiguration.ViewManager;
 import navigators.smart.tom.core.messages.TOMMessage;
+import navigators.smart.tom.util.TOMConfiguration;
 import navigators.smart.tom.util.TOMUtil;
 
 import org.jboss.netty.bootstrap.ClientBootstrap;
@@ -58,6 +59,7 @@ import org.jboss.netty.channel.MessageEvent;
 import org.jboss.netty.channel.SimpleChannelUpstreamHandler;
 import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
 
+
 /**
  *
  * @author Paulo
@@ -65,42 +67,34 @@ import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
 @ChannelPipelineCoverage("all")
 public class NettyClientServerCommunicationSystemClientSide extends SimpleChannelUpstreamHandler implements CommunicationSystemClientSide {
 
-    //private static final int MAGIC = 59;
-    //private static final int CONNECT_TIMEOUT = 3000;
+    private static final int MAGIC = 59;
+    private static final int CONNECT_TIMEOUT = 3000;
     private static final String PASSWORD = "newcs";
     //private static final int BENCHMARK_PERIOD = 10000;
     protected ReplyReceiver trr;
-
-    //******* EDUARDO BEGIN **************//
-    private ViewManager manager;
-    //******* EDUARDO END **************//
-
+    private TOMConfiguration conf;
     private Hashtable sessionTable;
     private ReentrantReadWriteLock rl;
     private SecretKey authKey;
     //the signature engine used in the system
     private Signature signatureEngine;
     //private Storage st;
-    //private int count = 0;
-    private int signatureLength;
-    private boolean closed = false;
+    private int count = 0;
+    private int signatureLength;    
 
-    public NettyClientServerCommunicationSystemClientSide(ViewManager manager) {
+    public NettyClientServerCommunicationSystemClientSide(TOMConfiguration conf) {
         try {
             SecretKeyFactory fac = SecretKeyFactory.getInstance("PBEWithMD5AndDES");
             PBEKeySpec spec = new PBEKeySpec(PASSWORD.toCharArray());
             authKey = fac.generateSecret(spec);
 
-            this.manager = manager;
+            this.conf = conf;
             this.sessionTable = new Hashtable();
             //this.st = new Storage(BENCHMARK_PERIOD);
             this.rl = new ReentrantReadWriteLock();
-            Mac macDummy = Mac.getInstance(manager.getStaticConf().getHmacAlgorithm());
-            signatureLength = TOMUtil.getSignatureSize(manager);
-
-
-            int[] currV = manager.getCurrentViewProcesses();
-            for (int i = 0; i < currV.length; i++) {
+            Mac macDummy = Mac.getInstance(conf.getHmacAlgorithm());
+            signatureLength = TOMUtil.getSignatureSize();
+            for (int i = 0; i < conf.getN(); i++) {
                 try {
                     // Configure the client.
                     ClientBootstrap bootstrap = new ClientBootstrap(
@@ -112,93 +106,20 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
                     bootstrap.setOption("keepAlive", true);
 
                     // Set up the default event pipeline.
-                    bootstrap.setPipelineFactory(new NettyClientPipelineFactory(this, true, sessionTable,
-                        authKey, macDummy.getMacLength(), manager, rl, signatureLength, new ReentrantLock()));
-
-                    //******* EDUARDO BEGIN **************//
+                    bootstrap.setPipelineFactory(new NettyClientPipelineFactory(this, true, sessionTable, authKey, macDummy.getMacLength(), conf, rl, signatureLength, new ReentrantLock()));
 
                     // Start the connection attempt.
-                    ChannelFuture future = bootstrap.connect(manager.getStaticConf().getRemoteAddress(currV[i]));
+                    ChannelFuture future = bootstrap.connect(conf.getRemoteAddress(i));
 
                     //creates MAC stuff
-                    Mac macSend = Mac.getInstance(manager.getStaticConf().getHmacAlgorithm());
+                    Mac macSend = Mac.getInstance(conf.getHmacAlgorithm());
                     macSend.init(authKey);
-                    Mac macReceive = Mac.getInstance(manager.getStaticConf().getHmacAlgorithm());
+                    Mac macReceive = Mac.getInstance(conf.getHmacAlgorithm());
                     macReceive.init(authKey);
-                    NettyClientServerSession cs = new NettyClientServerSession(future.getChannel(), macSend,
-                        macReceive, currV[i], manager.getStaticConf().getRSAPublicKey(currV[i]), new ReentrantLock());
-                    sessionTable.put(currV[i], cs);
+                    NettyClientServerSession cs = new NettyClientServerSession(future.getChannel(), macSend, macReceive, i, TOMConfiguration.getRSAPublicKey(i), new ReentrantLock());
+                    sessionTable.put(i, cs);
 
-                    System.out.println("Connecting to replica " + currV[i] + " at " + manager.getStaticConf().getRemoteAddress(currV[i]));
-                    //******* EDUARDO END **************//
-
-
-                    future.awaitUninterruptibly();
-
-                }catch (java.lang.NullPointerException ex){
-                    System.out.println("Deve resolver o problema, e acho que não trás outras implicações :-), " +
-                            "mas temos que fazer os servidores armazenarem as view em um lugar default.");
-
-                } catch (InvalidKeyException ex) {
-                    Logger.getLogger(NettyClientServerCommunicationSystemClientSide.class.getName()).log(Level.SEVERE, null, ex);
-                }
-            }
-        } catch (InvalidKeySpecException ex) {
-            Logger.getLogger(NettyClientServerCommunicationSystemClientSide.class.getName()).log(Level.SEVERE, null, ex);
-        } catch (NoSuchAlgorithmException ex) {
-            Logger.getLogger(NettyClientServerCommunicationSystemClientSide.class.getName()).log(Level.SEVERE, null, ex);
-        }
-    }
-
-
-
-
-    /*public NettyClientServerCommunicationSystemClientSide(ViewManager manager) {
-        try {
-            SecretKeyFactory fac = SecretKeyFactory.getInstance("PBEWithMD5AndDES");
-            PBEKeySpec spec = new PBEKeySpec(PASSWORD.toCharArray());
-            authKey = fac.generateSecret(spec);
-
-            this.manager = manager;
-            this.sessionTable = new Hashtable();
-            //this.st = new Storage(BENCHMARK_PERIOD);
-            this.rl = new ReentrantReadWriteLock();
-            Mac macDummy = Mac.getInstance(manager.getStaticConf().getHmacAlgorithm());
-            signatureLength = TOMUtil.getSignatureSize(manager);
-
-
-            int[] currV = manager.getCurrentViewProcesses();
-            for (int i = 0; i < currV.length; i++) {
-                try {
-                    // Configure the client.
-                    ClientBootstrap bootstrap = new ClientBootstrap(
-                            new NioClientSocketChannelFactory(
-                            Executors.newCachedThreadPool(),
-                            Executors.newCachedThreadPool()));
-
-                    bootstrap.setOption("tcpNoDelay", true);
-                    bootstrap.setOption("keepAlive", true);
-
-                    // Set up the default event pipeline.
-                    bootstrap.setPipelineFactory(new NettyClientPipelineFactory(this, true, sessionTable, authKey, macDummy.getMacLength(), manager, rl, signatureLength, new ReentrantLock()));
-
-                    //******* EDUARDO BEGIN **************
-
-                    // Start the connection attempt.
-                    ChannelFuture future = bootstrap.connect(manager.getStaticConf().getRemoteAddress(currV[i]));
-
-                    //creates MAC stuff
-                    Mac macSend = Mac.getInstance(manager.getStaticConf().getHmacAlgorithm());
-                    macSend.init(authKey);
-                    Mac macReceive = Mac.getInstance(manager.getStaticConf().getHmacAlgorithm());
-                    macReceive.init(authKey);
-                    NettyClientServerSession cs = new NettyClientServerSession(future.getChannel(), macSend, macReceive, currV[i], manager.getStaticConf().getRSAPublicKey(currV[i]), new ReentrantLock());
-                    sessionTable.put(currV[i], cs);
-
-                    System.out.println("Connecting to replica " + currV[i] + " at " + manager.getStaticConf().getRemoteAddress(currV[i]));
-                    //******* EDUARDO END **************
-
-
+                    System.out.println("Connecting to replica " + i + " at " + conf.getRemoteAddress(i));
                     future.awaitUninterruptibly();
 
 
@@ -208,61 +129,6 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
             }
         } catch (InvalidKeySpecException ex) {
             Logger.getLogger(NettyClientServerCommunicationSystemClientSide.class.getName()).log(Level.SEVERE, null, ex);
-        } catch (NoSuchAlgorithmException ex) {
-            Logger.getLogger(NettyClientServerCommunicationSystemClientSide.class.getName()).log(Level.SEVERE, null, ex);
-        }
-    }*/
-
-    //TODO: Falta fechar as conexoes para servidores q sairam
-    public void updateConnections() {
-        try {
-
-            //******* EDUARDO BEGIN **************//
-            Mac macDummy = Mac.getInstance(manager.getStaticConf().getHmacAlgorithm());
-            int[] currV = manager.getCurrentViewProcesses();
-            //******* EDUARDO END **************//
-
-
-            for (int i = 0; i < currV.length; i++) {
-                if (sessionTable.get(currV[i]) == null) {
-                    try {
-                        // Configure the client.
-                        ClientBootstrap bootstrap = new ClientBootstrap(
-                                new NioClientSocketChannelFactory(
-                                Executors.newCachedThreadPool(),
-                                Executors.newCachedThreadPool()));
-
-                        bootstrap.setOption("tcpNoDelay", true);
-                        bootstrap.setOption("keepAlive", true);
-
-                        // Set up the default event pipeline.
-                        bootstrap.setPipelineFactory(new NettyClientPipelineFactory(this, true, sessionTable, authKey, macDummy.getMacLength(), manager, rl, signatureLength, new ReentrantLock()));
-
-
-                        //******* EDUARDO BEGIN **************//
-                        // Start the connection attempt.
-                        ChannelFuture future = bootstrap.connect(manager.getStaticConf().getRemoteAddress(currV[i]));
-
-                        //creates MAC stuff
-                        Mac macSend = Mac.getInstance(manager.getStaticConf().getHmacAlgorithm());
-                        macSend.init(authKey);
-                        Mac macReceive = Mac.getInstance(manager.getStaticConf().getHmacAlgorithm());
-                        macReceive.init(authKey);
-                        NettyClientServerSession cs = new NettyClientServerSession(future.getChannel(), macSend, macReceive, currV[i], manager.getStaticConf().getRSAPublicKey(currV[i]), new ReentrantLock());
-                        sessionTable.put(currV[i], cs);
-
-                        System.out.println("Connecting to replica " + currV[i] + " at " + manager.getStaticConf().getRemoteAddress(currV[i]));
-                        //******* EDUARDO END **************//
-
-
-                        future.awaitUninterruptibly();
-
-
-                    } catch (InvalidKeyException ex) {
-                        Logger.getLogger(NettyClientServerCommunicationSystemClientSide.class.getName()).log(Level.SEVERE, null, ex);
-                    }
-                }
-            }
         } catch (NoSuchAlgorithmException ex) {
             Logger.getLogger(NettyClientServerCommunicationSystemClientSide.class.getName()).log(Level.SEVERE, null, ex);
         }
@@ -296,9 +162,6 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
     @Override
     public void channelClosed(
             ChannelHandlerContext ctx, ChannelStateEvent e) {
-        if (this.closed) {
-            return;
-        }
         try {
             //sleeps 10 seconds before trying to reconnect
             Thread.sleep(10000);
@@ -313,25 +176,20 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
             NettyClientServerSession ncss = (NettyClientServerSession) sessionElements.nextElement();
             if (ncss.getChannel() == ctx.getChannel()) {
                 try {
-
-                    //******* EDUARDO BEGIN **************//
-                    Mac macDummy = Mac.getInstance(manager.getStaticConf().getHmacAlgorithm());
-                    // Configure the client.
+                    Mac macDummy = Mac.getInstance(conf.getHmacAlgorithm());
+                    // Configure the client.                    
                     ClientBootstrap bootstrap = new ClientBootstrap(new NioClientSocketChannelFactory(Executors.newCachedThreadPool(), Executors.newCachedThreadPool()));
                     // Set up the default event pipeline.
-                    bootstrap.setPipelineFactory(new NettyClientPipelineFactory(this, true, sessionTable, authKey, macDummy.getMacLength(), manager, rl, TOMUtil.getSignatureSize(manager), new ReentrantLock()));
+                    bootstrap.setPipelineFactory(new NettyClientPipelineFactory(this, true, sessionTable, authKey, macDummy.getMacLength(), conf, rl, TOMUtil.getSignatureSize(), new ReentrantLock()));
                     // Start the connection attempt.
-                    ChannelFuture future = bootstrap.connect(manager.getStaticConf().getRemoteAddress(ncss.getReplicaId()));
-                    //******* EDUARDO END **************//
-
-
+                    ChannelFuture future = bootstrap.connect(conf.getRemoteAddress(ncss.getReplicaId()));
                     //creates MAC stuff
                     Mac macSend = ncss.getMacSend();
                     Mac macReceive = ncss.getMacReceive();
-                    NettyClientServerSession cs = new NettyClientServerSession(future.getChannel(), macSend, macReceive, ncss.getReplicaId(), manager.getStaticConf().getRSAPublicKey(ncss.getReplicaId()), new ReentrantLock());
+                    NettyClientServerSession cs = new NettyClientServerSession(future.getChannel(), macSend, macReceive, ncss.getReplicaId(), TOMConfiguration.getRSAPublicKey(ncss.getReplicaId()), new ReentrantLock());
                     sessionTable.remove(ncss.getReplicaId());
                     sessionTable.put(ncss.getReplicaId(), cs);
-                //System.out.println("RE-Connecting to replica "+ncss.getReplicaId()+" at " + conf.getRemoteAddress(ncss.getReplicaId()));
+                    //System.out.println("RE-Connecting to replica "+ncss.getReplicaId()+" at " + conf.getRemoteAddress(ncss.getReplicaId()));
                 } catch (NoSuchAlgorithmException ex) {
                     Logger.getLogger(NettyClientServerCommunicationSystemClientSide.class.getName()).log(Level.SEVERE, null, ex);
                 }
@@ -362,15 +220,16 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
                 ByteArrayOutputStream baos = new ByteArrayOutputStream();
                 if (!serializeClassHeaders) {
                     dos = new DataOutputStream(baos);
-                    sm.wExternal(dos);
+                    sm.writeExternal(dos);
                     dos.flush();
                     sm.includesClassHeader = false;
-                } else {
+                }
+                else {
                     oos = new ObjectOutputStream(baos);
                     oos.writeObject(sm);
                     oos.flush();
                     sm.includesClassHeader = true;
-                }
+                }                
                 data = baos.toByteArray();
                 sm.serializedMessage = data;
             } catch (IOException ex) {
@@ -387,15 +246,14 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
                     Logger.getLogger(NettyClientServerCommunicationSystemClientSide.class.getName()).log(Level.SEVERE, null, ex);
                 }
             }
-        } else {
+        }
+        else{
             sm.includesClassHeader = false;
         }
 
         //produce signature
         if (sm.serializedMessageSignature == null && sign) {
-            //******* EDUARDO BEGIN **************//
-            byte[] data2 = signMessage(manager.getStaticConf().getRSAPrivateKey(), sm.serializedMessage);
-            //******* EDUARDO END **************//
+            byte[] data2 = signMessage(TOMConfiguration.getRSAPrivateKey(), sm.serializedMessage);
             sm.serializedMessageSignature = data2;
         }
 
@@ -413,7 +271,6 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
             /**********************************************************/
             /**********************************************************/
             sm.destination = targets[i];
-
             rl.readLock().lock();
             Channel channel = (Channel) ((NettyClientServerSession) sessionTable.get(targets[i])).getChannel();
             rl.readLock().unlock();
@@ -421,26 +278,26 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
                 sm.signed = sign;
                 channel.write(sm);
             } else {
-             //System.out.println("WARNING: channel is not connected");
+                //System.out.println("WARNING: channel is not connected");
             }
         }
-    /*
-    //statistics about signature execution time
-    count++;
-    if (count % BENCHMARK_PERIOD == 0) {
-    int myId = conf.getProcessId();
-    System.out.println("--Signature benchmark:--");
-    System.out.println("(" + myId + ")Average time for " + BENCHMARK_PERIOD + " signatures (-10%) = " + this.st.getAverage(true) / 1000 + " us ");
-    System.out.println("(" + myId + ")Standard desviation for " + BENCHMARK_PERIOD + " signatures (-10%) = " + this.st.getDP(true) / 1000 + " us ");
-    System.out.println("(" + myId + ")Average time for " + BENCHMARK_PERIOD + " signatures (all samples) = " + this.st.getAverage(false) / 1000 + " us ");
-    System.out.println("(" + myId + ")Standard desviation for " + BENCHMARK_PERIOD + " signatures (all samples) = " + this.st.getDP(false) / 1000 + " us ");
-    System.out.println("(" + myId + ")Maximum time for " + BENCHMARK_PERIOD + " signatures (-10%) = " + this.st.getMax(true) / 1000 + " us ");
-    System.out.println("(" + myId + ")Maximum time for " + BENCHMARK_PERIOD + " signatures (all samples) = " + this.st.getMax(false) / 1000 + " us ");
-    System.out.println("(" + myId + ")----------------------------------------------------------------------");
-    count = 0;
-    st.reset();
-    }
-     */
+/*
+        //statistics about signature execution time
+        count++;
+        if (count % BENCHMARK_PERIOD == 0) {
+            int myId = conf.getProcessId();
+            System.out.println("--Signature benchmark:--");
+            System.out.println("(" + myId + ")Average time for " + BENCHMARK_PERIOD + " signatures (-10%) = " + this.st.getAverage(true) / 1000 + " us ");
+            System.out.println("(" + myId + ")Standard desviation for " + BENCHMARK_PERIOD + " signatures (-10%) = " + this.st.getDP(true) / 1000 + " us ");
+            System.out.println("(" + myId + ")Average time for " + BENCHMARK_PERIOD + " signatures (all samples) = " + this.st.getAverage(false) / 1000 + " us ");
+            System.out.println("(" + myId + ")Standard desviation for " + BENCHMARK_PERIOD + " signatures (all samples) = " + this.st.getDP(false) / 1000 + " us ");
+            System.out.println("(" + myId + ")Maximum time for " + BENCHMARK_PERIOD + " signatures (-10%) = " + this.st.getMax(true) / 1000 + " us ");
+            System.out.println("(" + myId + ")Maximum time for " + BENCHMARK_PERIOD + " signatures (all samples) = " + this.st.getMax(false) / 1000 + " us ");
+            System.out.println("(" + myId + ")----------------------------------------------------------------------");
+            count = 0;
+            st.reset();
+        }
+ */
     }
 
     public void sign(TOMMessage sm) {
@@ -450,7 +307,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
         try {
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             dos = new DataOutputStream(baos);
-            sm.wExternal(dos);
+            sm.writeExternal(dos);
             dos.flush();
             data = baos.toByteArray();
             sm.serializedMessage = data;
@@ -464,57 +321,45 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
             }
         }
 
-        //******* EDUARDO BEGIN **************//
-        //produce signature
-        byte[] data2 = signMessage(manager.getStaticConf().getRSAPrivateKey(), data);
-        //******* EDUARDO END **************//
-
+        //produce signature        
+        byte[] data2 = signMessage(TOMConfiguration.getRSAPrivateKey(), data);
         sm.serializedMessageSignature = data2;
-    /*
-    //statistics about signature execution time
-    count++;
-    if (count % BENCHMARK_PERIOD == 0) {
-    int myId = conf.getProcessId();
-    System.out.println("--Signature benchmark:--");
-    System.out.println("(" + myId + ")Average time for " + BENCHMARK_PERIOD + " signatures (-10%) = " + this.st.getAverage(true) / 1000 + " us ");
-    System.out.println("(" + myId + ")Standard desviation for " + BENCHMARK_PERIOD + " signatures (-10%) = " + this.st.getDP(true) / 1000 + " us ");
-    System.out.println("(" + myId + ")Average time for " + BENCHMARK_PERIOD + " signatures (all samples) = " + this.st.getAverage(false) / 1000 + " us ");
-    System.out.println("(" + myId + ")Standard desviation for " + BENCHMARK_PERIOD + " signatures (all samples) = " + this.st.getDP(false) / 1000 + " us ");
-    System.out.println("(" + myId + ")Maximum time for " + BENCHMARK_PERIOD + " signatures (-10%) = " + this.st.getMax(true) / 1000 + " us ");
-    System.out.println("(" + myId + ")Maximum time for " + BENCHMARK_PERIOD + " signatures (all samples) = " + this.st.getMax(false) / 1000 + " us ");
-    System.out.println("(" + myId + ")----------------------------------------------------------------------");
-    count = 0;
-    st.reset();
-    }
-     */
+/*
+        //statistics about signature execution time
+        count++;
+        if (count % BENCHMARK_PERIOD == 0) {
+            int myId = conf.getProcessId();
+            System.out.println("--Signature benchmark:--");
+            System.out.println("(" + myId + ")Average time for " + BENCHMARK_PERIOD + " signatures (-10%) = " + this.st.getAverage(true) / 1000 + " us ");
+            System.out.println("(" + myId + ")Standard desviation for " + BENCHMARK_PERIOD + " signatures (-10%) = " + this.st.getDP(true) / 1000 + " us ");
+            System.out.println("(" + myId + ")Average time for " + BENCHMARK_PERIOD + " signatures (all samples) = " + this.st.getAverage(false) / 1000 + " us ");
+            System.out.println("(" + myId + ")Standard desviation for " + BENCHMARK_PERIOD + " signatures (all samples) = " + this.st.getDP(false) / 1000 + " us ");
+            System.out.println("(" + myId + ")Maximum time for " + BENCHMARK_PERIOD + " signatures (-10%) = " + this.st.getMax(true) / 1000 + " us ");
+            System.out.println("(" + myId + ")Maximum time for " + BENCHMARK_PERIOD + " signatures (all samples) = " + this.st.getMax(false) / 1000 + " us ");
+            System.out.println("(" + myId + ")----------------------------------------------------------------------");
+            count = 0;
+            st.reset();
+        }
+*/
     }
 
     public byte[] signMessage(PrivateKey key, byte[] message) {
-        //long startTime = System.nanoTime();
+        long startTime = System.nanoTime();
         try {
             if (signatureEngine == null) {
                 signatureEngine = Signature.getInstance("SHA1withRSA");
             }
             byte[] result = null;
-
+            
             signatureEngine.initSign(key);
             signatureEngine.update(message);
             result = signatureEngine.sign();
-
+            
             //st.store(System.nanoTime() - startTime);
             return result;
         } catch (Exception e) {
             e.printStackTrace();
             return null;
-        }
-    }
-
-    public void close() {
-        this.closed = true;
-        Enumeration sessionElements = sessionTable.elements();
-        while (sessionElements.hasMoreElements()) {
-            NettyClientServerSession ncss = (NettyClientServerSession) sessionElements.nextElement();
-            ncss.getChannel().close();
         }
     }
 }

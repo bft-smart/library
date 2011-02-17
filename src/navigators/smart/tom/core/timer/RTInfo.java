@@ -21,9 +21,9 @@ package navigators.smart.tom.core.timer;
 import java.security.SignedObject;
 import java.util.Arrays;
 
-import navigators.smart.reconfiguration.ReconfigurationManager;
 import navigators.smart.tom.core.TOMLayer;
 import navigators.smart.tom.core.timer.messages.RTCollect;
+import navigators.smart.tom.util.TOMConfiguration;
 
 
 /**
@@ -34,11 +34,7 @@ import navigators.smart.tom.core.timer.messages.RTCollect;
 public class RTInfo {
 
     private boolean[] timeout; // Replicas where this timeout also occured
-
-     //******* EDUARDO BEGIN **************//
-    private ReconfigurationManager manager;
-     //******* EDUARDO END **************//
-    
+    private TOMConfiguration conf; // TOM configuration
     private int reqId; // ID of the request associated with this timer
     private SignedObject[] collect; // Proofs
     private TOMLayer tom; // TOM layer
@@ -52,11 +48,11 @@ public class RTInfo {
      * @param timeoutNum Number of the timeout
      * @param tom TOM layer
      */
-    public RTInfo(ReconfigurationManager manager, int reqId, TOMLayer tom) {
-        this.manager = manager;
+    public RTInfo(TOMConfiguration conf, int reqId, TOMLayer tom) {
+        this.conf = conf;
         this.reqId = reqId;
         this.tom = tom;
-        timeout = new boolean[manager.getCurrentViewN()];
+        timeout = new boolean[conf.getN()];
     }
 
     public int getRequestId() {
@@ -69,7 +65,7 @@ public class RTInfo {
 
     public void setCollect(int a, SignedObject c) {
         if (collect == null) {
-            collect = new SignedObject[manager.getCurrentViewN()];
+            collect = new SignedObject[conf.getN()];
         }
         collect[a] = c;
     }

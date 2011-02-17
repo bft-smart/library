@@ -43,18 +43,9 @@ public class CounterServer extends ServiceReplica {
         super(id);
     }
     
-     //******* EDUARDO BEGIN **************//
-    public CounterServer(int id, boolean join) {
-        super(id,join);
-    }
-     //******* EDUARDO END **************//
-    
     
     @Override
     public byte[] executeCommand(int clientId, long timestamp, byte[] nonces, byte[] command, DebugInfo info) {
-        
-        //System.out.println("Valor de counter execute "+this.counter);
-        
         iterations++;
         try {
             int increment = new DataInputStream(new ByteArrayInputStream(command)).readInt();
@@ -72,23 +63,17 @@ public class CounterServer extends ServiceReplica {
 
     public static void main(String[] args){
         if(args.length < 1) {
-            System.out.println("Use: java CounterServer <processId> <join option (optional)>");
+            System.out.println("Use: java CounterServer <processId>");
             System.exit(-1);
         }
 
-        if(args.length > 1) {
-            new CounterServer(Integer.parseInt(args[0]), Boolean.valueOf(args[1]));
-        }else{        
-            new CounterServer(Integer.parseInt(args[0]));
-        }
+        new CounterServer(Integer.parseInt(args[0]));
     }
 
     /** ISTO E CODIGO DO JOAO, PARA TRATAR DOS CHECKPOINTS */
     @Override
     protected byte[] serializeState() {
 
-        //System.out.println("vai ler counter para: "+this.counter);
-        
         byte[] b = new byte[4];
         for (int i = 0; i < 4; i++) {
             int offset = (b.length - 1 - i) * 8;
@@ -108,11 +93,7 @@ public class CounterServer extends ServiceReplica {
             value += (state[i] & 0x000000FF) << shift;
         }
 
-        //System.out.println("vai setar counter para: "+value);
-        
         this.counter = value;
-        
-       // System.out.println("Valor de counter deserializeState "+this.counter);
     }
     /********************************************************/
 }

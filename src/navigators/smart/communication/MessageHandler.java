@@ -1,18 +1,18 @@
 /**
  * Copyright (c) 2007-2009 Alysson Bessani, Eduardo Alchieri, Paulo Sousa, and the authors indicated in the @author tags
- *
+ * 
  * This file is part of SMaRt.
- *
+ * 
  * SMaRt is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- *
+ * 
  * SMaRt is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
  * GNU General Public License for more details.
- *
+ * 
  * You should have received a copy of the GNU General Public License along with SMaRt.  If not, see <http://www.gnu.org/licenses/>.
  */
 
@@ -24,7 +24,8 @@ import static navigators.smart.communication.ServerCommunicationSystem.TOM_REPLY
 import static navigators.smart.communication.ServerCommunicationSystem.TOM_REQUEST_MSG;
 import static navigators.smart.paxosatwar.messages.MessageFactory.COLLECT;
 
-
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.ObjectOutputStream;
 
 import navigators.smart.paxosatwar.messages.PaxosMessage;
@@ -49,7 +50,7 @@ public class MessageHandler {
     private Proposer proposer;
     private Acceptor acceptor;
     private TOMLayer tomLayer;
-
+   
     public void setProposer(Proposer proposer) {
         this.proposer = proposer;
     }
@@ -68,15 +69,13 @@ public class MessageHandler {
             //Logger.println("(MessageHandler.processData) PAXOS_MSG received: " + paxosMsg);
             if (paxosMsg.getPaxosType() == COLLECT) {
                 //the proposer layer only handle COLLECT messages
-                Logger.println("(MessageHandler.processData) delivering COLLECT message");
                 proposer.deliver(paxosMsg);
             } else {
-                Logger.println("(MessageHandler.processData) delivering a paxos message");
                 acceptor.deliver(paxosMsg);
             }
         } else if (sm instanceof RTMessage) {
             RTMessage rtMsg = (RTMessage) sm;
-            Logger.println("(MessageHandler.processData) RT_MSG received: " + rtMsg + " (replica " + rtMsg.getSender() + ")");
+            //Logger.println("(MessageHandler.processData) RT_MSG received: "+rtMsg);
             tomLayer.deliverTimeoutRequest(rtMsg);
         } else if (sm instanceof ForwardedMessage) {
             TOMMessage request = ((ForwardedMessage) sm).getRequest();
@@ -108,9 +107,7 @@ public class MessageHandler {
         }
     }
 
-    //******* EDUARDO BEGIN **************//
-    //Nao estava sendo usado pra nada!
-   /* public byte[] getData(SystemMessage msg) {
+    public byte[] getData(SystemMessage msg) {
         ByteArrayOutputStream bOut = new ByteArrayOutputStream();
 
         try {
@@ -122,9 +119,7 @@ public class MessageHandler {
         }
 
         return bOut.toByteArray();
-    }*/
-    //******* EDUARDO END **************//
-
+    }
 
     //utility methods to convert PaxosMessages to bytes and vice-versa
     private void getBytes(PaxosMessage msg, ObjectOutputStream obOut) throws Exception {

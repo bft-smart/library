@@ -21,12 +21,16 @@ package navigators.smart.tom.demo;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.util.Hashtable;
+import java.util.LinkedList;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-
+import navigators.smart.communication.client.CommunicationSystemClientSide;
+import navigators.smart.communication.client.CommunicationSystemClientSideFactory;
 import navigators.smart.tom.TOMSender;
 import navigators.smart.tom.core.messages.TOMMessage;
+import navigators.smart.tom.util.TOMConfiguration;
 
 
 public class ThroughputTestClient extends TOMSender implements Runnable {
@@ -35,40 +39,37 @@ public class ThroughputTestClient extends TOMSender implements Runnable {
     private int argSize;
     private int interval;
     private int id = 0;
-    //private CommunicationSystemClientSide cs;
+    private CommunicationSystemClientSide cs;
     private int f;
     private int n;
     private int currentId = 0;
-    //private Hashtable sessionTable;
-    //private TOMConfiguration conf;
+    private Hashtable sessionTable;
+    private TOMConfiguration conf;
 
-    public ThroughputTestClient(int id, int exec, int argSize, int interval)  {
+    public ThroughputTestClient(int id, int exec, int argSize, int interval, TOMConfiguration conf)  {
         this.id = id;
         this.exec = exec;
         this.argSize = argSize;
         this.interval = interval;        
         //id for this client
         this.currentId = id;
-        //this.conf = conf;
+        this.conf = conf;
         //create the configuration object
         
         //create the communication system
 
-        //cs = CommunicationSystemClientSideFactory.getCommunicationSystemClientSide(conf);
-        
-        
-        
+        cs = CommunicationSystemClientSideFactory.getCommunicationSystemClientSide(conf);
+        //the number of suported faults
+        this.f = conf.getF();
+        this.n = conf.getN();
         //initialize the TOM sender
-        this.init(id);
+        this.init(cs, conf);
     }
 
     public void run() {
-        this.f = getViewManager().getCurrentViewF();
-        this.n = getViewManager().getCurrentViewN();
-        
-        //LinkedList<TOMMessage> generatedMessages = null;
+        LinkedList<TOMMessage> generatedMessages = null;
         try {
-            System.out.println("(" + currentId + ") Let's sleep 10 seconds to wait for (possible) other clients");
+            System.out.println("(" + currentId + ") A dormir 10 segundos ah espera dos outros clientes");
             Thread.sleep(10000);
             /*
             if (conf.getUseSignatures()==1){
@@ -92,6 +93,7 @@ public class ThroughputTestClient extends TOMSender implements Runnable {
                 System.out.println("Sending requests ...");
                 long startTimeInstant = System.currentTimeMillis();
                 for (int i = 0; i < exec; i++) {
+              //      if (conf.getUseSignatures()==0){
                         int currId = currentId;
                         byte[] command = new byte[4 + argSize];
                         ByteArrayOutputStream out = new ByteArrayOutputStream(4);
@@ -102,6 +104,10 @@ public class ThroughputTestClient extends TOMSender implements Runnable {
                         }
                         System.arraycopy(out.toByteArray(), 0, command, 0, 4);
                         this.TOMulticast(command);
+                //    }
+                //    else {
+                //        this.TOMulticast(generatedMessages.get(i));
+                //    }
                     if ((i!=0) && ((i % 1000) == 0)) {
                         long elapsedTime = System.currentTimeMillis() - startTimeInstant;
                         double opsPerSec_ = ((double)1000)/(((double)elapsedTime/1000));
@@ -149,11 +155,11 @@ public class ThroughputTestClient extends TOMSender implements Runnable {
         }
         int numThreads = new Integer(args[4]);
         Thread[] t = new Thread[numThreads];
-        //TOMConfiguration conf = new TOMConfiguration(id);
+        TOMConfiguration conf = new TOMConfiguration(id);
         for (int i=0; i<numThreads; i++){
-            //TOMConfiguration conf1 = new TOMConfiguration(conf,1000*i+id);
+            TOMConfiguration conf1 = new TOMConfiguration(conf,1000*i+id);
             t[i] = new Thread(new ThroughputTestClient(id+i, new Integer(args[1]),
-                new Integer(args[2]), new Integer(args[3])));
+                new Integer(args[2]), new Integer(args[3]), conf1));
             t[i].start();
         }
         try {

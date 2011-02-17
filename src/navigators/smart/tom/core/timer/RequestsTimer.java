@@ -97,24 +97,6 @@ public class RequestsTimer {
         */
     }
 
-    /**
-     * Cancels all timers for all messages
-     */
-    public void clearAll() {
-        TOMMessage[] requests = new TOMMessage[watched.size()];
-        rwLock.writeLock().lock();
-        
-        watched.toArray(requests);
-
-        for (TOMMessage request : requests) {
-            if (watched.remove(request) && watched.isEmpty() && rtTask != null) {
-                rtTask.cancel();
-                rtTask = null;
-            }
-        }
-        rwLock.writeLock().unlock();
-    }
-    
     class RequestTimerTask extends TimerTask {
 
         @Override
@@ -141,8 +123,6 @@ public class RequestsTimer {
                 for (ListIterator<TOMMessage> li = pendingRequests.listIterator(); li.hasNext(); ) {
                     TOMMessage request = li.next();
                     if (!request.timeout) {
-
-                        request.signed = request.serializedMessageSignature != null;
                         tomLayer.forwardRequestToLeader(request);
                         request.timeout = true;
                         li.remove();

@@ -18,16 +18,13 @@
 
 package navigators.smart.tom;
 
-import java.util.Random;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 import navigators.smart.communication.client.CommunicationSystemClientSide;
-import navigators.smart.communication.client.CommunicationSystemClientSideFactory;
 import navigators.smart.communication.client.ReplyReceiver;
-import navigators.smart.reconfiguration.ViewManager;
 import navigators.smart.tom.core.messages.TOMMessage;
-
+import navigators.smart.tom.util.TOMConfiguration;
 
 
 /**
@@ -37,22 +34,12 @@ import navigators.smart.tom.core.messages.TOMMessage;
 public abstract class TOMSender implements ReplyReceiver {
 
     private int me; // process id
-
-    //******* EDUARDO BEGIN **************//
-    //private int[] group; // group of replicas
-    private ViewManager viewManager;
-    //******* EDUARDO END **************//
-    
-    private int session = 0; // session id
+    private int[] group; // group of replicas
     private int sequence = 0; // sequence number
     private CommunicationSystemClientSide cs; // Client side comunication system
     private Lock lock = new ReentrantLock(); // lock to manage concurrent access to this object by other threads
     private boolean useSignatures = false;
 
-    
-    
-    
-    
     /**
      * Creates a new instance of TOMulticastSender
      *
@@ -61,21 +48,6 @@ public abstract class TOMSender implements ReplyReceiver {
     public TOMSender() {
     }
 
-    public void close(){
-        cs.close();
-    }
-
-    public CommunicationSystemClientSide getCommunicationSystem() {
-        return this.cs;
-    }
-    
-    
-    //******* EDUARDO BEGIN **************//
-    public ViewManager getViewManager(){
-        return this.viewManager;
-    }
-    //******* EDUARDO END **************//
-    
     /**
      * This method initializes the object
      * TODO: Perguntar se este metodo n pode antes ser protected (compila como protected, mas mesmo assim...)
@@ -84,20 +56,14 @@ public abstract class TOMSender implements ReplyReceiver {
      * @param conf Client side comunication system configuration
      * @param sequence Initial sequence number for data multicast
      *
-     * 
+     * TODO: ver o q é isto de "client side comunication system"
      */
-    public void init(int processId, int sequence) {
-        this.init(processId);
+    public void init(CommunicationSystemClientSide cs, TOMConfiguration conf, int sequence) {
+        this.init(cs, conf);
         this.sequence = sequence;
-    }
-    
-    public void init(int processId, String configHome, int sequence) {
-        this.init(processId, configHome);
-        this.sequence = sequence;
+        this.useSignatures = conf.getUseSignatures()==1?true:false;
     }
 
-    
-    //******* EDUARDO BEGIN **************//
     /**
      * This method initializes the object
      * TODO: Perguntar se este metodo n pode antes ser protected (compila como protected, mas mesmo assim...)
@@ -105,26 +71,18 @@ public abstract class TOMSender implements ReplyReceiver {
      * @param cs Client side comunication system
      * @param conf Total order messaging configuration
      */
-    public void init(int processId) {
-        this.viewManager = new ViewManager(processId);
-        startsCS();
-    }
-    
-    public void init(int processId, String configHome) {
-        this.viewManager = new ViewManager(processId,configHome);
-        startsCS();
+    public void init(CommunicationSystemClientSide cs, TOMConfiguration conf) {
+        this.cs = cs;
+        this.cs.setReplyReceiver(this); // This object itself shall be a reply receiver
+        this.me = conf.getProcessId();
+
+        this.group = new int[conf.getN()];
+        for (int i = 0; i < group.length; i++) {
+            group[i] = i;
+        }
+        this.useSignatures = conf.getUseSignatures()==1?true:false;
     }
 
-    private void startsCS() {
-        this.cs = CommunicationSystemClientSideFactory.getCommunicationSystemClientSide(this.viewManager);
-        this.cs.setReplyReceiver(this); // This object itself shall be a reply receiver
-        this.me = this.viewManager.getStaticConf().getProcessId();
-        this.useSignatures = this.viewManager.getStaticConf().getUseSignatures()==1?true:false;
-        this.session = new Random().nextInt();
-    }
-    //******* EDUARDO END **************//
-    
-    
     // Get next sequence number to a soon to be multicasted message
     private int getNextSequenceNumber() {
         lock.lock();
@@ -145,16 +103,13 @@ public abstract class TOMSender implements ReplyReceiver {
         return sequence - 1;
     }
 
-    //******* EDUARDO BEGIN **************//
     /**
      * Multicast data to the group of replicas
      *
      * @param m Data to be multicast
      */
     public void TOMulticast(byte[] m) {
-        cs.send(useSignatures, this.viewManager.getCurrentViewProcesses(), 
-                new TOMMessage(me, session, getNextSequenceNumber(), m,
-                this.viewManager.getCurrentViewId()), false);
+        cs.send(useSignatures, group, new TOMMessage(me, getNextSequenceNumber(), m), false);
     }
 
     /**
@@ -163,20 +118,17 @@ public abstract class TOMSender implements ReplyReceiver {
      * @param m Data to be multicast
      * @param readOnly it is a readonly request
      */
-    public void doTOMulticast(byte[] m, int reqType, boolean readOnly) {
-        cs.send(useSignatures, this.viewManager.getCurrentViewProcesses(), 
-                new TOMMessage(me, session, getNextSequenceNumber(), m,
-                this.viewManager.getCurrentViewId(), reqType, readOnly), false);
+    public void TOMulticast(byte[] m, boolean readOnly) {
+        cs.send(useSignatures, group, new TOMMessage(me, getNextSequenceNumber(), m, readOnly), false);
     }
-    
+
     /**
      * Multicast a TOMMessage to the group of replicas
      *
      * @param m Data to be multicast
      */
     public void TOMulticast(TOMMessage sm) {
-        cs.send(useSignatures, this.viewManager.getCurrentViewProcesses(), 
-                sm, false);
+        cs.send(useSignatures, group, sm, false);
     }
 
     /**
@@ -187,11 +139,8 @@ public abstract class TOMSender implements ReplyReceiver {
      * @return TOMMessage with serializedMsg and serializedMsgSignature fields filled
      */
     public TOMMessage sign(byte[] m) {
-        TOMMessage tm = new TOMMessage(me, session, getNextSequenceNumber(), m,
-                this.viewManager.getCurrentViewId());
+        TOMMessage tm = new TOMMessage(me, getNextSequenceNumber(), m);
         cs.sign(tm);
         return tm;
     }
-    
-    //******* EDUARDO END **************//
 }
