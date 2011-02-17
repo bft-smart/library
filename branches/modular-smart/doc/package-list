@@ -1,0 +1,17 @@
+navigators.smart.clientsmanagement
+navigators.smart.communication
+navigators.smart.communication.client
+navigators.smart.communication.client.netty
+navigators.smart.communication.server
+navigators.smart.paxosatwar
+navigators.smart.paxosatwar.executionmanager
+navigators.smart.paxosatwar.messages
+navigators.smart.paxosatwar.roles
+navigators.smart.statemanagment
+navigators.smart.tom
+navigators.smart.tom.core
+navigators.smart.tom.core.messages
+navigators.smart.tom.core.timer
+navigators.smart.tom.core.timer.messages
+navigators.smart.tom.demo
+navigators.smart.tom.util
