@@ -181,9 +181,11 @@ public abstract class TOMSender implements ReplyReceiver {
      *
      * @return TOMMessage with serializedMsg and serializedMsgSignature fields filled
      */
-    public TOMMessage sign(byte[] m) {
+    public TOMMessage createTOMMsg(byte[] m) {
         TOMMessage tm = new TOMMessage(me, getNextSequenceNumber(), m);
-        cs.sign(tm);
+        if(useSignatures){
+        	cs.sign(tm);
+        }
         return tm;
     }
 }
