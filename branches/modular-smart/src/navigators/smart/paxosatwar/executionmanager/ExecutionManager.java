@@ -411,8 +411,8 @@ public final class ExecutionManager{
         //then we have to put the pending paxos messages
         List<PaxosMessage> messages = outOfContext.remove(eid);
         if (messages != null) {
-        	if(log.isLoggable(Level.FINEST))
-                log.finest("(" + eid + ") Processing " + messages.size() + " out of context messages");
+        	if(log.isLoggable(Level.FINER))
+                log.finer("(" + eid + ") Processing " + messages.size() + " out of context messages");
             for (Iterator<PaxosMessage> i = messages.iterator(); i.hasNext();) {
                 acceptor.processMessage(i.next());
                 if (execution.isDecided()) {
