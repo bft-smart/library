@@ -20,7 +20,7 @@ import javax.crypto.spec.PBEKeySpec;
  *
  * @author Christian Spann <christian.spann at uni-ulm.de>
  */
-public class HMacVerifier implements MessageVerifier<byte[]> {
+public class HMacVerifier implements PTPMessageVerifier {
 
     private static final Logger log = Logger.getLogger(HMacVerifier.class.getName());
 

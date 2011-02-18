@@ -114,11 +114,7 @@ public class TOMConfiguration extends Configuration {
             }
 
             s = configs.remove("system.paxos.decideMessages");
-            if (s == null) {
-                decideMessagesEnabled = false;
-            } else {
-                decideMessagesEnabled = Boolean.parseBoolean(s);
-            }
+            decideMessagesEnabled = Boolean.parseBoolean(s);
 
             s = configs.remove("system.totalordermulticast.timeout");
             if (s == null) {
@@ -194,18 +190,10 @@ public class TOMConfiguration extends Configuration {
             }
 
             s = configs.remove("system.totalordermulticast.verifyTimestamps");
-            if (s == null) {
-                verifyTimestamps = false;
-            } else {
-                verifyTimestamps = Boolean.parseBoolean(s);
-            }
+            verifyTimestamps = Boolean.parseBoolean(s);
 
             s = configs.remove("system.communication.useSenderThread");
-            if (s == null) {
-                useSenderThread = false;
-            } else {
-                useSenderThread = Boolean.parseBoolean(s);
-            }
+            useSenderThread = Boolean.parseBoolean(s);
 
             s = configs.remove("system.communication.clientServerCommSystem");
             if (s == null) {
@@ -244,11 +232,7 @@ public class TOMConfiguration extends Configuration {
             }
 
             s = configs.remove("system.totalordermulticast.state_transfer");
-            if (s == null) {
-                stateTransferEnabled = false;
-            } else {
-                stateTransferEnabled = Boolean.parseBoolean(s);
-            }
+            stateTransferEnabled = Boolean.parseBoolean(s);
 
             s = configs.remove("system.totalordermulticast.checkpoint_period");
             if (s == null) {

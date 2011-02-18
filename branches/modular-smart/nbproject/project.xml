@@ -3,11 +3,13 @@
     <type>org.netbeans.modules.java.j2seproject</type>
     <configuration>
         <data xmlns="http://www.netbeans.org/ns/j2se-project/3">
-            <name>SMART</name>
+            <name>modular SMaRt</name>
             <source-roots>
                 <root id="src.dir"/>
             </source-roots>
-            <test-roots/>
+            <test-roots>
+                <root id="test.ebawa.dir"/>
+            </test-roots>
         </data>
     </configuration>
 </project>
