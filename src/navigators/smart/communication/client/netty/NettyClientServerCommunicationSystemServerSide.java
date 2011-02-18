@@ -19,7 +19,9 @@
 package navigators.smart.communication.client.netty;
 
 import java.net.InetSocketAddress;
+import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
+import java.security.SignatureException;
 import java.security.spec.InvalidKeySpecException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -80,6 +82,7 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 //    private long max=0;
     private List<TOMMessage> requestsReceived = Collections.synchronizedList(new ArrayList<TOMMessage>());
     private ReentrantLock lock = new ReentrantLock();
+    private TOMUtil tomutil;
 
     public NettyClientServerCommunicationSystemServerSide(TOMConfiguration conf) {
         try {            
@@ -91,6 +94,8 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
             sessionTable = new Hashtable<Integer,NettyClientServerSession>();
             rl = new ReentrantReadWriteLock();
 
+            tomutil = new TOMUtil();
+            
             //Configure the server.
             /* Cached thread pool */
             ServerBootstrap bootstrap = new ServerBootstrap(
@@ -114,7 +119,7 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
             bootstrap.setOption("child.keepAlive", true);
 
             //Set up the default event pipeline.
-            bootstrap.setPipelineFactory(new NettyServerPipelineFactory(this,false,sessionTable,authKey,macDummy.getMacLength(),conf,rl,TOMUtil.getSignatureSize(), new ReentrantLock() ));
+            bootstrap.setPipelineFactory(new NettyServerPipelineFactory(this,false,sessionTable,authKey,macDummy.getMacLength(),conf,rl,tomutil.getSignatureSize(), new ReentrantLock() ));
 
             //Bind and start to accept incoming connections.
             bootstrap.bind(new InetSocketAddress(conf.getHost(conf.getProcessId()),conf.getPort(conf.getProcessId())));
@@ -131,7 +136,11 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
             Logger.getLogger(ServerConnection.class.getName()).log(Level.SEVERE, null, ex);
         } catch (NoSuchAlgorithmException ex) {
             Logger.getLogger(ServerConnection.class.getName()).log(Level.SEVERE, null, ex);
-        }
+        } catch (InvalidKeyException ex) {
+        	Logger.getLogger(ServerConnection.class.getName()).log(Level.SEVERE, null, ex);
+		} catch (SignatureException ex) {
+			Logger.getLogger(ServerConnection.class.getName()).log(Level.SEVERE, null, ex);
+		}
     }
 
     @Override
@@ -255,23 +264,11 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 
 	public void send(int[] targets, TOMMessage sm) {
 
-//		// serialize message
-//		DataOutputStream dos = null;
-//		try {
-//			ByteArrayOutputStream baos = new ByteArrayOutputStream(256);
-//			dos = new DataOutputStream(baos);
-//			sm.serialise(dos);
-			sm.serializedMessage = sm.getBytes();
-//		} catch (IOException ex) {
-//			Logger.getLogger(NettyClientServerCommunicationSystemClientSide.class.getName()).log(Level.SEVERE, null, ex);
-//		}
-       
         //replies are not signed in the current JBP version
         sm.signed = false;
         //produce signature if necessary (never in the current version)
         if (sm.signed){
-            byte[] data2 = TOMUtil.signMessage(TOMConfiguration.getRSAPrivateKey(), sm.serializedMessage);
-            sm.serializedMessageSignature = data2;
+            tomutil.signMessage(TOMConfiguration.getRSAPrivateKey(), sm);
         }
         for (int i = 0; i < targets.length; i++) {
             rl.readLock().lock();

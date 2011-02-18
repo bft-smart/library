@@ -18,10 +18,15 @@
 
 package navigators.smart.paxosatwar.executionmanager;
 
-import java.util.HashMap;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
+import java.util.SortedMap;
+import java.util.TreeMap;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
@@ -33,7 +38,7 @@ public class LeaderModule {
     // Each value of this map is a list of all the rounds of a consensus
     // Each element of that list is a tuple which stands for a round, and the id
     // of the process that was the leader for that round
-    private Map<Long, List<ConsInfo>> leaderInfos = new HashMap<Long, List<ConsInfo>>();
+    private SortedMap<Long,List<ConsInfo>> leaderInfos = new TreeMap<Long,List<ConsInfo>>();
 
     /**
      * Creates a new instance of LeaderModule
@@ -157,7 +162,7 @@ public class LeaderModule {
     /** ISTO E CODIGO DO JOAO, PARA TRATAR DA TRANSFERENCIA DE ESTADO */
     private ReentrantLock leaderInfosLock = new ReentrantLock();
 
-    public void removeStableConsenusInfos(long c) {
+    public void removeStableConsenusInfo(long c) {
 
         leaderInfosLock.lock();
 
@@ -169,7 +174,7 @@ public class LeaderModule {
             list = new LinkedList<ConsInfo>();
             leaderInfos.put(c + 1l, list);
             List<ConsInfo> rm = leaderInfos.remove(c);
-            if (rm != null) {
+            if (rm != null && rm.size()>0) {
                 ConsInfo ci = rm.get(rm.size() - 1);
                 list.add(new ConsInfo(0, ci.leaderId));
             }
@@ -179,8 +184,32 @@ public class LeaderModule {
 
         leaderInfosLock.unlock();
     }
+    
+    /**Removes all stable consensusinfos older than c **/
+    public void removeAllStableConsenusInfo(long c) {
 
-    public void removeStableMultipleConsenusInfos(long cStart, long cEnd) {
+        leaderInfosLock.lock();
+
+        List<ConsInfo> list = leaderInfos.get(c + 1);
+
+        if (list == null) {//nunca vai acontecer isso!!!
+            System.err.println("- Executing a code that wasn't supposed to be executed :-)");
+            System.err.println("- And we have some reports there is a bug here!");
+            list = new LinkedList<ConsInfo>();
+            leaderInfos.put(c + 1l, list);
+            List<ConsInfo> rm = leaderInfos.remove(c);
+            if (rm != null && rm.size()>0) {
+                ConsInfo ci = rm.get(rm.size() - 1);
+                list.add(new ConsInfo(0, ci.leaderId));
+            }
+        } else {
+            leaderInfos.headMap(c+1).clear(); //remove all older infos
+        }
+
+        leaderInfosLock.unlock();
+    }
+
+    public void removeMultipleStableConsenusInfos(long cStart, long cEnd) {
 
         leaderInfosLock.lock();
 
@@ -206,6 +235,31 @@ public class LeaderModule {
     }
     /********************************************************/
 
+    public byte[] getState(){
+    	ByteArrayOutputStream bos = new ByteArrayOutputStream(1024);
+    	ObjectOutputStream oos;
+		try {
+			oos = new ObjectOutputStream(bos);
+			oos.writeObject(leaderInfos);
+			return bos.toByteArray();
+		} catch (IOException e) {
+			// cannot happen with bytearray outputstream
+		}
+    	return null;
+    }
+    
+    @SuppressWarnings("unchecked")
+	public void setState(byte[] state) throws ClassNotFoundException{
+    	ByteArrayInputStream bais = new ByteArrayInputStream(state);
+    	ObjectInputStream ois;
+		try {
+			ois = new ObjectInputStream(bais);
+			leaderInfos = (SortedMap<Long, List<ConsInfo>>) ois.readObject();
+		} catch (IOException e) {
+			//cannot happen with bais
+		}
+    }
+    
     /**
      * This class represents a tuple formed by a round number and the replica ID of that round's leader
      */

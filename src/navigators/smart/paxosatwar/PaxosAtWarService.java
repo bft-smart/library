@@ -18,6 +18,8 @@
 
 package navigators.smart.paxosatwar;
 
+import java.util.logging.Logger;
+
 import navigators.smart.communication.MessageHandler;
 import navigators.smart.consensus.Consensus;
 import navigators.smart.consensus.ConsensusService;
@@ -35,6 +37,9 @@ import navigators.smart.tom.core.messages.TOMMessage;
  * @author Christian Spann <christian.spann at uni-ulm.de>
  */
 public class PaxosAtWarService implements ConsensusService{
+	
+	private static final Logger log = Logger.getLogger(PaxosAtWarService.class.getCanonicalName());
+	
     /** Module managing the current and past leaders*/
     private final LeaderModule lm;
 
@@ -109,10 +114,17 @@ public class PaxosAtWarService implements ConsensusService{
     @Override
     public void deliverState(TransferableState state){
     	requestsTimer.unwatchAll(); //clear timer table TODO this is not fully BFT...
-        long lastCheckpointEid = state.getLastCheckpointEid();
-        long lastEid = state.getLastEid();
+        long lastCheckpointEid = state.lastCheckpointEid;
+        long lastEid = state.lastEid;
+        if(state.leadermodulestate != null){
+	        try {
+				lm.setState(state.leadermodulestate);
+			} catch (ClassNotFoundException e) {
+				log.severe(e.getLocalizedMessage());
+			}
+        }
         //add leaderinfo of the last checkpoint
-        lm.addLeaderInfo(lastCheckpointEid, state.getLastCheckpointRound(), state.getLastCheckpointLeader());
+        lm.addLeaderInfo(lastCheckpointEid, state.lastCheckpointRound, state.lastCheckpointLeader);
         //add leaderinfo for previous message batches
         for (long eid = lastCheckpointEid + 1; eid <= lastEid; eid++) {
                 lm.addLeaderInfo(eid, state.getMessageBatch(eid).round, state.getMessageBatch(eid).leader);
@@ -144,5 +156,10 @@ public class PaxosAtWarService implements ConsensusService{
 	@Override
 	public void start() {
 		ot.start();
+	}
+
+	@Override
+	public byte[] getState(Consensus<?> cons) {
+		return lm.getState();
 	}
 }

@@ -30,14 +30,14 @@ import java.util.Random;
  *
  */
 public final class BatchBuilder {
-
+	
     private Random rnd = new Random();
 
     /** build buffer */
     public byte[] createBatch(long timestamp, int numberOfNonces, int numberOfMessages, int totalMessagesSize, byte[][] messages, byte[][] signatures) {
         int size = 16 + //timestamp 8, nonces 4, nummessages 4
                 (numberOfNonces > 0 ? 8 : 0) + //seed if needed
-                (numberOfMessages*(4+(signatures != null ?TOMUtil.getSignatureSize():0)))+ // msglength + signature for each msg
+                (numberOfMessages*(4+(signatures != null ?signatures[0].length:0)))+ // msglength + signature for each msg
                 totalMessagesSize; //size of all msges
         
         ByteBuffer  proposalBuffer = ByteBuffer.allocate(size);

@@ -44,7 +44,7 @@ public final class ForwardedMessage extends SystemMessage {
 
 
         request = new TOMMessage(ByteBuffer.wrap(serReq));
-        request.serializedMessage = serReq;
+        request.setBytes(serReq);
         request.serializedMessageSignature = serReqSign;
     }
 
@@ -61,14 +61,14 @@ public final class ForwardedMessage extends SystemMessage {
     public void serialise(ByteBuffer out) {
         super.serialise(out);
 
-        SerialisationHelper.writeByteArray(request.serializedMessage, out);
+        SerialisationHelper.writeByteArray(request.getBytes(), out);
 
        SerialisationHelper.writeByteArray(request.serializedMessageSignature, out);
     }
 
     @Override
     public int getMsgSize(){
-    	return super.getMsgSize()+8+request.serializedMessage.length+request.serializedMessageSignature.length;
+    	return super.getMsgSize()+8+request.getBytes().length+request.serializedMessageSignature.length;
     }
 
 }
