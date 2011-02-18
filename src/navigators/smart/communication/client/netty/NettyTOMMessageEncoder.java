@@ -59,7 +59,7 @@ public class NettyTOMMessageEncoder extends SimpleChannelHandler {
     	ChannelBuffer buf;
     	Object msg = e.getMessage();
     	if(msg instanceof TOMMessage){
-	        TOMMessage sm = (TOMMessage) e.getMessage();
+	        TOMMessage sm = (TOMMessage) msg;
 	        byte[] msgData;
 	        byte[] macData = null;
 	        byte[] signatureData = null;
