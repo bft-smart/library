@@ -21,9 +21,6 @@ package navigators.smart.tom.core.messages;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
-import java.io.ObjectInput;
-import java.io.ObjectOutput;
-import java.io.ObjectOutputStream;
 
 import navigators.smart.tom.util.TOMUtil;
 

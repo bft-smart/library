@@ -18,13 +18,11 @@
 
 package navigators.smart.paxosatwar.requesthandler;
 
-import java.util.concurrent.Semaphore;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Level;
 
 import navigators.smart.paxosatwar.executionmanager.Execution;
 import navigators.smart.paxosatwar.executionmanager.ExecutionManager;
-import navigators.smart.paxosatwar.requesthandler.RequestHandler;
 import navigators.smart.tom.util.Logger;
 
 

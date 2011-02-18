@@ -18,9 +18,7 @@
 
 package navigators.smart.statemanagment;
 
-import java.util.Arrays;
 import java.util.HashSet;
-import java.util.Hashtable;
 
 /**
  * TODO: Não sei se esta classe sera usada. Para já, deixo ficar

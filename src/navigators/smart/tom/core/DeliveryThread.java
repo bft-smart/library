@@ -19,13 +19,12 @@
 package navigators.smart.tom.core;
 
 import java.util.concurrent.LinkedBlockingQueue;
-
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
+
 import navigators.smart.consensus.Consensus;
 import navigators.smart.consensus.ConsensusService;
-import navigators.smart.consensus.MeasuringConsensus;
 import navigators.smart.statemanagment.TransferableState;
 import navigators.smart.tom.TOMReceiver;
 import navigators.smart.tom.core.messages.TOMMessage;
@@ -283,8 +282,7 @@ public class DeliveryThread extends Thread {
                         if ((cons.getId() > 0) && ((cons.getId() % conf.getCheckpoint_period()) == 0)) {
                             if(Logger.debug)
                                 Logger.println("(DeliveryThread.run) Performing checkpoint for consensus " + cons.getId());
-                            byte[] state = receiver.getState();
-                            tomLayer.saveState(state, cons.getId(), cons.getDecisionRound(), consensusservice.getLeader(cons.getId(), cons.getDecisionRound()));
+                            tomLayer.saveState( cons.getId(), cons.getDecisionRound(), consensusservice.getLeader(cons.getId(), cons.getDecisionRound()));
                             //TODO: possivelmente fazer mais alguma coisa
                         }
                         else {

@@ -23,6 +23,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Hashtable;
 import java.util.concurrent.Semaphore;
 import java.util.logging.Level;
@@ -87,8 +88,9 @@ public class ThroughputLatencyTestClient extends TOMSender implements Runnable {
 
     public void run(){
         try{
-            System.out.println("(" + myId + ") A dormir 10 segundos ah espera das outras threads");
-            Thread.sleep(10000);
+        	int sleeptime = 1000;
+            System.out.println("(" + myId + ") Sleeping " + sleeptime/1000 +" seconds waiting for other threads!");
+            Thread.sleep(sleeptime);
 
             while(true){
                 myId += exec;
@@ -96,17 +98,14 @@ public class ThroughputLatencyTestClient extends TOMSender implements Runnable {
                 System.out.println("(" + myId + "-"+measurementEpoch+ ") Getting #ops from replicas before signing");
 
               //requests current number of ops processed by the servers
-                byte[] command1 = new byte[4];
-                ByteArrayOutputStream out1 = new ByteArrayOutputStream(4);
-                try {
-                    new DataOutputStream(out1).writeInt(-1);
-                } catch (IOException ex) {
-                    Logger.getLogger(ThroughputLatencyTestClient.class.getName()).log(Level.SEVERE, null, ex);
-                }
-                System.arraycopy(out1.toByteArray(), 0, command1, 0, 4);
+                ByteBuffer command1 = ByteBuffer.allocate(4);
+                command1.putInt(-1);
                 currentId = -1;
-                this.doTOMulticast(command1);
+                this.doTOMulticast(command1.array());
                 this.sm.acquire();
+                
+                //create msg for # of ops request after signing (id has to be taken before
+                TOMMessage msg = sign(command1.array());
 
                 measurementEpoch++;
 
@@ -116,31 +115,17 @@ public class ThroughputLatencyTestClient extends TOMSender implements Runnable {
                 currentId=myId;
                 int currId = currentId;
                 for (int i=0; i<exec; i++){
-                    byte[] command = new byte[4 + argSize];
-                    ByteArrayOutputStream out = new ByteArrayOutputStream(4);
-                    try {
-                        new DataOutputStream(out).writeInt(currId+i);
-                    } catch (IOException ex) {
-                        Logger.getLogger(ThroughputLatencyTestClient.class.getName()).log(Level.SEVERE, null, ex);
-                    }
-                    System.arraycopy(out.toByteArray(), 0, command, 0, 4);
-                    generatedMsgs.put(i, this.sign(command));
+                    ByteBuffer buf = ByteBuffer.allocate(4 + argSize);
+                    buf.putInt(currId + i);
+                    generatedMsgs.put(i, this.sign(buf.array()));
                }
 
                
                System.out.println("(" + myId + "-"+measurementEpoch+ ") Getting #ops from replicas after signing");
                
               //requests current number of ops processed by the servers
-                command1 = new byte[4];
-                out1 = new ByteArrayOutputStream(4);
-                try {
-                    new DataOutputStream(out1).writeInt(-1);
-                } catch (IOException ex) {
-                    Logger.getLogger(ThroughputLatencyTestClient.class.getName()).log(Level.SEVERE, null, ex);
-                }
-                System.arraycopy(out1.toByteArray(), 0, command1, 0, 4);
                 currentId = -1;
-                this.doTOMulticast(command1);
+                this.TOMulticast(msg);
                 this.sm.acquire();
                 
                 measurementEpoch++;
@@ -182,6 +167,8 @@ public class ThroughputLatencyTestClient extends TOMSender implements Runnable {
           }
         } catch (InterruptedException ex) {
             Logger.getLogger(ThroughputLatencyTestClient.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (Exception e){
+        	e.printStackTrace();
         }
     }
 

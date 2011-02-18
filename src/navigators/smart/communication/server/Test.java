@@ -21,8 +21,8 @@ package navigators.smart.communication.server;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.LinkedBlockingQueue;
-import navigators.smart.communication.MessageHandler;
 
+import navigators.smart.communication.MessageHandler;
 import navigators.smart.tom.core.messages.SystemMessage;
 import navigators.smart.tom.core.messages.TOMMessage;
 import navigators.smart.tom.util.Storage;
@@ -40,7 +40,7 @@ public class Test {
         LinkedBlockingQueue<SystemMessage> inQueue = new LinkedBlockingQueue<SystemMessage>();
         Map<SystemMessage.Type,MessageHandler> msgHandlers = new HashMap<SystemMessage.Type, MessageHandler>();
 
-        ServersCommunicationLayer scl = new ServersCommunicationLayer(conf, inQueue,msgHandlers, new HMacVerifierFactory());
+        ServersCommunicationLayer scl = new ServersCommunicationLayer(conf, inQueue,msgHandlers, new HMacVerifierFactory(), null);
 
         int id = conf.getProcessId();
         int n = conf.getN();

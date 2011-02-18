@@ -5,7 +5,6 @@
 
 package navigators.smart.communication.server;
 
-import navigators.smart.tom.core.messages.SystemMessage;
 
 /**
  *
@@ -32,13 +31,15 @@ public interface MessageVerifier<A> {
     public int getHashSize();
 
     /**
-     * Returns the decoded verificationdata if valid, null otherwhise. With that
-     * funcitonality it is possible to use e.g. the USIG mechanism in ebawa
+     * Returns the decoded verification data if valid, null otherwise. With that
+     * Functionality it is possible to use e.g. the USIG mechanism in ebawa
      * where monotonically rising numbers are generated.
      * @param data The data to check
      * @param receivedHash The hash
-     * @return The deserialised verificationdata if the data was valid
+     * @return The deserialised verification data if the data was valid
      */
     public A verifyHash(byte[] data, byte[] receivedHash);
+    
+    
 
 }

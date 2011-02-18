@@ -20,10 +20,6 @@ package navigators.smart.tom.util;
 
 import navigators.smart.communication.ServerCommunicationSystem;
 import navigators.smart.consensus.ConsensusService;
-import navigators.smart.paxosatwar.executionmanager.ExecutionManager;
-import navigators.smart.paxosatwar.executionmanager.LeaderModule;
-import navigators.smart.paxosatwar.executionmanager.Round;
-import navigators.smart.paxosatwar.roles.Acceptor;
 import navigators.smart.tom.core.TOMLayer;
 
 /**

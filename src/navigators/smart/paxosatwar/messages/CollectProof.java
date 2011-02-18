@@ -18,12 +18,13 @@
 
 package navigators.smart.paxosatwar.messages;
 
-import navigators.smart.tom.util.SerialisationHelper;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.DataOutputStream;
 import java.io.IOException;
+
+import navigators.smart.tom.util.SerialisationHelper;
 
 /**
  * Proofs to freezed consensus. This class can contain proofs for two consensus.

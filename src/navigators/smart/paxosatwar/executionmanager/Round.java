@@ -19,12 +19,11 @@
 package navigators.smart.paxosatwar.executionmanager;
 
 import java.io.Serializable;
-import java.security.SignedObject;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.TreeSet;
+
 import navigators.smart.paxosatwar.messages.CollectProof;
-import navigators.smart.paxosatwar.messages.Proof;
 
 /**
  * This class stands for a round of an execution of a consensus

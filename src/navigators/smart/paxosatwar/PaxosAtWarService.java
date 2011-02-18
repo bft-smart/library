@@ -20,8 +20,8 @@ package navigators.smart.paxosatwar;
 
 import navigators.smart.communication.MessageHandler;
 import navigators.smart.consensus.Consensus;
-import navigators.smart.consensus.MeasuringConsensus;
 import navigators.smart.consensus.ConsensusService;
+import navigators.smart.consensus.MeasuringConsensus;
 import navigators.smart.paxosatwar.executionmanager.ExecutionManager;
 import navigators.smart.paxosatwar.executionmanager.LeaderModule;
 import navigators.smart.paxosatwar.messages.PaWMessageHandler;

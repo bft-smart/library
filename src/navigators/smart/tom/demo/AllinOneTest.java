@@ -18,8 +18,6 @@
 
 package navigators.smart.tom.demo;
 
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import navigators.smart.tom.util.TOMConfiguration;
 
 

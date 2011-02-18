@@ -25,10 +25,8 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.TreeSet;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import navigators.smart.paxosatwar.requesthandler.RequestHandler;
-import navigators.smart.paxosatwar.requesthandler.RequestHandler;
 
-import navigators.smart.tom.core.TOMLayer;
+import navigators.smart.paxosatwar.requesthandler.RequestHandler;
 import navigators.smart.tom.core.messages.TOMMessage;
 import navigators.smart.tom.util.Logger;
 

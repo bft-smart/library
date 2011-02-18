@@ -22,10 +22,11 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.DataOutputStream;
-import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+
+import com.sun.corba.se.impl.ior.ByteBuffer;
 
 /**
  * This is the super-class for all other kinds of messages created by JBP
@@ -63,7 +64,7 @@ public abstract class SystemMessage  {
             return mapping.get(type);
         }
     }
-
+    
     public final Type type;
     protected final int sender; // ID of the process which sent the message
 
@@ -78,7 +79,7 @@ public abstract class SystemMessage  {
         sender = in.readInt();
     }
     
-    /**
+	/**
      * Creates a new instance of SystemMessage
      * @param type The type id of this message for preformant serialisation
      * @param sender ID of the process which sent the message

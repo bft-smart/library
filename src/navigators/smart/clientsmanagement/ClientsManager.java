@@ -24,10 +24,8 @@ import java.util.List;
 import java.util.Set;
 import java.util.Map.Entry;
 import java.util.concurrent.locks.ReentrantLock;
-import navigators.smart.consensus.ConsensusService;
 
 import navigators.smart.tom.core.messages.TOMMessage;
-import navigators.smart.paxosatwar.requesthandler.timer.RequestsTimer;
 import navigators.smart.tom.util.Logger;
 import navigators.smart.tom.util.TOMConfiguration;
 

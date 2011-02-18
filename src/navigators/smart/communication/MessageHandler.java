@@ -20,7 +20,7 @@ package navigators.smart.communication;
 
 import java.io.DataInput;
 import java.io.IOException;
-import java.io.ObjectInput;
+
 import navigators.smart.tom.core.messages.SystemMessage;
 
 /**

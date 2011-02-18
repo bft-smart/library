@@ -21,16 +21,11 @@ package navigators.smart.tom;
 import java.lang.reflect.InvocationTargetException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
 import navigators.smart.communication.ServerCommunicationSystem;
 import navigators.smart.communication.TOMMessageHandler;
 import navigators.smart.consensus.ConsensusService;
 import navigators.smart.consensus.ConsensusServiceFactory;
-import navigators.smart.paxosatwar.executionmanager.ExecutionManager;
-import navigators.smart.paxosatwar.executionmanager.LeaderModule;
-import navigators.smart.paxosatwar.executionmanager.ProofVerifier;
-import navigators.smart.paxosatwar.messages.MessageFactory;
-import navigators.smart.paxosatwar.roles.Acceptor;
-import navigators.smart.paxosatwar.roles.Proposer;
 import navigators.smart.tom.core.TOMLayer;
 import navigators.smart.tom.core.messages.SystemMessage;
 import navigators.smart.tom.util.ShutdownThread;
