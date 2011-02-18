@@ -62,6 +62,9 @@ public class Storage {
     }
     
     private long computeAverage(long[] values, boolean percent){
+    	if(values.length == 0){
+    		return 0;
+    	}
         java.util.Arrays.sort(values);
         int limit = 0;
         if(percent){
