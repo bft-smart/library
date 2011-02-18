@@ -34,7 +34,7 @@ public class Test {
     /**
      * @param args the command line arguments
      */
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings("rawtypes")
 	public static void main(String[] args) throws Exception {
 
         TOMConfiguration conf = new TOMConfiguration(Integer.parseInt(args[0]));

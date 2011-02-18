@@ -45,7 +45,7 @@ public class LatencyTestClient extends TOMSender {
     private int count = 0;
     private CommunicationSystemClientSide cs;
     private int f;
-    private int n;
+//    private int n;
     private int currentId = 0;
     private long last_send_instant = 0;
     private int num_sends = 0;
@@ -61,7 +61,7 @@ public class LatencyTestClient extends TOMSender {
 
         TOMConfiguration conf = new TOMConfiguration(id);
         this.f = conf.getF();
-        this.n = conf.getN();
+//        this.n = conf.getN();
         this.interval = interval;
         this.st = new Storage(exec/2);
 

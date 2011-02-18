@@ -33,17 +33,17 @@ import navigators.smart.tom.core.messages.TOMMessage;
 import navigators.smart.tom.util.TOMConfiguration;
 
 
+@SuppressWarnings("unused")
 public class ThroughputTestClient extends TOMSender implements Runnable {
     
     private int exec;
     private int argSize;
     private int interval;
-    private int id = 0;
+	private int id = 0;
     private CommunicationSystemClientSide cs;
     private int f;
     private int n;
     private int currentId = 0;
-    private Hashtable sessionTable;
     private TOMConfiguration conf;
 
         public ThroughputTestClient(int id, int exec, int argSize, int interval, TOMConfiguration conf)  {
@@ -66,7 +66,8 @@ public class ThroughputTestClient extends TOMSender implements Runnable {
         this.init(cs, conf);
     }
 
-    public void run() {
+    @SuppressWarnings("cast")
+	public void run() {
         LinkedList<TOMMessage> generatedMessages = null;
         try {
             System.out.println("(" + currentId + ") A dormir 10 segundos ah espera dos outros clientes");

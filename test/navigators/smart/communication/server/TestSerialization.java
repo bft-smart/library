@@ -18,22 +18,18 @@
 
 package navigators.smart.communication.server;
 
+import static org.junit.Assert.assertEquals;
 import java.nio.ByteBuffer;
 
 import navigators.smart.tom.core.messages.TOMMessage;
 
-
 public class TestSerialization {
 
-    /**
-     * @param args the command line arguments
-     */
-    public static void main(String[] args) throws Exception {
-        // TODO code application logic here
+    
+	@org.junit.Test
+    public void TomSerialisationTest() {
+     
         TOMMessage tm = new TOMMessage(0,0,new String("abc").getBytes());
-
-        
-
 
         byte[] message = tm.getBytes();
         System.out.println(message.length);
@@ -44,7 +40,7 @@ public class TestSerialization {
         
         TOMMessage tm2 = new TOMMessage(buf);
         
-        assert(tm.equals(tm2));
+        assertEquals(tm,tm2);
 //        tm2.readExternal(ois);
         
 //        System.out.println(new String(tm2.getContent()));

@@ -194,16 +194,9 @@ public class RequestHandler extends Thread {
                 long execId = getLastExec() + 1;
                 setInExec(execId);
 
-                //Logger.println("(TOMLayer.run) Waiting for acceptor semaphore to be released.");
-                //acceptor.getMEZone();
                 //getExecution and if its not created create it
                 //TODO make this better
-                @SuppressWarnings("unused")
-				Execution exec = execManager.getExecution(execId);
-                //acceptor.leaveMEZone();
-                //Logger.println("(TOMLayer.run) Acceptor semaphore acquired");
-
-//                 MeasuringConsensus<TOMMessage> cons = exec.getConsensus();
+                execManager.getExecution(execId);
 
                 execManager.getProposer().startExecution(execId,tomlayer.createPropose());
 

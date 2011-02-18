@@ -67,13 +67,13 @@ public class ServerConnection {
 
     private PTPMessageVerifier ptpverifier;
     
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings("rawtypes")
 	private GlobalMessageVerifier globalverifier;
 
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings("rawtypes")
 	private final Map<SystemMessage.Type,MessageHandler> msgHandlers;
 
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings("rawtypes")
 	public ServerConnection(TOMConfiguration conf, SocketChannel socket, int remoteId,
 			BlockingQueue<SystemMessage> inQueue,
 			Map<SystemMessage.Type, MessageHandler> msgHandlers,
