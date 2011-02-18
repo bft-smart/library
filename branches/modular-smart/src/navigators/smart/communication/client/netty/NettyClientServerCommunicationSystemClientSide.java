@@ -48,6 +48,8 @@ import navigators.smart.tom.util.TOMConfiguration;
 import navigators.smart.tom.util.TOMUtil;
 
 import org.jboss.netty.bootstrap.ClientBootstrap;
+import org.jboss.netty.buffer.ChannelBuffer;
+import org.jboss.netty.buffer.ChannelBuffers;
 import org.jboss.netty.channel.Channel;
 import org.jboss.netty.channel.ChannelFuture;
 import org.jboss.netty.channel.ChannelHandlerContext;
@@ -66,8 +68,8 @@ import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
 @ChannelPipelineCoverage("all")
 public class NettyClientServerCommunicationSystemClientSide extends SimpleChannelUpstreamHandler implements CommunicationSystemClientSide {
 
-    private static final int MAGIC = 59;
-    private static final int CONNECT_TIMEOUT = 3000;
+//    private static final int MAGIC = 59;
+//    private static final int CONNECT_TIMEOUT = 3000;
     private static final String PASSWORD = "newcs";
     //private static final int BENCHMARK_PERIOD = 10000;
     protected ReplyReceiver trr;
@@ -78,7 +80,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
     //the signature engine used in the system
     private Signature signatureEngine;
     //private Storage st;
-    private int count = 0;
+//    private int count = 0;
     private int signatureLength;    
 
     public NettyClientServerCommunicationSystemClientSide(TOMConfiguration conf) {
@@ -155,6 +157,11 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
     @Override
     public void channelConnected(
             ChannelHandlerContext ctx, ChannelStateEvent e) {
+    	Channel ch = e.getChannel();
+    	ChannelBuffer id = ChannelBuffers.buffer(4);
+    	id.writeInt(conf.getProcessId());
+    	ChannelFuture f = ch.write(id);
+    	f.awaitUninterruptibly();
         System.out.println("Channel connected");
     }
 
@@ -197,10 +204,11 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
         }
 
         //closes all other channels to avoid messages being sent to only a subset of the replicas
-        /*Enumeration sessionElements = sessionTable.elements();
-        while (sessionElements.hasMoreElements()){
-        ((NettyClientServerSession) sessionElements.nextElement()).getChannel().close();
-        }*/
+		/*
+		 * Enumeration sessionElements = sessionTable.elements(); while
+		 * (sessionElements.hasMoreElements()){ ((NettyClientServerSession)
+		 * sessionElements.nextElement()).getChannel().close(); }
+		 */
         rl.writeLock().unlock();
     }
 
@@ -208,43 +216,28 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
         this.trr = trr;
     }
 
-    public void send(boolean sign, int[] targets, TOMMessage sm/*, boolean serializeClassHeaders*/) {
-        if (sm.serializedMessage == null) {
-            sm.serializedMessage = serialize(sm);
-        }
-//        else{
-//            sm.includesClassHeader = false;
-//        }
-
-        //produce signature
-        if (sm.serializedMessageSignature == null && sign) {
-            byte[] data2 = signMessage(TOMConfiguration.getRSAPrivateKey(), sm.serializedMessage);
-            sm.serializedMessageSignature = data2;
-        }
+    public void send(boolean sign, int[] targets, TOMMessage sm) {
+    	if(sign){
+    		//checks if msg is serialized and signs it then
+    		sign(sm);
+    	} else {
+    		//check only needed when not signing
+    		checkSerialized(sm);
+    	}
 
         for (int i = targets.length - 1; i >= 0; i--) {
-            /**********************************************************/
-            /********************MALICIOUS CODE************************/
-            /**********************************************************/
-            //don't send the message to server 0 if my id is 5
-            /*
-            if (conf.getProcessId() == 5 && (i == 0)) {
-            continue;
-            }
-             */
-            /**********************************************************/
-            /**********************************************************/
-            /**********************************************************/
-            sm.destination = targets[i];
-            rl.readLock().lock();
-            Channel channel = sessionTable.get(targets[i]).getChannel();
-            rl.readLock().unlock();
-            if (channel.isConnected()) {
-                sm.signed = sign;
-                channel.write(sm);
-            } else {
-                //System.out.println("WARNING: channel is not connected");
-            }
+			/*
+			 * *********************************************************
+			 * *******************MALICIOUS CODE************************
+			 * ********************************************************* 
+			 * //don't send the message to server 0 if my id is 5 
+			 * if (conf.getProcessId() == 5 && (i == 0)) { continue; }
+			 * 
+			 * *********************************************************
+			 * *********************************************************
+			 * *********************************************************
+			 */
+            writeToChannel(sm,targets[i]);
         }
 /*
         //statistics about signature execution time
@@ -262,17 +255,45 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
             count = 0;
             st.reset();
         }
- */
+ 	*/
+    }
+    public void send(boolean sign, int target, TOMMessage sm) {
+    	if(sign){
+    		//checks if msg is serialized and signs it then
+    		sign(sm);
+    	} else {
+    		//check only needed when not signing
+    		checkSerialized(sm);
+    	}
+    	writeToChannel(sm,target);
     }
 
-    public void sign(TOMMessage sm) {
-        //serialize message
-        if(sm.serializedMessage == null){
+    private void writeToChannel(TOMMessage sm, int destination) {
+    	sm.destination = destination;
+        rl.readLock().lock();
+        Channel channel = sessionTable.get(destination).getChannel();
+        rl.readLock().unlock();
+        if (channel.isConnected()) {
+            channel.write(sm);
+        } else {
+            //System.out.println("WARNING: channel is not connected");
+        }
+		
+	}
+
+	private void checkSerialized(TOMMessage sm) {
+    	//check serialized message
+        if (sm.serializedMessage == null) {
             sm.serializedMessage = serialize(sm);
         }
+	}
+
+	public void sign(TOMMessage sm) {
+		checkSerialized(sm);
 
         //produce signature        
         byte[] data2 = signMessage(TOMConfiguration.getRSAPrivateKey(), sm.serializedMessage);
+        sm.signed = true;
         sm.serializedMessageSignature = data2;
 /*
         //statistics about signature execution time
@@ -294,7 +315,6 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
     }
 
     public byte[] signMessage(PrivateKey key, byte[] message) {
-        long startTime = System.nanoTime();
         try {
             if (signatureEngine == null) {
                 signatureEngine = Signature.getInstance("SHA1withRSA");

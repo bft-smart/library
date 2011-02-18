@@ -50,6 +50,8 @@ import navigators.smart.tom.util.TOMConfiguration;
 import navigators.smart.tom.util.TOMUtil;
 
 import org.jboss.netty.bootstrap.ServerBootstrap;
+import org.jboss.netty.buffer.ChannelBuffer;
+import org.jboss.netty.buffer.ChannelBuffers;
 import org.jboss.netty.channel.Channel;
 import org.jboss.netty.channel.ChannelHandlerContext;
 import org.jboss.netty.channel.ChannelPipelineCoverage;
@@ -223,6 +225,7 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
      @Override
     public void channelConnected(
             ChannelHandlerContext ctx, ChannelStateEvent e) {
+    	 
         navigators.smart.tom.util.Logger.println("Session Created, active clients="+sessionTable.size());
         //session.setAttribute("storage",st);
         //session.setAttribute("msgCount",0);
@@ -255,44 +258,29 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
         this.requestReceiver = tl;
     }
 
-    public void send(int[] targets, TOMMessage sm/*, boolean serializeClassHeaders*/) {
-         //serialize message
-            DataOutputStream dos = null;
-            DataOutputStream oos = null;
+	public void send(int[] targets, TOMMessage sm) {
+		// serialize message
+		DataOutputStream dos = null;
 
-            byte[] data = null;
-            try {
-                ByteArrayOutputStream baos = new ByteArrayOutputStream();
-//                if (!serializeClassHeaders) {
-//                    dos = new DataOutputStream(baos);
-//                    sm.writeExternal(dos);
-//                    dos.flush();
-//                    sm.includesClassHeader = false;
-//                }
-//                else {
-                    oos = new DataOutputStream(baos);
-//                    oos.writeObject(sm);
-                    sm.serialise(oos);
-                    oos.flush();
-//                    sm.includesClassHeader = true;
-//                }
-                data = baos.toByteArray();
-                sm.serializedMessage = data;
-            } catch (IOException ex) {
-                Logger.getLogger(NettyClientServerCommunicationSystemClientSide.class.getName()).log(Level.SEVERE, null, ex);
-            } finally {
-                try {
-                    if (dos != null) {
-                        dos.close();
-                    }
-                    if (oos != null) {
-                        oos.close();
-                    }
-                } catch (IOException ex) {
-                    Logger.getLogger(NettyClientServerCommunicationSystemClientSide.class.getName()).log(Level.SEVERE, null, ex);
-                }
-            }
-
+		byte[] data = null;
+		try {
+			ByteArrayOutputStream baos = new ByteArrayOutputStream();
+			dos = new DataOutputStream(baos);
+			sm.serialise(dos);
+			dos.flush();
+			data = baos.toByteArray();
+			sm.serializedMessage = data;
+		} catch (IOException ex) {
+			Logger.getLogger(NettyClientServerCommunicationSystemClientSide.class.getName()).log(Level.SEVERE, null, ex);
+		} finally {
+			try {
+				if (dos != null) {
+					dos.close();
+				}
+			} catch (IOException ex) {
+				Logger.getLogger(NettyClientServerCommunicationSystemClientSide.class.getName()).log(Level.SEVERE, null, ex);
+			}
+		}
        
         //replies are not signed in the current JBP version
         sm.signed = false;
@@ -304,6 +292,7 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
         for (int i = 0; i < targets.length; i++) {
             rl.readLock().lock();
             NettyClientServerSession ncss = (NettyClientServerSession)sessionTable.get(targets[i]);
+           
             if (ncss!=null){
                 Channel session = (Channel) ((NettyClientServerSession) sessionTable.get(targets[i])).getChannel();
                 rl.readLock().unlock();

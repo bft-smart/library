@@ -331,7 +331,7 @@ public class ServerConnection {
                         }
                         if (verificationresult != null || conf.getUseMACs() == 0 && !conf.isUseGlobalAuth()) {
                         	DataInputStream in = new DataInputStream(new ByteArrayInputStream(data));
-                        	SystemMessage.Type type = SystemMessage.Type.getByByte(in.readByte());
+                        	SystemMessage.Type type = SystemMessage.Type.getByByte(data[0]);
                         	SystemMessage sm = msgHandlers.get(type).deserialise(type,in, verificationresult);
                         	
                         	if (sm.getSender() == remoteId) {

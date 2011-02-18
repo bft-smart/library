@@ -39,13 +39,13 @@ import org.jboss.netty.channel.SimpleChannelHandler;
 public class NettyTOMMessageEncoder extends SimpleChannelHandler {
     
     private boolean isClient;
-    private Hashtable sessionTable;
+    private Hashtable<Integer,NettyClientServerSession> sessionTable;
     private int macLength;
     private int signatureLength;
     private ReentrantReadWriteLock rl;
     private boolean useMAC;
 
-    public NettyTOMMessageEncoder(boolean isClient, Hashtable sessionTable, int macLength, ReentrantReadWriteLock rl, int signatureLength, boolean useMAC){
+    public NettyTOMMessageEncoder(boolean isClient, Hashtable<Integer,NettyClientServerSession> sessionTable, int macLength, ReentrantReadWriteLock rl, int signatureLength, boolean useMAC){
         this.isClient = isClient;
         this.sessionTable = sessionTable;
         this.macLength = macLength;
@@ -56,37 +56,43 @@ public class NettyTOMMessageEncoder extends SimpleChannelHandler {
 
     @Override
     public void writeRequested(ChannelHandlerContext ctx, MessageEvent e) throws Exception {
-        TOMMessage sm = (TOMMessage) e.getMessage();
-        byte[] msgData;
-        byte[] macData = null;
-        byte[] signatureData = null;
-
-        msgData = sm.serializedMessage;
-        if (sm.signed){
-            //signature was already produced before            
-            signatureData = sm.serializedMessageSignature;
-            if (signatureData.length != signatureLength)
-                System.out.println("WARNING: message signature has size "+signatureData.length+" and should have "+signatureLength);
-        }
-        
-        if (useMAC)
-            macData = produceMAC(sm.destination,msgData);
-        
-        ChannelBuffer buf = buffer(4+1+msgData.length+(macData==null?0:macData.length)+(signatureData==null?0:signatureData.length));
-        /* msg size */
-        buf.writeInt(1+msgData.length+(macData==null?0:macData.length)+(signatureData==null?0:signatureData.length));
-        /* control byte indicating if the serialized message includes the class header */
-//        buf.writeByte(sm.includesClassHeader==true?(byte)1:(byte)0);
-        /* control byte indicating if the message is signed or not */
-        buf.writeByte(sm.signed==true?(byte)1:(byte)0);       
-        /* data to be sent */
-        buf.writeBytes(msgData);
-         /* MAC */
-        if (useMAC)
-            buf.writeBytes(macData);
-        /* signature */
-        if (signatureData != null)
-            buf.writeBytes(signatureData);
+    	ChannelBuffer buf;
+    	Object msg = e.getMessage();
+    	if(msg instanceof TOMMessage){
+	        TOMMessage sm = (TOMMessage) e.getMessage();
+	        byte[] msgData;
+	        byte[] macData = null;
+	        byte[] signatureData = null;
+	
+	        msgData = sm.serializedMessage;
+	        if (sm.signed){
+	            //signature was already produced before            
+	            signatureData = sm.serializedMessageSignature;
+	            if (signatureData.length != signatureLength)
+	                System.out.println("WARNING: message signature has size "+signatureData.length+" and should have "+signatureLength);
+	        }
+	        
+	        if (useMAC)
+	            macData = produceMAC(sm.destination,msgData);
+	        
+	        buf = buffer(4+1+msgData.length+(macData==null?0:macData.length)+(signatureData==null?0:signatureData.length));
+	        /* msg size */
+	        buf.writeInt(1+msgData.length+(macData==null?0:macData.length)+(signatureData==null?0:signatureData.length));
+	        /* control byte indicating if the serialized message includes the class header */
+	//        buf.writeByte(sm.includesClassHeader==true?(byte)1:(byte)0);
+	        /* control byte indicating if the message is signed or not */
+	        buf.writeByte(sm.signed==true?(byte)1:(byte)0);       
+	        /* data to be sent */
+	        buf.writeBytes(msgData);
+	         /* MAC */
+	        if (useMAC)
+	            buf.writeBytes(macData);
+	        /* signature */
+	        if (signatureData != null)
+	            buf.writeBytes(signatureData);
+    	} else {
+    		buf = (ChannelBuffer)msg;
+    	}
 
         Channels.write(ctx, e.getFuture(), buf);        
     }

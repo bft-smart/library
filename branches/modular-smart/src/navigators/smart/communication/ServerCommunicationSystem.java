@@ -19,7 +19,7 @@
 package navigators.smart.communication;
 
 import java.lang.reflect.InvocationTargetException;
-import java.util.HashMap;
+import java.util.Hashtable;
 import java.util.Map;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.logging.Level;
@@ -57,7 +57,7 @@ import navigators.smart.tom.util.TOMConfiguration;
 
     private LinkedBlockingQueue<SystemMessage> inQueue = null;//new LinkedBlockingQueue<SystemMessage>(IN_QUEUE_SIZE);
 
-    protected Map<SystemMessage.Type,MessageHandler> msgHandlers = new HashMap<SystemMessage.Type, MessageHandler>();
+    protected Map<SystemMessage.Type,MessageHandler> msgHandlers = new Hashtable<SystemMessage.Type, MessageHandler>();
 
     private ServersCommunicationLayer serversConn;
     private CommunicationSystemServerSide clientsConn;
