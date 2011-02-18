@@ -19,30 +19,47 @@
 package navigators.smart.tom.util;
 
 import java.nio.ByteBuffer;
+import java.util.Random;
 
 /**
- * Batch format: N_MESSAGES(int) + N_MESSAGES*[MSGSIZE(int),MSG(byte),SIG(byte)] +
- *               TIMESTAMP(long) + N_NONCES(int) + NONCES(byte[])
+ * Batch format: TIMESTAMP(long) + N_NONCES(int) + SEED(long) +
+ *               N_MESSAGES(int) + N_MESSAGES*[MSGSIZE(int),MSG(byte),SIG(byte)] +
+ *               
  *
  * The methods does not try to enforce any constraint, so be correct when using it.
  *
  */
 public final class BatchBuilder {
 
-    private ByteBuffer proposalBuffer;
+    private Random rnd = new Random();
 
     /** build buffer */
-    public BatchBuilder(int numberOfMessages, int numberOfNonces, int totalMessagesSize, boolean useSignatures) {
+    public byte[] createBatch(long timestamp, int numberOfNonces, int numberOfMessages, int totalMessagesSize, boolean useSignatures, byte[][] messages, byte[][] signatures) {
+        int size = 20 + //timestamp 8, nonces 4, nummessages 4
+                (numberOfNonces > 0 ? 8 : 0) + //seed if needed
+                (numberOfMessages*(4+(useSignatures?TOMUtil.getSignatureSize():0)))+ // msglength + signature for each msg
+                totalMessagesSize; //size of all msges
+        
+        ByteBuffer  proposalBuffer = ByteBuffer.allocate(size);
 
-        this.proposalBuffer = ByteBuffer.allocate(16+
-                (numberOfMessages*(4+(useSignatures?TOMUtil.getSignatureSize():0)))+
-                totalMessagesSize+numberOfNonces);
+        proposalBuffer.putLong(timestamp);
 
-        this.proposalBuffer.putInt(numberOfMessages);
+         proposalBuffer.putInt(numberOfNonces);
+
+        if(numberOfNonces>0){
+            proposalBuffer.putLong(rnd.nextLong());
+        }
+
+        proposalBuffer.putInt(numberOfMessages);
+
+        for (int i = 0; i < numberOfMessages; i++) {
+            putMessage(proposalBuffer,messages[i], false, signatures[i]);
+        }
+
+        return proposalBuffer.array();
     }
 
-    /** 1 */
-    public void putMessage(byte[] message, boolean isHash, byte[] signature) {
+    private void putMessage(ByteBuffer proposalBuffer, byte[] message, boolean isHash, byte[] signature) {
         proposalBuffer.putInt(isHash?0:message.length);
         proposalBuffer.put(message);
 
@@ -51,18 +68,4 @@ public final class BatchBuilder {
         }
     }
 
-    /** 2 */
-    public void putTimestamp(long timestamp) {
-        proposalBuffer.putLong(timestamp);
-    }
-
-    /** 3 */
-    public void putNonces(byte[] nonces) {
-        proposalBuffer.putInt(nonces.length);
-        proposalBuffer.put(nonces);
-    }
-
-    public byte[] getByteArray() {
-        return proposalBuffer.array();
-    }
 }

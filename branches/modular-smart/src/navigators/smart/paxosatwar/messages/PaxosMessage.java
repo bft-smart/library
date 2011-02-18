@@ -18,6 +18,9 @@
 
 package navigators.smart.paxosatwar.messages;
 
+import navigators.smart.tom.util.SerialisationHelper;
+import java.io.DataInput;
+import java.io.DataOutput;
 import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
@@ -29,18 +32,42 @@ import navigators.smart.tom.core.messages.SystemMessage;
 /**
  * This class represents a message used in the paxos protocol.
  */
-public class PaxosMessage extends SystemMessage {
+public class PaxosMessage<P> extends SystemMessage {
 
-    private int number; //execution ID for this message TODO: Isto n devia chamar-se 'eid'?
+    private long number; //execution ID for this message TODO: Isto n devia chamar-se 'eid'?
     private int round; // Round number to which this message belongs to
     private int paxosType; // Message type
     private byte[] value = null; // Value used when message type is PROPOSE
-    private Object proof; // Proof used when message type is COLLECT
+    private P proof; // Proof used when message type is COLLECT
 
     /**
      * Creates a paxos message. Not used. TODO: Q tal meter isto como private?
+     * @param in 
+     * @throws IOException
      */
-    public PaxosMessage(){}
+    @SuppressWarnings("unchecked")
+    public PaxosMessage(DataInput in) throws IOException{
+        super(SystemMessage.Type.PAXOS_MSG,in);
+
+        number = in.readLong();
+        round = in.readInt();
+        paxosType = in.readInt();
+
+        value = SerialisationHelper.readByteArray(in);
+
+        //WEAK, STRONG, DECIDE and FREEZE does not have associated proofs
+        switch(paxosType){
+            case MessageFactory.PROPOSE:
+                boolean hasProof = in.readBoolean();
+                if(hasProof){
+                    proof = (P) new Proof(in);
+                }
+                break;
+            case MessageFactory.COLLECT:
+                proof = (P) new CollectProof(in);
+
+        }
+    }
 
     /**
      * Creates a paxos message. Used by the message factory to create a COLLECT or PROPOSE message
@@ -52,9 +79,9 @@ public class PaxosMessage extends SystemMessage {
      * @param value This should be null if its a COLLECT message, or the proposed value if it is a PROPOSE message
      * @param proof The proof to be sent by the leader for all replicas
      */
-    public PaxosMessage(int paxosType, int id,int round,int from, byte[] value, Object proof){
+    public PaxosMessage(int paxosType, long id,int round,int from, byte[] value, P proof){
 
-        super(from);
+        super(SystemMessage.Type.PAXOS_MSG, from);
 
         this.paxosType = paxosType;
         this.number = id;
@@ -73,7 +100,7 @@ public class PaxosMessage extends SystemMessage {
      * @param from This should be this process ID
      * @param value The value decided, or strongly/weakly accepted
      */
-    public PaxosMessage(int paxosType, int id,int round,int from, byte[] value) {
+    public PaxosMessage(int paxosType, long id,int round,int from, byte[] value) {
 
         this(paxosType, id, round, from, value, null);
 
@@ -87,7 +114,7 @@ public class PaxosMessage extends SystemMessage {
      * @param round Round number
      * @param from This should be this process ID
      */
-    public PaxosMessage(int paxosType, int id,int round, int from) {
+    public PaxosMessage(int paxosType, long id,int round, int from) {
 
         this(paxosType, id, round, from, null, null);
 
@@ -95,66 +122,69 @@ public class PaxosMessage extends SystemMessage {
 
     // Implemented method of the Externalizable interface
     @Override
-    public void writeExternal(ObjectOutput out) throws IOException {
+    public void serialise(DataOutput out) throws IOException {
 
-        super.writeExternal(out);
+        super.serialise(out);
 
-        out.writeInt(number);
+        out.writeLong(number);
         out.writeInt(round);
         out.writeInt(paxosType);
 
         if(value == null) {
-
             out.writeInt(-1);
-
         } else {
-
             out.writeInt(value.length);
             out.write(value);
-
         }
 
         //WEAK, STRONG, DECIDE and FREEZE does not have associated proofs
-        if(paxosType == MessageFactory.PROPOSE || paxosType == MessageFactory.COLLECT) {
-
-            out.writeObject(proof);
+        switch(paxosType){
+            case MessageFactory.PROPOSE:
+                if(proof != null){
+                    out.writeBoolean(true);
+                    ((Proof)proof).serialise(out);
+                } else {
+                    out.writeBoolean(false);
+                }
+                break;
+            case MessageFactory.COLLECT:
+                ((CollectProof)proof).serialise(out);
 
         }
-
     }
-
-    // Implemented method of the Externalizable interface
-    @Override
-    public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
-
-        super.readExternal(in);
-
-        number = in.readInt();
-        round = in.readInt();
-        paxosType = in.readInt();
-
-        int toRead = in.readInt();
-
-        if(toRead != -1) {
-
-            value = new byte[toRead];
-
-            do{
-
-                toRead -= in.read(value, value.length-toRead, toRead);
-
-            } while(toRead > 0);
-
-        }
-
-        //WEAK, STRONG, DECIDE and FREEZE does not have associated proofs
-        if(paxosType == MessageFactory.PROPOSE || paxosType == MessageFactory.COLLECT) {
-
-            proof = in.readObject();
-
-        }
-
-    }
+//
+//    // Implemented method of the Externalizable interface
+//    @Override
+//    public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
+//
+//        super.readExternal(in);
+//
+//        number = in.readInt();
+//        round = in.readInt();
+//        paxosType = in.readInt();
+//
+//        int toRead = in.readInt();
+//
+//        if(toRead != -1) {
+//
+//            value = new byte[toRead];
+//
+//            do{
+//
+//                toRead -= in.read(value, value.length-toRead, toRead);
+//
+//            } while(toRead > 0);
+//
+//        }
+//
+//        //WEAK, STRONG, DECIDE and FREEZE does not have associated proofs
+//        if(paxosType == MessageFactory.PROPOSE || paxosType == MessageFactory.COLLECT) {
+//
+//            proof = new CollectProof(in);
+//
+//        }
+//
+//    }
 
     /**
      * Retrieves the round number to which this message belongs
@@ -180,7 +210,7 @@ public class PaxosMessage extends SystemMessage {
      * Returns the proof associated with a PROPOSE or COLLECT message
      * @return The proof
      */
-    public Object getProof() {
+    public P getProof() {
 
         return proof;
 
@@ -190,7 +220,7 @@ public class PaxosMessage extends SystemMessage {
      * Returns the consensus execution ID of this message
      * @return Consensus execution ID of this message
      */
-    public int getNumber() {
+    public long getNumber() {
 
         return number;
 
@@ -212,34 +242,22 @@ public class PaxosMessage extends SystemMessage {
      */
     public String getPaxosVerboseType() {
 
-        if (paxosType==MessageFactory.COLLECT)
-
-            return "COLLECT";
-
-        else if (paxosType==MessageFactory.DECIDE)
-
-            return "DECIDE";
-
-        else if (paxosType==MessageFactory.FREEZE)
-
-            return "FREEZE";
-
-        else if (paxosType==MessageFactory.PROPOSE)
-
-            return "PROPOSE";
-
-        else if (paxosType==MessageFactory.STRONG)
-
-            return "STRONG";
-
-        else if (paxosType==MessageFactory.WEAK)
-
-            return "WEAK";
-
-        else
-
-            return "";
-
+        switch (paxosType) {
+            case MessageFactory.COLLECT:
+                return "COLLECT";
+            case MessageFactory.DECIDE:
+                return "DECIDE";
+            case MessageFactory.FREEZE:
+                return "FREEZE";
+            case MessageFactory.PROPOSE:
+                return "PROPOSE";
+            case MessageFactory.STRONG:
+                return "STRONG";
+            case MessageFactory.WEAK:
+                return "WEAK";
+            default:
+                return "";
+        }
     }
 
     // Over-written method
@@ -248,9 +266,7 @@ public class PaxosMessage extends SystemMessage {
 
         return "type="+getPaxosVerboseType()+", number="+getNumber()+", round="+getRound()+", from="+getSender()+", "+
 
-                ((getProof() instanceof CollectProof[])?
-
-                    Arrays.asList((CollectProof[])getProof()):getProof());
+                getProof();
 
     }
 

@@ -51,8 +51,8 @@ public class MessageFactory{
      * @param proof Proofs from other replicas
      * @return A paxos message of the PROPOSE type, with the specified id, round, value, and proof
      */
-    public PaxosMessage createPropose(int id, int round, byte[] value,
-            Object proof) {
+    public PaxosMessage createPropose(long id, int round, byte[] value,
+            Proof proof) {
 
         return new PaxosMessage(PROPOSE,id,round, from, value, proof);
 
@@ -65,7 +65,7 @@ public class MessageFactory{
      * @param value Weakly accepted value
      * @return A paxos message of the WEAK type, with the specified id, round, and value
      */
-    public PaxosMessage createWeak(int id, int round, byte[] value) {
+    public PaxosMessage createWeak(long id, int round, byte[] value) {
 
         return new PaxosMessage(WEAK,id,round, from, value);
 
@@ -78,7 +78,7 @@ public class MessageFactory{
      * @param value Strongly accepted value
      * @return A paxos message of the STRONG type, with the specified id, round, and value
      */
-    public PaxosMessage createStrong(int id, int round, byte[] value) {
+    public PaxosMessage createStrong(long id, int round, byte[] value) {
 
         return new PaxosMessage(STRONG,id,round, from, value);
 
@@ -91,7 +91,7 @@ public class MessageFactory{
      * @param value Decided value
      * @return A paxos message of the DECIDE type, with the specified id, round, and value
      */
-    public PaxosMessage createDecide(int id, int round, byte[] value) {
+    public PaxosMessage createDecide(long id, int round, byte[] value) {
 
          return new PaxosMessage(DECIDE,id,round, from, value);
 
@@ -103,7 +103,7 @@ public class MessageFactory{
      * @param round Round number
      * @return A paxos message of the FREEZE type, with the specified id, and round
      */
-    public PaxosMessage createFreeze(int id, int round) {
+    public PaxosMessage createFreeze(long id, int round) {
 
         return new PaxosMessage(FREEZE,id,round, from);
 
@@ -116,9 +116,9 @@ public class MessageFactory{
      * @param proof The proof to be sent by the leader for all replicas
      * @return A paxos message of the COLLECT type, with the specified id, round, and proof
      */
-    public PaxosMessage createCollect(int id, int round, Object proof) {
+    public PaxosMessage<CollectProof> createCollect(long id, int round, CollectProof proof) {
 
-        return new PaxosMessage(COLLECT,id,round, from, null, proof);
+        return new PaxosMessage<CollectProof>(COLLECT,id,round, from, null, proof);
 
     }
 

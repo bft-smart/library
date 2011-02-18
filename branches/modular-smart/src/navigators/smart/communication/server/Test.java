@@ -18,7 +18,10 @@
 
 package navigators.smart.communication.server;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.LinkedBlockingQueue;
+import navigators.smart.communication.MessageHandler;
 
 import navigators.smart.tom.core.messages.SystemMessage;
 import navigators.smart.tom.core.messages.TOMMessage;
@@ -35,7 +38,9 @@ public class Test {
 
         TOMConfiguration conf = new TOMConfiguration(Integer.parseInt(args[0]));
         LinkedBlockingQueue<SystemMessage> inQueue = new LinkedBlockingQueue<SystemMessage>();
-        ServersCommunicationLayer scl = new ServersCommunicationLayer(conf, inQueue);
+        Map<SystemMessage.Type,MessageHandler> msgHandlers = new HashMap<SystemMessage.Type, MessageHandler>();
+
+        ServersCommunicationLayer scl = new ServersCommunicationLayer(conf, inQueue,msgHandlers, new HMacVerifierFactory());
 
         int id = conf.getProcessId();
         int n = conf.getN();

@@ -27,13 +27,15 @@ import java.io.DataOutputStream;
 import java.io.Externalizable;
 import java.io.IOException;
 import java.io.ObjectInput;
+import java.io.ObjectInputStream;
 import java.io.ObjectOutput;
+import java.io.ObjectOutputStream;
 import navigators.smart.tom.util.DebugInfo;
 
 /**
  * This class represents a total ordered message
  */
-public class TOMMessage extends SystemMessage implements Externalizable, Comparable {
+public class TOMMessage extends SystemMessage implements Comparable<TOMMessage> {
 
     private int sequence; // Sequence number defined by the client
     private byte[] content = null; // Content of the message
@@ -48,7 +50,7 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
     //Esses dois Campos servem pra que?
     public transient int destination = -1; // message destination
     public transient boolean signed = false; // is this message signed?
-    public transient boolean includesClassHeader = false; //are class header serialized
+//    public transient boolean includesClassHeader = false; //are class header serialized
 
     public transient long receptionTime;//the reception time of this message
     public transient boolean timeout = false;//this message was timed out?
@@ -64,7 +66,23 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
     public transient int consensusBatchSize=0;
     public transient long requestTotalLatency=0;
 
-    public TOMMessage() {
+    public TOMMessage(DataInput in) throws IOException {
+        super(Type.TOM_MSG,in);
+        sequence = in.readInt();
+
+        int toRead = in.readInt();
+        if(toRead >= 0){
+            content = new byte[toRead];
+            in.readFully(content);
+        }
+//        if (toRead != -1) {
+//
+//            do {
+//                toRead -= in.read(content, content.length - toRead, toRead);
+//            } while (toRead > 0);
+//        }
+
+        buildId();
     }
 
     /**
@@ -87,7 +105,7 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
      * @param readOnlyRequest it is a read only request
      */
     public TOMMessage(int sender, int sequence, byte[] content, boolean readOnlyRequest) {
-        super(sender);
+        super(Type.TOM_MSG,sender);
         this.sequence = sequence;
 
         buildId();
@@ -184,8 +202,8 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
     }
 
     @Override
-    public void writeExternal(ObjectOutput out) throws IOException {
-        super.writeExternal(out);
+    public void serialise(DataOutput out) throws IOException {
+        super.serialise(out);
         out.writeInt(sequence);
         if (content == null) {
             out.writeInt(-1);
@@ -195,52 +213,40 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
         }
     }
 
-    @Override
-    public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
-        super.readExternal(in);
-        sequence = in.readInt();
+//    @Override
+//    public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
+//
+//    }
 
-        int toRead = in.readInt();
-        if (toRead != -1) {
-            content = new byte[toRead];
+//    public void writeExternal(DataOutput out) throws IOException {
+//        out.writeInt(sender);
+//        out.writeInt(sequence);
+//
+//        if (content == null) {
+//            out.writeInt(-1);
+//        } else {
+//            out.writeInt(content.length);
+//            out.write(content);
+//        }
+//
+//        out.writeBoolean(isReadOnlyRequest());
+//    }
 
-            do {
-                toRead -= in.read(content, content.length - toRead, toRead);
-            } while (toRead > 0);
-        }
-
-        buildId();
-    }
-
-    public void writeExternal(DataOutput out) throws IOException {
-        out.writeInt(sender);
-        out.writeInt(sequence);
-
-        if (content == null) {
-            out.writeInt(-1);
-        } else {
-            out.writeInt(content.length);
-            out.write(content);
-        }
-
-        out.writeBoolean(isReadOnlyRequest());
-    }
-
-    public void readExternal(DataInput in) throws IOException, ClassNotFoundException {
-        sender = in.readInt();
-        sequence = in.readInt();
-
-        int toRead = in.readInt();
-        if (toRead != -1) {
-            content = new byte[toRead];
-
-            in.readFully(content);
-        }
-
-        readOnlyRequest = in.readBoolean();
-
-        buildId();
-    }
+//    public void readExternal(DataInput in) throws IOException, ClassNotFoundException {
+//        sender = in.readInt();
+//        sequence = in.readInt();
+//
+//        int toRead = in.readInt();
+//        if (toRead != -1) {
+//            content = new byte[toRead];
+//
+//            in.readFully(content);
+//        }
+//
+//        readOnlyRequest = in.readBoolean();
+//
+//        buildId();
+//    }
 
 
     /**
@@ -261,10 +267,11 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 
     public static byte[] messageToBytes(TOMMessage m) {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        DataOutputStream dos = new DataOutputStream(baos);
+//        DataOutputStream dos = new DataOutputStream(baos);
         try{
-            m.writeExternal(dos);
-            dos.flush();
+            ObjectOutput oo = new ObjectOutputStream(baos);
+            m.serialise(oo);
+            oo.flush();
         }catch(Exception e) {
         }
         return baos.toByteArray();
@@ -272,25 +279,22 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 
     public static TOMMessage bytesToMessage(byte[] b) {
         ByteArrayInputStream bais = new ByteArrayInputStream(b);
-        DataInputStream dis = new DataInputStream(bais);
+//        DataInputStream dis = new DataInputStream(bais);
 
-        TOMMessage m = new TOMMessage();
         try{
-            m.readExternal(dis);
+            ObjectInput ooi = new ObjectInputStream(bais);
+            TOMMessage m = new TOMMessage(ooi);
+            return m;
         }catch(Exception e) {
             System.out.println("deu merda "+e);
             return null;
         }
-        
-        return m;
     }
 
-    public int compareTo(Object o) {
+    public int compareTo(TOMMessage tm) {
         final int BEFORE = -1;
         final int EQUAL = 0;
         final int AFTER = 1;
-
-        TOMMessage tm = (TOMMessage)o;
 
         if (this.equals(tm))
             return EQUAL;

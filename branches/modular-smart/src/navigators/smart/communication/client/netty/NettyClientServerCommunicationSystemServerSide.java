@@ -256,26 +256,27 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
         this.requestReceiver = tl;
     }
 
-    public void send(int[] targets, TOMMessage sm, boolean serializeClassHeaders) {
+    public void send(int[] targets, TOMMessage sm/*, boolean serializeClassHeaders*/) {
          //serialize message
             DataOutputStream dos = null;
-            ObjectOutputStream oos = null;
+            DataOutputStream oos = null;
 
             byte[] data = null;
             try {
                 ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                if (!serializeClassHeaders) {
-                    dos = new DataOutputStream(baos);
-                    sm.writeExternal(dos);
-                    dos.flush();
-                    sm.includesClassHeader = false;
-                }
-                else {
-                    oos = new ObjectOutputStream(baos);
-                    oos.writeObject(sm);
+//                if (!serializeClassHeaders) {
+//                    dos = new DataOutputStream(baos);
+//                    sm.writeExternal(dos);
+//                    dos.flush();
+//                    sm.includesClassHeader = false;
+//                }
+//                else {
+                    oos = new DataOutputStream(baos);
+//                    oos.writeObject(sm);
+                    sm.serialise(oos);
                     oos.flush();
-                    sm.includesClassHeader = true;
-                }
+//                    sm.includesClassHeader = true;
+//                }
                 data = baos.toByteArray();
                 sm.serializedMessage = data;
             } catch (IOException ex) {

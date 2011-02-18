@@ -18,28 +18,32 @@
 
 package navigators.smart.communication;
 
+import java.lang.reflect.InvocationTargetException;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import navigators.smart.communication.client.CommunicationSystemServerSide;
 import navigators.smart.communication.client.CommunicationSystemServerSideFactory;
 import navigators.smart.communication.client.RequestReceiver;
+import navigators.smart.communication.server.MessageVerifierFactory;
 import navigators.smart.communication.server.ServersCommunicationLayer;
-import navigators.smart.paxosatwar.roles.Acceptor;
-import navigators.smart.paxosatwar.roles.Proposer;
-import navigators.smart.tom.core.TOMLayer;
 import navigators.smart.tom.core.messages.SystemMessage;
 import navigators.smart.tom.core.messages.TOMMessage;
 import navigators.smart.tom.util.Configuration;
-import navigators.smart.tom.util.Logger;
 import navigators.smart.tom.util.TOMConfiguration;
 
 
 /**
  *
  * @author alysson
+ * @author Christian Spann <christian.spann at uni-ulm.de>
  */
-public class ServerCommunicationSystem extends Thread {
+ public class ServerCommunicationSystem extends Thread {
+
+    private static final Logger log = Logger.getLogger(ServerCommunicationSystem.class.getName());
 
     public static int TOM_REQUEST_MSG = 1;
     public static int TOM_REPLY_MSG = 2;
@@ -51,13 +55,15 @@ public class ServerCommunicationSystem extends Thread {
 
     private LinkedBlockingQueue<SystemMessage> inQueue = null;//new LinkedBlockingQueue<SystemMessage>(IN_QUEUE_SIZE);
 
-    protected MessageHandler messageHandler = new MessageHandler();
+    protected Map<SystemMessage.Type,MessageHandler> msgHandlers = new HashMap<SystemMessage.Type, MessageHandler>();
 
     private ServersCommunicationLayer serversConn;
     private CommunicationSystemServerSide clientsConn;
 
     /**
      * Creates a new instance of ServerCommunicationSystem
+     * @param conf The configuration object containing the conf
+     * @throws Exception
      */
     public ServerCommunicationSystem(TOMConfiguration conf) throws Exception {
         super("Server CS");
@@ -69,24 +75,40 @@ public class ServerCommunicationSystem extends Thread {
                 Configuration.getHomeDir(), "hosts.config");
 
         serversConf.increasePortNumber();
-
-        serversConn = new ServersCommunicationLayer(serversConf,inQueue);
+        
+        serversConn = new ServersCommunicationLayer(serversConf,inQueue,msgHandlers,createFactory(conf));
 
         clientsConn = CommunicationSystemServerSideFactory.getCommunicationSystemServerSide(conf);
 
         //start();
     }
 
-    public void setProposer(Proposer proposer) {
-        messageHandler.setProposer(proposer);
+    @SuppressWarnings("unchecked")
+    protected MessageVerifierFactory createFactory(TOMConfiguration conf){
+        String algorithm = conf.getMessageVerifierFactory();
+        Class<MessageVerifierFactory> serviceclass;
+        try {
+            serviceclass = (Class<MessageVerifierFactory>) Class.forName(algorithm);
+            Object[] initargs = new Object[0];
+            MessageVerifierFactory factory = (MessageVerifierFactory) serviceclass.getConstructors()[0].newInstance(initargs);
+            return factory;
+        } catch (InstantiationException ex) {
+            Logger.getLogger(ServerCommunicationSystem.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (IllegalAccessException ex) {
+            Logger.getLogger(ServerCommunicationSystem.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (IllegalArgumentException ex) {
+            Logger.getLogger(ServerCommunicationSystem.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (InvocationTargetException ex) {
+            Logger.getLogger(ServerCommunicationSystem.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (ClassNotFoundException ex) {
+            Logger.getLogger(ServerCommunicationSystem.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        return null;
     }
 
-    public void setAcceptor(Acceptor acceptor) {
-        messageHandler.setAcceptor(acceptor);
-    }
-
-    public void setTOMLayer(TOMLayer tomLayer) {
-        messageHandler.setTOMLayer(tomLayer);
+    public void addMessageHandler(SystemMessage.Type type, MessageHandler handler){
+        assert(msgHandlers.size()<=Byte.MAX_VALUE);
+        msgHandlers.put(type,handler);
     }
 
     public void setRequestReceiver(RequestReceiver requestReceiver) {
@@ -101,10 +123,15 @@ public class ServerCommunicationSystem extends Thread {
         long count=0;
         while (true) {
             try {
-                count++;
-                if (count % 1000==0)
-                    Logger.println("(ServerCommunicationSystem.run) After "+count+" messages, inQueue size="+inQueue.size());
-                messageHandler.processData(inQueue.take());
+                if (log.isLoggable(Level.FINE)) {
+                    count++;
+                    if (count % 1000 == 0) {
+                        log.fine("(ServerCommunicationSystem.run) After " + count + " messages, inQueue size=" + inQueue.size());
+                    }
+                }
+                SystemMessage msg = inQueue.take();
+                //find a handler to process the msg
+                msgHandlers.get(msg.type).processData(msg);
             } catch (InterruptedException ex) {
                 java.util.logging.Logger.getLogger(ServerCommunicationSystem.class.getName()).log(Level.SEVERE, null, ex);
             }
@@ -119,32 +146,32 @@ public class ServerCommunicationSystem extends Thread {
      * @param sm the message to be sent
      */
     public void send(int[] targets, SystemMessage sm) {
-        if(sm instanceof TOMMessage) {
+        if(sm.type.equals(SystemMessage.Type.TOM_MSG)) {
             //Logger.println("(ServerCommunicationSystem.send) C: "+sm);
-            clientsConn.send(targets, (TOMMessage)sm, false);
+            clientsConn.send(targets, (TOMMessage)sm);
         } else {
             //Logger.println("(ServerCommunicationSystem.send) S: "+sm);
             serversConn.send(targets, sm);
         }
     }
 
-    /**
-     * Used to send messages.
-     *
-     * @param targets the target receivers of the message
-     * @param sm the message to be sent
-     * @param serializeClassHeaders to serialize java class headers or not,
-     * in case of sm not instanceof TOMMessage this does nothing.
-     */
-    public void send(int[] targets, SystemMessage sm, boolean serializeClassHeaders) {
-        if(sm instanceof TOMMessage) {
-            //Logger.println("(ServerCommunicationSystem.send) C: "+sm);
-            clientsConn.send(targets, (TOMMessage)sm, serializeClassHeaders);
-        } else {
-            //Logger.println("(ServerCommunicationSystem.send) S: "+sm);
-            serversConn.send(targets, sm);
-        }
-    }
+//    /**
+//     * Used to send messages.
+//     *
+//     * @param targets the target receivers of the message
+//     * @param sm the message to be sent
+//     * @param serializeClassHeaders to serialize java class headers or not,
+//     * in case of sm not instanceof TOMMessage this does nothing.
+//     */
+//    public void send(int[] targets, SystemMessage sm, boolean serializeClassHeaders) {
+//        if(sm instanceof TOMMessage) {
+//            //Logger.println("(ServerCommunicationSystem.send) C: "+sm);
+//            clientsConn.send(targets, (TOMMessage)sm, serializeClassHeaders);
+//        } else {
+//            //Logger.println("(ServerCommunicationSystem.send) S: "+sm);
+//            serversConn.send(targets, sm);
+//        }
+//    }
 
     @Override
     public String toString() {

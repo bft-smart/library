@@ -18,8 +18,10 @@
 
 package navigators.smart.paxosatwar.messages;
 
-import java.io.Serializable;
-import java.security.SignedObject;
+import navigators.smart.tom.util.SerialisationHelper;
+import java.io.DataInput;
+import java.io.DataOutput;
+import java.io.IOException;
 
 /**
  *
@@ -28,9 +30,9 @@ import java.security.SignedObject;
  * This class represents the proof used in the rounds freeze processing.
  * The SignedObject contain the CollectProof for this server.
  */
-public final class Proof implements Serializable {
+public final class Proof {
 
-    private SignedObject[] proofs; // Signed proofs
+    private CollectProof[] proofs; // Signed proofs
     private byte[] nextPropose; // next value to be proposed
  
     /**
@@ -38,10 +40,35 @@ public final class Proof implements Serializable {
      * @param proofs Signed proofs
      * @param nextPropose Next value to be proposed
      */
-    public Proof(SignedObject[] proofs, byte[] nextPropose) {
+    public Proof(CollectProof[] proofs, byte[] nextPropose) {
 
         this.proofs = proofs;
         this.nextPropose = nextPropose;
+
+    }
+
+    public Proof(DataInput in) throws IOException{
+        proofs = new CollectProof[in.readInt()];
+        for (int i = 0; i < proofs.length; i++) {
+            int pos = in.readInt();
+            if(pos < 0){
+                break;  //reached end
+            }
+            proofs[pos] = new CollectProof(in);
+        }
+        nextPropose = SerialisationHelper.readByteArray(in);
+    }
+
+    public void serialise(DataOutput out) throws IOException{
+        out.writeInt(proofs.length);
+        for (int i = 0; i < proofs.length; i++) {
+            if(proofs[i]!=null){
+               out.writeInt(i);
+               proofs[i].serialise(out);
+            }
+        }
+        out.writeInt(-1); //write end tag
+        SerialisationHelper.writeByteArray(nextPropose, out);
 
     }
     
@@ -59,10 +86,8 @@ public final class Proof implements Serializable {
      * Retrieves the signed proofs
      * @return Signed proofs
      */
-    public SignedObject[] getProofs(){
-
+    public CollectProof[] getProofs(){
         return this.proofs;
-
     }
 
 }

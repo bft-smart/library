@@ -18,7 +18,10 @@
 
 package navigators.smart.paxosatwar.messages;
 
-import java.io.Serializable;
+import navigators.smart.tom.util.SerialisationHelper;
+import java.io.DataInput;
+import java.io.DataOutput;
+import java.io.IOException;
 
 /**
  *
@@ -26,10 +29,10 @@ import java.io.Serializable;
  *
  * Proofs for one (freezed) consensus.
  */
-public final class FreezeProof implements Serializable {
+public final class FreezeProof {
 
     private int pid; // Replica ID
-    private int eid; // Consensus's execution ID
+    private long eid; // Consensus's execution ID
     private int round; // Round number
 
     private byte[] weak; // weakly accepted value
@@ -44,9 +47,8 @@ public final class FreezeProof implements Serializable {
      * @param weak Weakly accepted value
      * @param strong Strongly accepted Value
      * @param decide Decided value
-     * @param aut  Request authenticators
      */
-    public FreezeProof(int pid, int eid, int round, 
+    public FreezeProof(int pid, long eid, int round,
             byte[] weak, byte[] strong, byte[] decide) {
 
         this.pid = pid;
@@ -72,7 +74,7 @@ public final class FreezeProof implements Serializable {
      * Retrieves the consensus's execution ID
      * @return Consensus's execution ID
      */
-    public int getEid() {
+    public long getEid() {
 
         return eid;
 
@@ -128,9 +130,25 @@ public final class FreezeProof implements Serializable {
     }
 
     private final String str(byte[] obj) {
-
         return (obj == null)?"*":new String(obj);
+    }
 
+    public FreezeProof(DataInput in) throws IOException{
+        pid = in.readInt();
+        eid = in.readLong();
+        round = in.readInt();
+        weak = SerialisationHelper.readByteArray(in);
+        strong = SerialisationHelper.readByteArray(in);
+        decide = SerialisationHelper.readByteArray(in);
+    }
+
+    public void serialize(DataOutput out) throws IOException{
+        out.writeInt(pid);
+        out.writeLong(eid);
+        out.writeInt(round);
+        SerialisationHelper.writeByteArray(weak, out);
+        SerialisationHelper.writeByteArray(strong, out);
+        SerialisationHelper.writeByteArray(decide, out);
     }
 }
 

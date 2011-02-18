@@ -18,7 +18,13 @@
 
 package navigators.smart.tom;
 
+import java.lang.reflect.InvocationTargetException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import navigators.smart.communication.ServerCommunicationSystem;
+import navigators.smart.communication.TOMMessageHandler;
+import navigators.smart.consensus.ConsensusService;
+import navigators.smart.consensus.ConsensusServiceFactory;
 import navigators.smart.paxosatwar.executionmanager.ExecutionManager;
 import navigators.smart.paxosatwar.executionmanager.LeaderModule;
 import navigators.smart.paxosatwar.executionmanager.ProofVerifier;
@@ -26,6 +32,7 @@ import navigators.smart.paxosatwar.messages.MessageFactory;
 import navigators.smart.paxosatwar.roles.Acceptor;
 import navigators.smart.paxosatwar.roles.Proposer;
 import navigators.smart.tom.core.TOMLayer;
+import navigators.smart.tom.core.messages.SystemMessage;
 import navigators.smart.tom.util.ShutdownThread;
 import navigators.smart.tom.util.TOMConfiguration;
 
@@ -49,45 +56,46 @@ public abstract class TOMReceiver implements TOMRequestReceiver {
             return;
         }
 
-        // Get group of replicas
-        int[] group = new int[conf.getN()];
-        for (int i = 0; i < group.length; i++) {
-            group[i] = i;
-        }
+        TOMLayer tomLayer = new TOMLayer( this, cs, conf);
 
-        int me = conf.getProcessId(); // this process ID
-
-        if (me >= group.length) {
-            throw new RuntimeException("I'm not an acceptor!");
-        }
-
-        // Assemble the total order messaging layer
-        MessageFactory messageFactory = new MessageFactory(me);
-        ProofVerifier proofVerifier = new ProofVerifier(conf);
-        LeaderModule lm = new LeaderModule();
-        Acceptor acceptor = new Acceptor(cs, messageFactory, proofVerifier, lm, conf);
-
-        Proposer proposer = new Proposer(cs, messageFactory, proofVerifier, conf);
-
-        ExecutionManager manager = new ExecutionManager(acceptor, proposer,
-                group, conf.getF(), me, conf.getFreezeInitialTimeout());
-
-        acceptor.setManager(manager);
-        proposer.setManager(manager);
-
-        TOMLayer tomLayer = new TOMLayer(manager, this, lm, acceptor, cs, conf);
-        manager.setTOMLayer(tomLayer);
-
-        cs.setTOMLayer(tomLayer);
+        TOMMessageHandler msghndlr = new TOMMessageHandler(tomLayer);
+        cs.addMessageHandler(SystemMessage.Type.FORWARDED,msghndlr);
+        cs.addMessageHandler(SystemMessage.Type.SM_MSG,msghndlr);
         cs.setRequestReceiver(tomLayer);
 
-        acceptor.setTOMLayer(tomLayer);
+        ConsensusServiceFactory factory = createFactory(cs, conf);
 
-        Runtime.getRuntime().addShutdownHook(new ShutdownThread(cs,lm,acceptor,manager,tomLayer));
+        ConsensusService manager = factory.newInstance(tomLayer);
+        tomLayer.setConsensusService(manager); //set backlink
 
-        tomLayer.start(); // start the layer execution
+        Runtime.getRuntime().addShutdownHook(new ShutdownThread(cs,manager,tomLayer));
 
         tomStackCreated = true;
+    }
+
+    @SuppressWarnings("unchecked")
+    protected ConsensusServiceFactory createFactory(ServerCommunicationSystem cs, TOMConfiguration conf){
+        String algorithm = conf.getConsensusAlgorithmFactory();
+        Class<ConsensusServiceFactory> serviceclass;
+        try {
+            serviceclass = (Class<ConsensusServiceFactory>) Class.forName(algorithm);
+            Object[] initargs = new Object[2];
+            initargs[0] = cs;
+            initargs[1] = conf;
+            ConsensusServiceFactory factory = (ConsensusServiceFactory) serviceclass.getConstructors()[0].newInstance(initargs);
+            return factory;
+        } catch (InstantiationException ex) {
+            Logger.getLogger(TOMReceiver.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (IllegalAccessException ex) {
+            Logger.getLogger(TOMReceiver.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (IllegalArgumentException ex) {
+            Logger.getLogger(TOMReceiver.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (InvocationTargetException ex) {
+            Logger.getLogger(TOMReceiver.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (ClassNotFoundException ex) {
+            Logger.getLogger(TOMReceiver.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        return null;
     }
 }
 

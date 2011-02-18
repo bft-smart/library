@@ -26,7 +26,7 @@ import navigators.smart.tom.core.messages.TOMMessage;
  * @author Paulo
  */
 public interface CommunicationSystemClientSide {   
-   public void send(boolean sign, int[] targets, TOMMessage sm, boolean serializeClassHeaders);
+   public void send(boolean sign, int[] targets, TOMMessage sm);
    public void setReplyReceiver(ReplyReceiver trr);
    public void sign(TOMMessage sm);
 }

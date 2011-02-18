@@ -18,15 +18,22 @@
 
 package navigators.smart.tom.core.timer.messages;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.DataInput;
+import java.io.DataOutput;
 import java.io.IOException;
 import java.io.ObjectInput;
+import java.io.ObjectInputStream;
 import java.io.ObjectOutput;
+import java.io.ObjectOutputStream;
+import navigators.smart.tom.util.SerialisationHelper;
 
 import navigators.smart.tom.core.messages.SystemMessage;
 
 
 /**
- * This class represents a message used in the TO-FREEZE fase
+ * This class represents a message used in the TO-FREEZE phase
  * 
  */
 public class RTMessage extends SystemMessage {
@@ -37,19 +44,26 @@ public class RTMessage extends SystemMessage {
 
     /**
      * Creates a new instance of RequestTimeoutMessage
+     * @param in The stream containing the data to create this object
+     * @throws IOException 
+     * @throws ClassNotFoundException
      */
-    public RTMessage(){}
+    public RTMessage(DataInput in) throws IOException, ClassNotFoundException{
+        super(Type.RT_MSG, in);
+        rtType = in.readInt();
+        reqId = in.readInt();
+        content = SerialisationHelper.readObject(in);
+    }
 
     /**
      * Creates a new instance of RequestTimeoutMessage
      * @param rtType Message type (RT_TIMEOUT, RT_COLLECT, RT_LEADER)
      * @param reqId Request ID associated with the timeout
-     * @param timeout Timeout Number
      * @param from Replica ID of the sender
      * @param content Content of this message. Varies according to the message type
      */
     public RTMessage(int rtType, int reqId, int from, Object content) {
-        super(from);
+        super(Type.RT_MSG,from);
         this.rtType = rtType;
         this.reqId = reqId;
         this.content = content;
@@ -82,20 +96,12 @@ public class RTMessage extends SystemMessage {
     // overwritten methods from the super-class
 
     @Override
-    public void writeExternal(ObjectOutput out) throws IOException{
-        super.writeExternal(out);
+    public void serialise(DataOutput out) throws IOException{
+        super.serialise(out);
 
         out.writeInt(rtType);
         out.writeInt(reqId);
-        out.writeObject(content);
-    }
-
-    @Override
-    public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException{
-        super.readExternal(in);
-
-        rtType = in.readInt();
-        reqId = in.readInt();
-        content = in.readObject();
+       
+        SerialisationHelper.writeObject(content,out);
     }
 }

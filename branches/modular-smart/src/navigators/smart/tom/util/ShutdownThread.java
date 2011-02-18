@@ -19,6 +19,7 @@
 package navigators.smart.tom.util;
 
 import navigators.smart.communication.ServerCommunicationSystem;
+import navigators.smart.consensus.ConsensusService;
 import navigators.smart.paxosatwar.executionmanager.ExecutionManager;
 import navigators.smart.paxosatwar.executionmanager.LeaderModule;
 import navigators.smart.paxosatwar.executionmanager.Round;
@@ -32,17 +33,15 @@ import navigators.smart.tom.core.TOMLayer;
 public class ShutdownThread extends Thread {
 
     private ServerCommunicationSystem scs;
-    private LeaderModule lm;
-    private Acceptor acceptor;
-    private ExecutionManager manager;
+//    private LeaderModule lm;
+//    private Acceptor acceptor;
+//    private ExecutionManager manager;
+    ConsensusService conSrv;
     private TOMLayer tomLayer;
 
-    public ShutdownThread(ServerCommunicationSystem scs, LeaderModule lm,
-            Acceptor acceptor, ExecutionManager manager, TOMLayer tomLayer) {
+    public ShutdownThread(ServerCommunicationSystem scs, ConsensusService consensus, TOMLayer tomLayer) {
         this.scs = scs;
-        this.lm = lm;
-        this.acceptor = acceptor;
-        this.manager = manager;
+        this.conSrv = consensus;
         this.tomLayer = tomLayer;
     }
 
@@ -50,24 +49,23 @@ public class ShutdownThread extends Thread {
     public void run() {
         System.err.println("---------- DEBUG INFO ----------");
         System.err.println("Current time: " + System.currentTimeMillis());
-        System.err.println("Last executed consensus: " + tomLayer.getLastExec());
-        Round r = manager.getExecution(tomLayer.getLastExec()).getLastRound();
-        System.err.println("Last executed leader: " +
-                lm.getLeader(r.getExecution().getId(),r.getNumber()));
-        System.err.println("State of the last executed round: "+r.toString());
-        System.err.println("Consensus in execution: " + tomLayer.getInExec());
-        if(tomLayer.getInExec() != -1) {
-            Round r2 = manager.getExecution(tomLayer.getInExec()).getLastRound();
-            if(r2 != null) {
-                System.err.println("State of the round in execution: "+r2.toString());
-            }
-        }
-        System.err.println("Execution manager: "+ tomLayer.execManager);
+        System.err.println(conSrv);
+//        Round r = manager.getExecution(tomLayer.getLastExec()).getLastRound();
+//        System.err.println("Last executed leader: " +
+//                lm.getLeader(r.getExecution().getId(),r.getNumber()));
+//        System.err.println("State of the last executed round: "+r.toString());
+//        if(tomLayer.getInExec() != -1) {
+//            Round r2 = manager.getExecution(tomLayer.getInExec()).getLastRound();
+//            if(r2 != null) {
+//                System.err.println("State of the round in execution: "+r2.toString());
+//            }
+//        }
+//        System.err.println("Execution manager: "+ tomLayer.execManager);
         System.err.println("Server communication system queues: "+
                 scs.toString());
         //System.err.println("Pending requests: " +
         //        tomLayer.clientsManager.getPendingRequests());
-        System.err.println("Requests timers: " + tomLayer.requestsTimer);
+//        System.err.println("Requests timers: " + tomLayer.requestsTimer);
         System.err.println("---------- ---------- ----------");
     }
 }

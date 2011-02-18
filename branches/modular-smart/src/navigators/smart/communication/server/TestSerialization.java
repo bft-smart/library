@@ -21,7 +21,11 @@ package navigators.smart.communication.server;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
+import java.io.DataOutput;
 import java.io.DataOutputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutput;
+import java.io.ObjectOutputStream;
 
 import navigators.smart.tom.core.messages.TOMMessage;
 
@@ -38,20 +42,21 @@ public class TestSerialization {
         ByteArrayOutputStream baos = new ByteArrayOutputStream(4);
         DataOutputStream oos = new DataOutputStream(baos);
 
-        tm.writeExternal(oos);
+        tm.serialise(oos);
         oos.flush();
         //oos.writeObject(tm);
 
 
         byte[] message = baos.toByteArray();
         System.out.println(message.length);
+        System.out.println(message);
 
         ByteArrayInputStream bais = new ByteArrayInputStream(message);
         DataInputStream ois = new DataInputStream(bais);
 
         //TOMMessage tm2 = (TOMMessage) ois.readObject();
-        TOMMessage tm2 = new TOMMessage();
-        tm2.readExternal(ois);
+        TOMMessage tm2 = new TOMMessage(ois);
+//        tm2.readExternal(ois);
         
 //        System.out.println(new String(tm2.getContent()));
     }

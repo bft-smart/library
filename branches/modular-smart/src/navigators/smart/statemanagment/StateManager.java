@@ -35,8 +35,8 @@ public class StateManager {
     private int f;
     private int n;
     private int me;
-    private int lastEid;
-    private int waitingEid;
+    private long lastEid;
+    private long waitingEid;
     private int replica;
     private byte[] state;
 
@@ -72,7 +72,7 @@ public class StateManager {
         return state;
     }
     
-    public void addEID(int sender, int eid) {
+    public void addEID(int sender, long eid) {
         senderEids.add(new SenderEid(sender, eid));
     }
 
@@ -93,24 +93,25 @@ public class StateManager {
         senderStates.clear();
     }
 
-    public int getWaiting() {
+    public long getWaiting() {
         return waitingEid;
     }
 
-    public void setWaiting(int wait) {
+
+    public void setWaiting(long wait) {
         this.waitingEid = wait;
     }
-    public void setLastEID(int eid) {
+    public void setLastEID(long eid) {
         lastEid = eid;
     }
 
-    public int getLastEID() {
+    public long getLastEID() {
         return lastEid;
     }
 
-    public boolean moreThenF_EIDs(int eid) {
+    public boolean moreThenF_EIDs(long eid) {
 
-        int count = 0;
+        long count = 0;
         HashSet<Integer> replicasCounted = new HashSet<Integer>();
 
         for (SenderEid m : senderEids) {
@@ -166,9 +167,9 @@ public class StateManager {
     private class SenderEid {
 
         private int sender;
-        private int eid;
+        private long eid;
 
-        SenderEid(int sender, int eid) {
+        SenderEid(int sender, long eid) {
             this.sender = sender;
             this.eid = eid;
         }
@@ -186,7 +187,7 @@ public class StateManager {
         public int hashCode() {
             int hash = 1;
             hash = hash * 31 + this.sender;
-            hash = hash * 31 + this.eid;
+            hash = hash * 31 + (int)this.eid;
             return hash;
         }
     }

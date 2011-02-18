@@ -18,6 +18,9 @@
 
 package navigators.smart.paxosatwar.executionmanager;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutput;
+import java.io.DataOutputStream;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.Signature;
@@ -44,6 +47,7 @@ public class ProofVerifier {
     private int quorumStrong; // (n + f) / 2 replicas
     private int numberOfNonces; // Ammount of nonces that have to be delivered to the application
     private PublicKey[] publickeys; // public keys of the replicas
+    private Signature[] engines;
     private PrivateKey prk = null; // private key for this replica
     private Signature engine; // Signature engine
 
@@ -57,9 +61,17 @@ public class ProofVerifier {
         this.numberOfNonces = conf.getNumberOfNonces();
 
         this.publickeys = TOMConfiguration.getRSAServersPublicKeys();
-        this.prk = TOMConfiguration.getRSAPrivateKey();
         try {
+            engines = new Signature[publickeys.length];
+            int i = 0;
+            for(PublicKey key : publickeys){
+                engines[i] = Signature.getInstance("SHA1withRSA");
+                engines[i].initVerify(key);
+                i++;
+            }
+            this.prk = TOMConfiguration.getRSAPrivateKey();
             this.engine = Signature.getInstance("SHA1withRSA");
+            engine.initSign(prk);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -70,12 +82,13 @@ public class ProofVerifier {
      * @param cp Proofs of a freezed consensus
      * @return Signed proofs
      */
-    public SignedObject sign(CollectProof cp) {
+    public void sign(CollectProof cp) {
         try {
-            return new SignedObject(cp, prk, engine);
+            byte[] serialisedcp = cp.getBytes();
+            engine.update(serialisedcp);
+            cp.setSignature(engine.sign());
         } catch (Exception e) {
             e.printStackTrace();
-            return null;
         }
     }
 
@@ -98,7 +111,7 @@ public class ProofVerifier {
      * @param proofs Array of proofs, which might have indexes pointing to null
      * @return Number of proofs in the array
      */
-    public int countProofs(SignedObject[] proofs) {
+    public int countProofs(CollectProof[] proofs) {
         int validProofs = 0;
         for (int i = 0; i < proofs.length; i++) {
             if (proofs[i] != null) {
@@ -224,7 +237,7 @@ public class ProofVerifier {
      * @param proof Proof to be verified
      * @return True if valid, false otherwise
      */
-    public boolean validProof(int eid, int round, FreezeProof proof) {
+    public boolean validProof(long eid, int round, FreezeProof proof) {
         // TODO: nao devia ser 'proof.getRound() <= round'?
         return (proof != null) && (proof.getEid() == eid) && (proof.getRound() == round);
     }
@@ -233,28 +246,22 @@ public class ProofVerifier {
      * Returns the valid proofs
      * @param eid Execution ID to match against the proofs
      * @param round round number to match against the proofs
-     * @param proof Proofs to be verified
+     * @param proofs Proofs to be verified
      * @return Array the the valid proofs
      */
-    public CollectProof[] checkValid(int eid, int round, SignedObject[] proof) {
-        if (proof == null) {
+    public CollectProof[] checkValid(long eid, int round, CollectProof[] proofs) {
+        if (proofs == null) {
             return null;
         }
         Collection<CollectProof> valid = new HashSet<CollectProof>();
-        try {
-            for (int i = 0; i < proof.length; i++) {
-                if (proof[i] != null && validSignature(proof[i], i)) {
-                    CollectProof cp = (CollectProof) proof[i].getObject();
-                    if (validProof(eid, round, cp.getProofs(true))) {
-                        valid.add(cp);
+            for (int i = 0; i < proofs.length; i++) {
+                if (proofs[i] != null
+                        && validSignature(proofs[i], i)
+                        && validProof(eid, round, proofs[i].getProofs(true))) {
+                        valid.add(proofs[i]);
                     }
                 }
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        
-        return valid.toArray(new CollectProof[0]);
+        return valid.toArray(new CollectProof[valid.size()]);
     }
 
     /**
@@ -263,9 +270,10 @@ public class ProofVerifier {
      * @param sender Replica that sent the signed object
      * @return True if the signature is valid, false otherwise
      */
-    public boolean validSignature(SignedObject so, int sender) {
+    public boolean validSignature(CollectProof so, int sender) {
         try {
-            return so.verify(this.publickeys[sender], engine);
+            engines[sender].update(so.getBytes());
+            return engines[sender].verify(so.getSignature());
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -365,5 +373,20 @@ public class ProofVerifier {
         }
 
         return acc;
+    }
+
+    /**
+     * Checks if a signature is valid
+     * @param so Signed object
+     * @param sender Replica that sent the signed object
+     * @return True if the signature is valid, false otherwise
+     */
+    public boolean verifySignature(SignedObject so, int sender) {
+        try {
+            return so.verify(this.publickeys[sender], engine);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return false;
     }
 }

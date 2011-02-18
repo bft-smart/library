@@ -18,9 +18,12 @@
 
 package navigators.smart.tom.core.messages;
 
+import java.io.DataInput;
+import java.io.DataOutput;
 import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
+import java.io.ObjectOutputStream;
 
 import navigators.smart.tom.util.TOMUtil;
 
@@ -40,7 +43,23 @@ public class RequestRecoveryMessage extends SystemMessage {
     /**
      * Creates a new instance of RecoveryRequestMessage
      */
-    public RequestRecoveryMessage() {}
+    public RequestRecoveryMessage(DataInput in) throws IOException, ClassNotFoundException {
+        super(Type.RR_MSG,in);
+        consId = in.readInt();
+        id = in.readInt();
+        int t = in.readInt();
+
+        if (t > 0) {
+
+            hash = new byte[t];
+            in.readFully(hash);
+        } else {
+
+            hash = null;
+        }
+
+        msg = new TOMMessage(in);
+    }
 
     /**
      * Creates a new instance of RecoveryRequestMessage, of the RR_REQUEST type
@@ -49,7 +68,7 @@ public class RequestRecoveryMessage extends SystemMessage {
      */
     public RequestRecoveryMessage(byte[] hash, int from) {
 
-        super(from);
+        super(Type.RR_MSG,from);
         this.hash = hash;
         this.id = TOMUtil.RR_REQUEST;
     }
@@ -61,7 +80,7 @@ public class RequestRecoveryMessage extends SystemMessage {
      */
     public RequestRecoveryMessage(TOMMessage msg, int from) {
 
-        super(from);
+        super(Type.RR_MSG,from);
         this.msg = msg;
         this.id = TOMUtil.RR_REPLY;
     }
@@ -73,7 +92,7 @@ public class RequestRecoveryMessage extends SystemMessage {
      * @param consId  Consensus's ID to which the request recover refers to
      */
     public RequestRecoveryMessage(byte[] hash, int from, int consId) {
-        super(from);
+        super(Type.RR_MSG,from);
 
         this.hash = hash;
         this.id = TOMUtil.RR_DELIVERED;
@@ -115,9 +134,9 @@ public class RequestRecoveryMessage extends SystemMessage {
     // The following are overwritten methods
 
     @Override
-    public void writeExternal(ObjectOutput out) throws IOException {
+    public void serialise(DataOutput out) throws IOException {
 
-        super.writeExternal(out);
+        super.serialise(out);
         out.writeInt(consId);
         out.writeInt(id);
 
@@ -128,27 +147,7 @@ public class RequestRecoveryMessage extends SystemMessage {
             out.writeInt(-1);
         }
 
-        out.writeObject(msg);
-    }
-
-    @Override
-    public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
-
-        super.readExternal(in);
-        consId = in.readInt();
-        id = in.readInt();
-        int t = in.readInt();
-
-        if (t > 0) {
-
-            hash = new byte[t];
-            in.readFully(hash);
-        } else {
-
-            hash = null;
-        }
-
-        msg = (TOMMessage) in.readObject();
+        msg.serialise(out);
     }
 
     @Override

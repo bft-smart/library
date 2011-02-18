@@ -29,13 +29,13 @@ package navigators.smart.statemanagment;
 public class StateLog {
 
     private BatchInfo[] messageBatches; // batches received since the last checkpoint.
-    private int lastCheckpointEid; // Execution ID for the last checkpoint
+    private long lastCheckpointEid; // Execution ID for the last checkpoint
     private int lastCheckpointRound; // Decision round for the last checkpoint
     private int lastCheckpointLeader; // Leader for the last checkpoint
     private byte[] state; // State associated with the last checkpoint
     private byte[] stateHash; // Hash of the state associated with the last checkpoint
     private int position; // next position in the array of batches to be written
-    private int lastEid; // Execution ID for the last messages batch delivered to the application
+    private long lastEid; // Execution ID for the last messages batch delivered to the application
 
     /**
      * Constructs a State log
@@ -72,7 +72,7 @@ public class StateLog {
      * Sets the execution ID for the last checkpoint
      * @param lastCheckpointEid Execution ID for the last checkpoint
      */
-    public void setLastCheckpointEid(int lastCheckpointEid) {
+    public void setLastCheckpointEid(long lastCheckpointEid) {
 
         this.lastCheckpointEid = lastCheckpointEid;
     }
@@ -81,8 +81,7 @@ public class StateLog {
      * Retrieves the execution ID for the last checkpoint
      * @return Execution ID for the last checkpoint, or -1 if none was obtained
      */
-    public int getLastCheckpointEid() {
-        
+    public long getLastCheckpointEid() {
         return lastCheckpointEid ;
     }
 
@@ -91,7 +90,6 @@ public class StateLog {
      * @param lastCheckpointEid Decision round for the last checkpoint
      */
     public void setLastCheckpointRound(int lastCheckpointRound) {
-
         this.lastCheckpointRound = lastCheckpointRound;
     }
 
@@ -100,7 +98,6 @@ public class StateLog {
      * @return Decision round for the last checkpoint, or -1 if none was obtained
      */
     public int getLastCheckpointRound() {
-
         return lastCheckpointRound ;
     }
 
@@ -126,8 +123,7 @@ public class StateLog {
      * Sets the execution ID for the last messages batch delivered to the application
      * @param lastEid the execution ID for the last messages batch delivered to the application
      */
-    public void setLastEid(int lastEid) {
-
+    public void setLastEid(long lastEid) {
         this.lastEid = lastEid;
     }
 
@@ -135,8 +131,7 @@ public class StateLog {
      * Retrieves the execution ID for the last messages batch delivered to the application
      * @return Execution ID for the last messages batch delivered to the application
      */
-    public int getLastEid() {
-
+    public long getLastEid() {
         return lastEid;
     }
 
@@ -179,7 +174,7 @@ public class StateLog {
      */
     public BatchInfo getMessageBatch(int eid) {
         if (eid > lastCheckpointEid && eid <= lastEid) {
-            return messageBatches[eid - lastCheckpointEid - 1];
+            return messageBatches[(int)(eid - lastCheckpointEid - 1)];
         }
         else return null;
     }
@@ -204,14 +199,14 @@ public class StateLog {
      * @param eid Execution ID correspondent to desired state
      * @return TransferableState Object containing this log information
      */
-    public TransferableState getTransferableState(int eid, boolean setState) {
+    public TransferableState getTransferableState(long eid, boolean setState) {
 
         if (lastCheckpointEid > -1 && eid >= lastCheckpointEid) {
 
             BatchInfo[] batches = null;
 
              if  (eid <= lastEid) {
-                int size = eid - lastCheckpointEid ;
+                int size = (int) (eid - lastCheckpointEid) ;
             
                 if (size > 0) {
                     batches = new BatchInfo[size];

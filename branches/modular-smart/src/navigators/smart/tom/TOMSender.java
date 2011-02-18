@@ -108,8 +108,8 @@ public abstract class TOMSender implements ReplyReceiver {
      *
      * @param m Data to be multicast
      */
-    public void TOMulticast(byte[] m) {
-        cs.send(useSignatures, group, new TOMMessage(me, getNextSequenceNumber(), m), false);
+    public void doTOMulticast(byte[] m) {
+        cs.send(useSignatures, group, new TOMMessage(me, getNextSequenceNumber(), m));
     }
 
     /**
@@ -119,7 +119,7 @@ public abstract class TOMSender implements ReplyReceiver {
      * @param readOnly it is a readonly request
      */
     public void TOMulticast(byte[] m, boolean readOnly) {
-        cs.send(useSignatures, group, new TOMMessage(me, getNextSequenceNumber(), m, readOnly), false);
+        cs.send(useSignatures, group, new TOMMessage(me, getNextSequenceNumber(), m, readOnly));
     }
 
     /**
@@ -128,7 +128,7 @@ public abstract class TOMSender implements ReplyReceiver {
      * @param m Data to be multicast
      */
     public void TOMulticast(TOMMessage sm) {
-        cs.send(useSignatures, group, sm, false);
+        cs.send(useSignatures, group, sm);
     }
 
     /**
