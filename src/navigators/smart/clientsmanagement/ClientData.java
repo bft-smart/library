@@ -19,6 +19,9 @@
 package navigators.smart.clientsmanagement;
 
 import java.security.PublicKey;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.Queue;
 import java.util.concurrent.locks.ReentrantLock;
 
 import navigators.smart.tom.core.messages.TOMMessage;
@@ -39,6 +42,8 @@ public class ClientData {
 
     private PendingRequests pendingRequests = new PendingRequests();
     
+    private Queue<TOMMessage> proposedRequests = new LinkedList<TOMMessage>();
+    
     private TOMMessage lastReplySent = null;
 
     /**
@@ -54,9 +59,9 @@ public class ClientData {
         return clientId;
     }
 
-    public PendingRequests getPendingRequests() {
-        return pendingRequests;
-    }
+//    public PendingRequests getPendingRequests() {
+//        return pendingRequests;
+//    }
 
     public PublicKey getPublicKey() {
         if(publicKey == null) {
@@ -101,4 +106,45 @@ public class ClientData {
     public TOMMessage getLastReplySent() {
         return lastReplySent;
     }
+    
+	public TOMMessage proposeReq() {
+		TOMMessage ret = pendingRequests.poll();
+		if(ret != null){
+			if(!proposedRequests.add(ret)){
+				//if its not possible to add to the proposed list readd to pending
+				pendingRequests.addFirst(ret);
+				ret = null;
+			}
+		}
+		return ret;
+	}
+
+	public boolean hasPendingRequests() {
+		return !pendingRequests.isEmpty();
+	}
+
+	public TOMMessage getRequestById(int reqId) {
+		TOMMessage ret =  pendingRequests.getById(reqId);
+		if (ret == null){
+			for(TOMMessage msg : proposedRequests){
+				if(msg.getId() == reqId){
+					ret = msg;
+					break;
+				}
+			}
+		}
+		return ret;
+	}
+
+	public boolean addRequest(TOMMessage request) {
+		return pendingRequests.add(request);
+	}
+
+	public boolean removeRequest(TOMMessage request) {
+		return pendingRequests.remove(request) || proposedRequests.remove(request);
+	}
+
+	public int getPendingRequests() {
+		return pendingRequests.size()+proposedRequests.size();
+	}
 }
