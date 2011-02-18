@@ -18,6 +18,9 @@
 
 package navigators.smart.statemanagment;
 
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
 /**
  * This classes serves as a log for the state associated with the last checkpoint, and the message
  * batches received since the same checkpoint until the present. The state associated with the last
@@ -27,6 +30,8 @@ package navigators.smart.statemanagment;
  * @author Jo�o Sousa
  */
 public class StateLog {
+	
+	private static final Logger log = Logger.getLogger(StateLog.class.getCanonicalName());
 
     private BatchInfo[] messageBatches; // batches received since the last checkpoint.
     private long lastCheckpointEid; // Execution ID for the last checkpoint
@@ -221,7 +226,11 @@ public class StateLog {
             return new TransferableState(batches, lastCheckpointEid, lastCheckpointRound, lastCheckpointLeader, eid, (setState ? state : null), stateHash);
 
         }
-        else return null;
+        else {
+        	if(log.isLoggable(Level.FINE))
+        		log.fine("No State for "+eid+"found. Current State of Statelog: "+ toString());
+        	return null;
+        }
     }
 
     /**
@@ -239,11 +248,21 @@ public class StateLog {
 
         this.lastCheckpointEid = transState.getLastCheckpointEid();
 
-        this.state = transState.getState();
+        this.state = transState.getLastCPState();
 
         this.stateHash = transState.getStateHash();
 
         this.lastEid = transState.getLastEid();
     }
+
+	/* (non-Javadoc)
+	 * @see java.lang.Object#toString()
+	 */
+	@Override
+	public String toString() {
+		return "StateLog [lastCheckpointEid=" + lastCheckpointEid + ", lastCheckpointLeader=" + lastCheckpointLeader
+				+ ", lastCheckpointRound=" + lastCheckpointRound + ", lastEid=" + lastEid + ", messageBatchesLen="+
+				messageBatches.length + "]";
+	}
 
 }

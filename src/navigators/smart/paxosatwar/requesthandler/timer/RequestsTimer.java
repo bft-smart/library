@@ -87,6 +87,9 @@ public class RequestsTimer {
         rwLock.writeLock().lock();
         if (watched.remove(request) && watched.isEmpty() && rtTask != null) {
             rtTask.cancel();
+            if(request.getId()%100 == 0){		//purge timer list every 100 requests
+            	timer.purge();
+            }
             rtTask = null;
         }
         rwLock.writeLock().unlock();

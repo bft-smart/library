@@ -78,4 +78,11 @@ public class BatchInfo implements Serializable {
 
         return hash;
     }
+	/* (non-Javadoc)
+	 * @see java.lang.Object#toString()
+	 */
+	@Override
+	public String toString() {
+		return "BatchInfo [batch=" + Arrays.toString(batch) + ", leader=" + leader + ", round=" + round + "]";
+	}
 }

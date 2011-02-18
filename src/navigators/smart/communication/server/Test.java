@@ -99,7 +99,7 @@ public class Test {
                     rec++;
                 }
 
-                st.store(System.nanoTime()-time);
+                st.storeDuration(System.nanoTime()-time);
             } else {
                 TOMMessage m = (TOMMessage) inQueue.take();
                 scl.send(new int[]{m.getSender()}, new TOMMessage(id,i,m.getContent()));

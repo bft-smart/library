@@ -20,16 +20,17 @@ package navigators.smart.paxosatwar.requesthandler;
 
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import navigators.smart.paxosatwar.executionmanager.Execution;
 import navigators.smart.paxosatwar.executionmanager.ExecutionManager;
-import navigators.smart.tom.util.Logger;
-
 
 /**
  * This thread manages out of context messages
  */
 public class OutOfContextMessageThread extends Thread {
+	
+	private static final Logger log = Logger.getLogger(OutOfContextMessageThread.class.getCanonicalName());
 
     private RequestHandler requesthandler; // requesthandler
     private final ExecutionManager execMng; // execmng
@@ -84,11 +85,11 @@ public class OutOfContextMessageThread extends Thread {
 
                 long nextExecution = requesthandler.getLastExec() + 1;
                 if (execMng.thereArePendentMessages(nextExecution)) {
-                    if(Logger.debug)
-                        Logger.println("(OutOfContextMessageThread.run) starting processing out of context messages for consensus " + nextExecution);
+                    if(log.isLoggable(Level.FINER))
+                        log.finer("Starting processing out of context messages for consensus " + nextExecution);
                     execution = execMng.getExecution(nextExecution);
-                    if(Logger.debug)
-                        Logger.println("(OutOfContextMessageThread.run) finished processing out fo context messages for consensus " + nextExecution);
+                    if(log.isLoggable(Level.FINER))
+                        log.finer("Finished processing out fo context messages for consensus " + nextExecution);
                 }
 
                 /** ISTO E CODIGO DO JOAO, PARA TRATAR DA TRANSFERENCIA DE ESTADO */

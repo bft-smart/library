@@ -146,7 +146,7 @@ public class TransferableState implements Serializable {
      * Retrieves the state associated with the last checkpoint
      * @return State associated with the last checkpoint
      */
-    public byte[] getState() {
+    public byte[] getLastCPState() {
         return state;
     }
 

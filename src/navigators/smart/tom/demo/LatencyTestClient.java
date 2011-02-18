@@ -145,7 +145,7 @@ public class LatencyTestClient extends TOMSender {
 
             if(count == f+1){
               if (num_sends>exec/2){
-                this.st.store(receive_instant - last_send_instant);
+                this.st.storeDuration(receive_instant - last_send_instant);
               }
 
               count = 0;
