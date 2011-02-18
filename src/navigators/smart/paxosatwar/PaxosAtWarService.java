@@ -108,7 +108,7 @@ public class PaxosAtWarService implements ConsensusService{
 
     @Override
     public void deliverState(TransferableState state){
-
+    	requestsTimer.unwatchAll(); //clear timer table TODO this is not fully BFT...
         long lastCheckpointEid = state.getLastCheckpointEid();
         long lastEid = state.getLastEid();
         //add leaderinfo of the last checkpoint

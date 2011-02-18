@@ -53,6 +53,8 @@ public class RequestsTimer {
     public RequestsTimer(RequestHandler reqhandler, long timeout) {
         this.reqhandler = reqhandler;
         this.timeout = timeout;
+        rtTask = new RequestTimerTask();
+        timer.schedule(rtTask,System.currentTimeMillis()+timeout, timeout);
     }
 
     /**
@@ -63,10 +65,10 @@ public class RequestsTimer {
         //long startInstant = System.nanoTime();
         rwLock.writeLock().lock();
         watched.add(request);
-        if (watched.size() == 1 && rtTask == null) {
-            rtTask = new RequestTimerTask();
-            timer.schedule(rtTask, timeout);
-        }
+//        if (watched.size() == 1 && rtTask == null) {
+//            rtTask = new RequestTimerTask();
+//            timer.schedule(rtTask,System.currentTimeMillis()+timeout, timeout);
+//        }
         rwLock.writeLock().unlock();
         /*
         st1.store(System.nanoTime() - startInstant);
@@ -85,13 +87,14 @@ public class RequestsTimer {
     public void unwatch(TOMMessage request) {
         //long startInstant = System.nanoTime();
         rwLock.writeLock().lock();
-        if (watched.remove(request) && watched.isEmpty() && rtTask != null) {
-            rtTask.cancel();
-            if(request.getId()%100 == 0){		//purge timer list every 100 requests
-            	timer.purge();
-            }
-            rtTask = null;
-        }
+//        if (watched.remove(request) && watched.isEmpty() && rtTask != null) {
+//            rtTask.cancel();
+//            if(request.getId()%100 == 0){		//purge timer list every 100 requests
+//            	timer.purge();
+//            }
+//            rtTask = null;
+//        }
+        watched.remove(request);
         rwLock.writeLock().unlock();
         /*
         st2.store(System.nanoTime() - startInstant);
@@ -100,6 +103,15 @@ public class RequestsTimer {
             st2.reset();
         }
         */
+    }
+    
+    /**
+     * Cancels all timers that are currently set
+     * @author spann
+     *
+     */
+    public void unwatchAll(){
+    	watched.clear();
     }
 
     class RequestTimerTask extends TimerTask {
@@ -143,12 +155,12 @@ public class RequestsTimer {
                     reqhandler.requestTimeout(pendingRequests);
                 }
 
-                rtTask = new RequestTimerTask();
-                timer.schedule(rtTask, timeout);
-            } else {
+//                rtTask = new RequestTimerTask();
+//                timer.schedule(rtTask, timeout);
+            }/* else {
                 rtTask = null;
                 timer.purge();
-            }
+            }*/
 
             rwLock.readLock().unlock();
         }
