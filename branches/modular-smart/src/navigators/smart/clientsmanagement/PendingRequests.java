@@ -33,7 +33,9 @@ import navigators.smart.tom.core.messages.TOMMessage;
  */
 public class PendingRequests extends LinkedList<TOMMessage> {
 
-    public PendingRequests() {
+	private static final long serialVersionUID = -7796606820273416224L;
+
+	public PendingRequests() {
     }
 
     public TOMMessage remove(byte[] serializedMessage) {

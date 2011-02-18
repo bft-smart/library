@@ -19,7 +19,6 @@
 package navigators.smart.clientsmanagement;
 
 import java.security.PublicKey;
-import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Queue;
 import java.util.concurrent.locks.ReentrantLock;
