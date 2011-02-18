@@ -89,21 +89,18 @@ public class ClientsManager {
         PendingRequests allReq = new PendingRequests();
 
         clientsLock.lock();
-        /******* BEGIN CLIENTS CRITICAL SECTION ******/
-        Set<Entry<Integer, ClientData>> clientsEntrySet = clientsData.entrySet();
+        /* ****** BEGIN CLIENTS CRITICAL SECTION ******/
 
-        for (int i = 0; true; i++) {
-            Iterator<Entry<Integer, ClientData>> it = clientsEntrySet.iterator();
-            int noMoreMessages = 0;
+        int noMoreMessages = 0;
+        do{
 
-            while (it.hasNext()) {
-                ClientData clientData = it.next().getValue();
-                PendingRequests clientPendingRequests = clientData.getPendingRequests();
+            for(ClientData clientData: clientsData.values()) {
 
 
                 clientData.clientLock.lock();
                 /******* BEGIN CLIENTDATA CRITICAL SECTION ******/
-                TOMMessage request = (clientPendingRequests.size() > i) ? clientPendingRequests.get(i) : null;
+                TOMMessage request =  clientData.proposeReq();
+                
 
                 /******* END CLIENTDATA CRITICAL SECTION ******/
                 clientData.clientLock.unlock();
@@ -113,24 +110,17 @@ public class ClientsManager {
                     allReq.addLast(request);
                     //I inserted a message on the batch, now I must verify if
                     //the max batch size is reached
-                    if (allReq.size() == conf.getMaxBatchSize()) {
-                        /******* END CLIENTS CRITICAL SECTION ******/
-                        clientsLock.unlock();
-                        return allReq;
-                    }
+                   
                 } else {
                     //this client do not have more pending requests
                     noMoreMessages++;
-
-                    //now I have to verify if all clients are empty
-                    if (noMoreMessages == clientsEntrySet.size()) {
-                        /******* END CLIENTS CRITICAL SECTION ******/
-                        clientsLock.unlock();
-                        return allReq;
-                    }
                 }
             }
-        }
+          //I inserted a message on the batch, now I must verify if the max batch size is reached or no more messages are present
+        } while(allReq.size() <= conf.getMaxBatchSize() && clientsData.size() != noMoreMessages);
+        /* ****** end critical section *******/
+        clientsLock.unlock();
+        return allReq;
     }
 
     /**
@@ -145,7 +135,7 @@ public class ClientsManager {
         Iterator<Entry<Integer, ClientData>> it = clientsData.entrySet().iterator();
 
         while (it.hasNext()) {
-            if (!it.next().getValue().getPendingRequests().isEmpty()) {
+            if (it.next().getValue().hasPendingRequests()) {
                 clientsLock.unlock();
                 return true;
             }
@@ -181,7 +171,7 @@ public class ClientsManager {
 
             clientData.clientLock.lock();
             /******* BEGIN CLIENTDATA CRITICAL SECTION ******/
-            TOMMessage pendingMessage = clientData.getPendingRequests().getById(reqId);
+            TOMMessage pendingMessage = clientData.getRequestById(reqId);
             /******* END CLIENTDATA CRITICAL SECTION ******/
             clientData.clientLock.unlock();
 
@@ -234,7 +224,7 @@ public class ClientsManager {
         /* ################################################ */
         //pjsousa: simple flow control mechanism to avoid out of memory exception
         if (conf.getUseControlFlow() != 0) {
-            if (fromClient && (clientData.getPendingRequests().size() > conf.getUseControlFlow())) {
+            if (fromClient && (clientData.getPendingRequests() > conf.getUseControlFlow())) {
 //                if (Logger.debug) {
 //                    Logger.println("(ClientsManager.requestReceived) denied " + request + " due to flow control");
 //                }
@@ -260,7 +250,7 @@ public class ClientsManager {
                 //I don't have the message but it is correctly signed, I will
                 //insert it in the pending requests of this client
                 if (storeMessage) {
-                    clientData.getPendingRequests().add(request);
+                    clientData.addRequest(request);
 //                    if (Logger.debug) {
 //                        Logger.println("(ClientsManager.requestReceived) stored " + request);
 //                    }
@@ -317,7 +307,7 @@ public class ClientsManager {
         clientData.clientLock.lock();
         /******* BEGIN CLIENTDATA CRITICAL SECTION ******/
         //Logger.println("(ClientsManager.requestOrdered) Removing request "+request+" from pending requests");
-        if (clientData.getPendingRequests().remove(request) == false) {
+        if (clientData.removeRequest(request) == false) {
             Logger.println("(ClientsManager.requestOrdered) Request " + request + " does not exist in pending requests");
         } else {
 //            if(Logger.debug)
