@@ -23,6 +23,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -91,29 +92,18 @@ public class ThroughputLatencyTestServer extends TOMReceiver {
         totalOps++;
 
         byte[] request = msg.getContent();
-        int remoteId;
-        try {
-            remoteId = new DataInputStream(new ByteArrayInputStream(request)).readInt();
-        } catch (IOException ex) {
-            Logger.getLogger(ThroughputLatencyTestServer.class.getName()).log(Level.SEVERE, null, ex);
-            return;
-        }
+        int remoteId = ByteBuffer.wrap(request).getInt();
 
         if (remoteId ==-2){
            //does nothing, it's a request from the throughput client
         }
         else if (remoteId==-1){
             //send back totalOps
+        	System.out.println("Client "+msg.getSender()+" requests ops");
             byte[] command = new byte[12];
-            ByteArrayOutputStream out = new ByteArrayOutputStream(12);
-            try {
-                DataOutputStream dos = new DataOutputStream(out);
-                dos.writeInt(-1);
-                dos.writeLong(totalOps);
-            } catch (IOException ex) {
-                Logger.getLogger(ThroughputLatencyTestServer.class.getName()).log(Level.SEVERE, null, ex);
-            }
-            System.arraycopy(out.toByteArray(), 0, command, 0, 12);
+            ByteBuffer buf = ByteBuffer.wrap(command);
+            buf.putInt(-1);
+            buf.putLong(totalOps);
             TOMMessage reply = new TOMMessage(id,msg.getSequence(),
                     command);
             cs.send(new int[]{msg.getSender()},reply);
@@ -155,7 +145,7 @@ public class ThroughputLatencyTestServer extends TOMReceiver {
             System.out.println("("+dataActual+") Maximum throughput until now: " + max + " ops per second");
             */
             //TODO: colocar impressão do consensus batch size
-            System.out.println((System.currentTimeMillis()-startTimeInstant) + " " + opsPerSec);
+            System.out.println("Msg: "+msg.getId() +" Duration of exec: "+(System.currentTimeMillis()-lastDecideTimeInstant)/1000 + "s Ops/sec: " + opsPerSec);
             
             if (st.getCount()==averageIterations){
                 System.out.println("#Average/Std dev. throughput: "+st.getAverage(true)+"/"+st.getDP(true));

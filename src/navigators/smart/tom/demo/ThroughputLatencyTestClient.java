@@ -19,9 +19,7 @@
 package navigators.smart.tom.demo;
 
 import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
-import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Hashtable;
@@ -57,11 +55,13 @@ public class ThroughputLatencyTestClient extends TOMSender implements Runnable {
     private long initialTimestamp[];
     private long max;
     private int measurementEpoch;
+    /** Receiver or the messages */
+    private int target;
           
     public ThroughputLatencyTestClient(int id, int exec, int argSize, int interval, TOMConfiguration conf) {
         this.exec = exec;
         this.argSize = argSize;
-        
+        this.target = id%conf.getN();
         this.currentId = id;
         this.myId = id;
 
@@ -81,7 +81,7 @@ public class ThroughputLatencyTestClient extends TOMSender implements Runnable {
         measurementEpoch = 0;
         
         try {
-			sm.acquire(); //burn aquire so that thread waits for release
+			sm.acquire(); //burn acquire so that thread waits for release
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 		} 
@@ -107,23 +107,23 @@ public class ThroughputLatencyTestClient extends TOMSender implements Runnable {
                 command1.putInt(-1);
                 currentId = -1;
 //                this.doTOMulticast(command1.array());
-                doTOUnicast(command1.array(),0,false);
+                doTOUnicast(command1.array(),target,false);
                 this.sm.acquire();	//wait for reply
                 
                 //create msg for # of ops request after signing (id has to be taken before
-                TOMMessage msg = sign(command1.array());
+                TOMMessage msg = createTOMMsg(command1.array());
 
                 measurementEpoch++;
 
                //generate exec signed messages
-               System.out.println("Generating and signing "+exec+" messages");
+               System.out.println(myId+": Generating and signing "+exec+" messages");
                 Hashtable generatedMsgs = new Hashtable();
                 currentId=myId;
                 int currId = currentId;
                 for (int i=0; i<exec; i++){
                     ByteBuffer buf = ByteBuffer.allocate(4 + argSize);
                     buf.putInt(currId + i);
-                    generatedMsgs.put(i, this.sign(buf.array()));
+                    generatedMsgs.put(i, this.createTOMMsg(buf.array()));
                }
 
                
@@ -131,7 +131,7 @@ public class ThroughputLatencyTestClient extends TOMSender implements Runnable {
                
                	//requests current number of ops processed by the servers
                 currentId = -1;
-                doTOUnicast(0,msg);
+                doTOUnicast(target,msg);
 //                this.TOMulticast(msg);
                 this.sm.acquire();
                 
@@ -149,7 +149,7 @@ public class ThroughputLatencyTestClient extends TOMSender implements Runnable {
                         System.out.println("("+myId+"-"+measurementEpoch+") Sending " + (i + 1) + " / " + exec);
                     }
                     last_send_instant = System.nanoTime();
-                    this.doTOUnicast(0,(TOMMessage)generatedMsgs.get(i));
+                    this.doTOUnicast(target,(TOMMessage)generatedMsgs.get(i));
                     
                     this.sm.acquire();
 
@@ -180,6 +180,8 @@ public class ThroughputLatencyTestClient extends TOMSender implements Runnable {
     }
 
     public void replyReceived(TOMMessage reply){
+    	
+//    	System.out.println("(" + myId + "-"+measurementEpoch+ ") Received Reply");
 
         long receive_instant = System.nanoTime();
 
@@ -243,7 +245,7 @@ public class ThroughputLatencyTestClient extends TOMSender implements Runnable {
 
 			}
         }else{
-            System.out.println("Discarding reply with id= "+id+" because currentId is "+currentId);
+//            System.out.println(myId +": Discarding reply with id= "+id+" because currentId is "+currentId);
         }
         this.mutex.release();
     }

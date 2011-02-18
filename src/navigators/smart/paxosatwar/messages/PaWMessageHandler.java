@@ -7,8 +7,11 @@ package navigators.smart.paxosatwar.messages;
 
 import static navigators.smart.paxosatwar.messages.MessageFactory.COLLECT;
 
+import java.io.ByteArrayInputStream;
 import java.io.DataInput;
+import java.io.DataInputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 import navigators.smart.communication.MessageHandler;
 import navigators.smart.paxosatwar.requesthandler.RequestHandler;
@@ -63,7 +66,9 @@ public class PaWMessageHandler implements MessageHandler{
         }
     }
 
-    public SystemMessage deserialise(Type type, DataInput in, Object result) throws ClassNotFoundException, IOException {
+    public SystemMessage deserialise(Type type, ByteBuffer buf, Object result) throws ClassNotFoundException, IOException {
+    	ByteArrayInputStream bais = new ByteArrayInputStream(buf.array());
+    	DataInputStream in = new DataInputStream(bais);
          switch(type){
             case PAXOS_MSG:
                 return new PaxosMessage(in);

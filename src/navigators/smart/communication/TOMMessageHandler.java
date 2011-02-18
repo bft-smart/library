@@ -18,10 +18,13 @@
 
 package navigators.smart.communication;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInput;
+import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
+import java.nio.ByteBuffer;
 
 import navigators.smart.statemanagment.SMMessage;
 import navigators.smart.tom.core.TOMLayer;
@@ -117,7 +120,9 @@ public class TOMMessageHandler implements MessageHandler<byte[]> {
         obOut.writeObject(msg.getContent());
     }
 
-    public SystemMessage deserialise(SystemMessage.Type type, DataInput in, byte[] verificationresult) throws IOException, ClassNotFoundException {
+    public SystemMessage deserialise(SystemMessage.Type type, ByteBuffer buf, byte[] verificationresult) throws IOException, ClassNotFoundException {
+    	ByteArrayInputStream bais = new ByteArrayInputStream(buf.array());
+    	DataInputStream in = new DataInputStream(bais);
         switch(type){
             case FORWARDED:
                 return new ForwardedMessage(in);
