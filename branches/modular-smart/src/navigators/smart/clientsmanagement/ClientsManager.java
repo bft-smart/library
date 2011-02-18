@@ -288,8 +288,6 @@ public class ClientsManager {
 //            if(Logger.debug)
 //               Logger.println("(ClientsManager.requestReceived) removed"+request);
         }
-        clientData.setLastMessageExecuted(request.getSequence());
-
         /******* END CLIENTDATA CRITICAL SECTION ******/
         clientData.clientLock.unlock();
     }

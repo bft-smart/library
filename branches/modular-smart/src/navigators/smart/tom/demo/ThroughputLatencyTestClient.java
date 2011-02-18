@@ -278,12 +278,10 @@ public class ThroughputLatencyTestClient extends TOMSender implements Runnable {
         int interval = new Integer(args[4]);
         boolean multicast = Boolean.parseBoolean(args[5]);
 
-        TOMConfiguration conf = new TOMConfiguration(startId);
         Thread[] t = new Thread[numThreads];
         
         for (int i=0; i<numThreads; i++){
-            TOMConfiguration conf1 = new TOMConfiguration(conf,startId);
-            //TOMConfiguration conf1 = new TOMConfiguration(startId);
+            TOMConfiguration conf1 = new TOMConfiguration(startId);
 
             t[i] = new Thread(new ThroughputLatencyTestClient(startId, numMsgs,
                 argSize, interval, conf1,multicast));

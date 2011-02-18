@@ -23,9 +23,9 @@ import navigators.smart.paxosatwar.executionmanager.Execution;
 import navigators.smart.paxosatwar.executionmanager.ExecutionManager;
 import navigators.smart.paxosatwar.executionmanager.ProofVerifier;
 import navigators.smart.paxosatwar.executionmanager.Round;
+import navigators.smart.paxosatwar.messages.Collect;
 import navigators.smart.paxosatwar.messages.CollectProof;
 import navigators.smart.paxosatwar.messages.MessageFactory;
-import navigators.smart.paxosatwar.messages.PaxosMessage;
 import navigators.smart.paxosatwar.messages.Proof;
 import navigators.smart.tom.util.Logger;
 import navigators.smart.tom.util.TOMConfiguration;
@@ -82,7 +82,7 @@ public class Proposer {
      *
      * @param msg the COLLECT message received
      */
-    public void deliver(PaxosMessage<CollectProof> msg) {
+    public void deliver(Collect msg) {
         if (manager.checkLimits(msg)) {
             collectReceived(msg);
         }
@@ -93,7 +93,7 @@ public class Proposer {
      *
      * @param msg the collectReceived message
      */
-    private void collectReceived(PaxosMessage<CollectProof> msg) {
+    private void collectReceived(Collect msg) {
         if(Logger.debug)
             Logger.println("(Proposer.collectReceived) COLLECT for "+
                          msg.getNumber()+","+msg.getRound()+" received.");

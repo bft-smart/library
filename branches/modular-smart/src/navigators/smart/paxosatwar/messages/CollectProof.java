@@ -21,7 +21,6 @@ package navigators.smart.paxosatwar.messages;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
-import navigators.smart.tom.core.messages.Serialisable;
 
 import navigators.smart.tom.util.SerialisationHelper;
 
@@ -29,7 +28,7 @@ import navigators.smart.tom.util.SerialisationHelper;
  * Proofs to freezed consensus. This class can contain proofs for two consensus.
  * The freezed one, and the next one (if have).
  */
-public final class CollectProof implements Serialisable {
+public final class CollectProof {
 
     // Proofs to freezed consensus
     private final FreezeProof proofIn;

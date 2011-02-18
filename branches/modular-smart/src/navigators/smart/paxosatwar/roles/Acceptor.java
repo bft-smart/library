@@ -37,6 +37,8 @@ import navigators.smart.paxosatwar.messages.FreezeProof;
 import navigators.smart.paxosatwar.messages.MessageFactory;
 import navigators.smart.paxosatwar.messages.PaxosMessage;
 import navigators.smart.paxosatwar.messages.Proof;
+import navigators.smart.paxosatwar.messages.Propose;
+import navigators.smart.paxosatwar.messages.VoteMessage;
 import navigators.smart.paxosatwar.requesthandler.RequestHandler;
 import navigators.smart.tom.core.TOMLayer;
 import navigators.smart.tom.core.timer.messages.RTCollect;
@@ -126,7 +128,7 @@ public class Acceptor {
      * 
      * @param msg Paxos messages delivered by the comunication layer
      */
-    public final void deliver(PaxosMessage<?> msg) {
+    public final void deliver(PaxosMessage msg) {
         if (manager.checkLimits(msg)) {
             processMessage(msg);
         }
@@ -138,7 +140,6 @@ public class Acceptor {
      *
      * @param msg The message to be processed
      */
-    @SuppressWarnings("unchecked")
 	public void processMessage(PaxosMessage msg) {
         Execution execution = manager.getExecution(msg.getNumber());
 
@@ -148,16 +149,16 @@ public class Acceptor {
 
         switch (msg.getPaxosType()) {
         case MessageFactory.PROPOSE:
-        	proposeReceived(round, msg);
+        	proposeReceived(round, (Propose) msg);
         	break;
         case MessageFactory.WEAK:
-        	weakAcceptReceived(round, msg.getSender(), msg.getValue());
+        	weakAcceptReceived(round, msg.getSender(), ((VoteMessage) msg).getValue());
         	break;
         case MessageFactory.STRONG:
-        	strongAcceptReceived(round, msg.getSender(), msg.getValue());
+        	strongAcceptReceived(round, msg.getSender(), ((VoteMessage) msg).getValue());
         	break;
         case MessageFactory.DECIDE:
-        	decideReceived(round, msg.getSender(), msg.getValue());
+        	decideReceived(round, msg.getSender(), ((VoteMessage) msg).getValue());
         	break;
         case MessageFactory.FREEZE:
         	freezeReceived(round, msg.getSender());
@@ -172,7 +173,7 @@ public class Acceptor {
      * 
      * @param msg The PROPOSE message to by processed
      */
-    public void proposeReceived(Round round, PaxosMessage<Proof> msg) {
+    public void proposeReceived(Round round, Propose msg) {
         byte[] value = msg.getValue();
         int sender = msg.getSender();
         long eid = round.getExecution().getId();
