@@ -18,9 +18,8 @@
 
 package navigators.smart.statemanagment;
 
-import java.io.DataInput;
-import java.io.DataOutput;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 import navigators.smart.tom.core.messages.SystemMessage;
 import navigators.smart.tom.util.SerialisationHelper;
@@ -37,6 +36,8 @@ public class SMMessage extends SystemMessage {
     private long eid; // Execution ID up to which the sender needs to be updated
     private int type; // Message type
     private int replica; // Replica that should send the state
+    
+    private transient byte[] serialisedstate;
 
     /**
      * Constructs a SMMessage
@@ -55,11 +56,11 @@ public class SMMessage extends SystemMessage {
         this.replica = replica;
     }
 
-    public SMMessage(DataInput in) throws IOException, ClassNotFoundException {
+    public SMMessage(ByteBuffer in) throws IOException, ClassNotFoundException {
         super(Type.SM_MSG, in);
-        eid = in.readLong();
-        type = in.readInt();
-        replica = in.readInt();
+        eid = in.getLong();
+        type = in.getInt();
+        replica = in.getInt();
         state = (TransferableState) SerialisationHelper.readObject(in);
     }
     /**
@@ -95,12 +96,23 @@ public class SMMessage extends SystemMessage {
     }
 
     @Override
-    public void serialise(DataOutput out) throws IOException{
+    public void serialise(ByteBuffer out) {
         super.serialise(out);
-        out.writeLong(eid);
-        out.writeInt(type);
-        out.writeInt(replica);
-        SerialisationHelper.writeObject(state,out);
+        out.putLong(eid);
+        out.putInt(type);
+        out.putInt(replica);
+        SerialisationHelper.writeByteArray(serialisedstate, out);
     }
+
+	/* (non-Javadoc)
+	 * @see navigators.smart.tom.core.messages.SystemMessage#getMsgSize()
+	 */
+	@Override
+	public int getMsgSize() {
+		if(serialisedstate == null){
+			serialisedstate = SerialisationHelper.writeObject(state);
+		}
+		return super.getMsgSize()+20+serialisedstate.length;
+	}
 
 }

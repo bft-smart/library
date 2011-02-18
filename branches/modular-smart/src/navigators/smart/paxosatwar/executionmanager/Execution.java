@@ -164,11 +164,11 @@ public class Execution {
      * @param value The decided value
      * @param round The round at which a desision was made
      */
-    public void decided(Round round, byte[] value) {
+    public void decided(Round round/*, byte[] value*/) {
         if (!decided) {
             decided = true;
             decisionRound = round.getNumber();
-            consensus.decided(value,decisionRound);
+            consensus.decided(round.propValue,decisionRound);
             consensus.executionTime = System.currentTimeMillis() - consensus.startTime;
             manager.getTOMLayer().decided(consensus);
         }

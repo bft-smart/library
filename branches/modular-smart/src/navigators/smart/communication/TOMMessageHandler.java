@@ -18,10 +18,7 @@
 
 package navigators.smart.communication;
 
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.DataInput;
-import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.nio.ByteBuffer;
@@ -39,7 +36,7 @@ import navigators.smart.tom.util.TOMUtil;
  * @author edualchieri
  * @author Christian Spann <christian.spann at uni-ulm.de>
  */
-public class TOMMessageHandler implements MessageHandler<byte[]> {
+public class TOMMessageHandler implements MessageHandler<byte[],SystemMessage> {
 
     private final TOMLayer tomLayer;
    
@@ -114,20 +111,19 @@ public class TOMMessageHandler implements MessageHandler<byte[]> {
      */
 
     //utility methods to convert TOMMessage to bytes and vice-versa
-    private void getBytes(TOMMessage msg, ObjectOutputStream obOut) throws Exception {
-        obOut.writeInt(msg.getSender());
-        obOut.writeInt(msg.getSequence());
-        obOut.writeObject(msg.getContent());
-    }
+//    private void getBytes(TOMMessage msg, ObjectOutputStream obOut) throws Exception {
+//        obOut.writeInt(msg.getSender());
+//        obOut.writeInt(msg.getSequence());
+//        obOut.writeObject(msg.getContent());
+//    }
 
     public SystemMessage deserialise(SystemMessage.Type type, ByteBuffer buf, byte[] verificationresult) throws IOException, ClassNotFoundException {
-    	ByteArrayInputStream bais = new ByteArrayInputStream(buf.array());
-    	DataInputStream in = new DataInputStream(bais);
+    	
         switch(type){
             case FORWARDED:
-                return new ForwardedMessage(in);
+                return new ForwardedMessage(buf);
             case SM_MSG:
-                return new SMMessage(in);
+                return new SMMessage(buf);
             default:
                 Logger.println("Received msg for unknown msg type");
                 return null;

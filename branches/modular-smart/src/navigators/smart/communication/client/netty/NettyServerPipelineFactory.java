@@ -41,7 +41,7 @@ public class NettyServerPipelineFactory implements ChannelPipelineFactory {
 
     NettyClientServerCommunicationSystemServerSide ncs;
     boolean isClient;
-    Hashtable sessionTable;
+    Hashtable<Integer,NettyClientServerSession> sessionTable;
     SecretKey authKey;
     int macLength;
     int signatureLength;
@@ -49,7 +49,7 @@ public class NettyServerPipelineFactory implements ChannelPipelineFactory {
     ReentrantReadWriteLock rl;
     ReentrantLock lock;
 
-    public NettyServerPipelineFactory(NettyClientServerCommunicationSystemServerSide ncs, boolean isClient, Hashtable sessionTable, SecretKey authKey, int macLength, TOMConfiguration conf, ReentrantReadWriteLock rl, int signatureLength, ReentrantLock lock) {
+    public NettyServerPipelineFactory(NettyClientServerCommunicationSystemServerSide ncs, boolean isClient, Hashtable<Integer,NettyClientServerSession> sessionTable, SecretKey authKey, int macLength, TOMConfiguration conf, ReentrantReadWriteLock rl, int signatureLength, ReentrantLock lock) {
         this.ncs = ncs;
         this.isClient = isClient;
         this.sessionTable = sessionTable;

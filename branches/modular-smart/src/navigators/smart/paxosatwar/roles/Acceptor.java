@@ -376,6 +376,16 @@ public class Acceptor {
      * @param round Round of the receives message
      * @param value Value sent in the message
      */
+    /**
+     * @param eid
+     * @param round
+     * @param value
+     */
+    /**
+     * @param eid
+     * @param round
+     * @param value
+     */
     private void computeWeak(long eid, Round round, byte[] value) {
         int weakAccepted = round.countWeak(value);
 
@@ -406,7 +416,7 @@ public class Acceptor {
 
                 if(Logger.debug)
                     Logger.println("(Acceptor.computeWeak) Deciding " + eid);
-                decide(round, value);
+                decide(round /*, value*/);
             }
         }
     }
@@ -447,7 +457,7 @@ public class Acceptor {
 
             if(Logger.debug)
                 Logger.println("(Acceptor.computeStrong) Deciding " + eid);
-            decide(round, value);
+            decide(round);
         }
     }
 
@@ -473,7 +483,7 @@ public class Acceptor {
 
             if(Logger.debug)
                 Logger.println("(Acceptor.decideReceived) Deciding " + eid);
-            decide(round, value);
+            decide(round/*, value*/);
         } else if (round.getExecution().isDecided()) {
             if(Logger.debug)
                 Logger.println("(Acceptor.decideReceived) consensus " + eid + " already decided.");
@@ -616,13 +626,13 @@ public class Acceptor {
      * @param round Round at which the decision is made
      * @param value The decided value (got from WEAK or STRONG messages)
      */
-    private void decide(Round round, byte[] value) {
+    private void decide(Round round /*, byte[] value*/) {
         leaderModule.decided(round.getExecution().getId(),
                 leaderModule.getLeader(round.getExecution().getId(),
                 round.getNumber()));
 
         round.getTimeoutTask().cancel();
-        round.getExecution().decided(round, value);
+        round.getExecution().decided(round/*, value*/);
     }
 
     /**

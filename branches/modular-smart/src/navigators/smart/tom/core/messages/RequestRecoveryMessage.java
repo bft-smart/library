@@ -18,10 +18,10 @@
 
 package navigators.smart.tom.core.messages;
 
-import java.io.DataInput;
-import java.io.DataOutput;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
+import navigators.smart.tom.util.SerialisationHelper;
 import navigators.smart.tom.util.TOMUtil;
 
 
@@ -40,20 +40,11 @@ public class RequestRecoveryMessage extends SystemMessage {
     /**
      * Creates a new instance of RecoveryRequestMessage
      */
-    public RequestRecoveryMessage(DataInput in) throws IOException, ClassNotFoundException {
+    public RequestRecoveryMessage(ByteBuffer in) throws IOException, ClassNotFoundException {
         super(Type.RR_MSG,in);
-        consId = in.readInt();
-        id = in.readInt();
-        int t = in.readInt();
-
-        if (t > 0) {
-
-            hash = new byte[t];
-            in.readFully(hash);
-        } else {
-
-            hash = null;
-        }
+        consId = in.getInt();
+        id = in.getInt();
+        hash = SerialisationHelper.readByteArray(in);
 
         msg = new TOMMessage(in);
     }
@@ -121,7 +112,7 @@ public class RequestRecoveryMessage extends SystemMessage {
     }
 
     /**
-     * Retrieves the hash of the request being recovered
+     * Retrieves the hash of the request being recovered. If there is no hash the length is 0
      * @return The hash of the request being recovered
      */
     public byte[] getHash() {
@@ -131,24 +122,29 @@ public class RequestRecoveryMessage extends SystemMessage {
     // The following are overwritten methods
 
     @Override
-    public void serialise(DataOutput out) throws IOException {
+    public void serialise(ByteBuffer out) {
 
         super.serialise(out);
-        out.writeInt(consId);
-        out.writeInt(id);
+        out.putInt(consId);
+        out.putInt(id);
 
-        if (hash != null) {
-            out.writeInt(hash.length);
-            out.write(hash);
-        } else {
-            out.writeInt(-1);
-        }
+        SerialisationHelper.writeByteArray(hash, out);
 
         msg.serialise(out);
     }
+    
+    
 
     @Override
     public String toString() {
         return "consId=" + getConsId() + ", type=" + getId() + ", from=" + getSender();
     }
+
+	/* (non-Javadoc)
+	 * @see navigators.smart.tom.core.messages.SystemMessage#getMsgSize()
+	 */
+	@Override
+	public int getMsgSize() {
+		return super.getMsgSize() + 12 + hash.length+msg.getMsgSize();
+	}
 }

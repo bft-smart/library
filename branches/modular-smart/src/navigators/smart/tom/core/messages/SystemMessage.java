@@ -19,11 +19,12 @@
 package navigators.smart.tom.core.messages;
 
 import java.io.DataInput;
-import java.io.DataOutput;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+
 
 /**
  * This is the super-class for all other kinds of messages created by JBP
@@ -32,7 +33,7 @@ import java.util.Map;
  * 
  */
 
-public abstract class SystemMessage{
+public abstract class SystemMessage implements Serialisable {
 
     public enum Type {
 
@@ -46,6 +47,7 @@ public abstract class SystemMessage{
         public final byte type;
 
         private static Map<Byte,Type> mapping = new HashMap<Byte, Type>();
+        
 
         static{
             for(Type type:values()){
@@ -64,6 +66,7 @@ public abstract class SystemMessage{
     
     public final Type type;
     protected final int sender; // ID of the process which sent the message
+    private byte[] msgdata; //serialised version of this message
 
     /**
      * Creates a new instance of SystemMessage
@@ -120,17 +123,18 @@ public abstract class SystemMessage{
      * @param out
      * @throws IOException
      */
-    public void serialise(DataOutput out) throws IOException{
-    	out.writeByte(type.type);
-    	out.writeInt(sender);
-    }
+//    public void serialise(DataOutput out) throws IOException{
+//    	out.writeByte(type.type);
+//    	out.writeInt(sender);
+//    }
 
-    public byte[] getBytes() throws IOException{
-    	ByteBuffer buf = ByteBuffer.allocate(getMsgSize());
-//        ByteArrayOutputStream baos = new ByteArrayOutputStream(248);
-//        DataOutputStream dos = new DataOutputStream(baos);
-        serialise(buf);
-        return buf.array();
+    public byte[] getBytes(){
+    	if(msgdata == null){
+    		ByteBuffer buf = ByteBuffer.allocate(getMsgSize());
+    		serialise(buf);
+    		msgdata = buf.array();
+    	}
+        return msgdata;
     }
 
     /**
@@ -139,5 +143,42 @@ public abstract class SystemMessage{
      */
 	public int getMsgSize() {
 		return 5;
+	}
+
+	/* (non-Javadoc)
+	 * @see java.lang.Object#hashCode()
+	 */
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + Arrays.hashCode(msgdata);
+		result = prime * result + sender;
+		result = prime * result + ((type == null) ? 0 : type.hashCode());
+		return result;
+	}
+
+	/* (non-Javadoc)
+	 * @see java.lang.Object#equals(java.lang.Object)
+	 */
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (!(obj instanceof SystemMessage))
+			return false;
+		SystemMessage other = (SystemMessage) obj;
+		if (!Arrays.equals(msgdata, other.msgdata))
+			return false;
+		if (sender != other.sender)
+			return false;
+		if (type == null) {
+			if (other.type != null)
+				return false;
+		} else if (!type.equals(other.type))
+			return false;
+		return true;
 	}
 }

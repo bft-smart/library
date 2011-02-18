@@ -18,10 +18,7 @@
 
 package navigators.smart.communication.server;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
+import java.nio.ByteBuffer;
 
 import navigators.smart.tom.core.messages.TOMMessage;
 
@@ -35,23 +32,19 @@ public class TestSerialization {
         // TODO code application logic here
         TOMMessage tm = new TOMMessage(0,0,new String("abc").getBytes());
 
-        ByteArrayOutputStream baos = new ByteArrayOutputStream(4);
-        DataOutputStream oos = new DataOutputStream(baos);
-
-        tm.serialise(oos);
-        oos.flush();
-        //oos.writeObject(tm);
+        
 
 
-        byte[] message = baos.toByteArray();
+        byte[] message = tm.getBytes();
         System.out.println(message.length);
         System.out.println(message);
 
-        ByteArrayInputStream bais = new ByteArrayInputStream(message);
-        DataInputStream ois = new DataInputStream(bais);
-
         //TOMMessage tm2 = (TOMMessage) ois.readObject();
-        TOMMessage tm2 = new TOMMessage(ois);
+        ByteBuffer buf = ByteBuffer.wrap(message);
+        
+        TOMMessage tm2 = new TOMMessage(buf);
+        
+        assert(tm.equals(tm2));
 //        tm2.readExternal(ois);
         
 //        System.out.println(new String(tm2.getContent()));

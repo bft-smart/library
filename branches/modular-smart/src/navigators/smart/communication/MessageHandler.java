@@ -18,7 +18,6 @@
 
 package navigators.smart.communication;
 
-import java.io.DataInput;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
@@ -29,7 +28,7 @@ import navigators.smart.tom.core.messages.SystemMessage;
  * @param <A> Resulttype of the verification of this message
  * @author Christian Spann <christian.spann at uni-ulm.de>
  */
-public interface MessageHandler<A> {
+public interface MessageHandler<A, M extends SystemMessage> {
 
     /**
      * Processes the SystemMessage sm if it is adressed to this handler
@@ -47,6 +46,6 @@ public interface MessageHandler<A> {
      * @throws ClassNotFoundException If there are Objects seralised within and the class of these objects is not found
      * @throws IOException If something else goes wrong upon deserialisation
      */
-    public SystemMessage deserialise(SystemMessage.Type type, ByteBuffer in, A result) throws ClassNotFoundException,IOException;
+    public M deserialise(SystemMessage.Type type, ByteBuffer in, A result) throws ClassNotFoundException,IOException;
 
 }

@@ -18,9 +18,8 @@
 
 package navigators.smart.tom.core.timer.messages;
 
-import java.io.DataInput;
-import java.io.DataOutput;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 import navigators.smart.tom.core.messages.SystemMessage;
 import navigators.smart.tom.util.SerialisationHelper;
@@ -35,6 +34,7 @@ public class RTMessage extends SystemMessage {
     private int rtType; // message type (RT_TIMEOUT, RT_COLLECT, RT_LEADER)
     private int reqId; // Request ID associated with the timeout
     private Object content; // content of this message. Varies according to the message type
+    private transient byte[] serialisedcontent;
 
     /**
      * Creates a new instance of RequestTimeoutMessage
@@ -42,10 +42,10 @@ public class RTMessage extends SystemMessage {
      * @throws IOException 
      * @throws ClassNotFoundException
      */
-    public RTMessage(DataInput in) throws IOException, ClassNotFoundException{
+    public RTMessage(ByteBuffer in) throws IOException, ClassNotFoundException{
         super(Type.RT_MSG, in);
-        rtType = in.readInt();
-        reqId = in.readInt();
+        rtType = in.getInt();
+        reqId = in.getInt();
         content = SerialisationHelper.readObject(in);
     }
 
@@ -90,12 +90,22 @@ public class RTMessage extends SystemMessage {
     // overwritten methods from the super-class
 
     @Override
-    public void serialise(DataOutput out) throws IOException{
+    public void serialise(ByteBuffer out) {
         super.serialise(out);
-
-        out.writeInt(rtType);
-        out.writeInt(reqId);
-       
-        SerialisationHelper.writeObject(content,out);
+        out.putInt(rtType);
+        out.putInt(reqId);
+        SerialisationHelper.writeByteArray(serialisedcontent, out);
+        
     }
+
+	/* (non-Javadoc)
+	 * @see navigators.smart.tom.core.messages.SystemMessage#getMsgSize()
+	 */
+	@Override
+	public int getMsgSize() {
+		if(serialisedcontent == null){
+			serialisedcontent = SerialisationHelper.writeObject(content);
+		}
+		return super.getMsgSize()+12+serialisedcontent.length;
+	}
 }

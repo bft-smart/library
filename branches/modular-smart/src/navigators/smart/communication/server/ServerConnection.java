@@ -24,6 +24,7 @@ import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
@@ -92,14 +93,14 @@ public class ServerConnection {
             //higher process ids connect to lower ones
             try {
                 initSocketChannel();
-                if(conf.getUseMACs() == 1){
-                    ptpverifier.authenticateAndEstablishAuthKey();
-                }
             } catch (UnknownHostException ex) {
                 log.log(Level.SEVERE, "cannot open listening port", ex);
             } catch (IOException ex) {
                 log.log(Level.SEVERE, "cannot open listening port", ex);
             }
+        }
+        if(conf.getUseMACs() == 1){
+            ptpverifier.authenticateAndEstablishAuthKey();
         }
         //else I have to wait a connection from the remote server
 
@@ -129,17 +130,23 @@ public class ServerConnection {
      * @throws InterruptedException
      */
     public final void send(byte[] data) throws InterruptedException {
-        if (useSenderThread) {
-            //only enqueue messages if there queue is not full
-            if (!outQueue.offer(data)) {
-                if(log.isLoggable(Level.FINE)){
-                    log.fine("out queue for "+remoteId+" full (message discarded).");
-                }
-            }
+        if(socketchannel != null){
+	    	if (useSenderThread) {
+	            //only enqueue messages if there queue is not full
+	            if (!outQueue.offer(data)) {
+	                if(log.isLoggable(Level.FINE)){
+	                    log.fine("out queue for "+remoteId+" full (message discarded).");
+	                }
+	            }
+	        } else {
+	            sendLock.lock();
+	            sendBytes(data);
+	            sendLock.unlock();
+	        }
         } else {
-            sendLock.lock();
-            sendBytes(data);
-            sendLock.unlock();
+        	if(log.isLoggable(Level.FINER)){
+        		log.finer("Connection to "+remoteId+" currently not established - not sending msg to it");
+        	}
         }
     }
 
@@ -152,11 +159,14 @@ public class ServerConnection {
         do {            
             if (socketchannel != null /*&& socketOutStream != null*/) {
                 try {
-                	ByteBuffer intbuf = ByteBuffer.allocate(4);
-                	intbuf.putInt(messageData.length);
-                	intbuf.flip();
-                    socketchannel.write(intbuf);
-                    socketchannel.write(ByteBuffer.wrap(messageData));
+                	ByteBuffer buf = ByteBuffer.allocate(4);
+                	buf.putInt(messageData.length);
+                	buf.flip();
+                    socketchannel.write(buf);
+                    buf = ByteBuffer.wrap(messageData);
+                    while(buf.hasRemaining()){
+                    	socketchannel.write(buf);
+                    }
                     if (conf.getUseMACs()==1) {
                         socketchannel.write(ByteBuffer.wrap(ptpverifier.generateHash(messageData)));
                     }
@@ -198,15 +208,8 @@ public class ServerConnection {
             }
 
             if (socketchannel != null) {
-                if(log.isLoggable(Level.INFO)){
+                if(log.isLoggable(Level.INFO))
                   log.fine("Reconnected to "+remoteId);
-                }
-//                try {
-//                    socketOutStream = new DataOutputStream(socket.getOutputStream());
-//                    socketInStream = new DataInputStream(socket.getInputStream());
-//                } catch (IOException ex) {
-//                    log.log(Level.SEVERE, null, ex);
-//                }
             }
             if(conf.getUseMACs()==1){
                 ptpverifier.authenticateAndEstablishAuthKey();
@@ -311,7 +314,9 @@ public class ServerConnection {
                     	buf.clear();
                     	buf.limit(4);
                         //read data length
-                    	socketchannel.read(buf);
+                    	if( socketchannel.read(buf) == -1){
+                    		throw new IOException("Reached eof while waiting for data");
+                    	}
                     	
                     	
                     	buf.flip();
@@ -324,6 +329,7 @@ public class ServerConnection {
 //                        	log.severe("Datalength got huge: "+dataLength);
 //                        }
                         if(buf.capacity()<dataLength){
+                        	log.info("Adjusting buffer to new max datalength: "+dataLength);
                         	buf = ByteBuffer.allocate(dataLength);
                         	data = buf.array();
                         } else {
@@ -334,7 +340,11 @@ public class ServerConnection {
 //                        buf = ByteBuffer.wrap(data);
                         buf.rewind();
                         //read data
-                        socketchannel.read(buf);
+                        while(buf.hasRemaining()){
+                        	if(socketchannel.read(buf) == -1){
+                        		throw new IOException("Reached eof while waiting for data");
+                        	}
+                        }
                         buf.rewind();
 
                         //read mac
@@ -363,9 +373,11 @@ public class ServerConnection {
                         } else {
                         	//TODO: violation of authentication... we should do something
 //                        	log.log(Level.SEVERE, "WARNING: Violation of authentication in "+ Arrays.toString(data) +" received from "+remoteId);
-                        	SystemMessage.Type type = SystemMessage.Type.getByByte(data[0]);
-                        	SystemMessage sm = msgHandlers.get(type).deserialise(type,buf, verificationresult);
-                        	log.severe("Received bad "+sm + " from "+remoteId);
+//                        	SystemMessage.Type type = SystemMessage.Type.getByByte(data[0]);
+//                        	EbawaType type2 = EbawaType.getByByte(data[1]);
+                        	log.severe("Received bad "+Arrays.toString(Arrays.copyOfRange(buf.array(), 0, buf.limit()>100 ? 100 : buf.limit())) + " from "+remoteId);
+                        	log.severe("Limit is: "+ buf.limit());
+//                        	SystemMessage sm = msgHandlers.get(type).deserialise(type,buf, verificationresult);
                         }
 
                         /*

@@ -19,7 +19,6 @@
 package navigators.smart.tom.core;
 
 import java.util.Arrays;
-import java.util.List;
 import java.util.concurrent.Semaphore;
 
 import navigators.smart.tom.core.messages.RequestRecoveryMessage;
@@ -83,7 +82,7 @@ public class RequestRecover {
         mutex.release();
     }
 
-    public TOMMessage checkWithoutWait(List<RequestRecoveryMessage> l, byte[] h) {
+//    public TOMMessage checkWithoutWait(List<RequestRecoveryMessage> l, byte[] h) {
         /*
         TOMMessage result = null;
 
@@ -129,10 +128,10 @@ public class RequestRecover {
 
         return result;
          */
-        return null;
-    }
+//        return null;
+//    }
 
-    public void check(List<RequestRecoveryMessage> l) {
+//    public void check(List<RequestRecoveryMessage> l) {
         /*
         try{
 
@@ -196,26 +195,26 @@ public class RequestRecover {
 
         this.mutex.release();
          */
-    }
+//    }
 
-    private TOMMessage getFromCandidates(List<TOMMessage> candidates) {
-        TOMMessage comp = null;
-
-        for (int i = 0; i < candidates.size(); i++) {
-            comp = candidates.get(i);
-            int c = 1;
-            for (int j = i + 1; j < candidates.size(); j++) {
-                if (comp.equals(candidates.get(j))) {
-                    c++;
-                }
-            }
-            if (c > conf.getF()) {
-                return comp;
-            }
-        }
-
-        return null;
-    }
+//    private TOMMessage getFromCandidates(List<TOMMessage> candidates) {
+//        TOMMessage comp = null;
+//
+//        for (int i = 0; i < candidates.size(); i++) {
+//            comp = candidates.get(i);
+//            int c = 1;
+//            for (int j = i + 1; j < candidates.size(); j++) {
+//                if (comp.equals(candidates.get(j))) {
+//                    c++;
+//                }
+//            }
+//            if (c > conf.getF()) {
+//                return comp;
+//            }
+//        }
+//
+//        return null;
+//    }
 
     /*
     public void receive(TOMMessage msg) {

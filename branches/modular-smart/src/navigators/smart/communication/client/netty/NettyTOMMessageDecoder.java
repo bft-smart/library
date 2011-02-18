@@ -18,10 +18,7 @@
 
 package navigators.smart.communication.client.netty;
 
-import java.io.ByteArrayInputStream;
-import java.io.DataInput;
-import java.io.DataInputStream;
-import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
@@ -41,7 +38,6 @@ import navigators.smart.tom.util.Configuration;
 import navigators.smart.tom.util.TOMConfiguration;
 
 import org.jboss.netty.buffer.ChannelBuffer;
-import org.jboss.netty.buffer.ChannelBufferInputStream;
 import org.jboss.netty.channel.Channel;
 import org.jboss.netty.channel.ChannelHandlerContext;
 import org.jboss.netty.channel.ChannelPipelineCoverage;
@@ -104,24 +100,24 @@ public class NettyTOMMessageDecoder extends FrameDecoder {
         if (buffer.readableBytes() < 4) {
             return null;
         }
+        buffer.markReaderIndex();
 
-        int dataLength = buffer.getInt(buffer.readerIndex());
+        int dataLength = buffer.readInt();
         //establish connection
         if(!connected){
         	// we got id of the client, skip bytes, init connection and finish
-        	buffer.skipBytes(4);
         	initConnection(dataLength, channel);
         	connected = true;
         	return null;
         }
 
         // Wait until the whole data is available.
-        if (buffer.readableBytes() < dataLength + 4) {
+        if (buffer.readableBytes() < dataLength ) {
+            buffer.resetReaderIndex();
+
             return null;
         }
 
-        // Skip the length field because we know it already.
-        buffer.skipBytes(4);
 
         //calculate lenght without signed indication bit
         int totalLength = dataLength-1;
@@ -139,14 +135,13 @@ public class NettyTOMMessageDecoder extends FrameDecoder {
         if (useMAC)
             authLength += macSize;
         
-        buffer.markReaderIndex();
+//        buffer.markReaderIndex();
         
         byte[] data = new byte[totalLength-authLength];
         buffer.readBytes(data);
         
-        buffer.resetReaderIndex();
-        try {
-	        TOMMessage sm = new TOMMessage(new ChannelBufferInputStream(buffer));
+//        buffer.resetReaderIndex();
+	        TOMMessage sm = new TOMMessage(ByteBuffer.wrap(data));
 	        
 	        byte[] digest = null;
 	        if (useMAC){
@@ -259,11 +254,6 @@ public class NettyTOMMessageDecoder extends FrameDecoder {
            
         return sm;
     }
-        catch (IOException ex) {
-            Logger.getLogger(NettyTOMMessageDecoder.class.getName()).log(Level.SEVERE, null, ex);
-        }
-        return null;
-    }
      
      public void initConnection(int sender, Channel channel ) {
 		try {
@@ -291,7 +281,7 @@ public class NettyTOMMessageDecoder extends FrameDecoder {
 	boolean verifyMAC(int id, byte[] data, byte[] digest){
         //long startInstant = System.nanoTime();
         rl.readLock().lock();
-        Mac macReceive = ((NettyClientServerSession)sessionTable.get(id)).getMacReceive();
+        Mac macReceive = sessionTable.get(id).getMacReceive();
         rl.readLock().unlock();
         boolean result = Arrays.equals(macReceive.doFinal(data), digest);
         //long duration = System.nanoTime() - startInstant;
@@ -302,7 +292,7 @@ public class NettyTOMMessageDecoder extends FrameDecoder {
     boolean verifySignature(int id, byte[] data, byte[] digest){
          //long startInstant = System.nanoTime();
         rl.readLock().lock();
-        PublicKey pk = ((NettyClientServerSession)sessionTable.get(id)).getPublicKey();
+        PublicKey pk = sessionTable.get(id).getPublicKey();
         rl.readLock().unlock();
         //long duration = System.nanoTime() - startInstant;
         //st.store(duration);
