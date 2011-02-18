@@ -35,143 +35,159 @@ import navigators.smart.communication.MessageHandler;
 import navigators.smart.tom.core.messages.SystemMessage;
 import navigators.smart.tom.util.TOMConfiguration;
 
-
 /**
- *
+ * 
  * @author alysson
  */
 public class ServersCommunicationLayer extends Thread {
 
-    private TOMConfiguration conf;
-    private LinkedBlockingQueue<SystemMessage> inQueue;
-    private ServerConnection[] connections;
-    private ServerSocket serverSocket;
-    private int me;
-    private boolean doWork = true;
-    private final Map<SystemMessage.Type,MessageHandler> msgHandlers;
-    private MessageVerifierFactory<PTPMessageVerifier> verifierfactory;
-    /** Holds the global verifier reference*/
-    private GlobalMessageVerifier<SystemMessage> globalverifier;
-    private CountDownLatch latch;
+	private TOMConfiguration conf;
+	private LinkedBlockingQueue<SystemMessage> inQueue;
+	private ServerConnection[] connections;
+	private ServerSocket serverSocket;
+	private int me;
+	private boolean doWork = true;
+	private final Map<SystemMessage.Type, MessageHandler> msgHandlers;
+	private MessageVerifierFactory<PTPMessageVerifier> verifierfactory;
+	/** Holds the global verifier reference */
+	private GlobalMessageVerifier<SystemMessage> globalverifier;
+	private CountDownLatch latch;
 
-    public ServersCommunicationLayer(TOMConfiguration conf, LinkedBlockingQueue<SystemMessage> inQueue, Map<SystemMessage.Type,MessageHandler> msgHandlers, MessageVerifierFactory<PTPMessageVerifier> verifierfactory, GlobalMessageVerifier<SystemMessage> globalverifier) throws Exception {
-        this.conf = conf;
-        this.inQueue = inQueue;
-        this.me = conf.getProcessId();
-        this.msgHandlers = msgHandlers;
-        this.verifierfactory = verifierfactory;
-        this.globalverifier = globalverifier;
-        connections = new ServerConnection[conf.getN()];
-        latch = new CountDownLatch(conf.getN()-1);	 //create latch to wait for all connections
-        //connect to all lower ids than me, the rest will contact us
-        for (int i = 0; i < me; i++) {
-            PTPMessageVerifier verifier = null;
-//            if (i != me) {
-                if(verifierfactory != null){
-                	verifier = verifierfactory.generateMessageVerifier();
-                }
-                connections[i] = new ServerConnection(conf, null, i, inQueue,msgHandlers, verifier, globalverifier,latch);
-//            } 
-        }
+	public ServersCommunicationLayer(TOMConfiguration conf,
+			LinkedBlockingQueue<SystemMessage> inQueue,
+			Map<SystemMessage.Type, MessageHandler> msgHandlers,
+			MessageVerifierFactory<PTPMessageVerifier> verifierfactory,
+			GlobalMessageVerifier<SystemMessage> globalverifier)
+			throws Exception {
+		this.conf = conf;
+		this.inQueue = inQueue;
+		this.me = conf.getProcessId();
+		this.msgHandlers = msgHandlers;
+		this.verifierfactory = verifierfactory;
+		this.globalverifier = globalverifier;
+		connections = new ServerConnection[conf.getN()];
+		latch = new CountDownLatch(conf.getN() - 1); // create latch to wait for
+														// all connections
+		// connect to all lower ids than me, the rest will contact us
+		for (int i = 0; i < me; i++) {
+			PTPMessageVerifier verifier = null;
+			// if (i != me) {
+			if (verifierfactory != null) {
+				verifier = verifierfactory.generateMessageVerifier();
+			}
+			connections[i] = new ServerConnection(conf, null, i, inQueue,
+					msgHandlers, verifier, globalverifier, latch);
+			// }
+		}
 
-        serverSocket = new ServerSocket(conf.getPort(conf.getProcessId()));        
-        serverSocket.setSoTimeout(10000);
-        serverSocket.setReuseAddress(true);
-        
-        start();
-        latch.await(); //wait for all connections on startup
-    }
+		serverSocket = new ServerSocket(conf.getPort(conf.getProcessId()));
+		serverSocket.setSoTimeout(10000);
+		serverSocket.setReuseAddress(true);
 
-    public final void send(int[] targets, SystemMessage sm) {
+		start();
+		latch.await(); // wait for all connections on startup
+	}
 
-        byte[] data = null;
-        try {
-            data = sm.getBytes();
-        } catch (IOException ex) {
-            Logger.getLogger(ServerConnection.class.getName()).log(Level.SEVERE, null, ex);
-        }
+	public final void send(int[] targets, SystemMessage sm) {
 
-        for (int i : targets) {
-            //br.ufsc.das.tom.util.Logger.println("(ServersCommunicationLayer.send) Sending msg to replica "+i);
-            try {
-                if (i == me) {
-                    inQueue.put(sm);
-                } else {
-                    connections[i].send(data);
-                }
-            } catch (InterruptedException ex) {
-                ex.printStackTrace();
-            }
-        }
-        //br.ufsc.das.tom.util.Logger.println("(ServersCommunicationLayer.send) Finished sending messages to replicas");
-    }
+		byte[] data = null;
+		try {
+			data = sm.getBytes();
+		} catch (IOException ex) {
+			Logger.getLogger(ServerConnection.class.getName()).log(
+					Level.SEVERE, null, ex);
+		}
 
-    public void shutdown() {
-        doWork = false;
+		for (int i : targets) {
+			// br.ufsc.das.tom.util.Logger.println("(ServersCommunicationLayer.send) Sending msg to replica "+i);
+			try {
+				if (i == me) {
+					inQueue.put(sm);
+				} else {
+					connections[i].send(data);
+				}
+			} catch (InterruptedException ex) {
+				ex.printStackTrace();
+			}
+		}
+		// br.ufsc.das.tom.util.Logger.println("(ServersCommunicationLayer.send) Finished sending messages to replicas");
+	}
 
-        for (int i = 0; i < connections.length; i++) {
-            if (connections[i] != null) {
-                connections[i].shutdown();
-            }
-        }
-    }
+	public void shutdown() {
+		doWork = false;
 
-    @Override
-    public void run() {
-        while (doWork) {
-            try {
-                Socket newSocket = serverSocket.accept();
-                ServersCommunicationLayer.setSocketOptions(newSocket);
-                int remoteId = new DataInputStream(newSocket.getInputStream()).readInt();
-                if (remoteId >= 0 && remoteId < connections.length) {
-                    if (connections[remoteId] == null) {
-                        //first time that this connection is being established
-                    	PTPMessageVerifier verifier = null;
-                    	 if(verifierfactory != null){
-                         	verifier = verifierfactory.generateMessageVerifier();
-                         }
-                        connections[remoteId] = new ServerConnection(conf, newSocket, remoteId, inQueue,msgHandlers,verifier,globalverifier,latch);
-                    } else {
-                        //reconnection
-                        connections[remoteId].reconnect(newSocket);
-                    }
-                } else {
-                    newSocket.close();
-                }
-            } catch (SocketTimeoutException ex) {
-                //timeout on the accept... do nothing
-            } catch (IOException ex) {
-                Logger.getLogger(ServersCommunicationLayer.class.getName()).log(Level.SEVERE, null, ex);
-            }
-        }
+		for (int i = 0; i < connections.length; i++) {
+			if (connections[i] != null) {
+				connections[i].shutdown();
+			}
+		}
+	}
 
-        try {
-            serverSocket.close();
-        } catch (IOException ex) {
-            Logger.getLogger(ServersCommunicationLayer.class.getName()).log(Level.SEVERE, null, ex);
-        }
+	@Override
+	public void run() {
+		while (doWork) {
+			try {
+				Socket newSocket = serverSocket.accept();
+				ServersCommunicationLayer.setSocketOptions(newSocket);
+				int remoteId = new DataInputStream(newSocket.getInputStream())
+						.readInt();
+				if (remoteId >= 0 && remoteId < connections.length) {
+					if (connections[remoteId] == null) {
+						// first time that this connection is being established
+						PTPMessageVerifier verifier = null;
+						if (verifierfactory != null) {
+							verifier = verifierfactory
+									.generateMessageVerifier();
+						}
+						connections[remoteId] = new ServerConnection(conf,
+								newSocket, remoteId, inQueue, msgHandlers,
+								verifier, globalverifier, latch);
+					} else {
+						// reconnection
+						connections[remoteId].reconnect(newSocket);
+					}
+				} else {
+					newSocket.close();
+				}
+			} catch (SocketTimeoutException ex) {
+				// timeout on the accept... do nothing
+			} catch (IOException ex) {
+				Logger.getLogger(ServersCommunicationLayer.class.getName())
+						.log(Level.SEVERE, null, ex);
+			}
+		}
 
-        Logger.getLogger(ServersCommunicationLayer.class.getName()).log(Level.INFO, "Server communication layer stoped.");
-    }
+		try {
+			serverSocket.close();
+		} catch (IOException ex) {
+			Logger.getLogger(ServersCommunicationLayer.class.getName()).log(
+					Level.SEVERE, null, ex);
+		}
 
-    public static void setSocketOptions(Socket socket) {
-        try {
-            socket.setTcpNoDelay(true);
-        } catch (SocketException ex) {
-            Logger.getLogger(ServersCommunicationLayer.class.getName()).log(Level.SEVERE, null, ex);
-        }
-    }
+		Logger.getLogger(ServersCommunicationLayer.class.getName()).log(
+				Level.INFO, "Server communication layer stoped.");
+	}
 
-    @Override
-    public String toString() {
-        String str = "inQueue="+inQueue.toString();
+	public static void setSocketOptions(Socket socket) {
+		try {
+			socket.setTcpNoDelay(true);
+		} catch (SocketException ex) {
+			Logger.getLogger(ServersCommunicationLayer.class.getName()).log(
+					Level.SEVERE, null, ex);
+		}
+	}
 
-        for(int i=0; i<connections.length; i++) {
-            if(connections[i] != null) {
-                str += ", connections["+i+"]: outQueue="+connections[i].outQueue;
-            }
-        }
+	@Override
+	public String toString() {
+		String str = "inQueue=" + inQueue.toString();
 
-        return str;
-    }
+		for (int i = 0; i < connections.length; i++) {
+			if (connections[i] != null) {
+				str += ", connections[" + i + "]: outQueue="
+						+ connections[i].outQueue;
+			}
+		}
+
+		return str;
+	}
 }

@@ -60,34 +60,37 @@ public class NettyTOMMessageDecoder extends FrameDecoder {
     //private final int BENCHMARK_PERIOD = 10000;
 
     private boolean isClient;
-    private Hashtable sessionTable;
+    private Hashtable<Integer, NettyClientServerSession> sessionTable;
     private SecretKey authKey;
     //private Storage st;
     private int macSize;
     private int signatureSize;
     private Configuration conf;
-    private boolean firstTime;
+//    private boolean firstTime;
     private ReentrantReadWriteLock rl;
-    private long numReceivedMsgs = 0;
-    private long lastMeasurementStart = 0;
-    private long max=0;
+//    private long numReceivedMsgs = 0;
+//    private long lastMeasurementStart = 0;
+//    private long max=0;
     private Signature signatureEngine;
     //private Storage st;
-    private int count = 0;
+//    private int count = 0;
     private boolean useMAC;
     
-    public NettyTOMMessageDecoder(boolean isClient, Hashtable sessionTable, SecretKey authKey, int macLength, Configuration conf, ReentrantReadWriteLock rl, int signatureLength, boolean useMAC){
+    private boolean connected;
+    
+    public NettyTOMMessageDecoder(boolean isClient, Hashtable<Integer,NettyClientServerSession> sessionTable, SecretKey authKey, int macLength, Configuration conf, ReentrantReadWriteLock rl, int signatureLength, boolean useMAC){
         this.isClient = isClient;
         this.sessionTable = sessionTable;
         this.authKey = authKey;
         //this.st = new Storage(benchmarkPeriod);
         this.macSize = macLength;
         this.conf = conf;
-        this.firstTime = true;
+//        this.firstTime = true;
         this. rl = rl;
         this.signatureSize = signatureLength;
         //this.st = new Storage(BENCHMARK_PERIOD);
         this.useMAC = useMAC;
+        connected= isClient; //servers wait for connections, clients establish them and are connected by default
         navigators.smart.tom.util.Logger.println("new NettyTOMMessageDecoder!!, isClient="+isClient);
     }
 
@@ -101,6 +104,14 @@ public class NettyTOMMessageDecoder extends FrameDecoder {
         }
 
         int dataLength = buffer.getInt(buffer.readerIndex());
+        //establish connection
+        if(!connected){
+        	// we got id of the client, skip bytes, init connection and finish
+        	buffer.skipBytes(4);
+        	initConnection(dataLength, channel);
+        	connected = true;
+        	return null;
+        }
 
         // Wait until the whole data is available.
         if (buffer.readableBytes() < dataLength + 4) {
@@ -146,18 +157,9 @@ public class NettyTOMMessageDecoder extends FrameDecoder {
         TOMMessage sm = null;
         try {
             ByteArrayInputStream bais = new ByteArrayInputStream(data);
-//            if (hasClassHeader==0){
-//                dis = new ObjectInputStream(bais);
-//                sm = new TOMMessage(ois);
-//                sm.readExternal(dis);
-//            }
-//            else {
                 //if class headers were serialized
                 dis = new DataInputStream(bais);
-                //throw away type byte
-                dis.readByte();
                 sm = new TOMMessage(dis);
-//            }
             //TOMMessage sm = (TOMMessage) ois.readObject();
             sm.serializedMessage = data;
             if (signed==1){
@@ -175,14 +177,6 @@ public class NettyTOMMessageDecoder extends FrameDecoder {
                         return null;
                     }
                 }
-                /*
-                if (signed==1){                    
-                    if (!verifySignature(sm.getSender(), data, signature)){
-                        Logger.getLogger(NettyTOMMessageDecoder.class.getName()).log(Level.WARNING, "Signature error: message discarded");
-                        return null;
-                    }                    
-                }
-                 */
             }
             else { /* it's a server */
                 //verifies MAC if it's not the first message received from the client
@@ -223,32 +217,15 @@ public class NettyTOMMessageDecoder extends FrameDecoder {
                 }
                 else {
                     rl.readLock().unlock();
-                    //creates MAC/publick key stuff if it's the first message received from the client
-                    navigators.smart.tom.util.Logger.println("Creating MAC/public key stuff, first message from client"+sm.getSender());
-                    navigators.smart.tom.util.Logger.println("sessionTable size="+sessionTable.size());
-                    Mac macSend = Mac.getInstance(conf.getHmacAlgorithm());
-                    macSend.init(authKey);
-                    Mac macReceive = Mac.getInstance(conf.getHmacAlgorithm());
-                    macReceive.init(authKey);
-                    NettyClientServerSession cs = new NettyClientServerSession(channel,macSend,macReceive,sm.getSender(),TOMConfiguration.getRSAPublicKey(sm.getSender()), new ReentrantLock());
-                    rl.writeLock().lock();
-                    sessionTable.put(sm.getSender(), cs);
-                    System.out.println("#active clients "+sessionTable.size());
-                    rl.writeLock().unlock();
-                    if (useMAC){
-                        if (!verifyMAC(sm.getSender(), data, digest)){
-                            Logger.getLogger(NettyTOMMessageDecoder.class.getName()).log(Level.WARNING, "MAC error: message discarded");
-                            return null;
-                        }
-                    }
-                    if (signed==1) {
-                        /* this is now done by the TOMLayer
-                        if (!verifySignature(sm.getSender(), data, digest)){
-                            Logger.getLogger(NettyTOMMessageDecoder.class.getName()).log(Level.WARNING, "Signature error: message discarded");
-                            return null;
-                        }
-                        */
-                    }
+//                    initConnection(sm.getSender(),channel);
+//                    if (useMAC){
+//                        if (!verifyMAC(sm.getSender(), data, digest)){
+//                            Logger.getLogger(NettyTOMMessageDecoder.class.getName()).log(Level.WARNING, "MAC error: message discarded");
+//                            return null;
+//                        }
+//                    }
+                    Logger.getLogger(NettyTOMMessageDecoder.class.getName()).log(Level.WARNING, "Got message from unestablished connection");
+                   
                 }
             }
 /*
@@ -275,19 +252,36 @@ public class NettyTOMMessageDecoder extends FrameDecoder {
            
         return sm;
     }
-        catch (InvalidKeyException ex) {
-            Logger.getLogger(NettyTOMMessageDecoder.class.getName()).log(Level.SEVERE, null, ex);
-        }        catch (NoSuchAlgorithmException ex) {
-            Logger.getLogger(NettyTOMMessageDecoder.class.getName()).log(Level.SEVERE, null, ex);
-//        }        catch (ClassNotFoundException ex) {
-//            Logger.getLogger(NettyTOMMessageDecoder.class.getName()).log(Level.SEVERE, null, ex);
-        }        catch (IOException ex) {
+        catch (IOException ex) {
             Logger.getLogger(NettyTOMMessageDecoder.class.getName()).log(Level.SEVERE, null, ex);
         }
         return null;
     }
      
-     boolean verifyMAC(int id, byte[] data, byte[] digest){
+     public void initConnection(int sender, Channel channel ) {
+		try {
+			// creates MAC/publick key stuff if it's the first message received
+			// from the client
+			navigators.smart.tom.util.Logger.println("Creating MAC/public key stuff, first message from client" + sender);
+			navigators.smart.tom.util.Logger.println("sessionTable size=" + sessionTable.size());
+			Mac macSend = Mac.getInstance(conf.getHmacAlgorithm());
+			macSend.init(authKey);
+			Mac macReceive = Mac.getInstance(conf.getHmacAlgorithm());
+			macReceive.init(authKey);
+			NettyClientServerSession cs = new NettyClientServerSession(channel, macSend, macReceive, sender, TOMConfiguration
+					.getRSAPublicKey(sender), new ReentrantLock());
+			rl.writeLock().lock();
+			sessionTable.put(sender, cs);
+			System.out.println("#active clients " + sessionTable.size());
+			rl.writeLock().unlock();
+		} catch (InvalidKeyException ex) {
+			Logger.getLogger(NettyTOMMessageDecoder.class.getName()).log(Level.SEVERE, null, ex);
+		} catch (NoSuchAlgorithmException ex) {
+			Logger.getLogger(NettyTOMMessageDecoder.class.getName()).log(Level.SEVERE, null, ex);
+		}    
+	}
+
+	boolean verifyMAC(int id, byte[] data, byte[] digest){
         //long startInstant = System.nanoTime();
         rl.readLock().lock();
         Mac macReceive = ((NettyClientServerSession)sessionTable.get(id)).getMacReceive();
@@ -318,7 +312,7 @@ public class NettyTOMMessageDecoder extends FrameDecoder {
      * @return the signature
      */
     public boolean verifySignatureAux(PublicKey key, byte[] message, byte[] signature) {
-        long startTime = System.nanoTime();
+//        long startTime = System.nanoTime();
         try {
             if (signatureEngine == null) {
                 signatureEngine = Signature.getInstance("SHA1withRSA");                
