@@ -71,9 +71,14 @@ public class Consensus<E> {
         this.deserializedDecision = deserialised;
     }
 
+    /**
+     * Blocks until a decision has been reached. Returns null if the decision was not yet
+     * deserialized, otherwise it returns the decision  
+     * @return The deserialized decided value, null if the decision wasn|t deserialised yet.
+     */
     public E getDeserializedDecision() {
         synchronized (sync) {
-            if (deserializedDecision == null) {
+            if (deserializedDecision == null && decision == null) {
                 waitForPropose();
             }
         }
