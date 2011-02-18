@@ -21,6 +21,8 @@ package navigators.smart.communication;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Hashtable;
 import java.util.Map;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -55,7 +57,7 @@ import navigators.smart.tom.util.TOMConfiguration;
 
     //public static int IN_QUEUE_SIZE = 200;
 
-    private LinkedBlockingQueue<SystemMessage> inQueue = null;//new LinkedBlockingQueue<SystemMessage>(IN_QUEUE_SIZE);
+    private BlockingQueue<SystemMessage> inQueue = null;//new LinkedBlockingQueue<SystemMessage>(IN_QUEUE_SIZE);
 
     protected Map<SystemMessage.Type,MessageHandler> msgHandlers = new Hashtable<SystemMessage.Type, MessageHandler>();
 
@@ -72,7 +74,7 @@ import navigators.smart.tom.util.TOMConfiguration;
     public ServerCommunicationSystem(TOMConfiguration conf) throws Exception {
         super("Server CS");
 
-        inQueue = new LinkedBlockingQueue<SystemMessage>(conf.getInQueueSize());
+        inQueue = new ArrayBlockingQueue<SystemMessage>(conf.getInQueueSize());
         
         //create a new conf, with updated port number for servers
         TOMConfiguration serversConf = new TOMConfiguration(conf.getProcessId(),
@@ -97,6 +99,12 @@ import navigators.smart.tom.util.TOMConfiguration;
         clientsConn = CommunicationSystemServerSideFactory.getCommunicationSystemServerSide(conf);
 
         //start();
+    }
+    
+    @Override
+    public void start(){
+    	serversConn.start();
+    	super.start();
     }
 
     @SuppressWarnings("unchecked")

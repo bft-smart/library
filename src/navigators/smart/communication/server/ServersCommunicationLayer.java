@@ -29,6 +29,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.Map;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.logging.Level;
@@ -43,9 +44,11 @@ import navigators.smart.tom.util.TOMConfiguration;
  * @author alysson
  */
 public class ServersCommunicationLayer extends Thread {
+	
+	private static final Logger log = Logger.getLogger(ServersCommunicationLayer.class.getCanonicalName());
 
 	private TOMConfiguration conf;
-	private LinkedBlockingQueue<SystemMessage> inQueue;
+	private BlockingQueue<SystemMessage> inQueue;
 	private ServerConnection[] connections;
 	private ServerSocketChannel serverSocket;
 	private int me;
@@ -57,11 +60,11 @@ public class ServersCommunicationLayer extends Thread {
 	private CountDownLatch latch;
 
 	public ServersCommunicationLayer(TOMConfiguration conf,
-			LinkedBlockingQueue<SystemMessage> inQueue,
+			BlockingQueue<SystemMessage> inQueue,
 			Map<SystemMessage.Type, MessageHandler> msgHandlers,
 			MessageVerifierFactory<PTPMessageVerifier> verifierfactory,
-			GlobalMessageVerifier<SystemMessage> globalverifier)
-			throws Exception {
+			GlobalMessageVerifier<SystemMessage> globalverifier) throws IOException
+			{
 		this.conf = conf;
 		this.inQueue = inQueue;
 		this.me = conf.getProcessId();
@@ -69,27 +72,23 @@ public class ServersCommunicationLayer extends Thread {
 		this.verifierfactory = verifierfactory;
 		this.globalverifier = globalverifier;
 		connections = new ServerConnection[conf.getN()];
-		latch = new CountDownLatch(conf.getN() - 1); // create latch to wait for
-														// all connections
-		// connect to all lower ids than me, the rest will contact us
-		for (int i = 0; i < me; i++) {
-			PTPMessageVerifier verifier = null;
-			// if (i != me) {
-			if (verifierfactory != null) {
-				verifier = verifierfactory.generateMessageVerifier();
-			}
-			connections[i] = new ServerConnection(conf, null, i, inQueue,
-					msgHandlers, verifier, globalverifier, latch);
-			// }
-		}
+		latch = new CountDownLatch(conf.getN() - 1); // create latch to wait for all connections
 
 		serverSocket = ServerSocketChannel.open();
 		serverSocket.socket().setSoTimeout(10000);
 		serverSocket.socket().setReuseAddress(true);
 		serverSocket.socket().bind(new InetSocketAddress(conf.getPort(conf.getProcessId())));
-
-		start();
-		latch.await(); // wait for all connections on startup
+	}
+	
+	@Override
+	public void start(){
+		super.start();
+		try {
+			latch.await(); // wait for all connections on startup
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} 
 	}
 
 	public final void send(int[] targets, SystemMessage sm) {
@@ -103,6 +102,8 @@ public class ServersCommunicationLayer extends Thread {
 		}
 
 		for (int i : targets) {
+			if(log.isLoggable(Level.FINEST))
+				log.finest("Sending "+sm+" to "+i);
 			// br.ufsc.das.tom.util.Logger.println("(ServersCommunicationLayer.send) Sending msg to replica "+i);
 			try {
 				if (i == me) {
@@ -129,6 +130,18 @@ public class ServersCommunicationLayer extends Thread {
 
 	@Override
 	public void run() {
+		// connect to all lower ids than me, the rest will contact us
+		for (int i = 0; i < me; i++) {
+			PTPMessageVerifier verifier = null;
+			// if (i != me) {
+			if (verifierfactory != null) {
+				verifier = verifierfactory.generateMessageVerifier();
+			}
+			connections[i] = new ServerConnection(conf, null, i, inQueue,
+					msgHandlers, verifier, globalverifier);
+			latch.countDown();
+			// }
+		}
 		while (doWork) {
 			try {
 				SocketChannel newSocketChannel = serverSocket.accept();
@@ -148,7 +161,8 @@ public class ServersCommunicationLayer extends Thread {
 						}
 						connections[remoteId] = new ServerConnection(conf,
 								newSocketChannel, remoteId, inQueue, msgHandlers,
-								verifier, globalverifier, latch);
+								verifier, globalverifier);
+						latch.countDown();
 					} else {
 						// reconnection
 						connections[remoteId].reconnect(newSocketChannel);

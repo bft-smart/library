@@ -83,6 +83,7 @@ public class ThroughputLatencyTestServer extends TOMReceiver {
         
         /**IST OE CODIGO DO JOAO, PARA TENTAR RESOLVER UM BUG */
         cs.start();
+        service.start();
         /******************************************************/
     }
     

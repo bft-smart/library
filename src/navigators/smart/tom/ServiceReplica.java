@@ -84,7 +84,9 @@ public abstract class ServiceReplica extends TOMReceiver implements Runnable {
 
         /**IST OE CODIGO DO JOAO, PARA TENTAR RESOLVER UM BUG */
         cs.start();
+        service.start(); //start the consensusservice();
         /******************************************************/
+        
     }
 
     /**
