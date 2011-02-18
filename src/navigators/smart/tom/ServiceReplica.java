@@ -170,10 +170,6 @@ public abstract class ServiceReplica extends TOMReceiver implements Runnable {
         stateLock.unlock();
     }
 
-    protected ConsensusServiceFactory createFactory(ServerCommunicationSystem cs, TOMConfiguration conf){
-        return new PaxosAtWarServiceFactory(cs, conf);
-    }
-
     protected abstract void deserializeState(byte[] state);
     /********************************************************/
 

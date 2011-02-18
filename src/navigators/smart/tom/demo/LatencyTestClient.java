@@ -95,7 +95,7 @@ public class LatencyTestClient extends TOMSender {
                     System.out.println("Sending " + (i+1) + " / "+ exec);
 
                 last_send_instant = System.nanoTime();
-                this.TOMulticast(command,readOnly);
+                this.doTOMulticast(command,readOnly);
                 
                 this.sm.acquire();
 

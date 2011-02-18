@@ -112,15 +112,16 @@ public class ServiceProxy extends TOMSender {
         response = null;
 
         // Send the request to the replicas, and get its ID
-        TOMulticast(request,readOnly);
+//        doTOMulticast(request,readOnly);
+        doTOUnicast(request,0, readOnly);
         reqId = getLastSequenceNumber();
 
         // Critical section ends here. The semaphore can be released
         this.mutex.release();
 
-        // This instruction blocks the thread, until a response is obtained.
-        // The thread will be unblocked when the method replyReceived is invoked
-        // by the client side communication system
+		// This instruction blocks the thread, until a response is obtained.
+		// The thread will be unblocked when the method replyReceived is invoked
+		// by the client side communication system
         try {
             this.sm.acquire();
         } catch (InterruptedException ex) {

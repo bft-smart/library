@@ -111,7 +111,6 @@ public final class BatchReader {
             }
             try {
                 DataInputStream dis = new DataInputStream(new ByteArrayInputStream(message));
-                dis.readByte();
                 TOMMessage tm = new TOMMessage(dis);
 
                 tm.serializedMessage = message;

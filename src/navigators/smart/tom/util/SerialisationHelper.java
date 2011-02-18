@@ -26,9 +26,14 @@ public class SerialisationHelper {
 
     public static byte[] readByteArray (DataInput in) throws IOException{
         int len = in.readInt();
-        byte[] ret = new byte[len];
-        in.readFully(ret);
-        return ret;
+        if(len > 0){
+        	byte[] ret = new byte[len];
+        	in.readFully(ret);
+        	return ret;
+        } else {
+        	return null;
+        }
+        	
     }
 
     public static void writeObject(Object content, DataOutput out) throws IOException {

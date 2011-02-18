@@ -18,6 +18,7 @@
 
 package navigators.smart.tom;
 
+import java.util.Random;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -39,6 +40,7 @@ public abstract class TOMSender implements ReplyReceiver {
     private CommunicationSystemClientSide cs; // Client side comunication system
     private Lock lock = new ReentrantLock(); // lock to manage concurrent access to this object by other threads
     private boolean useSignatures = false;
+    private Random rnd = new Random();
 
     /**
      * Creates a new instance of TOMulticastSender
@@ -118,8 +120,49 @@ public abstract class TOMSender implements ReplyReceiver {
      * @param m Data to be multicast
      * @param readOnly it is a readonly request
      */
-    public void TOMulticast(byte[] m, boolean readOnly) {
+    public void doTOMulticast(byte[] m, boolean readOnly) {
         cs.send(useSignatures, group, new TOMMessage(me, getNextSequenceNumber(), m, readOnly));
+    }
+    
+    /**
+     * Unicast data to a random member of the group
+     *
+     * @param m Data to be multicast
+     * @param readOnly it is a readonly request
+     */
+    public void doRandomTOUnicast(byte[] m, boolean readOnly) {
+    	cs.send(useSignatures, rnd.nextInt(group.length), new TOMMessage(me, getNextSequenceNumber(), m, readOnly));
+    }
+    
+    /**
+     * Unicast data to a random member of the group
+     *
+     * @param m Data to be multicast
+     * @param readOnly it is a readonly request
+     */
+    public void doRandomTOUnicast(TOMMessage m) {
+    	cs.send(useSignatures, rnd.nextInt(group.length), m);
+    }
+    /**
+     * Unicast data to a member of the group
+     *
+     * @param m Data to be multicast
+     * @param recv The receiver of the message
+     * @param readOnly it is a readonly request
+     */
+    public void doTOUnicast(byte[] m, int receiver, boolean readOnly) {
+    	cs.send(useSignatures, receiver, new TOMMessage(me, getNextSequenceNumber(), m, readOnly));
+    }
+    
+    /**
+     * Unicast data to a member of the group
+     *
+     * @param m Data to be multicast
+     * @param recv The receiver of the message
+     * @param readOnly it is a readonly request
+     */
+    public void doTOUnicast(int receiver, TOMMessage m) {
+    	cs.send(useSignatures, receiver, m);
     }
 
     /**

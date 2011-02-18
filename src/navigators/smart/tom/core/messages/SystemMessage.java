@@ -76,6 +76,7 @@ public abstract class SystemMessage  {
      */
     public SystemMessage(Type type, DataInput in) throws IOException{
         this.type = type;
+        in.readByte();
         sender = in.readInt();
     }
     
