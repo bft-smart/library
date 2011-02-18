@@ -29,8 +29,8 @@ import java.util.Collections;
 import java.util.Hashtable;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
+import java.util.Map.Entry;
 import java.util.concurrent.Executors;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -50,8 +50,6 @@ import navigators.smart.tom.util.TOMConfiguration;
 import navigators.smart.tom.util.TOMUtil;
 
 import org.jboss.netty.bootstrap.ServerBootstrap;
-import org.jboss.netty.buffer.ChannelBuffer;
-import org.jboss.netty.buffer.ChannelBuffers;
 import org.jboss.netty.channel.Channel;
 import org.jboss.netty.channel.ChannelHandlerContext;
 import org.jboss.netty.channel.ChannelPipelineCoverage;
@@ -77,12 +75,12 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
     private static final String PASSWORD = "newcs";    
     private RequestReceiver requestReceiver;
     private TOMConfiguration conf;
-    private Hashtable sessionTable;
+    private Hashtable<Integer,NettyClientServerSession> sessionTable;
     private ReentrantReadWriteLock rl;
     private SecretKey authKey;
-    private long numReceivedMsgs = 0;
-    private long lastMeasurementStart = 0;
-    private long max=0;
+//    private long numReceivedMsgs = 0;
+//    private long lastMeasurementStart = 0;
+//    private long max=0;
     private List<TOMMessage> requestsReceived = Collections.synchronizedList(new ArrayList<TOMMessage>());
     private ReentrantLock lock = new ReentrantLock();
 
@@ -93,7 +91,7 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
             authKey = fac.generateSecret(spec);            
 
             this.conf = conf;
-            sessionTable = new Hashtable();
+            sessionTable = new Hashtable<Integer,NettyClientServerSession>();
             rl = new ReentrantReadWriteLock();
 
             //Configure the server.
@@ -237,11 +235,11 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
             ChannelHandlerContext ctx, ChannelStateEvent e) {
         rl.writeLock().lock();
         //removes session from sessionTable
-        Set s = sessionTable.entrySet();
-        Iterator i = s.iterator();
+        Set<Entry<Integer,NettyClientServerSession>> s = sessionTable.entrySet();
+        Iterator<Entry<Integer,NettyClientServerSession>> i = s.iterator();
         while (i.hasNext()) {
-            Map.Entry m = (Map.Entry) i.next();
-            NettyClientServerSession value = (NettyClientServerSession) m.getValue();
+        	Entry<Integer,NettyClientServerSession> m =  i.next();
+            NettyClientServerSession value =  m.getValue();
             if (e.getChannel().equals(value.getChannel())) {
                 int key = (Integer) m.getKey();
                 sessionTable.remove(key);
@@ -259,34 +257,23 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
     }
 
 	public void send(int[] targets, TOMMessage sm) {
+
 		// serialize message
 		DataOutputStream dos = null;
-
-		byte[] data = null;
 		try {
-			ByteArrayOutputStream baos = new ByteArrayOutputStream();
+			ByteArrayOutputStream baos = new ByteArrayOutputStream(256);
 			dos = new DataOutputStream(baos);
 			sm.serialise(dos);
-			dos.flush();
-			data = baos.toByteArray();
-			sm.serializedMessage = data;
+			sm.serializedMessage = baos.toByteArray();
 		} catch (IOException ex) {
 			Logger.getLogger(NettyClientServerCommunicationSystemClientSide.class.getName()).log(Level.SEVERE, null, ex);
-		} finally {
-			try {
-				if (dos != null) {
-					dos.close();
-				}
-			} catch (IOException ex) {
-				Logger.getLogger(NettyClientServerCommunicationSystemClientSide.class.getName()).log(Level.SEVERE, null, ex);
-			}
 		}
        
         //replies are not signed in the current JBP version
         sm.signed = false;
         //produce signature if necessary (never in the current version)
         if (sm.signed){
-            byte[] data2 = TOMUtil.signMessage(TOMConfiguration.getRSAPrivateKey(), data);
+            byte[] data2 = TOMUtil.signMessage(TOMConfiguration.getRSAPrivateKey(), sm.serializedMessage);
             sm.serializedMessageSignature = data2;
         }
         for (int i = 0; i < targets.length; i++) {

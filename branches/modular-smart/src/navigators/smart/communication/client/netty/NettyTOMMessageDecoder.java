@@ -19,6 +19,7 @@
 package navigators.smart.communication.client.netty;
 
 import java.io.ByteArrayInputStream;
+import java.io.DataInput;
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.security.InvalidKeyException;
@@ -40,6 +41,7 @@ import navigators.smart.tom.util.Configuration;
 import navigators.smart.tom.util.TOMConfiguration;
 
 import org.jboss.netty.buffer.ChannelBuffer;
+import org.jboss.netty.buffer.ChannelBufferInputStream;
 import org.jboss.netty.channel.Channel;
 import org.jboss.netty.channel.ChannelHandlerContext;
 import org.jboss.netty.channel.ChannelPipelineCoverage;
@@ -137,29 +139,34 @@ public class NettyTOMMessageDecoder extends FrameDecoder {
         if (useMAC)
             authLength += macSize;
         
+        buffer.markReaderIndex();
+        
         byte[] data = new byte[totalLength-authLength];
-        buffer.readBytes(data);        
+        buffer.readBytes(data);
         
-        byte[] digest = null;
-        if (useMAC){
-            digest = new byte[macSize];
-            buffer.readBytes(digest);
-        }
-        
-        byte[] signature = null;
-        if (signed==1){
-            signature = new byte[signatureSize];
-            buffer.readBytes(signature);
-        }
+        buffer.resetReaderIndex();
+        try {
+	        TOMMessage sm = new TOMMessage(new ChannelBufferInputStream(buffer));
+	        
+	        byte[] digest = null;
+	        if (useMAC){
+	            digest = new byte[macSize];
+	            buffer.readBytes(digest);
+	        }
+	        
+	        byte[] signature = null;
+	        if (signed==1){
+	            signature = new byte[signatureSize];
+	            buffer.readBytes(signature);
+	        }
 
 //        DataInputStream dis = null;
-        DataInputStream dis = null;
-        TOMMessage sm = null;
-        try {
-            ByteArrayInputStream bais = new ByteArrayInputStream(data);
+//        DataInput dis = null;
+//        TOMMessage sm  = null;
+//            ByteArrayInputStream bais = new ByteArrayInputStream(data);
                 //if class headers were serialized
-                dis = new DataInputStream(bais);
-                sm = new TOMMessage(dis);
+//                dis = new ChannelBufferInputStream(buffer)
+//                sm = new TOMMessage(dis);
             //TOMMessage sm = (TOMMessage) ois.readObject();
             sm.serializedMessage = data;
             if (signed==1){
