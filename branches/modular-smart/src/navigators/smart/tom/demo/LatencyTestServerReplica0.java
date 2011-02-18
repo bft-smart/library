@@ -23,7 +23,6 @@ import java.util.logging.Logger;
 
 import navigators.smart.communication.ServerCommunicationSystem;
 import navigators.smart.tom.ServiceReplica;
-import navigators.smart.tom.TOMReceiver;
 import navigators.smart.tom.core.messages.TOMMessage;
 import navigators.smart.tom.util.DebugInfo;
 import navigators.smart.tom.util.TOMConfiguration;

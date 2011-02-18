@@ -18,18 +18,12 @@
 
 package navigators.smart.tom.core.timer.messages;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
-import java.io.ObjectInput;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutput;
-import java.io.ObjectOutputStream;
-import navigators.smart.tom.util.SerialisationHelper;
 
 import navigators.smart.tom.core.messages.SystemMessage;
+import navigators.smart.tom.util.SerialisationHelper;
 
 
 /**

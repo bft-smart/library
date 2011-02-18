@@ -18,10 +18,11 @@
 
 package navigators.smart.paxosatwar.messages;
 
-import navigators.smart.tom.util.SerialisationHelper;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
+
+import navigators.smart.tom.util.SerialisationHelper;
 
 /**
  *

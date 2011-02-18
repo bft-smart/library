@@ -18,8 +18,6 @@
 
 package navigators.smart.paxosatwar.roles;
 
-import java.security.SignedObject;
-
 import navigators.smart.communication.ServerCommunicationSystem;
 import navigators.smart.paxosatwar.executionmanager.Execution;
 import navigators.smart.paxosatwar.executionmanager.ExecutionManager;

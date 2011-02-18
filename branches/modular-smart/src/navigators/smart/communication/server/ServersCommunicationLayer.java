@@ -18,21 +18,20 @@
 
 package navigators.smart.communication.server;
 
-import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
-import java.io.DataOutputStream;
 import java.io.IOException;
-import java.io.ObjectOutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import navigators.smart.communication.MessageHandler;
 
+import navigators.smart.communication.MessageHandler;
 import navigators.smart.tom.core.messages.SystemMessage;
 import navigators.smart.tom.util.TOMConfiguration;
 
@@ -51,25 +50,28 @@ public class ServersCommunicationLayer extends Thread {
     private boolean doWork = true;
     private final Map<SystemMessage.Type,MessageHandler> msgHandlers;
     private MessageVerifierFactory<PTPMessageVerifier> verifierfactory;
+    /** Holds the global verifier reference*/
+    private GlobalMessageVerifier<SystemMessage> globalverifier;
+    private CountDownLatch latch;
 
-    public ServersCommunicationLayer(TOMConfiguration conf, LinkedBlockingQueue<SystemMessage> inQueue, Map<SystemMessage.Type,MessageHandler> msgHandlers, MessageVerifierFactory<PTPMessageVerifier> verifierfactory) throws Exception {
+    public ServersCommunicationLayer(TOMConfiguration conf, LinkedBlockingQueue<SystemMessage> inQueue, Map<SystemMessage.Type,MessageHandler> msgHandlers, MessageVerifierFactory<PTPMessageVerifier> verifierfactory, GlobalMessageVerifier<SystemMessage> globalverifier) throws Exception {
         this.conf = conf;
         this.inQueue = inQueue;
         this.me = conf.getProcessId();
         this.msgHandlers = msgHandlers;
         this.verifierfactory = verifierfactory;
+        this.globalverifier = globalverifier;
         connections = new ServerConnection[conf.getN()];
-//        TODO this is double initialisation? by cspann
-        for (int i = 0; i < connections.length; i++) {
+        latch = new CountDownLatch(conf.getN()-1);	 //create latch to wait for all connections
+        //connect to all lower ids than me, the rest will contact us
+        for (int i = 0; i < me; i++) {
             PTPMessageVerifier verifier = null;
-            if (i == me) {
-                connections[i] = null;
-            } else {
+//            if (i != me) {
                 if(verifierfactory != null){
-                    verifier = verifierfactory.generateMessageVerifier();
+                	verifier = verifierfactory.generateMessageVerifier();
                 }
-                connections[i] = new ServerConnection(conf, null, i, inQueue,msgHandlers, verifier);
-            }
+                connections[i] = new ServerConnection(conf, null, i, inQueue,msgHandlers, verifier, globalverifier,latch);
+//            } 
         }
 
         serverSocket = new ServerSocket(conf.getPort(conf.getProcessId()));        
@@ -77,6 +79,7 @@ public class ServersCommunicationLayer extends Thread {
         serverSocket.setReuseAddress(true);
         
         start();
+        latch.await(); //wait for all connections on startup
     }
 
     public final void send(int[] targets, SystemMessage sm) {
@@ -123,7 +126,11 @@ public class ServersCommunicationLayer extends Thread {
                 if (remoteId >= 0 && remoteId < connections.length) {
                     if (connections[remoteId] == null) {
                         //first time that this connection is being established
-                        connections[remoteId] = new ServerConnection(conf, newSocket, remoteId, inQueue,msgHandlers,verifierfactory.generateMessageVerifier());
+                    	PTPMessageVerifier verifier = null;
+                    	 if(verifierfactory != null){
+                         	verifier = verifierfactory.generateMessageVerifier();
+                         }
+                        connections[remoteId] = new ServerConnection(conf, newSocket, remoteId, inQueue,msgHandlers,verifier,globalverifier,latch);
                     } else {
                         //reconnection
                         connections[remoteId].reconnect(newSocket);

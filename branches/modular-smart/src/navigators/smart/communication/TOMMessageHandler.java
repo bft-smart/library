@@ -18,20 +18,11 @@
 
 package navigators.smart.communication;
 
-import java.io.ObjectInput;
-import static navigators.smart.communication.ServerCommunicationSystem.RR_MSG;
-import static navigators.smart.communication.ServerCommunicationSystem.RT_MSG;
-import static navigators.smart.communication.ServerCommunicationSystem.TOM_REPLY_MSG;
-import static navigators.smart.communication.ServerCommunicationSystem.TOM_REQUEST_MSG;
-
 import java.io.ByteArrayOutputStream;
 import java.io.DataInput;
-import java.io.DataOutput;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
 
-import navigators.smart.paxosatwar.messages.PaxosMessage;
-import navigators.smart.tom.util.SerialisationHelper;
 import navigators.smart.statemanagment.SMMessage;
 import navigators.smart.tom.core.TOMLayer;
 import navigators.smart.tom.core.messages.SystemMessage;

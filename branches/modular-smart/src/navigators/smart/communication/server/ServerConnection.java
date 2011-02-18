@@ -22,10 +22,11 @@ import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.io.ObjectInputStream;
 import java.net.Socket;
+import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
@@ -34,7 +35,6 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import navigators.smart.communication.MessageHandler;
-
 import navigators.smart.tom.core.messages.SystemMessage;
 import navigators.smart.tom.util.TOMConfiguration;
 
@@ -67,19 +67,27 @@ public class ServerConnection {
     private Lock sendLock;
     private boolean doWork = true;
 
-    private PTPMessageVerifier connVerifier;
+    private PTPMessageVerifier ptpverifier;
+    
+    private GlobalMessageVerifier<SystemMessage> globalverifier;
 
-    private final Map<SystemMessage.Type,MessageHandler> msgHandlers;
+    @SuppressWarnings("unchecked")
+	private final Map<SystemMessage.Type,MessageHandler> msgHandlers;
 
-    public ServerConnection (TOMConfiguration conf, Socket socket, int remoteId,
-            LinkedBlockingQueue<SystemMessage> inQueue, Map<SystemMessage.Type, MessageHandler> msgHandlers, PTPMessageVerifier verifier) {
+	@SuppressWarnings("unchecked")
+	public ServerConnection(TOMConfiguration conf, Socket socket, int remoteId,
+			LinkedBlockingQueue<SystemMessage> inQueue,
+			Map<SystemMessage.Type, MessageHandler> msgHandlers,
+			PTPMessageVerifier ptpverifier,
+			GlobalMessageVerifier<SystemMessage> verifier, CountDownLatch latch) {
         this.msgHandlers = msgHandlers;
         this.conf = conf;
         this.socket = socket;
         this.remoteId = remoteId;
         this.inQueue = inQueue;
         this.outQueue = new LinkedBlockingQueue<byte[]>(this.conf.getOutQueueSize());
-        this.connVerifier = verifier;
+        this.ptpverifier = ptpverifier;
+        this.globalverifier = verifier;
 
         if (conf.getProcessId() > remoteId) {
             //higher process ids connect to lower ones
@@ -88,7 +96,7 @@ public class ServerConnection {
                 ServersCommunicationLayer.setSocketOptions(this.socket);
                 new DataOutputStream(this.socket.getOutputStream()).writeInt(conf.getProcessId());
                 if(conf.getUseMACs() == 1){
-                    verifier.authenticateAndEstablishAuthKey();
+                    ptpverifier.authenticateAndEstablishAuthKey();
                 }
             } catch (UnknownHostException ex) {
                 log.log(Level.SEVERE, "cannot open listening port", ex);
@@ -100,6 +108,7 @@ public class ServerConnection {
 
         if (this.socket != null) {
             try {
+            	latch.countDown(); // got connection, inform comlayer
                 socketOutStream = new DataOutputStream(this.socket.getOutputStream());
                 socketInStream = new DataInputStream(this.socket.getInputStream());
             } catch (IOException ex) {
@@ -116,7 +125,7 @@ public class ServerConnection {
             sendLock = new ReentrantLock();
         }
 
-        new ReceiverThread(verifier).start();
+        new ReceiverThread().start();
     }
 
     /**
@@ -159,7 +168,7 @@ public class ServerConnection {
                     socketOutStream.writeInt(messageData.length);
                     socketOutStream.write(messageData);
                     if (conf.getUseMACs()==1) {
-                        socketOutStream.write(connVerifier.generateHash(messageData));
+                        socketOutStream.write(ptpverifier.generateHash(messageData));
                     }
                     return;
                 } catch (IOException ex) {
@@ -212,7 +221,7 @@ public class ServerConnection {
                 }
             }
             if(conf.getUseMACs()==1){
-                connVerifier.authenticateAndEstablishAuthKey();
+                ptpverifier.authenticateAndEstablishAuthKey();
             }
         }
 
@@ -244,19 +253,6 @@ public class ServerConnection {
 
             reconnect(null);
         }
-    }
-
-    private final SystemMessage bytesToMessage(byte[] data) {
-        try {
-            ObjectInputStream obIn = new ObjectInputStream(new ByteArrayInputStream(data));
-            return (SystemMessage) obIn.readObject();
-        } catch (ClassNotFoundException ex) {
-            log.log(Level.SEVERE, null, ex);
-        } catch (IOException ex) {
-            log.log(Level.SEVERE, null, ex);
-        }
-
-        return null;
     }
 
     /**
@@ -293,19 +289,17 @@ public class ServerConnection {
      */
     protected class ReceiverThread extends Thread {
 
-        private MessageVerifier verifier; //verifier for message verification
-
         private byte[] receivedHash;    //array to store the received hashes
 
-        public ReceiverThread(MessageVerifier verifier) {
+        public ReceiverThread() {
             super("Receiver for "+remoteId);
-            this.verifier = verifier;
-            if(verifier != null){
-                receivedHash = new byte[verifier.getHashSize()];
+            if(ptpverifier != null){
+                receivedHash = new byte[ptpverifier.getHashSize()];
             }
         }
 
-        @Override
+        @SuppressWarnings("unchecked")
+		@Override
         public void run() {
 
             while (doWork) {
@@ -330,22 +324,25 @@ public class ServerConnection {
                                 read += socketInStream.read(receivedHash, read, receivedHash.length - read);
                             } while (read < receivedHash.length);
 
-                            verificationresult = verifier.verifyHash(data,receivedHash);
+                            verificationresult = ptpverifier.verifyHash(data,receivedHash);
                         }
-
-                        if (verificationresult != null) {
-                            DataInputStream in = new DataInputStream(new ByteArrayInputStream(data));
-                            SystemMessage.Type type = SystemMessage.Type.getByByte(in.readByte());
-                            SystemMessage sm = msgHandlers.get(type).deserialise(type,in, verificationresult);
-
-                            if (sm.getSender() == remoteId) {
-                                if(!inQueue.offer(sm)) 
-                                    navigators.smart.tom.util.Logger.println("(ReceiverThread.run) in queue full (message from "+remoteId+" discarded).");
-                            }
+                        if(conf.isUseGlobalAuth()){
+                        	verificationresult = globalverifier.verifyHash(data);
+                        }
+                        if (verificationresult != null || conf.getUseMACs() == 0 && !conf.isUseGlobalAuth()) {
+                        	DataInputStream in = new DataInputStream(new ByteArrayInputStream(data));
+                        	SystemMessage.Type type = SystemMessage.Type.getByByte(in.readByte());
+                        	SystemMessage sm = msgHandlers.get(type).deserialise(type,in, verificationresult);
+                        	
+                        	if (sm.getSender() == remoteId) {
+                        		if(!inQueue.offer(sm)) 
+                        			navigators.smart.tom.util.Logger.println("(ReceiverThread.run) in queue full (message from "+remoteId+" discarded).");
+                        	}
                         } else {
-                            //TODO: violation of authentication... we should do something
-                            log.log(Level.SEVERE, "WARNING: Violation of authentication in message received from "+remoteId);
+                        	//TODO: violation of authentication... we should do something
+                        	log.log(Level.SEVERE, "WARNING: Violation of authentication in message received from "+remoteId);
                         }
+
                         /*
                         } else {
                             //TODO: invalid MAC... we should do something
@@ -354,8 +351,14 @@ public class ServerConnection {
                         */
                     } catch (ClassNotFoundException ex) {
                         log.log(Level.SEVERE, "Should never happen,", ex);
+                    } catch (SocketException e){
+                    	 log.log(Level.FINE, "Socket reset. Reconnecting...");
+
+                         closeSocket();
+
+                         waitAndConnect();
                     } catch (IOException ex) {
-                        log.log(Level.SEVERE, "Closing socket and reconnecting", ex);
+                        log.log(Level.SEVERE,  "IO Error. Reconnecting...", ex);
 
                         closeSocket();
 

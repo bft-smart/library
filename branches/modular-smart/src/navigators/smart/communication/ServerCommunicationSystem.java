@@ -29,7 +29,6 @@ import navigators.smart.communication.client.CommunicationSystemServerSide;
 import navigators.smart.communication.client.CommunicationSystemServerSideFactory;
 import navigators.smart.communication.client.RequestReceiver;
 import navigators.smart.communication.server.GlobalMessageVerifier;
-import navigators.smart.communication.server.MessageVerifier;
 import navigators.smart.communication.server.MessageVerifierFactory;
 import navigators.smart.communication.server.PTPMessageVerifier;
 import navigators.smart.communication.server.ServersCommunicationLayer;
@@ -93,7 +92,7 @@ import navigators.smart.tom.util.TOMConfiguration;
             assert verifier != null : "Failed to load USIG Service";
         }
         
-        serversConn = new ServersCommunicationLayer(serversConf,inQueue,msgHandlers,ptpFactory);
+        serversConn = new ServersCommunicationLayer(serversConf,inQueue,msgHandlers,ptpFactory,verifier);
 
         clientsConn = CommunicationSystemServerSideFactory.getCommunicationSystemServerSide(conf);
 

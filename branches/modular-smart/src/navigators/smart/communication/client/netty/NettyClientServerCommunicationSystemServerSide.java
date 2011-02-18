@@ -21,7 +21,6 @@ package navigators.smart.communication.client.netty;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.io.ObjectOutputStream;
 import java.net.InetSocketAddress;
 import java.security.NoSuchAlgorithmException;
 import java.security.spec.InvalidKeySpecException;
@@ -153,11 +152,11 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
             lock.lock();
             requestsReceived.add(sm);
             if (requestsReceived.size()>=conf.getCommBuffering()){
-                for (int i=0; i<requestsReceived.size(); i++)
+                for (int i=0; i<requestsReceived.size(); i++){
                     //delivers message to TOMLayer
                     requestReceiver.requestReceived(requestsReceived.get(i));
-                requestsReceived = null;
-                requestsReceived = new ArrayList<TOMMessage>();
+                }
+                requestsReceived.clear();
             }
             lock.unlock();
         }

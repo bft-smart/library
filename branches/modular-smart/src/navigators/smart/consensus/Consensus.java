@@ -17,6 +17,8 @@
  */
 package navigators.smart.consensus;
 
+import java.util.Arrays;
+
 import navigators.smart.tom.util.Logger;
 
 /**
@@ -102,4 +104,47 @@ public class Consensus<E> {
     public String toString(){
         return "Consensus - EID: "+ eid +" Round: "+decisionRound;
     }
+
+	/* (non-Javadoc)
+	 * @see java.lang.Object#hashCode()
+	 */
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + Arrays.hashCode(decision);
+		result = prime * result + decisionRound;
+		result = prime
+				* result
+				+ ((deserializedDecision == null) ? 0 : deserializedDecision
+						.hashCode());
+		result = prime * result + (int) (eid ^ (eid >>> 32));
+		return result;
+	}
+
+	/* (non-Javadoc)
+	 * @see java.lang.Object#equals(java.lang.Object)
+	 */
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (!(obj instanceof Consensus))
+			return false;
+		Consensus other = (Consensus) obj;
+		if (!Arrays.equals(decision, other.decision))
+			return false;
+		if (decisionRound != other.decisionRound)
+			return false;
+		if (deserializedDecision == null) {
+			if (other.deserializedDecision != null)
+				return false;
+		} else if (!deserializedDecision.equals(other.deserializedDecision))
+			return false;
+		if (eid != other.eid)
+			return false;
+		return true;
+	}
 }

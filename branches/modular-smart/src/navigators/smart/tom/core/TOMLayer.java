@@ -20,7 +20,6 @@ package navigators.smart.tom.core;
 import java.security.MessageDigest;
 import java.util.Arrays;
 import java.util.Iterator;
-import java.util.Random;
 import java.util.concurrent.locks.ReentrantLock;
 
 import navigators.smart.clientsmanagement.ClientsManager;
@@ -29,8 +28,6 @@ import navigators.smart.communication.ServerCommunicationSystem;
 import navigators.smart.communication.client.RequestReceiver;
 import navigators.smart.consensus.Consensus;
 import navigators.smart.consensus.ConsensusService;
-import navigators.smart.consensus.MeasuringConsensus;
-import navigators.smart.paxosatwar.requesthandler.OutOfContextMessageThread;
 import navigators.smart.statemanagment.SMMessage;
 import navigators.smart.statemanagment.StateLog;
 import navigators.smart.statemanagment.StateManager;
@@ -49,7 +46,7 @@ import navigators.smart.tom.util.TOMUtil;
  * This class implements a thread that uses the PaW algorithm to provide the application
  * a layer of total ordered messages
  */
-public final class TOMLayer implements RequestReceiver {
+public class TOMLayer implements RequestReceiver {
 
     //other components used by the TOMLayer (they are never changed)
     private ServerCommunicationSystem communication; // Communication system between replicas
@@ -315,7 +312,9 @@ public final class TOMLayer implements RequestReceiver {
     private StateManager stateManager = null;
     private ReentrantLock lockState = new ReentrantLock();
 
-    public void saveState(byte[] state, long lastEid, int decisionRound, int leader) {
+    public void saveState( long lastEid, int decisionRound, int leader) {
+    	
+    	byte[] state = receiver.getState();
 
         StateLog log = stateManager.getLog();
 
@@ -689,4 +688,8 @@ public final class TOMLayer implements RequestReceiver {
         return clientsManager.hasPendingRequests();
     }
     /********************************************************/
+
+	public byte[] getState() {
+		return receiver.getState();
+	}
 }

@@ -5,11 +5,9 @@
 
 package navigators.smart.paxosatwar.requesthandler;
 
-import navigators.smart.paxosatwar.requesthandler.timer.RTInfo;
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.IOException;
-import java.io.ObjectInputStream;
 import java.security.SignedObject;
 import java.util.Collection;
 import java.util.HashMap;
@@ -20,14 +18,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
+
 import navigators.smart.communication.ServerCommunicationSystem;
-import navigators.smart.consensus.MeasuringConsensus;
 import navigators.smart.paxosatwar.executionmanager.Execution;
 import navigators.smart.paxosatwar.executionmanager.ExecutionManager;
 import navigators.smart.paxosatwar.executionmanager.LeaderModule;
 import navigators.smart.paxosatwar.executionmanager.ProofVerifier;
 import navigators.smart.paxosatwar.executionmanager.Round;
-import navigators.smart.paxosatwar.roles.Acceptor;
+import navigators.smart.paxosatwar.requesthandler.timer.RTInfo;
 import navigators.smart.tom.core.TOMLayer;
 import navigators.smart.tom.core.messages.TOMMessage;
 import navigators.smart.tom.core.timer.messages.ForwardedMessage;

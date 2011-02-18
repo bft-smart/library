@@ -25,8 +25,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.concurrent.locks.ReentrantLock;
-import navigators.smart.consensus.Consensus;
 
+import navigators.smart.consensus.Consensus;
 import navigators.smart.consensus.MeasuringConsensus;
 import navigators.smart.paxosatwar.messages.MessageFactory;
 import navigators.smart.paxosatwar.messages.PaxosMessage;

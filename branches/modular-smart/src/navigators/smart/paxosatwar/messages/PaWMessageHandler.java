@@ -5,9 +5,11 @@
 
 package navigators.smart.paxosatwar.messages;
 
+import static navigators.smart.paxosatwar.messages.MessageFactory.COLLECT;
+
 import java.io.DataInput;
 import java.io.IOException;
-import java.io.ObjectInput;
+
 import navigators.smart.communication.MessageHandler;
 import navigators.smart.paxosatwar.requesthandler.RequestHandler;
 import navigators.smart.paxosatwar.roles.Acceptor;
@@ -16,8 +18,6 @@ import navigators.smart.tom.core.messages.SystemMessage;
 import navigators.smart.tom.core.messages.SystemMessage.Type;
 import navigators.smart.tom.core.timer.messages.RTMessage;
 import navigators.smart.tom.util.Logger;
-
-import static navigators.smart.paxosatwar.messages.MessageFactory.COLLECT;
 
 
 /**

@@ -18,9 +18,6 @@
 
 package navigators.smart.paxosatwar.executionmanager;
 
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutput;
-import java.io.DataOutputStream;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.Signature;
