@@ -19,6 +19,7 @@
 package navigators.smart.clientsmanagement;
 
 import java.security.PublicKey;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Queue;
 import java.util.concurrent.locks.ReentrantLock;
@@ -72,10 +73,6 @@ public class ClientData {
 
     public boolean verifySignature(byte[] message, byte[] signature) {
         return TOMUtil.verifySignature(getPublicKey(), message, signature);
-    }
-
-    public void setLastMessageExecuted(int lastMessageExecuted) {
-        this.lastMessageExecuted = lastMessageExecuted;
     }
 
     public int getLastMessageExecuted() {
@@ -140,7 +137,20 @@ public class ClientData {
 	}
 
 	public boolean removeRequest(TOMMessage request) {
-		return pendingRequests.remove(request) || proposedRequests.remove(request);
+		lastMessageExecuted = request.getSequence();
+		boolean result = pendingRequests.remove(request) || proposedRequests.remove(request);
+		//remove outdated messages from this client
+		for(Iterator<TOMMessage> it = pendingRequests.iterator();it.hasNext();){
+			TOMMessage msg = it.next();
+			if(msg.getSequence()<request.getSequence())
+				it.remove();
+		}
+		for(Iterator<TOMMessage> it = proposedRequests.iterator();it.hasNext();){
+			TOMMessage msg = it.next();
+			if(msg.getSequence()<request.getSequence())
+				it.remove();
+		}
+		return result;
 	}
 
 	public int getPendingRequests() {

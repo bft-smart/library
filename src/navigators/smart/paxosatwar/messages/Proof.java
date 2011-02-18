@@ -19,7 +19,6 @@
 package navigators.smart.paxosatwar.messages;
 
 import java.nio.ByteBuffer;
-import navigators.smart.tom.core.messages.Serialisable;
 
 import navigators.smart.tom.util.SerialisationHelper;
 
@@ -30,7 +29,7 @@ import navigators.smart.tom.util.SerialisationHelper;
  * This class represents the proof used in the rounds freeze processing.
  * The SignedObject contain the CollectProof for this server.
  */
-public final class Proof implements Serialisable {
+public final class Proof {
 
     private CollectProof[] proofs; // Signed proofs
     private byte[] nextPropose; // next value to be proposed
@@ -75,7 +74,6 @@ public final class Proof implements Serialisable {
 
     }
     
-    @Override
 	public int getMsgSize() {
     	 int ret = 12;
          for (int i = 0; i < proofs.length; i++) {

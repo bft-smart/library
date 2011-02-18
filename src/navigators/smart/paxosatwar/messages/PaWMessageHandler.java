@@ -1,8 +1,3 @@
-/*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
- */
-
 package navigators.smart.paxosatwar.messages;
 
 import static navigators.smart.paxosatwar.messages.MessageFactory.COLLECT;
@@ -24,7 +19,7 @@ import navigators.smart.tom.util.Logger;
  *
  * @author Christian Spann <christian.spann at uni-ulm.de>
  */
-public class PaWMessageHandler<T> implements MessageHandler<PaxosMessage<?>,T>{
+public class PaWMessageHandler<T> implements MessageHandler<PaxosMessage,T>{
     
     
     private Proposer proposer;
@@ -45,7 +40,6 @@ public class PaWMessageHandler<T> implements MessageHandler<PaxosMessage<?>,T>{
         this.acceptor = acceptor;
     }
 
-    @SuppressWarnings("unchecked")
 	@Override
     public void processData(SystemMessage sm) {
         if (sm instanceof PaxosMessage) {
@@ -53,7 +47,7 @@ public class PaWMessageHandler<T> implements MessageHandler<PaxosMessage<?>,T>{
             //Logger.println("(TOMMessageHandler.processData) PAXOS_MSG received: " + paxosMsg);
             if (paxosMsg.getPaxosType() == COLLECT) {
                 //the proposer layer only handle COLLECT messages
-                proposer.deliver(paxosMsg);
+                proposer.deliver((Collect) paxosMsg);
             } else {
                 acceptor.deliver(paxosMsg);
             }
@@ -64,11 +58,11 @@ public class PaWMessageHandler<T> implements MessageHandler<PaxosMessage<?>,T>{
         }
     }
 
-    @SuppressWarnings("unchecked")
-	public PaxosMessage<?> deserialise(Type type, ByteBuffer buf, Object result) throws ClassNotFoundException, IOException {
+	public PaxosMessage deserialise(Type type, ByteBuffer buf, Object result) throws ClassNotFoundException, IOException {
          switch(type){
             case PAXOS_MSG:
-                return new PaxosMessage(buf);
+            	
+                return PaxosMessage.readFromBuffer(buf);
             default:
                 Logger.println("Received msg for unknown msg type");
                 return null;

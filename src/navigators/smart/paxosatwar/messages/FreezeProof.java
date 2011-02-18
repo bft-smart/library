@@ -20,7 +20,6 @@ package navigators.smart.paxosatwar.messages;
 
 import java.nio.ByteBuffer;
 import java.util.Arrays;
-import navigators.smart.tom.core.messages.Serialisable;
 
 import navigators.smart.tom.util.SerialisationHelper;
 
@@ -30,7 +29,7 @@ import navigators.smart.tom.util.SerialisationHelper;
  *
  * Proofs for one (freezed) consensus.
  */
-public final class FreezeProof implements Serialisable{
+public final class FreezeProof {
 
     private int pid; // Replica ID
     private long eid; // Consensus's execution ID

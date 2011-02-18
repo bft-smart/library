@@ -32,7 +32,7 @@ import java.util.Map;
  * 
  */
 
-public abstract class SystemMessage implements Serialisable {
+public abstract class SystemMessage {
 
     public enum Type {
 
