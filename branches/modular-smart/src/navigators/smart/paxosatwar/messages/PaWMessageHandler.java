@@ -5,11 +5,12 @@
 
 package navigators.smart.paxosatwar.messages;
 
+import static navigators.smart.paxosatwar.messages.MessageFactory.COLLECT;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
 import navigators.smart.communication.MessageHandler;
-import static navigators.smart.paxosatwar.messages.MessageFactory.COLLECT;
 import navigators.smart.paxosatwar.requesthandler.RequestHandler;
 import navigators.smart.paxosatwar.roles.Acceptor;
 import navigators.smart.paxosatwar.roles.Proposer;

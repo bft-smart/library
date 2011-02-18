@@ -34,7 +34,8 @@ public class Test {
     /**
      * @param args the command line arguments
      */
-    public static void main(String[] args) throws Exception {
+    @SuppressWarnings("unchecked")
+	public static void main(String[] args) throws Exception {
 
         TOMConfiguration conf = new TOMConfiguration(Integer.parseInt(args[0]));
         LinkedBlockingQueue<SystemMessage> inQueue = new LinkedBlockingQueue<SystemMessage>();

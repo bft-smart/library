@@ -272,9 +272,6 @@ public class ServerConnection {
                 //get a message to be sent
                 try {
                     data = outQueue.poll(POOL_TIME, TimeUnit.MILLISECONDS);
-                    if(outQueue.size()>100){
-                    	log.info(""+outQueue.size());
-                    }
                 } catch (InterruptedException ex) {
                 }
 

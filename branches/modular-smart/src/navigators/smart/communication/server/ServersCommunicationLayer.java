@@ -81,7 +81,7 @@ public class ServersCommunicationLayer extends Thread {
 	}
 	
 	@Override
-	public void start(){
+	public synchronized void start(){
 		super.start();
 		try {
 			latch.await(); // wait for all connections on startup

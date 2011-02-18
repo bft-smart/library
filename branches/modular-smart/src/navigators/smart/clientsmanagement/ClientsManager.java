@@ -116,7 +116,7 @@ public class ClientsManager {
 			}
 			// I inserted a message on the batch, now I must verify if the max
 			// batch size is reached or no more messages are present
-		} while (allReq.size() <= conf.getMaxBatchSize() && clientsData.size() <= noMoreMessages);
+		} while (allReq.size() <= conf.getMaxBatchSize() && clientsData.size() > noMoreMessages);
 		/*  ****** end critical section ****** */
 		clientsLock.unlock();
 		return allReq;
