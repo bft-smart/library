@@ -9,9 +9,9 @@ package navigators.smart.communication.server;
  *
  * @author Christian Spann <christian.spann at uni-ulm.de>
  */
-public class HMacVerifierFactory implements MessageVerifierFactory {
+public class HMacVerifierFactory implements MessageVerifierFactory<PTPMessageVerifier> {
 
-    public MessageVerifier generateMessageVerifier() {
+    public PTPMessageVerifier generateMessageVerifier() {
         return new HMacVerifier();
     }
 

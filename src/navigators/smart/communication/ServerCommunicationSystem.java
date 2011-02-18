@@ -58,19 +58,22 @@ import navigators.smart.tom.util.TOMConfiguration;
 
     private BlockingQueue<SystemMessage> inQueue = null;//new LinkedBlockingQueue<SystemMessage>(IN_QUEUE_SIZE);
 
-    protected Map<SystemMessage.Type,MessageHandler> msgHandlers = new Hashtable<SystemMessage.Type, MessageHandler>();
+    @SuppressWarnings("unchecked")
+	protected Map<SystemMessage.Type,MessageHandler> msgHandlers = new Hashtable<SystemMessage.Type, MessageHandler>();
 
     private ServersCommunicationLayer serversConn;
     private CommunicationSystemServerSide clientsConn;
 
-    private GlobalMessageVerifier verifier;
+    @SuppressWarnings("unchecked")
+	private GlobalMessageVerifier verifier;
 
     /**
      * Creates a new instance of ServerCommunicationSystem
      * @param conf The configuration object containing the conf
      * @throws Exception
      */
-    public ServerCommunicationSystem(TOMConfiguration conf) throws Exception {
+    @SuppressWarnings("unchecked")
+	public ServerCommunicationSystem(TOMConfiguration conf) throws Exception {
         super("Server CS");
 
         inQueue = new ArrayBlockingQueue<SystemMessage>(conf.getInQueueSize());
@@ -128,7 +131,8 @@ import navigators.smart.tom.util.TOMConfiguration;
         return null;
     }
 
-    public void addMessageHandler(SystemMessage.Type type, MessageHandler handler){
+    @SuppressWarnings("unchecked")
+	public void addMessageHandler(SystemMessage.Type type, MessageHandler handler){
         assert(msgHandlers.size()<=Byte.MAX_VALUE);
         msgHandlers.put(type,handler);
     }

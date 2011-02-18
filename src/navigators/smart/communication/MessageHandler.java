@@ -25,10 +25,11 @@ import navigators.smart.tom.core.messages.SystemMessage;
 
 /**
  *
- * @param <A> Resulttype of the verification of this message
+ * @param <U> Resulttype of the verification of this message
+ * @param <M> Messages that will be sent and received via this MessageHandler
  * @author Christian Spann <christian.spann at uni-ulm.de>
  */
-public interface MessageHandler<A, M extends SystemMessage> {
+public interface MessageHandler<M extends SystemMessage, U> {
 
     /**
      * Processes the SystemMessage sm if it is adressed to this handler
@@ -46,6 +47,6 @@ public interface MessageHandler<A, M extends SystemMessage> {
      * @throws ClassNotFoundException If there are Objects seralised within and the class of these objects is not found
      * @throws IOException If something else goes wrong upon deserialisation
      */
-    public M deserialise(SystemMessage.Type type, ByteBuffer in, A result) throws ClassNotFoundException,IOException;
+    public M deserialise(SystemMessage.Type type, ByteBuffer in, U result) throws ClassNotFoundException,IOException;
 
 }

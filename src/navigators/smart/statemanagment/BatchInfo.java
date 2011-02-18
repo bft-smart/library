@@ -32,7 +32,11 @@ import java.util.Arrays;
  */
 public class BatchInfo implements Serializable {
 
-    public final byte[] batch;
+    /**
+	 * 
+	 */
+	private static final long serialVersionUID = 7251994215265951672L;
+	public final byte[] batch;
     public final int round;
     public final int leader;
 
@@ -64,7 +68,7 @@ public class BatchInfo implements Serializable {
 
         if (this.batch != null) {
             for (int j = 0; j < this.batch.length; j++)
-                hash = hash * 31 + (int) this.batch[j];
+                hash = hash * 31 + this.batch[j];
         } else {
             hash = hash * 31 + 0;
         }

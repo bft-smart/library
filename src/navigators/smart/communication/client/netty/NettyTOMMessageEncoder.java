@@ -38,17 +38,17 @@ import org.jboss.netty.channel.SimpleChannelHandler;
 @ChannelPipelineCoverage("all")
 public class NettyTOMMessageEncoder extends SimpleChannelHandler {
     
-    private boolean isClient; //TODO remove this ?
+//    private boolean isClient; //TODO remove this ?
     private Hashtable<Integer,NettyClientServerSession> sessionTable;
-    private int macLength;
+//    private int macLength;
     private int signatureLength;
     private ReentrantReadWriteLock rl;
     private boolean useMAC;
 
-    public NettyTOMMessageEncoder(boolean isClient, Hashtable<Integer,NettyClientServerSession> sessionTable, int macLength, ReentrantReadWriteLock rl, int signatureLength, boolean useMAC){
-        this.isClient = isClient;
+    public NettyTOMMessageEncoder(/*boolean isClient,*/ Hashtable<Integer,NettyClientServerSession> sessionTable/*, int macLength*/, ReentrantReadWriteLock rl, int signatureLength, boolean useMAC){
+//        this.isClient = isClient;
         this.sessionTable = sessionTable;
-        this.macLength = macLength;
+//        this.macLength = macLength;
         this.rl = rl;
         this.signatureLength = signatureLength;
         this.useMAC = useMAC;
@@ -75,11 +75,13 @@ public class NettyTOMMessageEncoder extends SimpleChannelHandler {
 	        if (useMAC)
 	            macData = produceMAC(sm.destination,msgData);
 	        
-	        buf = buffer(4+1+msgData.length+(macData==null?0:macData.length)+(signatureData==null?0:signatureData.length));
+	        int msglength = 1+msgData.length+(macData==null?0:macData.length)+(signatureData==null?0:signatureData.length);
+	        
+	        buf = buffer(4+msglength);
 	        /* msg size */
-	        buf.writeInt(1+msgData.length+(macData==null?0:macData.length)+(signatureData==null?0:signatureData.length));
+	        buf.writeInt(msglength);
 	        /* control byte indicating if the serialized message includes the class header */
-	//        buf.writeByte(sm.includesClassHeader==true?(byte)1:(byte)0);
+	        // buf.writeByte(sm.includesClassHeader==true?(byte)1:(byte)0);
 	        /* control byte indicating if the message is signed or not */
 	        buf.writeByte(sm.signed==true?(byte)1:(byte)0);       
 	        /* data to be sent */
@@ -99,7 +101,7 @@ public class NettyTOMMessageEncoder extends SimpleChannelHandler {
 
     byte[] produceMAC(int id, byte[] data){
         rl.readLock().lock();
-        Mac macSend = ((NettyClientServerSession)sessionTable.get(id)).getMacSend();
+        Mac macSend = sessionTable.get(id).getMacSend();
         rl.readLock().unlock();
         return macSend.doFinal(data);
     }

@@ -201,7 +201,7 @@ public class Configuration {
         return null;
     }
     
-    public final Map getProperties(){
+    public final Map<String,String> getProperties(){
         return configs;
     }
     
@@ -234,7 +234,7 @@ public class Configuration {
     }
     
     private void loadConfig(){
-        configs = new Hashtable();
+        configs = new Hashtable<String,String>();
         try{
             
             String path =  "";

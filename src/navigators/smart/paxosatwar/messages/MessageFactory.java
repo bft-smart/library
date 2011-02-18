@@ -18,10 +18,11 @@
 
 package navigators.smart.paxosatwar.messages;
 
+
 /**
  * This class work as a factory of messages used in the paxos protocol.
  */
-public class MessageFactory<P>{
+public class MessageFactory{
 
     // constants for messages types
     public static final int PROPOSE = 44781;

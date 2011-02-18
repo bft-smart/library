@@ -55,7 +55,7 @@ public interface ConsensusService {
      * the communication layer.
      * @return The MessageHandler object provided by the service
      */
-    public MessageHandler getMessageHandler();
+    public MessageHandler<?,?> getMessageHandler();
 
     /**
      * Returns the id of this replicas consensus service
@@ -91,7 +91,7 @@ public interface ConsensusService {
      * consensus.
      * @param cons The finished consensus.
      */
-    public void deliveryFinished(Consensus cons);
+    public void deliveryFinished(Consensus<?> cons);
 
 	public void start();
 

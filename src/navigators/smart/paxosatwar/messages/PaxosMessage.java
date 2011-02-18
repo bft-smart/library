@@ -306,9 +306,9 @@ public class PaxosMessage<P extends Serialisable> extends SystemMessage {
 			return true;
 		if (obj == null)
 			return false;
-		if (!(obj instanceof PaxosMessage))
+		if (!(obj instanceof PaxosMessage<?>))
 			return false;
-		PaxosMessage other = (PaxosMessage) obj;
+		PaxosMessage<?> other = (PaxosMessage<?>) obj;
 		if (number != other.number)
 			return false;
 		if (paxosType != other.paxosType)

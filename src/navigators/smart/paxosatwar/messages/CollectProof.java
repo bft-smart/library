@@ -21,8 +21,8 @@ package navigators.smart.paxosatwar.messages;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
-
 import navigators.smart.tom.core.messages.Serialisable;
+
 import navigators.smart.tom.util.SerialisationHelper;
 
 /**

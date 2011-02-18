@@ -272,7 +272,7 @@ public class TOMConfiguration extends Configuration {
 
             }
             
-            rsaLoader = new RSAKeyLoader(this, TOMConfiguration.configHome);
+            rsaLoader = new RSAKeyLoader(this, configHome);
 
         } catch (Exception e) {
             System.err.println("Wrong system.config file format.");

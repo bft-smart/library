@@ -25,7 +25,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
-
 /**
  * This is the super-class for all other kinds of messages created by JBP
  * TODO: Apenas sao criados objectos de sub-classes desta. Porque na otornar esta class abstract?
@@ -62,11 +61,12 @@ public abstract class SystemMessage implements Serialisable {
         public static Type getByByte(byte type){
             return mapping.get(type);
         }
+        
     }
     
     public final Type type;
     protected final int sender; // ID of the process which sent the message
-    private byte[] msgdata; //serialised version of this message
+    protected byte[] msgdata; //serialised version of this message
 
     /**
      * Creates a new instance of SystemMessage

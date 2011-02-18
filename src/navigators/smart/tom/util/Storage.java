@@ -112,7 +112,7 @@ public class Storage {
         long var = (quad - (num*(med*med)))/(num-1);
         ////br.ufsc.das.util.Logger.println("mim: "+values[limit]);
         ////br.ufsc.das.util.Logger.println("max: "+values[values.length-limit-1]);
-        return Math.sqrt((double)var);
+        return Math.sqrt(var);
     }
     
     

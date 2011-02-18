@@ -18,15 +18,13 @@
 
 package navigators.smart.paxosatwar.executionmanager;
 
-import java.util.TimerTask;
-
 import navigators.smart.paxosatwar.roles.Acceptor;
 
 
 /**
  * This class implements a timeout for consensus's rounds
  */
-public class TimeoutTask extends TimerTask {
+public class TimeoutTask implements Runnable {
 
     private Acceptor acceptor; // The acceptor role of the PaW algorithm
     private Round round; // The round to which this timeout is related to

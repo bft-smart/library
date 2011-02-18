@@ -19,8 +19,8 @@
 package navigators.smart.paxosatwar.messages;
 
 import java.nio.ByteBuffer;
-
 import navigators.smart.tom.core.messages.Serialisable;
+
 import navigators.smart.tom.util.SerialisationHelper;
 
 /**

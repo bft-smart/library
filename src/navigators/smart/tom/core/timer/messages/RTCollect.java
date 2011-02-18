@@ -26,7 +26,11 @@ import java.io.Serializable;
  */
 public class RTCollect implements Serializable{
     
-    private int newLeader; // New leader for the next consensus being started
+    /**
+	 * 
+	 */
+	private static final long serialVersionUID = -6846631994024920503L;
+	private int newLeader; // New leader for the next consensus being started
     private long lastConsensus; // Last consensus executed, or being executed
     private int reqId; // Request ID associated with the timeout
     

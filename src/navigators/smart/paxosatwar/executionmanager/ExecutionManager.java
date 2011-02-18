@@ -25,6 +25,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import navigators.smart.consensus.Consensus;
 import navigators.smart.consensus.MeasuringConsensus;
@@ -35,7 +37,6 @@ import navigators.smart.paxosatwar.roles.Acceptor;
 import navigators.smart.paxosatwar.roles.Proposer;
 import navigators.smart.statemanagment.TransferableState;
 import navigators.smart.tom.core.TOMLayer;
-import navigators.smart.tom.util.Logger;
 
 
 /**
@@ -45,6 +46,8 @@ import navigators.smart.tom.util.Logger;
  * @author Alysson
  */
 public final class ExecutionManager{
+	
+	private static final Logger log = Logger.getLogger(ExecutionManager.class.getCanonicalName());
 
     private LeaderModule lm;
 
@@ -186,14 +189,15 @@ public final class ExecutionManager{
      * Stops this execution manager
      */
     public void stop() {
-        Logger.println("(ExecutionManager.stoping) Stoping execution manager");
+    	if(log.isLoggable(Level.FINE))
+    		log.fine("(ExecutionManager.stoping) Stoping execution manager");
         stoppedMsgsLock.lock();
         this.stopped = true;
         if (requesthandler.getInExec() != -1) {
             stoppedRound = getExecution(requesthandler.getInExec()).getLastRound();
-            stoppedRound.getTimeoutTask().cancel();
-            if(Logger.debug)
-                Logger.println("(ExecutionManager.stop) Stoping round " + stoppedRound.getNumber() + " of consensus " + stoppedRound.getExecution().getId());
+            stoppedRound.getTimeoutTask().cancel(false);
+            if(log.isLoggable(Level.FINE))
+                log.fine("(ExecutionManager.stop) Stoping round " + stoppedRound.getNumber() + " of consensus " + stoppedRound.getExecution().getId());
 
         }
         stoppedMsgsLock.unlock();
@@ -203,8 +207,8 @@ public final class ExecutionManager{
      * Restarts this execution manager
      */
     public void restart() {
-        if(Logger.debug)
-            Logger.println("(ExecutionManager.restart) Starting execution manager");
+    	if(log.isLoggable(Level.FINE))
+            log.fine("(ExecutionManager.restart) Starting execution manager");
         stoppedMsgsLock.lock();
         this.stopped = false;
         if (stoppedRound != null) {
@@ -217,8 +221,8 @@ public final class ExecutionManager{
             acceptor.processMessage(stoppedMsgs.remove(i));
         }
         stoppedMsgsLock.unlock();
-        if(Logger.debug)
-            Logger.println("(ExecutionManager.restart) Finished stopped messages processing");
+        if(log.isLoggable(Level.FINE))
+            log.fine("(ExecutionManager.restart) Finished stopped messages processing");
     }
 
     /**
@@ -238,36 +242,36 @@ public final class ExecutionManager{
         int msgType = msg.getPaxosType();
         boolean isRetrievingState = tomLayer.isRetrievingState();
 
-        String type = null;
-        switch (msgType) {
-            case MessageFactory.PROPOSE:
-                type = "PROPOSE";
-                break;
-            case MessageFactory.WEAK:
-                type = "WEAK";
-                break;
-            case MessageFactory.STRONG:
-                type = "STRONG";
-                break;
-            case MessageFactory.DECIDE:
-                type = "DECIDE";
-                break;
-            case MessageFactory.FREEZE:
-                type = "FREEZE";
-                break;
-            case MessageFactory.COLLECT:
-                type = "COLLECT";
-                break;
-            default:
-                type = "";
-                break;
-        }
-        if(Logger.debug){
+        if(log.isLoggable(Level.FINEST)){
+        	String type = null;
+        	switch (msgType) {
+        	case MessageFactory.PROPOSE:
+        		type = "PROPOSE";
+        		break;
+        	case MessageFactory.WEAK:
+        		type = "WEAK";
+        		break;
+        	case MessageFactory.STRONG:
+        		type = "STRONG";
+        		break;
+        	case MessageFactory.DECIDE:
+        		type = "DECIDE";
+        		break;
+        	case MessageFactory.FREEZE:
+        		type = "FREEZE";
+        		break;
+        	case MessageFactory.COLLECT:
+        		type = "COLLECT";
+        		break;
+        	default:
+        		type = "";
+        		break;
+        	}
             if (isRetrievingState)
-                Logger.println("(ExecutionManager.checkLimits) I'm waiting for a state");
-            Logger.println("(ExecutionManager.checkLimits) I received a message from replica "+ msg.getSender() + " for execution " + consId + " of type " + type);
-            Logger.println("(ExecutionManager.checkLimits) I'm at execution " + currentConsId);
-            Logger.println("(ExecutionManager.checkLimits) My last las execution is " + lastConsId);
+                log.finest("(ExecutionManager.checkLimits) I'm waiting for a state");
+            log.finest("(ExecutionManager.checkLimits) I received a message from replica "+ msg.getSender() + " for execution " + consId + " of type " + type);
+            log.finest("(ExecutionManager.checkLimits) I'm at execution " + currentConsId);
+            log.finest("(ExecutionManager.checkLimits) My last las execution is " + lastConsId);
         }
         boolean canProcessTheMessage = false;
         
@@ -291,8 +295,8 @@ public final class ExecutionManager{
             if(stopped) {//just an optimization to avoid calling the lock in normal case
                 stoppedMsgsLock.lock();
                 if (stopped) {
-                    if(Logger.debug)
-                        Logger.println("(ExecutionManager.checkLimits) adding message for execution "+consId+" to stoopped");
+                	if(log.isLoggable(Level.FINER))
+                        log.finer("(ExecutionManager.checkLimits) adding message for execution "+consId+" to stopped");
                     //the execution manager was stopped, the messages should be stored
                     //for later processing (when the execution is restarted)
                     stoppedMsgs.add(msg);
@@ -312,13 +316,13 @@ public final class ExecutionManager{
 
                     consId > (lastConsId + 1)
             ) {
-                if(Logger.debug)
-                    Logger.println("(ExecutionManager.checkLimits) Message for execution "+consId+" is out of context, adding it to out of context set");
+            	if(log.isLoggable(Level.FINER))
+                    log.finer("(ExecutionManager.checkLimits) Message for execution "+consId+" is out of context, adding it to out of context set");
                 //store it as an ahead of time message (out of context)
                 addOutOfContextMessage(msg);
             } else {
-                if(Logger.debug)
-                    Logger.println("(ExecutionManager.checkLimits) message for execution "+consId+" can be processed");
+            	if(log.isLoggable(Level.FINER))
+                    log.finer("(ExecutionManager.checkLimits) message for execution "+consId+" can be processed");
                 canProcessTheMessage = true;
             }
         } else if (
@@ -342,8 +346,8 @@ public final class ExecutionManager{
             //TODO: at this point a new state should be recovered from other correct replicas
 
             /** ISTO E CODIGO DO JOAO, PARA TRATAR DA TRANSFERENCIA DE ESTADO */
-            if(Logger.debug)
-                Logger.println("(ExecutionManager.checkLimits) Message for execution "+consId+" is beyond the paxos highmark, adding it to out of context set");
+        	if(log.isLoggable(Level.FINER))
+                log.finer("(ExecutionManager.checkLimits) Message for execution "+consId+" is beyond the paxos highmark, adding it to out of context set");
             addOutOfContextMessage(msg);
             tomLayer.requestState(me, getOtherAcceptors(), msg.getSender(), consId);
             /******************************************************************/
@@ -364,6 +368,9 @@ public final class ExecutionManager{
         /******* BEGIN OUTOFCONTEXT CRITICAL SECTION *******/
 
         boolean result = outOfContextProposes.get(eid) != null || outOfContext.get(eid) != null;
+        if(outOfContextProposes.size()>0 && log.isLoggable(Level.FINE)){
+        	log.fine("ExecutionManager.thereArePendentMessages: oocProposes"+ outOfContextProposes);
+        }
 
         /******* END OUTOFCONTEXT CRITICAL SECTION *******/
         outOfContextLock.unlock();
@@ -427,7 +434,8 @@ public final class ExecutionManager{
      * @param eid ID of the consensus's execution to be returned
      * @return The consensus's execution specified
      */
-    public Execution getExecution(long eid) {
+    @SuppressWarnings("unchecked")
+	public Execution getExecution(long eid) {
         executionsLock.lock();
         /******* BEGIN EXECUTIONS CRITICAL SECTION *******/
 
@@ -452,26 +460,26 @@ public final class ExecutionManager{
 
             PaxosMessage<?> prop = outOfContextProposes.remove(eid);
             if (prop != null) {
-                if(Logger.debug)
-                    Logger.println("(ExecutionManager.createExecution) (" + eid + ") A processar PROPOSE recebido previamente fora de contexto");
+            	if(log.isLoggable(Level.FINER))
+                    log.finer("(ExecutionManager.createExecution) (" + eid + ") A processar PROPOSE recebido previamente fora de contexto");
                 acceptor.processMessage(prop);
             }
 
             //then we have to put the pending paxos messages
             List<PaxosMessage<?>> messages = outOfContext.remove(eid);
             if (messages != null) {
-                if(Logger.debug)
-                    Logger.println("(createExecution) (" + eid + ") A processar " + messages.size() + " mensagens recebidas previamente fora de contexto");
+            	if(log.isLoggable(Level.FINER))
+                    log.finer("(createExecution) (" + eid + ") A processar " + messages.size() + " mensagens recebidas previamente fora de contexto");
                 for (Iterator<PaxosMessage<?>> i = messages.iterator(); i.hasNext();) {
                     acceptor.processMessage(i.next());
                     if (execution.isDecided()) {
-                        if(Logger.debug)
-                            Logger.println("(ExecutionManager.createExecution) execution " + eid + " decided.");
+                    	if(log.isLoggable(Level.FINER))
+                            log.finer("(ExecutionManager.createExecution) execution " + eid + " decided.");
                         break;
                     }
                 }
-                if(Logger.debug)
-                    Logger.println("(createExecution) (" + eid + ") Terminei processamento de mensagens recebidas previamente fora de contexto");
+                if(log.isLoggable(Level.FINER))
+                    log.finer("(createExecution) (" + eid + ") Terminei processamento de mensagens recebidas previamente fora de contexto");
             }
 
             /******* END OUTOFCONTEXT CRITICAL SECTION *******/
@@ -507,8 +515,8 @@ public final class ExecutionManager{
             messages.add(m);
 
             if (outOfContext.size() % 1000 == 0) {
-                if(Logger.debug)
-                    Logger.println("(ExecutionManager.addOutOfContextMessage) out-of-context size: " + outOfContext.size());
+            	if(log.isLoggable(Level.FINER))
+                    log.finer("(ExecutionManager.addOutOfContextMessage) out-of-context size: " + outOfContext.size());
             }
         }
 
@@ -525,7 +533,7 @@ public final class ExecutionManager{
         return requesthandler;
     }
 
-    public void decided(Consensus cons) {
+    public void decided(Consensus<?> cons) {
           //set this consensus as the last executed
                 requesthandler.setLastExec(cons.getId());
 

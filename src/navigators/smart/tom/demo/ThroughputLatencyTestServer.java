@@ -95,7 +95,7 @@ public class ThroughputLatencyTestServer extends TOMReceiver {
         }
         else if (remoteId==-1){
             //send back totalOps
-        	System.out.println("Client "+msg.getSender()+" requests ops");
+//        	System.out.println("Client "+msg.getSender()+" requests ops");
             byte[] command = new byte[12];
             ByteBuffer buf = ByteBuffer.wrap(command);
             buf.putInt(-1);

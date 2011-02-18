@@ -104,7 +104,8 @@ public class RequestHandler extends Thread {
     }
 
     /**
-     * Sets which consensus is being executed at the moment
+     * Sets which consensus is being executed at the moment. If the value is set to -1 
+     * a new Proposal is triggered if this replica is the leader.
      *
      * @param inEx ID of the consensus being executed at the moment
      */
@@ -114,8 +115,7 @@ public class RequestHandler extends Thread {
 
         proposeLock.lock();
         this.inExecution = inEx;
-        if (inEx == -1l
-                && !tomlayer.isRetrievingState()) { //code of joao for state transfer
+        if (inEx == -1l && !tomlayer.isRetrievingState()) { //code of joao for state transfer
             canPropose.signalAll();
         }
         proposeLock.unlock();
@@ -198,7 +198,8 @@ public class RequestHandler extends Thread {
                 //acceptor.getMEZone();
                 //getExecution and if its not created create it
                 //TODO make this better
-                Execution exec = execManager.getExecution(execId);
+                @SuppressWarnings("unused")
+				Execution exec = execManager.getExecution(execId);
                 //acceptor.leaveMEZone();
                 //Logger.println("(TOMLayer.run) Acceptor semaphore acquired");
 
@@ -350,7 +351,8 @@ public class RequestHandler extends Thread {
      * for a pending TOM message
      * @param msg The timeout related message being delivered
      */
-    public void deliverTimeoutRequest(RTMessage msg) {
+    @SuppressWarnings("unchecked")
+	public void deliverTimeoutRequest(RTMessage msg) {
         switch (msg.getRTType()) {
             case TOMUtil.RT_TIMEOUT:
                  {

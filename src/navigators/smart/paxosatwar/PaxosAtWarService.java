@@ -45,7 +45,7 @@ public class PaxosAtWarService implements ConsensusService{
     public RequestsTimer requestsTimer;
 
     /** Handler for PaWMessages*/
-    private MessageHandler msghandler;
+	private PaWMessageHandler<?> msghandler;
 
     private final OutOfContextMessageThread ot;
 
@@ -56,7 +56,7 @@ public class PaxosAtWarService implements ConsensusService{
      * @param manager The ExecutionManager
      * @param msghandler The MessageHandler for PaxosAtWar Messages
      */
-    public PaxosAtWarService(LeaderModule lm, ExecutionManager manager, PaWMessageHandler msghandler){
+    public PaxosAtWarService(LeaderModule lm, ExecutionManager manager, PaWMessageHandler<?> msghandler){
         this.lm = lm;
         this.execmng = manager;
         this.msghandler = msghandler;
@@ -72,7 +72,7 @@ public class PaxosAtWarService implements ConsensusService{
     }
 
     public void decide(int execId, int batchsize, byte[] value) {
-        MeasuringConsensus cons = execmng.getExecution(execId).getConsensus();
+        MeasuringConsensus<?> cons = execmng.getExecution(execId).getConsensus();
 
         cons.batchSize = batchsize;
         execmng.getProposer().startExecution(execId, value);
@@ -93,7 +93,7 @@ public class PaxosAtWarService implements ConsensusService{
         requestsTimer.unwatch(msg);
     }
 
-    public MessageHandler getMessageHandler() {
+    public MessageHandler<?,?> getMessageHandler() {
         return msghandler;
     }
 
@@ -139,12 +139,12 @@ public class PaxosAtWarService implements ConsensusService{
 
     }
 
-    public void deliveryFinished(Consensus cons) {
+    public void deliveryFinished(Consensus<?> cons) {
         execmng.decided(cons);
     }
 
 	@Override
 	public void start() {
-		//nothing to do here..
+		ot.start();
 	}
 }

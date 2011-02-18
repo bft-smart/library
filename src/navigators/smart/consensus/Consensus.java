@@ -55,7 +55,7 @@ public class Consensus<E> {
     }
 
     /**
-     * Sets the decided value
+     * Gets the serialized decided value
      * @return Decided Value
      */
     public byte[] getDecision() {
@@ -68,13 +68,15 @@ public class Consensus<E> {
     }
 
     public void setDeserialisedDecision(E deserialised) {
-        this.deserializedDecision = deserialised;
+    	synchronized(sync){
+    		this.deserializedDecision = deserialised;
+    	}
     }
 
     /**
      * Blocks until a decision has been reached. Returns null if the decision was not yet
      * deserialized, otherwise it returns the decision  
-     * @return The deserialized decided value, null if the decision wasn|t deserialised yet.
+     * @return The deserialized decided value, null if the decision wasn't deserialized yet.
      */
     public E getDeserializedDecision() {
         synchronized (sync) {
@@ -136,9 +138,9 @@ public class Consensus<E> {
 			return true;
 		if (obj == null)
 			return false;
-		if (!(obj instanceof Consensus))
+		if (!(obj instanceof Consensus<?>))
 			return false;
-		Consensus other = (Consensus) obj;
+		Consensus<?> other = (Consensus<?>) obj;
 		if (!Arrays.equals(decision, other.decision))
 			return false;
 		if (decisionRound != other.decisionRound)

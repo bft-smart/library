@@ -238,7 +238,7 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
         	Entry<Integer,NettyClientServerSession> m =  i.next();
             NettyClientServerSession value =  m.getValue();
             if (e.getChannel().equals(value.getChannel())) {
-                int key = (Integer) m.getKey();
+                int key = m.getKey();
                 sessionTable.remove(key);
                 System.out.println("#Removed client channel with ID= " + key);
                 System.out.println("#active clients="+sessionTable.size());
@@ -275,10 +275,10 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
         }
         for (int i = 0; i < targets.length; i++) {
             rl.readLock().lock();
-            NettyClientServerSession ncss = (NettyClientServerSession)sessionTable.get(targets[i]);
+            NettyClientServerSession ncss = sessionTable.get(targets[i]);
            
             if (ncss!=null){
-                Channel session = (Channel) ((NettyClientServerSession) sessionTable.get(targets[i])).getChannel();
+                Channel session = sessionTable.get(targets[i]).getChannel();
                 rl.readLock().unlock();
                 sm.destination = targets[i];                
                 //send message

@@ -19,7 +19,9 @@
 package navigators.smart.paxosatwar.roles;
 
 import java.security.SignedObject;
-import java.util.Timer;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 import navigators.smart.communication.ServerCommunicationSystem;
 import navigators.smart.paxosatwar.executionmanager.Execution;
@@ -49,7 +51,7 @@ import navigators.smart.tom.util.TOMConfiguration;
  */
 public class Acceptor {
 
-    private Timer timer = new Timer(); // scheduler for timeouts
+    private ScheduledThreadPoolExecutor timer = new ScheduledThreadPoolExecutor(5); // scheduler for timeouts
     private int me; // This replica ID
     private ExecutionManager manager; // Execution manager of consensus's executions
     private final MessageFactory factory; // Factory for PaW messages
@@ -121,7 +123,7 @@ public class Acceptor {
      * 
      * @param msg Paxos messages delivered by the comunication layer
      */
-    public final void deliver(PaxosMessage msg) {
+    public final void deliver(PaxosMessage<?> msg) {
         if (manager.checkLimits(msg)) {
             processMessage(msg);
         }
@@ -133,7 +135,8 @@ public class Acceptor {
      *
      * @param msg The message to be processed
      */
-    public final void processMessage(PaxosMessage msg) {
+    @SuppressWarnings("unchecked")
+	public final void processMessage(PaxosMessage msg) {
         Execution execution = manager.getExecution(msg.getNumber());
 
         execution.lock.lock();
@@ -141,33 +144,20 @@ public class Acceptor {
         Round round = execution.getRound(msg.getRound());
 
         switch (msg.getPaxosType()) {
-            case MessageFactory.PROPOSE:
-                 {
-                    proposeReceived(round, msg);
-                }
-                break;
-
-            case MessageFactory.WEAK:
-                 {
-                    weakAcceptReceived(round, msg.getSender(), msg.getValue());
-                }
-                break;
-
-            case MessageFactory.STRONG:
-                 {
-                    strongAcceptReceived(round, msg.getSender(), msg.getValue());
-                }
-                break;
-
-            case MessageFactory.DECIDE:
-                 {
-                    decideReceived(round, msg.getSender(), msg.getValue());
-                }
-                break;
-
-            case MessageFactory.FREEZE: {
-                freezeReceived(round, msg.getSender());
-            }
+        case MessageFactory.PROPOSE:
+        	proposeReceived(round, msg);
+        	break;
+        case MessageFactory.WEAK:
+        	weakAcceptReceived(round, msg.getSender(), msg.getValue());
+        	break;
+        case MessageFactory.STRONG:
+        	strongAcceptReceived(round, msg.getSender(), msg.getValue());
+        	break;
+        case MessageFactory.DECIDE:
+        	decideReceived(round, msg.getSender(), msg.getValue());
+        	break;
+        case MessageFactory.FREEZE:
+        	freezeReceived(round, msg.getSender());
         }
 
         execution.lock.unlock();
@@ -187,21 +177,7 @@ public class Acceptor {
         if(Logger.debug)
             Logger.println("(Acceptor.proposeReceived) PROPOSE for "+round.getNumber()+","+round.getExecution().getId()+" received from "+ sender);
 
-        /**********************************************************/
-        /********************MALICIOUS CODE************************/
-        /**********************************************************/
-       /*
-        if(leaderModule.getLeader(eid, msg.getRound()) == new Random().nextInt(conf.getN())) {
-            try {
-                Thread.sleep(conf.getFreezeInitialTimeout());
-            } catch (InterruptedException ex) {
-                java.util.logging.Logger.getLogger(Acceptor.class.getName()).log(Level.SEVERE, null, ex);
-            }
-        }
-        */
-        /**********************************************************/
-        /**********************************************************/
-        /**********************************************************/
+        //causetimeout() // malicious code to cause timeout
 
         // If message's round is 0, and the sender is the leader for the message's round,
         // execute the propose
@@ -285,10 +261,10 @@ public class Acceptor {
      * the specified execution, false otherwise
      */
     public boolean executeAcceptedPendent(long eid) {
-        if (Logger.debug) {
-            Logger.println("(DeliveryThread.run) Executed propose for " + eid);
-        }
         if (nextProp != null && nextProp.eid == eid) {
+        	if (Logger.debug) {
+        		Logger.println("(Acceptor.executeAcceptedPendent) Executing accepted propose for " + eid);
+        	}
             Execution execution = manager.getExecution(eid);
             execution.lock.lock();
 
@@ -310,7 +286,8 @@ public class Acceptor {
      * @param round the current round of the execution
      * @param value Value that is proposed
      */
-    private void executePropose(Round round, byte[] value) {
+    @SuppressWarnings("unchecked")
+	private void executePropose(Round round, byte[] value) {
         long eid = round.getExecution().getId();
         if(Logger.debug)
             Logger.println("(Acceptor.executePropose) executing propose for " + eid + "," + round.getNumber());
@@ -324,16 +301,20 @@ public class Acceptor {
                 requesthandler.setInExec(eid);
             }
             Object deserialised = tomlayer.checkProposedValue(value);
-            if (deserialised != null && !round.isWeakSetted(me)) {
-                round.getExecution().getConsensus().setDeserialisedDecision(deserialised);
-                if(Logger.debug)
-                    Logger.println("(Acceptor.executePropose) sending weak for " + eid);
-
-                round.setWeak(me, round.propValueHash);
-                communication.send(manager.getOtherAcceptors(), factory.createWeak(eid, round.getNumber(), round.propValueHash));
-
-                computeWeak(eid, round, round.propValueHash);
-            }
+            if (deserialised != null ) {
+            	round.getExecution().getConsensus().setDeserialisedDecision(deserialised);
+            	if(!round.isWeakSetted(me)) { //send weak if necessary
+	                if(Logger.debug)
+	                    Logger.println("(Acceptor.executePropose) sending weak for " + eid);
+	
+	                round.setWeak(me, round.propValueHash); //set myself as weak acceptor
+	                communication.send(manager.getOtherAcceptors(), factory.createWeak(eid, round.getNumber(), round.propValueHash));
+	
+	                computeWeak(eid, round, round.propValueHash);
+            	} else if(round.getExecution().isDecided()){
+           			round.getExecution().decided(round);
+            	}
+            } 
         }
     }
 
@@ -376,16 +357,6 @@ public class Acceptor {
      * @param round Round of the receives message
      * @param value Value sent in the message
      */
-    /**
-     * @param eid
-     * @param round
-     * @param value
-     */
-    /**
-     * @param eid
-     * @param round
-     * @param value
-     */
     private void computeWeak(long eid, Round round, byte[] value) {
         int weakAccepted = round.countWeak(value);
 
@@ -413,10 +384,9 @@ public class Acceptor {
                     communication.send(manager.getOtherAcceptors(),
                             factory.createDecide(eid, round.getNumber(), round.propValue));
                 }
-
-                if(Logger.debug)
-                    Logger.println("(Acceptor.computeWeak) Deciding " + eid);
-                decide(round /*, value*/);
+            	if(Logger.debug)
+            		Logger.println("(Acceptor.computeWeak) Deciding " + eid);
+            	decide(round /*, value*/);
             }
         }
     }
@@ -498,8 +468,12 @@ public class Acceptor {
         if(Logger.debug)
             Logger.println("(Acceptor.scheduleTimeout) scheduling timeout of " + round.getTimeout() + " ms for round " + round.getNumber() + " of consensus " + round.getExecution().getId());
         TimeoutTask task = new TimeoutTask(this, round);
-        round.setTimeoutTask(task);
-        timer.schedule(task, round.getTimeout());
+        ScheduledFuture<?> future = timer.schedule(task, round.getTimeout(), TimeUnit.MILLISECONDS);
+        round.setTimeoutTask(future);
+        //purge timer every 100 timeouts
+        if(round.getExecution().getId()%100 == 0){
+        	timer.purge();
+        }
     }
 
     /**
@@ -561,7 +535,7 @@ public class Acceptor {
         //if there is more than 2f+1 timeouts
         if (round.countFreeze() > manager.quorum2F && !round.isCollected()) {
             round.collect();
-            round.getTimeoutTask().cancel();
+            round.getTimeoutTask().cancel(false);
 
             Execution exec = round.getExecution();
             Round nextRound = exec.getRound(round.getNumber() + 1,false);
@@ -622,7 +596,7 @@ public class Acceptor {
     }
 
     /**
-     * This is the metodh invoked when a value is decided by this process
+     * This is the method invoked when a value is decided by this process
      * @param round Round at which the decision is made
      * @param value The decided value (got from WEAK or STRONG messages)
      */
@@ -631,7 +605,7 @@ public class Acceptor {
                 leaderModule.getLeader(round.getExecution().getId(),
                 round.getNumber()));
 
-        round.getTimeoutTask().cancel();
+        round.getTimeoutTask().cancel(false);
         round.getExecution().decided(round/*, value*/);
     }
 
@@ -643,7 +617,8 @@ public class Acceptor {
         public long eid;
         public int r;
         public byte[] value;
-        public Proof p;
+        @SuppressWarnings("unused")
+		public Proof p;
 
         public AcceptedPropose(long eid, int r, byte[] value, Proof p) {
             this.eid = eid;
@@ -652,4 +627,22 @@ public class Acceptor {
             this.p = p;
         }
     }
+    
+    /**********************************************************/
+    /********************MALICIOUS CODE************************/
+    /**********************************************************/
+   /*
+    private void causetimeout(){
+    	
+        if(leaderModule.getLeader(eid, msg.getRound()) == new Random().nextInt(conf.getN())) {
+            try {
+                Thread.sleep(conf.getFreezeInitialTimeout());
+            } catch (InterruptedException ex) {
+                java.util.logging.Logger.getLogger(Acceptor.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
+        
+    }
+    */
+     
 }

@@ -57,8 +57,11 @@ public class ThroughputLatencyTestClient extends TOMSender implements Runnable {
     private int measurementEpoch;
     /** Receiver or the messages */
     private int target;
+    /** Shall the client multi or unicast the message*/
+    private boolean multicast;
           
-    public ThroughputLatencyTestClient(int id, int exec, int argSize, int interval, TOMConfiguration conf) {
+    public ThroughputLatencyTestClient(int id, int exec, int argSize, int interval, TOMConfiguration conf, boolean multicast) {
+    	this.multicast = multicast;
         this.exec = exec;
         this.argSize = argSize;
         this.target = id%conf.getN();
@@ -106,8 +109,12 @@ public class ThroughputLatencyTestClient extends TOMSender implements Runnable {
                 ByteBuffer command1 = ByteBuffer.allocate(4);
                 command1.putInt(-1);
                 currentId = -1;
-                this.doTOMulticast(command1.array());
-//                doTOUnicast(command1.array(),target,false);
+                
+                if(multicast)
+                	this.doTOMulticast(command1.array());
+                else 
+                	doTOUnicast(target,createTOMMsg(command1.array()));
+                
                 this.sm.acquire();	//wait for reply
                 
                 //create msg for # of ops request after signing (id has to be taken before
@@ -117,7 +124,7 @@ public class ThroughputLatencyTestClient extends TOMSender implements Runnable {
 
                //generate exec signed messages
                System.out.println(myId+": Generating and signing "+exec+" messages");
-                Hashtable generatedMsgs = new Hashtable();
+                Hashtable<Integer,TOMMessage> generatedMsgs = new Hashtable<Integer,TOMMessage>();
                 currentId=myId;
                 int currId = currentId;
                 for (int i=0; i<exec; i++){
@@ -131,8 +138,12 @@ public class ThroughputLatencyTestClient extends TOMSender implements Runnable {
                
                	//requests current number of ops processed by the servers
                 currentId = -1;
-                doTOUnicast(target,msg);
-                this.TOMulticast(msg);
+                
+                if(multicast)
+                	this.TOMulticast(msg);
+                else
+                	doTOUnicast(target,msg);
+                
                 this.sm.acquire();
                 
                 measurementEpoch++;
@@ -141,7 +152,6 @@ public class ThroughputLatencyTestClient extends TOMSender implements Runnable {
                 
               this.st.reset();
               long totalBegin = System.nanoTime();
-              boolean firstTime = true;
               for (int i = 0; i < exec; i++) {
                 try {                    
                     num_sends = i;                    
@@ -149,8 +159,11 @@ public class ThroughputLatencyTestClient extends TOMSender implements Runnable {
                         System.out.println("("+myId+"-"+measurementEpoch+") Sending " + (i + 1) + " / " + exec);
                     }
                     last_send_instant = System.nanoTime();
-                    this.TOMulticast((TOMMessage)generatedMsgs.get(i));
-//                    this.doTOUnicast(target,(TOMMessage)generatedMsgs.get(i));
+                    
+                    if(multicast)
+                    	this.TOMulticast(generatedMsgs.get(i));
+                    else
+                    	this.doTOUnicast(target,generatedMsgs.get(i));
                     
                     this.sm.acquire();
 
@@ -224,7 +237,7 @@ public class ThroughputLatencyTestClient extends TOMSender implements Runnable {
 				if (initialNumOps[reply.getSender()] != 0) {
 					opsSinceLastCount = numOps - initialNumOps[reply.getSender()];
 					timeInterval = receive_instant - initialTimestamp[reply.getSender()];
-					double opsPerSec_ = ((double) opsSinceLastCount) / (timeInterval / 1000000000.0);
+					double opsPerSec_ = opsSinceLastCount / (timeInterval / 1000000000.0);
 					long opsPerSec = Math.round(opsPerSec_);
 					if (opsPerSec > max)
 						max = opsPerSec;
@@ -252,8 +265,8 @@ public class ThroughputLatencyTestClient extends TOMSender implements Runnable {
     }
 
     public static void main(String[] args){
-        if (args.length < 5){
-            System.out.println("Usage: java ThroughputLatencyTestClient <num threads> <start id> <number of messages> <argument size (bytes)> <interval between requests (ms)>");
+        if (args.length < 6){
+            System.out.println("Usage: java ThroughputLatencyTestClient <num threads> <start id> <number of messages> <argument size (bytes)> <interval between requests (ms)> <multicast to all replicas: (true/false)>");
             System.exit(-1);
         }
 
@@ -262,6 +275,7 @@ public class ThroughputLatencyTestClient extends TOMSender implements Runnable {
         int numMsgs = new Integer(args[2]);
         int argSize = new Integer(args[3]);
         int interval = new Integer(args[4]);
+        boolean multicast = Boolean.parseBoolean(args[5]);
 
         TOMConfiguration conf = new TOMConfiguration(startId);
         Thread[] t = new Thread[numThreads];
@@ -271,7 +285,7 @@ public class ThroughputLatencyTestClient extends TOMSender implements Runnable {
             //TOMConfiguration conf1 = new TOMConfiguration(startId);
 
             t[i] = new Thread(new ThroughputLatencyTestClient(startId, numMsgs,
-                argSize, interval, conf1));
+                argSize, interval, conf1,multicast));
             t[i].start();
 
             startId++;
