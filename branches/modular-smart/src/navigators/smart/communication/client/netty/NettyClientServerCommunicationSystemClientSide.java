@@ -24,6 +24,7 @@ import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.Signature;
+import java.security.SignatureException;
 import java.security.spec.InvalidKeySpecException;
 import java.util.Enumeration;
 import java.util.Hashtable;
@@ -79,19 +80,21 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
     //private Storage st;
 //    private int count = 0;
     private int signatureLength;    
+    
+    private TOMUtil tomutil;
 
     public NettyClientServerCommunicationSystemClientSide(TOMConfiguration conf) {
         try {
             SecretKeyFactory fac = SecretKeyFactory.getInstance("PBEWithMD5AndDES");
             PBEKeySpec spec = new PBEKeySpec(PASSWORD.toCharArray());
             authKey = fac.generateSecret(spec);
-
+            tomutil = new TOMUtil();
             this.conf = conf;
             this.sessionTable = new Hashtable<Integer, NettyClientServerSession>();
             //this.st = new Storage(BENCHMARK_PERIOD);
             this.rl = new ReentrantReadWriteLock();
             Mac macDummy = Mac.getInstance(conf.getHmacAlgorithm());
-            signatureLength = TOMUtil.getSignatureSize();
+            signatureLength = tomutil.getSignatureSize();
             for (int i = 0; i < conf.getN(); i++) {
                 try {
                     // Configure the client.
@@ -129,7 +132,11 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
             Logger.getLogger(NettyClientServerCommunicationSystemClientSide.class.getName()).log(Level.SEVERE, null, ex);
         } catch (NoSuchAlgorithmException ex) {
             Logger.getLogger(NettyClientServerCommunicationSystemClientSide.class.getName()).log(Level.SEVERE, null, ex);
-        }
+        } catch (InvalidKeyException ex) {
+        	Logger.getLogger(NettyClientServerCommunicationSystemClientSide.class.getName()).log(Level.SEVERE, null, ex);
+		} catch (SignatureException ex) {
+			Logger.getLogger(NettyClientServerCommunicationSystemClientSide.class.getName()).log(Level.SEVERE, null, ex);
+		}
     }
 
     @Override
@@ -183,7 +190,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
                     // Configure the client.                    
                     ClientBootstrap bootstrap = new ClientBootstrap(new NioClientSocketChannelFactory(Executors.newCachedThreadPool(), Executors.newCachedThreadPool()));
                     // Set up the default event pipeline.
-                    bootstrap.setPipelineFactory(new NettyClientPipelineFactory(this, true, sessionTable, authKey, macDummy.getMacLength(), conf, rl, TOMUtil.getSignatureSize(), new ReentrantLock()));
+                    bootstrap.setPipelineFactory(new NettyClientPipelineFactory(this, true, sessionTable, authKey, macDummy.getMacLength(), conf, rl, tomutil.getSignatureSize(), new ReentrantLock()));
                     // Start the connection attempt.
                     ChannelFuture future = bootstrap.connect(conf.getRemoteAddress(ncss.getReplicaId()));
                     //creates MAC stuff
@@ -217,10 +224,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
     	if(sign){
     		//checks if msg is serialized and signs it then
     		sign(sm);
-    	} else {
-    		//check only needed when not signing
-    		checkSerialized(sm);
-    	}
+    	} 
 
         for (int i = targets.length - 1; i >= 0; i--) {
 			/*
@@ -258,10 +262,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
     	if(sign){
     		//checks if msg is serialized and signs it then
     		sign(sm);
-    	} else {
-    		//check only needed when not signing
-    		checkSerialized(sm);
-    	}
+    	} 
     	writeToChannel(sm,target);
     }
 
@@ -278,18 +279,16 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 		
 	}
 
-	private void checkSerialized(TOMMessage sm) {
-    	//check serialized message
-        if (sm.serializedMessage == null) {
-            sm.serializedMessage = sm.getBytes();
-        }
-	}
+//	private void checkSerialized(TOMMessage sm) {
+//    	//check serialized message
+//        if (sm.serializedMessage == null) {
+//            sm.serializedMessage = sm.getBytes();
+//        }
+//	}
 
 	public void sign(TOMMessage sm) {
-		checkSerialized(sm);
-
         //produce signature        
-        byte[] data2 = signMessage(TOMConfiguration.getRSAPrivateKey(), sm.serializedMessage);
+        byte[] data2 = signMessage(TOMConfiguration.getRSAPrivateKey(), sm.getBytes());
         sm.signed = true;
         sm.serializedMessageSignature = data2;
 /*

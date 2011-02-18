@@ -50,6 +50,7 @@ public class TOMConfiguration extends Configuration {
     private boolean  stateTransferEnabled;
     private int checkpoint_period;
     private int useControlFlow;
+    private int signatureSize;
 
     public TOMConfiguration(TOMConfiguration conf, int processId) {
         super(conf, processId);
@@ -77,6 +78,7 @@ public class TOMConfiguration extends Configuration {
         this.useControlFlow = conf.useControlFlow;
         this.inQueueSize = conf.inQueueSize;
         this.outQueueSize = conf.outQueueSize;
+        this.signatureSize = conf.signatureSize;
     }
 
     /** Creates a new instance of TOMConfiguration */
@@ -264,15 +266,14 @@ public class TOMConfiguration extends Configuration {
             if (s == null) {
                 outQueueSize = 200;
             } else {
-
                 outQueueSize = Integer.parseInt(s);
                 if (outQueueSize < 1) {
                     outQueueSize = 200;
                 }
-
             }
-            
             rsaLoader = new RSAKeyLoader(this, configHome);
+            
+            signatureSize = new TOMUtil().getSignatureSize();
 
         } catch (Exception e) {
             System.err.println("Wrong system.config file format.");
@@ -437,4 +438,8 @@ public class TOMConfiguration extends Configuration {
             return null;
         }
     }
+
+	public int getSignatureSize() {
+		return signatureSize;
+	}
 }

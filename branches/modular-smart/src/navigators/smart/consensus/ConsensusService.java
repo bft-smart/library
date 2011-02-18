@@ -94,5 +94,7 @@ public interface ConsensusService {
 
 	public void start();
 
+	public byte[] getState(Consensus<?> cons);
+
 
 }

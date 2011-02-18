@@ -18,10 +18,14 @@
 
 package navigators.smart.tom.util;
 
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.Signature;
-import java.util.concurrent.locks.ReentrantLock;
+import java.security.SignatureException;
+
+import navigators.smart.tom.core.messages.TOMMessage;
 
 public class TOMUtil {
 
@@ -38,26 +42,27 @@ public class TOMUtil {
 	public static final int SM_REPLY = 7;
 
 	// the signature engine used in the system and the signatureSize
-	private static Signature signatureEngine;
-	private static int signatureSize = -1;
+	private Signature signatureEngine;
+	private int signatureSize;
 
 	// lock to make signMessage and verifySignature reentrant
-	private static ReentrantLock lock = new ReentrantLock();
+//	private static ReentrantLock lock = new ReentrantLock();
 
 	// private static Storage st = new Storage(BENCHMARK_PERIOD);
 	// private static int count=0;
+	
+	public TOMUtil() throws NoSuchAlgorithmException, InvalidKeyException, SignatureException{
+		signatureEngine = Signature.getInstance("SHA1withRSA");
 
-	public static int getSignatureSize() {
-		if (signatureSize > 0) {
-			return signatureSize;
-		}
+		signatureEngine.initSign(TOMConfiguration.getRSAPrivateKey());
 
-		byte[] signature = signMessage(TOMConfiguration.getRSAPrivateKey(), "a".getBytes());
+		signatureEngine.update("a".getBytes());
+		byte[] signature = signatureEngine.sign();
 
-		if (signature != null) {
-			signatureSize = signature.length;
-		}
+		signatureSize = signature.length;
+	}
 
+	public int getSignatureSize() {
 		return signatureSize;
 	}
 
@@ -68,26 +73,14 @@ public class TOMUtil {
 	 *            the private key to be used to generate the signature
 	 * @param message
 	 *            the message to be signed
-	 * @return the signature
+	 * @throws SignatureException 
 	 */
-	public static byte[] signMessage(PrivateKey key, byte[] message) {
-		lock.lock();
-		try {
-			if (signatureEngine == null) {
-				signatureEngine = Signature.getInstance("SHA1withRSA");
-			}
-
-			signatureEngine.initSign(key);
-
-			signatureEngine.update(message);
-
-			byte[] result = signatureEngine.sign();
-			lock.unlock();
-			return result;
-		} catch (Exception e) {
-			lock.unlock();
+	public synchronized void signMessage(PrivateKey key, TOMMessage message) {
+		try{
+		signatureEngine.update(message.getBytes());
+		message.serializedMessageSignature = signatureEngine.sign();
+		} catch(SignatureException e){
 			e.printStackTrace();
-			return null;
 		}
 	}
 
@@ -102,14 +95,9 @@ public class TOMUtil {
 	 *            the signature to be verified
 	 * @return the signature
 	 */
-	public static boolean verifySignature(PublicKey key, byte[] message, byte[] signature) {
-		lock.lock();
+	public synchronized boolean verifySignature(PublicKey key, byte[] message, byte[] signature) {
 //		long startTime = System.nanoTime();
-		try {
-			if (signatureEngine == null) {
-				signatureEngine = Signature.getInstance("SHA1withRSA");
-			}
-
+		try{
 			signatureEngine.initVerify(key);
 
 			signatureEngine.update(message);
@@ -139,10 +127,8 @@ public class TOMUtil {
 			 * 
 			 * count = 0; st = new Storage(BENCHMARK_PERIOD); }
 			 */
-			lock.unlock();
 			return result;
 		} catch (Exception e) {
-			lock.unlock();
 			e.printStackTrace();
 			return false;
 		}

@@ -41,6 +41,7 @@ public class StateLog {
     private byte[] stateHash; // Hash of the state associated with the last checkpoint
     private int position; // next position in the array of batches to be written
     private long lastEid; // Execution ID for the last messages batch delivered to the application
+    private byte[] lmstate; //Ithe state of the leadermodule
 
     /**
      * Constructs a State log
@@ -56,13 +57,20 @@ public class StateLog {
         this.stateHash = null;
         this.position = 0;
         this.lastEid = -1;
+        this.lmstate = null;
     }
     
     /**
-     * Sets the state associated with the last checkpoint, and updates the execution ID associated with it
-     * @param state State associated with the last checkpoint
+     * Sets the state associated with the last checkpoint, and updates the execution IDs associated with it
+     * @param lastCPEid
+     * @param lastCPRound
+     * @param lastCPLeader
+     * @param lastEid
+     * @param state
+     * @param stateHash
+     * @param lmstate
      */
-    public void newCheckpoint(byte[] state, byte[] stateHash) {
+    public void newCheckpoint(long lastCPEid, int lastCPRound, int lastCPLeader, long lastEid, byte[] state, byte[] stateHash, byte[] lmstate) {
 
         for (int i = 0; i < this.messageBatches.length; i++)
             messageBatches[i] = null;
@@ -70,7 +78,11 @@ public class StateLog {
         position = 0;
         this.state = state;
         this.stateHash = stateHash;
-
+        this.lastCheckpointEid = lastCPEid;
+        this.lastCheckpointRound = lastCPRound;
+        this.lastCheckpointLeader = lastCPLeader;
+        this.lmstate = lmstate;
+        this.lastEid = lastEid;
     }
 
     /**
@@ -223,7 +235,7 @@ public class StateLog {
 
                     batches = messageBatches;
              }
-            return new TransferableState(batches, lastCheckpointEid, lastCheckpointRound, lastCheckpointLeader, eid, (setState ? state : null), stateHash);
+            return new TransferableState(lastCheckpointEid, lastCheckpointRound, lastCheckpointLeader, eid, (setState ? state : null), stateHash,lmstate,batches);
 
         }
         else {
@@ -240,19 +252,19 @@ public class StateLog {
     public void update(TransferableState transState) {
 
         position = 0;
-        if (transState.getMessageBatches() != null) {
-            for (int i = 0; i < transState.getMessageBatches().length; i++, position = i) {
-                this.messageBatches[i] = transState.getMessageBatches()[i];
+        if (transState.messageBatches != null) {
+            for (int i = 0; i < transState.messageBatches.length; i++, position = i) {
+                this.messageBatches[i] = transState.messageBatches[i];
             }
         }
 
-        this.lastCheckpointEid = transState.getLastCheckpointEid();
+        this.lastCheckpointEid = transState.lastCheckpointEid;
 
-        this.state = transState.getLastCPState();
+        this.state = transState.state;
 
-        this.stateHash = transState.getStateHash();
+        this.stateHash = transState.stateHash;
 
-        this.lastEid = transState.getLastEid();
+        this.lastEid = transState.lastEid;
     }
 
 	/* (non-Javadoc)

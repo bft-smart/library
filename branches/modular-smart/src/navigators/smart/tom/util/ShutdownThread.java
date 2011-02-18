@@ -26,6 +26,7 @@ import navigators.smart.tom.core.TOMLayer;
  * Print information about the replica when it is shutdown.
  *
  */
+@SuppressWarnings("unused")
 public class ShutdownThread extends Thread {
 
     private ServerCommunicationSystem scs;
@@ -33,7 +34,6 @@ public class ShutdownThread extends Thread {
 //    private Acceptor acceptor;
 //    private ExecutionManager manager;
     ConsensusService conSrv;
-    @SuppressWarnings("unused")
 	private TOMLayer tomLayer;
 
     public ShutdownThread(ServerCommunicationSystem scs, ConsensusService consensus, TOMLayer tomLayer) {
@@ -58,8 +58,8 @@ public class ShutdownThread extends Thread {
 //            }
 //        }
 //        System.err.println("Execution manager: "+ tomLayer.execManager);
-        System.err.println("Server communication system queues: "+
-                scs.toString());
+//        System.err.println("Server communication system queues: "+
+//                scs.toString());
         //System.err.println("Pending requests: " +
         //        tomLayer.clientsManager.getPendingRequests());
 //        System.err.println("Requests timers: " + tomLayer.requestsTimer);

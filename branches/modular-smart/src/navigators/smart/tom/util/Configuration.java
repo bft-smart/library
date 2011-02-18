@@ -225,7 +225,7 @@ public class Configuration {
      * Returns the id of this smart instance
      * @return The id of this instance
      */
-    public final int getProcessId(){
+    public int getProcessId(){
         return processId;
     }
 

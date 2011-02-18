@@ -45,6 +45,8 @@ import navigators.smart.tom.util.TOMUtil;
 /**
  * This class implements a thread that uses the PaW algorithm to provide the application
  * a layer of total ordered messages
+ * 
+ * TODO There is a bug when we request a statetransfer for eid 0 -> statemanager.waiting is set to -1 then which means we are not waiting for a state
  */
 public class TOMLayer implements RequestReceiver {
 	
@@ -66,6 +68,8 @@ public class TOMLayer implements RequestReceiver {
     private BatchBuilder bb = new BatchBuilder();
 //    private long lastTimestamp = 0;
     private MessageDigest md;
+    
+    private Object requestsync = new Object();
 
     /* The next fields are used only for benchmarking */
 //    private static final int BENCHMARK_PERIOD = 100;
@@ -141,39 +145,19 @@ public class TOMLayer implements RequestReceiver {
      * @param msg The request being received
      */
     public void requestReceived(TOMMessage msg) {
-        //numMsgsReceived++;
-
-        /**********************************************************/
-        /********************MALICIOUS CODE************************/
-        /**********************************************************/
-        //first server always ignores messages from the first client (with n=4)
-        /*
-        if (conf.getProcessId() == 0 && msg.getSender() == 4) {
-        return;
-        }
-         */
-        /**********************************************************/
-        /**********************************************************/
-        /**********************************************************/
-        // check if this request is valid
-        if (clientsManager.requestReceived(msg, true, !msg.isReadOnlyRequest())) {
-            if (msg.isReadOnlyRequest()) {
-                receiver.receiveMessage(msg);
-            } else {
-                consensusService.notifyNewRequest(msg);
-
-                /*
-                //log.finer(" (" + msg.getSender() + "," + msg.getSequence() + "," + TOMUtil.byteArrayToString(msg.getContent()) + ") received");
-                if (numMsgsReceived % 1000 == 0) {
-                Logger.println("Total number of messages received from clients:" + numMsgsReceived);
-                }
-                 */
-            }
-        } else {
-            if(log.isLoggable(Level.FINER)) 
-                log.finer(" the received TOMMessage " + msg + " was discarded.");
-        }
-
+    	synchronized(requestsync){		//synchronize forwareded and client received msg access
+    		// check if this request is valid
+    		if (clientsManager.requestReceived(msg, true, !msg.isReadOnlyRequest())) {
+    			if (msg.isReadOnlyRequest()) {
+    				receiver.receiveMessage(msg);
+    			} else {
+    				consensusService.notifyNewRequest(msg);
+    			}
+    		} else {
+    			if(log.isLoggable(Level.FINER)) 
+    				log.finer(" the received TOMMessage " + msg + " was discarded.");
+    		}
+    	}
     }
 
     /**
@@ -213,7 +197,7 @@ public class TOMLayer implements RequestReceiver {
             TOMMessage msg = li.next();
             if(log.isLoggable(Level.FINEST)){
             	log.finest(" adding req " + msg + " to PROPOSE");}
-            messages[i] = msg.serializedMessage;
+            messages[i] = msg.getBytes();
             if(conf.getUseSignatures() == 1){
             	signatures[i] = msg.serializedMessageSignature;
             }
@@ -253,7 +237,7 @@ public class TOMLayer implements RequestReceiver {
         if(log.isLoggable(Level.FINER)) {
             log.finer(" starting");
         }
-        BatchReader batchReader = new BatchReader(proposedValue, conf.getUseSignatures() == 1);
+        BatchReader batchReader = new BatchReader(proposedValue, conf.getUseSignatures() == 1,conf.getSignatureSize());
 
         TOMMessage[] requests = null;
 
@@ -317,8 +301,16 @@ public class TOMLayer implements RequestReceiver {
     /** ISTO E CODIGO DO JOAO, PARA TRATAR DOS CHECKPOINTS */
     private StateManager stateManager = null;
     private ReentrantLock lockState = new ReentrantLock();
-
-    public void saveState( long lastEid, int decisionRound, int leader) {
+    
+    
+	/**
+	 * Saves the state to the statelog
+	 * @param lastEid The last executionid that is in this state
+	 * @param decisionRound The round of the last execution in this state
+	 * @param leader The leader of the last execution in this state
+	 * @param lmstate The current state of the leadermodule
+	 */	
+    public void saveState( long lastEid, int decisionRound, int leader, byte[] lmstate) {
     	
     	byte[] state = receiver.getState();
 
@@ -329,11 +321,7 @@ public class TOMLayer implements RequestReceiver {
         if(log.isLoggable(Level.FINER))
             log.finer(" Saving state of EID " + lastEid + ", round " + decisionRound + " and leader " + leader);
 
-        statelog.newCheckpoint(state, computeHash(state));
-        statelog.setLastEid(-1);
-        statelog.setLastCheckpointEid(lastEid);
-        statelog.setLastCheckpointRound(decisionRound);
-        statelog.setLastCheckpointLeader(leader);
+        statelog.newCheckpoint(lastEid, decisionRound, leader, -1, state, computeHash(state), lmstate);
 
         /************************* TESTE *************************
         System.out.println("[TOMLayer.saveState]");
@@ -432,10 +420,12 @@ public class TOMLayer implements RequestReceiver {
                     System.out.println("A espera do EID: " + stateManager.getWaiting());
                     /************************* TESTE *************************/
                 }
+            } else {
+            	log.fine("I'm already waiting for a state - not starting state transfer");
             }
         } else {
-        	if(log.isLoggable(Level.FINER))
-                log.finer(" The state transfer protocol is disabled: /n"+
+        	if(log.isLoggable(Level.WARNING))
+                log.warning(" The state transfer protocol is disabled: /n"+
                 "################################################################################## /n"+
                 "- Ahead-of-time message discarded/n"+
                 "- If many messages of the same consensus are discarded, the replica can halt!/n"+
@@ -492,7 +482,7 @@ public class TOMLayer implements RequestReceiver {
             communication.send(targets, smsg);
 
             if(log.isLoggable(Level.FINE))
-                log.fine(" I sent the state for checkpoint " + state.getLastCheckpointEid() + " with batches until EID " + state.getLastEid());
+                log.fine(" I sent the state for checkpoint " + state.lastCheckpointEid + " with batches until EID " + state.lastEid);
             /************************* TESTE *************************
             System.out.println("Quem envia: " + smsg.getSender());
             System.out.println("Que tipo: " + smsg.getType());
@@ -543,10 +533,10 @@ public class TOMLayer implements RequestReceiver {
                 if(log.isLoggable(Level.FINER))
                     log.finer(" The reply is for the EID that I want!");
 
-                if (msg.getSender() == stateManager.getReplica() && msg.getState().getLastCPState() != null) {
+                if (msg.getSender() == stateManager.getReplica() && msg.getState().state != null) {
                     if(log.isLoggable(Level.FINER))
                         log.finer(" I received the state, from the replica that I was expecting");
-                    stateManager.setReplicaState(msg.getState().getLastCPState());
+                    stateManager.setReplicaState(msg.getState().state);
                 }
 
                 stateManager.addState(msg.getSender(), msg.getState());
@@ -565,7 +555,7 @@ public class TOMLayer implements RequestReceiver {
                         byte[] hash = null;
                         hash = computeHash(stateManager.getReplicaState());
                         if (state != null) {
-                            if (Arrays.equals(hash, state.getStateHash())) {
+                            if (Arrays.equals(hash, state.stateHash)) {
                                 haveState = 1;
                             } else {
                                 haveState = -1;
@@ -601,11 +591,9 @@ public class TOMLayer implements RequestReceiver {
                         if(log.isLoggable(Level.FINE))
                             log.fine(" The state of those replies is good!");
 
-                        state.setState(stateManager.getReplicaState());
-
                         lockState.lock();
 
-                        stateManager.getLog().update(state);
+                        stateManager.getLog().update(msg.getState());
 
                         /************************* TESTE *************************
                         System.out.println("[log] Estado pedido: " + msg.getEid());

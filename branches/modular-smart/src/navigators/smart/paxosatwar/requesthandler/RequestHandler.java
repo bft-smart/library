@@ -247,7 +247,7 @@ public class RequestHandler extends Thread {
                 RTInfo rti = getTimeoutInfo(request.getId());
                 if (!rti.isTimeout(conf.getProcessId())) {
                     serializedRequestList.add(
-                            new byte[][]{request.serializedMessage, request.serializedMessageSignature});
+                            new byte[][]{request.getBytes(), request.serializedMessageSignature});
                     timeout(conf.getProcessId(), request, rti);
                     if(Logger.debug)
                         Logger.println("(TOMLayer.requestTimeout) Must send timeout for reqId=" + request.getId());
@@ -374,7 +374,7 @@ public class RequestHandler extends Thread {
                             return;
                         }
 
-                        request.serializedMessage = serializedRequest[0];
+                        request.setBytes(serializedRequest[0]);
                         request.serializedMessageSignature = serializedRequest[1];
 
                         if (tomlayer.clientsManager.requestReceived(request, false)) { //Is this a pending message?
@@ -473,7 +473,7 @@ public class RequestHandler extends Thread {
 
             List<byte[][]> serializedRequestList = new LinkedList<byte[][]>();
             serializedRequestList.add(
-                    new byte[][]{request.serializedMessage, request.serializedMessageSignature});
+                    new byte[][]{request.getBytes(), request.serializedMessageSignature});
 
             sendTimeoutMessage(serializedRequestList);
         /*

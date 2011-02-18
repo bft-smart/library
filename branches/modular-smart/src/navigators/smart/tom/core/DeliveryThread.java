@@ -47,7 +47,7 @@ public class DeliveryThread extends Thread {
     private TOMConfiguration conf;
 
     private final TOMReceiver receiver;
-
+    
     private ConsensusService consensusservice;
 
     /**
@@ -62,8 +62,6 @@ public class DeliveryThread extends Thread {
         this.tomLayer = tomLayer;
         this.conf = conf;
         this.receiver = recv;
-//        this.consensusservice = consensus;
-//        this.lm = lm;
     }
 
     /**
@@ -100,19 +98,20 @@ public class DeliveryThread extends Thread {
     public void canDeliver() {
         canDeliver.signalAll();
     }
-    public void update(TransferableState state) {
+    public void update(TransferableState transferredState) {
 
         deliverLock.lock();
 
         consensusservice.startDeliverState();
+        consensusservice.deliverState(transferredState);
 
-        long lastCheckpointEid = state.getLastCheckpointEid();
-        long lastEid = state.getLastEid();
+        long lastCheckpointEid = transferredState.lastCheckpointEid;
+        long lastEid = transferredState.lastEid;
 
         if(log.isLoggable(Level.FINE))
             log.fine("I'm going to update myself from EID " + lastCheckpointEid + " to EID " + lastEid);
 
-        receiver.setState(state.getLastCPState());
+        receiver.setState(transferredState.state);
 
 //        lm.addLeaderInfo(lastCheckpointEid, state.getLastCheckpointRound(), state.getLastCheckpointLeader());
 
@@ -120,12 +119,12 @@ public class DeliveryThread extends Thread {
 
             try {
 
-                byte[] batch = state.getMessageBatch(eid).batch; // take a batch
+                byte[] batch = transferredState.getMessageBatch(eid).batch; // take a batch
 
 //                lm.addLeaderInfo(eid, state.getMessageBatch(eid).round, state.getMessageBatch(eid).leader);
 
                 // obtain an array of requests from the taken consensus
-                BatchReader batchReader = new BatchReader(batch, conf.getUseSignatures()==1);
+                BatchReader batchReader = new BatchReader(batch, conf.getUseSignatures()==1,conf.getSignatureSize());
 
                 if(log.isLoggable(Level.FINEST))
                     log.finest("interpreting and verifying batched requests.");
@@ -166,8 +165,6 @@ public class DeliveryThread extends Thread {
             }
 
         }
-
-        consensusservice.deliverState(state);
 
         decided.clear();
 
@@ -237,7 +234,7 @@ public class DeliveryThread extends Thread {
                         log.finer("interpreting and verifying batched requests.");
 
                     // obtain an array of requests from the taken consensus
-                    BatchReader batchReader = new BatchReader(cons.getDecision(), conf.getUseSignatures()==1);
+                    BatchReader batchReader = new BatchReader(cons.getDecision(), conf.getUseSignatures()==1,conf.getSignatureSize());
                     requests = batchReader.deserialiseRequests();
 
                 } else {
@@ -267,8 +264,6 @@ public class DeliveryThread extends Thread {
                     receiver.receiveOrderedMessage(requests[i]);
                 }
 
-                consensusservice.deliveryFinished(cons);
-
                 /** ISTO E CODIGO DO JOAO, PARA TRATAR DOS CHECKPOINTS */
 
                 if(log.isLoggable(Level.FINER))
@@ -281,7 +276,7 @@ public class DeliveryThread extends Thread {
                         if ((cons.getId() > 0) && ((cons.getId() % conf.getCheckpoint_period()) == 0)) {
                             if(log.isLoggable(Level.FINER))
                                 log.finer("Performing checkpoint for consensus " + cons.getId());
-                            tomLayer.saveState( cons.getId(), cons.getDecisionRound(), consensusservice.getProposer(cons));
+                            tomLayer.saveState( cons.getId(), cons.getDecisionRound(), consensusservice.getProposer(cons),consensusservice.getState(cons));
                             //TODO: possivelmente fazer mais alguma coisa
                         }
                         else {
@@ -293,6 +288,8 @@ public class DeliveryThread extends Thread {
                     }
                 }
                 /********************************************************/
+                
+                consensusservice.deliveryFinished(cons);
                 if(log.isLoggable(Level.FINER))
                         log.finer("(DeliveryThread.run) All finished for " + cons.getId() + ", took " + (System.currentTimeMillis() - startTime));
             } catch (Exception e) {

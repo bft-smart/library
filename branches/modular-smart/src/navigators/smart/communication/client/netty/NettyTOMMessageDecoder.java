@@ -163,7 +163,7 @@ public class NettyTOMMessageDecoder extends FrameDecoder {
 //                dis = new ChannelBufferInputStream(buffer)
 //                sm = new TOMMessage(dis);
             //TOMMessage sm = (TOMMessage) ois.readObject();
-            sm.serializedMessage = data;
+            sm.setBytes(data);
             if (signed==1){
                 sm.serializedMessageSignature = signature;
                 sm.signed = true;

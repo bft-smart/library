@@ -253,7 +253,7 @@ public class ThroughputLatencyTestClient extends TOMSender implements Runnable {
 				initialNumOps[reply.getSender()] = numOps;
 				initialTimestamp[reply.getSender()] = receive_instant;
 
-				if (count > f+1) {
+				if (count >= f+1) {
 					count = 0;
 					this.sm.release();
 				}
@@ -272,6 +272,10 @@ public class ThroughputLatencyTestClient extends TOMSender implements Runnable {
         }
 
         int numThreads = new Integer(args[0]);
+        
+        if(numThreads < 1){
+        	System.out.println(" You need at least one thread to run the test!");
+        }
         int startId = new Integer(args[1]);
         int numMsgs = new Integer(args[2]);
         int argSize = new Integer(args[3]);

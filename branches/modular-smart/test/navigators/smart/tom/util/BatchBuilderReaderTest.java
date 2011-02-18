@@ -1,8 +1,8 @@
 package navigators.smart.tom.util;
 
 import java.nio.ByteBuffer;
-
 import navigators.smart.tests.util.TestHelper;
+
 import navigators.smart.tom.core.messages.TOMMessage;
 
 import org.junit.Assert;
@@ -38,7 +38,7 @@ public class BatchBuilderReaderTest {
 		byte[] batch = bb.createBatch(timestamp, numberOfNonces, numberOfMessages, totalMessageSize, messages, signatures);
 		
 		
-		BatchReader br = new BatchReader(batch, false);
+		BatchReader br = new BatchReader(batch, false,0);
 		
 		TOMMessage[] msges = br.deserialiseRequests();
 		
@@ -60,7 +60,7 @@ public class BatchBuilderReaderTest {
 		
 		for (int i = 0; i<numberOfMessages; i++) {
 			TOMMessage msg = new TOMMessage(0, 0, TestHelper.createTestByte());
-			msg.serializedMessage= TestHelper.createTestByte();
+			msg.setBytes(TestHelper.createTestByte());
 			tommsgs[i] = msg;
 			ByteBuffer buf = ByteBuffer.allocate(msg.getMsgSize());
 			msg.serialise(buf);
@@ -73,7 +73,7 @@ public class BatchBuilderReaderTest {
 		byte[] batch = bb.createBatch(timestamp, numberOfNonces, numberOfMessages, totalMessageSize, messages, signatures);
 		
 		
-		BatchReader br = new BatchReader(batch, false);
+		BatchReader br = new BatchReader(batch, false,0);
 		
 		TOMMessage[] msges = br.deserialiseRequests();
 		

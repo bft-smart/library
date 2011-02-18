@@ -236,7 +236,7 @@ public class ExecutionManagerTest {
 		mng.decided(new Consensus<Object>(3));
 		verify(handlr,times(2)).setInExec(-1); //verify  both resets of inExec
 		verify(handlr).setLastExec(3);
-		verify(lm).removeStableConsenusInfos(0);
+		verify(lm).removeStableConsenusInfo(0);
 		assertNull(mng.removeExecution(0));
 		verify(acceptor).executeAcceptedPendent(4);
 	}
@@ -249,9 +249,8 @@ public class ExecutionManagerTest {
 		assertFalse(mng.checkLimits(new Propose(1, 0, 1,null,null)));
 		assertTrue(mng.thereArePendentMessages(1));
 		
-		TransferableState state = mock(TransferableState.class);
+		TransferableState state = new TransferableState(0,0,0,10l,null,null,null,null);
 		mng.getExecution(5);
-		when(state.getLastEid()).thenReturn(10l);
 		mng.deliverState(state);
 		verify(handlr).setLastExec(10);
 		verify(handlr).setNoExec();

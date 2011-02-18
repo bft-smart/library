@@ -41,7 +41,7 @@ public class PendingRequests extends LinkedList<TOMMessage> {
     public TOMMessage remove(byte[] serializedMessage) {
         for(ListIterator<TOMMessage> li = listIterator(); li.hasNext(); ) {
             TOMMessage msg = li.next();
-            if(Arrays.equals(serializedMessage,msg.serializedMessage)) {
+            if(Arrays.equals(serializedMessage,msg.getBytes())) {
                 li.remove();
                 return msg;
             }
@@ -73,7 +73,7 @@ public class PendingRequests extends LinkedList<TOMMessage> {
     public TOMMessage get(byte[] serializedMessage){
         for(ListIterator<TOMMessage> li = listIterator(); li.hasNext(); ) {
             TOMMessage msg = li.next();
-            if(Arrays.equals(serializedMessage,msg.serializedMessage)) {
+            if(Arrays.equals(serializedMessage,msg.getBytes())) {
                 return msg;
             }
         }

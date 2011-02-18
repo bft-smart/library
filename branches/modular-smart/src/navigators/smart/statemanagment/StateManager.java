@@ -146,7 +146,7 @@ public class StateManager {
 
             for (int j = i; j < st.length; j++) {
 
-                if (st[i].senderstate.equals(st[j].senderstate) && st[j].senderstate.hasState()) count++;
+                if (st[i].senderstate.equals(st[j].senderstate) && st[j].senderstate.hasState) count++;
                 if (count > f) return st[j].senderstate;
             }
         }

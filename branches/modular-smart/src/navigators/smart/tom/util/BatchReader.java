@@ -31,12 +31,19 @@ import navigators.smart.tom.core.messages.TOMMessage;
 public final class BatchReader {
 
     private ByteBuffer proposalBuffer;
-    private boolean useSignatures;
+    private final boolean useSignatures;
+    private final int signatureSize;
 
-    /** wrap buffer */
-    public BatchReader(byte[] batch, boolean useSignatures) {
+    /**
+     * Reads batches
+     * @param batch The batch to read
+     * @param useSignatures Where signatures used 
+     * @param signatureSize The size of the signatures used
+     */
+    public BatchReader(byte[] batch, boolean useSignatures, int signatureSize) {
         proposalBuffer = ByteBuffer.wrap(batch);
         this.useSignatures = useSignatures;
+        this.signatureSize = signatureSize;
     }
     
     /* 
@@ -68,7 +75,7 @@ public final class BatchReader {
 
             byte[] signature = null;
             if(useSignatures){
-                signature = new byte[TOMUtil.getSignatureSize()];
+                signature = new byte[signatureSize];
                 proposalBuffer.get(signature);
             }
             //obtain the nonces to be delivered to the application
@@ -78,7 +85,7 @@ public final class BatchReader {
             }
             TOMMessage tm = new TOMMessage(ByteBuffer.wrap(message));
 
-            tm.serializedMessage = message;
+            tm.setBytes(message);
             tm.serializedMessageSignature = signature;
             tm.nonces = nonces;
             tm.timestamp = timestamp;

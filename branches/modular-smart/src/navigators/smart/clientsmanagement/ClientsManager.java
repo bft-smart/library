@@ -17,6 +17,9 @@
  */
 package navigators.smart.clientsmanagement;
 
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
+import java.security.SignatureException;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -28,6 +31,7 @@ import java.util.logging.Logger;
 
 import navigators.smart.tom.core.messages.TOMMessage;
 import navigators.smart.tom.util.TOMConfiguration;
+import navigators.smart.tom.util.TOMUtil;
 
 /**
  *
@@ -38,14 +42,26 @@ public class ClientsManager {
 	
 	private static final Logger log = Logger.getLogger(ClientsManager.class.getCanonicalName());
 
-    private TOMConfiguration conf;
+    private final TOMConfiguration conf;
 //    private RequestsTimer timer;
-    private HashMap<Integer, ClientData> clientsData = new HashMap<Integer, ClientData>();
-    private ReentrantLock clientsLock = new ReentrantLock();
-    private List<ClientRequestListener> reqlisteners = new LinkedList<ClientRequestListener>();
-
+    private final HashMap<Integer, ClientData> clientsData = new HashMap<Integer, ClientData>();
+    private final ReentrantLock clientsLock = new ReentrantLock();
+    private final List<ClientRequestListener> reqlisteners = new LinkedList<ClientRequestListener>();
+    private final TOMUtil tomutil;
+    
     public ClientsManager(TOMConfiguration conf) {
         this.conf = conf;
+        TOMUtil util = null;
+        try {
+			util = new TOMUtil();
+		} catch (InvalidKeyException e) {
+			log.severe(e.getLocalizedMessage());
+		} catch (NoSuchAlgorithmException e) {
+			log.severe(e.getLocalizedMessage());
+		} catch (SignatureException e) {
+			log.severe(e.getLocalizedMessage());
+		}
+		tomutil = util;
     }
 
     /**
@@ -228,7 +244,7 @@ public class ClientsManager {
 	                || ((request.getSequence() > clientData.getLastMessageReceived()) && !fromClient)) {
 	            //FIXME Is it really true that we cannot produce holes here in the sequence?
 	            //check if unsigned or signature is valid
-				if (!request.signed || clientData.verifySignature(request.serializedMessage, request.serializedMessageSignature)) {
+				if (!request.signed || tomutil.verifySignature(clientData.getPublicKey(),request.getBytes(), request.serializedMessageSignature)) {
 	                if (storeMessage) {
 	                    clientData.addRequest(request);
 	                }

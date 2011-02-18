@@ -111,7 +111,10 @@ public class RequestsTimer {
      *
      */
     public void unwatchAll(){
+    	rwLock.writeLock().lock();
     	watched.clear();
+    	rwLock.writeLock().unlock();
+
     }
 
     class RequestTimerTask extends TimerTask {

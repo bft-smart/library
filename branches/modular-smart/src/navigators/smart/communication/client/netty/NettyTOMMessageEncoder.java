@@ -60,7 +60,7 @@ public class NettyTOMMessageEncoder extends SimpleChannelHandler {
 	        byte[] macData = null;
 	        byte[] signatureData = null;
 	
-	        msgData = sm.serializedMessage;
+	        msgData = sm.getBytes();
 	        if (sm.signed){
 	            //signature was already produced before            
 	            signatureData = sm.serializedMessageSignature;

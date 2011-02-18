@@ -353,6 +353,8 @@ public final class ExecutionManager{
         	if(it.next()<=currentId)
         		it.remove();
         }
+        if(log.isLoggable(Level.FINE))
+        	log.fine("There are "+outOfContext.size()+" msgs left in the ooc list");
         /******* END OUTOFCONTEXT CRITICAL SECTION *******/
         outOfContextLock.unlock();
     }
@@ -477,7 +479,7 @@ public final class ExecutionManager{
             //be removed from the leaderManager and the executionManager
             if (cons.getId() > 2) {
                 long stableConsensus = cons.getId() - 3;
-                lm.removeStableConsenusInfos(stableConsensus);
+                lm.removeStableConsenusInfo(stableConsensus);
                 removeExecution(stableConsensus);
             }
             /**/
@@ -492,7 +494,7 @@ public final class ExecutionManager{
     }
 
     public void deliverState(TransferableState state){
-        long lastEid = state.getLastEid();
+        long lastEid = state.lastEid;
          //set this consensus as the last executed
         requesthandler.setLastExec(lastEid);
 
@@ -509,6 +511,7 @@ public final class ExecutionManager{
             	}
             }
             executionsLock.unlock();
+            lm.removeAllStableConsenusInfo(stableConsensus);
             removeOutOfContexts(stableConsensus);
         }
 

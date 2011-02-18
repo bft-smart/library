@@ -47,7 +47,6 @@ public class TOMMessage extends SystemMessage implements Comparable<TOMMessage> 
     public transient boolean timeout = false;//this message was timed out?
 
     //the bytes received from the client and its MAC and signature
-    public transient byte[] serializedMessage = null;
     public transient byte[] serializedMessageSignature = null;
     public transient byte[] serializedMessageMAC = null;
 

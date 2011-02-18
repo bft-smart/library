@@ -26,7 +26,6 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import navigators.smart.tom.core.messages.TOMMessage;
 import navigators.smart.tom.util.TOMConfiguration;
-import navigators.smart.tom.util.TOMUtil;
 
 public class ClientData {
 
@@ -69,10 +68,6 @@ public class ClientData {
         }
 
         return publicKey;
-    }
-
-    public boolean verifySignature(byte[] message, byte[] signature) {
-        return TOMUtil.verifySignature(getPublicKey(), message, signature);
     }
 
     public int getLastMessageExecuted() {

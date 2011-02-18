@@ -136,6 +136,14 @@ public abstract class SystemMessage {
     	}
         return msgdata;
     }
+    
+    /**
+     * Sets the messagedata in serialised form
+     * @param bytes The data of the message
+     */
+    public void setBytes(byte[] bytes){
+    	msgdata = bytes;
+    }
 
     /**
      * Returns the messageSize in Bytes that the serialised version of this msg will use.
