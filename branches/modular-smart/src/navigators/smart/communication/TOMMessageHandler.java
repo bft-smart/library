@@ -36,7 +36,7 @@ import navigators.smart.tom.util.TOMUtil;
  * @author edualchieri
  * @author Christian Spann <christian.spann at uni-ulm.de>
  */
-public class TOMMessageHandler implements MessageHandler<byte[],SystemMessage> {
+public class TOMMessageHandler implements MessageHandler<SystemMessage,byte[]> {
 
     private final TOMLayer tomLayer;
    

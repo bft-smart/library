@@ -26,7 +26,7 @@ import java.util.StringTokenizer;
 
 public class HostsConfig {
     
-    private Hashtable servers = new Hashtable();
+    private Hashtable<Integer,Config> servers = new Hashtable<Integer,Config>();
     
     
     /** Creates a new instance of ServersConfig */
@@ -75,7 +75,7 @@ public class HostsConfig {
     }
     
     public InetSocketAddress getRemoteAddress(int id){
-        Config c = (Config) this.servers.get(id);
+        Config c = this.servers.get(id);
         if(c != null){
             return new InetSocketAddress(c.host,c.port);
         }
@@ -83,7 +83,7 @@ public class HostsConfig {
     }
     
     public int getPort(int id){
-        Config c = (Config) this.servers.get(id);
+        Config c = this.servers.get(id);
         if(c != null){
             return c.port;
         }
@@ -91,14 +91,14 @@ public class HostsConfig {
     }
 
     public void setPort(int id, int port){
-        Config c = (Config) this.servers.get(id);
+        Config c = this.servers.get(id);
         if(c != null){
             c.port = port;
         }
     }
     
     public String getHost(int id){
-        Config c = (Config) this.servers.get(id);
+        Config c = this.servers.get(id);
         if(c != null){
             return c.host;
         }
@@ -107,7 +107,7 @@ public class HostsConfig {
     
     
     public InetSocketAddress getLocalAddress(int id){
-        Config c = (Config) this.servers.get(id);
+        Config c = this.servers.get(id);
         if(c != null){
             return new InetSocketAddress(c.port);
         }

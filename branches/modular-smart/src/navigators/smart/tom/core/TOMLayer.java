@@ -289,7 +289,6 @@ public class TOMLayer implements RequestReceiver {
         if (Logger.debug) {
             Logger.println("(TOMLayer.isProposedValueValid) finished, return=true");
         }
-//        round.deserializedPropValue = requests;
 
         return requests;
     }

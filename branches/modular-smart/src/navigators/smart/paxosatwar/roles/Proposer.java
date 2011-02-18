@@ -82,7 +82,7 @@ public class Proposer {
      *
      * @param msg the COLLECT message received
      */
-    public void deliver(PaxosMessage msg) {
+    public void deliver(PaxosMessage<CollectProof> msg) {
         if (manager.checkLimits(msg)) {
             collectReceived(msg);
         }
@@ -115,7 +115,7 @@ public class Proposer {
                 Logger.println("(Proposer.collectReceived) signed COLLECT for "+
                          msg.getNumber()+","+msg.getRound()+" received.");
             
-            if ((cp != null) && (cp.getProofs(true) != null) &&
+            if ((cp.getProofs(true) != null) &&
                     // the received proof (that the round was frozen) should be valid
                     verifier.validProof(execution.getId(), msg.getRound(), cp.getProofs(true)) &&
                     // this replica is the current leader

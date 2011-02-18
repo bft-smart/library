@@ -33,7 +33,8 @@ public class ShutdownThread extends Thread {
 //    private Acceptor acceptor;
 //    private ExecutionManager manager;
     ConsensusService conSrv;
-    private TOMLayer tomLayer;
+    @SuppressWarnings("unused")
+	private TOMLayer tomLayer;
 
     public ShutdownThread(ServerCommunicationSystem scs, ConsensusService consensus, TOMLayer tomLayer) {
         this.scs = scs;

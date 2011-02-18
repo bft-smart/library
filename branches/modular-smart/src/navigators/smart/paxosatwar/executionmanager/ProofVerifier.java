@@ -42,7 +42,7 @@ public class ProofVerifier {
 
     private int quorumF; // f replicas
     private int quorumStrong; // (n + f) / 2 replicas
-    private int numberOfNonces; // Ammount of nonces that have to be delivered to the application
+//    private int numberOfNonces; // Ammount of nonces that have to be delivered to the application
     private PublicKey[] publickeys; // public keys of the replicas
     private Signature[] engines;
     private PrivateKey prk = null; // private key for this replica
@@ -54,8 +54,8 @@ public class ProofVerifier {
      */
     public ProofVerifier(TOMConfiguration conf) {
         this.quorumF = conf.getF();
-        this.quorumStrong = (int) ((conf.getN() + quorumF) / 2);
-        this.numberOfNonces = conf.getNumberOfNonces();
+        this.quorumStrong = (conf.getN() + quorumF) / 2;
+//        this.numberOfNonces = conf.getNumberOfNonces();
 
         this.publickeys = TOMConfiguration.getRSAServersPublicKeys();
         try {

@@ -31,7 +31,8 @@ public class Execution {
 
     private ExecutionManager manager; // Execution manager for this execution
 
-    private MeasuringConsensus consensus; // MeasuringConsensus instance to which this execution works for
+    @SuppressWarnings("unchecked")
+	private MeasuringConsensus consensus; // MeasuringConsensus instance to which this execution works for
     private HashMap<Integer,Round> rounds = new HashMap<Integer,Round>(2);
     private ReentrantLock roundsLock = new ReentrantLock(); // Lock for concurrency control
 
@@ -48,7 +49,8 @@ public class Execution {
      * @param consensus MeasuringConsensus instance to which this execution works for
      * @param initialTimeout Initial timeout for rounds
      */
-    protected Execution(ExecutionManager manager, MeasuringConsensus consensus, long initialTimeout) {
+    @SuppressWarnings("unchecked")
+	protected Execution(ExecutionManager manager, MeasuringConsensus consensus, long initialTimeout) {
         this.manager = manager;
         this.consensus = consensus;
         this.initialTimeout = initialTimeout;
@@ -74,7 +76,8 @@ public class Execution {
      * This is the consensus instance to which this execution works for
      * @return MeasuringConsensus instance to which this execution works for
      */
-    public MeasuringConsensus getConsensus() { // TODO: Porque se chama getConsensus?
+    @SuppressWarnings("unchecked")
+	public MeasuringConsensus getConsensus() { // TODO: Why is it called getConsensus?
         return consensus;
     }
 
@@ -115,11 +118,11 @@ public class Execution {
     public void removeRounds(int limit) {
         roundsLock.lock();
 
-        for(Integer key : (Integer[])rounds.keySet().toArray(new Integer[0])) {
+        for(Integer key : rounds.keySet().toArray(new Integer[0])) {
             if(key > limit) {
                 Round round = rounds.remove(key);
                 round.setRemoved();
-                round.getTimeoutTask().cancel();
+                round.getTimeoutTask().cancel(true);
             }
         }
 
@@ -159,15 +162,21 @@ public class Execution {
     }
 
     /**
-     * Called by the Acceptor, to set the decided value
+     * Called by the Acceptor, to set the decided value. If the 
+     * Propose for the round was not yet received the execution
+     * is postponed until the decide arrives and this method is called
+     * again.
      *
      * @param value The decided value
-     * @param round The round at which a desision was made
+     * @param round The round at which a decision was made
      */
-    public void decided(Round round/*, byte[] value*/) {
+    @SuppressWarnings("unchecked")
+	public void decided(Round round/*, byte[] value*/) {
         if (!decided) {
             decided = true;
             decisionRound = round.getNumber();
+        }
+        if(round.propValue != null){
             consensus.decided(round.propValue,decisionRound);
             consensus.executionTime = System.currentTimeMillis() - consensus.startTime;
             manager.getTOMLayer().decided(consensus);

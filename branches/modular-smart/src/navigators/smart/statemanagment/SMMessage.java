@@ -34,7 +34,7 @@ public class SMMessage extends SystemMessage {
 
     private TransferableState state; // State log
     private long eid; // Execution ID up to which the sender needs to be updated
-    private int type; // Message type
+    private int sm_type; // Message type
     private int replica; // Replica that should send the state
     
     private transient byte[] serialisedstate;
@@ -52,14 +52,14 @@ public class SMMessage extends SystemMessage {
         super(Type.SM_MSG, sender);
         this.state = state;
         this.eid = eid;
-        this.type = type;
+        this.sm_type = type;
         this.replica = replica;
     }
 
     public SMMessage(ByteBuffer in) throws IOException, ClassNotFoundException {
         super(Type.SM_MSG, in);
         eid = in.getLong();
-        type = in.getInt();
+        sm_type = in.getInt();
         replica = in.getInt();
         state = (TransferableState) SerialisationHelper.readObject(in);
     }
@@ -76,7 +76,7 @@ public class SMMessage extends SystemMessage {
      * @return The type of the message
      */
     public int getType() {
-        return type;
+        return sm_type;
     }
 
     /**
@@ -99,7 +99,7 @@ public class SMMessage extends SystemMessage {
     public void serialise(ByteBuffer out) {
         super.serialise(out);
         out.putLong(eid);
-        out.putInt(type);
+        out.putInt(sm_type);
         out.putInt(replica);
         SerialisationHelper.writeByteArray(serialisedstate, out);
     }

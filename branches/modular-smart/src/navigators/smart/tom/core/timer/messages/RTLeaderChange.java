@@ -28,7 +28,11 @@ import java.security.SignedObject;
 
 public class RTLeaderChange implements Serializable {
 
-    public SignedObject[] proof; // Proofs for the new leader
+    /**
+	 * 
+	 */
+	private static final long serialVersionUID = -2335883456723868265L;
+	public SignedObject[] proof; // Proofs for the new leader
     public int newLeader; // Replica ID of the new leader
     public long start; // ID of the consensus to be started
 

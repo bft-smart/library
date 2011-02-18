@@ -3,7 +3,6 @@ package navigators.smart.paxosatwar.messages;
 import static org.junit.Assert.assertEquals;
 
 import java.nio.ByteBuffer;
-
 import navigators.smart.tests.util.TestHelper;
 
 import org.junit.Test;

@@ -50,8 +50,6 @@ public class ServerConnection {
 
     private static final Logger log = Logger.getLogger(ServerConnection.class.getName());
 
-    
-    
     private static final long POOL_TIME = 10000;
     //private static final int SEND_QUEUE_SIZE = 50;
     private TOMConfiguration conf;
@@ -69,9 +67,10 @@ public class ServerConnection {
 
     private PTPMessageVerifier ptpverifier;
     
-    private GlobalMessageVerifier<SystemMessage> globalverifier;
+	@SuppressWarnings("unchecked")
+	private GlobalMessageVerifier globalverifier;
 
-    @SuppressWarnings("unchecked")
+	@SuppressWarnings("unchecked")
 	private final Map<SystemMessage.Type,MessageHandler> msgHandlers;
 
 	@SuppressWarnings("unchecked")
@@ -79,7 +78,7 @@ public class ServerConnection {
 			BlockingQueue<SystemMessage> inQueue,
 			Map<SystemMessage.Type, MessageHandler> msgHandlers,
 			PTPMessageVerifier ptpverifier,
-			GlobalMessageVerifier<SystemMessage> verifier) {
+			GlobalMessageVerifier verifier) {
         this.msgHandlers = msgHandlers;
         this.conf = conf;
         this.socketchannel = socket;
@@ -317,7 +316,6 @@ public class ServerConnection {
                     	if( socketchannel.read(buf) == -1){
                     		throw new IOException("Reached eof while waiting for data");
                     	}
-                    	
                     	
                     	buf.flip();
                         int dataLength = buf.getInt();

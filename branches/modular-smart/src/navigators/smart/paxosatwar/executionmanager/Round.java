@@ -18,20 +18,20 @@
 
 package navigators.smart.paxosatwar.executionmanager;
 
-import java.io.Serializable;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.TreeSet;
+import java.util.concurrent.ScheduledFuture;
 
 import navigators.smart.paxosatwar.messages.CollectProof;
 
 /**
  * This class stands for a round of an execution of a consensus
  */
-public class Round implements Serializable {
+public class Round {
 
     private transient Execution execution; // Execution where the round belongs to
-    private transient TimeoutTask timeoutTask; // Timeout ssociated with this round
+    private transient ScheduledFuture<?> timeoutTask; // Timeout ssociated with this round
     private int number; // Round's number
     private int me; // Process ID
     private boolean[] weakSetted;
@@ -78,9 +78,9 @@ public class Round implements Serializable {
             this.strong = new byte[n][];
             this.decide = new byte[n][];
 
-            Arrays.fill((Object[]) weak, null);
-            Arrays.fill((Object[]) strong, null);
-            Arrays.fill((Object[]) decide, null);
+            Arrays.fill( weak, null);
+            Arrays.fill( strong, null);
+            Arrays.fill( decide, null);
         } else {
             Round previousRound = execution.getRound(number - 1);
 
@@ -152,7 +152,7 @@ public class Round implements Serializable {
      * Sets the timeout associated with this round
      * @param timeoutTask The timeout associated with this round
      */
-    public void setTimeoutTask(TimeoutTask timeoutTask) {
+    public void setTimeoutTask(ScheduledFuture<?>timeoutTask) {
         this.timeoutTask = timeoutTask;
     }
 
@@ -160,7 +160,7 @@ public class Round implements Serializable {
      * Retrieves the timeout associated with this round
      * @param timeoutTask The timeout associated with this round
      */
-    public TimeoutTask getTimeoutTask() {
+    public ScheduledFuture<?> getTimeoutTask() {
         return timeoutTask;
     }
 
@@ -409,8 +409,39 @@ public class Round implements Serializable {
         }
     }
 
-    @Override
-    public boolean equals(Object o) {
-        return this == o;
-    }
-}
+    /* (non-Javadoc)
+	 * @see java.lang.Object#hashCode()
+	 */
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + ((execution == null) ? 0 : execution.hashCode());
+		result = prime * result + number;
+		return result;
+	}
+
+	/* (non-Javadoc)
+	 * @see java.lang.Object#equals(java.lang.Object)
+	 */
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (!(obj instanceof Round))
+			return false;
+		Round other = (Round) obj;
+		if (execution == null) {
+			if (other.execution != null)
+				return false;
+		} else if (!execution.equals(other.execution))
+			return false;
+		if (number != other.number)
+			return false;
+		return true;
+	}
+
+	
+}    

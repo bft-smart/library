@@ -230,14 +230,14 @@ public class DeliveryThread extends Thread {
                 //TODO: avoid the case in which the received valid proposal is
                 //different from the decided value
 
-                // obtain an array of requests from the taken consensus
-                BatchReader batchReader = new BatchReader(cons.getDecision(), conf.getUseSignatures()==1);
                 TOMMessage[] requests = cons.getDeserializedDecision();
 
                 if (requests == null) {
                     if(Logger.debug)
                         Logger.println("(DeliveryThread.run) interpreting and verifying batched requests.");
 
+                    // obtain an array of requests from the taken consensus
+                    BatchReader batchReader = new BatchReader(cons.getDecision(), conf.getUseSignatures()==1);
                     requests = batchReader.deserialiseRequests();
 
                 } else {

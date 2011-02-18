@@ -50,12 +50,14 @@ public class ServersCommunicationLayer extends Thread {
 	private ServerSocketChannel serverSocket;
 	private int me;
 	private boolean doWork = true;
+	@SuppressWarnings("unchecked")
 	private final Map<SystemMessage.Type, MessageHandler> msgHandlers;
 	private MessageVerifierFactory<PTPMessageVerifier> verifierfactory;
 	/** Holds the global verifier reference */
 	private GlobalMessageVerifier<SystemMessage> globalverifier;
 	private CountDownLatch latch;
 
+	@SuppressWarnings("unchecked")
 	public ServersCommunicationLayer(TOMConfiguration conf,
 			BlockingQueue<SystemMessage> inQueue,
 			Map<SystemMessage.Type, MessageHandler> msgHandlers,

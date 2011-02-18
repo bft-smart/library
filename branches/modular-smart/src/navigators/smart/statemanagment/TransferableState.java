@@ -30,7 +30,11 @@ import java.util.Arrays;
  */
 public class TransferableState implements Serializable {
 
-    private BatchInfo[] messageBatches; // batches received since the last checkpoint.
+    /**
+	 * 
+	 */
+	private static final long serialVersionUID = 8541571983747254820L;
+	private BatchInfo[] messageBatches; // batches received since the last checkpoint.
     private long lastCheckpointEid; // Execution ID for the last checkpoint
     private int lastCheckpointRound; // Round for the last checkpoint
     private int lastCheckpointLeader; // Leader for the last checkpoint
@@ -195,7 +199,7 @@ public class TransferableState implements Serializable {
         hash = (int) (hash * 31 + this.lastEid);
         hash = hash * 31 + (this.hasState ? 1 : 0);
         if (this.stateHash != null) {
-            for (int i = 0; i < this.stateHash.length; i++) hash = hash * 31 + (int) this.stateHash[i];
+            for (int i = 0; i < this.stateHash.length; i++) hash = hash * 31 + this.stateHash[i];
         } else {
             hash = hash * 31 + 0;
         }

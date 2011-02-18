@@ -146,8 +146,8 @@ public class StateManager {
 
             for (int j = i; j < st.length; j++) {
 
-                if (st[i].state.equals(st[j].state) && st[j].state.hasState()) count++;
-                if (count > f) return st[j].state;
+                if (st[i].senderstate.equals(st[j].senderstate) && st[j].senderstate.hasState()) count++;
+                if (count > f) return st[j].senderstate;
             }
         }
 
@@ -193,18 +193,18 @@ public class StateManager {
     private class SenderState {
 
         private int sender;
-        private TransferableState state;
+        private TransferableState senderstate;
 
         SenderState(int sender, TransferableState state) {
             this.sender = sender;
-            this.state = state;
+            this.senderstate = state;
         }
 
         @Override
         public boolean equals(Object obj) {
             if (obj instanceof SenderState) {
                 SenderState m = (SenderState) obj;
-                return (this.state.equals(m.state) && m.sender == this.sender);
+                return (this.senderstate.equals(m.senderstate) && m.sender == this.sender);
             }
             return false;
         }
@@ -213,7 +213,7 @@ public class StateManager {
         public int hashCode() {
             int hash = 1;
             hash = hash * 31 + this.sender;
-            hash = hash * 31 + this.state.hashCode();
+            hash = hash * 31 + this.senderstate.hashCode();
             return hash;
         }
     }

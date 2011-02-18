@@ -5,12 +5,11 @@
 
 package navigators.smart.paxosatwar.messages;
 
-import static navigators.smart.paxosatwar.messages.MessageFactory.COLLECT;
-
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
 import navigators.smart.communication.MessageHandler;
+import static navigators.smart.paxosatwar.messages.MessageFactory.COLLECT;
 import navigators.smart.paxosatwar.requesthandler.RequestHandler;
 import navigators.smart.paxosatwar.roles.Acceptor;
 import navigators.smart.paxosatwar.roles.Proposer;
@@ -24,7 +23,7 @@ import navigators.smart.tom.util.Logger;
  *
  * @author Christian Spann <christian.spann at uni-ulm.de>
  */
-public class PaWMessageHandler<T> implements MessageHandler<T,PaxosMessage<?>>{
+public class PaWMessageHandler<T> implements MessageHandler<PaxosMessage<?>,T>{
     
     
     private Proposer proposer;
@@ -64,7 +63,8 @@ public class PaWMessageHandler<T> implements MessageHandler<T,PaxosMessage<?>>{
         }
     }
 
-    public PaxosMessage<?> deserialise(Type type, ByteBuffer buf, Object result) throws ClassNotFoundException, IOException {
+    @SuppressWarnings("unchecked")
+	public PaxosMessage<?> deserialise(Type type, ByteBuffer buf, Object result) throws ClassNotFoundException, IOException {
          switch(type){
             case PAXOS_MSG:
                 return new PaxosMessage(buf);
