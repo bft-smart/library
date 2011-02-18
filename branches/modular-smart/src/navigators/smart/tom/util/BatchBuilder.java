@@ -34,17 +34,17 @@ public final class BatchBuilder {
     private Random rnd = new Random();
 
     /** build buffer */
-    public byte[] createBatch(long timestamp, int numberOfNonces, int numberOfMessages, int totalMessagesSize, boolean useSignatures, byte[][] messages, byte[][] signatures) {
+    public byte[] createBatch(long timestamp, int numberOfNonces, int numberOfMessages, int totalMessagesSize, byte[][] messages, byte[][] signatures) {
         int size = 20 + //timestamp 8, nonces 4, nummessages 4
                 (numberOfNonces > 0 ? 8 : 0) + //seed if needed
-                (numberOfMessages*(4+(useSignatures?TOMUtil.getSignatureSize():0)))+ // msglength + signature for each msg
+                (numberOfMessages*(4+(signatures != null ?TOMUtil.getSignatureSize():0)))+ // msglength + signature for each msg
                 totalMessagesSize; //size of all msges
         
         ByteBuffer  proposalBuffer = ByteBuffer.allocate(size);
 
         proposalBuffer.putLong(timestamp);
 
-         proposalBuffer.putInt(numberOfNonces);
+        proposalBuffer.putInt(numberOfNonces);
 
         if(numberOfNonces>0){
             proposalBuffer.putLong(rnd.nextLong());
@@ -53,19 +53,16 @@ public final class BatchBuilder {
         proposalBuffer.putInt(numberOfMessages);
 
         for (int i = 0; i < numberOfMessages; i++) {
-            putMessage(proposalBuffer,messages[i], false, signatures[i]);
+        	proposalBuffer.putInt(messages[i].length);
+            proposalBuffer.put(messages[i]);
+
+            if(signatures != null) {
+                proposalBuffer.put(signatures[i]);
+            }
         }
 
         return proposalBuffer.array();
     }
 
-    private void putMessage(ByteBuffer proposalBuffer, byte[] message, boolean isHash, byte[] signature) {
-        proposalBuffer.putInt(isHash?0:message.length);
-        proposalBuffer.put(message);
-
-        if(signature != null) {
-            proposalBuffer.put(signature);
-        }
-    }
 
 }

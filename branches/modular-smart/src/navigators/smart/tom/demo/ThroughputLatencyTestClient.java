@@ -79,11 +79,17 @@ public class ThroughputLatencyTestClient extends TOMSender implements Runnable {
         }
         max=0;
         measurementEpoch = 0;
+        
+        try {
+			sm.acquire(); //burn aquire so that thread waits for release
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		} 
 
         //create the communication system
         cs = CommunicationSystemClientSideFactory.getCommunicationSystemClientSide(conf);
         this.init(cs, conf);
-        System.out.println("Cliente "+id+" lançado");
+        System.out.println("Cliente "+id+" launched");
     }
 
     public void run(){
@@ -93,16 +99,16 @@ public class ThroughputLatencyTestClient extends TOMSender implements Runnable {
             Thread.sleep(sleeptime);
 
             while(true){
-                myId += exec;
+//                myId += exec;
 
                 System.out.println("(" + myId + "-"+measurementEpoch+ ") Getting #ops from replicas before signing");
-
               //requests current number of ops processed by the servers
                 ByteBuffer command1 = ByteBuffer.allocate(4);
                 command1.putInt(-1);
                 currentId = -1;
-                this.doTOMulticast(command1.array());
-                this.sm.acquire();
+//                this.doTOMulticast(command1.array());
+                doTOUnicast(command1.array(),0,false);
+                this.sm.acquire();	//wait for reply
                 
                 //create msg for # of ops request after signing (id has to be taken before
                 TOMMessage msg = sign(command1.array());
@@ -123,9 +129,10 @@ public class ThroughputLatencyTestClient extends TOMSender implements Runnable {
                
                System.out.println("(" + myId + "-"+measurementEpoch+ ") Getting #ops from replicas after signing");
                
-              //requests current number of ops processed by the servers
+               	//requests current number of ops processed by the servers
                 currentId = -1;
-                this.TOMulticast(msg);
+                doTOUnicast(0,msg);
+//                this.TOMulticast(msg);
                 this.sm.acquire();
                 
                 measurementEpoch++;
@@ -142,7 +149,7 @@ public class ThroughputLatencyTestClient extends TOMSender implements Runnable {
                         System.out.println("("+myId+"-"+measurementEpoch+") Sending " + (i + 1) + " / " + exec);
                     }
                     last_send_instant = System.nanoTime();
-                    this.TOMulticast((TOMMessage)generatedMsgs.get(i));
+                    this.doTOUnicast(0,(TOMMessage)generatedMsgs.get(i));
                     
                     this.sm.acquire();
 
@@ -155,7 +162,7 @@ public class ThroughputLatencyTestClient extends TOMSender implements Runnable {
                 }
             }
             long totalElapsedTime = System.nanoTime() - totalBegin;
-            System.out.println("--Resultados para cliente "+myId+" epoch "+measurementEpoch+ "-----------------------------------");
+            System.out.println("--Results for client "+myId+" epoch "+measurementEpoch+ "-----------------------------------");
             System.out.println("(" + myId + "-"+measurementEpoch+")Average time for " + exec / 2 + " executions (-10%) = " + this.st.getAverage(true) / 1000 + " us ");
             System.out.println("(" + myId + "-"+measurementEpoch+")Standard desviation for " + exec / 2 + " executions (-10%) = " + this.st.getDP(true) / 1000 + " us ");
             System.out.println("(" + myId + "-"+measurementEpoch+")Average time for " + exec / 2 + " executions (all samples) = " + this.st.getAverage(false) / 1000 + " us ");
@@ -200,44 +207,42 @@ public class ThroughputLatencyTestClient extends TOMSender implements Runnable {
 
             //contabiliza a latência quando recebe a f+1-esima resposta
 
-            if((id != -1) && count == f+1){
-              if (num_sends>exec/2){
-                this.st.store(receive_instant - last_send_instant);
-              }
+			if ((id != -1) && count == f + 1) {
+				if (num_sends > exec / 2) {
+					this.st.store(receive_instant - last_send_instant);
+				}
 
-              count = 0;
-              currentId+=1;
-              this.sm.release();
-            }
-            else if (id==-1) {
-                count ++;
-                long opsSinceLastCount;
-                long timeInterval;
-                if (initialNumOps[reply.getSender()]!=0){
-                    opsSinceLastCount = numOps - initialNumOps[reply.getSender()];
-                    timeInterval = receive_instant - initialTimestamp[reply.getSender()];
-                    double opsPerSec_ = ((double)opsSinceLastCount)/(timeInterval/1000000000.0);
-                    long opsPerSec = Math.round(opsPerSec_);
-                    if (opsPerSec>max)
-                        max = opsPerSec;
-                    System.out.println("(" + myId + "-"+measurementEpoch+")Time elapsed since epoch start: "+ (timeInterval/1000000000.0) + " seconds");
-                    System.out.println("(" + myId + "-"+measurementEpoch+")Number of requestes finished since epoch start: "+ exec);
-                    System.out.println("(" + myId + "-"+measurementEpoch+")Last "+opsSinceLastCount+" decisions were done at a rate of " + opsPerSec + " ops per second");
-                    System.out.println("(" + myId + "-"+measurementEpoch+")Maximum throughput until now: " + max + " ops per second");
-                }
+				count = 0;
+				currentId += 1;
+				this.sm.release();
+			} else if (id == -1) {
+				long opsSinceLastCount;
+				long timeInterval;
+				if (initialNumOps[reply.getSender()] != 0) {
+					opsSinceLastCount = numOps - initialNumOps[reply.getSender()];
+					timeInterval = receive_instant - initialTimestamp[reply.getSender()];
+					double opsPerSec_ = ((double) opsSinceLastCount) / (timeInterval / 1000000000.0);
+					long opsPerSec = Math.round(opsPerSec_);
+					if (opsPerSec > max)
+						max = opsPerSec;
+					System.out.println("(" + myId + "-" + measurementEpoch + ")Time elapsed since epoch start: "
+							+ (timeInterval / 1000000000.0) + " seconds");
+					System.out.println("(" + myId + "-" + measurementEpoch + ")Number of requestes finished since epoch start: " + exec);
+					System.out.println("(" + myId + "-" + measurementEpoch + ")Last " + opsSinceLastCount
+							+ " decisions were done at a rate of " + opsPerSec + " ops per second");
+					System.out.println("(" + myId + "-" + measurementEpoch + ")Maximum throughput until now: " + max + " ops per second");
+				}
 
-                initialNumOps[reply.getSender()] = numOps;
-                initialTimestamp[reply.getSender()] = receive_instant;
+				initialNumOps[reply.getSender()] = numOps;
+				initialTimestamp[reply.getSender()] = receive_instant;
 
-                if (count==n){
-                    count = 0;
-                    this.sm.release();
-                }
+				if (count == n) {
+					count = 0;
+					this.sm.release();
+				}
 
-
-            }
-        }
-        else{
+			}
+        }else{
             System.out.println("Discarding reply with id= "+id+" because currentId is "+currentId);
         }
         this.mutex.release();

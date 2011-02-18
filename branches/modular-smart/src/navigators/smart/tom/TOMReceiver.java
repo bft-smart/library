@@ -41,9 +41,9 @@ public abstract class TOMReceiver implements TOMRequestReceiver {
     private boolean tomStackCreated = false;
 
     /**
-     * This metohd initializes the object
+     * This method initializes the object
      * 
-     * @param cs Server side comunication System
+     * @param cs Server side communication System
      * @param conf Total order messaging configuration
      */
     public void init(ServerCommunicationSystem cs, TOMConfiguration conf) {

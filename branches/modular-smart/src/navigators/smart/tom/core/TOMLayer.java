@@ -201,7 +201,10 @@ public class TOMLayer implements RequestReceiver {
 
         int totalMessageSize = 0; //total size of the messages being batched
         byte[][] messages = new byte[numberOfMessages][]; //bytes of the message (or its hash)
-        byte[][] signatures = new byte[numberOfMessages][]; //bytes of the message (or its hash)
+        byte[][] signatures = null;
+        if(conf.getUseSignatures() == 1 ){
+        	signatures = new byte[numberOfMessages][]; //bytes of the message (or its hash)
+        }
 
         // Fill the array of bytes for the messages/signatures being batched
         int i = 0;
@@ -209,13 +212,15 @@ public class TOMLayer implements RequestReceiver {
             TOMMessage msg = li.next();
             //Logger.println("(TOMLayer.run) adding req " + msg + " to PROPOSE");
             messages[i] = msg.serializedMessage;
-            signatures[i] = msg.serializedMessageSignature;
+            if(conf.getUseSignatures() == 1){
+            	signatures[i] = msg.serializedMessageSignature;
+            }
 
             totalMessageSize += messages[i].length;
         }
 
         // return the batch
-        return bb.createBatch(System.currentTimeMillis(), numberOfNonces, numberOfMessages, totalMessageSize, conf.getUseSignatures() == 1, messages, signatures);
+        return bb.createBatch(System.currentTimeMillis(), numberOfNonces, numberOfMessages, totalMessageSize, messages, signatures);
     }
 
     //called by the DeliveryThread to inform that msg was delivered to the app

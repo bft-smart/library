@@ -182,7 +182,7 @@ public class ThroughputLatencyTestServer extends TOMReceiver {
     }
     
     public byte[] getState() {
-        return null;
+        return new byte[0];
     }
 
     public void setState(byte[] state) {
