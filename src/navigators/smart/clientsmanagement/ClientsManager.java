@@ -21,12 +21,12 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Set;
 import java.util.Map.Entry;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import navigators.smart.tom.core.messages.TOMMessage;
-import navigators.smart.tom.util.Logger;
 import navigators.smart.tom.util.TOMConfiguration;
 
 /**
@@ -35,6 +35,8 @@ import navigators.smart.tom.util.TOMConfiguration;
  * @author Christian Spann <christian.spann at uni-ulm.de>
  */
 public class ClientsManager {
+	
+	private static final Logger log = Logger.getLogger(ClientsManager.class.getCanonicalName());
 
     private TOMConfiguration conf;
 //    private RequestsTimer timer;
@@ -68,7 +70,8 @@ public class ClientsManager {
         ClientData clientData = clientsData.get(clientId);
 
         if (clientData == null) {
-            Logger.println("(ClientsManager.getClientData) Creating new client data, client id=" + clientId);
+            if(log.isLoggable(Level.FINEST))
+            		log.finest("Creating new client data for client id=" + clientId);
             clientData = new ClientData(clientId);
             clientsData.put(clientId, clientData);
         }
@@ -85,43 +88,39 @@ public class ClientsManager {
      *
      * @return the set of all pending requests of this system
      */
-    public PendingRequests getPendingRequests() {
-        PendingRequests allReq = new PendingRequests();
-
-        clientsLock.lock();
-        /* ****** BEGIN CLIENTS CRITICAL SECTION ******/
-
-        int noMoreMessages = 0;
-        do{
-
-            for(ClientData clientData: clientsData.values()) {
-
-
-                clientData.clientLock.lock();
-                /******* BEGIN CLIENTDATA CRITICAL SECTION ******/
-                TOMMessage request =  clientData.proposeReq();
-                
-
-                /******* END CLIENTDATA CRITICAL SECTION ******/
-                clientData.clientLock.unlock();
-
-                if (request != null) {
-                    //this client have pending message
-                    allReq.addLast(request);
-                    //I inserted a message on the batch, now I must verify if
-                    //the max batch size is reached
-                   
-                } else {
-                    //this client do not have more pending requests
-                    noMoreMessages++;
-                }
-            }
-          //I inserted a message on the batch, now I must verify if the max batch size is reached or no more messages are present
-        } while(allReq.size() <= conf.getMaxBatchSize() && clientsData.size() != noMoreMessages);
-        /* ****** end critical section *******/
-        clientsLock.unlock();
-        return allReq;
-    }
+	public PendingRequests getPendingRequests() {
+		PendingRequests allReq = new PendingRequests();
+		clientsLock.lock();
+		/*  ****** BEGIN CLIENTS CRITICAL SECTION ***** */
+		int noMoreMessages = 0;
+		do {
+			for (ClientData clientData : clientsData.values()) {
+				clientData.clientLock.lock();
+				/******* BEGIN CLIENTDATA CRITICAL SECTION ******/
+				TOMMessage request = clientData.proposeReq();
+				/******* END CLIENTDATA CRITICAL SECTION ******/
+				clientData.clientLock.unlock();
+				if (request != null) {
+					// this client have pending message
+					allReq.addLast(request);
+					// I inserted a message on the batch, now I must check if the max batch size is reached
+					if(allReq.size()==conf.getMaxBatchSize())
+						break;
+				} else {
+					// this client do not have more pending requests
+					noMoreMessages++;
+					//break if all clients are empty
+					if(clientsData.size()==noMoreMessages)
+						break;
+				}
+			}
+			// I inserted a message on the batch, now I must verify if the max
+			// batch size is reached or no more messages are present
+		} while (allReq.size() <= conf.getMaxBatchSize() && clientsData.size() <= noMoreMessages);
+		/*  ****** end critical section ****** */
+		clientsLock.unlock();
+		return allReq;
+	}
 
     /**
      * We've implemented some protection for individual client
@@ -199,18 +198,11 @@ public class ClientsManager {
      */
     public boolean requestReceived(TOMMessage request, boolean fromClient, boolean storeMessage) {
         request.receptionTime = System.currentTimeMillis();
-
-        int clientId = request.getSender();
         boolean accounted = false;
+        ClientData clientData = getClientData(request.getSender());
 
-        //Logger.println("(ClientsManager.requestReceived) getting info about client "+clientId);
-        ClientData clientData = getClientData(clientId);
-
-        //Logger.println("(ClientsManager.requestReceived) wait for lock for client "+clientData.getClientId());
         clientData.clientLock.lock();
         /******* BEGIN CLIENTDATA CRITICAL SECTION ******/
-        //Logger.println("(ClientsManager.requestReceived) lock for client "+clientData.getClientId()+" acquired");
-
         /*
         //for dealing with restarted clients
         if ((request.getSequence() == 0) &&
@@ -221,66 +213,48 @@ public class ClientsManager {
         }
          */
 
-        /* ################################################ */
-        //pjsousa: simple flow control mechanism to avoid out of memory exception
+        //pjsousa: added simple flow control mechanism to avoid out of memory exception
+        // TODO no sequence enforcement is made here
         if (conf.getUseControlFlow() != 0) {
             if (fromClient && (clientData.getPendingRequests() > conf.getUseControlFlow())) {
-//                if (Logger.debug) {
-//                    Logger.println("(ClientsManager.requestReceived) denied " + request + " due to flow control");
-//                }
-                //clients should not have more than 1000 outstanding messages, otherwise they will be dropped
+                //clients should not have more than 1000 outstanding messages, otherwise they will be dropped FIXME but they are accounted?
                 clientData.setLastMessageReceived(request.getSequence());
                 clientData.setLastMessageReceivedTime(request.receptionTime);
-                clientData.clientLock.unlock();
-                accounted = false;
-                return accounted;
             }
-        }
-        /* ################################################ */
-
-        if ((clientData.getLastMessageReceived() == -1) //this is the clients first message
-                || (clientData.getLastMessageReceived() + 1 == request.getSequence()) //this is the next message in the sequence of the client
-                //this is an out of order message that was forwarded/decided - we don't care about older messages any more
-                || ((request.getSequence() > clientData.getLastMessageReceived()) && !fromClient)) {
-            //FIXME Is it really true that we cannot produce holes here in the sequence?
-            //it is a new message and I have to verify it's signature
-            if (!request.signed || clientData.verifySignature(
-                    request.serializedMessage,
-                    request.serializedMessageSignature)) {
-                //I don't have the message but it is correctly signed, I will
-                //insert it in the pending requests of this client
-                if (storeMessage) {
-                    clientData.addRequest(request);
-//                    if (Logger.debug) {
-//                        Logger.println("(ClientsManager.requestReceived) stored " + request);
-//                    }
-                    /*
-                    if (request.getSequence()%1000 == 0)
-                    Logger.println("(ClientsManager.requestReceived) client "+clientId+ " pending requests size: "+clientData.getPendingRequests().size());
-                     */
-                }
-                clientData.setLastMessageReceived(request.getSequence());
-                clientData.setLastMessageReceivedTime(request.receptionTime);
-                //inform listeners
-                for (ClientRequestListener listener : reqlisteners) {
-                    listener.requestReceived(request);
-                }
-                accounted = true;
-            }
-        } else {//I will not put this message on the pending requests list
-
-            if (clientData.getLastMessageReceived() >= request.getSequence()) {
-                //I already have/had this message
-                accounted = true;
-            } else {
-                //it is an invalid message if it's being sent by a client (sequence number > last received + 1)
-                /*
-                Logger.println("Ignoring message "+request+" from client "+
-                clientData.getClientId()+"(last received = "+
-                clientData.getLastMessageReceived()+"), msg sent by client? "+fromClient);
-                 **/
-                accounted = false;
-            }
+        } else {
+	        if ((clientData.getLastMessageReceived() == -1) //this is the clients first message
+	                || (clientData.getLastMessageReceived() + 1 == request.getSequence()) //this is the next message in the sequence of the client
+	                //this is an out of order message that was forwarded/decided - we don't care about older messages any more
+	                || ((request.getSequence() > clientData.getLastMessageReceived()) && !fromClient)) {
+	            //FIXME Is it really true that we cannot produce holes here in the sequence?
+	            //check if unsigned or signature is valid
+				if (!request.signed || clientData.verifySignature(request.serializedMessage, request.serializedMessageSignature)) {
+	                if (storeMessage) {
+	                    clientData.addRequest(request);
+	                }
+	                clientData.setLastMessageReceived(request.getSequence());
+	                clientData.setLastMessageReceivedTime(request.receptionTime);
+	                //inform listeners
+	                for (ClientRequestListener listener : reqlisteners) {
+	                    listener.requestReceived(request);
+	                }
+	                accounted = true;
+	            } else {
+	            	if(log.isLoggable(Level.WARNING))
+	            		log.warning("Received incorrectly signed message: "+request);
+	            }
+	        } else {//I will not put this message on the pending requests list
+	
+	            if (clientData.getLastMessageReceived() >= request.getSequence()) {
+	                //I already have/had this message
+	                accounted = true;
+	            } else {
+	                //it is an invalid message if it's being sent by a client (sequence number > last received + 1)
+					if (log.isLoggable(Level.WARNING))
+						log.warning("Ignoring message " + request + " from client " + clientData.getClientId() + "(last received = "
+								+ clientData.getLastMessageReceived() + "), msg sent by client? " + fromClient);
+	            }
+	        }
         }
 
         /******* END CLIENTDATA CRITICAL SECTION ******/
@@ -308,7 +282,8 @@ public class ClientsManager {
         /******* BEGIN CLIENTDATA CRITICAL SECTION ******/
         //Logger.println("(ClientsManager.requestOrdered) Removing request "+request+" from pending requests");
         if (clientData.removeRequest(request) == false) {
-            Logger.println("(ClientsManager.requestOrdered) Request " + request + " does not exist in pending requests");
+        	if(log.isLoggable(Level.FINE))
+        		log.fine("(ClientsManager.requestOrdered) Request " + request + " does not exist in pending requests");
         } else {
 //            if(Logger.debug)
 //               Logger.println("(ClientsManager.requestReceived) removed"+request);
