@@ -74,11 +74,10 @@ public interface ConsensusService {
 
     /**
      * Returns the id of the leader of the given round
-     * @param id The id of the consensus
-     * @param decisionRound The round that we are interested in
-     * @return The id of the leader for the given round and consensus
+     * @param cons The Consensus that we wish to get the Proposer for
+     * @return The id of the leader for the given consensus
      */
-    public int getLeader(long id, int decisionRound);
+    public int getProposer(Consensus<?> cons);
 
     /**
      * Indicates that the layer that uses the service starts to deliver a state

@@ -97,7 +97,6 @@ public class ExecutionManagerTest {
 		assertTrue(mng.thereArePendentMessages(101l));
 	}
 	
-	@SuppressWarnings("unchecked")
 	@Test
 	public void testCheckLimits_initial_StateTransfer() {
 		//STATE TRANSFER ENABLED
@@ -121,7 +120,6 @@ public class ExecutionManagerTest {
 		assertTrue(mng.thereArePendentMessages(1));		
 	}
 
-	@SuppressWarnings("unchecked")
 	@Test
 	public void testCheckLimits_normal_StateTransfer() {
 		//STATE TRANSFER ENABLED
@@ -207,7 +205,6 @@ public class ExecutionManagerTest {
 		assertFalse(mng.thereArePendentMessages(2));
 	}
 
-	@SuppressWarnings("unchecked")
 	@Test
 	public void testGetExecution() {
 		Execution exec = mng.getExecution(0);

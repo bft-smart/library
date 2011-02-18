@@ -38,7 +38,7 @@ public class ThroughputLatencyTestServer extends TOMReceiver {
     private long lastDecideTimeInstant;
     private long max=0;
     private long totalOps;
-    private long startTimeInstant;
+//    private long startTimeInstant;
     private int averageIterations;
     Storage st;
     //Storage consensusLatencySt;
@@ -68,7 +68,7 @@ public class ThroughputLatencyTestServer extends TOMReceiver {
             cs = new ServerCommunicationSystem(conf);
             System.out.println("#ThroughputLatencyTestServer throughput interval= "+interval+ " msgs");
             System.out.println("#ThroughputLatencyTestServer average throughput interval= "+averageIterations+ " throughput intervals ");
-            startTimeInstant = System.currentTimeMillis();
+//            startTimeInstant = System.currentTimeMillis();
         } catch (Exception ex) {
             Logger.getLogger(ThroughputLatencyTestServer.class.getName()).log(Level.SEVERE, null, ex);
             throw new RuntimeException("Unable to build a communication system.");
@@ -123,7 +123,7 @@ public class ThroughputLatencyTestServer extends TOMReceiver {
         } else if (numDecides==interval) {
             long elapsedTime = receiveInstant - lastDecideTimeInstant;
             //double opsPerSec_ = ((double)interval)/(elapsedTime/1000.0);
-            double opsPerSec_ = ((double)interval)/(((double)elapsedTime/1000));
+            double opsPerSec_ = interval/(((double)elapsedTime/1000));
             long opsPerSec = Math.round(opsPerSec_);
             if (opsPerSec>max)
                 max = opsPerSec;

@@ -38,17 +38,13 @@ import org.jboss.netty.channel.SimpleChannelHandler;
 @ChannelPipelineCoverage("all")
 public class NettyTOMMessageEncoder extends SimpleChannelHandler {
     
-//    private boolean isClient; //TODO remove this ?
     private Hashtable<Integer,NettyClientServerSession> sessionTable;
-//    private int macLength;
     private int signatureLength;
     private ReentrantReadWriteLock rl;
     private boolean useMAC;
 
-    public NettyTOMMessageEncoder(/*boolean isClient,*/ Hashtable<Integer,NettyClientServerSession> sessionTable/*, int macLength*/, ReentrantReadWriteLock rl, int signatureLength, boolean useMAC){
-//        this.isClient = isClient;
+    public NettyTOMMessageEncoder(Hashtable<Integer,NettyClientServerSession> sessionTable/*, int macLength*/, ReentrantReadWriteLock rl, int signatureLength, boolean useMAC){
         this.sessionTable = sessionTable;
-//        this.macLength = macLength;
         this.rl = rl;
         this.signatureLength = signatureLength;
         this.useMAC = useMAC;

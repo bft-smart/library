@@ -125,13 +125,11 @@ public class PaxosAtWarService implements ConsensusService{
     }
 
     /**
-     * TODO is there a leader in all types of consensus
-     * @param id
-     * @param decisionRound
-     * @return
+     * @param cons The consensus of whom we wish to know the final proposer
+     * @return The id of the final proposer
      */
-    public int getLeader(long id, int decisionRound) {
-        return lm.getLeader(id, decisionRound);
+    public int getProposer(Consensus<?> cons) {
+        return lm.getLeader(cons.getId(), cons.getDecisionRound());
     }
 
     public void startDeliverState() {

@@ -92,7 +92,7 @@ public class ThroughputTestServer extends ServiceReplica {
 
             long elapsedTime = receiveInstant - lastDecideTimeInstant;
 
-            double opsPerSec_ = ((double)interval)/(elapsedTime/1000.0);
+            double opsPerSec_ = interval/(elapsedTime/1000.0);
 
             long opsPerSec = Math.round(opsPerSec_);
 

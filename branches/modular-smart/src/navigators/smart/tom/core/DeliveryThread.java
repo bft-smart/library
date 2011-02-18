@@ -68,8 +68,6 @@ public class DeliveryThread extends Thread {
 
     /**
      * Invoked by the TOM layer, to deliver a decide consensus
-     * TODO consensus is delivered several times - here and via notification in
-     * the Consensus class
      * @param cons MeasuringConsensus established as being decided
      */
     public void delivery(Consensus<TOMMessage[]> cons) {
@@ -283,13 +281,13 @@ public class DeliveryThread extends Thread {
                         if ((cons.getId() > 0) && ((cons.getId() % conf.getCheckpoint_period()) == 0)) {
                             if(log.isLoggable(Level.FINER))
                                 log.finer("Performing checkpoint for consensus " + cons.getId());
-                            tomLayer.saveState( cons.getId(), cons.getDecisionRound(), consensusservice.getLeader(cons.getId(), cons.getDecisionRound()));
+                            tomLayer.saveState( cons.getId(), cons.getDecisionRound(), consensusservice.getProposer(cons));
                             //TODO: possivelmente fazer mais alguma coisa
                         }
                         else {
                             if(log.isLoggable(Level.FINER))
                                     log.finer("Storing message batch in the state log for consensus " + cons.getId());
-                            tomLayer.saveBatch(cons.getDecision(), cons.getId(), cons.getDecisionRound(), consensusservice.getLeader(cons.getId(), cons.getDecisionRound()));
+                            tomLayer.saveBatch(cons.getDecision(), cons.getId(), cons.getDecisionRound(), consensusservice.getProposer(cons));
                             //TODO: possivelmente fazer mais alguma coisa
                         }
                     }

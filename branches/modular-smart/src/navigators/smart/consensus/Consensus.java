@@ -59,8 +59,8 @@ public class Consensus<E> {
      * @return Decided Value
      */
     public byte[] getDecision() {
-        synchronized (sync) {  //TODO is this sync needed? cspann
-            if (decision == null) {
+        synchronized (sync) {  
+        	if (decision == null) {
                 waitForPropose();
             }
             return decision;

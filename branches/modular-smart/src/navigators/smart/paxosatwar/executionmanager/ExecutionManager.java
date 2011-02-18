@@ -359,7 +359,9 @@ public final class ExecutionManager{
     /********************************************************/
 
     /**
-     * Returns the specified consensus's execution
+     * Returns the specified consensus's execution. If it is not existant yet it is created.
+     * If there is a pending propose for this execution it will be handled and so will be any
+     * pending out of context message.
      *
      * @param eid ID of the consensus's execution to be returned
      * @return The consensus's execution specified
@@ -371,9 +373,8 @@ public final class ExecutionManager{
 
         Execution execution = executions.get(eid);
 
+        //there is no execution with the given eid
         if (execution == null) {
-            //there is no execution with the given eid
-
             //let's create one...
             execution = new Execution(this, new MeasuringConsensus(eid, System.currentTimeMillis()),
                     initialTimeout);
@@ -382,38 +383,8 @@ public final class ExecutionManager{
 
             /******* END EXECUTIONS CRITICAL SECTION *******/
             executionsLock.unlock();
-
-            //now it is time to see if there are pending requests for this new
-            //execution. First the propose...
-            outOfContextLock.lock();
-            /******* BEGIN OUTOFCONTEXT CRITICAL SECTION *******/
-
-            VoteMessage prop = outOfContextProposes.remove(eid);
-            if (prop != null) {
-            	if(log.isLoggable(Level.FINER))
-                    log.finer("(" + eid + ") Processing an out of context propose for "+eid);
-                acceptor.processMessage(prop);
-            }
-
-            //then we have to put the pending paxos messages
-            List<PaxosMessage> messages = outOfContext.remove(eid);
-            if (messages != null) {
-            	if(log.isLoggable(Level.FINEST))
-                    log.finest("(" + eid + ") Processing " + messages.size() + " out of context messages");
-                for (Iterator<PaxosMessage> i = messages.iterator(); i.hasNext();) {
-                    acceptor.processMessage(i.next());
-                    if (execution.isDecided()) {
-                    	if(log.isLoggable(Level.FINER))
-                            log.finer(" execution " + eid + " decided.");
-                        break;
-                    }
-                }
-                if(log.isLoggable(Level.FINER))
-                    log.finer(" (" + eid + ") Finished out of context processing");
-            }
-
-            /******* END OUTOFCONTEXT CRITICAL SECTION *******/
-            outOfContextLock.unlock();
+            //now it is time to see if there are pending requests for this new execution. 
+            processOOCMessages(execution);
         } else {
             /******* END EXECUTIONS CRITICAL SECTION *******/
             executionsLock.unlock();
@@ -424,7 +395,42 @@ public final class ExecutionManager{
     }
 
 
-    /**
+    private void processOOCMessages(Execution execution) {
+    	long eid = execution.getId();
+    	// First check for a propose...
+        outOfContextLock.lock();
+        /******* BEGIN OUTOFCONTEXT CRITICAL SECTION *******/
+
+        VoteMessage prop = outOfContextProposes.remove(eid);
+        if (prop != null) {
+        	if(log.isLoggable(Level.FINER))
+                log.finer("(" + eid + ") Processing an out of context propose for "+eid);
+            acceptor.processMessage(prop);
+        }
+
+        //then we have to put the pending paxos messages
+        List<PaxosMessage> messages = outOfContext.remove(eid);
+        if (messages != null) {
+        	if(log.isLoggable(Level.FINEST))
+                log.finest("(" + eid + ") Processing " + messages.size() + " out of context messages");
+            for (Iterator<PaxosMessage> i = messages.iterator(); i.hasNext();) {
+                acceptor.processMessage(i.next());
+                if (execution.isDecided()) {
+                	if(log.isLoggable(Level.FINER))
+                        log.finer(" execution " + eid + " decided.");
+                    break;
+                }
+            }
+            if(log.isLoggable(Level.FINER))
+                log.finer(" (" + eid + ") Finished out of context processing");
+        }
+
+        /******* END OUTOFCONTEXT CRITICAL SECTION *******/
+        outOfContextLock.unlock();
+		
+	}
+
+	/**
      * Stores a message established as being out of context (a message that
      * doesn't belong to current executing consensus).
      *

@@ -50,14 +50,14 @@ public class ServersCommunicationLayer extends Thread {
 	private ServerSocketChannel serverSocket;
 	private int me;
 	private boolean doWork = true;
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings("rawtypes")
 	private final Map<SystemMessage.Type, MessageHandler> msgHandlers;
 	private MessageVerifierFactory<PTPMessageVerifier> verifierfactory;
 	/** Holds the global verifier reference */
 	private GlobalMessageVerifier<SystemMessage> globalverifier;
 	private CountDownLatch latch;
 
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings("rawtypes")
 	public ServersCommunicationLayer(TOMConfiguration conf,
 			BlockingQueue<SystemMessage> inQueue,
 			Map<SystemMessage.Type, MessageHandler> msgHandlers,
@@ -86,8 +86,7 @@ public class ServersCommunicationLayer extends Thread {
 		try {
 			latch.await(); // wait for all connections on startup
 		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			log.severe(e.getMessage()+": Got interrupted while waiting for other connections!");
 		} 
 	}
 

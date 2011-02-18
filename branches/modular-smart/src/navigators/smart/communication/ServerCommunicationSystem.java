@@ -58,13 +58,13 @@ import navigators.smart.tom.util.TOMConfiguration;
 
     private BlockingQueue<SystemMessage> inQueue = null;//new LinkedBlockingQueue<SystemMessage>(IN_QUEUE_SIZE);
 
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings("rawtypes")
 	protected Map<SystemMessage.Type,MessageHandler> msgHandlers = new Hashtable<SystemMessage.Type, MessageHandler>();
 
     private ServersCommunicationLayer serversConn;
     private CommunicationSystemServerSide clientsConn;
 
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings("rawtypes")
 	private GlobalMessageVerifier verifier;
 
     /**
@@ -72,7 +72,7 @@ import navigators.smart.tom.util.TOMConfiguration;
      * @param conf The configuration object containing the conf
      * @throws Exception
      */
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({ "rawtypes", "unchecked" })
 	public ServerCommunicationSystem(TOMConfiguration conf) throws Exception {
         super("Server CS");
 
@@ -109,7 +109,7 @@ import navigators.smart.tom.util.TOMConfiguration;
     	super.start();
     }
 
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({ "rawtypes", "unchecked" })
     protected MessageVerifierFactory createVerifierFactory(String algorithm){
         Class<MessageVerifierFactory> serviceclass;
         try {
@@ -131,7 +131,7 @@ import navigators.smart.tom.util.TOMConfiguration;
         return null;
     }
 
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings("rawtypes")
 	public void addMessageHandler(SystemMessage.Type type, MessageHandler handler){
         assert(msgHandlers.size()<=Byte.MAX_VALUE);
         msgHandlers.put(type,handler);
