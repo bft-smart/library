@@ -104,7 +104,7 @@ import navigators.smart.tom.util.TOMConfiguration;
     }
     
     @Override
-    public void start(){
+    public synchronized void start(){
     	serversConn.start();
     	super.start();
     }
