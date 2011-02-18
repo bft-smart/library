@@ -142,4 +142,9 @@ public class PaxosAtWarService implements ConsensusService{
     public void deliveryFinished(Consensus cons) {
         execmng.decided(cons);
     }
+
+	@Override
+	public void start() {
+		//nothing to do here..
+	}
 }

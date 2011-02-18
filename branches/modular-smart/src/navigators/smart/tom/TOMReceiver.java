@@ -40,6 +40,8 @@ public abstract class TOMReceiver implements TOMRequestReceiver {
 
     private boolean tomStackCreated = false;
 
+    protected ConsensusService service;
+    
     /**
      * This method initializes the object
      * 
@@ -60,10 +62,10 @@ public abstract class TOMReceiver implements TOMRequestReceiver {
 
         ConsensusServiceFactory factory = createFactory(cs, conf);
 
-        ConsensusService manager = factory.newInstance(tomLayer);
-        tomLayer.setConsensusService(manager); //set backlink
+        service = factory.newInstance(tomLayer);
+        tomLayer.setConsensusService(service); //set backlink
 
-        Runtime.getRuntime().addShutdownHook(new ShutdownThread(cs,manager,tomLayer));
+        Runtime.getRuntime().addShutdownHook(new ShutdownThread(cs,service,tomLayer));
 
         tomStackCreated = true;
     }

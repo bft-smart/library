@@ -18,8 +18,6 @@
 
 package navigators.smart.communication.server;
 
-import java.io.ByteArrayInputStream;
-import java.io.DataInputStream;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketException;
@@ -27,8 +25,8 @@ import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 import java.util.Map;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -61,8 +59,8 @@ public class ServerConnection {
 //    private DataInputStream socketInStream = null;
     private int remoteId;
     private boolean useSenderThread;
-    protected LinkedBlockingQueue<byte[]> outQueue;// = new LinkedBlockingQueue<byte[]>(SEND_QUEUE_SIZE);
-    private LinkedBlockingQueue<SystemMessage> inQueue;
+    protected BlockingQueue<byte[]> outQueue;// = new LinkedBlockingQueue<byte[]>(SEND_QUEUE_SIZE);
+    private BlockingQueue<SystemMessage> inQueue;
     private Lock connectLock = new ReentrantLock();
     /** Only used when there is no sender Thread */
     private Lock sendLock;
@@ -77,16 +75,16 @@ public class ServerConnection {
 
 	@SuppressWarnings("unchecked")
 	public ServerConnection(TOMConfiguration conf, SocketChannel socket, int remoteId,
-			LinkedBlockingQueue<SystemMessage> inQueue,
+			BlockingQueue<SystemMessage> inQueue,
 			Map<SystemMessage.Type, MessageHandler> msgHandlers,
 			PTPMessageVerifier ptpverifier,
-			GlobalMessageVerifier<SystemMessage> verifier, CountDownLatch latch) {
+			GlobalMessageVerifier<SystemMessage> verifier) {
         this.msgHandlers = msgHandlers;
         this.conf = conf;
         this.socketchannel = socket;
         this.remoteId = remoteId;
         this.inQueue = inQueue;
-        this.outQueue = new LinkedBlockingQueue<byte[]>(this.conf.getOutQueueSize());
+        this.outQueue = new ArrayBlockingQueue<byte[]>(this.conf.getOutQueueSize());
         this.ptpverifier = ptpverifier;
         this.globalverifier = verifier;
 
@@ -104,16 +102,6 @@ public class ServerConnection {
             }
         }
         //else I have to wait a connection from the remote server
-
-        if (this.socketchannel != null) {
-//            try {
-            	latch.countDown(); // got connection, inform comlayer
-//                socketOutStream = new DataOutputStream(this.socket.getOutputStream());
-//                socketInStream = new DataInputStream(this.socket.getInputStream());
-//            } catch (IOException ex) {
-//                log.log(Level.SEVERE, null, ex);
-//            }
-        }
 
         this.useSenderThread = conf.isUseSenderThread();
 
@@ -282,6 +270,9 @@ public class ServerConnection {
                 //get a message to be sent
                 try {
                     data = outQueue.poll(POOL_TIME, TimeUnit.MILLISECONDS);
+                    if(outQueue.size()>100){
+                    	log.info(""+outQueue.size());
+                    }
                 } catch (InterruptedException ex) {
                 }
 
@@ -311,22 +302,40 @@ public class ServerConnection {
         @SuppressWarnings("unchecked")
 		@Override
         public void run() {
-
+        	byte[] data = new byte[256];
+        	ByteBuffer buf = ByteBuffer.wrap(data);
+        	
             while (doWork) {
                 if (socketchannel != null /*&& socketInStream != null*/) {
                     try {
+                    	buf.clear();
+                    	buf.limit(4);
                         //read data length
-                    	ByteBuffer buf = ByteBuffer.allocate(4);
                     	socketchannel.read(buf);
+                    	
+                    	
                     	buf.flip();
                         int dataLength = buf.getInt();
+                        
+                        if(log.isLoggable(Level.FINEST))
+                        	log.finest("Receiving msg of size"+ dataLength +" from " + remoteId);
+                        
+//                        if(dataLength>1024){
+//                        	log.severe("Datalength got huge: "+dataLength);
+//                        }
+                        if(buf.capacity()<dataLength){
+                        	buf = ByteBuffer.allocate(dataLength);
+                        	data = buf.array();
+                        } else {
+                        	buf.limit(dataLength);
+                        }
 
-                        byte[] data = new byte[dataLength];
-                        buf = ByteBuffer.wrap(data);
-
+//                        byte[] data = new byte[dataLength];
+//                        buf = ByteBuffer.wrap(data);
+                        buf.rewind();
                         //read data
                         socketchannel.read(buf);
-                        buf.flip();
+                        buf.rewind();
 
                         //read mac
                         Object verificationresult = null;
@@ -335,14 +344,17 @@ public class ServerConnection {
                             verificationresult = ptpverifier.verifyHash(data,receivedHash);
                         }
                         if(conf.isUseGlobalAuth()){
-                        	verificationresult = globalverifier.verifyHash(data);
+                        	verificationresult = globalverifier.verifyHash(buf);
                         }
                         if (verificationresult != null || conf.getUseMACs() == 0 && !conf.isUseGlobalAuth()) {
                         	SystemMessage.Type type = SystemMessage.Type.getByByte(data[0]);
-                        	assert(msgHandlers.containsKey(type));
+                        	assert(msgHandlers.containsKey(type)):"Messagehandlers does not contain "+type+". It contains: "+msgHandlers;
 //                        	System.out.println(msgHandlers);
 //                        	System.out.println(msgHandlers.get(type));
                         	SystemMessage sm = msgHandlers.get(type).deserialise(type,buf, verificationresult);
+                        	
+                        	if(log.isLoggable(Level.FINEST))
+                        		log.finest("Received "+sm);
                         	
                         	if (sm.getSender() == remoteId) {
                         		if(!inQueue.offer(sm)) 
@@ -350,7 +362,10 @@ public class ServerConnection {
                         	}
                         } else {
                         	//TODO: violation of authentication... we should do something
-                        	log.log(Level.SEVERE, "WARNING: Violation of authentication in message received from "+remoteId);
+//                        	log.log(Level.SEVERE, "WARNING: Violation of authentication in "+ Arrays.toString(data) +" received from "+remoteId);
+                        	SystemMessage.Type type = SystemMessage.Type.getByByte(data[0]);
+                        	SystemMessage sm = msgHandlers.get(type).deserialise(type,buf, verificationresult);
+                        	log.severe("Received bad "+sm + " from "+remoteId);
                         }
 
                         /*

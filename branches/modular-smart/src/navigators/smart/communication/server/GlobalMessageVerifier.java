@@ -5,6 +5,8 @@
 
 package navigators.smart.communication.server;
 
+import java.nio.ByteBuffer;
+
 import navigators.smart.tom.core.messages.SystemMessage;
 
 /**
@@ -26,10 +28,12 @@ public interface GlobalMessageVerifier<A>{
      * @param data The data to check
      * @return The deserialised verification data if the data was valid
      */
-    public A verifyHash(byte[] data);
+    public A verifyHash(ByteBuffer data);
     
     /**
      * Initialises this verifier.
      */
 	public void authenticateAndEstablishAuthKey();
+
+//	UniqueIdentifier verifyHash(ByteBuffer data);
 }
