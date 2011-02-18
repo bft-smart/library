@@ -18,16 +18,12 @@
 
 package navigators.smart.tom.core.messages;
 
-import java.io.ByteArrayOutputStream;
 import java.io.DataInput;
 import java.io.DataOutput;
-import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
-
-import navigators.smart.ebawa.messages.Serialisable;
 
 /**
  * This is the super-class for all other kinds of messages created by JBP
@@ -36,7 +32,7 @@ import navigators.smart.ebawa.messages.Serialisable;
  * 
  */
 
-public abstract class SystemMessage implements Serialisable {
+public abstract class SystemMessage{
 
     public enum Type {
 

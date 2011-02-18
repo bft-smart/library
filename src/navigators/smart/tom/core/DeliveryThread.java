@@ -66,7 +66,7 @@ public class DeliveryThread extends Thread {
     /**
      * Invoked by the TOM layer, to deliver a decide consensus
      * TODO consensus is delivered several times - here and via notification in
-     * the Consensusclass
+     * the Consensus class
      * @param cons MeasuringConsensus established as being decided
      */
     @SuppressWarnings("unchecked")
