@@ -21,6 +21,7 @@ import java.security.MessageDigest;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.logging.Level;
 
 import navigators.smart.clientsmanagement.ClientsManager;
 import navigators.smart.clientsmanagement.PendingRequests;
@@ -47,6 +48,8 @@ import navigators.smart.tom.util.TOMUtil;
  * a layer of total ordered messages
  */
 public class TOMLayer implements RequestReceiver {
+	
+	private static java.util.logging.Logger logger = java.util.logging.Logger.getLogger(TOMLayer.class.getCanonicalName());
 
     //other components used by the TOMLayer (they are never changed)
     private ServerCommunicationSystem communication; // Communication system between replicas
@@ -210,7 +213,8 @@ public class TOMLayer implements RequestReceiver {
         int i = 0;
         for (Iterator<TOMMessage> li = pendingRequests.iterator(); li.hasNext(); i++) {
             TOMMessage msg = li.next();
-            //Logger.println("(TOMLayer.run) adding req " + msg + " to PROPOSE");
+            if(logger.isLoggable(Level.FINEST)){
+            	logger.finest(" adding req " + msg + " to PROPOSE");}
             messages[i] = msg.serializedMessage;
             if(conf.getUseSignatures() == 1){
             	signatures[i] = msg.serializedMessageSignature;
