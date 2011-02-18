@@ -58,14 +58,14 @@ public final class ExecutionManager{
     private ReentrantLock executionsLock = new ReentrantLock(); //lock for executions table
 
     // Paxos messages that were out of context (that didn't belong to the execution that was/is is progress
-    private Map<Long, List<PaxosMessage>> outOfContext = new HashMap<Long, List<PaxosMessage>>();
+    private Map<Long, List<PaxosMessage<?>>> outOfContext = new HashMap<Long, List<PaxosMessage<?>>>();
     // Proposes that were out of context (that belonged to future executions, and not the one running at the time)
-    private Map<Long, PaxosMessage> outOfContextProposes = new HashMap<Long, PaxosMessage>();
+    private Map<Long, PaxosMessage<?>> outOfContextProposes = new HashMap<Long, PaxosMessage<?>>();
     private ReentrantLock outOfContextLock = new ReentrantLock(); //lock for out of context
 
     private boolean stopped = false; // Is the execution manager stopped?
     // When the execution manager is stopped, incoming paxos messages are stored here
-    private List<PaxosMessage> stoppedMsgs = new LinkedList<PaxosMessage>();
+    private List<PaxosMessage<?>> stoppedMsgs = new LinkedList<PaxosMessage<?>>();
     private Round stoppedRound = null; // round at which the current execution was stoppped
     private ReentrantLock stoppedMsgsLock = new ReentrantLock(); //lock for stopped messages
 
@@ -228,7 +228,7 @@ public final class ExecutionManager{
      * @param msg the received message
      * @return true in case the message can be executed, false otherwise
      */
-    public final boolean checkLimits(PaxosMessage msg) {
+    public final boolean checkLimits(PaxosMessage<?> msg) {
         outOfContextLock.lock();
         long consId = msg.getNumber();
         long lastConsId = requesthandler.getLastExec();
@@ -450,7 +450,7 @@ public final class ExecutionManager{
             outOfContextLock.lock();
             /******* BEGIN OUTOFCONTEXT CRITICAL SECTION *******/
 
-            PaxosMessage prop = outOfContextProposes.remove(eid);
+            PaxosMessage<?> prop = outOfContextProposes.remove(eid);
             if (prop != null) {
                 if(Logger.debug)
                     Logger.println("(ExecutionManager.createExecution) (" + eid + ") A processar PROPOSE recebido previamente fora de contexto");
@@ -458,11 +458,11 @@ public final class ExecutionManager{
             }
 
             //then we have to put the pending paxos messages
-            List<PaxosMessage> messages = outOfContext.remove(eid);
+            List<PaxosMessage<?>> messages = outOfContext.remove(eid);
             if (messages != null) {
                 if(Logger.debug)
                     Logger.println("(createExecution) (" + eid + ") A processar " + messages.size() + " mensagens recebidas previamente fora de contexto");
-                for (Iterator<PaxosMessage> i = messages.iterator(); i.hasNext();) {
+                for (Iterator<PaxosMessage<?>> i = messages.iterator(); i.hasNext();) {
                     acceptor.processMessage(i.next());
                     if (execution.isDecided()) {
                         if(Logger.debug)
@@ -492,16 +492,16 @@ public final class ExecutionManager{
      *
      * @param m Out of context message to be stored
      */
-    private void addOutOfContextMessage(PaxosMessage m) {
+    private void addOutOfContextMessage(PaxosMessage<?> m) {
         outOfContextLock.lock();
         /******* BEGIN OUTOFCONTEXT CRITICAL SECTION *******/
 
         if (m.getPaxosType() == MessageFactory.PROPOSE) {
                 outOfContextProposes.put(m.getNumber(), m);
         } else {
-            List<PaxosMessage> messages = outOfContext.get(m.getNumber());
+            List<PaxosMessage<?>> messages = outOfContext.get(m.getNumber());
             if (messages == null) {
-                messages = new LinkedList<PaxosMessage>();
+                messages = new LinkedList<PaxosMessage<?>>();
                 outOfContext.put(m.getNumber(), messages);
             }
             messages.add(m);

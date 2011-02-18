@@ -18,19 +18,18 @@
 
 package navigators.smart.paxosatwar.messages;
 
-import java.io.ByteArrayOutputStream;
-import java.io.DataInput;
-import java.io.DataOutput;
-import java.io.DataOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.Arrays;
 
+import navigators.smart.tom.core.messages.Serialisable;
 import navigators.smart.tom.util.SerialisationHelper;
 
 /**
  * Proofs to freezed consensus. This class can contain proofs for two consensus.
  * The freezed one, and the next one (if have).
  */
-public final class CollectProof {
+public final class CollectProof implements Serialisable {
 
     // Proofs to freezed consensus
     private final FreezeProof proofIn;
@@ -88,33 +87,36 @@ public final class CollectProof {
 
     }
 
-    public CollectProof (DataInput in) throws IOException{
+    public CollectProof (ByteBuffer in) {
         proofIn = new FreezeProof(in);
         proofNext = new FreezeProof(in);
-        newLeader = in.readInt();
+        newLeader = in.getInt();
         signature = SerialisationHelper.readByteArray(in);
     }
 
-    public void serialise(DataOutput out) throws IOException{
+    public void serialise(ByteBuffer out){
         if(serialisedForm == null){
-            proofIn.serialize(out);
-            proofNext.serialize(out);
-            out.writeInt(newLeader);
+            proofIn.serialise(out);
+            proofNext.serialise(out);
+            out.putInt(newLeader);
         } else {
             SerialisationHelper.writeByteArray(serialisedForm, out);
         }
         SerialisationHelper.writeByteArray(signature, out);
     }
+    
+    public int getMsgSize(){
+    	return proofIn.getMsgSize()+proofNext.getMsgSize()+ 8 + signature.length;
+    }
 
     public byte[] getBytes() throws IOException {
         if(serialisedForm == null){
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            DataOutput out = new DataOutputStream(baos);
+        	ByteBuffer buf = ByteBuffer.allocate(proofIn.getMsgSize()+proofNext.getMsgSize()+4);
             //serialise without signature
-            proofIn.serialize(out);
-            proofNext.serialize(out);
-            out.writeInt(newLeader);
-            serialisedForm = baos.toByteArray();
+            proofIn.serialise(buf);
+            proofNext.serialise(buf);
+            buf.putInt(newLeader);
+            serialisedForm = buf.array();
         }
         return serialisedForm;
     }
@@ -126,6 +128,52 @@ public final class CollectProof {
     public byte[] getSignature() {
         return signature;
     }
+
+	/* (non-Javadoc)
+	 * @see java.lang.Object#hashCode()
+	 */
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + newLeader;
+		result = prime * result + ((proofIn == null) ? 0 : proofIn.hashCode());
+		result = prime * result + ((proofNext == null) ? 0 : proofNext.hashCode());
+		result = prime * result + Arrays.hashCode(serialisedForm);
+		result = prime * result + Arrays.hashCode(signature);
+		return result;
+	}
+
+	/* (non-Javadoc)
+	 * @see java.lang.Object#equals(java.lang.Object)
+	 */
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (!(obj instanceof CollectProof))
+			return false;
+		CollectProof other = (CollectProof) obj;
+		if (newLeader != other.newLeader)
+			return false;
+		if (proofIn == null) {
+			if (other.proofIn != null)
+				return false;
+		} else if (!proofIn.equals(other.proofIn))
+			return false;
+		if (proofNext == null) {
+			if (other.proofNext != null)
+				return false;
+		} else if (!proofNext.equals(other.proofNext))
+			return false;
+		if (!Arrays.equals(serialisedForm, other.serialisedForm))
+			return false;
+		if (!Arrays.equals(signature, other.signature))
+			return false;
+		return true;
+	}
 
 }
 

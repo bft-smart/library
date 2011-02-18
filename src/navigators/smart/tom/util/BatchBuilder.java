@@ -35,7 +35,7 @@ public final class BatchBuilder {
 
     /** build buffer */
     public byte[] createBatch(long timestamp, int numberOfNonces, int numberOfMessages, int totalMessagesSize, byte[][] messages, byte[][] signatures) {
-        int size = 20 + //timestamp 8, nonces 4, nummessages 4
+        int size = 16 + //timestamp 8, nonces 4, nummessages 4
                 (numberOfNonces > 0 ? 8 : 0) + //seed if needed
                 (numberOfMessages*(4+(signatures != null ?TOMUtil.getSignatureSize():0)))+ // msglength + signature for each msg
                 totalMessagesSize; //size of all msges

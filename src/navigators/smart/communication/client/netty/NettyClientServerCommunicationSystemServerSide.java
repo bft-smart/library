@@ -18,9 +18,6 @@
 
 package navigators.smart.communication.client.netty;
 
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.security.NoSuchAlgorithmException;
 import java.security.spec.InvalidKeySpecException;
@@ -258,16 +255,16 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 
 	public void send(int[] targets, TOMMessage sm) {
 
-		// serialize message
-		DataOutputStream dos = null;
-		try {
-			ByteArrayOutputStream baos = new ByteArrayOutputStream(256);
-			dos = new DataOutputStream(baos);
-			sm.serialise(dos);
-			sm.serializedMessage = baos.toByteArray();
-		} catch (IOException ex) {
-			Logger.getLogger(NettyClientServerCommunicationSystemClientSide.class.getName()).log(Level.SEVERE, null, ex);
-		}
+//		// serialize message
+//		DataOutputStream dos = null;
+//		try {
+//			ByteArrayOutputStream baos = new ByteArrayOutputStream(256);
+//			dos = new DataOutputStream(baos);
+//			sm.serialise(dos);
+			sm.serializedMessage = sm.getBytes();
+//		} catch (IOException ex) {
+//			Logger.getLogger(NettyClientServerCommunicationSystemClientSide.class.getName()).log(Level.SEVERE, null, ex);
+//		}
        
         //replies are not signed in the current JBP version
         sm.signed = false;

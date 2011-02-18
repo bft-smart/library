@@ -18,10 +18,9 @@
 
 package navigators.smart.paxosatwar.messages;
 
-import java.io.DataInput;
-import java.io.DataOutput;
-import java.io.IOException;
+import java.nio.ByteBuffer;
 
+import navigators.smart.tom.core.messages.Serialisable;
 import navigators.smart.tom.util.SerialisationHelper;
 
 /**
@@ -31,7 +30,7 @@ import navigators.smart.tom.util.SerialisationHelper;
  * This class represents the proof used in the rounds freeze processing.
  * The SignedObject contain the CollectProof for this server.
  */
-public final class Proof {
+public final class Proof implements Serialisable {
 
     private CollectProof[] proofs; // Signed proofs
     private byte[] nextPropose; // next value to be proposed
@@ -48,10 +47,10 @@ public final class Proof {
 
     }
 
-    public Proof(DataInput in) throws IOException{
-        proofs = new CollectProof[in.readInt()];
+    public Proof(ByteBuffer in){
+        proofs = new CollectProof[in.getInt()];
         for (int i = 0; i < proofs.length; i++) {
-            int pos = in.readInt();
+            int pos = in.getInt();
             if(pos < 0){
                 break;  //reached end
             }
@@ -60,18 +59,34 @@ public final class Proof {
         nextPropose = SerialisationHelper.readByteArray(in);
     }
 
-    public void serialise(DataOutput out) throws IOException{
-        out.writeInt(proofs.length);
+    /**
+     * TODO this can be shrunken without tags if the length is sent 
+     */
+    public void serialise(ByteBuffer out) {
+        out.putInt(proofs.length);
         for (int i = 0; i < proofs.length; i++) {
             if(proofs[i]!=null){
-               out.writeInt(i);
+               out.putInt(i);
                proofs[i].serialise(out);
             }
         }
-        out.writeInt(-1); //write end tag
+        out.putInt(-1); //put end tag
         SerialisationHelper.writeByteArray(nextPropose, out);
 
     }
+    
+    @Override
+	public int getMsgSize() {
+    	 int ret = 12;
+         for (int i = 0; i < proofs.length; i++) {
+             if(proofs[i]!=null){
+            	 ret += 4;
+            	 ret += proofs[i].getMsgSize();
+             }
+         }
+        ret += nextPropose.length;
+		return ret;
+	}
     
     /**
      * Retrieves next value to be proposed
@@ -90,6 +105,5 @@ public final class Proof {
     public CollectProof[] getProofs(){
         return this.proofs;
     }
-
 }
 

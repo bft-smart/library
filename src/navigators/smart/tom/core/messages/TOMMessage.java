@@ -18,17 +18,10 @@
 
 package navigators.smart.tom.core.messages;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.DataInput;
-import java.io.DataOutput;
-import java.io.IOException;
-import java.io.ObjectInput;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutput;
-import java.io.ObjectOutputStream;
+import java.nio.ByteBuffer;
 
 import navigators.smart.tom.util.DebugInfo;
+import navigators.smart.tom.util.SerialisationHelper;
 
 /**
  * This class represents a total ordered message
@@ -64,22 +57,10 @@ public class TOMMessage extends SystemMessage implements Comparable<TOMMessage> 
     public transient int consensusBatchSize=0;
     public transient long requestTotalLatency=0;
 
-    public TOMMessage(DataInput in) throws IOException {
+    public TOMMessage(ByteBuffer in) {
         super(Type.TOM_MSG,in);
-        sequence = in.readInt();
-
-        int toRead = in.readInt();
-        if(toRead >= 0){
-            content = new byte[toRead];
-            in.readFully(content);
-        }
-//        if (toRead != -1) {
-//
-//            do {
-//                toRead -= in.read(content, content.length - toRead, toRead);
-//            } while (toRead > 0);
-//        }
-
+        sequence = in.getInt();
+        content = SerialisationHelper.readByteArray(in);
         buildId();
     }
 
@@ -196,20 +177,21 @@ public class TOMMessage extends SystemMessage implements Comparable<TOMMessage> 
 
     @Override
     public String toString() {
-        return "(" + sender + "," + sequence + ")";
+        return super.toString()+"(" + sender + "," + sequence + ")";
     }
 
     @Override
-    public void serialise(DataOutput out) throws IOException {
+    public void serialise(ByteBuffer out) {
         super.serialise(out);
-        out.writeInt(sequence);
-        if (content == null) {
-            out.writeInt(-1);
-        } else {
-            out.writeInt(content.length);
-            out.write(content);
-        }
+        out.putInt(sequence);
+        SerialisationHelper.writeByteArray(content, out);
     }
+    
+    @Override
+    public int getMsgSize(){
+    	return super.getMsgSize()+ 8 + content.length; //4+4+content.length
+    }
+    
 
 //    @Override
 //    public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
@@ -263,31 +245,23 @@ public class TOMMessage extends SystemMessage implements Comparable<TOMMessage> 
         return id >>> 20;
     }
 
-    public static byte[] messageToBytes(TOMMessage m) {
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-//        DataOutputStream dos = new DataOutputStream(baos);
-        try{
-            ObjectOutput oo = new ObjectOutputStream(baos);
-            m.serialise(oo);
-            oo.flush();
-        }catch(Exception e) {
-        }
-        return baos.toByteArray();
-    }
-
-    public static TOMMessage bytesToMessage(byte[] b) {
-        ByteArrayInputStream bais = new ByteArrayInputStream(b);
-//        DataInputStream dis = new DataInputStream(bais);
-
-        try{
-            ObjectInput ooi = new ObjectInputStream(bais);
-            TOMMessage m = new TOMMessage(ooi);
-            return m;
-        }catch(Exception e) {
-            System.out.println("deu merda "+e);
-            return null;
-        }
-    }
+//    public static byte[] messageToBytes(TOMMessage m) {
+//        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+////        DataOutputStream dos = new DataOutputStream(baos);
+//        try{
+//            ObjectOutput oo = new ObjectOutputStream(baos);
+//            m.serialise(oo);
+//            oo.flush();
+//        }catch(Exception e) {
+//        }
+//        return baos.toByteArray();
+//    }
+//
+//    public static TOMMessage bytesToMessage(byte[] b) {
+//        ByteBuffer buf = ByteBuffer.wrap(b);
+//        TOMMessage m = new TOMMessage(buf);
+//        return m;
+//    }
 
     public int compareTo(TOMMessage tm) {
         final int BEFORE = -1;

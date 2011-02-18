@@ -18,10 +18,8 @@
 
 package navigators.smart.communication.server;
 
-import java.io.DataInputStream;
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
@@ -31,7 +29,6 @@ import java.nio.channels.SocketChannel;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.LinkedBlockingQueue;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -65,6 +62,7 @@ public class ServersCommunicationLayer extends Thread {
 			MessageVerifierFactory<PTPMessageVerifier> verifierfactory,
 			GlobalMessageVerifier<SystemMessage> globalverifier) throws IOException
 			{
+		super("ServersCommunicationLayer");
 		this.conf = conf;
 		this.inQueue = inQueue;
 		this.me = conf.getProcessId();
@@ -93,13 +91,7 @@ public class ServersCommunicationLayer extends Thread {
 
 	public final void send(int[] targets, SystemMessage sm) {
 
-		byte[] data = null;
-		try {
-			data = sm.getBytes();
-		} catch (IOException ex) {
-			Logger.getLogger(ServerConnection.class.getName()).log(
-					Level.SEVERE, null, ex);
-		}
+		byte[] data = sm.getBytes();
 
 		for (int i : targets) {
 			if(log.isLoggable(Level.FINEST))

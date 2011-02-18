@@ -27,30 +27,34 @@ public class SerialisationHelper {
     }
     
     public static void writeByteArray(byte[] array, ByteBuffer out) {
-    	out.putInt(array.length);
-    	out.put(array);
+    	if(array == null){
+    		out.putInt(-1);
+    	} else {
+    		out.putInt(array.length);
+    		out.put(array);
+    	}
     }
 
     public static byte[] readByteArray (DataInput in) throws IOException{
         int len = in.readInt();
-        if(len > 0){
+        if(len >= 0){
         	byte[] ret = new byte[len];
         	in.readFully(ret);
         	return ret;
         } else {
-        	return new byte[0];
+        	return null;
         }
         	
     }
     
     public static byte[] readByteArray (ByteBuffer in) {
     	int len = in.getInt();
-    	if(len > 0){
+    	if(len >= 0){
     		byte[] ret = new byte[len];
     		in.get(ret);
     		return ret;
     	} else {
-    		return new byte[0];
+    		return null;
     	}
     	
     }
@@ -62,11 +66,30 @@ public class SerialisationHelper {
         oos.flush();
         writeByteArray(baos.toByteArray(), out);
     }
+    
+    public static byte[] writeObject(Object content)  {
+    	ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    	ObjectOutputStream oos;
+		try {
+			oos = new ObjectOutputStream(baos);
+			oos.writeObject(content);
+			oos.flush();
+		} catch (IOException e) {
+			e.printStackTrace();	//wont happen with this jvm
+		}
+    	return baos.toByteArray();
+    }
 
     public static Object readObject(DataInput in) throws IOException, ClassNotFoundException {
         ByteArrayInputStream bais = new ByteArrayInputStream(readByteArray(in));
         ObjectInputStream ois = new ObjectInputStream(bais);
         return ois.readObject();
+    }
+    
+    public static Object readObject(ByteBuffer in) throws IOException, ClassNotFoundException {
+    	ByteArrayInputStream bais = new ByteArrayInputStream(readByteArray(in));
+    	ObjectInputStream ois = new ObjectInputStream(bais);
+    	return ois.readObject();
     }
 
     public static void writeString(String op, DataOutput out) throws IOException {

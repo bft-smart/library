@@ -69,7 +69,6 @@ public class DeliveryThread extends Thread {
      * the Consensus class
      * @param cons MeasuringConsensus established as being decided
      */
-    @SuppressWarnings("unchecked")
     public void delivery(Consensus<TOMMessage[]> cons) {
         try {
             decided.put(cons);
@@ -215,7 +214,7 @@ public class DeliveryThread extends Thread {
                 /** ISTO E CODIGO DO JOAO, PARA TRATAR DA TRANSFERENCIA DE ESTADO */
 //                if(Logger.debug)
 //                    Logger.println("(DeliveryThread.run) Waiting for a consensus to be delivered.");
-                Consensus cons = decided.poll(1500, TimeUnit.MILLISECONDS); // take a decided consensus
+                Consensus<TOMMessage[]> cons = decided.poll(1500, TimeUnit.MILLISECONDS); // take a decided consensus
                 if (cons == null) {
 //                    if(Logger.debug)
 //                        Logger.println("(DeliveryThread.run) Timeout while waiting for a consensus, starting over.");
@@ -233,7 +232,7 @@ public class DeliveryThread extends Thread {
 
                 // obtain an array of requests from the taken consensus
                 BatchReader batchReader = new BatchReader(cons.getDecision(), conf.getUseSignatures()==1);
-                TOMMessage[] requests = (TOMMessage[]) cons.getDeserializedDecision();
+                TOMMessage[] requests = cons.getDeserializedDecision();
 
                 if (requests == null) {
                     if(Logger.debug)

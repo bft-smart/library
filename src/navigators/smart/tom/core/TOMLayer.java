@@ -39,7 +39,6 @@ import navigators.smart.tom.core.messages.TOMMessage;
 import navigators.smart.tom.util.BatchBuilder;
 import navigators.smart.tom.util.BatchReader;
 import navigators.smart.tom.util.Logger;
-import navigators.smart.tom.util.Storage;
 import navigators.smart.tom.util.TOMConfiguration;
 import navigators.smart.tom.util.TOMUtil;
 
@@ -65,14 +64,14 @@ public class TOMLayer implements RequestReceiver {
     //the next two are used to generate non-deterministic data in a deterministic way (by the leader)
 //    private Random random = new Random();
     private BatchBuilder bb = new BatchBuilder();
-    private long lastTimestamp = 0;
+//    private long lastTimestamp = 0;
     private MessageDigest md;
 
     /* The next fields are used only for benchmarking */
-    private static final int BENCHMARK_PERIOD = 100;
-    private long numMsgsReceived;
-    private Storage stConsensusDuration;
-    private Storage stConsensusBatch;
+//    private static final int BENCHMARK_PERIOD = 100;
+//    private long numMsgsReceived;
+//    private Storage stConsensusDuration;
+//    private Storage stConsensusBatch;
 
     /**
      * Creates a new instance of TOMulticastLayer
@@ -87,9 +86,9 @@ public class TOMLayer implements RequestReceiver {
         this.receiver = receiver;
         this.communication = cs;
         this.conf = conf;
-        this.numMsgsReceived = 0;
-        this.stConsensusBatch = new Storage(BENCHMARK_PERIOD);
-        this.stConsensusDuration = new Storage(BENCHMARK_PERIOD);
+//        this.numMsgsReceived = 0;
+//        this.stConsensusBatch = new Storage(BENCHMARK_PERIOD);
+//        this.stConsensusDuration = new Storage(BENCHMARK_PERIOD);
 
         try {
             this.md = MessageDigest.getInstance("MD5"); // TODO: nao devia ser antes SHA?

@@ -18,10 +18,10 @@
 
 package navigators.smart.paxosatwar.messages;
 
-import java.io.DataInput;
-import java.io.DataOutput;
-import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.Arrays;
 
+import navigators.smart.tom.core.messages.Serialisable;
 import navigators.smart.tom.util.SerialisationHelper;
 
 /**
@@ -30,7 +30,7 @@ import navigators.smart.tom.util.SerialisationHelper;
  *
  * Proofs for one (freezed) consensus.
  */
-public final class FreezeProof {
+public final class FreezeProof implements Serialisable{
 
     private int pid; // Replica ID
     private long eid; // Consensus's execution ID
@@ -134,22 +134,69 @@ public final class FreezeProof {
         return (obj == null)?"*":new String(obj);
     }
 
-    public FreezeProof(DataInput in) throws IOException{
-        pid = in.readInt();
-        eid = in.readLong();
-        round = in.readInt();
+    public FreezeProof(ByteBuffer in){
+        pid = in.getInt();
+        eid = in.getLong();
+        round = in.getInt();
         weak = SerialisationHelper.readByteArray(in);
         strong = SerialisationHelper.readByteArray(in);
         decide = SerialisationHelper.readByteArray(in);
     }
 
-    public void serialize(DataOutput out) throws IOException{
-        out.writeInt(pid);
-        out.writeLong(eid);
-        out.writeInt(round);
+    public void serialise(ByteBuffer out){
+        out.putInt(pid);
+        out.putLong(eid);
+        out.putInt(round);
         SerialisationHelper.writeByteArray(weak, out);
         SerialisationHelper.writeByteArray(strong, out);
         SerialisationHelper.writeByteArray(decide, out);
     }
+    
+    public int getMsgSize(){
+    	return 28 + weak.length + strong.length + decide.length; //5*integer (2 fields 3 arrays), 1* long, 3 arrays
+    }
+
+	/* (non-Javadoc)
+	 * @see java.lang.Object#hashCode()
+	 */
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + Arrays.hashCode(decide);
+		result = prime * result + (int) (eid ^ (eid >>> 32));
+		result = prime * result + pid;
+		result = prime * result + round;
+		result = prime * result + Arrays.hashCode(strong);
+		result = prime * result + Arrays.hashCode(weak);
+		return result;
+	}
+
+	/* (non-Javadoc)
+	 * @see java.lang.Object#equals(java.lang.Object)
+	 */
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (!(obj instanceof FreezeProof))
+			return false;
+		FreezeProof other = (FreezeProof) obj;
+		if (!Arrays.equals(decide, other.decide))
+			return false;
+		if (eid != other.eid)
+			return false;
+		if (pid != other.pid)
+			return false;
+		if (round != other.round)
+			return false;
+		if (!Arrays.equals(strong, other.strong))
+			return false;
+		if (!Arrays.equals(weak, other.weak))
+			return false;
+		return true;
+	}
 }
 

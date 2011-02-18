@@ -18,9 +18,9 @@
 
 package navigators.smart.tom.util;
 
-import java.io.ByteArrayInputStream;
-import java.io.DataInputStream;
+import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.Random;
 
 import navigators.smart.tom.core.messages.TOMMessage;
@@ -110,8 +110,7 @@ public final class BatchReader {
                 rnd.nextBytes(nonces);
             }
             try {
-                DataInputStream dis = new DataInputStream(new ByteArrayInputStream(message));
-                TOMMessage tm = new TOMMessage(dis);
+                TOMMessage tm = new TOMMessage(ByteBuffer.wrap(message));
 
                 tm.serializedMessage = message;
                 tm.serializedMessageSignature = signature;

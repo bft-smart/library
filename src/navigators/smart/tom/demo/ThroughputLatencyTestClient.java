@@ -106,8 +106,8 @@ public class ThroughputLatencyTestClient extends TOMSender implements Runnable {
                 ByteBuffer command1 = ByteBuffer.allocate(4);
                 command1.putInt(-1);
                 currentId = -1;
-//                this.doTOMulticast(command1.array());
-                doTOUnicast(command1.array(),target,false);
+                this.doTOMulticast(command1.array());
+//                doTOUnicast(command1.array(),target,false);
                 this.sm.acquire();	//wait for reply
                 
                 //create msg for # of ops request after signing (id has to be taken before
@@ -132,7 +132,7 @@ public class ThroughputLatencyTestClient extends TOMSender implements Runnable {
                	//requests current number of ops processed by the servers
                 currentId = -1;
                 doTOUnicast(target,msg);
-//                this.TOMulticast(msg);
+                this.TOMulticast(msg);
                 this.sm.acquire();
                 
                 measurementEpoch++;
@@ -149,7 +149,8 @@ public class ThroughputLatencyTestClient extends TOMSender implements Runnable {
                         System.out.println("("+myId+"-"+measurementEpoch+") Sending " + (i + 1) + " / " + exec);
                     }
                     last_send_instant = System.nanoTime();
-                    this.doTOUnicast(target,(TOMMessage)generatedMsgs.get(i));
+                    this.TOMulticast((TOMMessage)generatedMsgs.get(i));
+//                    this.doTOUnicast(target,(TOMMessage)generatedMsgs.get(i));
                     
                     this.sm.acquire();
 

@@ -5,9 +5,8 @@
 
 package navigators.smart.paxosatwar.requesthandler;
 
-import java.io.ByteArrayInputStream;
-import java.io.DataInputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.security.SignedObject;
 import java.util.Collection;
 import java.util.HashMap;
@@ -370,9 +369,8 @@ public class RequestHandler extends Thread {
 
                         //deserialize the message
                         try {
-                            DataInputStream ois = new DataInputStream(
-                                    new ByteArrayInputStream(serializedRequest[0]));
-                            request = new TOMMessage(ois);
+                            ByteBuffer buf = ByteBuffer.wrap(serializedRequest[0]);
+                            request = new TOMMessage(buf);
                         } catch (Exception e) {
                             e.printStackTrace();
                             tomlayer.clientsManager.getClientsLock().unlock();

@@ -38,7 +38,7 @@ import org.jboss.netty.channel.SimpleChannelHandler;
 @ChannelPipelineCoverage("all")
 public class NettyTOMMessageEncoder extends SimpleChannelHandler {
     
-    private boolean isClient;
+    private boolean isClient; //TODO remove this ?
     private Hashtable<Integer,NettyClientServerSession> sessionTable;
     private int macLength;
     private int signatureLength;

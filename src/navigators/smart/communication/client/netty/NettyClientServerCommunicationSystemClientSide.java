@@ -18,9 +18,6 @@
 
 package navigators.smart.communication.client.netty;
 
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
 import java.net.ConnectException;
 import java.nio.channels.ClosedChannelException;
 import java.security.InvalidKeyException;
@@ -284,7 +281,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 	private void checkSerialized(TOMMessage sm) {
     	//check serialized message
         if (sm.serializedMessage == null) {
-            sm.serializedMessage = serialize(sm);
+            sm.serializedMessage = sm.getBytes();
         }
 	}
 
@@ -331,31 +328,5 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
             e.printStackTrace();
             return null;
         }
-    }
-
-    private byte[] serialize(TOMMessage sm) {
-        //serialize message
-        DataOutputStream oos = null;
-
-        byte[] data = null;
-        try {
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            oos = new DataOutputStream(baos);
-            sm.serialise(oos);
-            oos.flush();
-            data = baos.toByteArray();
-            return data;
-        } catch (IOException ex) {
-            Logger.getLogger(NettyClientServerCommunicationSystemClientSide.class.getName()).log(Level.SEVERE, null, ex);
-        } finally {
-            try {
-                if (oos != null) {
-                    oos.close();
-                }
-            } catch (IOException ex) {
-                Logger.getLogger(NettyClientServerCommunicationSystemClientSide.class.getName()).log(Level.SEVERE, null, ex);
-            }
-        }
-        return null;
     }
 }

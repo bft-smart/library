@@ -21,7 +21,7 @@ package navigators.smart.paxosatwar.messages;
 /**
  * This class work as a factory of messages used in the paxos protocol.
  */
-public class MessageFactory{
+public class MessageFactory<P>{
 
     // constants for messages types
     public static final int PROPOSE = 44781;
@@ -51,10 +51,10 @@ public class MessageFactory{
      * @param proof Proofs from other replicas
      * @return A paxos message of the PROPOSE type, with the specified id, round, value, and proof
      */
-    public PaxosMessage createPropose(long id, int round, byte[] value,
+    public PaxosMessage<Proof> createPropose(long id, int round, byte[] value,
             Proof proof) {
 
-        return new PaxosMessage(PROPOSE,id,round, from, value, proof);
+        return new PaxosMessage<Proof>(PROPOSE,id,round, from, value, proof);
 
     }
 
@@ -65,7 +65,8 @@ public class MessageFactory{
      * @param value Weakly accepted value
      * @return A paxos message of the WEAK type, with the specified id, round, and value
      */
-    public PaxosMessage createWeak(long id, int round, byte[] value) {
+    @SuppressWarnings("unchecked")
+	public PaxosMessage createWeak(long id, int round, byte[] value) {
 
         return new PaxosMessage(WEAK,id,round, from, value);
 
@@ -78,7 +79,8 @@ public class MessageFactory{
      * @param value Strongly accepted value
      * @return A paxos message of the STRONG type, with the specified id, round, and value
      */
-    public PaxosMessage createStrong(long id, int round, byte[] value) {
+    @SuppressWarnings("unchecked")
+	public PaxosMessage createStrong(long id, int round, byte[] value) {
 
         return new PaxosMessage(STRONG,id,round, from, value);
 
@@ -91,7 +93,8 @@ public class MessageFactory{
      * @param value Decided value
      * @return A paxos message of the DECIDE type, with the specified id, round, and value
      */
-    public PaxosMessage createDecide(long id, int round, byte[] value) {
+    @SuppressWarnings("unchecked")
+	public PaxosMessage createDecide(long id, int round, byte[] value) {
 
          return new PaxosMessage(DECIDE,id,round, from, value);
 
@@ -103,7 +106,8 @@ public class MessageFactory{
      * @param round Round number
      * @return A paxos message of the FREEZE type, with the specified id, and round
      */
-    public PaxosMessage createFreeze(long id, int round) {
+    @SuppressWarnings("unchecked")
+	public PaxosMessage createFreeze(long id, int round) {
 
         return new PaxosMessage(FREEZE,id,round, from);
 

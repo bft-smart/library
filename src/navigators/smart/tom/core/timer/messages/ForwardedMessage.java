@@ -18,12 +18,12 @@
 
 package navigators.smart.tom.core.timer.messages;
 
-import java.io.DataInput;
-import java.io.DataOutput;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 import navigators.smart.tom.core.messages.SystemMessage;
 import navigators.smart.tom.core.messages.TOMMessage;
+import navigators.smart.tom.util.SerialisationHelper;
 
 
 /**
@@ -35,17 +35,15 @@ public final class ForwardedMessage extends SystemMessage {
 
     private TOMMessage request;
 
-    public ForwardedMessage(DataInput in) throws IOException, ClassNotFoundException {
+    public ForwardedMessage(ByteBuffer in) throws IOException, ClassNotFoundException {
         super(Type.FORWARDED, in);
 
-        byte[] serReq = new byte[in.readInt()];
-        in.readFully(serReq);
+        byte[] serReq = SerialisationHelper.readByteArray(in);
 
-        byte[] serReqSign = new byte[in.readInt()];
-        in.readFully(serReqSign);
+        byte[] serReqSign = SerialisationHelper.readByteArray(in);
 
 
-        request = TOMMessage.bytesToMessage(serReq);
+        request = new TOMMessage(ByteBuffer.wrap(serReq));
         request.serializedMessage = serReq;
         request.serializedMessageSignature = serReqSign;
     }
@@ -60,15 +58,17 @@ public final class ForwardedMessage extends SystemMessage {
     }
 
     @Override
-    public void serialise(DataOutput out) throws IOException {
+    public void serialise(ByteBuffer out) {
         super.serialise(out);
 
-        out.writeInt(request.serializedMessage.length);
-        out.write(request.serializedMessage);
+        SerialisationHelper.writeByteArray(request.serializedMessage, out);
 
-        out.writeInt(request.serializedMessageSignature.length);
-        out.write(request.serializedMessageSignature);
+       SerialisationHelper.writeByteArray(request.serializedMessageSignature, out);
     }
 
+    @Override
+    public int getMsgSize(){
+    	return super.getMsgSize()+8+request.serializedMessage.length+request.serializedMessageSignature.length;
+    }
 
 }
