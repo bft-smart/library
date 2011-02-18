@@ -91,7 +91,7 @@ public abstract class TOMReceiver implements TOMRequestReceiver {
         } catch (IllegalArgumentException ex) {
             Logger.getLogger(TOMReceiver.class.getName()).log(Level.SEVERE, null, ex);
         } catch (InvocationTargetException ex) {
-            Logger.getLogger(TOMReceiver.class.getName()).log(Level.SEVERE, null, ex);
+            Logger.getLogger(TOMReceiver.class.getName()).log(Level.SEVERE, "Failed to load ConsensusServiceFactory: "+algorithm, ex);
         } catch (ClassNotFoundException ex) {
             Logger.getLogger(TOMReceiver.class.getName()).log(Level.SEVERE, null, ex);
         }

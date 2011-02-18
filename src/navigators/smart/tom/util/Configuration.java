@@ -48,8 +48,12 @@ public class Configuration {
     protected static String configHome = "";
     protected static String hostsFileName = "";
 
-    private String factoryclass;
-    private String verifierclass;
+    private String factoryclass = "navigators.smart.paxosatwar.PaxosAtWarServiceFactory";
+
+    private String ptpverifierclass = "navigators.smart.communication.HMacVerifierFactory";
+
+    private boolean useGlobalAuth = false;
+    private String globalverifierclass = "navigators.smart.communication.USIGFactory";
 
 
     public Configuration(Configuration conf, int processId){
@@ -62,7 +66,8 @@ public class Configuration {
         this.configs = conf.configs;
         this.hosts = conf.hosts;
         this.factoryclass = conf.factoryclass;
-        this.verifierclass = conf.verifierclass;
+        this.useGlobalAuth = conf.useGlobalAuth;
+        this.ptpverifierclass = conf.ptpverifierclass;
     }
 
     
@@ -73,14 +78,14 @@ public class Configuration {
     
     public Configuration(int processId, String configHome){
         this.processId = processId;
-        this.configHome = configHome;
+        Configuration.configHome = configHome;
         init();
     }
 
      public Configuration(int processId, String configHome, String hostsFileName){
         this.processId = processId;
-        this.configHome = configHome;
-        this.hostsFileName = hostsFileName;
+        Configuration.configHome = configHome;
+        Configuration.hostsFileName = hostsFileName;
         init();
     }
     
@@ -90,14 +95,10 @@ public class Configuration {
     
     protected void init(){
         try{
-            hosts = new HostsConfig(this.configHome, hostsFileName);
+            hosts = new HostsConfig(configHome, hostsFileName);
             loadConfig();
             String s = configs.remove("system.authentication");
-            if(s == null){
-                authentication = false;
-            }else{
-                authentication = (s.equalsIgnoreCase("true"))?true:false;
-            }
+            authentication = Boolean.parseBoolean(s);
             
             s = configs.remove("system.autoconnect");
             if(s == null){
@@ -107,25 +108,25 @@ public class Configuration {
             }
 
             s = configs.remove("system.channels.blocking");
-            if(s == null){
-                channelsBlocking = false;
-            }else{
-                channelsBlocking = (s.equalsIgnoreCase("true"))?true:false;
-            }
+            channelsBlocking = Boolean.parseBoolean(s);
 
             s = configs.remove("consensus.factoryclass");
             if(s != null){
                 factoryclass = s;
-            } else {
-                factoryclass = "navigators.smart.paxosatwar.PaxosAtWarServiceFactory";
-            }
+            } 
 
-            s = configs.remove("system.verifier.factoryclass");
+            s = configs.remove("system.globalverifier.enabled");
+            useGlobalAuth = Boolean.parseBoolean(s);
+
+            s = configs.remove("system.globalverifier.factoryclass");
             if(s != null){
-                factoryclass = s;
-            } else {
-                factoryclass = "navigators.smart.communication.HMacVerifierFactory";
-            }
+                globalverifierclass = s;
+            } 
+
+            s = configs.remove("system.ptpverifier.factoryclass");
+            if(s != null){
+                ptpverifierclass = s;
+            } 
             
             if(authentication){
                 s = configs.remove("system.authentication.P");
@@ -261,12 +262,42 @@ public class Configuration {
         }
     }
 
+
+    /**
+     * Returns the full class name of the class that shall be the
+     * Factory for the consensusalgorithm
+     * @return The full name of the factory class
+     */
     public String getConsensusAlgorithmFactory() {
         return factoryclass;
     }
 
+    /**
+     * Returns the full class name of the Factory for point-to-point message
+     * verifiers
+     * @return The full name of the factory class
+     */
 
-    public String getMessageVerifierFactory() {
-        return verifierclass;
+    public String getPTPVerifierFactoryClassname() {
+        return ptpverifierclass;
+    }
+
+     /**
+     * Returns the full class name of the Factory for global message
+     * verifiers
+     * @return The full name of the factory class
+     */
+    public String getGlobalMessageVerifierFactoryClassName() {
+        return globalverifierclass;
+    }
+
+    /**
+     * Indicates wheter global authentication such as ppk or USIG shall be used.
+     * If the config variable is set to "true" a valid verifierfactory class must
+     * be present.
+     * @return true if it is to be used, false otherwhise.
+     */
+    public boolean isUseGlobalAuth() {
+        return useGlobalAuth;
     }
 }

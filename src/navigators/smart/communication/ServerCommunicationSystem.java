@@ -28,7 +28,10 @@ import java.util.logging.Logger;
 import navigators.smart.communication.client.CommunicationSystemServerSide;
 import navigators.smart.communication.client.CommunicationSystemServerSideFactory;
 import navigators.smart.communication.client.RequestReceiver;
+import navigators.smart.communication.server.GlobalMessageVerifier;
+import navigators.smart.communication.server.MessageVerifier;
 import navigators.smart.communication.server.MessageVerifierFactory;
+import navigators.smart.communication.server.PTPMessageVerifier;
 import navigators.smart.communication.server.ServersCommunicationLayer;
 import navigators.smart.tom.core.messages.SystemMessage;
 import navigators.smart.tom.core.messages.TOMMessage;
@@ -60,6 +63,8 @@ import navigators.smart.tom.util.TOMConfiguration;
     private ServersCommunicationLayer serversConn;
     private CommunicationSystemServerSide clientsConn;
 
+    private GlobalMessageVerifier verifier;
+
     /**
      * Creates a new instance of ServerCommunicationSystem
      * @param conf The configuration object containing the conf
@@ -75,8 +80,20 @@ import navigators.smart.tom.util.TOMConfiguration;
                 Configuration.getHomeDir(), "hosts.config");
 
         serversConf.increasePortNumber();
+
+        MessageVerifierFactory<PTPMessageVerifier> ptpFactory = null;
+        if(conf.getUseMACs() == 1){
+            ptpFactory = createVerifierFactory(conf.getPTPVerifierFactoryClassname());
+            assert ptpFactory != null:"Failed to load HMAC Factory";
+        }
+
+        if(conf.isUseGlobalAuth()){
+            verifier =  (GlobalMessageVerifier) createVerifierFactory(conf.getGlobalMessageVerifierFactoryClassName()).generateMessageVerifier();
+            verifier.authenticateAndEstablishAuthKey();
+            assert verifier != null : "Failed to load USIG Service";
+        }
         
-        serversConn = new ServersCommunicationLayer(serversConf,inQueue,msgHandlers,createFactory(conf));
+        serversConn = new ServersCommunicationLayer(serversConf,inQueue,msgHandlers,ptpFactory);
 
         clientsConn = CommunicationSystemServerSideFactory.getCommunicationSystemServerSide(conf);
 
@@ -84,8 +101,7 @@ import navigators.smart.tom.util.TOMConfiguration;
     }
 
     @SuppressWarnings("unchecked")
-    protected MessageVerifierFactory createFactory(TOMConfiguration conf){
-        String algorithm = conf.getMessageVerifierFactory();
+    protected MessageVerifierFactory createVerifierFactory(String algorithm){
         Class<MessageVerifierFactory> serviceclass;
         try {
             serviceclass = (Class<MessageVerifierFactory>) Class.forName(algorithm);
@@ -151,6 +167,9 @@ import navigators.smart.tom.util.TOMConfiguration;
             clientsConn.send(targets, (TOMMessage)sm);
         } else {
             //Logger.println("(ServerCommunicationSystem.send) S: "+sm);
+            if(verifier != null){
+                verifier.generateHash(sm);
+            }
             serversConn.send(targets, sm);
         }
     }

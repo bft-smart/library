@@ -9,7 +9,7 @@ package navigators.smart.communication.server;
  *
  * @author Christian Spann <christian.spann at uni-ulm.de>
  */
-public interface MessageVerifierFactory {
+public interface MessageVerifierFactory<F extends MessageVerifier> {
 
-    public MessageVerifier generateMessageVerifier();
+    public F generateMessageVerifier();
 }

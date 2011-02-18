@@ -5,6 +5,8 @@
 
 package navigators.smart.communication.server;
 
+import navigators.smart.tom.core.messages.SystemMessage;
+
 /**
  *
  * This Interface represents a messageverifier, that creates hashes for messages
@@ -22,13 +24,6 @@ public interface MessageVerifier<A> {
      * Initialises this verifier.
      */
     public void authenticateAndEstablishAuthKey();
-
-    /**
-     * Generates a hash for the given messagedata
-     * @param messageData
-     * @return The hash of the data
-     */
-    public byte[] generateHash(byte[] messageData);
 
     /**
      * Returns the size of the generated hashes by this verifier

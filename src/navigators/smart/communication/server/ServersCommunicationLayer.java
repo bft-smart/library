@@ -50,9 +50,9 @@ public class ServersCommunicationLayer extends Thread {
     private int me;
     private boolean doWork = true;
     private final Map<SystemMessage.Type,MessageHandler> msgHandlers;
-    private MessageVerifierFactory verifierfactory;
+    private MessageVerifierFactory<PTPMessageVerifier> verifierfactory;
 
-    public ServersCommunicationLayer(TOMConfiguration conf, LinkedBlockingQueue<SystemMessage> inQueue, Map<SystemMessage.Type,MessageHandler> msgHandlers, MessageVerifierFactory verifierfactory) throws Exception {
+    public ServersCommunicationLayer(TOMConfiguration conf, LinkedBlockingQueue<SystemMessage> inQueue, Map<SystemMessage.Type,MessageHandler> msgHandlers, MessageVerifierFactory<PTPMessageVerifier> verifierfactory) throws Exception {
         this.conf = conf;
         this.inQueue = inQueue;
         this.me = conf.getProcessId();
@@ -61,10 +61,14 @@ public class ServersCommunicationLayer extends Thread {
         connections = new ServerConnection[conf.getN()];
 //        TODO this is double initialisation? by cspann
         for (int i = 0; i < connections.length; i++) {
+            PTPMessageVerifier verifier = null;
             if (i == me) {
                 connections[i] = null;
             } else {
-                connections[i] = new ServerConnection(conf, null, i, inQueue,msgHandlers, verifierfactory.generateMessageVerifier());
+                if(verifierfactory != null){
+                    verifier = verifierfactory.generateMessageVerifier();
+                }
+                connections[i] = new ServerConnection(conf, null, i, inQueue,msgHandlers, verifier);
             }
         }
 

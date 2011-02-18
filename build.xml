@@ -7,10 +7,9 @@
 <!-- the Compile on Save feature is turned off for the project. -->
 <!-- You can turn off the Compile on Save (or Deploy on Save) setting -->
 <!-- in the project's Project Properties dialog box.-->
-<project name="SMART" default="default" basedir=".">
-    <description>Builds, tests, and runs the project SMART.</description>
+<project name="modular_SMaRt" default="default" basedir=".">
+    <description>Builds, tests, and runs the project modular SMaRt.</description>
     <import file="nbproject/build-impl.xml"/>
-    <import file="nbproject/profiler-build-impl.xml"/>
     <!--
 
     There exist several targets which are by default empty and which can be 
@@ -60,7 +59,7 @@
 
     An example of overriding the target for project execution could look like this:
 
-        <target name="run" depends="SMART-impl.jar">
+        <target name="run" depends="modular_SMaRt-impl.jar">
             <exec dir="bin" executable="launcher.exe">
                 <arg file="${dist.jar}"/>
             </exec>
@@ -72,18 +71,4 @@
     nbproject/build-impl.xml file. 
 
     -->
-
-     <patternset id="exclude.svn">
-        <exclude name="**/.svn/**"/>
-        <include name="dist/**"/>
-        <include name="config/**"/>
-    </patternset>
-
-    <target name="deploy" depends="jar">
-       <copy todir="H:\testing\smart">
-            <fileset dir="${basedir}">
-                <patternset refid="exclude.svn"/>
-            </fileset>
-        </copy>
-    </target>
 </project>

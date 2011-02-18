@@ -39,7 +39,7 @@ import navigators.smart.tom.util.TOMConfiguration;
 import navigators.smart.tom.util.TOMUtil;
 
 /**
- *
+ * This class handles Requests
  * @author Christian Spann <christian.spann at uni-ulm.de>
  */
 public class RequestHandler extends Thread {

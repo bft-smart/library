@@ -67,19 +67,19 @@ public class ServerConnection {
     private Lock sendLock;
     private boolean doWork = true;
 
-    private MessageVerifier verifier;
+    private PTPMessageVerifier connVerifier;
 
     private final Map<SystemMessage.Type,MessageHandler> msgHandlers;
 
     public ServerConnection (TOMConfiguration conf, Socket socket, int remoteId,
-            LinkedBlockingQueue<SystemMessage> inQueue, Map<SystemMessage.Type, MessageHandler> msgHandlers, MessageVerifier verifier) {
+            LinkedBlockingQueue<SystemMessage> inQueue, Map<SystemMessage.Type, MessageHandler> msgHandlers, PTPMessageVerifier verifier) {
         this.msgHandlers = msgHandlers;
         this.conf = conf;
         this.socket = socket;
         this.remoteId = remoteId;
         this.inQueue = inQueue;
         this.outQueue = new LinkedBlockingQueue<byte[]>(this.conf.getOutQueueSize());
-        this.verifier = verifier;
+        this.connVerifier = verifier;
 
         if (conf.getProcessId() > remoteId) {
             //higher process ids connect to lower ones
@@ -87,11 +87,13 @@ public class ServerConnection {
                 this.socket = new Socket(conf.getHost(remoteId), conf.getPort(remoteId));
                 ServersCommunicationLayer.setSocketOptions(this.socket);
                 new DataOutputStream(this.socket.getOutputStream()).writeInt(conf.getProcessId());
-                verifier.authenticateAndEstablishAuthKey();
+                if(conf.getUseMACs() == 1){
+                    verifier.authenticateAndEstablishAuthKey();
+                }
             } catch (UnknownHostException ex) {
-                log.log(Level.SEVERE, null, ex);
+                log.log(Level.SEVERE, "cannot open listening port", ex);
             } catch (IOException ex) {
-                log.log(Level.SEVERE, null, ex);
+                log.log(Level.SEVERE, "cannot open listening port", ex);
             }
         }
         //else I have to wait a connection from the remote server
@@ -157,7 +159,7 @@ public class ServerConnection {
                     socketOutStream.writeInt(messageData.length);
                     socketOutStream.write(messageData);
                     if (conf.getUseMACs()==1) {
-                        socketOutStream.write(verifier.generateHash(messageData));
+                        socketOutStream.write(connVerifier.generateHash(messageData));
                     }
                     return;
                 } catch (IOException ex) {
@@ -209,8 +211,9 @@ public class ServerConnection {
                     log.log(Level.SEVERE, null, ex);
                 }
             }
-
-            verifier.authenticateAndEstablishAuthKey();
+            if(conf.getUseMACs()==1){
+                connVerifier.authenticateAndEstablishAuthKey();
+            }
         }
 
         connectLock.unlock();
@@ -281,7 +284,7 @@ public class ServerConnection {
                 }
             }
 
-            log.log(Level.INFO, "Sender for " + remoteId + " stoped!");
+            log.log(Level.INFO, "Sender for " + remoteId + " stopped!");
         }
     }
 
@@ -297,7 +300,9 @@ public class ServerConnection {
         public ReceiverThread(MessageVerifier verifier) {
             super("Receiver for "+remoteId);
             this.verifier = verifier;
-            receivedHash = new byte[verifier.getHashSize()];
+            if(verifier != null){
+                receivedHash = new byte[verifier.getHashSize()];
+            }
         }
 
         @Override
