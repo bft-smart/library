@@ -21,7 +21,7 @@ package navigators.smart.paxosatwar.executionmanager;
 import java.util.HashMap;
 import java.util.concurrent.locks.ReentrantLock;
 
-import navigators.smart.paxosatwar.Consensus;
+import navigators.smart.consensus.MeasuringConsensus;
 
 
 /**
@@ -31,7 +31,7 @@ public class Execution {
 
     private ExecutionManager manager; // Execution manager for this execution
 
-    private Consensus consensus; // Consensus instance to which this execution works for
+    private MeasuringConsensus consensus; // MeasuringConsensus instance to which this execution works for
     private HashMap<Integer,Round> rounds = new HashMap<Integer,Round>(2);
     private ReentrantLock roundsLock = new ReentrantLock(); // Lock for concurrency control
 
@@ -45,10 +45,10 @@ public class Execution {
      * Creates a new instance of Execution for Acceptor Manager
      * 
      * @param manager Execution manager for this execution
-     * @param consensus Consensus instance to which this execution works for
+     * @param consensus MeasuringConsensus instance to which this execution works for
      * @param initialTimeout Initial timeout for rounds
      */
-    protected Execution(ExecutionManager manager, Consensus consensus, long initialTimeout) {
+    protected Execution(ExecutionManager manager, MeasuringConsensus consensus, long initialTimeout) {
         this.manager = manager;
         this.consensus = consensus;
         this.initialTimeout = initialTimeout;
@@ -58,7 +58,7 @@ public class Execution {
      * This is the execution ID
      * @return Execution ID
      */
-    public int getId() {
+    public long getId() {
         return consensus.getId();
     }
 
@@ -72,9 +72,9 @@ public class Execution {
 
     /**
      * This is the consensus instance to which this execution works for
-     * @return Consensus instance to which this execution works for
+     * @return MeasuringConsensus instance to which this execution works for
      */
-    public Consensus getLearner() { // TODO: Porque se chama getLearner?
+    public MeasuringConsensus getConsensus() { // TODO: Porque se chama getConsensus?
         return consensus;
     }
 
@@ -168,8 +168,8 @@ public class Execution {
         if (!decided) {
             decided = true;
             decisionRound = round.getNumber();
-
-            consensus.decided(round);
+            consensus.decided(value,decisionRound);
+            consensus.executionTime = System.currentTimeMillis() - consensus.startTime;
             manager.getTOMLayer().decided(consensus);
         }
     }

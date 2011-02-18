@@ -33,7 +33,7 @@ public class LeaderModule {
     // Each value of this map is a list of all the rounds of a consensus
     // Each element of that list is a tuple which stands for a round, and the id
     // of the process that was the leader for that round
-    private Map<Integer, List<ConsInfo>> leaderInfos = new HashMap<Integer, List<ConsInfo>>();
+    private Map<Long, List<ConsInfo>> leaderInfos = new HashMap<Long, List<ConsInfo>>();
 
     /**
      * Creates a new instance of LeaderModule
@@ -49,10 +49,10 @@ public class LeaderModule {
      * @param r Rounds of the consensus where the replica is a leader
      * @param l ID of the leader
      */
-    public void addLeaderInfo(int c, int r, int l) {
-        List list = leaderInfos.get(c);
+    public void addLeaderInfo(long c, int r, int l) {
+        List<ConsInfo> list = leaderInfos.get(c);
         if (list == null) {
-            list = new LinkedList();
+            list = new LinkedList<ConsInfo>();
             leaderInfos.put(c, list);
         }
         ConsInfo ci = findInfo(list, r);
@@ -70,10 +70,10 @@ public class LeaderModule {
      * @param r Number of the round tobe searched
      * @return The tuple for the specified round, or null if there is none
      */
-    private ConsInfo findInfo(List l, int r) {
+    private ConsInfo findInfo(List<ConsInfo> l, int r) {
         ConsInfo ret = null;
         for (int i = 0; i < l.size(); i++) {
-            ret = (ConsInfo) l.get(i);
+            ret = l.get(i);
             if (ret.round == r) {
                 return ret;
             }
@@ -88,7 +88,7 @@ public class LeaderModule {
      * @param c ID of the consensus established as being decided
      * @param l ID of the replica established as being the leader for the round 0 of the next consensus
      */
-    public void decided(int c, int l) {
+    public void decided(long c, int l) {
         if (leaderInfos.get(c) == null) {
             addLeaderInfo(c + 1, 0, l);
         }
@@ -101,13 +101,13 @@ public class LeaderModule {
      * @param r Round number for the specified consensus
      * @return The replica ID of the leader
      */
-    public int getLeader(int c, int r) {
+    public int getLeader(long c, int r) {
         /***/
         List<ConsInfo> list = leaderInfos.get(c);
         if (list == null) {
             //there are no information for the execution c
             //let's see who were the leader of the next execution
-            list = new LinkedList();
+            list = new LinkedList<ConsInfo>();
             leaderInfos.put(c, list);
 
             List<ConsInfo> before = leaderInfos.get(c - 1);
@@ -157,20 +157,20 @@ public class LeaderModule {
     /** ISTO E CODIGO DO JOAO, PARA TRATAR DA TRANSFERENCIA DE ESTADO */
     private ReentrantLock leaderInfosLock = new ReentrantLock();
 
-    public void removeStableConsenusInfos(int c) {
+    public void removeStableConsenusInfos(long c) {
 
         leaderInfosLock.lock();
 
-        List list = leaderInfos.get(c + 1);
+        List<ConsInfo> list = leaderInfos.get(c + 1);
 
         if (list == null) {//nunca vai acontecer isso!!!
             System.err.println("- Executing a code that wasn't supposed to be executed :-)");
             System.err.println("- And we have some reports there is a bug here!");
-            list = new LinkedList();
-            leaderInfos.put(c + 1, list);
-            List rm = leaderInfos.remove(c);
+            list = new LinkedList<ConsInfo>();
+            leaderInfos.put(c + 1l, list);
+            List<ConsInfo> rm = leaderInfos.remove(c);
             if (rm != null) {
-                ConsInfo ci = (ConsInfo) rm.get(rm.size() - 1);
+                ConsInfo ci = rm.get(rm.size() - 1);
                 list.add(new ConsInfo(0, ci.leaderId));
             }
         } else {
@@ -180,28 +180,26 @@ public class LeaderModule {
         leaderInfosLock.unlock();
     }
 
-    public void removeStableMultipleConsenusInfos(int cStart, int cEnd) {
+    public void removeStableMultipleConsenusInfos(long cStart, long cEnd) {
 
         leaderInfosLock.lock();
 
-        List list = leaderInfos.get(cEnd + 1);
+        List<ConsInfo> list = leaderInfos.get(cEnd + 1);
 
         if (list == null) {//nunca vai acontecer isso!!!
             //System.err.println("- Executing a code that wasn't supposed to be executed :-)");
             //System.err.println("- And we have some reports there is a bug here!");
-            list = new LinkedList();
-            leaderInfos.put(cEnd + 1, list);
-            List rm = leaderInfos.get(cEnd);
+            list = new LinkedList<ConsInfo>();
+            leaderInfos.put(cEnd + 1l, list);
+            List<ConsInfo> rm = leaderInfos.get(cEnd);
             if (rm != null) {
-                    ConsInfo ci = (ConsInfo) rm.get(rm.size() - 1);
+                    ConsInfo ci = rm.get(rm.size() - 1);
                     list.add(new ConsInfo(0, ci.leaderId));
             }
         }
 
-        for (int c = cStart; c <= cEnd; c++) {
-            
+        for (long c = cStart; c <= cEnd; c++) {
                 leaderInfos.remove(c);
-            
         }
 
         leaderInfosLock.unlock();

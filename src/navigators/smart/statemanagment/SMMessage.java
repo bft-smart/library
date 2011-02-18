@@ -18,10 +18,15 @@
 
 package navigators.smart.statemanagment;
 
+import java.io.DataInput;
+import java.io.DataOutput;
 import java.io.Externalizable;
 import java.io.IOException;
 import java.io.ObjectInput;
+import java.io.ObjectInputStream;
 import java.io.ObjectOutput;
+import java.io.ObjectOutputStream;
+import navigators.smart.tom.util.SerialisationHelper;
 
 import navigators.smart.tom.core.messages.SystemMessage;
 
@@ -31,10 +36,10 @@ import navigators.smart.tom.core.messages.SystemMessage;
  * 
  * @author Jo�o Sousa
  */
-public class SMMessage extends SystemMessage implements Externalizable {
+public class SMMessage extends SystemMessage {
 
     private TransferableState state; // State log
-    private int eid; // Execution ID up to which the sender needs to be updated
+    private long eid; // Execution ID up to which the sender needs to be updated
     private int type; // Message type
     private int replica; // Replica that should send the state
 
@@ -46,19 +51,21 @@ public class SMMessage extends SystemMessage implements Externalizable {
      * @param replica Replica that should send the state
      * @param state State log
      */
-    public SMMessage(int sender, int eid, int type, int replica, TransferableState state) {
+    public SMMessage(int sender, long eid, int type, int replica, TransferableState state) {
 
-        super(sender);
+        super(Type.SM_MSG, sender);
         this.state = state;
         this.eid = eid;
         this.type = type;
         this.replica = replica;
-        this.sender = sender;
-
     }
 
-    public SMMessage() {
-        
+    public SMMessage(DataInput in) throws IOException, ClassNotFoundException {
+        super(Type.SM_MSG, in);
+        eid = in.readLong();
+        type = in.readInt();
+        replica = in.readInt();
+        state = (TransferableState) SerialisationHelper.readObject(in);
     }
     /**
      * Retrieves the state log
@@ -80,7 +87,7 @@ public class SMMessage extends SystemMessage implements Externalizable {
      * Retrieves the execution ID up to which the sender needs to be updated
      * @return The execution ID up to which the sender needs to be updated
      */
-    public int getEid() {
+    public long getEid() {
         return eid;
     }
 
@@ -93,24 +100,12 @@ public class SMMessage extends SystemMessage implements Externalizable {
     }
 
     @Override
-    public void writeExternal(ObjectOutput out) throws IOException{
-        super.writeExternal(out);
-
-        out.writeInt(sender);
-        out.writeInt(eid);
+    public void serialise(DataOutput out) throws IOException{
+        super.serialise(out);
+        out.writeLong(eid);
         out.writeInt(type);
         out.writeInt(replica);
-        out.writeObject(state);
+        SerialisationHelper.writeObject(state,out);
     }
 
-    @Override
-    public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException{
-        super.readExternal(in);
-
-        sender = in.readInt();
-        eid = in.readInt();
-        type = in.readInt();
-        replica = in.readInt();
-        state = (TransferableState) in.readObject();
-    }
 }

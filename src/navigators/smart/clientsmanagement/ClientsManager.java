@@ -1,50 +1,59 @@
 /**
  * Copyright (c) 2007-2009 Alysson Bessani, Eduardo Alchieri, Paulo Sousa, and the authors indicated in the @author tags
- * 
+ *
  * This file is part of SMaRt.
- * 
+ *
  * SMaRt is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * SMaRt is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License along with SMaRt.  If not, see <http://www.gnu.org/licenses/>.
  */
-
 package navigators.smart.clientsmanagement;
 
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Set;
 import java.util.Map.Entry;
 import java.util.concurrent.locks.ReentrantLock;
+import navigators.smart.consensus.ConsensusService;
 
 import navigators.smart.tom.core.messages.TOMMessage;
-import navigators.smart.tom.core.timer.RequestsTimer;
+import navigators.smart.paxosatwar.requesthandler.timer.RequestsTimer;
 import navigators.smart.tom.util.Logger;
 import navigators.smart.tom.util.TOMConfiguration;
-
 
 /**
  *
  * @author alysson
+ * @author Christian Spann <christian.spann at uni-ulm.de>
  */
 public class ClientsManager {
 
     private TOMConfiguration conf;
-    private RequestsTimer timer;
+//    private RequestsTimer timer;
     private HashMap<Integer, ClientData> clientsData = new HashMap<Integer, ClientData>();
     private ReentrantLock clientsLock = new ReentrantLock();
+    private List<ClientRequestListener> reqlisteners = new LinkedList<ClientRequestListener>();
 
-   
-    public ClientsManager(TOMConfiguration conf, RequestsTimer timer) {
+    public ClientsManager(TOMConfiguration conf) {
         this.conf = conf;
-        this.timer = timer;
+    }
+
+    /**
+     * Retisters a @see ClientRequestListener at this manager
+     * @param listener The listener to be registered
+     */
+    public void addClientRequestListener(final ClientRequestListener listener) {
+        reqlisteners.add(listener);
     }
 
     /**
@@ -55,14 +64,13 @@ public class ClientsManager {
      * @param clientId
      * @return the ClientData stored on the manager
      */
-    public ClientData getClientData(int clientId) {
+    private ClientData getClientData(int clientId) {
         clientsLock.lock();
         /******* BEGIN CLIENTS CRITICAL SECTION ******/
-
         ClientData clientData = clientsData.get(clientId);
 
         if (clientData == null) {
-            Logger.println("(ClientsManager.getClientData) Creating new client data, client id="+clientId);
+            Logger.println("(ClientsManager.getClientData) Creating new client data, client id=" + clientId);
             clientData = new ClientData(clientId);
             clientsData.put(clientId, clientData);
         }
@@ -84,7 +92,6 @@ public class ClientsManager {
 
         clientsLock.lock();
         /******* BEGIN CLIENTS CRITICAL SECTION ******/
-
         Set<Entry<Integer, ClientData>> clientsEntrySet = clientsData.entrySet();
 
         for (int i = 0; true; i++) {
@@ -98,7 +105,6 @@ public class ClientsManager {
 
                 clientData.clientLock.lock();
                 /******* BEGIN CLIENTDATA CRITICAL SECTION ******/
-                
                 TOMMessage request = (clientPendingRequests.size() > i) ? clientPendingRequests.get(i) : null;
 
                 /******* END CLIENTDATA CRITICAL SECTION ******/
@@ -135,10 +141,9 @@ public class ClientsManager {
      *
      * @return true if there are some pending requests and false otherwise
      */
-    public boolean havePendingRequests() {
+    public boolean hasPendingRequests() {
         clientsLock.lock();
         /******* BEGIN CLIENTS CRITICAL SECTION ******/
-
         Iterator<Entry<Integer, ClientData>> it = clientsData.entrySet().iterator();
 
         while (it.hasNext()) {
@@ -189,7 +194,7 @@ public class ClientsManager {
     }
 
     public boolean requestReceived(TOMMessage request, boolean fromClient) {
-        return requestReceived(request,fromClient,true);
+        return requestReceived(request, fromClient, true);
     }
 
     /**
@@ -221,17 +226,20 @@ public class ClientsManager {
         /*
         //for dealing with restarted clients
         if ((request.getSequence() == 0) &&
-                (request.receptionTime - clientData.getLastMessageReceivedTime() >
-                conf.getReplyVerificationTime())) {
-            System.out.println("Start accounting messages for client "+clientId);
-            clientData.setLastMessageReceived(-1);
+        (request.receptionTime - clientData.getLastMessageReceivedTime() >
+        conf.getReplyVerificationTime())) {
+        System.out.println("Start accounting messages for client "+clientId);
+        clientData.setLastMessageReceived(-1);
         }
-        */
+         */
 
-/* ################################################ */
+        /* ################################################ */
         //pjsousa: simple flow control mechanism to avoid out of memory exception
-        if (conf.getUseControlFlow()!=0){
-            if (fromClient && (clientData.getPendingRequests().size()>conf.getUseControlFlow())){
+        if (conf.getUseControlFlow() != 0) {
+            if (fromClient && (clientData.getPendingRequests().size() > conf.getUseControlFlow())) {
+//                if (Logger.debug) {
+//                    Logger.println("(ClientsManager.requestReceived) denied " + request + " due to flow control");
+//                }
                 //clients should not have more than 1000 outstanding messages, otherwise they will be dropped
                 clientData.setLastMessageReceived(request.getSequence());
                 clientData.setLastMessageReceivedTime(request.receptionTime);
@@ -240,31 +248,35 @@ public class ClientsManager {
                 return accounted;
             }
         }
-/* ################################################ */
+        /* ################################################ */
 
-        if ((clientData.getLastMessageReceived()==-1) || (clientData.getLastMessageReceived() + 1 == request.getSequence()) || ((request.getSequence()>clientData.getLastMessageReceived()) && !fromClient)) {
-
+        if ((clientData.getLastMessageReceived() == -1) //this is the clients first message
+                || (clientData.getLastMessageReceived() + 1 == request.getSequence()) //this is the next message in the sequence of the client
+                //this is an out of order message that was forwarded/decided - we don't care about older messages any more
+                || ((request.getSequence() > clientData.getLastMessageReceived()) && !fromClient)) {
+            //FIXME Is it really true that we cannot produce holes here in the sequence?
             //it is a new message and I have to verify it's signature
             if (!request.signed || clientData.verifySignature(
                     request.serializedMessage,
                     request.serializedMessageSignature)) {
                 //I don't have the message but it is correctly signed, I will
                 //insert it in the pending requests of this client
-                if(storeMessage) {
+                if (storeMessage) {
                     clientData.getPendingRequests().add(request);
+//                    if (Logger.debug) {
+//                        Logger.println("(ClientsManager.requestReceived) stored " + request);
+//                    }
                     /*
                     if (request.getSequence()%1000 == 0)
-                        Logger.println("(ClientsManager.requestReceived) client "+clientId+ " pending requests size: "+clientData.getPendingRequests().size());
+                    Logger.println("(ClientsManager.requestReceived) client "+clientId+ " pending requests size: "+clientData.getPendingRequests().size());
                      */
                 }
                 clientData.setLastMessageReceived(request.getSequence());
                 clientData.setLastMessageReceivedTime(request.receptionTime);
-
-                //create a timer for this message
-                if (timer != null && storeMessage) {
-                    timer.watch(request);
+                //inform listeners
+                for (ClientRequestListener listener : reqlisteners) {
+                    listener.requestReceived(request);
                 }
-
                 accounted = true;
             }
         } else {//I will not put this message on the pending requests list
@@ -276,8 +288,8 @@ public class ClientsManager {
                 //it is an invalid message if it's being sent by a client (sequence number > last received + 1)
                 /*
                 Logger.println("Ignoring message "+request+" from client "+
-                        clientData.getClientId()+"(last received = "+
-                        clientData.getLastMessageReceived()+"), msg sent by client? "+fromClient);
+                clientData.getClientId()+"(last received = "+
+                clientData.getLastMessageReceived()+"), msg sent by client? "+fromClient);
                  **/
                 accounted = false;
             }
@@ -289,8 +301,6 @@ public class ClientsManager {
         return accounted;
     }
 
-
-
     /**
      * Notifies the ClientsManager that the request was executed. It cleans all
      * state for this request (e.g., removes it from the pending requests queue
@@ -300,19 +310,20 @@ public class ClientsManager {
      * @param reply the resulting reply of the request execution
      */
     public void requestOrdered(TOMMessage request) {
-        //stops the timer associated with this message
-        if (timer != null) {
-            timer.unwatch(request);
+        for (ClientRequestListener listener : reqlisteners) {
+            listener.requestOrdered(request);
         }
 
         ClientData clientData = getClientData(request.getSender());
 
         clientData.clientLock.lock();
         /******* BEGIN CLIENTDATA CRITICAL SECTION ******/
-
         //Logger.println("(ClientsManager.requestOrdered) Removing request "+request+" from pending requests");
-        if (clientData.getPendingRequests().remove(request) == false){
-            Logger.println("(ClientsManager.requestOrdered) Request "+request+" does not exist in pending requests");                        
+        if (clientData.getPendingRequests().remove(request) == false) {
+            Logger.println("(ClientsManager.requestOrdered) Request " + request + " does not exist in pending requests");
+        } else {
+//            if(Logger.debug)
+//               Logger.println("(ClientsManager.requestReceived) removed"+request);
         }
         clientData.setLastMessageExecuted(request.getSequence());
 
@@ -320,8 +331,7 @@ public class ClientsManager {
         clientData.clientLock.unlock();
     }
 
-     public ReentrantLock getClientsLock() {
+    public ReentrantLock getClientsLock() {
         return clientsLock;
     }
-
 }

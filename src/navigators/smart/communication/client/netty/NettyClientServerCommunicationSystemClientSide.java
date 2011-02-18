@@ -73,7 +73,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
     //private static final int BENCHMARK_PERIOD = 10000;
     protected ReplyReceiver trr;
     private TOMConfiguration conf;
-    private Hashtable sessionTable;
+    private Hashtable<Integer, NettyClientServerSession> sessionTable;
     private ReentrantReadWriteLock rl;
     private SecretKey authKey;
     //the signature engine used in the system
@@ -89,7 +89,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
             authKey = fac.generateSecret(spec);
 
             this.conf = conf;
-            this.sessionTable = new Hashtable();
+            this.sessionTable = new Hashtable<Integer, NettyClientServerSession>();
             //this.st = new Storage(BENCHMARK_PERIOD);
             this.rl = new ReentrantReadWriteLock();
             Mac macDummy = Mac.getInstance(conf.getHmacAlgorithm());
@@ -171,9 +171,9 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
         //System.out.println("Channel closed");
         rl.writeLock().lock();
         //tries to reconnect the channel
-        Enumeration sessionElements = sessionTable.elements();
+        Enumeration<NettyClientServerSession> sessionElements = sessionTable.elements();
         while (sessionElements.hasMoreElements()) {
-            NettyClientServerSession ncss = (NettyClientServerSession) sessionElements.nextElement();
+            NettyClientServerSession ncss = sessionElements.nextElement();
             if (ncss.getChannel() == ctx.getChannel()) {
                 try {
                     Mac macDummy = Mac.getInstance(conf.getHmacAlgorithm());
@@ -209,47 +209,13 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
         this.trr = trr;
     }
 
-    public void send(boolean sign, int[] targets, TOMMessage sm, boolean serializeClassHeaders) {
+    public void send(boolean sign, int[] targets, TOMMessage sm/*, boolean serializeClassHeaders*/) {
         if (sm.serializedMessage == null) {
-            //serialize message
-            DataOutputStream dos = null;
-            ObjectOutputStream oos = null;
-
-            byte[] data = null;
-            try {
-                ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                if (!serializeClassHeaders) {
-                    dos = new DataOutputStream(baos);
-                    sm.writeExternal(dos);
-                    dos.flush();
-                    sm.includesClassHeader = false;
-                }
-                else {
-                    oos = new ObjectOutputStream(baos);
-                    oos.writeObject(sm);
-                    oos.flush();
-                    sm.includesClassHeader = true;
-                }                
-                data = baos.toByteArray();
-                sm.serializedMessage = data;
-            } catch (IOException ex) {
-                Logger.getLogger(NettyClientServerCommunicationSystemClientSide.class.getName()).log(Level.SEVERE, null, ex);
-            } finally {
-                try {
-                    if (dos != null) {
-                        dos.close();
-                    }
-                    if (oos != null) {
-                        oos.close();
-                    }
-                } catch (IOException ex) {
-                    Logger.getLogger(NettyClientServerCommunicationSystemClientSide.class.getName()).log(Level.SEVERE, null, ex);
-                }
-            }
+            sm.serializedMessage = serialize(sm);
         }
-        else{
-            sm.includesClassHeader = false;
-        }
+//        else{
+//            sm.includesClassHeader = false;
+//        }
 
         //produce signature
         if (sm.serializedMessageSignature == null && sign) {
@@ -272,7 +238,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
             /**********************************************************/
             sm.destination = targets[i];
             rl.readLock().lock();
-            Channel channel = (Channel) ((NettyClientServerSession) sessionTable.get(targets[i])).getChannel();
+            Channel channel = sessionTable.get(targets[i]).getChannel();
             rl.readLock().unlock();
             if (channel.isConnected()) {
                 sm.signed = sign;
@@ -302,27 +268,12 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 
     public void sign(TOMMessage sm) {
         //serialize message
-        DataOutputStream dos = null;
-        byte[] data = null;
-        try {
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            dos = new DataOutputStream(baos);
-            sm.writeExternal(dos);
-            dos.flush();
-            data = baos.toByteArray();
-            sm.serializedMessage = data;
-        } catch (IOException ex) {
-            Logger.getLogger(NettyClientServerCommunicationSystemClientSide.class.getName()).log(Level.SEVERE, null, ex);
-        } finally {
-            try {
-                dos.close();
-            } catch (IOException ex) {
-                Logger.getLogger(NettyClientServerCommunicationSystemClientSide.class.getName()).log(Level.SEVERE, null, ex);
-            }
+        if(sm.serializedMessage == null){
+            sm.serializedMessage = serialize(sm);
         }
 
         //produce signature        
-        byte[] data2 = signMessage(TOMConfiguration.getRSAPrivateKey(), data);
+        byte[] data2 = signMessage(TOMConfiguration.getRSAPrivateKey(), sm.serializedMessage);
         sm.serializedMessageSignature = data2;
 /*
         //statistics about signature execution time
@@ -361,5 +312,31 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
             e.printStackTrace();
             return null;
         }
+    }
+
+    private byte[] serialize(TOMMessage sm) {
+        //serialize message
+        DataOutputStream oos = null;
+
+        byte[] data = null;
+        try {
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            oos = new DataOutputStream(baos);
+            sm.serialise(oos);
+            oos.flush();
+            data = baos.toByteArray();
+            return data;
+        } catch (IOException ex) {
+            Logger.getLogger(NettyClientServerCommunicationSystemClientSide.class.getName()).log(Level.SEVERE, null, ex);
+        } finally {
+            try {
+                if (oos != null) {
+                    oos.close();
+                }
+            } catch (IOException ex) {
+                Logger.getLogger(NettyClientServerCommunicationSystemClientSide.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
+        return null;
     }
 }

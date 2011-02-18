@@ -41,7 +41,7 @@ public class ThroughputLatencyTestClient extends TOMSender implements Runnable {
     private Storage st;
     private int exec;
     private int argSize;
-    private Semaphore sm = new Semaphore(0);
+    private Semaphore sm = new Semaphore(1);
     private Semaphore mutex = new Semaphore(1);
     private int count = 0;
     private CommunicationSystemClientSide cs;
@@ -105,7 +105,7 @@ public class ThroughputLatencyTestClient extends TOMSender implements Runnable {
                 }
                 System.arraycopy(out1.toByteArray(), 0, command1, 0, 4);
                 currentId = -1;
-                this.TOMulticast(command1);
+                this.doTOMulticast(command1);
                 this.sm.acquire();
 
                 measurementEpoch++;
@@ -140,7 +140,7 @@ public class ThroughputLatencyTestClient extends TOMSender implements Runnable {
                 }
                 System.arraycopy(out1.toByteArray(), 0, command1, 0, 4);
                 currentId = -1;
-                this.TOMulticast(command1);
+                this.doTOMulticast(command1);
                 this.sm.acquire();
                 
                 measurementEpoch++;

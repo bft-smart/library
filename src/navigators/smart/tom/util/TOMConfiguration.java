@@ -99,42 +99,42 @@ public class TOMConfiguration extends Configuration {
         super.init();
         try {
             n = Integer.parseInt(configs.remove("system.servers.num").toString());
-            String s = (String) configs.remove("system.servers.f");
+            String s = configs.remove("system.servers.f");
             if (s == null) {
                 f = (int) Math.ceil((n - 1) / 3);
             } else {
                 f = Integer.parseInt(s);
             }
 
-            s = (String) configs.remove("system.paxos.freeze.timeout");
+            s = configs.remove("system.paxos.freeze.timeout");
             if (s == null) {
                 freezeInitialTimeout = n * 10;
             } else {
                 freezeInitialTimeout = Integer.parseInt(s);
             }
 
-            s = (String) configs.remove("system.paxos.decideMessages");
+            s = configs.remove("system.paxos.decideMessages");
             if (s == null) {
                 decideMessagesEnabled = false;
             } else {
                 decideMessagesEnabled = Boolean.parseBoolean(s);
             }
 
-            s = (String) configs.remove("system.totalordermulticast.timeout");
+            s = configs.remove("system.totalordermulticast.timeout");
             if (s == null) {
                 requestTimeout = freezeInitialTimeout / 2;
             } else {
                 requestTimeout = Integer.parseInt(s);
             }
 
-            s = (String) configs.remove("system.totalordermulticast.period");
+            s = configs.remove("system.totalordermulticast.period");
             if (s == null) {
                 tomPeriod = n * 5;
             } else {
                 tomPeriod = Integer.parseInt(s);
             }
 
-            s = (String) configs.remove("system.totalordermulticast.highMark");
+            s = configs.remove("system.totalordermulticast.highMark");
             if (s == null) {
                 paxosHighMark = 10000;
             } else {
@@ -144,7 +144,7 @@ public class TOMConfiguration extends Configuration {
                 }
             }
 
-            s = (String) configs.remove("system.totalordermulticast.revival_highMark");
+            s = configs.remove("system.totalordermulticast.revival_highMark");
             if (s == null) {
                 revivalHighMark = 10;
             } else {
@@ -154,21 +154,21 @@ public class TOMConfiguration extends Configuration {
                 }
             }
 
-            s = (String) configs.remove("system.totalordermulticast.maxbatchsize");
+            s = configs.remove("system.totalordermulticast.maxbatchsize");
             if (s == null) {
                 maxBatchSize = 100;
             } else {
                 maxBatchSize = Integer.parseInt(s);
             }
 
-            s = (String) configs.remove("system.totalordermulticast.maxMessageSize");
+            s = configs.remove("system.totalordermulticast.maxMessageSize");
             if (s == null) {
                 maxMessageSize = 200; //the same as used in upright
             } else {
                 maxMessageSize = Integer.parseInt(s);
             }
 
-            s = (String) configs.remove("system.debug");
+            s = configs.remove("system.debug");
             if (s == null) {
                 Logger.debug = false;
             } else {
@@ -179,35 +179,35 @@ public class TOMConfiguration extends Configuration {
                     Logger.debug = true;
             }
 
-            s = (String) configs.remove("system.totalordermulticast.replayVerificationTime");
+            s = configs.remove("system.totalordermulticast.replayVerificationTime");
             if (s == null) {
                 replyVerificationTime = 0;
             } else {
                 replyVerificationTime = Integer.parseInt(s);
             }
 
-            s = (String) configs.remove("system.totalordermulticast.nonces");
+            s = configs.remove("system.totalordermulticast.nonces");
             if (s == null) {
                 numberOfNonces = 0;
             } else {
                 numberOfNonces = Integer.parseInt(s);
             }
 
-            s = (String) configs.remove("system.totalordermulticast.verifyTimestamps");
+            s = configs.remove("system.totalordermulticast.verifyTimestamps");
             if (s == null) {
                 verifyTimestamps = false;
             } else {
                 verifyTimestamps = Boolean.parseBoolean(s);
             }
 
-            s = (String) configs.remove("system.communication.useSenderThread");
+            s = configs.remove("system.communication.useSenderThread");
             if (s == null) {
                 useSenderThread = false;
             } else {
                 useSenderThread = Boolean.parseBoolean(s);
             }
 
-            s = (String) configs.remove("system.communication.clientServerCommSystem");
+            s = configs.remove("system.communication.clientServerCommSystem");
             if (s == null) {
                 clientServerCommSystem = 1;
             } else {
@@ -215,56 +215,56 @@ public class TOMConfiguration extends Configuration {
             }
 
 
-            s = (String) configs.remove("system.communication.numNIOThreads");
+            s = configs.remove("system.communication.numNIOThreads");
             if (s == null) {
                 numNIOThreads = 2;
             } else {
                 numNIOThreads = Integer.parseInt(s);
             }
 
-             s = (String) configs.remove("system.communication.commBuffering");
+             s = configs.remove("system.communication.commBuffering");
             if (s == null) {
                 commBuffering = 0;
             } else {
                 commBuffering = Integer.parseInt(s);
             }
 
-            s = (String) configs.remove("system.communication.useMACs");
+            s = configs.remove("system.communication.useMACs");
             if (s == null) {
                 useMACs = 0;
             } else {
                 useMACs = Integer.parseInt(s);
             }
 
-            s = (String) configs.remove("system.communication.useSignatures");
+            s = configs.remove("system.communication.useSignatures");
             if (s == null) {
                 useSignatures = 0;
             } else {
                 useSignatures = Integer.parseInt(s);
             }
 
-            s = (String) configs.remove("system.totalordermulticast.state_transfer");
+            s = configs.remove("system.totalordermulticast.state_transfer");
             if (s == null) {
                 stateTransferEnabled = false;
             } else {
                 stateTransferEnabled = Boolean.parseBoolean(s);
             }
 
-            s = (String) configs.remove("system.totalordermulticast.checkpoint_period");
+            s = configs.remove("system.totalordermulticast.checkpoint_period");
             if (s == null) {
                 checkpoint_period = 1;
             } else {
                 checkpoint_period = Integer.parseInt(s);
             }
 
-            s = (String) configs.remove("system.communication.useControlFlow");
+            s = configs.remove("system.communication.useControlFlow");
             if (s == null) {
                 useControlFlow = 0;
             } else {
                 useControlFlow = Integer.parseInt(s);
             }
 
-            s = (String) configs.remove("system.communication.inQueueSize");
+            s = configs.remove("system.communication.inQueueSize");
             if (s == null) {
                 inQueueSize = 200;
             } else {
@@ -276,7 +276,7 @@ public class TOMConfiguration extends Configuration {
 
             }
 
-            s = (String) configs.remove("system.communication.outQueueSize");
+            s = configs.remove("system.communication.outQueueSize");
             if (s == null) {
                 outQueueSize = 200;
             } else {
@@ -370,13 +370,15 @@ public class TOMConfiguration extends Configuration {
     }
 
      /**
-     *     *
+     *     
      */
     public int getNumberOfNIOThreads() {
         return numNIOThreads;
     }
 
-    /**     * @return the numberOfNonces     */
+    /** 
+     * @return the numberOfNonces
+     */
     public int getNumberOfNonces() {
         return numberOfNonces;
     }

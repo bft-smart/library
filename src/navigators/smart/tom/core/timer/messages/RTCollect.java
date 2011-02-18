@@ -24,10 +24,10 @@ import java.io.Serializable;
  * This class represents a proof sent by a replica to the leader for the consensus being started
  * 
  */
-public class RTCollect implements Serializable {
+public class RTCollect implements Serializable{
     
     private int newLeader; // New leader for the next consensus being started
-    private int lastConsensus; // Last consensus executed, or being executed    
+    private long lastConsensus; // Last consensus executed, or being executed
     private int reqId; // Request ID associated with the timeout
     
     /**
@@ -35,9 +35,8 @@ public class RTCollect implements Serializable {
      * @param newLeader New leader for the next consensus being started
      * @param lastConsensus Last consensus executed, or being executed
      * @param reqId Request ID associated with the timeout
-     * @param timeout Timeout number
      */
-    public RTCollect(int newLeader, int lastConsensus, int reqId) {
+    public RTCollect(int newLeader, long lastConsensus, int reqId) {
         this.newLeader = newLeader;
         this.lastConsensus = lastConsensus;
         this.reqId = reqId;
@@ -63,7 +62,7 @@ public class RTCollect implements Serializable {
      * Retrieves the last consensus executed, or being executed
      * @return The last consensus executed, or being executed
      */
-    public int getLastConsensus(){
+    public long getLastConsensus(){
         return this.lastConsensus;
     }
 }

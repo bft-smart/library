@@ -72,11 +72,11 @@ public class NettyTOMMessageEncoder extends SimpleChannelHandler {
         if (useMAC)
             macData = produceMAC(sm.destination,msgData);
         
-        ChannelBuffer buf = buffer(4+1+1+msgData.length+(macData==null?0:macData.length)+(signatureData==null?0:signatureData.length));
+        ChannelBuffer buf = buffer(4+1+msgData.length+(macData==null?0:macData.length)+(signatureData==null?0:signatureData.length));
         /* msg size */
-        buf.writeInt(1+1+msgData.length+(macData==null?0:macData.length)+(signatureData==null?0:signatureData.length));
+        buf.writeInt(1+msgData.length+(macData==null?0:macData.length)+(signatureData==null?0:signatureData.length));
         /* control byte indicating if the serialized message includes the class header */
-        buf.writeByte(sm.includesClassHeader==true?(byte)1:(byte)0);
+//        buf.writeByte(sm.includesClassHeader==true?(byte)1:(byte)0);
         /* control byte indicating if the message is signed or not */
         buf.writeByte(sm.signed==true?(byte)1:(byte)0);       
         /* data to be sent */

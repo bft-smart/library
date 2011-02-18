@@ -31,12 +31,12 @@ import java.util.Arrays;
 public class TransferableState implements Serializable {
 
     private BatchInfo[] messageBatches; // batches received since the last checkpoint.
-    private int lastCheckpointEid; // Execution ID for the last checkpoint
+    private long lastCheckpointEid; // Execution ID for the last checkpoint
     private int lastCheckpointRound; // Round for the last checkpoint
     private int lastCheckpointLeader; // Leader for the last checkpoint
     private byte[] state; // State associated with the last checkpoint
     private byte[] stateHash; // Hash of the state associated with the last checkpoint
-    private int lastEid = -1; // Execution ID for the last messages batch delivered to the application
+    private long lastEid = -1; // Execution ID for the last messages batch delivered to the application
     private boolean hasState; // indicates if the TransferableState object has a valid state
 
     /**
@@ -47,7 +47,7 @@ public class TransferableState implements Serializable {
      * @param state State associated with the last checkpoint
      * @param stateHash Hash of the state associated with the last checkpoint
      */
-    public TransferableState(BatchInfo[] messageBatches, int lastCheckpointEid, int lastCheckpointRound, int lastCheckpointLeader, int lastEid, byte[] state, byte[] stateHash) {
+    public TransferableState(BatchInfo[] messageBatches, long lastCheckpointEid, int lastCheckpointRound, int lastCheckpointLeader, long lastEid, byte[] state, byte[] stateHash) {
 
         this.messageBatches = messageBatches; // batches received since the last checkpoint.
         this.lastCheckpointEid = lastCheckpointEid; // Execution ID for the last checkpoint
@@ -95,18 +95,20 @@ public class TransferableState implements Serializable {
      * @param eid Execution ID associated with the batch to be fetched
      * @return The batch of messages associated with the batch correspondent execution ID
      */
-    public BatchInfo getMessageBatch(int eid) {
+    public BatchInfo getMessageBatch(long eid) {
         if (eid >= lastCheckpointEid && eid <= lastEid) {
-            return messageBatches[eid - lastCheckpointEid - 1];
+            return messageBatches[(int)(eid - lastCheckpointEid - 1)];
         }
-        else return null;
+        else {
+            return null;
+        }
     }
 
     /**
      * Retrieves the execution ID for the last checkpoint
      * @return Execution ID for the last checkpoint, or -1 if no checkpoint was yet executed
      */
-    public int getLastCheckpointEid() {
+    public long getLastCheckpointEid() {
 
         return lastCheckpointEid;
     }
@@ -125,7 +127,6 @@ public class TransferableState implements Serializable {
      * @return Leader for the last checkpoint, or -1 if no checkpoint was yet executed
      */
     public int getLastCheckpointLeader() {
-
         return lastCheckpointLeader;
     }
 
@@ -133,8 +134,7 @@ public class TransferableState implements Serializable {
      * Retrieves the execution ID for the last messages batch delivered to the application
      * @return Execution ID for the last messages batch delivered to the application
      */
-    public int getLastEid() {
-
+    public long getLastEid() {
         return lastEid;
     }
     
@@ -189,10 +189,10 @@ public class TransferableState implements Serializable {
     @Override
     public int hashCode() {
         int hash = 1;
-        hash = hash * 31 + this.lastCheckpointEid;
+        hash = (int) (hash * 31 + this.lastCheckpointEid);
         hash = hash * 31 + this.lastCheckpointRound;
         hash = hash * 31 + this.lastCheckpointLeader;
-        hash = hash * 31 + this.lastEid;
+        hash = (int) (hash * 31 + this.lastEid);
         hash = hash * 31 + (this.hasState ? 1 : 0);
         if (this.stateHash != null) {
             for (int i = 0; i < this.stateHash.length; i++) hash = hash * 31 + (int) this.stateHash[i];

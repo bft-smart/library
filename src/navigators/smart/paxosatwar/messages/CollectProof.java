@@ -18,22 +18,31 @@
 
 package navigators.smart.paxosatwar.messages;
 
-import java.io.Serializable;
+import navigators.smart.tom.util.SerialisationHelper;
+import java.io.ByteArrayOutputStream;
+import java.io.DataInput;
+import java.io.DataOutput;
+import java.io.DataOutputStream;
+import java.io.IOException;
 
 /**
  * Proofs to freezed consensus. This class can contain proofs for two consensus.
  * The freezed one, and the next one (if have).
  */
-public final class CollectProof implements Serializable {
+public final class CollectProof {
 
     // Proofs to freezed consensus
-    private FreezeProof proofIn;
+    private final FreezeProof proofIn;
 
     // Proofs to next consensus, if have next - after the freezed one
-   private FreezeProof proofNext;
+    private final FreezeProof proofNext;
 
     // The new leader id
-    private int newLeader;
+    private final int newLeader;
+
+    private byte[] signature;
+
+    private byte[] serialisedForm;
 
     /**
      * Creates a new instance of CollectProof
@@ -76,6 +85,45 @@ public final class CollectProof implements Serializable {
 
         return this.newLeader;
 
+    }
+
+    public CollectProof (DataInput in) throws IOException{
+        proofIn = new FreezeProof(in);
+        proofNext = new FreezeProof(in);
+        newLeader = in.readInt();
+        signature = SerialisationHelper.readByteArray(in);
+    }
+
+    public void serialise(DataOutput out) throws IOException{
+        if(serialisedForm == null){
+            proofIn.serialize(out);
+            proofNext.serialize(out);
+            out.writeInt(newLeader);
+        } else {
+            SerialisationHelper.writeByteArray(serialisedForm, out);
+        }
+        SerialisationHelper.writeByteArray(signature, out);
+    }
+
+    public byte[] getBytes() throws IOException {
+        if(serialisedForm == null){
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            DataOutput out = new DataOutputStream(baos);
+            //serialise without signature
+            proofIn.serialize(out);
+            proofNext.serialize(out);
+            out.writeInt(newLeader);
+            serialisedForm = baos.toByteArray();
+        }
+        return serialisedForm;
+    }
+
+    public void setSignature(byte[] sign) {
+        signature = sign;
+    }
+
+    public byte[] getSignature() {
+        return signature;
     }
 
 }

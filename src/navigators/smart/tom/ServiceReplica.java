@@ -26,6 +26,8 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import navigators.smart.communication.ServerCommunicationSystem;
+import navigators.smart.consensus.ConsensusServiceFactory;
+import navigators.smart.paxosatwar.PaxosAtWarServiceFactory;
 import navigators.smart.tom.core.messages.TOMMessage;
 import navigators.smart.tom.util.DebugInfo;
 import navigators.smart.tom.util.TOMConfiguration;
@@ -74,7 +76,7 @@ public abstract class ServiceReplica extends TOMReceiver implements Runnable {
             throw new RuntimeException("Unable to build a communication system.");
         }
 
-        super.init(cs, conf); // initiaze the TOM layer
+        super.init(cs, conf); // initialize the TOM layer
 
         // Initialize messages queue received from the TOM layer
         this.requestQueue = new LinkedBlockingQueue<TOMMessage>();
@@ -166,6 +168,10 @@ public abstract class ServiceReplica extends TOMReceiver implements Runnable {
         }
         deserializeState(state);
         stateLock.unlock();
+    }
+
+    protected ConsensusServiceFactory createFactory(ServerCommunicationSystem cs, TOMConfiguration conf){
+        return new PaxosAtWarServiceFactory(cs, conf);
     }
 
     protected abstract void deserializeState(byte[] state);

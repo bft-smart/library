@@ -54,7 +54,6 @@ public class Proposer {
     public Proposer(ServerCommunicationSystem communication, MessageFactory factory,
             ProofVerifier verifier, TOMConfiguration conf) {
         this.communication = communication;
-        this.communication.setProposer(this);
         this.verifier = verifier;
         this.factory = factory;
         this.conf = conf;
@@ -75,7 +74,7 @@ public class Proposer {
      * @param eid ID for the consensus's execution to be started
      * @param value Value to be proposed
      */
-    public void startExecution(int eid, byte[] value) {
+    public void startExecution(long eid, byte[] value) {
         communication.send(manager.getAcceptors(),
                 factory.createPropose(eid, 0, value, null));
     }
@@ -94,26 +93,28 @@ public class Proposer {
     /**
      * This method is executed when a COLLECT message is received.
      *
-     * @param msg the collect message
+     * @param msg the collectReceived message
      */
-    private void collectReceived(PaxosMessage msg) {
-        Logger.println("(Proposer.collectReceived) COLLECT for "+
+    private void collectReceived(PaxosMessage<CollectProof> msg) {
+        if(Logger.debug)
+            Logger.println("(Proposer.collectReceived) COLLECT for "+
                          msg.getNumber()+","+msg.getRound()+" received.");
 
         Execution execution = manager.getExecution(msg.getNumber());
         execution.lock.lock();
 
-        SignedObject proof = (SignedObject) msg.getProof();
+        CollectProof cp =  msg.getProof();
 
-        if (proof != null && verifier.validSignature(proof, msg.getSender())) {
-            CollectProof cp = null;
-            try {
-                cp = (CollectProof) proof.getObject();
-            } catch (Exception e) {
-                e.printStackTrace(System.out);
-            }
+        if (cp != null && verifier.validSignature(cp, msg.getSender())) {
+//            CollectProof cp = null;
+//            try {
+//                cp = (CollectProof) proof.getObject();
+//            } catch (Exception e) {
+//                e.printStackTrace(System.out);
+//            }
 
-            Logger.println("(Proposer.collectReceived) signed COLLECT for "+
+            if(Logger.debug)
+                Logger.println("(Proposer.collectReceived) signed COLLECT for "+
                          msg.getNumber()+","+msg.getRound()+" received.");
             
             if ((cp != null) && (cp.getProofs(true) != null) &&
@@ -124,21 +125,23 @@ public class Proposer {
 
                 int nextRoundNumber = msg.getRound() + 1;
 
-                Logger.println("(Proposer.collectReceived) valid COLLECT for starting "+
+                if(Logger.debug)
+                    Logger.println("(Proposer.collectReceived) valid COLLECT for starting "+
                          execution.getId()+","+nextRoundNumber+" received.");
 
                 Round round = execution.getRound(nextRoundNumber);
                 
-                round.setCollectProof(msg.getSender(),proof);
+                round.setCollectProof(msg.getSender(),cp);
 
                 if (verifier.countProofs(round.proofs) > manager.quorumStrong) {
-                    Logger.println("(Proposer.collectReceived) proposing for "+
+                    if(Logger.debug)
+                        Logger.println("(Proposer.collectReceived) proposing for "+
                             execution.getId()+","+nextRoundNumber);
 
                     byte[] inProp = verifier.getGoodValue(round.proofs, true);
                     byte[] nextProp = verifier.getGoodValue(round.proofs, false);
 
-                    manager.getTOMLayer().imAmTheLeader();
+                    manager.getRequestHandler().imAmTheLeader();
 
                     communication.send(manager.getAcceptors(),
                             factory.createPropose(execution.getId(), nextRoundNumber,

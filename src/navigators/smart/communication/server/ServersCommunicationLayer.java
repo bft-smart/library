@@ -20,15 +20,18 @@ package navigators.smart.communication.server;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
+import java.util.Map;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import navigators.smart.communication.MessageHandler;
 
 import navigators.smart.tom.core.messages.SystemMessage;
 import navigators.smart.tom.util.TOMConfiguration;
@@ -46,18 +49,22 @@ public class ServersCommunicationLayer extends Thread {
     private ServerSocket serverSocket;
     private int me;
     private boolean doWork = true;
+    private final Map<SystemMessage.Type,MessageHandler> msgHandlers;
+    private MessageVerifierFactory verifierfactory;
 
-    public ServersCommunicationLayer(TOMConfiguration conf, LinkedBlockingQueue<SystemMessage> inQueue) throws Exception {
+    public ServersCommunicationLayer(TOMConfiguration conf, LinkedBlockingQueue<SystemMessage> inQueue, Map<SystemMessage.Type,MessageHandler> msgHandlers, MessageVerifierFactory verifierfactory) throws Exception {
         this.conf = conf;
         this.inQueue = inQueue;
         this.me = conf.getProcessId();
-
+        this.msgHandlers = msgHandlers;
+        this.verifierfactory = verifierfactory;
         connections = new ServerConnection[conf.getN()];
+//        TODO this is double initialisation? by cspann
         for (int i = 0; i < connections.length; i++) {
             if (i == me) {
                 connections[i] = null;
             } else {
-                connections[i] = new ServerConnection(conf, null, i, inQueue);
+                connections[i] = new ServerConnection(conf, null, i, inQueue,msgHandlers, verifierfactory.generateMessageVerifier());
             }
         }
 
@@ -69,15 +76,13 @@ public class ServersCommunicationLayer extends Thread {
     }
 
     public final void send(int[] targets, SystemMessage sm) {
-        ByteArrayOutputStream bOut = new ByteArrayOutputStream(248);
 
+        byte[] data = null;
         try {
-            new ObjectOutputStream(bOut).writeObject(sm);
+            data = sm.getBytes();
         } catch (IOException ex) {
             Logger.getLogger(ServerConnection.class.getName()).log(Level.SEVERE, null, ex);
         }
-
-        byte[] data = bOut.toByteArray();
 
         for (int i : targets) {
             //br.ufsc.das.tom.util.Logger.println("(ServersCommunicationLayer.send) Sending msg to replica "+i);
@@ -111,10 +116,10 @@ public class ServersCommunicationLayer extends Thread {
                 Socket newSocket = serverSocket.accept();
                 ServersCommunicationLayer.setSocketOptions(newSocket);
                 int remoteId = new DataInputStream(newSocket.getInputStream()).readInt();
-                if (remoteId >= 0 && remoteId <= connections.length) {
+                if (remoteId >= 0 && remoteId < connections.length) {
                     if (connections[remoteId] == null) {
                         //first time that this connection is being established
-                        connections[remoteId] = new ServerConnection(conf, newSocket, remoteId, inQueue);
+                        connections[remoteId] = new ServerConnection(conf, newSocket, remoteId, inQueue,msgHandlers,verifierfactory.generateMessageVerifier());
                     } else {
                         //reconnection
                         connections[remoteId].reconnect(newSocket);

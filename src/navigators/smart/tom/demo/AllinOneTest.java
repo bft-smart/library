@@ -18,24 +18,28 @@
 
 package navigators.smart.tom.demo;
 
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import navigators.smart.tom.util.TOMConfiguration;
+
 
 public class AllinOneTest {
 
     public static void main(String args[]){
-        //try {
+//        try {
             
-            new ThroughputLatencyTestServer(0,100,10).run();
-            //new ThroughputLatencyTestServer(1,1000).run();
-            //new ThroughputLatencyTestServer(2,1000).run();
-            //new ThroughputLatencyTestServer(3,1000).run();
-            //Thread.sleep(5000);
+            new ThroughputLatencyTestServer(0,1000,10).run();
+            new ThroughputLatencyTestServer(1,1000,10).run();
+            new ThroughputLatencyTestServer(2,1000,10).run();
+            new ThroughputLatencyTestServer(3,1000,10).run();
+//            Thread.sleep(5000);
              
-            //TOMConfiguration conf1 = new TOMConfiguration(1001);
-            //new ThroughputTestClient(1001, 2000000,
-            //    1, 1, conf1).run();
-        /*} catch (InterruptedException ex) {
-            Logger.getLogger(AllinOneTest.class.getName()).log(Level.SEVERE, null, ex);
-        }*/
+            TOMConfiguration conf1 = new TOMConfiguration(1001);
+            new ThroughputTestClient(1001, 10000,
+                1, 1, conf1).run();
+//        } catch (InterruptedException ex) {
+//            Logger.getLogger(AllinOneTest.class.getName()).log(Level.SEVERE, null, ex);
+//        }
     }
 
 }

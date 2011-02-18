@@ -25,10 +25,7 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.net.Socket;
 import java.net.UnknownHostException;
-import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
-import java.security.spec.InvalidKeySpecException;
-import java.util.Arrays;
+import java.util.Map;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
@@ -36,10 +33,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import javax.crypto.Mac;
-import javax.crypto.SecretKey;
-import javax.crypto.SecretKeyFactory;
-import javax.crypto.spec.PBEKeySpec;
+import navigators.smart.communication.MessageHandler;
 
 import navigators.smart.tom.core.messages.SystemMessage;
 import navigators.smart.tom.util.TOMConfiguration;
@@ -54,9 +48,11 @@ import navigators.smart.tom.util.TOMConfiguration;
  */
 public class ServerConnection {
 
-    private static final String PASSWORD = "newcs";
-    private static final String MAC_ALGORITHM = "HmacMD5";
-    private static final long POOL_TIME = 5000;
+    private static final Logger log = Logger.getLogger(ServerConnection.class.getName());
+
+    
+    
+    private static final long POOL_TIME = 10000;
     //private static final int SEND_QUEUE_SIZE = 50;
     private TOMConfiguration conf;
     private Socket socket;
@@ -66,39 +62,36 @@ public class ServerConnection {
     private boolean useSenderThread;
     protected LinkedBlockingQueue<byte[]> outQueue;// = new LinkedBlockingQueue<byte[]>(SEND_QUEUE_SIZE);
     private LinkedBlockingQueue<SystemMessage> inQueue;
-    private SecretKey authKey;
-    private Mac macSend;
-    private Mac macReceive;
-    private int macSize;
     private Lock connectLock = new ReentrantLock();
     /** Only used when there is no sender Thread */
     private Lock sendLock;
     private boolean doWork = true;
 
-    public ServerConnection(TOMConfiguration conf, Socket socket, int remoteId,
-            LinkedBlockingQueue<SystemMessage> inQueue) {
+    private MessageVerifier verifier;
 
+    private final Map<SystemMessage.Type,MessageHandler> msgHandlers;
+
+    public ServerConnection (TOMConfiguration conf, Socket socket, int remoteId,
+            LinkedBlockingQueue<SystemMessage> inQueue, Map<SystemMessage.Type, MessageHandler> msgHandlers, MessageVerifier verifier) {
+        this.msgHandlers = msgHandlers;
         this.conf = conf;
-
         this.socket = socket;
-
         this.remoteId = remoteId;
-
         this.inQueue = inQueue;
-
         this.outQueue = new LinkedBlockingQueue<byte[]>(this.conf.getOutQueueSize());
+        this.verifier = verifier;
 
         if (conf.getProcessId() > remoteId) {
-            //I have to connect to the remote server
+            //higher process ids connect to lower ones
             try {
                 this.socket = new Socket(conf.getHost(remoteId), conf.getPort(remoteId));
                 ServersCommunicationLayer.setSocketOptions(this.socket);
                 new DataOutputStream(this.socket.getOutputStream()).writeInt(conf.getProcessId());
-                authenticateAndEstablishAuthKey();
+                verifier.authenticateAndEstablishAuthKey();
             } catch (UnknownHostException ex) {
-                Logger.getLogger(ServerConnection.class.getName()).log(Level.SEVERE, null, ex);
+                log.log(Level.SEVERE, null, ex);
             } catch (IOException ex) {
-                Logger.getLogger(ServerConnection.class.getName()).log(Level.SEVERE, null, ex);
+                log.log(Level.SEVERE, null, ex);
             }
         }
         //else I have to wait a connection from the remote server
@@ -108,20 +101,20 @@ public class ServerConnection {
                 socketOutStream = new DataOutputStream(this.socket.getOutputStream());
                 socketInStream = new DataInputStream(this.socket.getInputStream());
             } catch (IOException ex) {
-                Logger.getLogger(ServerConnection.class.getName()).log(Level.SEVERE, null, ex);
+                log.log(Level.SEVERE, null, ex);
             }
         }
 
         this.useSenderThread = conf.isUseSenderThread();
 
         if (useSenderThread) {
-            //Logger.getLogger(ServerConnection.class.getName()).log(Level.INFO, "Using sender thread.");
+            //log.log(Level.INFO, "Using sender thread.");
             new SenderThread().start();
         } else {
             sendLock = new ReentrantLock();
         }
 
-        new ReceiverThread().start();
+        new ReceiverThread(verifier).start();
     }
 
     /**
@@ -134,12 +127,16 @@ public class ServerConnection {
 
     /**
      * Used to send packets to the remote server.
+     * @param data The data to send
+     * @throws InterruptedException
      */
     public final void send(byte[] data) throws InterruptedException {
         if (useSenderThread) {
             //only enqueue messages if there queue is not full
             if (!outQueue.offer(data)) {
-                navigators.smart.tom.util.Logger.println("(ServerConnection.send) out queue for "+remoteId+" full (message discarded).");
+                if(log.isLoggable(Level.FINE)){
+                    log.fine("out queue for "+remoteId+" full (message discarded).");
+                }
             }
         } else {
             sendLock.lock();
@@ -159,11 +156,12 @@ public class ServerConnection {
                 try {
                     socketOutStream.writeInt(messageData.length);
                     socketOutStream.write(messageData);
-                    if (conf.getUseMACs()==1)
-                        socketOutStream.write(macSend.doFinal(messageData));
+                    if (conf.getUseMACs()==1) {
+                        socketOutStream.write(verifier.generateHash(messageData));
+                    }
                     return;
                 } catch (IOException ex) {
-                    Logger.getLogger(ServerConnection.class.getName()).log(Level.SEVERE, null, ex);
+                    log.log(Level.SEVERE, null, ex);
 
                     closeSocket();
 
@@ -172,7 +170,6 @@ public class ServerConnection {
             } else {
                 waitAndConnect();
             }
-            //br.ufsc.das.tom.util.Logger.println("(ServerConnection.sendBytes) iteration " + i);
             i++;
         } while (true);
     }
@@ -196,65 +193,37 @@ public class ServerConnection {
                     socket = newSocket;
                 }
             } catch (UnknownHostException ex) {
-                Logger.getLogger(ServerConnection.class.getName()).log(Level.SEVERE, "Error connecting", ex);
+                log.log(Level.SEVERE, "Error connecting", ex);
             } catch (IOException ex) {
-                //Logger.getLogger(ServerConnection.class.getName()).log(Level.SEVERE, "Error connecting", ex);
+//                log.log(Level.SEVERE, "Error connecting", ex); ignore and retry
             }
 
             if (socket != null) {
+                if(log.isLoggable(Level.INFO)){
+                  log.fine("Reconnected to "+remoteId);
+                }
                 try {
                     socketOutStream = new DataOutputStream(socket.getOutputStream());
                     socketInStream = new DataInputStream(socket.getInputStream());
                 } catch (IOException ex) {
-                    Logger.getLogger(ServerConnection.class.getName()).log(Level.SEVERE, null, ex);
+                    log.log(Level.SEVERE, null, ex);
                 }
             }
 
-            authenticateAndEstablishAuthKey();
+            verifier.authenticateAndEstablishAuthKey();
         }
 
         connectLock.unlock();
     }
 
-    //TODO!
-    public void authenticateAndEstablishAuthKey() {
-        if (authKey != null) {
-            return;
-        }
-
-        try {
-            //if (conf.getProcessId() > remoteId) {
-            // I asked for the connection, so I'm first on the auth protocol
-            //DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
-            //} else {
-            // I received a connection request, so I'm second on the auth protocol
-            //DataInputStream dis = new DataInputStream(socket.getInputStream());
-            //}
-
-            SecretKeyFactory fac = SecretKeyFactory.getInstance("PBEWithMD5AndDES");
-            PBEKeySpec spec = new PBEKeySpec(PASSWORD.toCharArray());
-            authKey = fac.generateSecret(spec);
-
-            macSend = Mac.getInstance(MAC_ALGORITHM);
-            macSend.init(authKey);
-            macReceive = Mac.getInstance(MAC_ALGORITHM);
-            macReceive.init(authKey);
-            macSize = macSend.getMacLength();
-        } catch (InvalidKeySpecException ex) {
-            Logger.getLogger(ServerConnection.class.getName()).log(Level.SEVERE, null, ex);
-        } catch (InvalidKeyException ex) {
-            Logger.getLogger(ServerConnection.class.getName()).log(Level.SEVERE, null, ex);
-        } catch (NoSuchAlgorithmException ex) {
-            Logger.getLogger(ServerConnection.class.getName()).log(Level.SEVERE, null, ex);
-        }
-    }
+   
 
     private void closeSocket() {
         if (socket != null) {
             try {
                 socket.close();
             } catch (IOException ex) {
-                Logger.getLogger(ServerConnection.class.getName()).log(Level.SEVERE, null, ex);
+                log.log(Level.SEVERE, null, ex);
             }
 
             socket = null;
@@ -279,9 +248,9 @@ public class ServerConnection {
             ObjectInputStream obIn = new ObjectInputStream(new ByteArrayInputStream(data));
             return (SystemMessage) obIn.readObject();
         } catch (ClassNotFoundException ex) {
-            Logger.getLogger(ServerConnection.class.getName()).log(Level.SEVERE, null, ex);
+            log.log(Level.SEVERE, null, ex);
         } catch (IOException ex) {
-            Logger.getLogger(ServerConnection.class.getName()).log(Level.SEVERE, null, ex);
+            log.log(Level.SEVERE, null, ex);
         }
 
         return null;
@@ -312,7 +281,7 @@ public class ServerConnection {
                 }
             }
 
-            Logger.getLogger(ServerConnection.class.getName()).log(Level.INFO, "Sender for " + remoteId + " stoped!");
+            log.log(Level.INFO, "Sender for " + remoteId + " stoped!");
         }
     }
 
@@ -321,18 +290,18 @@ public class ServerConnection {
      */
     protected class ReceiverThread extends Thread {
 
-        public ReceiverThread() {
+        private MessageVerifier verifier; //verifier for message verification
+
+        private byte[] receivedHash;    //array to store the received hashes
+
+        public ReceiverThread(MessageVerifier verifier) {
             super("Receiver for "+remoteId);
+            this.verifier = verifier;
+            receivedHash = new byte[verifier.getHashSize()];
         }
 
         @Override
         public void run() {
-            byte[] receivedMac = null;
-            try {
-                receivedMac = new byte[Mac.getInstance(MAC_ALGORITHM).getMacLength()];
-            } catch (NoSuchAlgorithmException ex) {
-                Logger.getLogger(ServerConnection.class.getName()).log(Level.SEVERE, null, ex);
-            }
 
             while (doWork) {
                 if (socket != null && socketInStream != null) {
@@ -349,18 +318,20 @@ public class ServerConnection {
                         } while (read < dataLength);
 
                         //read mac
-                        boolean result = true;
+                        Object verificationresult = null;
                         if (conf.getUseMACs()==1){
                             read = 0;
                             do {
-                                read += socketInStream.read(receivedMac, read, macSize - read);
-                            } while (read < macSize);
+                                read += socketInStream.read(receivedHash, read, receivedHash.length - read);
+                            } while (read < receivedHash.length);
 
-                            result = Arrays.equals(macReceive.doFinal(data), receivedMac);
+                            verificationresult = verifier.verifyHash(data,receivedHash);
                         }
 
-                        if (result) {
-                            SystemMessage sm = (SystemMessage) (new ObjectInputStream(new ByteArrayInputStream(data)).readObject());
+                        if (verificationresult != null) {
+                            DataInputStream in = new DataInputStream(new ByteArrayInputStream(data));
+                            SystemMessage.Type type = SystemMessage.Type.getByByte(in.readByte());
+                            SystemMessage sm = msgHandlers.get(type).deserialise(type,in, verificationresult);
 
                             if (sm.getSender() == remoteId) {
                                 if(!inQueue.offer(sm)) 
@@ -368,18 +339,18 @@ public class ServerConnection {
                             }
                         } else {
                             //TODO: violation of authentication... we should do something
-                            Logger.getLogger(ServerConnection.class.getName()).log(Level.SEVERE, "WARNING: Violation of authentication in message received from "+remoteId);
+                            log.log(Level.SEVERE, "WARNING: Violation of authentication in message received from "+remoteId);
                         }
                         /*
                         } else {
                             //TODO: invalid MAC... we should do something
-                            Logger.getLogger(ServerConnection.class.getName()).log(Level.SEVERE, "WARNING: Invalid MAC");
+                            log.log(Level.SEVERE, "WARNING: Invalid MAC");
                         }
                         */
                     } catch (ClassNotFoundException ex) {
-                        Logger.getLogger(ServerConnection.class.getName()).log(Level.SEVERE, "Should never happen,", ex);
+                        log.log(Level.SEVERE, "Should never happen,", ex);
                     } catch (IOException ex) {
-                        Logger.getLogger(ServerConnection.class.getName()).log(Level.SEVERE, "Closing socket and reconnecting", ex);
+                        log.log(Level.SEVERE, "Closing socket and reconnecting", ex);
 
                         closeSocket();
 
@@ -390,7 +361,7 @@ public class ServerConnection {
                 }
             }
 
-            Logger.getLogger(ServerConnection.class.getName()).log(Level.INFO, "Receiver for " + remoteId + " stoped!");
+            log.log(Level.INFO, "Receiver for " + remoteId + " stopped!");
         }
     }
 }

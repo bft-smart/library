@@ -23,6 +23,8 @@ import java.security.SignedObject;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.TreeSet;
+import navigators.smart.paxosatwar.messages.CollectProof;
+import navigators.smart.paxosatwar.messages.Proof;
 
 /**
  * This class stands for a round of an execution of a consensus
@@ -45,9 +47,9 @@ public class Round implements Serializable {
     private boolean alreadyRemoved = false; // indicates if this round was removed from its execution
 
     public byte[] propValue = null; // proposed value
-    public Object deserializedPropValue = null; //utility var
+//    public Object deserializedPropValue = null; //utility var
     public byte[] propValueHash = null; // proposed value hash
-    public SignedObject[] proofs; // proof from other processes
+    public CollectProof[] proofs; // proof from other processes
     
     /**
      * Creates a new instance of Round for acceptors
@@ -114,10 +116,10 @@ public class Round implements Serializable {
      * @param acceptor replica which sent the proof
      * @param proof proof received
      */
-    public void setCollectProof(int acceptor, SignedObject proof) {
+    public void setCollectProof(int acceptor, CollectProof proof) {
         if (proofs == null) {
-            proofs = new SignedObject[weak.length];
-            Arrays.fill((SignedObject[]) proofs, null);
+            proofs = new CollectProof[weak.length];
+            Arrays.fill( proofs, null);
         }
 
         proofs[acceptor] = proof;

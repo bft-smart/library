@@ -111,10 +111,11 @@ public class NettyTOMMessageDecoder extends FrameDecoder {
         // Skip the length field because we know it already.
         buffer.skipBytes(4);
 
-        int totalLength = dataLength-2;
+        //calculate lenght without signed indication bit
+        int totalLength = dataLength-1;
 
         //read control byte indicating if message serialization includes class header
-        byte hasClassHeader = buffer.readByte();
+//        byte hasClassHeader = buffer.readByte();
 
         //read control byte indicating if message is signed
         byte signed = buffer.readByte();
@@ -141,21 +142,23 @@ public class NettyTOMMessageDecoder extends FrameDecoder {
             buffer.readBytes(signature);
         }
 
+//        DataInputStream dis = null;
         DataInputStream dis = null;
-        ObjectInputStream ois = null;
         TOMMessage sm = null;
         try {
             ByteArrayInputStream bais = new ByteArrayInputStream(data);
-            if (hasClassHeader==0){
-                dis = new DataInputStream(bais);
-                sm = new TOMMessage();
-                sm.readExternal(dis);
-            }
-            else {
+//            if (hasClassHeader==0){
+//                dis = new ObjectInputStream(bais);
+//                sm = new TOMMessage(ois);
+//                sm.readExternal(dis);
+//            }
+//            else {
                 //if class headers were serialized
-                ois = new ObjectInputStream(bais);
-                sm = (TOMMessage) ois.readObject();
-            }
+                dis = new DataInputStream(bais);
+                //throw away type byte
+                dis.readByte();
+                sm = new TOMMessage(dis);
+//            }
             //TOMMessage sm = (TOMMessage) ois.readObject();
             sm.serializedMessage = data;
             if (signed==1){
@@ -277,8 +280,8 @@ public class NettyTOMMessageDecoder extends FrameDecoder {
             Logger.getLogger(NettyTOMMessageDecoder.class.getName()).log(Level.SEVERE, null, ex);
         }        catch (NoSuchAlgorithmException ex) {
             Logger.getLogger(NettyTOMMessageDecoder.class.getName()).log(Level.SEVERE, null, ex);
-        }        catch (ClassNotFoundException ex) {
-            Logger.getLogger(NettyTOMMessageDecoder.class.getName()).log(Level.SEVERE, null, ex);
+//        }        catch (ClassNotFoundException ex) {
+//            Logger.getLogger(NettyTOMMessageDecoder.class.getName()).log(Level.SEVERE, null, ex);
         }        catch (IOException ex) {
             Logger.getLogger(NettyTOMMessageDecoder.class.getName()).log(Level.SEVERE, null, ex);
         }

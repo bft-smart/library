@@ -39,7 +39,7 @@ public class Configuration {
     protected BigInteger DH_P;
     protected BigInteger DH_G;
     protected int autoConnectLimit;
-    protected Map configs;
+    protected Map<String,String> configs;
     protected HostsConfig hosts;
     
     private String hmacAlgorithm = "HmacSha1";
@@ -47,6 +47,9 @@ public class Configuration {
 
     protected static String configHome = "";
     protected static String hostsFileName = "";
+
+    private String factoryclass;
+    private String verifierclass;
 
 
     public Configuration(Configuration conf, int processId){
@@ -58,6 +61,8 @@ public class Configuration {
         this.autoConnectLimit = conf.autoConnectLimit;
         this.configs = conf.configs;
         this.hosts = conf.hosts;
+        this.factoryclass = conf.factoryclass;
+        this.verifierclass = conf.verifierclass;
     }
 
     
@@ -87,41 +92,55 @@ public class Configuration {
         try{
             hosts = new HostsConfig(this.configHome, hostsFileName);
             loadConfig();
-            String s = (String) configs.remove("system.authentication");
+            String s = configs.remove("system.authentication");
             if(s == null){
                 authentication = false;
             }else{
                 authentication = (s.equalsIgnoreCase("true"))?true:false;
             }
             
-            s = (String) configs.remove("system.autoconnect");
+            s = configs.remove("system.autoconnect");
             if(s == null){
                 autoConnectLimit = -1;
             }else{
                 autoConnectLimit = Integer.parseInt(s);
             }
 
-            s = (String) configs.remove("system.channels.blocking");
+            s = configs.remove("system.channels.blocking");
             if(s == null){
                 channelsBlocking = false;
             }else{
                 channelsBlocking = (s.equalsIgnoreCase("true"))?true:false;
             }
+
+            s = configs.remove("consensus.factoryclass");
+            if(s != null){
+                factoryclass = s;
+            } else {
+                factoryclass = "navigators.smart.paxosatwar.PaxosAtWarServiceFactory";
+            }
+
+            s = configs.remove("system.verifier.factoryclass");
+            if(s != null){
+                factoryclass = s;
+            } else {
+                factoryclass = "navigators.smart.communication.HMacVerifierFactory";
+            }
             
             if(authentication){
-                s = (String)configs.remove("system.authentication.P");
+                s = configs.remove("system.authentication.P");
                 if( s != null){
                     DH_P = new BigInteger(s);
                 }else{
                     DH_P = new BigInteger("129478016482307789701070727760001596884678485002940892793995694535133378243050778971904925896996726571491800793398492219704131882376184211959283528210448520812240713940418353519547784372145685462082731504301858120019028019987990793179218677670588995616299420063624953735894711975124458923725126238553766550329");
                 }
-                s = (String)configs.remove("system.authentication.G");
+                s = configs.remove("system.authentication.G");
                 if( s != null){
                     DH_G = new BigInteger(s);
                 }else{
                     DH_G = new BigInteger("29217505167932890999066273839253774800755959955896393492873319283005724081034818036319661168969199150862168432106458290476648846807190233226260333801267067522141219524804297599188439023657024980026689467130891580144179061928658054025223844419861789490573746407967714423953237288767209657928504918181773429271");
                 }
-                s = (String)configs.remove("system.authentication.hmacAlgorithm");
+                s = configs.remove("system.authentication.hmacAlgorithm");
                 if( s != null){
                     hmacAlgorithm = s;
                 }else{
@@ -201,6 +220,10 @@ public class Configuration {
         return hosts.getPort(id);
     }
     
+    /**
+     * Returns the id of this smart instance
+     * @return The id of this instance
+     */
     public final int getProcessId(){
         return processId;
     }
@@ -236,5 +259,14 @@ public class Configuration {
         }catch(Exception e){
             e.printStackTrace(System.out);
         }
+    }
+
+    public String getConsensusAlgorithmFactory() {
+        return factoryclass;
+    }
+
+
+    public String getMessageVerifierFactory() {
+        return verifierclass;
     }
 }

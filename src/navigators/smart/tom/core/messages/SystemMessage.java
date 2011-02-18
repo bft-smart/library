@@ -18,10 +18,14 @@
 
 package navigators.smart.tom.core.messages;
 
-import java.io.Externalizable;
+import java.io.ByteArrayOutputStream;
+import java.io.DataInput;
+import java.io.DataOutput;
+import java.io.DataOutputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
-import java.io.ObjectInput;
-import java.io.ObjectOutput;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * This is the super-class for all other kinds of messages created by JBP
@@ -30,20 +34,57 @@ import java.io.ObjectOutput;
  * 
  */
 
-public class SystemMessage implements Externalizable {
+public abstract class SystemMessage  {
 
-    protected int sender; // ID of the process which sent the message
+    public enum Type {
+
+        TOM_MSG((byte) 1),
+        FORWARDED((byte) 2),
+        PAXOS_MSG((byte) 3),
+        RR_MSG((byte) 4),
+        RT_MSG((byte) 5),
+        SM_MSG((byte)6);
+
+        public final byte type;
+
+        private static Map<Byte,Type> mapping = new HashMap<Byte, Type>();
+
+        static{
+            for(Type type:values()){
+                mapping.put(type.type, type);
+            }
+        }
+
+        Type (byte type) {
+            this.type = type;
+        }
+
+        public static Type getByByte(byte type){
+            return mapping.get(type);
+        }
+    }
+
+    public final Type type;
+    protected final int sender; // ID of the process which sent the message
 
     /**
      * Creates a new instance of SystemMessage
+     * @param type The type id of this message
+     * @param in The inputstream containing the serialised object
+     * @throws IOException
      */
-    public SystemMessage(){}
+    public SystemMessage(Type type, DataInput in) throws IOException{
+        this.type = type;
+        sender = in.readInt();
+    }
     
     /**
      * Creates a new instance of SystemMessage
+     * @param type The type id of this message for preformant serialisation
      * @param sender ID of the process which sent the message
      */
-    public SystemMessage(int sender){
+    public SystemMessage(Type type, int sender){
+        this.type = type;
         this.sender = sender;
     }
     
@@ -55,12 +96,20 @@ public class SystemMessage implements Externalizable {
         return sender;
     }
 
-    // This methods implement the Externalizable interface
-    public void writeExternal(ObjectOutput out) throws IOException {
+    /**
+     * this method serialises the contents of this class
+     * @param out
+     * @throws IOException
+     */
+    protected void serialise(DataOutput out) throws IOException {
+        out.writeByte(type.type);
         out.writeInt(sender);
     }
-    
-    public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
-        sender = in.readInt();
+
+    public byte[] getBytes() throws IOException{
+        ByteArrayOutputStream baos = new ByteArrayOutputStream(248);
+        DataOutputStream dos = new DataOutputStream(baos);
+        serialise(dos);
+        return baos.toByteArray();
     }
 }

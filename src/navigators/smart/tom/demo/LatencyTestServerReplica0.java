@@ -22,18 +22,21 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import navigators.smart.communication.ServerCommunicationSystem;
+import navigators.smart.tom.ServiceReplica;
 import navigators.smart.tom.TOMReceiver;
 import navigators.smart.tom.core.messages.TOMMessage;
+import navigators.smart.tom.util.DebugInfo;
 import navigators.smart.tom.util.TOMConfiguration;
 
 
-public class LatencyTestServerReplica0 extends TOMReceiver {
+public class LatencyTestServerReplica0 extends ServiceReplica {
 
     private ServerCommunicationSystem cs;
     private int id;
 
     /** Creates a new instance of TOMServerPerformanceTest */
     public LatencyTestServerReplica0(int id) {
+        super(id);
         this.id = id;
     }
 
@@ -86,6 +89,21 @@ public class LatencyTestServerReplica0 extends TOMReceiver {
     }
 
     public void receiveMessage(TOMMessage msg) {
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
+
+    @Override
+    protected byte[] serializeState() {
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
+
+    @Override
+    protected void deserializeState(byte[] state) {
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
+
+    @Override
+    public byte[] executeCommand(int clientId, long timestamp, byte[] nonces, byte[] command, DebugInfo info) {
         throw new UnsupportedOperationException("Not supported yet.");
     }
 }

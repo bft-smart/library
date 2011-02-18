@@ -18,6 +18,8 @@
 
 package navigators.smart.tom.core.timer.messages;
 
+import java.io.DataInput;
+import java.io.DataOutput;
 import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
@@ -35,32 +37,8 @@ public final class ForwardedMessage extends SystemMessage {
 
     private TOMMessage request;
 
-    public ForwardedMessage() {
-    }
-
-    public ForwardedMessage(int senderId, TOMMessage request) {
-        super(senderId);
-        this.request = request;
-    }
-
-    public TOMMessage getRequest() {
-        return request;
-    }
-
-    @Override
-    public void writeExternal(ObjectOutput out) throws IOException {
-        super.writeExternal(out);
-
-        out.writeInt(request.serializedMessage.length);
-        out.write(request.serializedMessage);
-
-        out.writeInt(request.serializedMessageSignature.length);
-        out.write(request.serializedMessageSignature);
-    }
-
-    @Override
-    public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
-        super.readExternal(in);
+    public ForwardedMessage(DataInput in) throws IOException, ClassNotFoundException {
+        super(Type.FORWARDED, in);
 
         byte[] serReq = new byte[in.readInt()];
         in.readFully(serReq);
@@ -73,5 +51,26 @@ public final class ForwardedMessage extends SystemMessage {
         request.serializedMessage = serReq;
         request.serializedMessageSignature = serReqSign;
     }
+
+    public ForwardedMessage(int senderId, TOMMessage request) {
+        super(Type.FORWARDED, senderId);
+        this.request = request;
+    }
+
+    public TOMMessage getRequest() {
+        return request;
+    }
+
+    @Override
+    public void serialise(DataOutput out) throws IOException {
+        super.serialise(out);
+
+        out.writeInt(request.serializedMessage.length);
+        out.write(request.serializedMessage);
+
+        out.writeInt(request.serializedMessageSignature.length);
+        out.write(request.serializedMessageSignature);
+    }
+
 
 }

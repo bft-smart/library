@@ -46,7 +46,7 @@ public class ThroughputTestClient extends TOMSender implements Runnable {
     private Hashtable sessionTable;
     private TOMConfiguration conf;
 
-    public ThroughputTestClient(int id, int exec, int argSize, int interval, TOMConfiguration conf)  {
+        public ThroughputTestClient(int id, int exec, int argSize, int interval, TOMConfiguration conf)  {
         this.id = id;
         this.exec = exec;
         this.argSize = argSize;
@@ -103,10 +103,10 @@ public class ThroughputTestClient extends TOMSender implements Runnable {
                             java.util.logging.Logger.getLogger(LatencyTestClient.class.getName()).log(Level.SEVERE, null, ex);
                         }
                         System.arraycopy(out.toByteArray(), 0, command, 0, 4);
-                        this.TOMulticast(command);
+                        this.doTOMulticast(command);
                 //    }
                 //    else {
-                //        this.TOMulticast(generatedMessages.get(i));
+                //        this.doTOMulticast(generatedMessages.get(i));
                 //    }
                     if ((i!=0) && ((i % 1000) == 0)) {
                         long elapsedTime = System.currentTimeMillis() - startTimeInstant;
