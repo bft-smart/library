@@ -22,6 +22,8 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import navigators.smart.consensus.Consensus;
 import navigators.smart.consensus.ConsensusService;
@@ -29,7 +31,6 @@ import navigators.smart.statemanagment.TransferableState;
 import navigators.smart.tom.TOMReceiver;
 import navigators.smart.tom.core.messages.TOMMessage;
 import navigators.smart.tom.util.BatchReader;
-import navigators.smart.tom.util.Logger;
 import navigators.smart.tom.util.TOMConfiguration;
 
 
@@ -38,6 +39,8 @@ import navigators.smart.tom.util.TOMConfiguration;
  * 
  */
 public class DeliveryThread extends Thread {
+	
+	private static final Logger log = Logger.getLogger(DeliveryThread.class.getCanonicalName());
 
     private LinkedBlockingQueue<Consensus<TOMMessage[]>> decided = new LinkedBlockingQueue<Consensus<TOMMessage[]>>(); // decided consensus
     private TOMLayer tomLayer; // TOM layer
@@ -72,9 +75,8 @@ public class DeliveryThread extends Thread {
     public void delivery(Consensus<TOMMessage[]> cons) {
         try {
             decided.put(cons);
-            if(Logger.debug) {
-                Logger.println("(DeliveryThread.delivery) Consensus " + cons.getId() + " finished. decided size=" + decided.size());
-            }
+            if(log.isLoggable(Level.FINER))
+                log.finer(" Consensus " + cons.getId() + " finished. decided size=" + decided.size());
         } catch (Exception e) {
             e.printStackTrace(System.out);
         }
@@ -87,14 +89,14 @@ public class DeliveryThread extends Thread {
 
     public void deliverLock() {
         deliverLock.lock();
-//        if(Logger.debug)
-//            Logger.println("(DeliveryThread.deliverLock) Deliver lock obtained");
+//        if(log.isLoggable(Level.FINER))
+//            log.finer("Deliver lock obtained");
     }
 
     public void deliverUnlock() {
         deliverLock.unlock();
-//        if(Logger.debug)
-//            Logger.println("(DeliveryThread.deliverUnlock) Deliver Released");
+//        if(log.isLoggable(Level.FINER))
+//            log.finer("Deliver Released");
     }
 
     public void canDeliver() {
@@ -109,10 +111,10 @@ public class DeliveryThread extends Thread {
         long lastCheckpointEid = state.getLastCheckpointEid();
         long lastEid = state.getLastEid();
 
-        if(Logger.debug)
-            Logger.println("(DeliveryThread.update) I'm going to update myself from EID " + lastCheckpointEid + " to EID " + lastEid);
+        if(log.isLoggable(Level.FINE))
+            log.fine("I'm going to update myself from EID " + lastCheckpointEid + " to EID " + lastEid);
 
-        receiver.setState(state.getState());
+        receiver.setState(state.getLastCPState());
 
 //        lm.addLeaderInfo(lastCheckpointEid, state.getLastCheckpointRound(), state.getLastCheckpointLeader());
 
@@ -127,8 +129,8 @@ public class DeliveryThread extends Thread {
                 // obtain an array of requests from the taken consensus
                 BatchReader batchReader = new BatchReader(batch, conf.getUseSignatures()==1);
 
-                if(Logger.debug)
-                    Logger.println("(DeliveryThread.update) interpreting and verifying batched requests.");
+                if(log.isLoggable(Level.FINEST))
+                    log.finest("interpreting and verifying batched requests.");
 
                 TOMMessage[] requests = batchReader.deserialiseRequests();
 
@@ -149,13 +151,13 @@ public class DeliveryThread extends Thread {
                 /****** Julgo que isto nao sera necessario ***********
                 if (conf.getCheckpoint_period() > 0) {
                     if ((eid > 0) && (eid % conf.getCheckpoint_period() == 0)) {
-                        Logger.println("(DeliveryThread.update) Performing checkpoint for consensus " + eid);
+                        log.finer("Performing checkpoint for consensus " + eid);
                         byte[] state2 = receiver.getState();
                         tomLayer.saveState(state2, eid);
                         //TODO: possivelmente fazer mais alguma coisa
                     }
                     else {
-                        Logger.println("(DeliveryThread.update) Storing message batch in the state log for consensus " + eid);
+                        log.finer("Storing message batch in the state log for consensus " + eid);
                         tomLayer.saveBatch(batch, eid);
                         //TODO: possivelmente fazer mais alguma coisa
                     }
@@ -171,15 +173,15 @@ public class DeliveryThread extends Thread {
 
         decided.clear();
 
-        if(Logger.debug)
-            Logger.println("(DeliveryThread.update) All finished from " + lastCheckpointEid + " to " + lastEid);
+        if(log.isLoggable(Level.FINE))
+            log.fine("All finished from " + lastCheckpointEid + " to " + lastEid);
         //verify if there is a next proposal to be executed
         //(it only happens if the previous consensus were decided in a
         //round > 0
         /** Nao consigo perceber se isto tem utilidade neste contexto *****/
         //int nextExecution = lastEid + 1;
         //if(tomLayer.acceptor.executeAcceptedPendent(nextExecution)) {
-        //Logger.println("(DeliveryThread.update) Executed setProposal for " + nextExecution);
+        //log.finer("Executed setProposal for " + nextExecution);
         //}
         /******************************************************************/
 
@@ -212,18 +214,18 @@ public class DeliveryThread extends Thread {
                 
                 //MeasuringConsensus cons = decided.take(); // take a decided consensus
                 /** ISTO E CODIGO DO JOAO, PARA TRATAR DA TRANSFERENCIA DE ESTADO */
-//                if(Logger.debug)
-//                    Logger.println("(DeliveryThread.run) Waiting for a consensus to be delivered.");
+//                if(log.isLoggable(Level.FINER))
+//                    log.finer("Waiting for a consensus to be delivered.");
                 Consensus<TOMMessage[]> cons = decided.poll(1500, TimeUnit.MILLISECONDS); // take a decided consensus
                 if (cons == null) {
-//                    if(Logger.debug)
-//                        Logger.println("(DeliveryThread.run) Timeout while waiting for a consensus, starting over.");
+//                    if(log.isLoggable(Level.FINER))
+//                        log.finer("Timeout while waiting for a consensus, starting over.");
                     deliverUnlock();
                     continue;
                 }
 
-                if(Logger.debug)
-                    Logger.println("(DeliveryThread.run) " + cons + " was delivered.");
+                if(log.isLoggable(Level.FINER))
+                    log.finer("" + cons + " was delivered.");
                 /******************************************************************/
                 startTime = System.currentTimeMillis();
 
@@ -233,16 +235,16 @@ public class DeliveryThread extends Thread {
                 TOMMessage[] requests = cons.getDeserializedDecision();
 
                 if (requests == null) {
-                    if(Logger.debug)
-                        Logger.println("(DeliveryThread.run) interpreting and verifying batched requests.");
+                    if(log.isLoggable(Level.FINER))
+                        log.finer("interpreting and verifying batched requests.");
 
                     // obtain an array of requests from the taken consensus
                     BatchReader batchReader = new BatchReader(cons.getDecision(), conf.getUseSignatures()==1);
                     requests = batchReader.deserialiseRequests();
 
                 } else {
-                    if(Logger.debug)
-                        Logger.println("(DeliveryThread.run) using cached requests from the propose.");
+                    if(log.isLoggable(Level.FINER))
+                        log.finer("using cached requests from the propose.");
 
                 }
                 tomLayer.clientsManager.getClientsLock().lock();
@@ -271,30 +273,30 @@ public class DeliveryThread extends Thread {
 
                 /** ISTO E CODIGO DO JOAO, PARA TRATAR DOS CHECKPOINTS */
 
-                if(Logger.debug)
-                    Logger.println("(DeliveryThread.run) I just delivered the batch of EID " + cons.getId());
+                if(log.isLoggable(Level.FINER))
+                    log.finer("I just delivered the batch of EID " + cons.getId());
 
                 if (conf.isStateTransferEnabled()) {
-                    if(Logger.debug)
-                        Logger.println("(DeliveryThread.run) The state transfer protocol is enabled");
+                    if(log.isLoggable(Level.FINER))
+                        log.finer("The state transfer protocol is enabled");
                     if (conf.getCheckpoint_period() > 0) {
                         if ((cons.getId() > 0) && ((cons.getId() % conf.getCheckpoint_period()) == 0)) {
-                            if(Logger.debug)
-                                Logger.println("(DeliveryThread.run) Performing checkpoint for consensus " + cons.getId());
+                            if(log.isLoggable(Level.FINER))
+                                log.finer("Performing checkpoint for consensus " + cons.getId());
                             tomLayer.saveState( cons.getId(), cons.getDecisionRound(), consensusservice.getLeader(cons.getId(), cons.getDecisionRound()));
                             //TODO: possivelmente fazer mais alguma coisa
                         }
                         else {
-                            if(Logger.debug)
-                                    Logger.println("(DeliveryThread.run) Storing message batch in the state log for consensus " + cons.getId());
+                            if(log.isLoggable(Level.FINER))
+                                    log.finer("Storing message batch in the state log for consensus " + cons.getId());
                             tomLayer.saveBatch(cons.getDecision(), cons.getId(), cons.getDecisionRound(), consensusservice.getLeader(cons.getId(), cons.getDecisionRound()));
                             //TODO: possivelmente fazer mais alguma coisa
                         }
                     }
                 }
                 /********************************************************/
-                if(Logger.debug)
-                        Logger.println("(DeliveryThread.run) All finished for " + cons.getId() + ", took " + (System.currentTimeMillis() - startTime));
+                if(log.isLoggable(Level.FINER))
+                        log.finer("(DeliveryThread.run) All finished for " + cons.getId() + ", took " + (System.currentTimeMillis() - startTime));
             } catch (Exception e) {
                 e.printStackTrace(System.out);
             }

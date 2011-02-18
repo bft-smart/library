@@ -115,8 +115,8 @@ public class ThroughputLatencyTestServer extends TOMReceiver {
         //do throughput calculations
         numDecides++;
         //consensusLatencySt.store(msg.consensusExecutionTime);
-        totalLatencySt1.store(msg.requestTotalLatency);
-        batchSt1.store(msg.consensusBatchSize);
+        totalLatencySt1.storeDuration(msg.requestTotalLatency);
+        batchSt1.storeDuration(msg.consensusBatchSize);
 
         if (numDecides == 1) {
             lastDecideTimeInstant = receiveInstant;
@@ -127,9 +127,9 @@ public class ThroughputLatencyTestServer extends TOMReceiver {
             long opsPerSec = Math.round(opsPerSec_);
             if (opsPerSec>max)
                 max = opsPerSec;
-            st.store(opsPerSec);
-            batchSt2.store(batchSt1.getAverage(true));
-            totalLatencySt2.store(totalLatencySt1.getAverage(true));
+            st.storeDuration(opsPerSec);
+            batchSt2.storeDuration(batchSt1.getAverage(true));
+            totalLatencySt2.storeDuration(totalLatencySt1.getAverage(true));
             batchSt1.reset();
             totalLatencySt1.reset();
 

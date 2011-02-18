@@ -278,7 +278,7 @@ public class PaxosMessage<P extends Serialisable> extends SystemMessage {
 
         return "type="+getPaxosVerboseType()+", number="+getNumber()+", round="+getRound()+", from="+getSender()+", "+
 
-                getProof()+" content: "+Arrays.toString(value);
+                getProof()/*+" content: "+Arrays.toString(value)*/;
 
     }
 

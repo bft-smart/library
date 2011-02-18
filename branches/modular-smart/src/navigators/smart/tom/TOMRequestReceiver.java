@@ -50,7 +50,7 @@ public interface TOMRequestReceiver {
     public byte[] getState();
 
     /**
-     * This method is invoked by the TOM Layer in order to ser a state upon the aplication. This is done when
+     * This method is invoked by the TOM Layer in order to set a state upon the application. This is done when
      * a replica is delayed compared to the rest of the group, and when it recovers after a failure.
      */
     public void setState(byte[] state);

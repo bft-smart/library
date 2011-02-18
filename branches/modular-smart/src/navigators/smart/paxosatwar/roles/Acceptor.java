@@ -22,6 +22,8 @@ import java.security.SignedObject;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import navigators.smart.communication.ServerCommunicationSystem;
 import navigators.smart.paxosatwar.executionmanager.Execution;
@@ -38,7 +40,6 @@ import navigators.smart.paxosatwar.messages.Proof;
 import navigators.smart.paxosatwar.requesthandler.RequestHandler;
 import navigators.smart.tom.core.TOMLayer;
 import navigators.smart.tom.core.timer.messages.RTCollect;
-import navigators.smart.tom.util.Logger;
 import navigators.smart.tom.util.TOMConfiguration;
 
 
@@ -50,6 +51,8 @@ import navigators.smart.tom.util.TOMConfiguration;
  * @author Alysson Bessani
  */
 public class Acceptor {
+	
+	private static final Logger log = Logger.getLogger(Acceptor.class.getCanonicalName());
 
     private ScheduledThreadPoolExecutor timer = new ScheduledThreadPoolExecutor(5); // scheduler for timeouts
     private int me; // This replica ID
@@ -136,7 +139,7 @@ public class Acceptor {
      * @param msg The message to be processed
      */
     @SuppressWarnings("unchecked")
-	public final void processMessage(PaxosMessage msg) {
+	public void processMessage(PaxosMessage msg) {
         Execution execution = manager.getExecution(msg.getNumber());
 
         execution.lock.lock();
@@ -174,8 +177,8 @@ public class Acceptor {
         int sender = msg.getSender();
         long eid = round.getExecution().getId();
 
-        if(Logger.debug)
-            Logger.println("(Acceptor.proposeReceived) PROPOSE for "+round.getNumber()+","+round.getExecution().getId()+" received from "+ sender);
+        if(log.isLoggable(Level.FINER))
+            log.finer("PROPOSE for "+round.getNumber()+","+round.getExecution().getId()+" received from "+ sender);
 
         //causetimeout() // malicious code to cause timeout
 
@@ -262,8 +265,8 @@ public class Acceptor {
      */
     public boolean executeAcceptedPendent(long eid) {
         if (nextProp != null && nextProp.eid == eid) {
-        	if (Logger.debug) {
-        		Logger.println("(Acceptor.executeAcceptedPendent) Executing accepted propose for " + eid);
+        	if(log.isLoggable(Level.FINER)) {
+        		log.finer("Executing accepted propose for " + eid);
         	}
             Execution execution = manager.getExecution(eid);
             execution.lock.lock();
@@ -289,8 +292,8 @@ public class Acceptor {
     @SuppressWarnings("unchecked")
 	private void executePropose(Round round, byte[] value) {
         long eid = round.getExecution().getId();
-        if(Logger.debug)
-            Logger.println("(Acceptor.executePropose) executing propose for " + eid + "," + round.getNumber());
+        if(log.isLoggable(Level.FINER))
+            log.finer("executing propose for " + eid + "," + round.getNumber());
 
         if(round.propValue == null) {
             round.propValue = value;
@@ -304,8 +307,8 @@ public class Acceptor {
             if (deserialised != null ) {
             	round.getExecution().getConsensus().setDeserialisedDecision(deserialised);
             	if(!round.isWeakSetted(me)) { //send weak if necessary
-	                if(Logger.debug)
-	                    Logger.println("(Acceptor.executePropose) sending weak for " + eid);
+	                if(log.isLoggable(Level.FINER))
+	                    log.finer("sending weak for " + eid);
 	
 	                round.setWeak(me, round.propValueHash); //set myself as weak acceptor
 	                communication.send(manager.getOtherAcceptors(), factory.createWeak(eid, round.getNumber(), round.propValueHash));
@@ -327,8 +330,8 @@ public class Acceptor {
      */
     private void weakAcceptReceived(Round round, int a, byte[] value) {
         long eid = round.getExecution().getId();
-        if(Logger.debug)
-            Logger.println("(Acceptor.weakAcceptReceived) WEAK from " + a + " for consensus " + eid);
+        if(log.isLoggable(Level.FINER))
+            log.finer("WEAK from " + a + " for consensus " + eid);
         round.setWeak(a, value);
 
         if (!round.isWeakSetted(me)) {
@@ -337,8 +340,8 @@ public class Acceptor {
                     requesthandler.setInExec(eid);
                 }
 
-                if(Logger.debug)
-                    Logger.println("(Acceptor.weakAcceptReceived) sending weak for " + eid);
+                if(log.isLoggable(Level.FINER))
+                    log.finer("sending weak for " + eid);
                 round.setWeak(me, value);
                 communication.send(manager.getOtherAcceptors(),
                         factory.createWeak(eid, round.getNumber(), value));
@@ -360,14 +363,14 @@ public class Acceptor {
     private void computeWeak(long eid, Round round, byte[] value) {
         int weakAccepted = round.countWeak(value);
 
-        if(Logger.debug)
-            Logger.println("(Acceptor.computeWeak) I have " + weakAccepted +
+        if(log.isLoggable(Level.FINER))
+            log.finer("I have " + weakAccepted +
                 " weaks for " + eid + "," + round.getNumber());
 
         if (weakAccepted > manager.quorumStrong) { // Can a send a STRONG message?
             if (!round.isStrongSetted(me)) {
-                if(Logger.debug)
-                    Logger.println("(Acceptor.computeWeak) sending STRONG for " + eid);
+                if(log.isLoggable(Level.FINER))
+                    log.finer("sending STRONG for " + eid);
 
                 round.setStrong(me, value);
                 communication.send(manager.getOtherAcceptors(),
@@ -384,8 +387,8 @@ public class Acceptor {
                     communication.send(manager.getOtherAcceptors(),
                             factory.createDecide(eid, round.getNumber(), round.propValue));
                 }
-            	if(Logger.debug)
-            		Logger.println("(Acceptor.computeWeak) Deciding " + eid);
+            	if(log.isLoggable(Level.FINE) && eid%250==0)
+            		log.fine("Deciding " + eid + " with weaks");
             	decide(round /*, value*/);
             }
         }
@@ -400,8 +403,8 @@ public class Acceptor {
      */
     private void strongAcceptReceived(Round round, int a, byte[] value) {
         long eid = round.getExecution().getId();
-        if(Logger.debug)
-            Logger.println("(Acceptor.strongAcceptReceived) STRONG from " + a + " for consensus " + eid);
+        if(log.isLoggable(Level.FINER))
+            log.finer("STRONG from " + a + " for consensus " + eid);
         round.setStrong(a, value);
         computeStrong(eid, round, value);
     }
@@ -413,8 +416,8 @@ public class Acceptor {
      * @param value Value sent in the message
      */
     private void computeStrong(long eid, Round round, byte[] value) {
-        if(Logger.debug)
-            Logger.println("(Acceptor.computeStrong) I have " + round.countStrong(value) +
+        if(log.isLoggable(Level.FINER))
+            log.finer("I have " + round.countStrong(value) +
                 " strongs for " + eid + "," + round.getNumber());
 
         if (round.countStrong(value) > manager.quorum2F && !round.getExecution().isDecided()) {
@@ -425,8 +428,8 @@ public class Acceptor {
                         factory.createDecide(eid, round.getNumber(), round.propValue));
             }
 
-            if(Logger.debug)
-                Logger.println("(Acceptor.computeStrong) Deciding " + eid);
+            if(log.isLoggable(Level.FINE)&& eid%250==0)
+                log.fine("Deciding " + eid + " with strongs");
             decide(round);
         }
     }
@@ -440,8 +443,8 @@ public class Acceptor {
      */
     private void decideReceived(Round round, int a, byte[] value) {
         long eid = round.getExecution().getId();
-        if(Logger.debug)
-            Logger.println("(Acceptor.decideReceived) DECIDE from " + a + " for consensus " + eid);
+        if(log.isLoggable(Level.FINER))
+            log.finer("DECIDE from " + a + " for consensus " + eid);
         round.setDecide(a, value);
 
         if (round.countDecide(value) > manager.quorumF && !round.getExecution().isDecided()) {
@@ -451,12 +454,12 @@ public class Acceptor {
                         factory.createDecide(eid, round.getNumber(), round.propValue));
             }
 
-            if(Logger.debug)
-                Logger.println("(Acceptor.decideReceived) Deciding " + eid);
+            if(log.isLoggable(Level.FINER))
+                log.finer("Deciding " + eid);
             decide(round/*, value*/);
         } else if (round.getExecution().isDecided()) {
-            if(Logger.debug)
-                Logger.println("(Acceptor.decideReceived) consensus " + eid + " already decided.");
+            if(log.isLoggable(Level.FINER))
+                log.finer("consensus " + eid + " already decided.");
         }
     }
 
@@ -465,8 +468,8 @@ public class Acceptor {
      * @param round Round to be associated with the timeout
      */
     public void scheduleTimeout(Round round) {
-        if(Logger.debug)
-            Logger.println("(Acceptor.scheduleTimeout) scheduling timeout of " + round.getTimeout() + " ms for round " + round.getNumber() + " of consensus " + round.getExecution().getId());
+        if(log.isLoggable(Level.FINER))
+            log.finer("scheduling timeout of " + round.getTimeout() + " ms for round " + round.getNumber() + " of consensus " + round.getExecution().getId());
         TimeoutTask task = new TimeoutTask(this, round);
         ScheduledFuture<?> future = timer.schedule(task, round.getTimeout(), TimeUnit.MILLISECONDS);
         round.setTimeoutTask(future);
@@ -487,8 +490,8 @@ public class Acceptor {
         Execution execution = round.getExecution();
         execution.lock.lock();
 
-        if(Logger.debug)
-            Logger.println("(Acceptor.timeout) timeout for round " + round.getNumber() + " of consensus " + execution.getId());
+        if(log.isLoggable(Level.FINER))
+            log.finer("timeout for round " + round.getNumber() + " of consensus " + execution.getId());
         //System.out.println(round);
         
         if (!round.getExecution().isDecided() && !round.isFrozen() && !round.isRemoved()) {
@@ -505,8 +508,8 @@ public class Acceptor {
      * @param a Replica that sent the message
      */
     private void freezeReceived(Round round, int a) {
-        if(Logger.debug)
-            Logger.println("(Acceptor.freezeReceived) received freeze from " +a+ " for "+round.getNumber() + " of consensus " + round.getExecution().getId());
+        if(log.isLoggable(Level.FINER))
+            log.finer("received freeze from " +a+ " for "+round.getNumber() + " of consensus " + round.getExecution().getId());
         round.addFreeze(a);
         if (round.countFreeze() > manager.quorumF && !round.isFrozen()) {
             doFreeze(round);
@@ -515,8 +518,8 @@ public class Acceptor {
     }
 
     private void doFreeze(Round round) {
-        if(Logger.debug)
-            Logger.println("(Acceptor.timeout) freezing round " + round.getNumber() + " of execution " + round.getExecution().getId());
+        if(log.isLoggable(Level.FINER))
+            log.finer("freezing round " + round.getNumber() + " of execution " + round.getExecution().getId());
         round.freeze();
         communication.send(manager.getOtherAcceptors(),
                 factory.createFreeze(round.getExecution().getId(), round.getNumber()));
@@ -530,8 +533,8 @@ public class Acceptor {
      * @param value Value sent in the message
      */
     private void computeFreeze(Round round) {
-        if(Logger.debug)
-            Logger.println("(Acceptor.computeFreeze) received " +round.countFreeze()+" freezes for round "+round.getNumber());
+        if(log.isLoggable(Level.FINER))
+            log.finer("received " +round.countFreeze()+" freezes for round "+round.getNumber());
         //if there is more than 2f+1 timeouts
         if (round.countFreeze() > manager.quorum2F && !round.isCollected()) {
             round.collect();
@@ -546,8 +549,8 @@ public class Acceptor {
                 //define the leader for the next round: (previous_leader + 1) % N
                 int newLeader = (leaderModule.getLeader(exec.getId(), round.getNumber()) + 1) % conf.getN();
                 leaderModule.addLeaderInfo(exec.getId(), nextRound.getNumber() + 1, newLeader);
-                if(Logger.debug)
-                    Logger.println("(Acceptor.computeFreeze) new leader for the next round of consensus is " + newLeader);
+                if(log.isLoggable(Level.FINER))
+                    log.finer("new leader for the next round of consensus is " + newLeader);
 
                 if (exec.isDecided()) { //Does this process already decided a value?
                     //Even if I already decided, I should move to the next round to prevent
@@ -577,8 +580,8 @@ public class Acceptor {
                             factory.createCollect(exec.getId(), round.getNumber(), clProof));
                 }
             } else {
-                if(Logger.debug)
-                    Logger.println("(Acceptor.computeFreeze) I'm already executing round "+round.getNumber() + 1);
+                if(log.isLoggable(Level.FINER))
+                    log.finer("I'm already executing round "+round.getNumber() + 1);
             }
         }
     }
@@ -600,14 +603,11 @@ public class Acceptor {
      * @param round Round at which the decision is made
      * @param value The decided value (got from WEAK or STRONG messages)
      */
-    private void decide(Round round /*, byte[] value*/) {
-        leaderModule.decided(round.getExecution().getId(),
-                leaderModule.getLeader(round.getExecution().getId(),
-                round.getNumber()));
-
-        round.getTimeoutTask().cancel(false);
-        round.getExecution().decided(round/*, value*/);
-    }
+	private void decide(Round round /* , byte[] value */) {
+		leaderModule.decided(round.getExecution().getId(), leaderModule.getLeader(round.getExecution().getId(), round.getNumber()));
+		round.getTimeoutTask().cancel(false);
+		round.getExecution().decided(round/* , value */);
+	}
 
     /**
      * This class is a data structure for a propose that was accepted

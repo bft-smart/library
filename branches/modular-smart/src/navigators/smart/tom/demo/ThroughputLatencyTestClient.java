@@ -225,7 +225,7 @@ public class ThroughputLatencyTestClient extends TOMSender implements Runnable {
 
 			if ((id != -1) && count == f + 1) {
 				if (num_sends > exec / 2) {
-					this.st.store(receive_instant - last_send_instant);
+					this.st.storeDuration(receive_instant - last_send_instant);
 				}
 
 				count = 0;
@@ -241,6 +241,7 @@ public class ThroughputLatencyTestClient extends TOMSender implements Runnable {
 					long opsPerSec = Math.round(opsPerSec_);
 					if (opsPerSec > max)
 						max = opsPerSec;
+					System.out.println("Reply #ops from "+reply.getSender());
 					System.out.println("(" + myId + "-" + measurementEpoch + ")Time elapsed since epoch start: "
 							+ (timeInterval / 1000000000.0) + " seconds");
 					System.out.println("(" + myId + "-" + measurementEpoch + ")Number of requestes finished since epoch start: " + exec);
@@ -252,7 +253,7 @@ public class ThroughputLatencyTestClient extends TOMSender implements Runnable {
 				initialNumOps[reply.getSender()] = numOps;
 				initialTimestamp[reply.getSender()] = receive_instant;
 
-				if (count == n) {
+				if (count > f+1) {
 					count = 0;
 					this.sm.release();
 				}

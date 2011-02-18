@@ -39,7 +39,7 @@ public class Storage {
         count=0;
     }
     
-    public void store(long value){
+    public void storeDuration(long value){
         if(count < values.length){
             values[count++] = value;
         }
