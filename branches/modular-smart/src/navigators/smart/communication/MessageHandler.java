@@ -20,6 +20,7 @@ package navigators.smart.communication;
 
 import java.io.DataInput;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 import navigators.smart.tom.core.messages.SystemMessage;
 
@@ -39,13 +40,13 @@ public interface MessageHandler<A> {
     /**
      * Deserialises the SystemMessage of the given type
      * @param type The type to indicate the Object to create
-     * @param in The inputstream containing the serialised object
+     * @param in The ByteBuffer containing the serialised object
      * @param result The result of the verification of the message
      * @return The created Object if the type is valid for this handler, null otherwhise
      *
      * @throws ClassNotFoundException If there are Objects seralised within and the class of these objects is not found
      * @throws IOException If something else goes wrong upon deserialisation
      */
-    public SystemMessage deserialise(SystemMessage.Type type, DataInput in, A result) throws ClassNotFoundException,IOException;
+    public SystemMessage deserialise(SystemMessage.Type type, ByteBuffer in, A result) throws ClassNotFoundException,IOException;
 
 }

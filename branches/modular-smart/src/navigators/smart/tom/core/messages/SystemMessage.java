@@ -23,10 +23,11 @@ import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.sun.corba.se.impl.ior.ByteBuffer;
+import navigators.smart.ebawa.messages.Serialisable;
 
 /**
  * This is the super-class for all other kinds of messages created by JBP
@@ -35,7 +36,7 @@ import com.sun.corba.se.impl.ior.ByteBuffer;
  * 
  */
 
-public abstract class SystemMessage  {
+public abstract class SystemMessage implements Serialisable {
 
     public enum Type {
 
@@ -72,12 +73,23 @@ public abstract class SystemMessage  {
      * Creates a new instance of SystemMessage
      * @param type The type id of this message
      * @param in The inputstream containing the serialised object
-     * @throws IOException
+     */
+    public SystemMessage(Type type, ByteBuffer in){
+        this.type = type;
+        in.get();
+        sender = in.getInt();
+    }
+    
+    /**
+     * Creates a new instance of SystemMessage
+     * @param type The type id of this message
+     * @param in The inputstream containing the serialised object
+     * @throws IOException 
      */
     public SystemMessage(Type type, DataInput in) throws IOException{
-        this.type = type;
-        in.readByte();
-        sender = in.readInt();
+    	this.type = type;
+    	in.readByte();
+    	sender = in.readInt();
     }
     
 	/**
@@ -101,17 +113,35 @@ public abstract class SystemMessage  {
     /**
      * this method serialises the contents of this class
      * @param out
+     */
+    public void serialise(ByteBuffer out){
+        out.put(type.type);
+        out.putInt(sender);
+    }
+    
+    /**
+     * this method serialises the contents of this class
+     * @param out
      * @throws IOException
      */
-    protected void serialise(DataOutput out) throws IOException {
-        out.writeByte(type.type);
-        out.writeInt(sender);
+    public void serialise(DataOutput out) throws IOException{
+    	out.writeByte(type.type);
+    	out.writeInt(sender);
     }
 
     public byte[] getBytes() throws IOException{
-        ByteArrayOutputStream baos = new ByteArrayOutputStream(248);
-        DataOutputStream dos = new DataOutputStream(baos);
-        serialise(dos);
-        return baos.toByteArray();
+    	ByteBuffer buf = ByteBuffer.allocate(getMsgSize());
+//        ByteArrayOutputStream baos = new ByteArrayOutputStream(248);
+//        DataOutputStream dos = new DataOutputStream(baos);
+        serialise(buf);
+        return buf.array();
     }
+
+    /**
+     * Returns the messageSize in Bytes that the serialised version of this msg will use.
+     * @return The messagesize in bytes
+     */
+	public int getMsgSize() {
+		return 5;
+	}
 }

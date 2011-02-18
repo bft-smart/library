@@ -20,11 +20,12 @@ package navigators.smart.communication.server;
 
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
-import java.io.DataOutputStream;
 import java.io.IOException;
-import java.net.Socket;
+import java.net.InetSocketAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
+import java.nio.ByteBuffer;
+import java.nio.channels.SocketChannel;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -55,9 +56,9 @@ public class ServerConnection {
     private static final long POOL_TIME = 10000;
     //private static final int SEND_QUEUE_SIZE = 50;
     private TOMConfiguration conf;
-    private Socket socket;
-    private DataOutputStream socketOutStream = null;
-    private DataInputStream socketInStream = null;
+    private SocketChannel socketchannel;
+//    private DataOutputStream socketOutStream = null;
+//    private DataInputStream socketInStream = null;
     private int remoteId;
     private boolean useSenderThread;
     protected LinkedBlockingQueue<byte[]> outQueue;// = new LinkedBlockingQueue<byte[]>(SEND_QUEUE_SIZE);
@@ -75,14 +76,14 @@ public class ServerConnection {
 	private final Map<SystemMessage.Type,MessageHandler> msgHandlers;
 
 	@SuppressWarnings("unchecked")
-	public ServerConnection(TOMConfiguration conf, Socket socket, int remoteId,
+	public ServerConnection(TOMConfiguration conf, SocketChannel socket, int remoteId,
 			LinkedBlockingQueue<SystemMessage> inQueue,
 			Map<SystemMessage.Type, MessageHandler> msgHandlers,
 			PTPMessageVerifier ptpverifier,
 			GlobalMessageVerifier<SystemMessage> verifier, CountDownLatch latch) {
         this.msgHandlers = msgHandlers;
         this.conf = conf;
-        this.socket = socket;
+        this.socketchannel = socket;
         this.remoteId = remoteId;
         this.inQueue = inQueue;
         this.outQueue = new LinkedBlockingQueue<byte[]>(this.conf.getOutQueueSize());
@@ -92,9 +93,7 @@ public class ServerConnection {
         if (conf.getProcessId() > remoteId) {
             //higher process ids connect to lower ones
             try {
-                this.socket = new Socket(conf.getHost(remoteId), conf.getPort(remoteId));
-                ServersCommunicationLayer.setSocketOptions(this.socket);
-                new DataOutputStream(this.socket.getOutputStream()).writeInt(conf.getProcessId());
+                initSocketChannel();
                 if(conf.getUseMACs() == 1){
                     ptpverifier.authenticateAndEstablishAuthKey();
                 }
@@ -106,14 +105,14 @@ public class ServerConnection {
         }
         //else I have to wait a connection from the remote server
 
-        if (this.socket != null) {
-            try {
+        if (this.socketchannel != null) {
+//            try {
             	latch.countDown(); // got connection, inform comlayer
-                socketOutStream = new DataOutputStream(this.socket.getOutputStream());
-                socketInStream = new DataInputStream(this.socket.getInputStream());
-            } catch (IOException ex) {
-                log.log(Level.SEVERE, null, ex);
-            }
+//                socketOutStream = new DataOutputStream(this.socket.getOutputStream());
+//                socketInStream = new DataInputStream(this.socket.getInputStream());
+//            } catch (IOException ex) {
+//                log.log(Level.SEVERE, null, ex);
+//            }
         }
 
         this.useSenderThread = conf.isUseSenderThread();
@@ -163,12 +162,15 @@ public class ServerConnection {
     private final void sendBytes(byte[] messageData) {
         int i=0;
         do {            
-            if (socket != null && socketOutStream != null) {
+            if (socketchannel != null /*&& socketOutStream != null*/) {
                 try {
-                    socketOutStream.writeInt(messageData.length);
-                    socketOutStream.write(messageData);
+                	ByteBuffer intbuf = ByteBuffer.allocate(4);
+                	intbuf.putInt(messageData.length);
+                	intbuf.flip();
+                    socketchannel.write(intbuf);
+                    socketchannel.write(ByteBuffer.wrap(messageData));
                     if (conf.getUseMACs()==1) {
-                        socketOutStream.write(ptpverifier.generateHash(messageData));
+                        socketchannel.write(ByteBuffer.wrap(ptpverifier.generateHash(messageData)));
                     }
                     return;
                 } catch (IOException ex) {
@@ -191,17 +193,15 @@ public class ServerConnection {
      * @param newSocket socket created when this server accepted the connection
      * (only used if processId is less than remoteId)
      */
-    protected void reconnect(Socket newSocket) {
+    protected void reconnect(SocketChannel newSocket) {
         connectLock.lock();
 
-        if (socket == null || !socket.isConnected()) {
+        if (socketchannel == null || !socketchannel.isConnected()) {
             try {
                 if (conf.getProcessId() > remoteId) {
-                    socket = new Socket(conf.getHost(remoteId), conf.getPort(remoteId));
-                    ServersCommunicationLayer.setSocketOptions(socket);
-                    new DataOutputStream(socket.getOutputStream()).writeInt(conf.getProcessId());
+                    initSocketChannel();
                 } else {
-                    socket = newSocket;
+                    socketchannel = newSocket;
                 }
             } catch (UnknownHostException ex) {
                 log.log(Level.SEVERE, "Error connecting", ex);
@@ -209,16 +209,16 @@ public class ServerConnection {
 //                log.log(Level.SEVERE, "Error connecting", ex); ignore and retry
             }
 
-            if (socket != null) {
+            if (socketchannel != null) {
                 if(log.isLoggable(Level.INFO)){
                   log.fine("Reconnected to "+remoteId);
                 }
-                try {
-                    socketOutStream = new DataOutputStream(socket.getOutputStream());
-                    socketInStream = new DataInputStream(socket.getInputStream());
-                } catch (IOException ex) {
-                    log.log(Level.SEVERE, null, ex);
-                }
+//                try {
+//                    socketOutStream = new DataOutputStream(socket.getOutputStream());
+//                    socketInStream = new DataInputStream(socket.getInputStream());
+//                } catch (IOException ex) {
+//                    log.log(Level.SEVERE, null, ex);
+//                }
             }
             if(conf.getUseMACs()==1){
                 ptpverifier.authenticateAndEstablishAuthKey();
@@ -230,17 +230,27 @@ public class ServerConnection {
 
    
 
-    private void closeSocket() {
-        if (socket != null) {
+    private void initSocketChannel() throws IOException {
+    	this.socketchannel = SocketChannel.open(new InetSocketAddress(conf.getHost(remoteId), conf.getPort(remoteId)));
+    	socketchannel.configureBlocking(true);
+        ServersCommunicationLayer.setSocketOptions(this.socketchannel.socket());
+        ByteBuffer out = ByteBuffer.allocate(4);
+        out.putInt(conf.getProcessId());
+        out.flip();
+        socketchannel.write(out);
+	}
+
+	private void closeSocket() {
+        if (socketchannel != null) {
             try {
-                socket.close();
+                socketchannel.close();
             } catch (IOException ex) {
                 log.log(Level.SEVERE, null, ex);
             }
 
-            socket = null;
-            socketOutStream = null;
-            socketInStream = null;
+            socketchannel = null;
+//            socketOutStream = null;
+//            socketInStream = null;
         }
     }
 
@@ -303,36 +313,36 @@ public class ServerConnection {
         public void run() {
 
             while (doWork) {
-                if (socket != null && socketInStream != null) {
+                if (socketchannel != null /*&& socketInStream != null*/) {
                     try {
                         //read data length
-                        int dataLength = socketInStream.readInt();
+                    	ByteBuffer buf = ByteBuffer.allocate(4);
+                    	socketchannel.read(buf);
+                    	buf.flip();
+                        int dataLength = buf.getInt();
 
                         byte[] data = new byte[dataLength];
+                        buf = ByteBuffer.wrap(data);
 
                         //read data
-                        int read = 0;
-                        do {
-                            read += socketInStream.read(data, read, dataLength - read);
-                        } while (read < dataLength);
+                        socketchannel.read(buf);
+                        buf.flip();
 
                         //read mac
                         Object verificationresult = null;
                         if (conf.getUseMACs()==1){
-                            read = 0;
-                            do {
-                                read += socketInStream.read(receivedHash, read, receivedHash.length - read);
-                            } while (read < receivedHash.length);
-
+                            socketchannel.read(ByteBuffer.wrap(receivedHash));
                             verificationresult = ptpverifier.verifyHash(data,receivedHash);
                         }
                         if(conf.isUseGlobalAuth()){
                         	verificationresult = globalverifier.verifyHash(data);
                         }
                         if (verificationresult != null || conf.getUseMACs() == 0 && !conf.isUseGlobalAuth()) {
-                        	DataInputStream in = new DataInputStream(new ByteArrayInputStream(data));
                         	SystemMessage.Type type = SystemMessage.Type.getByByte(data[0]);
-                        	SystemMessage sm = msgHandlers.get(type).deserialise(type,in, verificationresult);
+                        	assert(msgHandlers.containsKey(type));
+//                        	System.out.println(msgHandlers);
+//                        	System.out.println(msgHandlers.get(type));
+                        	SystemMessage sm = msgHandlers.get(type).deserialise(type,buf, verificationresult);
                         	
                         	if (sm.getSender() == remoteId) {
                         		if(!inQueue.offer(sm)) 

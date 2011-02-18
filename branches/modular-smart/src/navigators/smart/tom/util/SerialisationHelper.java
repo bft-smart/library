@@ -12,6 +12,8 @@ import java.io.DataOutput;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.nio.ByteBuffer;
+
 
 /**
  *
@@ -23,6 +25,11 @@ public class SerialisationHelper {
         out.writeInt(array.length);
         out.write(array);
     }
+    
+    public static void writeByteArray(byte[] array, ByteBuffer out) {
+    	out.putInt(array.length);
+    	out.put(array);
+    }
 
     public static byte[] readByteArray (DataInput in) throws IOException{
         int len = in.readInt();
@@ -31,9 +38,21 @@ public class SerialisationHelper {
         	in.readFully(ret);
         	return ret;
         } else {
-        	return null;
+        	return new byte[0];
         }
         	
+    }
+    
+    public static byte[] readByteArray (ByteBuffer in) {
+    	int len = in.getInt();
+    	if(len > 0){
+    		byte[] ret = new byte[len];
+    		in.get(ret);
+    		return ret;
+    	} else {
+    		return new byte[0];
+    	}
+    	
     }
 
     public static void writeObject(Object content, DataOutput out) throws IOException {

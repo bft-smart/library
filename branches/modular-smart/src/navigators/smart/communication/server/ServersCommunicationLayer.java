@@ -20,13 +20,16 @@ package navigators.smart.communication.server;
 
 import java.io.DataInputStream;
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
+import java.nio.ByteBuffer;
+import java.nio.channels.ServerSocketChannel;
+import java.nio.channels.SocketChannel;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -44,7 +47,7 @@ public class ServersCommunicationLayer extends Thread {
 	private TOMConfiguration conf;
 	private LinkedBlockingQueue<SystemMessage> inQueue;
 	private ServerConnection[] connections;
-	private ServerSocket serverSocket;
+	private ServerSocketChannel serverSocket;
 	private int me;
 	private boolean doWork = true;
 	private final Map<SystemMessage.Type, MessageHandler> msgHandlers;
@@ -80,9 +83,10 @@ public class ServersCommunicationLayer extends Thread {
 			// }
 		}
 
-		serverSocket = new ServerSocket(conf.getPort(conf.getProcessId()));
-		serverSocket.setSoTimeout(10000);
-		serverSocket.setReuseAddress(true);
+		serverSocket = ServerSocketChannel.open();
+		serverSocket.socket().setSoTimeout(10000);
+		serverSocket.socket().setReuseAddress(true);
+		serverSocket.socket().bind(new InetSocketAddress(conf.getPort(conf.getProcessId())));
 
 		start();
 		latch.await(); // wait for all connections on startup
@@ -127,10 +131,13 @@ public class ServersCommunicationLayer extends Thread {
 	public void run() {
 		while (doWork) {
 			try {
-				Socket newSocket = serverSocket.accept();
-				ServersCommunicationLayer.setSocketOptions(newSocket);
-				int remoteId = new DataInputStream(newSocket.getInputStream())
-						.readInt();
+				SocketChannel newSocketChannel = serverSocket.accept();
+				newSocketChannel.configureBlocking(true);
+				ServersCommunicationLayer.setSocketOptions(newSocketChannel.socket());
+				ByteBuffer buf = ByteBuffer.allocate(4);
+				newSocketChannel.read(buf);
+				buf.flip();
+				int remoteId = buf.getInt();
 				if (remoteId >= 0 && remoteId < connections.length) {
 					if (connections[remoteId] == null) {
 						// first time that this connection is being established
@@ -140,14 +147,14 @@ public class ServersCommunicationLayer extends Thread {
 									.generateMessageVerifier();
 						}
 						connections[remoteId] = new ServerConnection(conf,
-								newSocket, remoteId, inQueue, msgHandlers,
+								newSocketChannel, remoteId, inQueue, msgHandlers,
 								verifier, globalverifier, latch);
 					} else {
 						// reconnection
-						connections[remoteId].reconnect(newSocket);
+						connections[remoteId].reconnect(newSocketChannel);
 					}
 				} else {
-					newSocket.close();
+					newSocketChannel.close();
 				}
 			} catch (SocketTimeoutException ex) {
 				// timeout on the accept... do nothing
