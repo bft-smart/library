@@ -37,7 +37,7 @@ public class Test {
     @SuppressWarnings("rawtypes")
 	public static void main(String[] args) throws Exception {
 
-        TOMConfiguration conf = new TOMConfiguration(Integer.parseInt(args[0]));
+        TOMConfiguration conf = new TOMConfiguration(Integer.parseInt(args[0]),"./config");
         LinkedBlockingQueue<SystemMessage> inQueue = new LinkedBlockingQueue<SystemMessage>();
         Map<SystemMessage.Type,MessageHandler> msgHandlers = new HashMap<SystemMessage.Type, MessageHandler>();
 

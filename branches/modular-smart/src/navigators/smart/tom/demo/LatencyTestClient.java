@@ -59,7 +59,7 @@ public class LatencyTestClient extends TOMSender {
         this.currentId = id;
         this.readOnly = readOnly;
 
-        TOMConfiguration conf = new TOMConfiguration(id);
+        TOMConfiguration conf = new TOMConfiguration(id,"./config");
         this.f = conf.getF();
 //        this.n = conf.getN();
         this.interval = interval;

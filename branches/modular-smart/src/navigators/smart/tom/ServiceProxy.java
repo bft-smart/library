@@ -52,7 +52,7 @@ public class ServiceProxy extends TOMSender {
      * @param id Process id for this client
      */
     public ServiceProxy(int id) {
-        TOMConfiguration conf = new TOMConfiguration(id);
+        TOMConfiguration conf = new TOMConfiguration(id,"./config");
         init(conf);
     }
 

@@ -35,7 +35,7 @@ public class AllinOneTest {
             new ThroughputLatencyTestServer(3,1000,10);
 //            Thread.sleep(5000);
              
-            TOMConfiguration conf1 = new TOMConfiguration(1001);
+            TOMConfiguration conf1 = new TOMConfiguration(1001,"config");
             new ThroughputTestClient(1001, 10000,
                 1, 1, conf1).run();
         } catch (IOException ex) {

@@ -285,7 +285,7 @@ public class ThroughputLatencyTestClient extends TOMSender implements Runnable {
         Thread[] t = new Thread[numThreads];
         
         for (int i=0; i<numThreads; i++){
-            TOMConfiguration conf1 = new TOMConfiguration(startId);
+            TOMConfiguration conf1 = new TOMConfiguration(startId,"config");
 
             t[i] = new Thread(new ThroughputLatencyTestClient(startId, numMsgs,
                 argSize, interval, conf1,multicast));
