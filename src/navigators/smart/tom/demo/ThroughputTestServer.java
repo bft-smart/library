@@ -18,6 +18,7 @@
 
 package navigators.smart.tom.demo;
 
+import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -37,52 +38,17 @@ public class ThroughputTestServer extends ServiceReplica {
     private long lastDecideTimeInstant;
     private long max=0;
     
-    public ThroughputTestServer(int id, int interval) {
+    public ThroughputTestServer(int id, int interval) throws IOException {
         super(id);
         this.id = id;
         this.interval = interval;
     }
-
-    
-
-    public void run(){
-
-        //create the configuration object
-
-        TOMConfiguration conf = new TOMConfiguration(id);
-
-        try {
-
-            //create the communication system
-
-            cs = new ServerCommunicationSystem(conf);
-
-        } catch (Exception ex) {
-
-            Logger.getLogger(ThroughputTestServer.class.getName()).log(Level.SEVERE, null, ex);
-
-            throw new RuntimeException("Unable to build a communication system.");
-
-        }
-
-        //build the TOM server stack
-
-        this.init(cs,conf);
-        
-        /**IST OE CODIGO DO JOAO, PARA TENTAR RESOLVER UM BUG */
-        cs.start();
-        /******************************************************/
-    }
-
-    
 
     public void receiveOrderedMessage(TOMMessage msg){
 
         long receiveInstant =  System.currentTimeMillis();          
 
         numDecides++;
-
-
 
         if (numDecides == 1) {
 
@@ -121,10 +87,11 @@ public class ThroughputTestServer extends ServiceReplica {
             System.exit(-1);
 
         }
-
-
-
+        try {
         new ThroughputTestServer(Integer.parseInt(args[0]),Integer.parseInt(args[1])).run();
+        } catch (IOException ex) {
+            Logger.getLogger(ThroughputTestServer.class.getName()).log(Level.SEVERE, null, ex);
+        }
 
     }
 
@@ -136,7 +103,7 @@ public class ThroughputTestServer extends ServiceReplica {
 
     }
 
-    public void receiveMessage(TOMMessage msg) {
+    public void receiveUnorderedMessage(TOMMessage msg) {
         throw new UnsupportedOperationException("Not supported yet.");
     }
 

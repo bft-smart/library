@@ -18,6 +18,7 @@
 
 package navigators.smart.tom;
 
+import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -40,18 +41,31 @@ public abstract class TOMReceiver implements TOMRequestReceiver {
 
     private boolean tomStackCreated = false;
 
-    protected ConsensusService service;
+    protected final TOMConfiguration conf;
+
+    protected ServerCommunicationSystem cs = null; // Server side comunication system
+
+    public TOMReceiver( TOMConfiguration conf) throws IOException {
+        this.conf = conf;
+        init(conf);
+    }
+
+
     
     /**
      * This method initializes the object
      * 
-     * @param cs Server side communication System
+     * TODO merge with ServiceReplica
+     *
      * @param conf Total order messaging configuration
+     * @throws IOException Is thrown when the init of the Com System fails
      */
-    public void init(ServerCommunicationSystem cs, TOMConfiguration conf) {
+    protected void init(TOMConfiguration conf) throws IOException {
         if (tomStackCreated) { // if this object was already initialized, don't do it again
             return;
         }
+
+        cs = getCommunicationSystem();
 
         TOMLayer tomLayer = new TOMLayer( this, cs, conf);
 
@@ -59,15 +73,20 @@ public abstract class TOMReceiver implements TOMRequestReceiver {
         cs.addMessageHandler(SystemMessage.Type.FORWARDED,msghndlr);
         cs.addMessageHandler(SystemMessage.Type.SM_MSG,msghndlr);
         cs.setRequestReceiver(tomLayer);
+        cs.start();
 
         ConsensusServiceFactory factory = createFactory(cs, conf);
 
-        service = factory.newInstance(tomLayer);
+        ConsensusService service = factory.newInstance(tomLayer);
         tomLayer.setConsensusService(service); //set backlink
-
+        service.start();
         Runtime.getRuntime().addShutdownHook(new ShutdownThread(cs,service,tomLayer));
 
         tomStackCreated = true;
+    }
+
+    protected ServerCommunicationSystem getCommunicationSystem() throws IOException{
+        return new ServerCommunicationSystem(conf);
     }
 
     @SuppressWarnings("unchecked")

@@ -18,6 +18,7 @@
 
 package navigators.smart.communication;
 
+import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Hashtable;
 import java.util.Map;
@@ -70,17 +71,17 @@ import navigators.smart.tom.util.TOMConfiguration;
     /**
      * Creates a new instance of ServerCommunicationSystem
      * @param conf The configuration object containing the conf
-     * @throws Exception
+     * @throws IOException
      */
     @SuppressWarnings({ "rawtypes", "unchecked" })
-	public ServerCommunicationSystem(TOMConfiguration conf) throws Exception {
+	public ServerCommunicationSystem(TOMConfiguration conf) throws IOException  {
         super("Server CS");
 
         inQueue = new ArrayBlockingQueue<SystemMessage>(conf.getInQueueSize());
         
         //create a new conf, with updated port number for servers
         TOMConfiguration serversConf = new TOMConfiguration(conf.getProcessId(),
-                Configuration.getHomeDir(), "hosts.config");
+                Configuration.getHomeDir());
 
         serversConf.increasePortNumber();
 
@@ -183,24 +184,6 @@ import navigators.smart.tom.util.TOMConfiguration;
             serversConn.send(targets, sm);
         }
     }
-
-//    /**
-//     * Used to send messages.
-//     *
-//     * @param targets the target receivers of the message
-//     * @param sm the message to be sent
-//     * @param serializeClassHeaders to serialize java class headers or not,
-//     * in case of sm not instanceof TOMMessage this does nothing.
-//     */
-//    public void send(int[] targets, SystemMessage sm, boolean serializeClassHeaders) {
-//        if(sm instanceof TOMMessage) {
-//            //Logger.println("(ServerCommunicationSystem.send) C: "+sm);
-//            clientsConn.send(targets, (TOMMessage)sm, serializeClassHeaders);
-//        } else {
-//            //Logger.println("(ServerCommunicationSystem.send) S: "+sm);
-//            serversConn.send(targets, sm);
-//        }
-//    }
 
     @Override
     public String toString() {

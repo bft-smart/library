@@ -18,6 +18,7 @@
 
 package navigators.smart.tom.demo;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -32,7 +33,7 @@ import navigators.smart.tom.util.TOMConfiguration;
 public class ThroughputLatencyTestServer extends TOMReceiver {
     
     private ServerCommunicationSystem cs;
-    private int id;
+    private Integer id;
     private int interval;
     private long numDecides=0;
     private long lastDecideTimeInstant;
@@ -47,7 +48,8 @@ public class ThroughputLatencyTestServer extends TOMReceiver {
     Storage totalLatencySt2;
     Storage batchSt2;
     
-    public ThroughputLatencyTestServer(int id, int interval, int averageIterations) {
+    public ThroughputLatencyTestServer(Integer id, int interval, int averageIterations) throws IOException {
+        super(new TOMConfiguration(id, "./config"));
         this.id = id;
         this.interval = interval;
         this.totalOps = 0;
@@ -58,29 +60,31 @@ public class ThroughputLatencyTestServer extends TOMReceiver {
         this.totalLatencySt2 = new Storage(averageIterations);
         this.batchSt1 = new Storage(interval);
         this.batchSt2 = new Storage(averageIterations);
+        System.out.println("#ThroughputLatencyTestServer throughput interval= "+interval+ " msgs");
+        System.out.println("#ThroughputLatencyTestServer average throughput interval= "+averageIterations+ " throughput intervals ");
     }
     
-    public void run(){
-        //create the configuration object
-        TOMConfiguration conf = new TOMConfiguration(id);
-        try {
-            //create the communication system
-            cs = new ServerCommunicationSystem(conf);
-            System.out.println("#ThroughputLatencyTestServer throughput interval= "+interval+ " msgs");
-            System.out.println("#ThroughputLatencyTestServer average throughput interval= "+averageIterations+ " throughput intervals ");
-//            startTimeInstant = System.currentTimeMillis();
-        } catch (Exception ex) {
-            Logger.getLogger(ThroughputLatencyTestServer.class.getName()).log(Level.SEVERE, null, ex);
-            throw new RuntimeException("Unable to build a communication system.");
-        }
-        //build the TOM server stack
-        this.init(cs,conf);
-        
-        /**IST OE CODIGO DO JOAO, PARA TENTAR RESOLVER UM BUG */
-        cs.start();
-        service.start();
-        /******************************************************/
-    }
+//    public void run(){
+//        //create the configuration object
+//        TOMConfiguration conf = new TOMConfiguration(id,"./config");
+//        try {
+//            //create the communication system
+//            cs = new ServerCommunicationSystem(conf);
+//            System.out.println("#ThroughputLatencyTestServer throughput interval= "+interval+ " msgs");
+//            System.out.println("#ThroughputLatencyTestServer average throughput interval= "+averageIterations+ " throughput intervals ");
+////            startTimeInstant = System.currentTimeMillis();
+//        } catch (Exception ex) {
+//            Logger.getLogger(ThroughputLatencyTestServer.class.getName()).log(Level.SEVERE, null, ex);
+//            throw new RuntimeException("Unable to build a communication system.");
+//        }
+//        //build the TOM server stack
+//        this.init(cs,conf);
+//
+//        /**IST OE CODIGO DO JOAO, PARA TENTAR RESOLVER UM BUG */
+//        cs.start();
+//        service.start();
+//        /******************************************************/
+//    }
     
     public void receiveOrderedMessage(TOMMessage msg){
         long receiveInstant =  System.currentTimeMillis();          
@@ -159,12 +163,15 @@ public class ThroughputLatencyTestServer extends TOMReceiver {
     }
     
     public static void main(String[] args){
+        try {
         if(args.length < 3) {
             System.out.println("Use: java ThroughputLatencyTestServer <processId> <throughput/latency measurement interval (in messages)> <average throughput interval (number of measurement intervals)>");
             System.exit(-1);
         }
-
-        new ThroughputLatencyTestServer(Integer.parseInt(args[0]),Integer.parseInt(args[1]),Integer.parseInt(args[2])).run();
+            new ThroughputLatencyTestServer(new Integer(args[0]), Integer.parseInt(args[1]), Integer.parseInt(args[2]));
+        } catch (IOException ex) {
+            Logger.getLogger(ThroughputLatencyTestServer.class.getName()).log(Level.SEVERE, null, ex);
+        }
     }
     
     public byte[] getState() {
@@ -172,7 +179,7 @@ public class ThroughputLatencyTestServer extends TOMReceiver {
     }
 
     public void setState(byte[] state) {
-
+    	//unused
     }
 
     public void receiveMessage(TOMMessage msg) {
