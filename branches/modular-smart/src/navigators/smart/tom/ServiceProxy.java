@@ -18,9 +18,9 @@
 
 package navigators.smart.tom;
 
-//import br.ufsc.das.communication.SimpleCommunicationSystem;
 import java.util.Arrays;
-import java.util.concurrent.Semaphore;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import navigators.smart.communication.client.CommunicationSystemClientSideFactory;
 import navigators.smart.tom.core.messages.TOMMessage;
@@ -38,10 +38,8 @@ public class ServiceProxy extends TOMSender {
     private int n; // Number of total replicas in the system
     private int f; // Number of maximum faulty replicas assumed to occur
 
-    // Semaphores used to render this object thread-safe
-    // TODO: o mutex nao poderia ser antes um reentrantlock, em vez de um semaforo?
-    private Semaphore mutex = new Semaphore(1);
-    private Semaphore sm = new Semaphore(0);
+
+    private final Object sync = new Object();
 
     private int reqId = -1; // request id
     private TOMMessage replies[] = null; // Replies from replicas are stored here
@@ -58,17 +56,6 @@ public class ServiceProxy extends TOMSender {
         init(conf);
     }
 
-    /**
-     * Constructor
-     * 
-     * @param id Process id for this client
-     * @param configHome Configuration directory for JBP
-     * TODO: E mesmo a directoria do JBP, ou de alguma biblioteca de terceiros?
-     */
-    public ServiceProxy(int id, String configHome) {
-        TOMConfiguration conf = new TOMConfiguration(id,configHome);
-        init(conf);
-    }
 
     // This method initializes the object
     private void init(TOMConfiguration conf) {
@@ -101,31 +88,20 @@ public class ServiceProxy extends TOMSender {
 
         // Ahead lies a critical section.
         // This ensures the thread-safety by means of a semaphore
+        synchronized(sync){
         try{
-            this.mutex.acquire();
-        }catch(Exception e){
-            e.printStackTrace();
-        }
-
         // Discard previous replies
         Arrays.fill(replies, null);
         response = null;
-
         // Send the request to the replicas, and get its ID
 //        doTOMulticast(request,readOnly);
         doTOUnicast(request,0, readOnly);
         reqId = getLastSequenceNumber();
+                sync.wait();
+            } catch (InterruptedException ex) {
+                Logger.getLogger(ServiceProxy.class.getName()).log(Level.SEVERE, null, ex);
+            }
 
-        // Critical section ends here. The semaphore can be released
-        this.mutex.release();
-
-		// This instruction blocks the thread, until a response is obtained.
-		// The thread will be unblocked when the method replyReceived is invoked
-		// by the client side communication system
-        try {
-            this.sm.acquire();
-        } catch (InterruptedException ex) {
-            ex.printStackTrace();
         }
 
         return response; // return the response
@@ -137,6 +113,7 @@ public class ServiceProxy extends TOMSender {
      * @param reply The reply delivered by the client side comunication system
      */
     public void replyReceived(TOMMessage reply) {
+        synchronized (sync) {
         int sender = reply.getSender();
         if(sender >= n) { //ignore messages that don't come from replicas
             return;
@@ -144,12 +121,6 @@ public class ServiceProxy extends TOMSender {
 
         // Ahead lies a critical section.
         // This ensures the thread-safety by means of a semaphore
-        try{
-            this.mutex.acquire();
-        }catch(Exception e){
-            e.printStackTrace();
-        }
-
         if(reply.getSequence() == reqId) { // Is this a reply for the last request sent?
             replies[sender] = reply;
 
@@ -174,15 +145,15 @@ public class ServiceProxy extends TOMSender {
                     if (sameContent >= f + 1) {
                         response = content;
                         reqId = -1;
-                        this.sm.release(); // unblocks the thread that is executing the "invoke" method,
+                            sync.notify(); // unblocks the thread that is executing the "invoke" method,
                                            // so it can deliver the reply to the application
                         break;
                     }
                 }
             }
         }
+        }
 
         // Critical section ends here. The semaphore can be released
-        this.mutex.release();
     }
 }
