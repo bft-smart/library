@@ -44,7 +44,7 @@ public class TOMLayerTest {
 	public void setUp() throws Exception {
 		recv = mock(TOMReceiver.class);
 		cs = mock(ServerCommunicationSystem.class);
-		conf  = new TOMConfiguration(0);
+		conf  = new TOMConfiguration(0,"config");
 		tl = new TOMLayer(recv, cs, conf);
 		
 	}

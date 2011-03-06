@@ -156,7 +156,7 @@ public class ThroughputTestClient extends TOMSender implements Runnable {
         }
         int numThreads = new Integer(args[4]);
         Thread[] t = new Thread[numThreads];
-        TOMConfiguration conf = new TOMConfiguration(id);
+        TOMConfiguration conf = new TOMConfiguration(id,"./config");
         for (int i=0; i<numThreads; i++){
             TOMConfiguration conf1 = new TOMConfiguration(conf,1000*i+id);
             t[i] = new Thread(new ThroughputTestClient(id+i, new Integer(args[1]),

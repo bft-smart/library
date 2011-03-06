@@ -81,19 +81,14 @@ public class TOMConfiguration extends Configuration {
         this.signatureSize = conf.signatureSize;
     }
 
-    /** Creates a new instance of TOMConfiguration */
-    public TOMConfiguration(int processId) {
-        super(processId);
-    }
 
-    /** Creates a new instance of TOMConfiguration */
-    public TOMConfiguration(int processId, String configHome) {
+    /** Creates a new instance of TOMConfiguration
+     * @param processId The id of this process
+     * @param configHome The location of the necessary config files
+     */
+    @SuppressWarnings("boxing")
+	public TOMConfiguration(Integer processId, String configHome) {
         super(processId, configHome);
-    }
-
-    /** Creates a new instance of TOMConfiguration */
-    public TOMConfiguration(int processId, String configHome, String hostsFileName) {
-        super(processId, configHome, hostsFileName);
     }
 
     @Override
@@ -294,6 +289,10 @@ public class TOMConfiguration extends Configuration {
         return replyVerificationTime;
     }
 
+    /**
+     * Returns the number of servers that are configured.
+     * @return The number of servers.
+     */
     public int getN() {
         return n;
     }

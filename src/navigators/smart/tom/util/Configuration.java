@@ -33,7 +33,7 @@ import javax.crypto.Mac;
  */
 public class Configuration {
     
-    protected int processId;
+    protected Integer processId;
     protected boolean authentication;
     protected boolean channelsBlocking;
     protected BigInteger DH_P;
@@ -46,7 +46,7 @@ public class Configuration {
     private int hmacSize = 160;
 
     protected static String configHome = "";
-    protected static String hostsFileName = "";
+    protected final static String hostsFileName = "hosts.config";
 
     private String factoryclass = "navigators.smart.paxosatwar.PaxosAtWarServiceFactory";
 
@@ -56,7 +56,7 @@ public class Configuration {
     private String globalverifierclass = "navigators.smart.communication.USIGFactory";
 
 
-    public Configuration(Configuration conf, int processId){
+    public Configuration(Configuration conf, Integer processId){
         this.processId = processId;
         this.authentication = conf.authentication;
         this.channelsBlocking = conf.channelsBlocking;
@@ -70,25 +70,12 @@ public class Configuration {
         this.ptpverifierclass = conf.ptpverifierclass;
     }
 
-    
-    public Configuration(int procId){
-        processId = procId;
-        init();
-    }
-    
-    public Configuration(int processId, String configHome){
+     public Configuration(Integer processId, String configHome){
         this.processId = processId;
         Configuration.configHome = configHome;
         init();
     }
 
-     public Configuration(int processId, String configHome, String hostsFileName){
-        this.processId = processId;
-        Configuration.configHome = configHome;
-        Configuration.hostsFileName = hostsFileName;
-        init();
-    }
-    
     public static String getHomeDir(){
        return configHome;
     }
@@ -225,11 +212,11 @@ public class Configuration {
      * Returns the id of this smart instance
      * @return The id of this instance
      */
-    public int getProcessId(){
+    public Integer getProcessId(){
         return processId;
     }
 
-    public final void setProcessId(int processId){
+    public final void setProcessId(Integer processId){
         this.processId = processId;
     }
     
