@@ -243,6 +243,7 @@ public class Acceptor {
                 //br.ufsc.das.util.//Logger.println("Descartando o consenso "+eid);
                 if (requesthandler.getInExec() == eid) {
                     requesthandler.setInExec(-1);
+                    System.out.println("I think we should process the out of context messages at this point");
                 }
                 Execution exec = manager.removeExecution(eid);
                 if (exec != null) {

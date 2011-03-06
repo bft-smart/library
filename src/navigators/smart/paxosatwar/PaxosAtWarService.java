@@ -52,8 +52,6 @@ public class PaxosAtWarService implements ConsensusService{
     /** Handler for PaWMessages*/
 	private PaWMessageHandler<?> msghandler;
 
-    private final OutOfContextMessageThread ot;
-
     /**
      * Creates a new PaxosAtWar instance with the given modules that handle
      * several internal tasks
@@ -73,7 +71,6 @@ public class PaxosAtWarService implements ConsensusService{
             // Create requests timers manager (a thread)
             this.requestsTimer = new RequestsTimer(manager.getRequestHandler(), manager.getTOMLayer().getConf().getRequestTimeout());
         }
-        this.ot = new OutOfContextMessageThread(execmng);
     }
 
     public void decide(int execId, int batchsize, byte[] value) {
@@ -132,8 +129,6 @@ public class PaxosAtWarService implements ConsensusService{
         //deliver the state to executionmanager
         execmng.deliverState(state);
         
-        //unlock outofcontextlock
-        ot.outOfContextUnlock();
     }
 
     /**
@@ -145,7 +140,6 @@ public class PaxosAtWarService implements ConsensusService{
     }
 
     public void startDeliverState() {
-           ot.outOfContextLock();
 
     }
 
@@ -155,7 +149,6 @@ public class PaxosAtWarService implements ConsensusService{
 
 	@Override
 	public void start() {
-		ot.start();
 	}
 
 	@Override

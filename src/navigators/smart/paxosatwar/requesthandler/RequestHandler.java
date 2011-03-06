@@ -602,4 +602,24 @@ public class RequestHandler extends Thread {
         haveMessages.signal();
         messagesLock.unlock();
     }
+
+    /* ISTO SAO MAIS COISAS DO JOAO, PARA RETIRAR A THREAD OUTOFCONTEXT */
+    public void processOutOfContext() {
+
+        Execution execution = null;
+
+        while (true) {
+
+            long nextExecution = getLastExec() + 1;
+            if (execManager.thereArePendentMessages(nextExecution)) {
+                System.out.println("Estou a processar mensagens de out of context!");
+
+                Logger.println("(TOMLayer.processOutOfContext) starting processing out of context messages for consensus " + nextExecution);
+                execution = execManager.getExecution(nextExecution);
+                Logger.println("(TOMLayer.processOutOfContext) finished processing out fo context messages for consensus " + nextExecution);
+            }
+            else break;
+        }
+    }
+    /********************************************************************/
 }
