@@ -22,13 +22,14 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.nio.ByteBuffer;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import navigators.smart.statemanagment.SMMessage;
 import navigators.smart.tom.core.TOMLayer;
 import navigators.smart.tom.core.messages.SystemMessage;
 import navigators.smart.tom.core.messages.TOMMessage;
 import navigators.smart.tom.core.timer.messages.ForwardedMessage;
-import navigators.smart.tom.util.Logger;
 import navigators.smart.tom.util.TOMUtil;
 
 
@@ -37,6 +38,8 @@ import navigators.smart.tom.util.TOMUtil;
  * @author Christian Spann <christian.spann at uni-ulm.de>
  */
 public class TOMMessageHandler implements MessageHandler<SystemMessage,byte[]> {
+
+    private final static Logger log = Logger.getLogger(TOMMessageHandler.class.getCanonicalName());
 
     private final TOMLayer tomLayer;
    
@@ -48,12 +51,13 @@ public class TOMMessageHandler implements MessageHandler<SystemMessage,byte[]> {
     public void processData(SystemMessage sm) {
        if (sm instanceof ForwardedMessage) {
             TOMMessage request = ((ForwardedMessage) sm).getRequest();
-            Logger.println("(MessageHandler.processData) receiving: " + request);
+            if(log.isLoggable(Level.FINER))
+                log.finer("(MessageHandler.processData) receiving: " + request);
             tomLayer.requestReceived(request);
-        /** ISTO E CODIGO DO JOAO, PARA TRATAR DA TRANSFERENCIA DE ESTADO */
+            //got Statetransfer Message
         } else if (sm instanceof SMMessage) {
-
-            Logger.println("(MessageHandler.processData) receiving a state managment message from replica " + sm.getSender());
+            if(log.isLoggable(Level.FINER))
+                log.finer("(MessageHandler.processData) receiving a state managment message from replica " + sm.getSender());
             SMMessage smsg = (SMMessage) sm;
             if (smsg.getType() == TOMUtil.SM_REQUEST) {
                 tomLayer.SMRequestDeliver(smsg);
@@ -61,19 +65,8 @@ public class TOMMessageHandler implements MessageHandler<SystemMessage,byte[]> {
             else {
                 tomLayer.SMReplyDeliver(smsg);
             }
-        /******************************************************************/
         }
     }
-
-//    protected void getData(SystemMessage msg, int type, ObjectOutputStream obOut) throws Exception {
-//        if (type == TOM_REQUEST_MSG || type == TOM_REPLY_MSG) {
-//            getBytes((TOMMessage) msg, obOut);
-//        } else if (type == RR_MSG || type == RT_MSG) {
-//            obOut.writeObject(msg);
-//        } else {//if (type == PAXOS_MSG){
-//            getBytes((PaxosMessage) msg, obOut);
-//        }
-//    }
 
     public byte[] getData(SystemMessage msg) {
         ByteArrayOutputStream bOut = new ByteArrayOutputStream();
@@ -89,34 +82,6 @@ public class TOMMessageHandler implements MessageHandler<SystemMessage,byte[]> {
         return bOut.toByteArray();
     }
 
-//    //utility methods to convert PaxosMessages to bytes and vice-versa
-//    private PaxosMessage deserialise(PaxosMessage msg, DataOutput dout) throws Exception {
-//        dout.writeInt(msg.getNumber());
-//        dout.writeInt(msg.getRound());
-//        dout.writeInt(msg.getSender());
-//        dout.writeInt(msg.getPaxosType());
-//        msg.serialise(dout);
-//    }
-
-    /*
-    private PaxosMessage getPaxosMsg(ObjectInputStream obIn) throws Exception {
-    int number = obIn.readInt();
-    int round = obIn.readInt();
-    int from = obIn.readInt();
-    int paxosT = obIn.readInt();
-    Object value = obIn.readObject();
-    Object proof = obIn.readObject();
-    return new PaxosMessage(paxosT, number, round, from, value, proof);
-    }
-     */
-
-    //utility methods to convert TOMMessage to bytes and vice-versa
-//    private void getBytes(TOMMessage msg, ObjectOutputStream obOut) throws Exception {
-//        obOut.writeInt(msg.getSender());
-//        obOut.writeInt(msg.getSequence());
-//        obOut.writeObject(msg.getContent());
-//    }
-
     public SystemMessage deserialise(SystemMessage.Type type, ByteBuffer buf, byte[] verificationresult) throws IOException, ClassNotFoundException {
     	
         switch(type){
@@ -125,17 +90,8 @@ public class TOMMessageHandler implements MessageHandler<SystemMessage,byte[]> {
             case SM_MSG:
                 return new SMMessage(buf);
             default:
-                Logger.println("Received msg for unknown msg type");
+                log.warning("Received msg for unknown msg type");
                 return null;
         }
     }
-
-    /*
-    private TOMMessage getTOMMsg(ObjectInputStream obIn) throws Exception {
-    int sender = obIn.readInt();
-    int sequence = obIn.readInt();
-    Object content = obIn.readObject();
-    return new TOMMessage(sender, sequence, content, TOM_REQUEST_MSG);
     }
-     */
-}
