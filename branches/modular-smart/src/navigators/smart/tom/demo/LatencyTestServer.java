@@ -18,6 +18,7 @@
 
 package navigators.smart.tom.demo;
 
+import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -34,45 +35,21 @@ public class LatencyTestServer extends ServiceReplica {
     private int id;
     
     /** Creates a new instance of TOMServerPerformanceTest */
-    public LatencyTestServer(int id) {
+    public LatencyTestServer(int id) throws IOException {
         super(id);
     }
     
-    public void run(){
-        //create the configuration object
-        TOMConfiguration conf = new TOMConfiguration(id);
-        try {
-            //create the communication system
-            cs = new ServerCommunicationSystem(conf);
-        } catch (Exception ex) {
-            Logger.getLogger(LatencyTestServer.class.getName()).log(Level.SEVERE, null, ex);
-            throw new RuntimeException("Unable to build a communication system.");
-        }
-        //build the TOM server stack
-
-        this.init(cs,conf);
-        /**IST OE CODIGO DO JOAO, PARA TENTAR RESOLVER UM BUG */
-        cs.start();
-        /******************************************************/
-    }
     
     public void receiveOrderedMessage(TOMMessage msg){
         TOMMessage reply = new TOMMessage(id,msg.getSequence(),
                 msg.getContent());
 
-//        //Logger.println("request received: "+msg.getSender()+
-//                ","+msg.getSequence());
-
         cs.send(new int[]{msg.getSender()},reply);
     }
     
-    public void receiveMessage(TOMMessage msg) {
+    public void receiveUnorderedMessage(TOMMessage msg) {
         TOMMessage reply = new TOMMessage(id,msg.getSequence(),
                 msg.getContent());
-
-//        //Logger.println("request received: "+msg.getSender()+
-//                ","+msg.getSequence());
-
         cs.send(new int[]{msg.getSender()},reply);
     }
 
@@ -89,8 +66,11 @@ public class LatencyTestServer extends ServiceReplica {
             System.out.println("Use: java LatencyTestServer <processId>");
             System.exit(-1);
         }
-
+        try {
         new LatencyTestServer(Integer.parseInt(args[0])).run();
+        } catch (IOException ex) {
+            Logger.getLogger(LatencyTestServer.class.getName()).log(Level.SEVERE, null, ex);
+        }
       
     }
 

@@ -43,7 +43,7 @@ public class RandomServer extends ServiceReplica {
     private int value = 0;
     private int iterations = 0;
 
-    public RandomServer(int id) {
+    public RandomServer(int id) throws IOException{
         super(id);
     }
 
@@ -92,8 +92,11 @@ public class RandomServer extends ServiceReplica {
             System.out.println("Use: java RandomServer <processId>");
             System.exit(-1);
         }
-
+        try {
         new RandomServer(Integer.parseInt(args[0]));
+        } catch (IOException ex) {
+            Logger.getLogger(RandomServer.class.getName()).log(Level.SEVERE, null, ex);
+        }
     }
 
     @Override

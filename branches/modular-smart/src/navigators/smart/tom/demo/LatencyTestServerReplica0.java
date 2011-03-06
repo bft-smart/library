@@ -18,6 +18,7 @@
 
 package navigators.smart.tom.demo;
 
+import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -34,49 +35,31 @@ public class LatencyTestServerReplica0 extends ServiceReplica {
     private int id;
 
     /** Creates a new instance of TOMServerPerformanceTest */
-    public LatencyTestServerReplica0(int id) {
+    public LatencyTestServerReplica0(int id) throws IOException {
         super(id);
         this.id = id;
-    }
-
-    public void run(){
-        //create the configuration object
-        TOMConfiguration conf = new TOMConfiguration(id);
-        try {
-            //create the communication system
-            cs = new ServerCommunicationSystem(conf);
-        } catch (Exception ex) {
-            Logger.getLogger(LatencyTestServer.class.getName()).log(Level.SEVERE, null, ex);
-            throw new RuntimeException("Unable to build a communication system.");
-        }
-        //build the TOM server stack
-
-        this.init(cs,conf);
-        /**IST OE CODIGO DO JOAO, PARA TENTAR RESOLVER UM BUG */
-        cs.start();
-        /******************************************************/
     }
 
     public void receiveOrderedMessage(TOMMessage msg){
         TOMMessage reply = new TOMMessage(id,msg.getSequence(),
                 msg.getContent());
 
-//        //Logger.println("request received: "+msg.getSender()+
-//                ","+msg.getSequence());
-
         cs.send(new int[]{msg.getSender()},reply);
     }
 
     public static void main(String[] args){
+        try {
         /*
         if(args.length < 1) {
             System.out.println("Use: java LatencyTestServer <processId>");
             System.exit(-1);
         }
-
         new LatencyTestServer(Integer.parseInt(args[0])).run();
         */
         new LatencyTestServerReplica0(0).run();
+        } catch (IOException ex) {
+            Logger.getLogger(LatencyTestServerReplica0.class.getName()).log(Level.SEVERE, null, ex);
+        }
     }
     
     public byte[] getState() {
@@ -87,7 +70,7 @@ public class LatencyTestServerReplica0 extends ServiceReplica {
 
     }
 
-    public void receiveMessage(TOMMessage msg) {
+    public void receiveUnorderedMessage(TOMMessage msg) {
         throw new UnsupportedOperationException("Not supported yet.");
     }
 

@@ -39,7 +39,7 @@ public class CounterServer extends ServiceReplica {
     private int counter = 0;
     private int iterations = 0;
     
-    public CounterServer(int id) {
+    public CounterServer(int id) throws IOException {
         super(id);
     }
     
@@ -66,8 +66,11 @@ public class CounterServer extends ServiceReplica {
             System.out.println("Use: java CounterServer <processId>");
             System.exit(-1);
         }
-
+        try {
         new CounterServer(Integer.parseInt(args[0]));
+        } catch (IOException ex) {
+            Logger.getLogger(CounterServer.class.getName()).log(Level.SEVERE, null, ex);
+        }
     }
 
     /** ISTO E CODIGO DO JOAO, PARA TRATAR DOS CHECKPOINTS */
