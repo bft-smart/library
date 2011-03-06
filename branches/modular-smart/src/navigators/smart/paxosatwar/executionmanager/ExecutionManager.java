@@ -213,10 +213,12 @@ public final class ExecutionManager{
             log.fine("Starting execution manager");
         stoppedMsgsLock.lock();
         this.stopped = false;
-        if (stoppedRound != null) {
+
+        // We don't want to use timeouts inside paxos anymore
+        /*if (stoppedRound != null) {
             acceptor.scheduleTimeout(stoppedRound);
             stoppedRound = null;
-        }
+        }*/
 
         //process stopped messages
         for (int i = 0; i < stoppedMsgs.size(); i++) {
@@ -485,7 +487,7 @@ public final class ExecutionManager{
             /**/
             //define that end of this execution
             requesthandler.setInExec(-1);
-
+            requesthandler.processOutOfContext();
             //verify if there is a next proposal to be executed
             //(it only happens if the previous consensus were decided in a
             //round > 0

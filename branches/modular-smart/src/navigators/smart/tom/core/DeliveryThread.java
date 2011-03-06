@@ -264,6 +264,7 @@ public class DeliveryThread extends Thread {
                     receiver.receiveOrderedMessage(requests[i]);
                 }
 
+                
                 /** ISTO E CODIGO DO JOAO, PARA TRATAR DOS CHECKPOINTS */
 
                 if(log.isLoggable(Level.FINER))
