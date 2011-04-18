@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Copyright (c) 2007-2009 Alysson Bessani, Eduardo Alchieri, Paulo Sousa, and the authors indicated in the @author tags
  * 
  * This file is part of SMaRt.
@@ -1375,9 +1375,9 @@ public final class TOMLayer extends Thread implements RequestReceiver {
     }
 
     public boolean isRetrievingState() {
-        lockTimer.lock();
+        //lockTimer.lock();
         boolean result =  stateManager != null && stateManager.getWaiting() != -1;
-        lockTimer.unlock();
+        //lockTimer.unlock();
 
         return result;
     }
