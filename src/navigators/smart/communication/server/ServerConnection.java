@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Copyright (c) 2007-2009 Alysson Bessani, Eduardo Alchieri, Paulo Sousa, and the authors indicated in the @author tags
  *
  * This file is part of SMaRt.
@@ -203,7 +203,7 @@ public class ServerConnection {
             }
             //br.ufsc.das.tom.util.Logger.println("(ServerConnection.sendBytes) iteration " + i);
             i++;
-        } while (true);
+        } while (doWork);
     }
 
     //******* EDUARDO BEGIN **************//
