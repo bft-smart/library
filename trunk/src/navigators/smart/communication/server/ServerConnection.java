@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Copyright (c) 2007-2009 Alysson Bessani, Eduardo Alchieri, Paulo Sousa, and the authors indicated in the @author tags
  *
  * This file is part of SMaRt.
@@ -17,6 +17,7 @@
  */
 package navigators.smart.communication.server;
 
+import java.io.BufferedOutputStream;
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -114,7 +115,7 @@ public class ServerConnection {
 
         if (this.socket != null) {
             try {
-                socketOutStream = new DataOutputStream(this.socket.getOutputStream());
+                socketOutStream = new DataOutputStream(new BufferedOutputStream(this.socket.getOutputStream()));
                 socketInStream = new DataInputStream(this.socket.getInputStream());
 
 
@@ -163,7 +164,6 @@ public class ServerConnection {
      */
     public final void send(byte[] data) throws InterruptedException {
 
-
         if (useSenderThread) {
             //only enqueue messages if there queue is not full
             if (!outQueue.offer(data)) {
@@ -190,6 +190,7 @@ public class ServerConnection {
                     if (this.manager.getStaticConf().getUseMACs() == 1) {
                         socketOutStream.write(macSend.doFinal(messageData));
                     }
+                    socketOutStream.flush();
                     return;
                 } catch (IOException ex) {
                     Logger.getLogger(ServerConnection.class.getName()).log(Level.SEVERE, null, ex);
