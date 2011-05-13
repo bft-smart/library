@@ -1,1 +1,1 @@
-java -cp bin\SMaRt_com_Vista.jar;lib\slf4j-api-1.5.8.jar;lib\slf4j-jdk14-1.5.8.jar;lib\netty-3.1.1.GA.jar %1 %2 %3 %4 %5 %6 %7 > output_replica_%2.txt 2>&1
+java -cp bin\SMaRt.jar;lib\slf4j-api-1.5.8.jar;lib\slf4j-jdk14-1.5.8.jar;lib\netty-3.1.1.GA.jar %1 %2 %3 %4 %5 %6 %7 > output_replica_%2.txt 2>&1
