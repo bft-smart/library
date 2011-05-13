@@ -4,6 +4,7 @@
  */
 package navigators.smart.reconfiguration;
 
+import java.net.InetSocketAddress;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -194,7 +195,12 @@ public class ReconfigurationManager extends ViewManager {
             f = currentView.getF();
         }
 
-        View newV = new View(currentView.getId() + 1, nextV, f);
+        InetSocketAddress[] addresses = new InetSocketAddress[nextV.length];
+
+        for(int i = 0 ;i < nextV.length ;i++)
+        	addresses[i] = getStaticConf().getRemoteAddress(nextV[i]);
+
+        View newV = new View(currentView.getId() + 1, nextV, f,addresses);
 
         System.out.println("new view: " + newV);
         System.out.println("lastJoinSet: " + jSet);

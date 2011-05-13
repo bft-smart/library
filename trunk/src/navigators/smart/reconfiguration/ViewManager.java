@@ -6,6 +6,8 @@
 package navigators.smart.reconfiguration;
 
 import navigators.smart.reconfiguration.util.TOMConfiguration;
+import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 
 
 
@@ -23,18 +25,31 @@ public class ViewManager {
     
     public ViewManager(int procId){
         this.initialConf = new TOMConfiguration(procId);
-        initialView = new View(0,initialConf.getInitialView(),initialConf.getF());
+        initialView = new View(0,initialConf.getInitialView(),initialConf.getF(),getAdddresses(initialConf));
         reconfigureTo(initialView);
     }
         
     public ViewManager(int procId,String configHome){
         this.initialConf = new TOMConfiguration(procId,configHome);
-        initialView = new View(0,initialConf.getInitialView(),initialConf.getF());
+        initialView = new View(0,initialConf.getInitialView(),initialConf.getF(),getAdddresses(initialConf));
+
         reconfigureTo(initialView);
     }
     
-    
-      
+    private InetSocketAddress[] getAdddresses(TOMConfiguration initialConf){
+
+         int nextV[] = initialConf.getInitialView();
+         InetSocketAddress[] addresses = new InetSocketAddress[nextV.length];
+         for(int i = 0 ;i < nextV.length ;i++)
+         	addresses[i] = initialConf.getRemoteAddress(nextV[i]);
+
+         return addresses;
+     }
+ 
+    public SocketAddress getRemoteAddress(int id) {
+ 		return currentView.getAddress(id);
+    }
+
   /* public void reconfigureTo(byte[] reply, boolean isAView){
           ByteArrayInputStream bInp = new ByteArrayInputStream(reply);
         try {

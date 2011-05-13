@@ -118,7 +118,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
                     //******* EDUARDO BEGIN **************//
 
                     // Start the connection attempt.
-                    ChannelFuture future = bootstrap.connect(manager.getStaticConf().getRemoteAddress(currV[i]));
+                    ChannelFuture future = bootstrap.connect(manager.getRemoteAddress(currV[i]));
 
                     //creates MAC stuff
                     Mac macSend = Mac.getInstance(manager.getStaticConf().getHmacAlgorithm());
@@ -129,7 +129,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
                         macReceive, currV[i], manager.getStaticConf().getRSAPublicKey(currV[i]), new ReentrantLock());
                     sessionTable.put(currV[i], cs);
 
-                    System.out.println("Connecting to replica " + currV[i] + " at " + manager.getStaticConf().getRemoteAddress(currV[i]));
+                    System.out.println("Connecting to replica " + currV[i] + " at " + manager.getRemoteAddress(currV[i]));
                     //******* EDUARDO END **************//
 
 
@@ -241,7 +241,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 
                         //******* EDUARDO BEGIN **************//
                         // Start the connection attempt.
-                        ChannelFuture future = bootstrap.connect(manager.getStaticConf().getRemoteAddress(currV[i]));
+                        ChannelFuture future = bootstrap.connect(manager.getRemoteAddress(currV[i]));
 
                         //creates MAC stuff
                         Mac macSend = Mac.getInstance(manager.getStaticConf().getHmacAlgorithm());
@@ -251,7 +251,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
                         NettyClientServerSession cs = new NettyClientServerSession(future.getChannel(), macSend, macReceive, currV[i], manager.getStaticConf().getRSAPublicKey(currV[i]), new ReentrantLock());
                         sessionTable.put(currV[i], cs);
 
-                        System.out.println("Connecting to replica " + currV[i] + " at " + manager.getStaticConf().getRemoteAddress(currV[i]));
+                        System.out.println("Connecting to replica " + currV[i] + " at " + manager.getRemoteAddress(currV[i]));
                         //******* EDUARDO END **************//
 
 
@@ -321,7 +321,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
                     // Set up the default event pipeline.
                     bootstrap.setPipelineFactory(new NettyClientPipelineFactory(this, true, sessionTable, authKey, macDummy.getMacLength(), manager, rl, TOMUtil.getSignatureSize(manager), new ReentrantLock()));
                     // Start the connection attempt.
-                    ChannelFuture future = bootstrap.connect(manager.getStaticConf().getRemoteAddress(ncss.getReplicaId()));
+                    ChannelFuture future = bootstrap.connect(manager.getRemoteAddress(ncss.getReplicaId()));
                     //******* EDUARDO END **************//
 
 
