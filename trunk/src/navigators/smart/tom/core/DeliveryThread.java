@@ -79,12 +79,12 @@ public class DeliveryThread extends Thread {
 
     public void deliverLock() {
         deliverLock.lock();
-        Logger.println("(DeliveryThread.deliverLock) Deliver lock obtained");
+        //Logger.println("(DeliveryThread.deliverLock) Deliver lock obtained");
     }
 
     public void deliverUnlock() {
         deliverLock.unlock();
-        Logger.println("(DeliveryThread.deliverUnlock) Deliver Released");
+        //Logger.println("(DeliveryThread.deliverUnlock) Deliver Released");
     }
 
     public void canDeliver() {
@@ -269,11 +269,11 @@ public class DeliveryThread extends Thread {
 
                 //Consensus cons = decided.take(); // take a decided consensus
                 /** ISTO E CODIGO DO JOAO, PARA TRATAR DA TRANSFERENCIA DE ESTADO */
-                Logger.println("(DeliveryThread.run) Waiting for a consensus to be delivered.");
+                //Logger.println("(DeliveryThread.run) Waiting for a consensus to be delivered.");
                 Consensus cons = decided.poll(1500, TimeUnit.MILLISECONDS); // take a decided consensus
                 
                 if (cons == null) {
-                    Logger.println("(DeliveryThread.run) Timeout while waiting for a consensus, starting over.");
+                    //Logger.println("(DeliveryThread.run) Timeout while waiting for a consensus, starting over.");
                     deliverUnlock();
                     continue;
                 }
