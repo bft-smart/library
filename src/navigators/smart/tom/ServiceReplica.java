@@ -210,7 +210,7 @@ public abstract class ServiceReplica extends TOMReceiver implements Runnable {
             // Deliver the message to the application, and get the response
 
             byte[] response = executeCommand(msg.getSender(), msg.timestamp,
-                    msg.nonces, msg.getContent(), msg.getDebugInfo());
+                    msg.nonces, msg.getContent(), msg.isReadOnlyRequest(), msg.getDebugInfo());
 
             /** ISTO E CODIGO DO JOAO, PARA TRATAR DOS CHECKPOINTS */
             requestsLock.lock();
@@ -306,6 +306,7 @@ public abstract class ServiceReplica extends TOMReceiver implements Runnable {
         requestsLock.unlock();
     }
 
+    @Override
     public void waitForProcessingRequests() {
         requestsLock.lock();
         while (!isQueueEmpty) {
@@ -333,7 +334,10 @@ public abstract class ServiceReplica extends TOMReceiver implements Runnable {
      * @param timestamp A timestamp to be used by the application, in case it needs it
      * @param nonces Random values to be used by the application, in case it needs them
      * @param command The command issue by the client
+     * @param readOnly a flag indicating if the command need to be read-only (because
+     *        it was not delivered through total order) or not
+     * @param info ?
      * @return the reply for the request issued by the client
      */
-    public abstract byte[] executeCommand(int clientId, long timestamp, byte[] nonces, byte[] command, DebugInfo info);
+    public abstract byte[] executeCommand(int clientId, long timestamp, byte[] nonces, byte[] command, boolean readOnly, DebugInfo info);
 }
