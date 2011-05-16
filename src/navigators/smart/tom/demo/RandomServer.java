@@ -57,7 +57,7 @@ public class RandomServer extends ServiceReplica {
     }
 
     @Override
-    public byte[] executeCommand(int clientId, long timestamp, byte[] nonces, byte[] command, DebugInfo info) {
+    public byte[] executeCommand(int clientId, long timestamp, byte[] nonces, byte[] command, boolean readOnly, DebugInfo info) {
         /**********ISTO E CODIGO MARTELADO, PARA FAZER AVALIACOES **************/
         //System.out.println(currentTime);
         if (initialTime > -1) currentTime = System.currentTimeMillis() - initialTime;

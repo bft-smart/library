@@ -51,13 +51,13 @@ public class CounterServer extends ServiceReplica {
     
     
     @Override
-    public byte[] executeCommand(int clientId, long timestamp, byte[] nonces, byte[] command, DebugInfo info) {
+    public byte[] executeCommand(int clientId, long timestamp, byte[] nonces, byte[] command, boolean readOnly, DebugInfo info) {
         
         //System.out.println("Valor de counter execute "+this.counter);
-        
         iterations++;
         try {
             int increment = new DataInputStream(new ByteArrayInputStream(command)).readInt();
+            System.out.println("read-only request: "+readOnly);
             counter += increment;
             if (info == null) System.out.println("[server] (" + iterations + ") Counter incremented: " + counter);
             else System.out.println("[server] (" + iterations + " / " + info.eid + ") Counter incremented: " + counter);
