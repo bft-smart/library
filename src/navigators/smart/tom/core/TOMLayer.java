@@ -221,7 +221,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
      * Sets which consensus was the last to be executed
      * @param last ID of the consensus which was last to be executed
      */
-    public void setLastExec(int last) { // TODO:  Condiçao de corrida?
+    public void setLastExec(int last) {
         this.lastExecuted = last;
     }
 
@@ -278,6 +278,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
      *
      * @param msg The request being received
      */
+    @Override
     public void requestReceived(TOMMessage msg) {
         //numMsgsReceived++;
 
