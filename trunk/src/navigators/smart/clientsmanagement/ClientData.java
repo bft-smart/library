@@ -18,11 +18,14 @@
 
 package navigators.smart.clientsmanagement;
 
+import java.security.PublicKey;
+import java.security.Signature;
+import java.security.SignatureException;
 import java.util.Iterator;
 import java.util.concurrent.locks.ReentrantLock;
 
-import navigators.smart.reconfiguration.ReconfigurationManager;
 import navigators.smart.tom.core.messages.TOMMessage;
+import navigators.smart.tom.util.Logger;
 import navigators.smart.tom.util.TOMUtil;
 
 public class ClientData {
@@ -43,15 +46,26 @@ public class ClientData {
 
     private TOMMessage lastReplySent = null;
 
-    private ReconfigurationManager manager;
+    private Signature signatureVerificator = null;
+
     /**
-     * Class constructor. Just store the clientId.
+     * Class constructor. Just store the clientId and creates a signature
+     * verificator for a given client public key.
      *
-     * @param clientId
+     * @param clientId client unique id
+     * @param publicKey client public key
      */
-    public ClientData(int clientId, ReconfigurationManager manager) {
+    public ClientData(int clientId, PublicKey publicKey) {
         this.clientId = clientId;
-        this.manager = manager;
+        if(publicKey != null) {
+            try {
+                signatureVerificator = Signature.getInstance("SHA1withRSA");
+                signatureVerificator.initVerify(publicKey);
+                Logger.println("Signature verifier initialized for client "+clientId);
+            } catch (Exception ex) {
+                ex.printStackTrace();
+            }
+        }
     }
 
     public int getClientId() {
@@ -79,12 +93,14 @@ public class ClientData {
     }*/
 
     public boolean verifySignature(byte[] message, byte[] signature) {
-        //******* EDUARDO BEGIN **************//
-
-        return TOMUtil.verifySignature(manager.getStaticConf().getRSAPublicKey(clientId),
-                message, signature);
-
-        //******* EDUARDO END **************//
+        if(signatureVerificator != null) {
+            try {
+                return TOMUtil.verifySignature(signatureVerificator, message, signature);
+            } catch (SignatureException ex) {
+                ex.printStackTrace();
+            }
+        }
+        return false;
     }
 
     public void setLastMessageExecuted(int lastMessageExecuted) {

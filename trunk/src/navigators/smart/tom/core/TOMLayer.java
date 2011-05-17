@@ -63,7 +63,6 @@ import navigators.smart.tom.core.timer.messages.RTMessage;
 import navigators.smart.tom.util.BatchBuilder;
 import navigators.smart.tom.util.BatchReader;
 import navigators.smart.tom.util.Logger;
-import navigators.smart.tom.util.Storage;
 
 import navigators.smart.tom.util.TOMUtil;
 
@@ -356,7 +355,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         // return the batch
         return bb.createBatch(System.currentTimeMillis(), numberOfNonces, numberOfMessages, totalMessageSize, 
                 this.reconfManager.getStaticConf().getUseSignatures() == 1, messages, signatures,this.reconfManager);
-        }
+    }
 
 
 
@@ -510,9 +509,8 @@ public final class TOMLayer extends Thread implements RequestReceiver {
      * @return
      */
     public TOMMessage[] checkProposedValue(byte[] proposedValue) {
-        if (Logger.debug) {
         Logger.println("(TOMLayer.isProposedValueValid) starting");
-        }
+
         BatchReader batchReader = new BatchReader(proposedValue, 
                 this.reconfManager.getStaticConf().getUseSignatures() == 1);
 

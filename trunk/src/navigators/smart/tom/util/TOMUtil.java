@@ -25,7 +25,9 @@ import java.io.ObjectOutputStream;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.Signature;
+import java.security.SignatureException;
 import java.util.Arrays;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.locks.ReentrantLock;
 import navigators.smart.reconfiguration.ViewManager;
 
@@ -80,13 +82,16 @@ public class TOMUtil {
 
         } catch (IOException ex) {
             ex.printStackTrace();
+            return null;
         }
 
         return bOut.toByteArray();
     }
 
     public static Object getObject(byte[] b) {
-        if (b == null) System.out.println("O ARRAY E NULL!!!!");
+        if (b == null)
+            return null;
+
         ByteArrayInputStream bInp = new ByteArrayInputStream(b);
         try {
             ObjectInputStream obInp = new ObjectInputStream(bInp);
@@ -95,7 +100,6 @@ public class TOMUtil {
             bInp.close();
             return ret;
         } catch (Exception ex) {
-            System.out.println("Isto rebenta aqui!!");
             ex.printStackTrace();
             return null;
         }
@@ -111,6 +115,7 @@ public class TOMUtil {
      */
     public static byte[] signMessage(PrivateKey key, byte[] message) {
         lock.lock();
+        byte[] result = null;
         try {
             if (signatureEngine == null) {
                 signatureEngine = Signature.getInstance("SHA1withRSA");
@@ -120,14 +125,13 @@ public class TOMUtil {
 
             signatureEngine.update(message);
 
-            byte[] result = signatureEngine.sign();
-            lock.unlock();
-            return result;
+            result = signatureEngine.sign();
         } catch (Exception e) {
-            lock.unlock();
             e.printStackTrace();
-            return null;
         }
+
+        lock.unlock();
+        return result;
     }
 
     /**
@@ -136,10 +140,11 @@ public class TOMUtil {
      * @param key the public key to be used to verify the signature
      * @param message the signed message
      * @param signature the signature to be verified
-     * @return the signature
+     * @return true if the signature is valid, false otherwise
      */
     public static boolean verifySignature(PublicKey key, byte[] message, byte[] signature) {
         lock.lock();
+        boolean result = false;
         //long startTime = System.nanoTime();
         try {
             if (signatureEngine == null) {
@@ -148,9 +153,7 @@ public class TOMUtil {
 
             signatureEngine.initVerify(key);
 
-            signatureEngine.update(message);
-
-            boolean result = signatureEngine.verify(signature);
+            result = verifySignature(signatureEngine, message, signature);
             /*
             st.store(System.nanoTime()-startTime);
             //statistics about signature execution time
@@ -166,14 +169,30 @@ public class TOMUtil {
             count = 0;
             st = new Storage(BENCHMARK_PERIOD);
             }
-             */
-            lock.unlock();
-            return result;
+         */
         } catch (Exception e) {
-            lock.unlock();
             e.printStackTrace();
-            return false;
         }
+
+        lock.unlock();
+        return result;
+    }
+
+    /**
+     * Verify the signature of a message.
+     *
+     * @param initializedSignatureEngine a signature engine already initialized
+     *        for verification
+     * @param message the signed message
+     * @param signature the signature to be verified
+     * @return true if the signature is valid, false otherwise
+     */
+    public static boolean verifySignature(Signature initializedSignatureEngine, byte[] message, byte[] signature) throws SignatureException {
+        //TODO: limit the amount of parallelization we can do to save some cores for other tasks
+        //maybe we can use a semaphore here initialized with the maximum number of parallel verifications:
+        //Semaphore sem = new Semaphore(10, true); then we can run sem.acquire() and sem.release()
+        initializedSignatureEngine.update(message);
+        return initializedSignatureEngine.verify(signature);
     }
 
     public static String byteArrayToString(byte[] b) {
