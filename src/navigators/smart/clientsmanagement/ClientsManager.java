@@ -64,9 +64,13 @@ public class ClientsManager {
 
         if (clientData == null) {
             Logger.println("(ClientsManager.getClientData) Creating new client data, client id="+clientId);
-             //******* EDUARDO BEGIN **************//
-            clientData = new ClientData(clientId,manager);
-             //******* EDUARDO END **************//
+
+            //******* EDUARDO BEGIN **************//
+            clientData = new ClientData(clientId,
+                    (manager.getStaticConf().getUseSignatures() == 1)?
+                        manager.getStaticConf().getRSAPublicKey(clientId):
+                        null);
+            //******* EDUARDO END **************//
             clientsData.put(clientId, clientData);
         }
 
