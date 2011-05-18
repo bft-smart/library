@@ -125,7 +125,7 @@ public abstract class TOMSender implements ReplyReceiver {
     //******* EDUARDO END **************//
     
     
-    // Get next sequence number to a soon to be multicasted message
+    // Get next sequence number for a message to be broadcasted
     private int getNextSequenceNumber() {
         lock.lock();
         int id = sequence++;
@@ -138,8 +138,6 @@ public abstract class TOMSender implements ReplyReceiver {
      * Get last sequence number of an already multicasted message
      *
      * @return Last sequence number of an already multicasted message
-     *
-     * TODO: Isto nao devia ter tambem um semaforo a controlar a leitura deste atributo?
      */
     public int getLastSequenceNumber() {
         return sequence - 1;
