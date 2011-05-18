@@ -154,12 +154,12 @@ public class ServiceProxy extends TOMSender {
                 ((int) Math.ceil((getViewManager().getCurrentViewN() + getViewManager().getCurrentViewF()) / 2) + 1):
                 (getViewManager().getCurrentViewF() + 1);
 
-        Logger.println("Sending request (readOnly = "+readOnly+")");
-        Logger.println("Expected number of matching replies: "+replyQuorum);
-
         // Send the request to the replicas, and get its ID
+        reqId = getLastSequenceNumber()+1;
         doTOMulticast(request, reqType, readOnly);
-        reqId = getLastSequenceNumber();
+
+        Logger.println("Sending request (readOnly = "+readOnly+") with reqId="+reqId);
+        Logger.println("Expected number of matching replies: "+replyQuorum);
 
         // This instruction blocks the thread, until a response is obtained.
         // The thread will be unblocked when the method replyReceived is invoked
@@ -248,7 +248,8 @@ public class ServiceProxy extends TOMSender {
      */
     @Override
     public void replyReceived(TOMMessage reply) {
-        Logger.println("reply received: sender="+reply.getSender()+" reqId="+reply.getSequence());
+        Logger.println("reply received: sender="+reply.getSender()+" reqId="+reply.getSequence()+" (expected reqId="+reqId+")");
+
         // Ahead lies a critical section.
         // This ensures the thread-safety by means of a semaphore
         try {
