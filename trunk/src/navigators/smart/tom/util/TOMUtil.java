@@ -52,6 +52,8 @@ public class TOMUtil {
     //lock to make signMessage and verifySignature reentrant
     private static ReentrantLock lock = new ReentrantLock();
 
+    //private static Semaphore sem = new Semaphore(10, true);
+
     //private static Storage st = new Storage(BENCHMARK_PERIOD);
     //private static int count=0;
     public static int getSignatureSize(ViewManager manager) {
@@ -190,9 +192,10 @@ public class TOMUtil {
     public static boolean verifySignature(Signature initializedSignatureEngine, byte[] message, byte[] signature) throws SignatureException {
         //TODO: limit the amount of parallelization we can do to save some cores for other tasks
         //maybe we can use a semaphore here initialized with the maximum number of parallel verifications:
-        //Semaphore sem = new Semaphore(10, true); then we can run sem.acquire() and sem.release()
+        //sem.acquire()
         initializedSignatureEngine.update(message);
         return initializedSignatureEngine.verify(signature);
+        //sem.release()
     }
 
     public static String byteArrayToString(byte[] b) {
