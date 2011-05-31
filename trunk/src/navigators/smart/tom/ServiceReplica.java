@@ -170,9 +170,8 @@ public abstract class ServiceReplica extends TOMReceiver implements Runnable {
         }
     }
 
+
     private void initReplica() {
-
-
         // Initialize messages queue received from the TOM layer
         this.requestQueue = new LinkedBlockingQueue<TOMMessage>();
 
@@ -215,15 +214,16 @@ public abstract class ServiceReplica extends TOMReceiver implements Runnable {
             /** ISTO E CODIGO DO JOAO, PARA TRATAR DOS CHECKPOINTS */
             requestsLock.lock();
             if (requestQueue.isEmpty()) {
-
                 isQueueEmpty = true;
                 requestsCondition.signalAll();
             }
             requestsLock.unlock();
             /********************************************************/
+
+            msg.reply = new TOMMessage(id, msg.getSession(),
+                    msg.getSequence(), response, this.reconfManager.getCurrentViewId());
             // send reply to the client
-            cs.send(new int[]{msg.getSender()}, new TOMMessage(id, msg.getSession(),
-                    msg.getSequence(), response, this.reconfManager.getCurrentViewId()));
+            cs.send(new int[]{msg.getSender()}, msg.reply);
         }
     }
 
@@ -290,8 +290,6 @@ public abstract class ServiceReplica extends TOMReceiver implements Runnable {
 
     }
 
-    protected abstract byte[] serializeState();
-
     @Override
     public void setState(byte[] state) {
         requestsLock.lock();
@@ -319,6 +317,9 @@ public abstract class ServiceReplica extends TOMReceiver implements Runnable {
 
         requestsLock.unlock();
     }
+
+    protected abstract byte[] serializeState();
+
     protected abstract void deserializeState(byte[] state);
 
     /********************************************************/

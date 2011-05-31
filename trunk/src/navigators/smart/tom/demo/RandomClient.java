@@ -60,7 +60,6 @@ public class RandomClient {
 
 	        byte[] reply = randomProxy.invoke(out.toByteArray(),false);
 	        int newValue = new DataInputStream(new ByteArrayInputStream(reply)).readInt();
-                System.out.println("Last sequence number: " + randomProxy.getLastSequenceNumber());
 	        System.out.println("(" + id + ") Current value: "+newValue);
 	        i++;
         }
