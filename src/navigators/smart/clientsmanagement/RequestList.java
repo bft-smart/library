@@ -31,9 +31,24 @@ import navigators.smart.tom.core.messages.TOMMessage;
  *
  * @author alysson
  */
-public class PendingRequests extends LinkedList<TOMMessage> {
+public class RequestList extends LinkedList<TOMMessage> {
 
-    public PendingRequests() {
+    private int maxSize = Integer.MAX_VALUE;
+
+    public RequestList() {
+    }
+
+    public RequestList(int maxSize) {
+        super();
+        this.maxSize = maxSize;
+    }
+
+    @Override
+    public void addLast(TOMMessage msg) {
+        super.addLast(msg);
+        if(size() > maxSize) {
+            super.removeFirst();
+        }
     }
 
     public TOMMessage remove(byte[] serializedMessage) {

@@ -42,9 +42,9 @@ public class ClientData {
 
     private int lastMessageExecuted = -1;
 
-    private PendingRequests pendingRequests = new PendingRequests();
-
-    private TOMMessage lastReplySent = null;
+    private RequestList pendingRequests = new RequestList();
+    //anb: new code to deal with client requests that arrive after their execution
+    private RequestList orderedRequests = new RequestList(5);
 
     private Signature signatureVerificator = null;
 
@@ -80,27 +80,12 @@ public class ClientData {
         this.session = session;
     }
 
-    public PendingRequests getPendingRequests() {
+    public RequestList getPendingRequests() {
         return pendingRequests;
     }
 
-    /*public PublicKey getPublicKey() {
-        if(publicKey == null) {
-            publicKey = TOMConfiguration.getRSAPublicKey(clientId);
-        }
-
-        return publicKey;
-    }*/
-
-    public boolean verifySignature(byte[] message, byte[] signature) {
-        if(signatureVerificator != null) {
-            try {
-                return TOMUtil.verifySignature(signatureVerificator, message, signature);
-            } catch (SignatureException ex) {
-                ex.printStackTrace();
-            }
-        }
-        return false;
+    public RequestList getOrderedRequests() {
+        return orderedRequests;
     }
 
     public void setLastMessageExecuted(int lastMessageExecuted) {
@@ -127,37 +112,49 @@ public class ClientData {
         return lastMessageReceivedTime;
     }
 
-    public void setLastReplySent(TOMMessage lastReplySent) {
-        this.lastReplySent = lastReplySent;
+    public boolean verifySignature(byte[] message, byte[] signature) {
+        if(signatureVerificator != null) {
+            try {
+                return TOMUtil.verifySignature(signatureVerificator, message, signature);
+            } catch (SignatureException ex) {
+                System.err.println("Error in processing client "+clientId+" signature: "+ex.getMessage());
+            }
+        }
+        return false;
     }
 
-    public TOMMessage getLastReplySent() {
-        return lastReplySent;
+    public boolean removeOrderedRequest(TOMMessage request) {
+        if(pendingRequests.remove(request)) {
+            //anb: new code to deal with client requests that arrive after their execution
+            orderedRequests.addLast(request);
+            return true;
+        }
+        return false;
     }
 
-    /* JOAO BEGIN: PARA TRATAR DE PEDIDOS QUE NAO VAO SER PROCESSADOS */
-
-    /* Este metodo foi criado pelo christian, mas usa um atributo que neste codigo nao existe,
-       por isso as partes do codigo que fazem uso dele estao comentadas por mim */
     public boolean removeRequest(TOMMessage request) {
 	lastMessageExecuted = request.getSequence();
-	boolean result = pendingRequests.remove(request) /*||
-            proposedRequests.remove(request)*/;
-	//remove outdated messages from this client
+	boolean result = pendingRequests.remove(request);
+        //anb: new code to deal with client requests that arrive after their execution
+        orderedRequests.addLast(request);
+
 	for(Iterator<TOMMessage> it = pendingRequests.iterator();it.hasNext();){
 		TOMMessage msg = it.next();
 		if(msg.getSequence()<request.getSequence()){
 			it.remove();
 		}
 	}
-	/*for(Iterator<TOMMessage> it = proposedRequests.iterator();it.hasNext();){
-		TOMMessage msg = it.next();
-		if(msg.getSequence()<request.getSequence()){
-			it.remove();
-		}
-	}*/
+
     	return result;
     }
-    /* JOAO END: PARA TRATAR DE PEDIDOS QUE NAO VAO SER PROCESSADOS */
+
+    public TOMMessage getReply(int reqId) {
+        TOMMessage request = orderedRequests.getById(reqId);
+        if(request != null) {
+            return request.reply;
+        } else {
+            return null;
+        }
+    }
 
 }

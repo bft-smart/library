@@ -38,7 +38,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 
 import navigators.smart.clientsmanagement.ClientsManager;
-import navigators.smart.clientsmanagement.PendingRequests;
+import navigators.smart.clientsmanagement.RequestList;
 import navigators.smart.communication.ServerCommunicationSystem;
 import navigators.smart.communication.client.RequestReceiver;
 import navigators.smart.paxosatwar.Consensus;
@@ -293,7 +293,8 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         /**********************************************************/
         /**********************************************************/
         /**********************************************************/
-        if (clientsManager.requestReceived(msg, true, !msg.isReadOnlyRequest())) { // check if this request is valid
+        // check if this request is valid and add it to the client' pending requests list
+        if (clientsManager.requestReceived(msg, true, !msg.isReadOnlyRequest(), communication)) {
             if (msg.isReadOnlyRequest()) {
                 receiver.receiveMessage(msg);
             } else {
@@ -320,7 +321,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
      */
     private byte[] createPropose(Consensus cons) {
         // Retrieve a set of pending requests from the clients manager
-        PendingRequests pendingRequests = clientsManager.getPendingRequests();
+        RequestList pendingRequests = clientsManager.getPendingRequests();
 
         int numberOfMessages = pendingRequests.size(); // number of messages retrieved
         //******* EDUARDO BEGIN **************//

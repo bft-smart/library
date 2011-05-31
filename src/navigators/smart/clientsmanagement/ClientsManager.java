@@ -23,6 +23,7 @@ import java.util.Iterator;
 import java.util.Set;
 import java.util.Map.Entry;
 import java.util.concurrent.locks.ReentrantLock;
+import navigators.smart.communication.ServerCommunicationSystem;
 
 import navigators.smart.reconfiguration.ReconfigurationManager;
 import navigators.smart.tom.core.messages.TOMMessage;
@@ -86,8 +87,8 @@ public class ClientsManager {
      *
      * @return the set of all pending requests of this system
      */
-    public PendingRequests getPendingRequests() {
-        PendingRequests allReq = new PendingRequests();
+    public RequestList getPendingRequests() {
+        RequestList allReq = new RequestList();
 
         clientsLock.lock();
         /******* BEGIN CLIENTS CRITICAL SECTION ******/
@@ -100,7 +101,7 @@ public class ClientsManager {
 
             while (it.hasNext()) {
                 ClientData clientData = it.next().getValue();
-                PendingRequests clientPendingRequests = clientData.getPendingRequests();
+                RequestList clientPendingRequests = clientData.getPendingRequests();
 
 
                 clientData.clientLock.lock();
@@ -202,7 +203,7 @@ public class ClientsManager {
     }
 
     public boolean requestReceived(TOMMessage request, boolean fromClient) {
-        return requestReceived(request,fromClient,true);
+        return requestReceived(request,fromClient,true,null);
     }
 
     /**
@@ -212,12 +213,15 @@ public class ClientsManager {
      * @param request the received request
      * @param fromClient the message was received from client or not?
      * @param storeMessage the message should be stored or not? (read-only requests are not stored)
+     * @param cs server com. system to be able to send replies to already processed requests
      *
      * @return true if the request is ok and is added to the pending messages
      * for this client, false if there is some problem and the message was not
      * accounted
      */
-    public boolean requestReceived(TOMMessage request, boolean fromClient, boolean storeMessage) {
+    public boolean requestReceived(TOMMessage request, boolean fromClient, 
+                                             boolean storeMessage, ServerCommunicationSystem cs) {
+
         request.receptionTime = System.currentTimeMillis();
         int clientId = request.getSender();
         boolean accounted = false;
@@ -281,6 +285,13 @@ public class ClientsManager {
             //I will not put this message on the pending requests list
             if (clientData.getLastMessageReceived() >= request.getSequence()) {
                 //I already have/had this message
+
+                //send reply if it is available
+                TOMMessage reply = clientData.getReply(request.getId());
+                if(reply != null && cs != null) {
+                    cs.send(new int[]{request.getSender()}, reply);
+                }
+                
                 accounted = true;
             } else {
                 //a too forward message... the client must be malicious
@@ -315,10 +326,11 @@ public class ClientsManager {
         clientData.clientLock.lock();
         /******* BEGIN CLIENTDATA CRITICAL SECTION ******/
 
-        //Logger.println("(ClientsManager.requestOrdered) Removing request "+request+" from pending requests");
-        if (clientData.getPendingRequests().remove(request) == false){
+        //Logger.println("(ClientsManager.removeOrderedRequest) Removing request "+request+" from pending requests");
+        if (clientData.removeOrderedRequest(request) == false){
             Logger.println("(ClientsManager.requestOrdered) Request "+request+" does not exist in pending requests");
         }
+
         clientData.setLastMessageExecuted(request.getSequence());
 
         /******* END CLIENTDATA CRITICAL SECTION ******/
@@ -342,7 +354,9 @@ public class ClientsManager {
             sender = msg.getSender();
 
             if ((lastSequences.get(sender) == null) ||
-                    (msg.getSequence() > lastSequences.get(sender).getSequence())) lastSequences.put(sender, msg);
+                 (msg.getSequence() > lastSequences.get(sender).getSequence())){
+                lastSequences.put(sender, msg);
+            }
          }
 
          if (lastSequences.size() > 0) {

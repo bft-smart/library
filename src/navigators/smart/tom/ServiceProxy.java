@@ -23,6 +23,10 @@ import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.ListIterator;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.logging.FileHandler;
+import java.util.logging.Level;
+import java.util.logging.SimpleFormatter;
 
 import navigators.smart.reconfiguration.ReconfigurationManager;
 import navigators.smart.reconfiguration.ReconfigureReply;
@@ -40,15 +44,13 @@ import navigators.smart.tom.util.TOMUtil;
  */
 public class ServiceProxy extends TOMSender {
 
-    //******* EDUARDO BEGIN **************//
-    // Semaphores used to render this object thread-safe
-    // TODO: o mutex nao poderia ser antes um reentrantlock, em vez de um semaforo?
-    //Eduardo: Acho que pode até ser um reentrantlock, mas apenas pode ser liberado (no caso do semaforo é a mesma coisa)
-    //após a operação completar (não pode ser liberado após apenas o envio pq reqId será perdido)
-    private Semaphore mutex = new Semaphore(1);
-    private Semaphore mutexToSend = new Semaphore(1);
+    // Locks for send requests and receive replies
+    private ReentrantLock canReceiveLock = new ReentrantLock();
+    private ReentrantLock canSendLock = new ReentrantLock();
+
     //******* EDUARDO END **************//
     private Semaphore sm = new Semaphore(0);
+
     private int reqId = -1; // request id
     private int replyQuorum = 0; // size of the reply quorum
     private TOMMessage replies[] = null; // Replies from replicas are stored here
@@ -137,12 +139,7 @@ public class ServiceProxy extends TOMSender {
      * @return The reply from the replicas related to request
      */
     public byte[] invoke(byte[] request, int reqType, boolean readOnly) {
-
-        // Ahead lies a critical section.
-        // This ensures the thread-safety by means of a semaphore
-        try {
-            this.mutexToSend.acquire();
-        } catch (Exception e) {}
+        canSendLock.lock();
 
         // Clean all statefull data to prepare for receiving next replies
         Arrays.fill(replies, null);
@@ -151,12 +148,13 @@ public class ServiceProxy extends TOMSender {
         //if n=3f+1, read-only requests wait for 2f+1 matching replies while normal
         //requests wait for only f+1
         replyQuorum = readOnly?
-                ((int) Math.ceil((getViewManager().getCurrentViewN() + getViewManager().getCurrentViewF()) / 2) + 1):
+                ((int) Math.ceil((getViewManager().getCurrentViewN() +
+                    getViewManager().getCurrentViewF()) / 2) + 1):
                 (getViewManager().getCurrentViewF() + 1);
 
         // Send the request to the replicas, and get its ID
-        reqId = getLastSequenceNumber()+1;
-        doTOMulticast(request, reqType, readOnly);
+        reqId = generateRequestId();
+        TOMulticast(request, reqId, reqType, readOnly);
 
         Logger.println("Sending request (readOnly = "+readOnly+") with reqId="+reqId);
         Logger.println("Expected number of matching replies: "+replyQuorum);
@@ -167,18 +165,18 @@ public class ServiceProxy extends TOMSender {
         try {
             this.sm.acquire();
         } catch (InterruptedException ex) {
-            ex.printStackTrace();
         }
 
         Logger.println("Response extracted = "+response);
+
+        byte[] ret = null;
 
         if (response == null) {
             //the response can be null if n-f replies are received but there isn't
             //a replyQuorum of matching replies
             Logger.println("Received n-f replies and no response could be extracted.");
 
-            mutexToSend.release();
-
+            canSendLock.unlock();
             if(readOnly) {
                 //invoke the operation again, whitout the read-only flag
                 Logger.println("###############################################");
@@ -191,50 +189,48 @@ public class ServiceProxy extends TOMSender {
         } else {
             //normal operation
             //******* EDUARDO BEGIN **************//
-            byte[] ret = null;
             if (reqType == ReconfigurationManager.TOM_NORMAL_REQUEST) {
                 //Reply to a normal request!
                 if (response.getViewID() == getViewManager().getCurrentViewId()) {
                     ret = response.getContent(); // return the response
-                    mutexToSend.release();
-                    return ret;
                 } else {//if(response.getViewID() > getViewManager().getCurrentViewId())
                     //updated view received
                     reconfigureTo((View) TOMUtil.getObject(response.getContent()));
-                    mutexToSend.release();
+
+                    canSendLock.unlock();
                     return invoke(request, reqType, readOnly);
                 }
             } else {
                 //Reply to a reconfigure request!
                 Logger.println("Reconfiguration request' reply received!");
-                //É "impossivel" ser menor!
+                //It is impossible to be less than...
                 if (response.getViewID() > getViewManager().getCurrentViewId()) {
                     Object r = TOMUtil.getObject(response.getContent());
-                    if (r instanceof View) { //Não executou esta requisição pq a visao estava desatualizada
+                    if (r instanceof View) { //did not executed the request because it is using an outdated view
                         reconfigureTo((View) r);
-                        mutexToSend.release();
+
+                        canSendLock.unlock();
                         return invoke(request, reqType, readOnly);
-                    } else { //Executou a requisição de reconfiguração
+                    } else { //reconfiguration executed!
                         reconfigureTo(((ReconfigureReply) r).getView());
-                        ret = response.getContent(); // return the response
-                        mutexToSend.release();
-                        return ret;
+                        ret = response.getContent();
                     }
                 } else {
                     //Caso a reconfiguração nao foi executada porque algum parametro
                     // da requisição estava incorreto: o processo queria fazer algo que nao é permitido
-                    ret = response.getContent(); // return the response
-                    mutexToSend.release();
-                    return ret;
+                    ret = response.getContent();
                 }
             }
         }
         //******* EDUARDO END **************//
+
+        canSendLock.unlock();
+        return ret;
     }
 
     //******* EDUARDO BEGIN **************//
     private void reconfigureTo(View v) {
-        Logger.println("Installing a most up-to-date view");
+        Logger.println("Installing a most up-to-date view with id="+v.getId());
         getViewManager().reconfigureTo(v);
         replies = new TOMMessage[getViewManager().getCurrentViewN()];
         getCommunicationSystem().updateConnections();
@@ -248,20 +244,17 @@ public class ServiceProxy extends TOMSender {
      */
     @Override
     public void replyReceived(TOMMessage reply) {
-        Logger.println("reply received: sender="+reply.getSender()+" reqId="+reply.getSequence()+" (expected reqId="+reqId+")");
-
-        // Ahead lies a critical section.
-        // This ensures the thread-safety by means of a semaphore
-        try {
-            this.mutex.acquire();
-        } catch (Exception e) {
-            e.printStackTrace();
+        canReceiveLock.lock();
+        if(reqId==-1){//no message being expected
+            Logger.println("throwing out request: sender="+reply.getSender()+" reqId="+reply.getSequence());
+            canReceiveLock.unlock();
+            return;
         }
 
         //******* EDUARDO BEGIN **************//
         int pos = getViewManager().getCurrentViewPos(reply.getSender());
         if (pos < 0) { //ignore messages that don't come from replicas
-            this.mutex.release();
+            canReceiveLock.unlock();
             return;
         }
         //******* EDUARDO END **************//
@@ -279,7 +272,6 @@ public class ServiceProxy extends TOMSender {
                 for(ListIterator<TOMMessage> li = aheadOfTimeReplies.listIterator(); li.hasNext(); ) {
                     TOMMessage rr = li.next();
                     if(rr.getSequence() == reqId) {
-                        Logger.println("Adding old message.");
                         int rpos = getViewManager().getCurrentViewPos(rr.getSender());
                         receivedReplies++;
                         replies[rpos] = rr;
@@ -294,7 +286,6 @@ public class ServiceProxy extends TOMSender {
             // Compare the reply just received, to the others
             int sameContent = 1;
             for (int i = 0; i < replies.length; i++) {
-                    Logger.println(i+" ("+reqId+"): "+sameContent+"/"+receivedReplies+"/"+replyQuorum);
                 if (i != pos && replies[i] != null && (comparator.compare(replies[i].getContent(), reply.getContent()) == 0)) {
                     sameContent++;
                     
@@ -312,14 +303,11 @@ public class ServiceProxy extends TOMSender {
                 //it's not safe to wait for more replies (n-f replies received),
                 //but there is no response available...
                 reqId = -1;
-                Logger.println("releasing sm without response");
                 this.sm.release(); // resumes the thread that is executing the "invoke" method
             }
-        } else {
-            Logger.println("Discarding reply from "+reply.getSender()+" with reqId:"+reply.getSequence()+". Putting on pos="+pos);
         }
 
         // Critical section ends here. The semaphore can be released
-        this.mutex.release();
+        canReceiveLock.unlock();
     }
 }

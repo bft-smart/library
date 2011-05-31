@@ -21,6 +21,8 @@ package navigators.smart.tom;
 import java.util.Random;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import navigators.smart.communication.client.CommunicationSystemClientSide;
 import navigators.smart.communication.client.CommunicationSystemClientSideFactory;
@@ -125,22 +127,16 @@ public abstract class TOMSender implements ReplyReceiver {
     //******* EDUARDO END **************//
     
     
-    // Get next sequence number for a message to be broadcasted
-    private int getNextSequenceNumber() {
+    public int getProcessId() {
+        return me;
+    }
+
+    public int generateRequestId() {
         lock.lock();
         int id = sequence++;
         lock.unlock();
+
         return id;
-
-    }
-
-    /**
-     * Get last sequence number of an already multicasted message
-     *
-     * @return Last sequence number of an already multicasted message
-     */
-    public int getLastSequenceNumber() {
-        return sequence - 1;
     }
 
     //******* EDUARDO BEGIN **************//
@@ -150,33 +146,43 @@ public abstract class TOMSender implements ReplyReceiver {
      * @param m Data to be multicast
      */
     public void TOMulticast(byte[] m) {
-        cs.send(useSignatures, this.viewManager.getCurrentViewProcesses(), 
-                new TOMMessage(me, session, getNextSequenceNumber(), m,
-                this.viewManager.getCurrentViewId()), false);
+        TOMulticast(new TOMMessage(me, session, generateRequestId(), m,
+                this.viewManager.getCurrentViewId()));
     }
 
-    /**
-     * Multicast data to the group of replicas
-     *
-     * @param m Data to be multicast
-     * @param readOnly it is a readonly request
-     */
-    public void doTOMulticast(byte[] m, int reqType, boolean readOnly) {
-        cs.send(useSignatures, this.viewManager.getCurrentViewProcesses(), 
-                new TOMMessage(me, session, getNextSequenceNumber(), m,
-                this.viewManager.getCurrentViewId(), reqType, readOnly), false);
-    }
-    
     /**
      * Multicast a TOMMessage to the group of replicas
      *
      * @param m Data to be multicast
      */
     public void TOMulticast(TOMMessage sm) {
-        cs.send(useSignatures, this.viewManager.getCurrentViewProcesses(), 
+        cs.send(useSignatures, this.viewManager.getCurrentViewProcesses(),
                 sm, false);
     }
 
+    /**
+     * Multicast data to the group of replicas
+     *
+     * @param m Data to be multicast
+     * @param reqId unique integer that identifies this request
+     * @param reqType TOM_NORMAL or TOM_RECONFIGURATION
+     * @param readOnly it is a readonly request
+     */
+    public void TOMulticast(byte[] m, int reqId, int reqType, boolean readOnly) {
+        cs.send(useSignatures, new int[]{0},
+                new TOMMessage(me, session, reqId, m, this.viewManager.getCurrentViewId(),
+                reqType, readOnly), false);
+        try {
+            Thread.sleep(2000);
+        } catch (InterruptedException ex) {
+        }
+
+        //this.viewManager.getCurrentViewProcesses()
+        cs.send(useSignatures, new int[]{1,2,3},
+                new TOMMessage(me, session, reqId, m, this.viewManager.getCurrentViewId(),
+                reqType, readOnly), false);
+    }
+    
     /**
      * Create TOMMessage and sign it
      *
@@ -185,7 +191,7 @@ public abstract class TOMSender implements ReplyReceiver {
      * @return TOMMessage with serializedMsg and serializedMsgSignature fields filled
      */
     public TOMMessage sign(byte[] m) {
-        TOMMessage tm = new TOMMessage(me, session, getNextSequenceNumber(), m,
+        TOMMessage tm = new TOMMessage(me, session, generateRequestId(), m,
                 this.viewManager.getCurrentViewId());
         cs.sign(tm);
         return tm;

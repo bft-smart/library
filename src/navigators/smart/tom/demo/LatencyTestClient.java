@@ -90,7 +90,8 @@ public class LatencyTestClient extends TOMSender {
                     }
 
                     last_send_instant = System.nanoTime();
-                    this.doTOMulticast(command, ReconfigurationManager.TOM_NORMAL_REQUEST,readOnly);
+                    this.TOMulticast(command, generateRequestId(), 
+                            ReconfigurationManager.TOM_NORMAL_REQUEST, readOnly);
 
                     this.sm.acquire();
 
