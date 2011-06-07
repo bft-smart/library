@@ -17,16 +17,12 @@
  */
 package navigators.smart.tom;
 
-//import br.ufsc.das.communication.SimpleCommunicationSystem;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.ListIterator;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.logging.FileHandler;
-import java.util.logging.Level;
-import java.util.logging.SimpleFormatter;
 
 import navigators.smart.reconfiguration.ReconfigurationManager;
 import navigators.smart.reconfiguration.ReconfigureReply;

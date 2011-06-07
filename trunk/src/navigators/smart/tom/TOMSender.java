@@ -21,8 +21,6 @@ package navigators.smart.tom;
 import java.util.Random;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 import navigators.smart.communication.client.CommunicationSystemClientSide;
 import navigators.smart.communication.client.CommunicationSystemClientSideFactory;
@@ -169,17 +167,8 @@ public abstract class TOMSender implements ReplyReceiver {
      * @param readOnly it is a readonly request
      */
     public void TOMulticast(byte[] m, int reqId, int reqType, boolean readOnly) {
-        cs.send(useSignatures, new int[]{0},
-                new TOMMessage(me, session, reqId, m, this.viewManager.getCurrentViewId(),
-                reqType, readOnly), false);
-        try {
-            Thread.sleep(2000);
-        } catch (InterruptedException ex) {
-        }
-
-        //this.viewManager.getCurrentViewProcesses()
-        cs.send(useSignatures, new int[]{1,2,3},
-                new TOMMessage(me, session, reqId, m, this.viewManager.getCurrentViewId(),
+        cs.send(useSignatures, viewManager.getCurrentViewProcesses(),
+                new TOMMessage(me, session, reqId, m, viewManager.getCurrentViewId(),
                 reqType, readOnly), false);
     }
     
