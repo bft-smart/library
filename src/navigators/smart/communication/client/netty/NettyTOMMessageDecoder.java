@@ -27,7 +27,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
 import java.security.Signature;
 import java.util.Arrays;
-import java.util.Hashtable;
+import java.util.HashMap;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.logging.Level;
@@ -61,7 +61,7 @@ public class NettyTOMMessageDecoder extends FrameDecoder {
     //private final int BENCHMARK_PERIOD = 10000;
 
     private boolean isClient;
-    private Hashtable sessionTable;
+    private HashMap sessionTable;
     private SecretKey authKey;
     //private Storage st;
     private int macSize;
@@ -81,7 +81,7 @@ public class NettyTOMMessageDecoder extends FrameDecoder {
     private Signature signatureEngine;
     private boolean useMAC;
 
-    public NettyTOMMessageDecoder(boolean isClient, Hashtable sessionTable, SecretKey authKey, int macLength, ViewManager manager, ReentrantReadWriteLock rl, int signatureLength, boolean useMAC){
+    public NettyTOMMessageDecoder(boolean isClient, HashMap sessionTable, SecretKey authKey, int macLength, ViewManager manager, ReentrantReadWriteLock rl, int signatureLength, boolean useMAC){
         this.isClient = isClient;
         this.sessionTable = sessionTable;
         this.authKey = authKey;
