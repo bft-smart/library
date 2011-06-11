@@ -18,6 +18,7 @@
 
 package navigators.smart.communication.client.netty;
 
+import java.util.HashMap;
 import static org.jboss.netty.channel.Channels.pipeline;
 
 import java.util.Hashtable;
@@ -39,7 +40,7 @@ public class NettyServerPipelineFactory implements ChannelPipelineFactory {
 
     NettyClientServerCommunicationSystemServerSide ncs;
     boolean isClient;
-    Hashtable sessionTable;
+    HashMap sessionTable;
     SecretKey authKey;
     int macLength;
     int signatureLength;
@@ -47,7 +48,7 @@ public class NettyServerPipelineFactory implements ChannelPipelineFactory {
     ReentrantReadWriteLock rl;
     ReentrantLock lock;
 
-    public NettyServerPipelineFactory(NettyClientServerCommunicationSystemServerSide ncs, boolean isClient, Hashtable sessionTable, SecretKey authKey, int macLength, ReconfigurationManager manager, ReentrantReadWriteLock rl, int signatureLength, ReentrantLock lock) {
+    public NettyServerPipelineFactory(NettyClientServerCommunicationSystemServerSide ncs, boolean isClient, HashMap sessionTable, SecretKey authKey, int macLength, ReconfigurationManager manager, ReentrantReadWriteLock rl, int signatureLength, ReentrantLock lock) {
         this.ncs = ncs;
         this.isClient = isClient;
         this.sessionTable = sessionTable;

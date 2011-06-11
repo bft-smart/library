@@ -27,7 +27,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.spec.InvalidKeySpecException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Hashtable;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -75,7 +75,7 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 
     private static final String PASSWORD = "newcs";
     private RequestReceiver requestReceiver;
-    private Hashtable sessionTable;
+    private HashMap sessionTable;
     private ReentrantReadWriteLock rl;
     private SecretKey authKey;
     //private long numReceivedMsgs = 0;
@@ -94,7 +94,7 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
             authKey = fac.generateSecret(spec);
 
             this.manager = manager;
-            sessionTable = new Hashtable();
+            sessionTable = new HashMap();
             rl = new ReentrantReadWriteLock();
 
             //Configure the server.
