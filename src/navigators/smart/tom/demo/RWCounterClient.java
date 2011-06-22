@@ -63,7 +63,7 @@ public class RWCounterClient {
             new DataOutputStream(out).writeInt(1);//i%2
             
             //System.out.println(((i%2 == 0)?"(read-only)":"")+" requesting operation "+i+" on counter.");
-            byte[] reply = counterProxy.invoke(out.toByteArray());
+            byte[] reply = counterProxy.invoke(out.toByteArray(),true);
 //(i%2 == 0)
             int newValue = new DataInputStream(new ByteArrayInputStream(reply)).readInt();
             Logger.println2(l,"Counter value = " + newValue);
