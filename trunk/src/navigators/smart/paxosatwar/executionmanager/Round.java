@@ -436,4 +436,26 @@ public class Round implements Serializable {
     public boolean equals(Object o) {
         return this == o;
     }
+    
+    /**
+     * Limpa toda a informacao que tem sobre o consenso (proposes, weaks, strons e decides)
+     */
+    public void clear() {
+
+        int n = manager.getCurrentViewN();
+        
+        weakSetted = new boolean[n];
+        strongSetted = new boolean[n];
+
+        Arrays.fill(weakSetted, false);
+        Arrays.fill(strongSetted, false);
+
+        this.weak = new byte[n][];
+        this.strong = new byte[n][];
+        this.decide = new byte[n][];
+
+        Arrays.fill((Object[]) weak, null);
+        Arrays.fill((Object[]) strong, null);
+        Arrays.fill((Object[]) decide, null);
+    }
 }

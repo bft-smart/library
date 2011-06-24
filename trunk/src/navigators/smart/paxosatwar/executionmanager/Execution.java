@@ -18,7 +18,10 @@
 
 package navigators.smart.paxosatwar.executionmanager;
 
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.locks.ReentrantLock;
 
 import navigators.smart.paxosatwar.Consensus;
@@ -39,6 +42,11 @@ public class Execution {
     private boolean decided; // Is this execution decided?
     private long initialTimeout; // Initial timeout for rounds
     private int decisionRound = -1; // round at which a desision was made
+
+    //NOVOS ATRIBUTOS PARA A TROCA DE LIDER
+    private int ets = 0;
+    private RoundValuePair quorumWeaks = new RoundValuePair(0, new byte[0]);
+    private HashSet<RoundValuePair> writeSet = new HashSet<RoundValuePair>();
 
     public ReentrantLock lock = new ReentrantLock(); //this execution lock (called by other classes)
 
@@ -107,6 +115,77 @@ public class Execution {
 
         return round;
     }
+    
+    /**
+     * Incrementar o ETS desta replica
+     */
+    public void incEts() {
+        ets++;
+    }
+
+    /**
+     * Guardar o valor lido de um quorum bizantino de WEAKS
+     * @param value
+     */
+    public void setQuorumWeaks(byte[] value) {
+
+        quorumWeaks = new RoundValuePair(ets, value);
+    }
+
+    /**
+     * Devolve o valor lido de um quorum bizantino de WEAKS que ja tiver sido guardado
+     * @return o valor lido de um quorum bizantino de WEAKS, se ja tiver sido obtido
+     */
+    public RoundValuePair getQuorumWeaks() {
+        return quorumWeaks;
+    }
+
+    /**
+     * Adicionar valor um que se que escrever no writeSet
+     * @param value Valor a escrever no writeSet
+     */
+    public void addWritten(byte[] value) {
+
+        writeSet.add(new RoundValuePair(ets, value));
+    }
+
+    /**
+     * Remover um valor ja escrito em writeSet
+     * @param value valor a remover do writeSet
+     */
+    public void removeWritten(byte[] value) {
+
+        for (RoundValuePair rv : writeSet) {
+
+            if (Arrays.equals(rv.getValue(), value)) writeSet.remove(rv);
+        }
+
+    }
+    public HashSet<RoundValuePair> getWriteSet() {
+        return writeSet;
+    }
+    /**
+     * Creates a round associated with this execution, supposedly the next
+     * @return The round
+     */
+    public Round createRound(ReconfigurationManager recManager) {
+        roundsLock.lock();
+
+        Set<Integer> keys = rounds.keySet();
+
+        int max = -1;
+        for (int k : keys) {
+            if (k > max) max = k;
+        }
+
+        max++;
+        Round round = new Round(recManager, this, max, initialTimeout);
+        rounds.put(max, round);
+
+        roundsLock.unlock();
+
+        return round;
+    }
 
     /**
      * Removes rounds greater than 'limit' from this execution
@@ -145,6 +224,10 @@ public class Execution {
      */
     public Round getLastRound() {
         roundsLock.lock();
+        if (rounds.size() == 0) {
+            roundsLock.unlock();
+            return null;
+        }
         Round r = rounds.get(rounds.size() - 1);
         roundsLock.unlock();
         return r;

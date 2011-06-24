@@ -18,6 +18,9 @@
 
 package navigators.smart.tom.core;
 
+import java.io.ByteArrayOutputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.IOException;
@@ -35,13 +38,15 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
-
+import java.util.logging.Level;
 
 import navigators.smart.clientsmanagement.ClientsManager;
 import navigators.smart.clientsmanagement.RequestList;
 import navigators.smart.communication.ServerCommunicationSystem;
 import navigators.smart.communication.client.RequestReceiver;
 import navigators.smart.paxosatwar.Consensus;
+import navigators.smart.paxosatwar.executionmanager.ProofVerifier;
+import navigators.smart.paxosatwar.executionmanager.RoundValuePair;
 import navigators.smart.paxosatwar.executionmanager.Execution;
 import navigators.smart.paxosatwar.executionmanager.ExecutionManager;
 import navigators.smart.paxosatwar.executionmanager.LeaderModule;
@@ -63,8 +68,11 @@ import navigators.smart.tom.core.timer.messages.RTMessage;
 import navigators.smart.tom.util.BatchBuilder;
 import navigators.smart.tom.util.BatchReader;
 import navigators.smart.tom.util.Logger;
-
 import navigators.smart.tom.util.TOMUtil;
+import navigators.smart.tom.leaderchange.LCMessage;
+import navigators.smart.tom.leaderchange.CollectData;
+import navigators.smart.tom.leaderchange.LCManager;
+import navigators.smart.tom.leaderchange.LastEidData;
 
 
 /**
@@ -93,6 +101,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
     private TOMRequestReceiver receiver;
     //the next two are used to generate message digests
     private MessageDigest md;
+    private ProofVerifier proofVerifier;
 
     //the next two are used to generate non-deterministic data in a deterministic way (by the leader)
 //    private Random random = new Random();
@@ -106,6 +115,11 @@ public final class TOMLayer extends Thread implements RequestReceiver {
     private Condition haveMessages = messagesLock.newCondition();
     private ReentrantLock proposeLock = new ReentrantLock();
     private Condition canPropose = proposeLock.newCondition();
+
+    /*** ISTO E CODIGO DO JOAO, RELACIONADO COM A TROCA DE LIDER */
+
+    private LCManager lcManager;
+    /*************************************************************/
 
     /* flag that indicates that the lader changed between the last propose and
     this propose. This flag is changed on updateLeader (to true) and decided
@@ -135,7 +149,8 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             LeaderModule lm,
             Acceptor a,
             ServerCommunicationSystem cs,
-            ReconfigurationManager recManager) {
+            ReconfigurationManager recManager,
+            ProofVerifier proofVerifier) {
 
         super("TOM Layer");
 
@@ -145,6 +160,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         this.acceptor = a;
         this.communication = cs;
         this.reconfManager = recManager;
+        this.proofVerifier = proofVerifier;
 //        this.numMsgsReceived = 0;
         //this.stConsensusBatch = new Storage(BENCHMARK_PERIOD);
         //this.stConsensusDuration = new Storage(BENCHMARK_PERIOD);
@@ -162,6 +178,11 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         } catch (Exception e) {
             e.printStackTrace(System.out);
         }
+        
+        /*** ISTO E CODIGO DO JOAO, RELACIONADO COM A TROCA DE LIDER */
+
+        this.lcManager = new LCManager(recManager, md);
+        /*************************************************************/
 
         //this.ot = new OutOfContextMessageThread(this); // Create out of context thread
         //this.ot.start();
@@ -380,27 +401,34 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             //System.out.println(currentTime);
             if (initialTime > -1) currentTime = System.currentTimeMillis() - initialTime;
             /***********************************************************************/
+            System.out.println("(TOMLayer.run) Running."); // TODO: isto n podia passar para fora do ciclo?
             Logger.println("(TOMLayer.run) Running."); // TODO: isto n podia passar para fora do ciclo?
 
             // blocks until this replica learns to be the leader for the current round of the current consensus
             leaderLock.lock();
-            Logger.println("(TOMLayer.run) Next leader for eid=" + (getLastExec() + 1) + ": " + lm.getLeader(getLastExec() + 1, 0));
+            System.out.println("(TOMLayer.run) Next leader for eid=" + (getLastExec() + 1) + ": " + lm.getCurrentLeader());
+            Logger.println("(TOMLayer.run) Next leader for eid=" + (getLastExec() + 1) + ": " + lm.getCurrentLeader());
             
             //******* EDUARDO BEGIN **************//
-            if (lm.getLeader(getLastExec() + 1, 0) != this.reconfManager.getStaticConf().getProcessId()) {
+            if (/*lm.getLeader(getLastExec() + 1, 0)*/ lm.getCurrentLeader() != this.reconfManager.getStaticConf().getProcessId()) {
                 iAmLeader.awaitUninterruptibly();
+                waitForPaxosToFinish();
             }
             //******* EDUARDO END **************//
             
             leaderLock.unlock();
+            System.out.println("(TOMLayer.run) I'm the leader.");
             Logger.println("(TOMLayer.run) I'm the leader.");
 
             // blocks until there are requests to be processed/ordered
             messagesLock.lock();
             if (!clientsManager.havePendingRequests()) {
+                System.out.println("(TOMLayer.run) tenho requests pendentes.");
                 haveMessages.awaitUninterruptibly();
+                System.out.println("(TOMLayer.run) ja nao tenho requests pendentes.");
             }
             messagesLock.unlock();
+            System.out.println("(TOMLayer.run) There are messages to be ordered.");
             Logger.println("(TOMLayer.run) There are messages to be ordered.");
 
             // blocks until the current consensus finishes
@@ -411,9 +439,10 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             }
             proposeLock.unlock();
 
+            System.out.println("(TOMLayer.run) I can try to propose.");
             Logger.println("(TOMLayer.run) I can try to propose.");
                 //******* EDUARDO BEGIN **************//
-            if ((lm.getLeader(getLastExec() + 1, 0) == this.reconfManager.getStaticConf().getProcessId()) && //I'm the leader
+            if ((lm.getCurrentLeader() == this.reconfManager.getStaticConf().getProcessId()) && //I'm the leader
                     //******* EDUARDO END **************//
                     (clientsManager.havePendingRequests()) && //there are messages to be ordered
                     (getInExec() == -1 || leaderChanged)) { //there is no consensus in execution
@@ -421,11 +450,17 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                 leaderChanged = false;
 
                 /**********ISTO E CODIGO MARTELADO, PARA FAZER AVALIACOES **************/
+                boolean temp = false;
                 if (initialTime == -1) {
                     initialTime = System.currentTimeMillis();
                     currentTime = 0;
                 }
-                //else if ((this.reconfManager.getStaticConf().getProcessId() == 0) && (currentTime >= 30000)) System.exit(0);
+                else if ((this.reconfManager.getStaticConf().getProcessId() == 0) /*&& (currentTime >= 5000)*/) {
+                        //System.exit(0);
+                        //temp = true;
+                        //if ((getLastExec() + 1) >= 200) temp = true;
+                        System.out.println("Isto ta assim: " + (getLastExec() + 1));
+                }
                 /***********************************************************************/
 
                 // Sets the current execution
@@ -439,6 +474,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                 //Logger.println("(TOMLayer.run) Acceptor semaphore acquired");
 
                 execManager.getProposer().startExecution(execId,createPropose(exec.getLearner()));
+                if (temp) System.exit(0);
 
             /*
             if (counter>=BENCHMARK_PERIOD/2)
@@ -611,7 +647,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
     }
 
     public void forwardRequestToLeader(TOMMessage request) {
-        int leaderId = lm.getLeader(getLastExec() + 1, 0);
+        int leaderId = lm.getCurrentLeader();
         Logger.println("(TOMLayer.forwardRequestToLeader) forwarding " + request + " to " + leaderId);
         
             //******* EDUARDO BEGIN **************//
@@ -626,9 +662,10 @@ public final class TOMLayer extends Thread implements RequestReceiver {
      * @param request the message that caused the timeout
      */
     public void sendTimeoutMessage(List<byte[][]> serializedRequestList) {
+        System.out.println("Estou a ser invocado!!");
         //******* EDUARDO BEGIN **************//
         communication.send(this.reconfManager.getCurrentViewOtherAcceptors(),
-                new RTMessage(TOMUtil.RT_TIMEOUT, -1, this.reconfManager.getStaticConf().getProcessId(), serializedRequestList));
+                new RTMessage(TOMUtil.STOP, -1, this.reconfManager.getStaticConf().getProcessId(), serializedRequestList));
        //******* EDUARDO END **************//
     }
 
@@ -640,7 +677,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
      */
     public void sendCollectMessage(int reqId, RTCollect collect) {
             //******* EDUARDO BEGIN **************//
-        RTMessage rtm = new RTMessage(TOMUtil.RT_COLLECT, reqId,
+        RTMessage rtm = new RTMessage(TOMUtil.SYNC, reqId,
                 this.reconfManager.getStaticConf().getProcessId(), acceptor.sign(collect));
 
         if (collect.getNewLeader() == this.reconfManager.getStaticConf().getProcessId()) {
@@ -665,7 +702,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
     public void sendNewLeaderMessage(int reqId, RTLeaderChange rtLC) {
         
          //******* EDUARDO BEGIN **************//
-        RTMessage rtm = new RTMessage(TOMUtil.RT_LEADER, reqId, this.reconfManager.getStaticConf().getProcessId(), rtLC);
+        RTMessage rtm = new RTMessage(TOMUtil.CATCH_UP, reqId, this.reconfManager.getStaticConf().getProcessId(), rtLC);
         //br.ufsc.das.util.Logger.println("Atualizando leader para "+rtLC.newLeader+" a partir de "+rtLC.start);
         updateLeader(reqId, rtLC.start, rtLC.newLeader);
 
@@ -706,7 +743,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
      */
     public void deliverTimeoutRequest(RTMessage msg) {
         switch (msg.getRTType()) {
-            case TOMUtil.RT_TIMEOUT:
+            case TOMUtil.STOP:
                  {
                     Logger.println("(TOMLayer.deliverTimeoutRequest) receiving timeout message from " + msg.getSender());
                     List<byte[][]> serializedRequestList = (List<byte[][]>) msg.getContent();
@@ -743,7 +780,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                     }
                 }
                 break;
-            case TOMUtil.RT_COLLECT:
+            case TOMUtil.SYNC:
                  {
                     Logger.println("(TOMLayer.deliverTimeoutRequest) receiving collect for message " + msg.getReqId() + " from " + msg.getSender());
                     SignedObject so = (SignedObject) msg.getContent();
@@ -768,7 +805,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                     }
                 }
                 break;
-            case TOMUtil.RT_LEADER:
+            case TOMUtil.CATCH_UP:
                  {
                     Logger.println("1 recebendo newLeader de " + msg.getSender());
                     RTLeaderChange rtLC = (RTLeaderChange) msg.getContent();
@@ -1165,8 +1202,8 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             /************************* TESTE *************************/
 
             /** CODIGO MALICIOSO, PARA FORCAR A REPLICA ATRASADA A PEDIR O ESTADO A OUTRA DAS REPLICAS */
-            byte[] badState = {127};
-            if (sendState && reconfManager.getStaticConf().getProcessId() == 0) state.setState(badState);
+            //byte[] badState = {127};
+            //if (sendState && reconfManager.getStaticConf().getProcessId() == 0) state.setState(badState);
             /*******************************************************************************************/
 
             int[] targets = { msg.getSender() };
@@ -1187,7 +1224,6 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             /************************* TESTE *************************
             System.out.println("[/TOMLayer.SMRequestDeliver]");
             /************************* TESTE *************************/
-            System.out.println("Enviei o estado!");
         }
     }
 
@@ -1242,7 +1278,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
                     Logger.println("(TOMLayer.SMReplyDeliver) I have at least " + reconfManager.getCurrentViewF() + " replies!");
                     /************************* TESTE *************************
-                    System.out.println("Ja tenho mais que " + conf.getF() + " respostas iguais!");
+                    System.out.println("Ja tenho mais que " + reconfManager.getQuorumF() + " respostas iguais!");
                     /************************* TESTE *************************/
 
                     TransferableState state = stateManager.getValidHash();
@@ -1397,8 +1433,6 @@ public final class TOMLayer extends Thread implements RequestReceiver {
     /* ISTO SAO MAIS COISAS DO JOAO, PARA RETIRAR A THREAD OUTOFCONTEXT */
     public void processOutOfContext() {
 
-        Execution execution = null;
-
         while (true) {
 
             int nextExecution = getLastExec() + 1;
@@ -1406,11 +1440,650 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                 System.out.println("Estou a processar mensagens de out of context!");
 
                 Logger.println("(TOMLayer.processOutOfContext) starting processing out of context messages for consensus " + nextExecution);
-                execution = execManager.getExecution(nextExecution);
+                execManager.getExecution(nextExecution);
                 Logger.println("(TOMLayer.processOutOfContext) finished processing out fo context messages for consensus " + nextExecution);
             }
             else break;
         }
     }
     /********************************************************************/
+
+    /*** ISTO E CODIGO DO JOAO, RELACIONADO COM A TROCA DE LIDER */
+
+    /**
+     * Este metodo e invocado quando ha um timeout e o request ja foi re-encaminhado para o lider
+     * @param requestList Lista de pedidos que a replica quer ordenar mas nao conseguiu
+     */
+    public void triggerTimeout(List<TOMMessage> requestList) {
+
+        ObjectOutputStream out = null;
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+
+        lcManager.nexttsLock();
+        lcManager.lasttsLock();
+
+        // ainda nao estou na fase de troca de lider?
+        if (lcManager.getNextts() == lcManager.getLastts()) {
+
+                lcManager.setNextts(lcManager.getLastts() + 1); // definir proximo timestamp
+
+                int ts = lcManager.getNextts();
+
+                lcManager.nexttsUnlock();
+                lcManager.lasttsUnlock();
+
+                // guardar mensagens para ordenar
+                lcManager.setCurrentRequestTimedOut(requestList);
+
+                // guardar informacao da mensagem que vou enviar
+                lcManager.StopsLock();
+                lcManager.addStop(ts, this.reconfManager.getStaticConf().getProcessId());
+                lcManager.StopsUnlock();
+
+                execManager.stop(); // parar execucao do consenso
+
+                try { // serializar conteudo a enviar na mensagem STOP
+                    out = new ObjectOutputStream(bos);
+
+                    if (lcManager.getCurrentRequestTimedOut() != null) {
+
+                        //TODO: Se isto estiver a null, e porque nao houve timeout. Fazer o q?
+                        out.writeBoolean(true);
+                        out.writeObject(lcManager.getCurrentRequestTimedOut());
+                    }
+                    else {
+                        out.writeBoolean(false);
+                    }
+
+                    byte[] payload = bos.toByteArray();
+                    out.close();
+                    bos.close();
+
+                    // enviar mensagem STOP
+                    communication.send(this.reconfManager.getCurrentViewOtherAcceptors(),
+                    new LCMessage(this.reconfManager.getStaticConf().getProcessId(), TOMUtil.STOP, ts, payload));
+
+                } catch (IOException ex) {
+                    java.util.logging.Logger.getLogger(TOMLayer.class.getName()).log(Level.SEVERE, null, ex);
+                } finally {
+                    try {
+                        out.close();
+                        bos.close();
+                    } catch (IOException ex) {
+                        java.util.logging.Logger.getLogger(TOMLayer.class.getName()).log(Level.SEVERE, null, ex);
+                    }
+                }
+
+                evaluateStops(ts); // avaliar mensagens stops
+
+        }
+
+        else {
+                lcManager.nexttsUnlock();
+                lcManager.lasttsUnlock();
+        }
+    }
+
+    // este metodo e invocado aquando de um timeout ou da recepcao de uma mensagem STOP
+    private void evaluateStops(int nextTS) {
+
+        ObjectOutputStream out = null;
+        ByteArrayOutputStream bos = null;
+
+        lcManager.nexttsLock();
+        lcManager.lasttsLock();
+        lcManager.StopsLock();
+
+        // passar para a fase de troca de lider se já tiver recebido mais de f mensagens
+        if (lcManager.getStopsSize(nextTS) > this.reconfManager.getQuorumF() && lcManager.getNextts() == lcManager.getLastts()) {
+
+            lcManager.setNextts(lcManager.getLastts() + 1); // definir proximo timestamp
+
+            int ts = lcManager.getNextts();
+
+            // guardar informacao da mensagem que vou enviar
+            lcManager.addStop(ts, this.reconfManager.getStaticConf().getProcessId());
+
+            execManager.stop(); // parar execucao do consenso
+
+            try { // serializar conteudo a enviar na mensagem STOP
+                bos = new ByteArrayOutputStream();
+                out = new ObjectOutputStream(bos);
+
+                if (lcManager.getCurrentRequestTimedOut() != null) {
+
+                    //TODO: Se isto estiver a null, e porque nao houve timeout. Fazer o q?
+                    out.writeBoolean(true);
+                    out.writeObject(lcManager.getCurrentRequestTimedOut());
+                }
+                else {
+                    out.writeBoolean(false);
+                }
+
+                out.flush();
+                bos.flush();
+
+                byte[] payload = bos.toByteArray();
+                out.close();
+                bos.close();
+
+                // enviar mensagem STOP
+                communication.send(this.reconfManager.getCurrentViewOtherAcceptors(),
+                    new LCMessage(this.reconfManager.getStaticConf().getProcessId(), TOMUtil.STOP, ts, payload));
+
+            } catch (IOException ex) {
+                java.util.logging.Logger.getLogger(TOMLayer.class.getName()).log(Level.SEVERE, null, ex);
+            } finally {
+                try {
+                    out.close();
+                    bos.close();
+                } catch (IOException ex) {
+                    java.util.logging.Logger.getLogger(TOMLayer.class.getName()).log(Level.SEVERE, null, ex);
+                }
+            }
+        }
+
+        // posso passar para a fase de sincronizacao?
+        if (lcManager.getStopsSize(nextTS) > this.reconfManager.getQuorum2F() && lcManager.getNextts() > lcManager.getLastts()) {
+
+            lcManager.setLastts(lcManager.getNextts()); // definir ultimo timestamp
+
+            lcManager.nexttsUnlock();
+
+            int ts = lcManager.getLastts();
+            lcManager.lasttsUnlock();
+
+            // evitar um memory leak
+            lcManager.removeStops(nextTS);
+
+            lcManager.StopsUnlock();
+
+            int leader = ts % this.reconfManager.getCurrentViewN(); // novo lider
+            int in = getInExec(); // eid a executar
+            int last = getLastExec(); // ultimo eid decidido
+
+            // Se eu nao for o lider, tenho que enviar uma mensagem SYNC para ele
+            if (leader != this.reconfManager.getStaticConf().getProcessId()) {
+
+                try { // serializar o conteudo da mensagem SYNC
+
+                    bos = new ByteArrayOutputStream();
+                    out = new ObjectOutputStream(bos);
+
+                    if (last > -1) { // conteudo do ultimo eid decidido
+
+                        out.writeBoolean(true);
+                        out.writeInt(last);
+                        Execution exec = execManager.getExecution(last);
+                        byte[] decision = exec.getLearner().getDecision();
+
+                        out.writeObject(decision);
+
+                        // TODO: VAI SER PRECISO METER UMA PROVA!!!
+
+                    }
+
+                    else out.writeBoolean(false);
+
+                    if (in > -1) { // conteudo do eid a executar
+
+                        Execution exec = execManager.getExecution(in);
+
+                        RoundValuePair quorumWeaks = exec.getQuorumWeaks();
+                        HashSet<RoundValuePair> writeSet = exec.getWriteSet();
+
+                        CollectData collect = new CollectData(this.reconfManager.getStaticConf().getProcessId(), in, quorumWeaks, writeSet);
+
+                        SignedObject signedCollect = proofVerifier.sign(collect);
+
+                        out.writeObject(signedCollect);
+
+                        //out.writeInt(in);
+                        //out.writeObject(exec.getQuorumWeaks());
+                        //out.writeObject(exec.getWriteSet());
+                    }
+
+                    else {
+
+                        CollectData collect = new CollectData(this.reconfManager.getStaticConf().getProcessId(), -1, new RoundValuePair(-1, new byte[0]), new HashSet<RoundValuePair>());
+
+                        SignedObject signedCollect = proofVerifier.sign(collect);
+
+                        out.writeObject(signedCollect);
+
+                    }
+
+                    out.flush();
+                    bos.flush();
+
+                    byte[] payload = bos.toByteArray();
+                    out.close();
+                    bos.close();
+
+                    leaderLock.lock();
+                    lm.setNewTS(ts);
+                    leaderLock.unlock();
+
+                    int[] b = new int[1];
+                    b[0] = leader;
+
+                    // enviar mensagem SYNC para o novo lider
+                    communication.send(b,
+                        new LCMessage(this.reconfManager.getStaticConf().getProcessId(), TOMUtil.SYNC, ts, payload));
+
+                    //TODO: Voltar a ligar o timeout
+
+                } catch (IOException ex) {
+                    java.util.logging.Logger.getLogger(TOMLayer.class.getName()).log(Level.SEVERE, null, ex);
+                } finally {
+                    try {
+                        out.close();
+                        bos.close();
+                    } catch (IOException ex) {
+                        java.util.logging.Logger.getLogger(TOMLayer.class.getName()).log(Level.SEVERE, null, ex);
+                    }
+                }
+
+            } else { // se for o lider, vou guardar a informacao que enviaria na mensagem SYNC
+
+                LastEidData lastData = null;
+                CollectData collect = null;
+
+                if (last > -1) {  // conteudo do ultimo eid decidido
+                    Execution exec = execManager.getExecution(last);
+                    byte[] decision = exec.getLearner().getDecision();
+
+                    lastData = new LastEidData(this.reconfManager.getStaticConf().getProcessId(), last, decision, null);
+                    // TODO: VAI SER PRECISO METER UMA PROVA!!!
+
+                }
+                else lastData = new LastEidData(this.reconfManager.getStaticConf().getProcessId(), last, null, null);
+
+                lcManager.addLastEid(ts, lastData);
+
+
+                if (in > -1) { // conteudo do eid a executar
+                    Execution exec = execManager.getExecution(in);
+
+                    RoundValuePair quorumWeaks = exec.getQuorumWeaks();
+                    HashSet<RoundValuePair> writeSet = exec.getWriteSet();
+
+                    collect = new CollectData(this.reconfManager.getStaticConf().getProcessId(), in, quorumWeaks, writeSet);
+
+                }
+                else collect = new CollectData(this.reconfManager.getStaticConf().getProcessId(), -1, new RoundValuePair(-1, new byte[0]), new HashSet<RoundValuePair>());
+
+                SignedObject signedCollect = proofVerifier.sign(collect);
+
+                lcManager.addCollect(ts, signedCollect);
+            }
+
+        }
+        else {
+            lcManager.StopsUnlock();
+            lcManager.nexttsUnlock();
+            lcManager.lasttsUnlock();
+        }
+    }
+
+    /**
+     * Este metodo e invocado pelo MessageHandler sempre que receber mensagens relacionados
+     * com a troca de lider
+     * @param msg Mensagem recebida de outra replica
+     */
+    public void deliverTimeoutRequest(LCMessage msg) {
+
+        ByteArrayInputStream bis = null;
+        ObjectInputStream ois = null;
+
+        switch (msg.getType()) {
+            case TOMUtil.STOP: // mensagens STOP
+
+                {
+                    lcManager.lasttsLock();
+
+                    // esta mensagem e para a proxima mudanca de lider?
+                    if (msg.getTs() == lcManager.getLastts() + 1) {
+
+                        lcManager.lasttsUnlock();
+
+                        try { // descerializar o conteudo da mensagem STOP
+
+                            bis = new ByteArrayInputStream(msg.getPayload());
+                            ois = new ObjectInputStream(bis);
+
+                            boolean hasReq = ois.readBoolean();
+                            clientsManager.getClientsLock().lock();
+
+                            if (hasReq) {
+
+                                // Guardar os pedidos que a outra replica nao conseguiu ordenar
+                                //TODO: Os requests  tem q ser verificados!
+                                List<TOMMessage> requests = (List<TOMMessage>) ois.readObject();
+
+                                for (TOMMessage r : requests) {
+
+                                    clientsManager.requestReceived(r, false);
+                                }
+
+                            }
+                            clientsManager.getClientsLock().unlock();
+
+                            ois.close();
+                            bis.close();
+
+                        } catch (IOException ex) {
+                            java.util.logging.Logger.getLogger(TOMLayer.class.getName()).log(Level.SEVERE, null, ex);
+                        } catch (ClassNotFoundException ex) {
+                            java.util.logging.Logger.getLogger(TOMLayer.class.getName()).log(Level.SEVERE, null, ex);
+
+                        }
+
+                        // guardar informacao sobre a mensagem STOP
+                        lcManager.StopsLock();
+                        lcManager.addStop(msg.getTs(), msg.getSender());
+                        lcManager.StopsUnlock();
+
+                        evaluateStops(msg.getTs()); // avaliar mensagens stops
+                    }
+                    else {
+                        lcManager.lasttsUnlock();
+                    }
+                }
+                break;
+            case TOMUtil.SYNC: // mensagens SYNC
+                {
+
+                    int ts = msg.getTs();
+
+                    lcManager.lasttsLock();
+
+                    // Sou o novo lider e estou a espera destas mensagem?
+                    if (ts == lcManager.getLastts() &&
+                            this.reconfManager.getStaticConf().getProcessId() == (ts % this.reconfManager.getCurrentViewN())) {
+
+                        //TODO: E preciso verificar a prova do ultimo consenso decidido e a assinatura do estado do consenso actual!
+
+                        lcManager.lasttsUnlock();
+
+                        LastEidData lastData = null;
+                        SignedObject signedCollect = null;
+
+                        int last = -1;
+                        byte[] lastValue = null;
+
+                        int in = -1;
+
+                        RoundValuePair quorumWeaks = null;
+                        HashSet<RoundValuePair> writeSet = null;
+
+
+                        try { // descerializar o conteudo da mensagem
+
+                            bis = new ByteArrayInputStream(msg.getPayload());
+                            ois = new ObjectInputStream(bis);
+
+                            if (ois.readBoolean()) { // conteudo do ultimo eid decidido
+
+
+                                last = ois.readInt();
+
+                                lastValue = (byte[]) ois.readObject();
+
+                                //TODO: Falta a prova!
+
+                            }
+
+                            lastData = new LastEidData(msg.getSender(), last, lastValue, null);
+
+                            lcManager.addLastEid(ts, lastData);
+
+                            // conteudo do eid a executar
+
+                            signedCollect = (SignedObject) ois.readObject();
+
+                            /*in = ois.readInt();
+                            quorumWeaks = (RoundValuePair) ois.readObject();
+                            writeSet = (HashSet<RoundValuePair>) ois.readObject();*/
+
+
+
+                            /*collect = new CollectData(msg.getSender(), in,
+                                    quorumWeaks, writeSet);*/
+
+                            ois.close();
+                            bis.close();
+
+                            lcManager.addCollect(ts, signedCollect);
+
+                            int bizantineQuorum = (reconfManager.getCurrentViewN() + reconfManager.getCurrentViewF()) / 2;
+
+                            // ja recebi mensagens de um quorum bizantino,
+                            // referentes tanto ao ultimo eid como o actual?s
+                            if (lcManager.getLastEidsSize(ts) > bizantineQuorum &&
+                                    lcManager.getCollectsSize(ts) > bizantineQuorum) {
+
+                                catch_up(ts);
+                            }
+
+                        } catch (IOException ex) {
+                            java.util.logging.Logger.getLogger(TOMLayer.class.getName()).log(Level.SEVERE, null, ex);
+                        } catch (ClassNotFoundException ex) {
+                            java.util.logging.Logger.getLogger(TOMLayer.class.getName()).log(Level.SEVERE, null, ex);
+
+                        }
+
+                  }
+            }
+            break;
+        case TOMUtil.CATCH_UP: // mensagens de CATCH-UP
+            {
+                int ts = msg.getTs();
+
+                lcManager.lasttsLock();
+
+                // Estou a espera desta mensagem, e recebi-a do novo lider?
+                if (msg.getTs() == lcManager.getLastts() && msg.getSender() == (ts % this.reconfManager.getCurrentViewN())) {
+
+                    lcManager.lasttsUnlock();
+
+                    LastEidData lastHighestEid = null;
+                    int currentEid = -1;
+                    HashSet<SignedObject> signedCollects = null;
+                    byte[] propose = null;
+                    int batchSize = -1;
+
+                    try { // descerializar o conteudo da mensagem
+
+                        bis = new ByteArrayInputStream(msg.getPayload());
+                        ois = new ObjectInputStream(bis);
+
+                        lastHighestEid = (LastEidData) ois.readObject();
+                        currentEid = ois.readInt();
+                        signedCollects = (HashSet<SignedObject>) ois.readObject();
+                        propose = (byte[]) ois.readObject();
+                        batchSize = ois.readInt();
+
+                        lcManager.setCollects(ts, signedCollects);
+
+                        // o predicado sound e verdadeiro?
+                        if (lcManager.sound(lcManager.selectCollects(ts, currentEid, proofVerifier))) {
+
+                            finalise(ts, lastHighestEid, currentEid, signedCollects, propose, batchSize, false);
+                        }
+
+                        ois.close();
+                        bis.close();
+
+                    } catch (IOException ex) {
+                        java.util.logging.Logger.getLogger(TOMLayer.class.getName()).log(Level.SEVERE, null, ex);
+                    } catch (ClassNotFoundException ex) {
+                        java.util.logging.Logger.getLogger(TOMLayer.class.getName()).log(Level.SEVERE, null, ex);
+
+                    }
+
+                }
+                else {
+                    lcManager.lasttsUnlock();
+                }
+            }
+            break;
+
+        }
+
+    }
+
+    // este metodo e usado para verificar se o lider pode fazer a mensagem catch-up
+    // e tambem envia-la
+    private void catch_up(int ts) {
+
+        ObjectOutputStream out = null;
+        ByteArrayOutputStream bos = null;
+
+        LastEidData lastHighestEid = lcManager.getHighestLastEid(ts);
+
+        int currentEid = lastHighestEid.getEid() + 1;
+        HashSet<SignedObject> signedCollects = null;
+        byte[] propose = null;
+        int batchSize = -1;
+
+        // normalizar os collects e aplicar-lhes o predicado "sound"
+        if (lcManager.sound(lcManager.selectCollects(ts, currentEid, proofVerifier))) {
+
+            signedCollects = lcManager.getCollects(ts); // todos collects originais que esta replica recebeu
+
+            Consensus cons = new Consensus(-1, -1); // este objecto só serve para obter o batchsize,
+                                                    // a partir do codigo que esta dentro do createPropose()
+
+            propose = createPropose(cons);
+            batchSize = cons.batchSize;
+
+            try { // serializar a mensagem CATCH-UP
+                bos = new ByteArrayOutputStream();
+                out = new ObjectOutputStream(bos);
+
+                out.writeObject(lastHighestEid);
+
+                //TODO: Falta serializar a prova!!
+
+                out.writeInt(currentEid);
+                out.writeObject(signedCollects);
+                out.writeObject(propose);
+                out.writeInt(batchSize);
+
+                out.flush();
+                bos.flush();
+
+                byte[] payload = bos.toByteArray();
+                out.close();
+                bos.close();
+
+                // enviar a mensagem CATCH-UP
+                communication.send(this.reconfManager.getCurrentViewOtherAcceptors(),
+                    new LCMessage(this.reconfManager.getStaticConf().getProcessId(), TOMUtil.CATCH_UP, ts, payload));
+
+                finalise(ts, lastHighestEid, currentEid, signedCollects, propose, batchSize, true);
+
+            } catch (IOException ex) {
+                java.util.logging.Logger.getLogger(TOMLayer.class.getName()).log(Level.SEVERE, null, ex);
+            } finally {
+                try {
+                    out.close();
+                    bos.close();
+                } catch (IOException ex) {
+                    java.util.logging.Logger.getLogger(TOMLayer.class.getName()).log(Level.SEVERE, null, ex);
+                }
+            }
+        }
+    }
+
+    // este metdo e invocado em todas as replicas, e serve para verificar e aplicar
+    // a informacao enviada na mensagem catch-up
+    private void finalise(int ts, LastEidData lastHighestEid,
+            int currentEid, HashSet<SignedObject> signedCollects, byte[] propose, int batchSize, boolean iAmLeader) {
+
+        int me = this.reconfManager.getStaticConf().getProcessId();
+        Execution exec = null;
+        Round r = null;
+
+        // Esta replica esta atrasada?
+        if (getLastExec() + 1 < lastHighestEid.getEid()) {
+            //TODO: Caso em que e necessario aplicar a transferencia de estado
+
+
+        }
+
+        // esta replica ainda esta a executar o ultimo consenso decidido?
+        else if (getLastExec() + 1 == lastHighestEid.getEid()) {
+
+            //TODO: e preciso verificar a prova!
+
+            exec = execManager.getExecution(lastHighestEid.getEid());
+            r = exec.getLastRound();
+
+            if (r == null) {
+                exec.createRound(reconfManager);
+            }
+
+            byte[] hash = computeHash(propose);
+            r.propValueHash = hash;
+            r.propValue = propose;
+            r.deserializedPropValue = checkProposedValue(propose);
+            r.setDecide(me, hash);
+            exec.decided(r, hash); // entregar a decisao a delivery thread
+
+        }
+        byte[] tmpval = null;
+
+        HashSet<CollectData> selectedColls = lcManager.selectCollects(signedCollects, currentEid, proofVerifier);
+
+        // obter um valor que satisfaca o predicado "bind"
+        tmpval = lcManager.getBindValue(selectedColls);
+
+        // se tal valor nao existir, obter o valor escrito pelo novo lider
+        if (tmpval == null && lcManager.unbound(selectedColls)) {
+            tmpval = propose;
+        }
+
+        if (tmpval != null) { // consegui chegar a algum valor?
+
+            exec = execManager.getExecution(currentEid);
+            exec.incEts();
+
+            exec.removeWritten(tmpval);
+            exec.addWritten(tmpval);
+
+            r = exec.getLastRound();
+
+            if (r == null) {
+                r = exec.createRound(reconfManager);
+            }
+            else {
+                r.clear();
+            }
+
+            byte[] hash = computeHash(tmpval);
+            r.propValueHash = hash;
+            r.propValue = tmpval;
+            r.deserializedPropValue = checkProposedValue(tmpval);
+            r.setWeak(me, hash);
+
+            lm.setNewTS(ts);
+
+            // resumir a execucao normal
+            execManager.restart();
+            leaderChanged = true;
+            setInExec(currentEid);
+            if (iAmLeader) {
+                imAmTheLeader();
+            } // acordar a thread que propoem valores na operacao normal
+
+            // enviar mensagens WEAK para as outras replicas
+            communication.send(this.reconfManager.getCurrentViewOtherAcceptors(),
+                    acceptor.getFactory().createWeak(currentEid, r.getNumber(), r.propValueHash));
+
+        }
+
+    }
+    /**************************************************************/
 }

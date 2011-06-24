@@ -32,6 +32,7 @@ import navigators.smart.paxosatwar.messages.CollectProof;
 import navigators.smart.paxosatwar.messages.FreezeProof;
 import navigators.smart.reconfiguration.ReconfigurationManager;
 import navigators.smart.tom.core.timer.messages.RTCollect;
+import navigators.smart.tom.leaderchange.CollectData;
 
 
 /**
@@ -70,7 +71,20 @@ public class ProofVerifier {
             e.printStackTrace();
         }
     }
-
+    
+    /**
+     * Signs a collect data object
+     * @param cp a collect data object
+     * @return Signed collect data object
+     */
+    public SignedObject sign(CollectData collects) {
+        try {
+            return new SignedObject(collects, prk, engine);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
     /**
      * Signs proofs of a freezed consensus
      * @param cp Proofs of a freezed consensus
