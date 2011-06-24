@@ -78,7 +78,7 @@ public abstract class TOMReceiver implements TOMRequestReceiver {
         
         ProofVerifier proofVerifier = new ProofVerifier(reconfManager);
         
-        LeaderModule lm = new LeaderModule();
+        LeaderModule lm = new LeaderModule(reconfManager);
         
         
         Acceptor acceptor = new Acceptor(cs, messageFactory, proofVerifier, lm, reconfManager);
@@ -90,7 +90,7 @@ public abstract class TOMReceiver implements TOMRequestReceiver {
         acceptor.setManager(manager);
         proposer.setManager(manager);
 
-        TOMLayer tomLayer = new TOMLayer(manager, this, lm, acceptor, cs, reconfManager);
+        TOMLayer tomLayer = new TOMLayer(manager, this, lm, acceptor, cs, reconfManager, proofVerifier);
 
         //tomLayer.setLastExec(lastExec);
         //tomLayer.lm.decided(lastExec, lastLeader);

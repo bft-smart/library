@@ -61,7 +61,7 @@ public class RequestsTimer {
         //long startInstant = System.nanoTime();
         rwLock.writeLock().lock();
         watched.add(request);
-        if (watched.size() == 1 && rtTask == null) {
+        if (watched.size() >= 1 && rtTask == null) {
             rtTask = new RequestTimerTask();
             timer.schedule(rtTask, timeout);
         }
@@ -151,7 +151,8 @@ public class RequestsTimer {
 
                 if (!pendingRequests.isEmpty()) {
                     System.out.println("Timeout for messages: " + pendingRequests);
-                    tomLayer.requestTimeout(pendingRequests);
+                    //tomLayer.requestTimeout(pendingRequests);
+                    tomLayer.triggerTimeout(pendingRequests);
                 }
 
                 rtTask = new RequestTimerTask();

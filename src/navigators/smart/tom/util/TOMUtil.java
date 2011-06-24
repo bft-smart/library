@@ -39,9 +39,9 @@ public class TOMUtil {
     public static final int RR_REQUEST = 0;
     public static final int RR_REPLY = 1;
     public static final int RR_DELIVERED = 2;
-    public static final int RT_TIMEOUT = 3;
-    public static final int RT_COLLECT = 4;
-    public static final int RT_LEADER = 5;
+    public static final int STOP = 3;
+    public static final int SYNC = 4;
+    public static final int CATCH_UP = 5;
     public static final int SM_REQUEST = 6;
     public static final int SM_REPLY = 7;
 

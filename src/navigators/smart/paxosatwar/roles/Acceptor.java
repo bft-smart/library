@@ -183,7 +183,25 @@ public class Acceptor {
      *
      * @param msg The PROPOSE message to by processed
      */
-    public void proposeReceived(Round round, PaxosMessage msg) {
+     public void proposeReceived(Round round, PaxosMessage msg) {
+        byte[] value = msg.getValue();
+        int p = msg.getSender();
+
+        Logger.println("(Acceptor.proposeReceived) PROPOSE for "+round.getNumber()+","+round.getExecution().getId()+" received from "+ p);
+
+        if (leaderModule.getCurrentLeader() == p) {
+            executePropose(round, value); // e se o lider malicioso fizer um replay com otro valor?
+
+        }
+        else {
+            System.out.println("UPS!!! OUTRO LIDER!!");
+        }
+    }
+    public MessageFactory getFactory() {
+        return factory;
+    }
+
+    public void proposeReceived_(Round round, PaxosMessage msg) {
         byte[] value = msg.getValue();
         int p = msg.getSender();
         int eid = round.getExecution().getId();
@@ -327,6 +345,10 @@ public class Acceptor {
         if(round.propValue == null) {
             round.propValue = value;
             round.propValueHash = tomLayer.computeHash(value);
+            
+            /*** CODIGO PARA A TROCA DE LIDER ********/
+            round.getExecution().addWritten(value);
+            /*****************************************/
 
             //start this execution if it is not already running
             if (eid == tomLayer.getLastExec() + 1) {
@@ -370,7 +392,7 @@ public class Acceptor {
         Logger.println("(Acceptor.weakAcceptReceived) WEAK from " + a + " for consensus " + eid);
         round.setWeak(a, value);
 
-        if (!round.isWeakSetted(me)) {
+        if (/*!round.isWeakSetted(me)*/ false) { // codigo desactivado
             //******* EDUARDO BEGIN **************//
             if (round.countWeak(value) > reconfManager.getQuorumF()) {
             //******* EDUARDO END **************//
@@ -411,6 +433,10 @@ public class Acceptor {
             if (!round.isStrongSetted(me)) {
                 Logger.println("(Acceptor.computeWeak) sending STRONG for " + eid);
 
+                /**** CODIGO PARA A TROCA DE LIDER! ******/
+                round.getExecution().setQuorumWeaks(value);
+                /*****************************************/
+                
                 round.setStrong(me, value);
                 //******* EDUARDO BEGIN **************//
                 communication.send(this.reconfManager.getCurrentViewOtherAcceptors(),

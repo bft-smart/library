@@ -32,6 +32,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import navigators.smart.tom.ServiceReplica;
 import navigators.smart.tom.util.DebugInfo;
+import java.util.Scanner;
 
 /**
  *
@@ -111,11 +112,16 @@ public class RandomServer extends ServiceReplica {
             System.exit(-1);
         }
 
+        RandomServer replica = null;
         if(args.length > 1) {
-            new RandomServer(Integer.parseInt(args[0]), Boolean.valueOf(args[1]));
+            replica = new RandomServer(Integer.parseInt(args[0]), Boolean.valueOf(args[1]));
         }else{
-            new RandomServer(Integer.parseInt(args[0]));
+            replica = new RandomServer(Integer.parseInt(args[0]));
         }
+
+        Scanner scan = new Scanner(System.in);
+        String ln = scan.nextLine();
+        if (ln != null) replica.leave();
         //new RandomServer(Integer.parseInt(args[0]));
     }
 

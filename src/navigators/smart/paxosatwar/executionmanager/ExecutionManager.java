@@ -288,6 +288,7 @@ public final class ExecutionManager {
                     stoppedMsgs.add(msg);
                 }
                 stoppedMsgsLock.unlock();
+                return false;
             }
 
             if (

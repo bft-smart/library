@@ -38,6 +38,7 @@ import navigators.smart.tom.core.timer.messages.ForwardedMessage;
 import navigators.smart.tom.core.timer.messages.RTMessage;
 import navigators.smart.tom.util.Logger;
 import navigators.smart.tom.util.TOMUtil;
+import navigators.smart.tom.leaderchange.LCMessage;
 
 
 /**
@@ -78,6 +79,15 @@ public class MessageHandler {
             RTMessage rtMsg = (RTMessage) sm;
             Logger.println("(MessageHandler.processData) RT_MSG received: " + rtMsg + " (replica " + rtMsg.getSender() + ")");
             tomLayer.deliverTimeoutRequest(rtMsg);
+
+        /*** ISTO E CODIGO DO JOAO, RELACIONADO COM A TROCA DE LIDER */
+        } else if (sm instanceof LCMessage) {
+            LCMessage lcMsg = (LCMessage) sm;
+            System.out.println("(MessageHandler.processData) LC_MSG received: " + lcMsg + " (replica " + lcMsg.getSender() + ")");
+            Logger.println("(MessageHandler.processData) LC_MSG received: " + lcMsg + " (replica " + lcMsg.getSender() + ")");
+            tomLayer.deliverTimeoutRequest(lcMsg);
+        /**************************************************************/
+
         } else if (sm instanceof ForwardedMessage) {
             TOMMessage request = ((ForwardedMessage) sm).getRequest();
             Logger.println("(MessageHandler.processData) receiving: " + request);

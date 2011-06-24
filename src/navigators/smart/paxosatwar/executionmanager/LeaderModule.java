@@ -23,6 +23,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.locks.ReentrantLock;
+import navigators.smart.reconfiguration.ReconfigurationManager;
 
 /**
  * This class manages information about the leader of each round of each consensus
@@ -34,13 +35,18 @@ public class LeaderModule {
     // Each element of that list is a tuple which stands for a round, and the id
     // of the process that was the leader for that round
     private Map<Integer, List<ConsInfo>> leaderInfos = new HashMap<Integer, List<ConsInfo>>();
-
+    
+    // este e a nova maneira de guardar info sobre o lider, desacoplada do consenso
+    private ReconfigurationManager reconfManager;
+    private int currentTS;
     /**
      * Creates a new instance of LeaderModule
      */
-    public LeaderModule() {
+    public LeaderModule(ReconfigurationManager reconfManager) {
         addLeaderInfo(-1, 0, 0);
         addLeaderInfo(0, 0, 0);
+        this.reconfManager = reconfManager;
+        currentTS = 0;
     }
 
     /**
@@ -63,7 +69,22 @@ public class LeaderModule {
             list.add(new ConsInfo(r, l));
         }
     }
-
+    
+    /**
+     * Define o novo timestamp que identifica o lider
+     * @param ts novo timestamp que identifica o lider
+     */
+    public void setNewTS(int ts) {
+        this.currentTS = ts;
+    }
+    
+    /**
+     * Obtem o lider currente, a partir do timestamp que tem
+     * @return Lider currente
+     */
+    public int getCurrentLeader() {
+        return (currentTS % this.reconfManager.getCurrentViewN());
+    }
     /**
      * Retrieves the tuple for the specified round, given a list of tuples
      * @param l List of tuples formed by a round number and the ID of the leader
