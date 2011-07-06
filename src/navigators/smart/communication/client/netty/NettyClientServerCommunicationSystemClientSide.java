@@ -26,6 +26,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.Signature;
 import java.security.spec.InvalidKeySpecException;
+import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -82,6 +83,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
     private boolean closed = false;
 
     public NettyClientServerCommunicationSystemClientSide(ViewManager manager) {
+        super();
         try {
             SecretKeyFactory fac = SecretKeyFactory.getInstance("PBEWithMD5AndDES");
             PBEKeySpec spec = new PBEKeySpec(PASSWORD.toCharArray());
@@ -158,7 +160,11 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 
 
             for (int i = 0; i < currV.length; i++) {
+                rl.readLock().lock();
                 if (sessionTable.get(currV[i]) == null) {
+
+                    rl.readLock().unlock();
+                    rl.writeLock().lock();
                     try {
                         // Configure the client.
                         ClientBootstrap bootstrap = new ClientBootstrap(
@@ -193,7 +199,8 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 
                     } catch (InvalidKeyException ex) {
                     }
-                }
+                    rl.writeLock().unlock();
+                } else rl.readLock().unlock();
             }
         } catch (NoSuchAlgorithmException ex) {
         }
@@ -202,14 +209,13 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, ExceptionEvent e) {
         //if (!(e.getCause() instanceof ClosedChannelException) && !(e.getCause() instanceof ConnectException)) {
-        e.getCause().getMessage();
+        e.getCause().printStackTrace();
         //}
     }
 
     @Override
     public void messageReceived(
             ChannelHandlerContext ctx, MessageEvent e) {
-        //System.out.println("MsgReceived");
         TOMMessage sm = (TOMMessage) e.getMessage();
 
         //delivers message to replyReceived callback
@@ -236,9 +242,11 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
         }
 
         rl.writeLock().lock();
-        Iterator sessions = sessionTable.values().iterator();
-        while (sessions.hasNext()) {
-            NettyClientServerSession ncss = (NettyClientServerSession) sessions.next();
+        //Iterator sessions = sessionTable.values().iterator();
+
+        ArrayList<NettyClientServerSession> sessions = new ArrayList<NettyClientServerSession>(sessionTable.values());
+        for (NettyClientServerSession ncss : sessions) {
+
             if (ncss.getChannel() == ctx.getChannel()) {
                 try {
 
@@ -411,9 +419,12 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
     @Override
     public void close() {
         this.closed = true;
-        Iterator sessions = sessionTable.values().iterator();
-        while (sessions.hasNext()) {
-            NettyClientServerSession ncss = (NettyClientServerSession) sessions.next();
+        //Iterator sessions = sessionTable.values().iterator();
+        rl.readLock().lock();
+        ArrayList<NettyClientServerSession> sessions = new ArrayList<NettyClientServerSession>(sessionTable.values());
+        rl.readLock().unlock();
+        for (NettyClientServerSession ncss : sessions) {
+
             ncss.getChannel().close();
         }
     }

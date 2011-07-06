@@ -423,9 +423,9 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             // blocks until there are requests to be processed/ordered
             messagesLock.lock();
             if (!clientsManager.havePendingRequests()) {
-                System.out.println("(TOMLayer.run) tenho requests pendentes.");
+
                 haveMessages.awaitUninterruptibly();
-                System.out.println("(TOMLayer.run) ja nao tenho requests pendentes.");
+                
             }
             messagesLock.unlock();
             System.out.println("(TOMLayer.run) There are messages to be ordered.");

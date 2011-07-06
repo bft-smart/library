@@ -52,6 +52,7 @@ import navigators.smart.tom.util.TOMUtil;
 
 import org.jboss.netty.bootstrap.ServerBootstrap;
 import org.jboss.netty.channel.Channel;
+import org.jboss.netty.channel.ChannelFuture;
 import org.jboss.netty.channel.ChannelHandlerContext;
 import org.jboss.netty.channel.ChannelPipelineCoverage;
 import org.jboss.netty.channel.ChannelStateEvent;
@@ -162,9 +163,10 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
             requestsReceived.add(sm);
             if (requestsReceived.size()>= manager.getStaticConf().getCommBuffering()){
         //******* EDUARDO END **************//
-                for (int i=0; i<requestsReceived.size(); i++)
+                for (int i=0; i<requestsReceived.size(); i++) {
                     //delivers message to TOMLayer
                     requestReceiver.requestReceived(requestsReceived.get(i));
+                }
                 requestsReceived = null;
                 requestsReceived = new ArrayList<TOMMessage>();
             }
@@ -316,11 +318,17 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
             rl.readLock().lock();
             NettyClientServerSession ncss = (NettyClientServerSession)sessionTable.get(targets[i]);
             if (ncss!=null){
-                Channel session = (Channel) ((NettyClientServerSession) sessionTable.get(targets[i])).getChannel();
+                
+                Channel session = ncss.getChannel();
                 rl.readLock().unlock();
                 sm.destination = targets[i];
                 //send message
-                session.write(sm);
+                ChannelFuture f = session.write(sm);
+                try {
+                    f.await();
+                } catch (InterruptedException ex) {
+                    Logger.getLogger(NettyClientServerCommunicationSystemServerSide.class.getName()).log(Level.SEVERE, null, ex);
+                }
             }
             else
                 rl.readLock().unlock();

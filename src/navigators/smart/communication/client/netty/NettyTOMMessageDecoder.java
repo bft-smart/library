@@ -224,11 +224,12 @@ public class NettyTOMMessageDecoder extends FrameDecoder {
  */
                 }
                 else {
-                    rl.readLock().unlock();
                     //creates MAC/publick key stuff if it's the first message received from the client
                     navigators.smart.tom.util.Logger.println("Creating MAC/public key stuff, first message from client"+sm.getSender());
                     navigators.smart.tom.util.Logger.println("sessionTable size="+sessionTable.size());
 
+                    rl.readLock().unlock();
+                    
                     //******* EDUARDO BEGIN **************//
                     Mac macSend = Mac.getInstance(manager.getStaticConf().getHmacAlgorithm());
                     macSend.init(authKey);
