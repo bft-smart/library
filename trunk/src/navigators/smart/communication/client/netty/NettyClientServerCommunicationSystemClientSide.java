@@ -209,6 +209,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, ExceptionEvent e) {
         //if (!(e.getCause() instanceof ClosedChannelException) && !(e.getCause() instanceof ConnectException)) {
+        System.out.println("Excepção no  CS (client side)!");
         e.getCause().printStackTrace();
         //}
     }
@@ -257,17 +258,24 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
                     // Set up the default event pipeline.
                     bootstrap.setPipelineFactory(new NettyClientPipelineFactory(this, true, sessionTable, authKey, macDummy.getMacLength(), manager, rl, TOMUtil.getSignatureSize(manager), new ReentrantLock()));
                     // Start the connection attempt.
-                    ChannelFuture future = bootstrap.connect(manager.getRemoteAddress(ncss.getReplicaId()));
-                    //******* EDUARDO END **************//
+                    if (manager.getRemoteAddress(ncss.getReplicaId()) != null) {
+
+                        ChannelFuture future = bootstrap.connect(manager.getRemoteAddress(ncss.getReplicaId()));
+                        //******* EDUARDO END **************//
 
 
-                    //creates MAC stuff
-                    Mac macSend = ncss.getMacSend();
-                    Mac macReceive = ncss.getMacReceive();
-                    NettyClientServerSession cs = new NettyClientServerSession(future.getChannel(), macSend, macReceive, ncss.getReplicaId(), manager.getStaticConf().getRSAPublicKey(ncss.getReplicaId()), new ReentrantLock());
-                    sessionTable.remove(ncss.getReplicaId());
-                    sessionTable.put(ncss.getReplicaId(), cs);
-                    //System.out.println("RE-Connecting to replica "+ncss.getReplicaId()+" at " + conf.getRemoteAddress(ncss.getReplicaId()));
+                        //creates MAC stuff
+                        Mac macSend = ncss.getMacSend();
+                        Mac macReceive = ncss.getMacReceive();
+                        NettyClientServerSession cs = new NettyClientServerSession(future.getChannel(), macSend, macReceive, ncss.getReplicaId(), manager.getStaticConf().getRSAPublicKey(ncss.getReplicaId()), new ReentrantLock());
+                        sessionTable.remove(ncss.getReplicaId());
+                        sessionTable.put(ncss.getReplicaId(), cs);
+                        //System.out.println("RE-Connecting to replica "+ncss.getReplicaId()+" at " + conf.getRemoteAddress(ncss.getReplicaId()));
+
+                    } else {
+                        // This cleans an olde server from the session table
+                        sessionTable.remove(ncss.getReplicaId());
+                    }
                 } catch (NoSuchAlgorithmException ex) {
                 }
             }

@@ -13,6 +13,7 @@ import java.io.ObjectOutputStream;
 import java.util.Hashtable;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Scanner;
 import java.util.StringTokenizer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -160,7 +161,25 @@ public class TTP {
         }
 
         System.out.println("ola");
+        Scanner scan = new Scanner(System.in);
+        String str = null;
+        do {
+            str = scan.nextLine();
+            StringTokenizer token = new StringTokenizer(str);
+            String cmd = token.nextToken();
+            int arg = Integer.parseInt(token.nextToken());
+            if (cmd.equals("add")) {
 
+                int port = (arg * 10) + 11000;
+                ttp.addServer(arg, "127.0.0.1", port);
+            }
+            else if (cmd.equals("rem")) {
+                ttp.removeServer(arg);
+            }
+
+            ttp.executeUpdates();
+        } while(!str.equals("exit"));
+        System.exit(0);
         ttp.addServer(4, "127.0.0.1", 11040);
         
         ttp.executeUpdates();
