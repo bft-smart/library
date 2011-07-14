@@ -149,6 +149,7 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
     public void exceptionCaught(
             ChannelHandlerContext ctx, ExceptionEvent e) {
         //if (!(e.getCause() instanceof ClosedChannelException))
+        System.out.println("Excepção no  CS (server side)!");
                e.getCause().printStackTrace();
     }
 
