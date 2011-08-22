@@ -589,7 +589,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
     public void forwardRequestToLeader(TOMMessage request) {
         int leaderId = lm.getCurrentLeader();
-        Logger.println("(TOMLayer.forwardRequestToLeader) forwarding " + request + " to " + leaderId);
+        System.out.println("(TOMLayer.forwardRequestToLeader) forwarding " + request + " to " + leaderId);
         
             //******* EDUARDO BEGIN **************//
         communication.send(new int[]{leaderId}, 
@@ -1947,10 +1947,8 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             //TODO: Caso em que e necessario aplicar a transferencia de estado
 
 
-        }
-
+        } else if (getLastExec() + 1 == lastHighestEid.getEid()) {
         // esta replica ainda esta a executar o ultimo consenso decidido?
-        else if (getLastExec() + 1 == lastHighestEid.getEid()) {
 
             //TODO: e preciso verificar a prova!
 
@@ -1967,7 +1965,6 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             r.deserializedPropValue = checkProposedValue(propose);
             r.setDecide(me, hash);
             exec.decided(r, hash); // entregar a decisao a delivery thread
-
         }
         byte[] tmpval = null;
 
@@ -2002,6 +1999,10 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             r.propValueHash = hash;
             r.propValue = tmpval;
             r.deserializedPropValue = checkProposedValue(tmpval);
+
+            if(exec.getLearner().firstMessageProposed == null)
+                exec.getLearner().firstMessageProposed = r.deserializedPropValue[0];
+            
             r.setWeak(me, hash);
 
             lm.setNewTS(ts);
