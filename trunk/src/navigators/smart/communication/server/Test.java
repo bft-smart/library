@@ -22,7 +22,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 
 
 import navigators.smart.reconfiguration.ReconfigurationManager;
-import navigators.smart.tom.core.messages.SystemMessage;
+import navigators.smart.communication.SystemMessage;
 import navigators.smart.tom.core.messages.TOMMessage;
 import navigators.smart.tom.util.Storage;
 

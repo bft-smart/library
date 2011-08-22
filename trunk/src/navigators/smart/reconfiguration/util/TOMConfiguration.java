@@ -265,24 +265,24 @@ public class TOMConfiguration extends Configuration {
             
             s = (String) configs.remove("system.communication.inQueueSize");
             if (s == null) {
-                inQueueSize = 200;
+                inQueueSize = 1000;
             } else {
 
                 inQueueSize = Integer.parseInt(s);
                 if (inQueueSize < 1) {
-                    inQueueSize = 200;
+                    inQueueSize = 1000;
                 }
 
             }
 
             s = (String) configs.remove("system.communication.outQueueSize");
             if (s == null) {
-                outQueueSize = 200;
+                outQueueSize = 1000;
             } else {
 
                 outQueueSize = Integer.parseInt(s);
                 if (outQueueSize < 1) {
-                    outQueueSize = 200;
+                    outQueueSize = 1000;
                 }
 
             }

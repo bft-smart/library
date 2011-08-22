@@ -222,7 +222,8 @@ public class ClientsManager {
     public boolean requestReceived(TOMMessage request, boolean fromClient, 
                                              boolean storeMessage, ServerCommunicationSystem cs) {
 
-        request.receptionTime = System.currentTimeMillis();
+        request.receptionTime = System.nanoTime();
+
         int clientId = request.getSender();
         boolean accounted = false;
 

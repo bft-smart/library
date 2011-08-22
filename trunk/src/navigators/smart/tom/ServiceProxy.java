@@ -17,13 +17,15 @@
  */
 package navigators.smart.tom;
 
+import java.io.ByteArrayInputStream;
+import java.io.DataInputStream;
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.Comparator;
-import java.util.LinkedList;
-import java.util.ListIterator;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.logging.Level;
 
 import navigators.smart.reconfiguration.ReconfigurationManager;
 import navigators.smart.reconfiguration.ReconfigureReply;
@@ -44,21 +46,16 @@ public class ServiceProxy extends TOMSender {
     // Locks for send requests and receive replies
     private ReentrantLock canReceiveLock = new ReentrantLock();
     private ReentrantLock canSendLock = new ReentrantLock();
-
     private Semaphore sm = new Semaphore(0);
-
     private int reqId = -1; // request id
     private int replyQuorum = 0; // size of the reply quorum
     private TOMMessage replies[] = null; // Replies from replicas are stored here
     private int receivedReplies = 0; // Number of received replies
     private TOMMessage response = null; // Reply delivered to the application
-    private LinkedList<TOMMessage> aheadOfTimeReplies = new LinkedList<TOMMessage>();
-
+    //private LinkedList<TOMMessage> aheadOfTimeReplies = new LinkedList<TOMMessage>();
     private int invokeTimeout = 60;
-
     private Comparator comparator;
     private Extractor extractor;
-
 
     /**
      * Constructor
@@ -89,7 +86,7 @@ public class ServiceProxy extends TOMSender {
      *                       quorum of replies
      */
     public ServiceProxy(int processId, String configHome,
-                              Comparator replyComparator, Extractor replyExtractor) {
+            Comparator replyComparator, Extractor replyExtractor) {
         if (configHome == null) {
             init(processId);
         } else {
@@ -98,21 +95,22 @@ public class ServiceProxy extends TOMSender {
 
         replies = new TOMMessage[getViewManager().getCurrentViewN()];
 
-        comparator = (replyComparator != null)? replyComparator : new Comparator<byte[]>() {
+        comparator = (replyComparator != null) ? replyComparator : new Comparator<byte[]>() {
+
             @Override
             public int compare(byte[] o1, byte[] o2) {
                 return Arrays.equals(o1, o2) ? 0 : -1;
             }
         };
-        
-        extractor = (replyExtractor != null)? replyExtractor : new Extractor() {
+
+        extractor = (replyExtractor != null) ? replyExtractor : new Extractor() {
+
             @Override
             public TOMMessage extractResponse(TOMMessage[] replies, int sameContent, int lastReceived) {
                 return replies[lastReceived];
             }
         };
     }
-
 
     /**
      * Get the amount of time (in seconds) that this proxy will wait for
@@ -142,11 +140,13 @@ public class ServiceProxy extends TOMSender {
      * @return The reply from the replicas related to request
      */
     public byte[] invoke(byte[] request) {
-        return invoke(request, ReconfigurationManager.TOM_NORMAL_REQUEST, false);
+        return invoke(request, ReconfigurationManager.TOM_NORMAL_REQUEST);
     }
 
     public byte[] invoke(byte[] request, boolean readOnly) {
-        return invoke(request, ReconfigurationManager.TOM_NORMAL_REQUEST, readOnly);
+        int type = (readOnly) ? ReconfigurationManager.TOM_READONLY_REQUEST
+                : ReconfigurationManager.TOM_NORMAL_REQUEST;
+        return invoke(request, type);
     }
 
     /**
@@ -157,10 +157,9 @@ public class ServiceProxy extends TOMSender {
      * @param request Request to be sent
      * @param reqType TOM_NORMAL_REQUESTS for service requests, and other for
      *        reconfig requests.
-     * @param readOnly it is a read only request (will not be ordered)
      * @return The reply from the replicas related to request
      */
-    public byte[] invoke(byte[] request, int reqType, boolean readOnly) {
+    public byte[] invoke(byte[] request, int reqType) {
         canSendLock.lock();
 
         // Clean all statefull data to prepare for receiving next replies
@@ -168,30 +167,32 @@ public class ServiceProxy extends TOMSender {
         receivedReplies = 0;
         response = null;
 
-        replyQuorum = (int) Math.ceil((getViewManager().getCurrentViewN() +
-                    getViewManager().getCurrentViewF()) / 2) + 1;
+        replyQuorum = (int) Math.ceil((getViewManager().getCurrentViewN()
+                + getViewManager().getCurrentViewF()) / 2) + 1;
 
         // Send the request to the replicas, and get its ID
         reqId = generateRequestId();
-        TOMulticast(request, reqId, reqType, readOnly);
+        TOMulticast(request, reqId, reqType);
 
-        Logger.println("Sending request (readOnly = "+readOnly+") with reqId="+reqId);
-        Logger.println("Expected number of matching replies: "+replyQuorum);
+        Logger.println("Sending request (readOnly = "
+                + (reqType == ReconfigurationManager.TOM_READONLY_REQUEST)
+                + ") with reqId=" + reqId);
+        Logger.println("Expected number of matching replies: " + replyQuorum);
 
         // This instruction blocks the thread, until a response is obtained.
         // The thread will be unblocked when the method replyReceived is invoked
         // by the client side communication system
         try {
-            if(!this.sm.tryAcquire(invokeTimeout, TimeUnit.SECONDS)) {
+            if (!this.sm.tryAcquire(invokeTimeout, TimeUnit.SECONDS)) {
                 Logger.println("###################TIMEOUT#######################");
-                Logger.println("Reply timeout for reqId="+reqId);
+                Logger.println("Reply timeout for reqId=" + reqId);
                 canSendLock.unlock();
                 return null;
             }
         } catch (InterruptedException ex) {
         }
 
-        Logger.println("Response extracted = "+response);
+        Logger.println("Response extracted = " + response);
 
         byte[] ret = null;
 
@@ -201,10 +202,10 @@ public class ServiceProxy extends TOMSender {
             Logger.println("Received n-f replies and no response could be extracted.");
 
             canSendLock.unlock();
-            if(readOnly) {
+            if (reqType == ReconfigurationManager.TOM_READONLY_REQUEST) {
                 //invoke the operation again, whitout the read-only flag
                 Logger.println("###################RETRY#######################");
-                return invoke(request, reqType, false);
+                return invoke(request);
             } else {
                 throw new RuntimeException("Received n-f replies without f+1 of them matching.");
             }
@@ -220,7 +221,7 @@ public class ServiceProxy extends TOMSender {
                     reconfigureTo((View) TOMUtil.getObject(response.getContent()));
 
                     canSendLock.unlock();
-                    return invoke(request, reqType, readOnly);
+                    return invoke(request, reqType);
                 }
             } else {
                 //Reply to a reconfigure request!
@@ -232,7 +233,7 @@ public class ServiceProxy extends TOMSender {
                         reconfigureTo((View) r);
 
                         canSendLock.unlock();
-                        return invoke(request, reqType, readOnly);
+                        return invoke(request, reqType);
                     } else { //reconfiguration executed!
                         reconfigureTo(((ReconfigureReply) r).getView());
                         ret = response.getContent();
@@ -252,7 +253,7 @@ public class ServiceProxy extends TOMSender {
 
     //******* EDUARDO BEGIN **************//
     private void reconfigureTo(View v) {
-        Logger.println("Installing a most up-to-date view with id="+v.getId());
+        Logger.println("Installing a most up-to-date view with id=" + v.getId());
         getViewManager().reconfigureTo(v);
         replies = new TOMMessage[getViewManager().getCurrentViewN()];
         getCommunicationSystem().updateConnections();
@@ -267,8 +268,8 @@ public class ServiceProxy extends TOMSender {
     @Override
     public void replyReceived(TOMMessage reply) {
         canReceiveLock.lock();
-        if(reqId==-1){//no message being expected
-            Logger.println("throwing out request: sender="+reply.getSender()+" reqId="+reply.getSequence());
+        if (reqId == -1) {//no message being expected
+            Logger.println("throwing out request: sender=" + reply.getSender() + " reqId=" + reply.getSequence());
             canReceiveLock.unlock();
             return;
         }
@@ -281,28 +282,38 @@ public class ServiceProxy extends TOMSender {
         }
         //******* EDUARDO END **************//
 
+        /*
         if (reply.getSequence() > reqId) { // Is this a reply for the last request sent?
-            Logger.println("Storing reply from "+reply.getSender()+" with reqId:"+reply.getSequence());
-            aheadOfTimeReplies.add(reply);
-        } else if(reply.getSequence() == reqId) {
-            Logger.println("Receiving reply from "+reply.getSender()+" with reqId:"+reply.getSequence()+". Putting on pos="+pos);
+        Logger.println("Storing reply from "+reply.getSender()+" with reqId:"+reply.getSequence());
+        aheadOfTimeReplies.add(reply);
+        } else 
+         */
+        if (reply.getSequence() == reqId) {
+            Logger.println("Receiving reply from " + reply.getSender() +
+                    " with reqId:" + reply.getSequence() + ". Putting on pos=" + pos);
 
+
+
+            /*
             if(receivedReplies == 0) {
-                //If this is the first reply received for reqId, lets look at ahead
-                //of time messages to process possible messages for this reqId that
-                //were already received
-                for(ListIterator<TOMMessage> li = aheadOfTimeReplies.listIterator(); li.hasNext(); ) {
-                    TOMMessage rr = li.next();
-                    if(rr.getSequence() == reqId) {
-                        int rpos = getViewManager().getCurrentViewPos(rr.getSender());
-                        if(replies[rpos] == null) receivedReplies++;
-                        replies[rpos] = rr;
-                        li.remove();
-                    }
-                }
+            //If this is the first reply received for reqId, lets look at ahead
+            //of time messages to process possible messages for this reqId that
+            //were already received
+            for(ListIterator<TOMMessage> li = aheadOfTimeReplies.listIterator(); li.hasNext(); ) {
+            TOMMessage rr = li.next();
+            if(rr.getSequence() == reqId) {
+            int rpos = getViewManager().getCurrentViewPos(rr.getSender());
+            if(replies[rpos] == null) receivedReplies++;
+            replies[rpos] = rr;
+            li.remove();
             }
+            }
+            }
+             */
 
-            if(replies[pos] == null) receivedReplies++;
+            if (replies[pos] == null) {
+                receivedReplies++;
+            }
             replies[pos] = reply;
 
             // Compare the reply just received, to the others
@@ -310,7 +321,7 @@ public class ServiceProxy extends TOMSender {
             for (int i = 0; i < replies.length; i++) {
                 if (i != pos && replies[i] != null && (comparator.compare(replies[i].getContent(), reply.getContent()) == 0)) {
                     sameContent++;
-                    
+
                     if (sameContent >= replyQuorum) {
                         response = extractor.extractResponse(replies, sameContent, pos);
                         reqId = -1;
@@ -320,8 +331,8 @@ public class ServiceProxy extends TOMSender {
                 }
             }
 
-            if (response == null && 
-                  receivedReplies >= getViewManager().getCurrentViewN() - getViewManager().getCurrentViewF()) {
+            if (response == null
+                    && receivedReplies >= getViewManager().getCurrentViewN() - getViewManager().getCurrentViewF()) {
                 //it's not safe to wait for more replies (n-f replies received),
                 //but there is no response available...
                 reqId = -1;
@@ -332,5 +343,4 @@ public class ServiceProxy extends TOMSender {
         // Critical section ends here. The semaphore can be released
         canReceiveLock.unlock();
     }
-
 }

@@ -154,8 +154,7 @@ public abstract class TOMSender implements ReplyReceiver {
      * @param m Data to be multicast
      */
     public void TOMulticast(TOMMessage sm) {
-        cs.send(useSignatures, this.viewManager.getCurrentViewProcesses(),
-                sm, false);
+        cs.send(useSignatures, this.viewManager.getCurrentViewProcesses(), sm);
     }
 
     /**
@@ -163,13 +162,12 @@ public abstract class TOMSender implements ReplyReceiver {
      *
      * @param m Data to be multicast
      * @param reqId unique integer that identifies this request
-     * @param reqType TOM_NORMAL or TOM_RECONFIGURATION
-     * @param readOnly it is a readonly request
+     * @param reqType TOM_NORMAL, TOM_READONLY or TOM_RECONFIGURATION
      */
-    public void TOMulticast(byte[] m, int reqId, int reqType, boolean readOnly) {
+    public void TOMulticast(byte[] m, int reqId, int reqType) {
         cs.send(useSignatures, viewManager.getCurrentViewProcesses(),
                 new TOMMessage(me, session, reqId, m, viewManager.getCurrentViewId(),
-                reqType, readOnly), false);
+                reqType));
     }
     
     /**

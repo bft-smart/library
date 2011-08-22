@@ -30,7 +30,6 @@ import navigators.smart.paxosatwar.roles.Proposer;
 import navigators.smart.reconfiguration.ReconfigurationManager;
 import navigators.smart.tom.ServiceReplica;
 import navigators.smart.tom.core.TOMLayer;
-import navigators.smart.tom.core.messages.SystemMessage;
 import navigators.smart.tom.core.messages.TOMMessage;
 import navigators.smart.tom.util.Logger;
 
@@ -44,10 +43,6 @@ public class ServerCommunicationSystem extends Thread {
     public static int TOM_REQUEST_MSG = 1;
     public static int TOM_REPLY_MSG = 2;
     public static int PAXOS_MSG = 3;
-    public static int RR_MSG = 4;
-    public static int RT_MSG = 5;
-
-    //public static int IN_QUEUE_SIZE = 200;
 
     private LinkedBlockingQueue<SystemMessage> inQueue = null;//new LinkedBlockingQueue<SystemMessage>(IN_QUEUE_SIZE);
 
@@ -131,11 +126,9 @@ public class ServerCommunicationSystem extends Thread {
                 if (count % 1000==0)
                     Logger.println("(ServerCommunicationSystem.run) After "+count+" messages, inQueue size="+inQueue.size());
 
-                Logger.println("(ServerCommunicationSystem.run) Taking a message form the queue and processing it");
                 SystemMessage sm = inQueue.take();
                 Logger.println("(ServerCommunicationSystem.run) The message received is from replica " + sm.getSender());
                 messageHandler.processData(sm);
-                //System.out.println("Entregou uma msgssssssssss");
             } catch (InterruptedException ex) {
                 java.util.logging.Logger.getLogger(ServerCommunicationSystem.class.getName()).log(Level.SEVERE, null, ex);
             }

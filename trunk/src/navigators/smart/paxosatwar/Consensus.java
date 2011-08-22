@@ -18,7 +18,6 @@
 package navigators.smart.paxosatwar;
 
 import navigators.smart.paxosatwar.executionmanager.Round;
-import navigators.smart.paxosatwar.roles.Proposer;
 import navigators.smart.tom.core.messages.TOMMessage;
 import navigators.smart.tom.util.Logger;
 
@@ -37,11 +36,11 @@ public class Consensus {
     private Round decisionRound = null;
     private byte[] decision = null; // decided value
     private TOMMessage[] deserializedDecision = null; // decided value (deserialized)
-    //private final Object sync = new Object();
-    // TODO: Faz sentido ser public?
-    public long startTime; // the consensus start time
-    public long executionTime; // consensus execution time
-    public int batchSize = 0; //number of messages included in the batch
+
+    //for benchmarking
+    public TOMMessage firstMessageProposed = null;
+    public int batchSize = 0;
+
 
     /**
      * Creates a new instance of Consensus
@@ -49,9 +48,8 @@ public class Consensus {
      * @param eid The execution ID for this consensus
      * @param startTime The consensus start time
      */
-    public Consensus(int eid, long startTime) {
+    public Consensus(int eid) {
         this.eid = eid;
-        this.startTime = startTime;
     }
 
     public void decided(Round round) {
@@ -109,6 +107,7 @@ public class Consensus {
     public int getId() {
         return eid;
     }
+
     private void waitForPropose() {
         while(decisionRound.deserializedPropValue == null) {
             try{

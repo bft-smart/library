@@ -21,7 +21,6 @@ package navigators.smart.tom;
 import navigators.smart.communication.ServerCommunicationSystem;
 import navigators.smart.paxosatwar.executionmanager.ExecutionManager;
 import navigators.smart.paxosatwar.executionmanager.LeaderModule;
-import navigators.smart.paxosatwar.executionmanager.ProofVerifier;
 import navigators.smart.paxosatwar.messages.MessageFactory;
 import navigators.smart.paxosatwar.roles.Acceptor;
 import navigators.smart.paxosatwar.roles.Proposer;
@@ -51,7 +50,7 @@ public abstract class TOMReceiver implements TOMRequestReceiver {
      */
     //public void init(ServerCommunicationSystem cs, TOMConfiguration conf) {
     public void init(ServerCommunicationSystem cs, ReconfigurationManager reconfManager, 
-            int lastExec, int lastLeader) {
+                          int lastExec, int lastLeader) {
         if (tomStackCreated) { // if this object was already initialized, don't do it again
             return;
         }
@@ -76,13 +75,11 @@ public abstract class TOMReceiver implements TOMRequestReceiver {
         MessageFactory messageFactory = new MessageFactory(me);
         
         
-        ProofVerifier proofVerifier = new ProofVerifier(reconfManager);
-        
         LeaderModule lm = new LeaderModule(reconfManager);
         
         
-        Acceptor acceptor = new Acceptor(cs, messageFactory, proofVerifier, lm, reconfManager);
-        Proposer proposer = new Proposer(cs, messageFactory, proofVerifier, reconfManager);
+        Acceptor acceptor = new Acceptor(cs, messageFactory, lm, reconfManager);
+        Proposer proposer = new Proposer(cs, messageFactory, reconfManager);
 
         ExecutionManager manager = new ExecutionManager(reconfManager, acceptor, proposer,
                                me, reconfManager.getStaticConf().getFreezeInitialTimeout());
@@ -90,11 +87,8 @@ public abstract class TOMReceiver implements TOMRequestReceiver {
         acceptor.setManager(manager);
         proposer.setManager(manager);
 
-        TOMLayer tomLayer = new TOMLayer(manager, this, lm, acceptor, cs, reconfManager, proofVerifier);
+        TOMLayer tomLayer = new TOMLayer(manager, this, lm, acceptor, cs, reconfManager);
 
-        //tomLayer.setLastExec(lastExec);
-        //tomLayer.lm.decided(lastExec, lastLeader);
-        
         manager.setTOMLayer(tomLayer);
         
         //******* EDUARDO BEGIN **************//

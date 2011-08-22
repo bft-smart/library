@@ -17,7 +17,6 @@
  */
 package navigators.smart.communication.server;
 
-import java.io.BufferedOutputStream;
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -25,16 +24,12 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.net.Socket;
 import java.net.UnknownHostException;
-import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
-import java.security.spec.InvalidKeySpecException;
 import java.util.Arrays;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 import javax.crypto.Mac;
 import javax.crypto.SecretKey;
@@ -44,7 +39,8 @@ import javax.crypto.spec.PBEKeySpec;
 import navigators.smart.reconfiguration.ReconfigurationManager;
 import navigators.smart.reconfiguration.TTPMessage;
 import navigators.smart.tom.ServiceReplica;
-import navigators.smart.tom.core.messages.SystemMessage;
+import navigators.smart.communication.SystemMessage;
+import navigators.smart.tom.util.Logger;
 
 /**
  * This class represents a connection with other server.
@@ -87,7 +83,6 @@ public class ServerConnection {
 
         this.inQueue = inQueue;
 
-
         this.outQueue = new LinkedBlockingQueue<byte[]>(this.manager.getStaticConf().getOutQueueSize());
 
         //******* EDUARDO BEGIN **************//
@@ -105,9 +100,9 @@ public class ServerConnection {
                 new DataOutputStream(this.socket.getOutputStream()).writeInt(this.manager.getStaticConf().getProcessId());
 
             } catch (UnknownHostException ex) {
-                Logger.getLogger(ServerConnection.class.getName()).log(Level.SEVERE, null, ex);
+                ex.printStackTrace();
             } catch (IOException ex) {
-                Logger.getLogger(ServerConnection.class.getName()).log(Level.SEVERE, null, ex);
+                ex.printStackTrace();
             }
         }
         //else I have to wait a connection from the remote server
@@ -115,13 +110,11 @@ public class ServerConnection {
 
         if (this.socket != null) {
             try {
-                socketOutStream = new DataOutputStream(new BufferedOutputStream(this.socket.getOutputStream()));
+                socketOutStream = new DataOutputStream(this.socket.getOutputStream());
                 socketInStream = new DataInputStream(this.socket.getInputStream());
-
-
-
             } catch (IOException ex) {
-                Logger.getLogger(ServerConnection.class.getName()).log(Level.SEVERE, null, ex);
+                Logger.println("Error creating connection to "+remoteId);
+                ex.printStackTrace();
             }
         }
 
@@ -129,7 +122,6 @@ public class ServerConnection {
         this.useSenderThread = this.manager.getStaticConf().isUseSenderThread();
 
         if (useSenderThread && (this.manager.getStaticConf().getTTPId() != remoteId)) {
-            //Logger.getLogger(ServerConnection.class.getName()).log(Level.INFO, "Using sender thread.");
             new SenderThread().start();
         } else {
             sendLock = new ReentrantLock();
@@ -137,7 +129,6 @@ public class ServerConnection {
         authenticateAndEstablishAuthKey();
 
         if (!this.manager.getStaticConf().isTheTTP()) {
-
             if (this.manager.getStaticConf().getTTPId() == remoteId) {
                 //Uma thread "diferente" para as msgs recebidas da TTP
                 new TTPReceiverThread(replica).start();
@@ -152,9 +143,8 @@ public class ServerConnection {
      * Stop message sending and reception.
      */
     public void shutdown() {
-
-        //System.out.println("SHUTDOWN para "+remoteId);
-
+        Logger.println("SHUTDOWN for "+remoteId);
+        
         doWork = false;
         closeSocket();
     }
@@ -163,11 +153,10 @@ public class ServerConnection {
      * Used to send packets to the remote server.
      */
     public final void send(byte[] data) throws InterruptedException {
-
         if (useSenderThread) {
             //only enqueue messages if there queue is not full
             if (!outQueue.offer(data)) {
-                navigators.smart.tom.util.Logger.println("(ServerConnection.send) out queue for " + remoteId + " full (message discarded).");
+                Logger.println("(ServerConnection.send) out queue for " + remoteId + " full (message discarded).");
             }
         } else {
             sendLock.lock();
@@ -185,18 +174,22 @@ public class ServerConnection {
         do {
             if (socket != null && socketOutStream != null) {
                 try {
-                    socketOutStream.writeInt(messageData.length);
-                    socketOutStream.write(messageData);
-                    if (this.manager.getStaticConf().getUseMACs() == 1) {
-                        socketOutStream.write(macSend.doFinal(messageData));
+                    //do an extra copy of the data to be sent, but on a single out stream write
+                    byte[] mac = (this.manager.getStaticConf().getUseMACs() == 1)?macSend.doFinal(messageData):null;
+                    byte[] data = new byte[4+messageData.length+((mac!=null)?mac.length:0)];
+                    int value = messageData.length;
+
+                    System.arraycopy(new byte[]{(byte)(value >>> 24),(byte)(value >>> 16),(byte)(value >>> 8),(byte)value},0,data,0,4);
+                    System.arraycopy(messageData,0,data,4,messageData.length);
+                    if(mac != null) {
+                        System.arraycopy(mac,0,data,4+messageData.length,mac.length);
                     }
-                    socketOutStream.flush();
+
+                    socketOutStream.write(data);
+
                     return;
                 } catch (IOException ex) {
-                    Logger.getLogger(ServerConnection.class.getName()).log(Level.SEVERE, null, ex);
-
                     closeSocket();
-
                     waitAndConnect();
                 }
             } else {
@@ -266,23 +259,20 @@ public class ServerConnection {
 
                 //******* EDUARDO END **************//
                 } else {
-
                     socket = newSocket;
                 }
             } catch (UnknownHostException ex) {
-                Logger.getLogger(ServerConnection.class.getName()).log(Level.SEVERE, "Error connecting", ex);
+                ex.printStackTrace();
             } catch (IOException ex) {
-            //Logger.getLogger(ServerConnection.class.getName()).log(Level.SEVERE, "Error connecting", ex);
+                ex.printStackTrace();
             }
 
             if (socket != null) {
-
                 try {
                     socketOutStream = new DataOutputStream(socket.getOutputStream());
                     socketInStream = new DataInputStream(socket.getInputStream());
                 } catch (IOException ex) {
                     ex.printStackTrace();
-                    Logger.getLogger(ServerConnection.class.getName()).log(Level.SEVERE, null, ex);
                 }
             }
 
@@ -316,12 +306,8 @@ public class ServerConnection {
             macReceive = Mac.getInstance(MAC_ALGORITHM);
             macReceive.init(authKey);
             macSize = macSend.getMacLength();
-        } catch (InvalidKeySpecException ex) {
-            Logger.getLogger(ServerConnection.class.getName()).log(Level.SEVERE, null, ex);
-        } catch (InvalidKeyException ex) {
-            Logger.getLogger(ServerConnection.class.getName()).log(Level.SEVERE, null, ex);
-        } catch (NoSuchAlgorithmException ex) {
-            Logger.getLogger(ServerConnection.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (Exception ex) {
+            ex.printStackTrace();
         }
     }
 
@@ -331,7 +317,7 @@ public class ServerConnection {
                 socketOutStream.flush();
                 socket.close();
             } catch (IOException ex) {
-                Logger.getLogger(ServerConnection.class.getName()).log(Level.SEVERE, null, ex);
+                Logger.println("Error closing socket to "+remoteId);
             }
 
             socket = null;
@@ -349,19 +335,6 @@ public class ServerConnection {
 
             reconnect(null);
         }
-    }
-
-    private final SystemMessage bytesToMessage(byte[] data) {
-        try {
-            ObjectInputStream obIn = new ObjectInputStream(new ByteArrayInputStream(data));
-            return (SystemMessage) obIn.readObject();
-        } catch (ClassNotFoundException ex) {
-            Logger.getLogger(ServerConnection.class.getName()).log(Level.SEVERE, null, ex);
-        } catch (IOException ex) {
-            Logger.getLogger(ServerConnection.class.getName()).log(Level.SEVERE, null, ex);
-        }
-
-        return null;
     }
 
     /**
@@ -389,7 +362,7 @@ public class ServerConnection {
                 }
             }
 
-            Logger.getLogger(ServerConnection.class.getName()).log(Level.INFO, "Sender for " + remoteId + " stoped!");
+            Logger.println("Sender for " + remoteId + " stopped!");
         }
     }
 
@@ -408,7 +381,7 @@ public class ServerConnection {
             try {
                 receivedMac = new byte[Mac.getInstance(MAC_ALGORITHM).getMacLength()];
             } catch (NoSuchAlgorithmException ex) {
-                Logger.getLogger(ServerConnection.class.getName()).log(Level.SEVERE, null, ex);
+                ex.printStackTrace();
             }
 
             while (doWork) {
@@ -440,31 +413,21 @@ public class ServerConnection {
                             SystemMessage sm = (SystemMessage) (new ObjectInputStream(new ByteArrayInputStream(data)).readObject());
 
                             if (sm.getSender() == remoteId) {
-                                //System.out.println("Mensagem recebia de: "+remoteId);
                                 if (!inQueue.offer(sm)) {
-                                    navigators.smart.tom.util.Logger.println("(ReceiverThread.run) in queue full (message from " + remoteId + " discarded).");
+                                    Logger.println("(ReceiverThread.run) in queue full (message from " + remoteId + " discarded).");
                                     System.out.println("(ReceiverThread.run) in queue full (message from " + remoteId + " discarded).");
                                 }
                             }
                         } else {
                             //TODO: violation of authentication... we should do something
-                            Logger.getLogger(ServerConnection.class.getName()).log(Level.SEVERE, "WARNING: Violation of authentication in message received from " + remoteId);
+                            Logger.println("WARNING: Violation of authentication in message received from " + remoteId);
                         }
-                    /*
-                    } else {
-                    //TODO: invalid MAC... we should do something
-                    Logger.getLogger(ServerConnection.class.getName()).log(Level.SEVERE, "WARNING: Invalid MAC");
-                    }
-                     */
                     } catch (ClassNotFoundException ex) {
-                        Logger.getLogger(ServerConnection.class.getName()).log(Level.SEVERE, "Should never happen,", ex);
+                        //invalid message sent, just ignore;
                     } catch (IOException ex) {
-
                         if (doWork) {
-                            Logger.getLogger(ServerConnection.class.getName()).log(Level.SEVERE, "Closing socket and reconnecting", ex);
-
+                            Logger.println("Closing socket and reconnecting");
                             closeSocket();
-
                             waitAndConnect();
                         }
                     }
@@ -472,14 +435,13 @@ public class ServerConnection {
                     waitAndConnect();
                 }
             }
-
-            Logger.getLogger(ServerConnection.class.getName()).log(Level.INFO, "Receiver for " + remoteId + " stoped!");
         }
     }
 
     //******* EDUARDO BEGIN: thread especial para receber mensagens indicando a entrada no sistema, vindas da da TTP **************//
-
     //Simplesmente entrega a mensagens para a replica, indicando a sua entrada no sistema
+    //TODO: Ask eduardo why a new thread is needed!!! 
+    //TODO2: Remove all duplicated code
 
     /**
      * Thread used to receive packets from the remote server.
@@ -499,7 +461,6 @@ public class ServerConnection {
             try {
                 receivedMac = new byte[Mac.getInstance(MAC_ALGORITHM).getMacLength()];
             } catch (NoSuchAlgorithmException ex) {
-                Logger.getLogger(ServerConnection.class.getName()).log(Level.SEVERE, null, ex);
             }
 
             while (doWork) {
@@ -540,23 +501,13 @@ public class ServerConnection {
                             }
                         } else {
                             //TODO: violation of authentication... we should do something
-                            Logger.getLogger(ServerConnection.class.getName()).log(Level.SEVERE, "WARNING: Violation of authentication in message received from " + remoteId);
+                            Logger.println("WARNING: Violation of authentication in message received from " + remoteId);
                         }
-                    /*
-                    } else {
-                    //TODO: invalid MAC... we should do something
-                    Logger.getLogger(ServerConnection.class.getName()).log(Level.SEVERE, "WARNING: Invalid MAC");
-                    }
-                     */
                     } catch (ClassNotFoundException ex) {
-                        Logger.getLogger(ServerConnection.class.getName()).log(Level.SEVERE, "Should never happen,", ex);
+                        ex.printStackTrace();
                     } catch (IOException ex) {
-
                         if (doWork) {
-                            Logger.getLogger(ServerConnection.class.getName()).log(Level.SEVERE, "Closing socket and reconnecting", ex);
-
                             closeSocket();
-
                             waitAndConnect();
                         }
                     }
@@ -564,8 +515,6 @@ public class ServerConnection {
                     waitAndConnect();
                 }
             }
-
-            Logger.getLogger(ServerConnection.class.getName()).log(Level.INFO, "Receiver for " + remoteId + " stoped!");
         }
     }
         //******* EDUARDO END **************//

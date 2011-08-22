@@ -200,12 +200,6 @@ public final class ExecutionManager {
         stoppedMsgsLock.lock();
         this.stopped = false;
 
-        // We don't want to use timeouts inside paxos anymore
-        /*if (stoppedRound != null) {
-            acceptor.scheduleTimeout(stoppedRound);
-            stoppedRound = null;
-        }*/
-
         //process stopped messages
         while(!stoppedMsgs.isEmpty()){
             acceptor.processMessage(stoppedMsgs.remove());
@@ -262,22 +256,12 @@ public final class ExecutionManager {
 
         boolean canProcessTheMessage = false;
 
-        if (
-
-                /** ISTO E CODIGO DO JOAO, PARA TRATAR DA TRANSFERENCIA DE ESTADO */
-
-                // Isto serve para re-direccionar as mensagens para o out of context
-                // enquanto a replica esta a receber o estado das outras e a actualizar-se
-
-                isRetrievingState || // Is this replica retrieving a state?
-
-                // Is this not a revived replica?
-                (!(/*currentConsId == -1 &&*/ lastConsId == -1 && consId >= (lastConsId + revivalHighMark)) &&
-                /******************************************************************/
-
-                (consId > lastConsId  && (consId < (lastConsId + paxosHighMark))))
-
-            ) { // Is this message within the low and high marks (or maybe is the replica synchronizing) ?
+        /** ISTO E CODIGO DO JOAO, PARA TRATAR DA TRANSFERENCIA DE ESTADO */
+        // Isto serve para re-direccionar as mensagens para o out of context
+        // enquanto a replica esta a receber o estado das outras e a actualizar-se
+        if (isRetrievingState || // Is this replica retrieving a state?
+              (!(lastConsId == -1 && consId >= (lastConsId + revivalHighMark)) && //not a recovered replica
+              (consId > lastConsId  && (consId < (lastConsId + paxosHighMark))))) { // not an ahead of time message
 
             if(stopped) {//just an optimization to avoid calling the lock in normal case
                 stoppedMsgsLock.lock();
@@ -288,51 +272,23 @@ public final class ExecutionManager {
                     stoppedMsgs.add(msg);
                 }
                 stoppedMsgsLock.unlock();
-                return false;
-            }
-
-            if (
-                    /** ISTO E CODIGO DO JOAO, PARA TRATAR DA TRANSFERENCIA DE ESTADO */
-
-                    // Isto serve para re-direccionar as mensagens para o out of context
-                    // enquanto a replica esta a receber o estado das outras e a actualizar-se
-
-                    isRetrievingState ||
-
-                    /******************************************************************/
-
-                    consId > (lastConsId + 1)
-            ) {
-
-                Logger.println("(ExecutionManager.checkLimits) Message for execution "+consId+" is out of context, adding it to out of context set");
-                //store it as an ahead of time message (out of context)
-                addOutOfContextMessage(msg);
             } else {
-                Logger.println("(ExecutionManager.checkLimits) message for execution "+consId+" can be processed");
-                canProcessTheMessage = true;
+                if(isRetrievingState ||  consId > (lastConsId + 1) || 
+                     (tomLayer.getInExec() != consId && msgType != MessageFactory.PROPOSE)) { //not propose message for the next consensus
+                    System.out.println("(ExecutionManager.checkLimits) Message for execution "+consId+" is out of context, adding it to out of context set");
+                    addOutOfContextMessage(msg);
+                } else { //can process!
+                    Logger.println("(ExecutionManager.checkLimits) message for execution "+consId+" can be processed");
+                    canProcessTheMessage = true;
+                }
             }
-        } else if (
+        } else if ((lastConsId == -1 && consId >= (lastConsId + revivalHighMark)) || //recovered...
+                          (consId >= (lastConsId + paxosHighMark))) { //or too late replica
 
-                /** ISTO E CODIGO DO JOAO, PARA TRATAR DA TRANSFERENCIA DE ESTADO */
-                // Is this replica revived?
-                (/*currentConsId == -1 &&*/ lastConsId == -1 && consId >= (lastConsId + revivalHighMark)) ||
-                /******************************************************************/
-
-                (consId >= (lastConsId + paxosHighMark))
-                ) { // Does this message exceeds the high mark?
-
-            /**
-            System.out.println("##################################################################################");
-            System.out.println("- Ahead-of-time message (" + msg + ") discarded");
-            System.out.println("- If many messages of the same consensus are discarded, the replica can halt!");
-            System.out.println("- Try to increase the 'system.paxos.highMarc' configuration parameter.");
-            System.out.println("- Last consensus executed: " + lastConsId);
-            System.out.println("##################################################################################");
-             /*/
-            //TODO: at this point a new state should be recovered from other correct replicas
-
+            //Start state transfer
             /** ISTO E CODIGO DO JOAO, PARA TRATAR DA TRANSFERENCIA DE ESTADO */
-            Logger.println("(ExecutionManager.checkLimits) Message for execution "+consId+" is beyond the paxos highmark, adding it to out of context set");
+            Logger.println("(ExecutionManager.checkLimits) Message for execution "+
+                    consId+" is beyond the paxos highmark, adding it to out of context set");
             addOutOfContextMessage(msg);
             tomLayer.requestState(this.reconfManager.getStaticConf().getProcessId(),
                     this.reconfManager.getCurrentViewOtherAcceptors(), msg.getSender(), consId);
@@ -340,7 +296,6 @@ public final class ExecutionManager {
         }
         outOfContextLock.unlock();
 
-        //br.ufsc.das.util.Logger.println("(checkLimits) Mensagem recebida nao estah dentro dos limites");
         return canProcessTheMessage;
     }
 
@@ -349,12 +304,10 @@ public final class ExecutionManager {
      * @param eid The ID for the consensus execution in question
      * @return True if there are still messages to be processed, false otherwise
      */
-    public boolean thereArePendentMessages(int eid) {
+    public boolean thereArePendingMessages(int eid) {
         outOfContextLock.lock();
         /******* BEGIN OUTOFCONTEXT CRITICAL SECTION *******/
-
         boolean result = outOfContextProposes.get(eid) != null || outOfContext.get(eid) != null;
-
         /******* END OUTOFCONTEXT CRITICAL SECTION *******/
         outOfContextLock.unlock();
 
@@ -423,8 +376,10 @@ public final class ExecutionManager {
             //there is no execution with the given eid
 
             //let's create one...
-            execution = new Execution(this, new Consensus(eid, System.currentTimeMillis()),
-                    initialTimeout);
+            Consensus cons = new Consensus(eid);
+
+            execution = new Execution(this, cons, initialTimeout);
+
             //...and add it to the executions table
             executions.put(eid, execution);
 

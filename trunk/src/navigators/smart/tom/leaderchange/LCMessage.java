@@ -18,6 +18,7 @@
 
 package navigators.smart.tom.leaderchange;
 
+import navigators.smart.communication.SystemMessage;
 import navigators.smart.tom.core.messages.*;
 import java.io.IOException;
 import java.io.ObjectInput;

@@ -23,7 +23,7 @@ import java.io.ObjectInput;
 import java.io.ObjectOutput;
 import java.util.Arrays;
 
-import navigators.smart.tom.core.messages.SystemMessage;
+import navigators.smart.communication.SystemMessage;
 
 
 /**
@@ -148,7 +148,7 @@ public class PaxosMessage extends SystemMessage {
         }
 
         //WEAK, STRONG, DECIDE and FREEZE does not have associated proofs
-        if(paxosType == MessageFactory.PROPOSE || paxosType == MessageFactory.COLLECT) {
+        if(paxosType == MessageFactory.PROPOSE) {
 
             proof = in.readObject();
 
@@ -211,47 +211,20 @@ public class PaxosMessage extends SystemMessage {
      * @return Message type
      */
     public String getPaxosVerboseType() {
-
-        if (paxosType==MessageFactory.COLLECT)
-
-            return "COLLECT";
-
-        else if (paxosType==MessageFactory.DECIDE)
-
-            return "DECIDE";
-
-        else if (paxosType==MessageFactory.FREEZE)
-
-            return "FREEZE";
-
-        else if (paxosType==MessageFactory.PROPOSE)
-
+        if (paxosType==MessageFactory.PROPOSE)
             return "PROPOSE";
-
         else if (paxosType==MessageFactory.STRONG)
-
             return "STRONG";
-
         else if (paxosType==MessageFactory.WEAK)
-
             return "WEAK";
-
         else
-
             return "";
-
     }
 
-    // Over-written method
     @Override
     public String toString() {
-
-        return "type="+getPaxosVerboseType()+", number="+getNumber()+", round="+getRound()+", from="+getSender()+", "+
-
-                ((getProof() instanceof CollectProof[])?
-
-                    Arrays.asList((CollectProof[])getProof()):getProof());
-
+        return "type="+getPaxosVerboseType()+", number="+getNumber()+", round="+
+                getRound()+", from="+getSender();
     }
 
 }

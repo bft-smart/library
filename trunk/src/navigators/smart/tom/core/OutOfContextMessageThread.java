@@ -82,7 +82,7 @@ public class OutOfContextMessageThread extends Thread {
                 /******************************************************************/
 
                 int nextExecution = tomLayer.getLastExec() + 1;
-                if (tomLayer.execManager.thereArePendentMessages(nextExecution)) {
+                if (tomLayer.execManager.thereArePendingMessages(nextExecution)) {
 
                     Logger.println("(OutOfContextMessageThread.run) starting processing out of context messages for consensus " + nextExecution);
                     execution = tomLayer.execManager.getExecution(nextExecution);

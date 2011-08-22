@@ -26,6 +26,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import javax.crypto.Mac;
 
 import navigators.smart.tom.core.messages.TOMMessage;
+import navigators.smart.tom.util.Logger;
 
 import org.jboss.netty.buffer.ChannelBuffer;
 import org.jboss.netty.channel.ChannelHandlerContext;
@@ -71,12 +72,15 @@ public class NettyTOMMessageEncoder extends SimpleChannelHandler {
         
         if (useMAC)
             macData = produceMAC(sm.destination,msgData);
-        
-        ChannelBuffer buf = buffer(4+1+1+msgData.length+(macData==null?0:macData.length)+(signatureData==null?0:signatureData.length));
+
+        int dataLength = 1+msgData.length+(macData==null?0:macData.length)+
+                (signatureData==null?0:signatureData.length);
+
+        //Logger.println("Sending message with "+dataLength+" bytes.");
+
+        ChannelBuffer buf = buffer(4+dataLength);
         /* msg size */
-        buf.writeInt(1+1+msgData.length+(macData==null?0:macData.length)+(signatureData==null?0:signatureData.length));
-        /* control byte indicating if the serialized message includes the class header */
-        buf.writeByte(sm.includesClassHeader==true?(byte)1:(byte)0);
+        buf.writeInt(dataLength);
         /* control byte indicating if the message is signed or not */
         buf.writeByte(sm.signed==true?(byte)1:(byte)0);       
         /* data to be sent */
