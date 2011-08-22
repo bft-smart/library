@@ -28,6 +28,7 @@ import navigators.smart.statemanagment.TransferableState;
 import navigators.smart.tom.TOMRequestReceiver;
 import navigators.smart.tom.core.messages.TOMMessage;
 import navigators.smart.tom.util.BatchReader;
+import navigators.smart.tom.util.DebugInfo;
 import navigators.smart.tom.util.Logger;
 import navigators.smart.tom.util.TOMUtil;
 
@@ -39,7 +40,6 @@ public class DeliveryThread extends Thread {
 
     private LinkedBlockingQueue<Consensus> decided = new LinkedBlockingQueue<Consensus>(); // decided consensus
     private TOMLayer tomLayer; // TOM layer
-    private RequestRecover requestRecover; // TODO: isto ainda vai ser usado?
     private TOMRequestReceiver receiver; // Object that receives requests from clients
     private ReconfigurationManager manager;
 
@@ -56,7 +56,6 @@ public class DeliveryThread extends Thread {
         this.receiver = receiver;
         //******* EDUARDO BEGIN **************//
         this.manager = manager;
-        this.requestRecover = new RequestRecover(tomLayer, manager);
         //******* EDUARDO END **************//
     }
 
@@ -136,7 +135,7 @@ public class DeliveryThread extends Thread {
 
                     /******* Deixo isto comentado, pois nao me parece necessario      **********/
                     /******* Alem disso, esta informacao nao vem no TransferableState **********
-                    requests[i].requestTotalLatency = System.currentTimeMillis()-cons.startTime;
+                    requests[i].requestTotalLatency = System.nanoTime()-cons.startTime;
                     /***************************************************************************/
                     
                     //receiver.receiveOrderedMessage(requests[i]);
@@ -190,23 +189,6 @@ public class DeliveryThread extends Thread {
                     
                 }
                 //******* EDUARDO END: Acho que precisa mudar aqui, como na entrega normal **************//
-
-
-            /****** Julgo que isto nao sera necessario ***********
-            if (conf.getCheckpoint_period() > 0) {
-            if ((eid > 0) && (eid % conf.getCheckpoint_period() == 0)) {
-            Logger.println("(DeliveryThread.update) Performing checkpoint for consensus " + eid);
-            byte[] state2 = receiver.getState();
-            tomLayer.saveState(state2, eid);
-            //TODO: possivelmente fazer mais alguma coisa
-            }
-            else {
-            Logger.println("(DeliveryThread.update) Storing message batch in the state log for consensus " + eid);
-            tomLayer.saveBatch(batch, eid);
-            //TODO: possivelmente fazer mais alguma coisa
-            }
-            }
-             */
             } catch (Exception e) {
                 e.printStackTrace(System.out);
             }
@@ -279,17 +261,10 @@ public class DeliveryThread extends Thread {
                 }
                 Logger.println("(DeliveryThread.run) A consensus was delivered.");
                 /******************************************************************/
-                startTime = System.currentTimeMillis();
+                startTime = System.nanoTime();
                 
                 
                 //System.out.println("vai entragar o consenso: "+cons.getId());
-
-                //TODO: avoid the case in which the received valid proposal is
-                //different from the decided value
-
-                
-
-                //System.out.println("chegou aqui 1: "+cons.getId());
 
                 //System.out.println("(TESTE // DeliveryThread.run) EID: " + cons.getId() + ", round: " + cons.getDecisionRound() + ", value: " + cons.getDecision().length);
 
@@ -315,21 +290,17 @@ public class DeliveryThread extends Thread {
                     }
 
                 }
-                
-               
-                 //System.out.println("chegou aqui 4: "+cons.getId());
-                
+                                
                 tomLayer.clientsManager.getClientsLock().lock();
-                 //System.out.println("chegou aqui 5: "+cons.getId());
-                for (int i = 0; i < requests.length; i++) {
 
+                if(requests[0].equals(cons.firstMessageProposed))
+                    requests[0] = cons.firstMessageProposed;
+
+                for (int i = 0; i < requests.length; i++) {
                     /** ISTO E CODIGO DO JOAO, PARA TRATAR DE DEBUGGING */
-//                    if (Logger.debug)
-//                        requests[i].setSequence(new DebugInfo(cons.getId(), cons.getDecisionRound(), lm.getLeader(cons.getId(), cons.getDecisionRound())));
+                    requests[i].setDebugInfo(new DebugInfo(cons.getId(),0,0,requests[i]));
                     /****************************************************/
-                    requests[i].consensusStartTime = cons.startTime;
-                    requests[i].consensusExecutionTime = cons.executionTime;
-                    requests[i].consensusBatchSize = cons.batchSize;
+                    
                     //System.out.println("chegou aqui 6: "+cons.getId());
                     tomLayer.clientsManager.requestOrdered(requests[i]);
                    //System.out.println("chegou aqui 7: "+cons.getId()); 
@@ -342,14 +313,12 @@ public class DeliveryThread extends Thread {
 
                 //define the last stable consensus... the stable consensus can
                 //be removed from the leaderManager and the executionManager
-                /**/
                 if (cons.getId() > 2) {
                     int stableConsensus = cons.getId() - 3;
 
                     tomLayer.lm.removeStableConsenusInfos(stableConsensus);
                     tomLayer.execManager.removeExecution(stableConsensus);
                 }
-                /**/
                
 
                 //verify if there is a next proposal to be executed
@@ -362,16 +331,16 @@ public class DeliveryThread extends Thread {
 
                 //deliver the request to the application (receiver)
                 for (int i = 0; i < requests.length; i++) {
-                    requests[i].requestTotalLatency = System.currentTimeMillis() - cons.startTime;
+                    requests[i].deliveryTime = System.nanoTime();
 
                     //******* EDUARDO BEGIN **************//
                     if (requests[i].getViewID() == this.manager.getCurrentViewId()) {
                         if (requests[i].getReqType() == ReconfigurationManager.TOM_NORMAL_REQUEST) {
+                            //normal request execution
                             receiver.receiveOrderedMessage(requests[i]);
                         } else {
                             //Reconfiguration request processing!
                             this.manager.enqueueUpdate(requests[i]);
-
                         }
                     } else {
                         this.tomLayer.getCommunication().send(new int[]{requests[i].getSender()},
@@ -379,8 +348,7 @@ public class DeliveryThread extends Thread {
                                 requests[i].getSession(), requests[i].getSequence(),
                                 TOMUtil.getBytes(this.manager.getCurrentView()), this.manager.getCurrentViewId()));
                     }
-                    
-                        //******* EDUARDO END **************//
+                    //******* EDUARDO END **************//
                 }
 
 
@@ -433,7 +401,7 @@ public class DeliveryThread extends Thread {
                     }
                 }
                 /********************************************************/
-                Logger.println("(DeliveryThread.run) All finished for " + cons.getId() + ", took " + (System.currentTimeMillis() - startTime));
+                Logger.println("(DeliveryThread.run) All finished for " + cons.getId() + ", took " + (System.nanoTime() - startTime));
             } catch (Exception e) {
                 e.printStackTrace(System.out);
             }

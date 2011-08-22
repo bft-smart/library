@@ -24,7 +24,10 @@ import java.io.ObjectOutputStream;
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.IOException;
+import java.io.Serializable;
 import java.security.MessageDigest;
+import java.security.PrivateKey;
+import java.security.Signature;
 import java.security.SignedObject;
 import java.util.Arrays;
 import java.util.Collection;
@@ -45,7 +48,6 @@ import navigators.smart.clientsmanagement.RequestList;
 import navigators.smart.communication.ServerCommunicationSystem;
 import navigators.smart.communication.client.RequestReceiver;
 import navigators.smart.paxosatwar.Consensus;
-import navigators.smart.paxosatwar.executionmanager.ProofVerifier;
 import navigators.smart.paxosatwar.executionmanager.RoundValuePair;
 import navigators.smart.paxosatwar.executionmanager.Execution;
 import navigators.smart.paxosatwar.executionmanager.ExecutionManager;
@@ -101,10 +103,9 @@ public final class TOMLayer extends Thread implements RequestReceiver {
     private TOMRequestReceiver receiver;
     //the next two are used to generate message digests
     private MessageDigest md;
-    private ProofVerifier proofVerifier;
+    private Signature engine;
 
     //the next two are used to generate non-deterministic data in a deterministic way (by the leader)
-//    private Random random = new Random();
     private BatchBuilder bb = new BatchBuilder();
     private long lastTimestamp = 0;
 
@@ -126,12 +127,8 @@ public final class TOMLayer extends Thread implements RequestReceiver {
     (to false) and used in run.*/
     private boolean leaderChanged = true;
 
-    /* The next fields are used only for benchmarking */
-    private static final int BENCHMARK_PERIOD = 100;
-    //private long numMsgsReceived;
-    //private Storage stConsensusDuration;
-    //private Storage stConsensusBatch;
 
+    private PrivateKey prk;
     
     private ReconfigurationManager reconfManager;
     
@@ -149,8 +146,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             LeaderModule lm,
             Acceptor a,
             ServerCommunicationSystem cs,
-            ReconfigurationManager recManager,
-            ProofVerifier proofVerifier) {
+            ReconfigurationManager recManager) {
 
         super("TOM Layer");
 
@@ -160,13 +156,9 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         this.acceptor = a;
         this.communication = cs;
         this.reconfManager = recManager;
-        this.proofVerifier = proofVerifier;
-//        this.numMsgsReceived = 0;
-        //this.stConsensusBatch = new Storage(BENCHMARK_PERIOD);
-        //this.stConsensusDuration = new Storage(BENCHMARK_PERIOD);
 
         //do not create a timer manager if the timeout is 0
-        if (reconfManager.getStaticConf().getRequestTimeout()==0){
+        if (reconfManager.getStaticConf().getRequestTimeout() == 0){
             this.requestsTimer = null;
         }
         else this.requestsTimer = new RequestsTimer(this, reconfManager.getStaticConf().getRequestTimeout()); // Create requests timers manager (a thread)
@@ -178,49 +170,65 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         } catch (Exception e) {
             e.printStackTrace(System.out);
         }
-        
+
+        try {
+            this.engine = Signature.getInstance("SHA1withRSA");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        this.prk = reconfManager.getStaticConf().getRSAPrivateKey();
+
         /*** ISTO E CODIGO DO JOAO, RELACIONADO COM A TROCA DE LIDER */
-
-        this.lcManager = new LCManager(recManager, md);
+        this.lcManager = new LCManager(this,recManager, md);
         /*************************************************************/
-
-        //this.ot = new OutOfContextMessageThread(this); // Create out of context thread
-        //this.ot.start();
 
         this.dt = new DeliveryThread(this, receiver, this.reconfManager); // Create delivery thread
         this.dt.start();
 
         /** ISTO E CODIGO DO JOAO, PARA TRATAR DOS CHECKPOINTS E TRANSFERENCIA DE ESTADO*/
-        stateManager = new StateManager(this.reconfManager);
+        this.stateManager = new StateManager(this.reconfManager);
         /*******************************************************/
     }
 
-    /**
-     * Retrieve TOM configuration
-     * @return TOM configuration
-     */
-    //public final TOMConfiguration getConf() {
-       // return this.conf;
-    //}
-
     ReentrantLock hashLock = new ReentrantLock();
+
     /**
      * Computes an hash for a TOM message
      * @param message
      * @return Hash for teh specified TOM message
      */
     public final byte[] computeHash(byte[] data) {
-        if (md == null) System.out.println("O hash digester está a null!!");
-        if (data == null) System.out.println("Os dados estam a null!!");
-
-        //synchronized(this) {
         byte[] ret = null;
         hashLock.lock();
-            ret = md.digest(data);
+        ret = md.digest(data);
         hashLock.unlock();
 
         return ret;
-        //}
+    }
+
+    public SignedObject sign(Serializable obj) {
+        try {
+            return new SignedObject(obj, prk, engine);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    /**
+     * Verifies the signature of a signed object
+     * @param so Signed object to be verified
+     * @param sender Replica id that supposably signed this object
+     * @return True if the signature is valid, false otherwise
+     */
+    public boolean verifySignature(SignedObject so, int sender) {
+        try {
+            return so.verify(reconfManager.getStaticConf().getRSAPublicKey(sender), engine);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return false;
     }
 
     /**
@@ -300,8 +308,6 @@ public final class TOMLayer extends Thread implements RequestReceiver {
      */
     @Override
     public void requestReceived(TOMMessage msg) {
-        //numMsgsReceived++;
-
         /**********************************************************/
         /********************MALICIOUS CODE************************/
         /**********************************************************/
@@ -310,25 +316,20 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         if (conf.getProcessId() == 0 && msg.getSender() == 4) {
         return;
         }
-         */
+      */
         /**********************************************************/
         /**********************************************************/
         /**********************************************************/
+
         // check if this request is valid and add it to the client' pending requests list
-        if (clientsManager.requestReceived(msg, true, !msg.isReadOnlyRequest(), communication)) {
-            if (msg.isReadOnlyRequest()) {
+        boolean readOnly = msg.getReqType() == ReconfigurationManager.TOM_READONLY_REQUEST;
+        if (clientsManager.requestReceived(msg, true, !readOnly, communication)) {
+            if (readOnly) {
                 receiver.receiveMessage(msg);
             } else {
                 messagesLock.lock();
                 haveMessages.signal();
                 messagesLock.unlock();
-
-                /*
-                //Logger.println("(TOMLayer.requestReceive) (" + msg.getSender() + "," + msg.getSequence() + "," + TOMUtil.byteArrayToString(msg.getContent()) + ") received");
-                if (numMsgsReceived % 1000 == 0) {
-                    Logger.println("Total number of messages received from clients:" + numMsgsReceived);
-                }
-                */
             }
         } else {
             Logger.println("(TOMLayer.requestReceive) the received TOMMessage " + msg + " was discarded.");
@@ -348,7 +349,12 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         //******* EDUARDO BEGIN **************//
         int numberOfNonces = this.reconfManager.getStaticConf().getNumberOfNonces(); // ammount of nonces to be generated
         //******* EDUARDO END **************//
+
+        //for benchmarking
+        cons.firstMessageProposed = pendingRequests.getFirst();
+        cons.firstMessageProposed.consensusStartTime = System.nanoTime();
         cons.batchSize = numberOfMessages;
+
         /*
         // These instructions are used only for benchmarking
         stConsensusBatch.store(numberOfMessages);
@@ -356,10 +362,11 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             System.out.println("#Media de batch dos ultimos " + BENCHMARK_PERIOD + " consensos: " + stConsensusBatch.getAverage(true));
             stConsensusBatch.reset();
         }
-        */
+      */
         Logger.println("(TOMLayer.run) creating a PROPOSE with " + numberOfMessages + " msgs");
 
         int totalMessageSize = 0; //total size of the messages being batched
+
         byte[][] messages = new byte[numberOfMessages][]; //bytes of the message (or its hash)
         byte[][] signatures = new byte[numberOfMessages][]; //bytes of the message (or its hash)
 
@@ -391,7 +398,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         Storage st = new Storage(BENCHMARK_PERIOD/2);
         long start=-1;
         int counter =0;
-         */
+      */
         /**********ISTO E CODIGO MARTELADO, PARA FAZER AVALIACOES **************/
         long initialTime = -1;
         long currentTime = -1;
@@ -399,14 +406,12 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         while (true) {
             /**********ISTO E CODIGO MARTELADO, PARA FAZER AVALIACOES **************/
             //System.out.println(currentTime);
-            if (initialTime > -1) currentTime = System.currentTimeMillis() - initialTime;
+            if (initialTime > -1) currentTime = System.nanoTime() - initialTime;
             /***********************************************************************/
-            System.out.println("(TOMLayer.run) Running."); // TODO: isto n podia passar para fora do ciclo?
             Logger.println("(TOMLayer.run) Running."); // TODO: isto n podia passar para fora do ciclo?
 
             // blocks until this replica learns to be the leader for the current round of the current consensus
             leaderLock.lock();
-            System.out.println("(TOMLayer.run) Next leader for eid=" + (getLastExec() + 1) + ": " + lm.getCurrentLeader());
             Logger.println("(TOMLayer.run) Next leader for eid=" + (getLastExec() + 1) + ": " + lm.getCurrentLeader());
             
             //******* EDUARDO BEGIN **************//
@@ -417,18 +422,14 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             //******* EDUARDO END **************//
             
             leaderLock.unlock();
-            System.out.println("(TOMLayer.run) I'm the leader.");
             Logger.println("(TOMLayer.run) I'm the leader.");
 
             // blocks until there are requests to be processed/ordered
             messagesLock.lock();
             if (!clientsManager.havePendingRequests()) {
-
                 haveMessages.awaitUninterruptibly();
-                
             }
             messagesLock.unlock();
-            System.out.println("(TOMLayer.run) There are messages to be ordered.");
             Logger.println("(TOMLayer.run) There are messages to be ordered.");
 
             // blocks until the current consensus finishes
@@ -439,7 +440,6 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             }
             proposeLock.unlock();
 
-            System.out.println("(TOMLayer.run) I can try to propose.");
             Logger.println("(TOMLayer.run) I can try to propose.");
                 //******* EDUARDO BEGIN **************//
             if ((lm.getCurrentLeader() == this.reconfManager.getStaticConf().getProcessId()) && //I'm the leader
@@ -452,14 +452,14 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                 /**********ISTO E CODIGO MARTELADO, PARA FAZER AVALIACOES **************/
                 boolean temp = false;
                 if (initialTime == -1) {
-                    initialTime = System.currentTimeMillis();
+                    initialTime = System.nanoTime();
                     currentTime = 0;
                 }
                 else if ((this.reconfManager.getStaticConf().getProcessId() == 0) /*&& (currentTime >= 5000)*/) {
                         //System.exit(0);
                         //temp = true;
                         //if ((getLastExec() + 1) >= 200) temp = true;
-                        System.out.println("Isto ta assim: " + (getLastExec() + 1));
+                        //System.out.println("Isto ta assim: " + (getLastExec() + 1));
                 }
                 /***********************************************************************/
 
@@ -468,70 +468,20 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                 setInExec(execId);
 
                 //Logger.println("(TOMLayer.run) Waiting for acceptor semaphore to be released.");
-                //acceptor.getMEZone();
                 Execution exec = execManager.getExecution(execId);
-                //acceptor.leaveMEZone();
                 //Logger.println("(TOMLayer.run) Acceptor semaphore acquired");
 
                 execManager.getProposer().startExecution(execId,createPropose(exec.getLearner()));
                 if (temp) System.exit(0);
-
-            /*
-            if (counter>=BENCHMARK_PERIOD/2)
-            st.store(System.nanoTime()-start);
-
-            counter++;
-             */
-            } else {
-                /*
-                System.out.println("I should be the leader, there should be messages to order and no consensus running:");
-                System.out.println(">>leader: " + lm.getLeader(getLastExec()+1,0));
-                System.out.println(">>consenso em exec?: " + getInExec());
-                 */
             }
-        /*
-        if (st.getCount()==BENCHMARK_PERIOD/2){
-        System.out.println("---------------------------------------------");
-        System.out.println("CREATE_PROPOSE total delay: Average time for "+BENCHMARK_PERIOD/2+" executions (-10%) = "+st.getAverage(true)/1000+ " us ");
-        System.out.println("CREATE_PROPOSE total delay: Standard desviation for "+BENCHMARK_PERIOD/2+" executions (-10%) = "+st.getDP(true)/1000 + " us ");
-        System.out.println("CREATE_PROPOSE total delay: Average time for "+BENCHMARK_PERIOD/2+" executions (all samples) = "+st.getAverage(false)/1000+ " us ");
-        System.out.println("CREATE_PROPOSE total delay: Standard desviation for "+BENCHMARK_PERIOD/2+" executions (all samples) = "+st.getDP(false)/1000 + " us ");
-        System.out.println("CREATE_PROPOSE total delay: Maximum time for "+BENCHMARK_PERIOD/2+" executions (-10%) = "+st.getMax(true)/1000+ " us ");
-        System.out.println("CREATE_PROPOSE total delay: Maximum time for "+BENCHMARK_PERIOD/2+" executions (all samples) = "+st.getMax(false)/1000+ " us ");
-        System.out.println("---------------------------------------------");
-
-        st = new Storage(BENCHMARK_PERIOD/2);
-        counter=0;
-        }
-         */
         }
     }
 
-    //called by the DeliveryThread to inform that msg was delivered to the app
-/*    public void cleanTimers(TOMMessage msg) {
-    timer.cancelTimer(msg.getId());
-    removeTimeoutInfo(msg.getId());
-    }
-     */
     /**
      * Called by the current consensus's execution, to notify the TOM layer that a value was decided
      * @param cons The decided consensus
      */
     public void decided(Consensus cons) {
-        // These instructions are used for benchmarking
-        /*
-        stConsensusDuration.store(System.currentTimeMillis() - cons.startTime);
-        if (stConsensusDuration.getCount() == BENCHMARK_PERIOD) {
-            System.out.println("#Media dos ultimos " + BENCHMARK_PERIOD + " consensos: " + stConsensusDuration.getAverage(true) + " ms");
-            stConsensusDuration.reset();
-        }
-        */
-        
-        
-        //System.out.println("TOMLayer: decided "+cons.getId());
-        
-        
-        cons.executionTime = System.currentTimeMillis() - cons.startTime;
         this.dt.delivery(cons); // Delivers the consensus to the delivery thread
     }
 
@@ -554,33 +504,24 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         TOMMessage[] requests = null;
 
         try {
-
-                //******* EDUARDO BEGIN **************//
             //deserialize the message
             //TODO: verify Timestamps and Nonces
             requests = batchReader.deserialiseRequests(this.reconfManager);
-                //******* EDUARDO END **************//
 
-        //Logger.println("(TOMLayer.isProposedValueValid) Waiting for clientsManager lock");
-        //clientsManager.getClientsLock().lock();
-        //Logger.println("(TOMLayer.isProposedValueValid) Got clientsManager lock");
             for (int i = 0; i < requests.length; i++) {
-            //notifies the client manager that this request was received and get
-            //the result of its validation
-            if (!clientsManager.requestReceived(requests[i], false)) {
-                clientsManager.getClientsLock().unlock();
-                    if (Logger.debug) {
-                Logger.println("(TOMLayer.isProposedValueValid) finished, return=false");
-            }
+                //notifies the client manager that this request was received and get
+                //the result of its validation
+                if (!clientsManager.requestReceived(requests[i], false)) {
+                    clientsManager.getClientsLock().unlock();
+                    Logger.println("(TOMLayer.isProposedValueValid) finished, return=false");
+                    System.out.println("failure in deserialize batch");
                     return null;
                 }
             }
         } catch (Exception e) {
             e.printStackTrace();
             clientsManager.getClientsLock().unlock();
-            if (Logger.debug) {
-                Logger.println("(TOMLayer.isProposedValueValid) finished, return=false");
-            }
+            Logger.println("(TOMLayer.isProposedValueValid) finished, return=false");
             return null;
         }
         //clientsManager.getClientsLock().unlock();
@@ -678,7 +619,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
     public void sendCollectMessage(int reqId, RTCollect collect) {
             //******* EDUARDO BEGIN **************//
         RTMessage rtm = new RTMessage(TOMUtil.SYNC, reqId,
-                this.reconfManager.getStaticConf().getProcessId(), acceptor.sign(collect));
+                this.reconfManager.getStaticConf().getProcessId(), sign(collect));
 
         if (collect.getNewLeader() == this.reconfManager.getStaticConf().getProcessId()) {
             RTInfo rti = getTimeoutInfo(reqId);
@@ -784,7 +725,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                  {
                     Logger.println("(TOMLayer.deliverTimeoutRequest) receiving collect for message " + msg.getReqId() + " from " + msg.getSender());
                     SignedObject so = (SignedObject) msg.getContent();
-                    if (acceptor.verifySignature(so, msg.getSender())) { // valid signature?
+                    if (verifySignature(so, msg.getSender())) { // valid signature?
                         try {
                             RTCollect rtc = (RTCollect) so.getObject();
                             int reqId = rtc.getReqId();
@@ -979,7 +920,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         Collection<RTCollect> valid = new HashSet<RTCollect>();
         try {
             for (int i = 0; i < proof.length; i++) {
-                if (proof[i] != null && acceptor.verifySignature(proof[i], i)) { // is the signature valid?
+                if (proof[i] != null && verifySignature(proof[i], i)) { // is the signature valid?
                     RTCollect rtc = (RTCollect) proof[i].getObject();
                     // Does this proof refers to the specified message id and timeout?
                     if (rtc != null && rtc.getReqId() == reqId) {
@@ -1430,15 +1371,10 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
     /********************************************************/
 
-    /* ISTO SAO MAIS COISAS DO JOAO, PARA RETIRAR A THREAD OUTOFCONTEXT */
     public void processOutOfContext() {
-
         while (true) {
-
             int nextExecution = getLastExec() + 1;
-            if (execManager.thereArePendentMessages(nextExecution)) {
-                System.out.println("Estou a processar mensagens de out of context!");
-
+            if (execManager.thereArePendingMessages(nextExecution)) {
                 Logger.println("(TOMLayer.processOutOfContext) starting processing out of context messages for consensus " + nextExecution);
                 execManager.getExecution(nextExecution);
                 Logger.println("(TOMLayer.processOutOfContext) finished processing out fo context messages for consensus " + nextExecution);
@@ -1634,7 +1570,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
                         CollectData collect = new CollectData(this.reconfManager.getStaticConf().getProcessId(), in, quorumWeaks, writeSet);
 
-                        SignedObject signedCollect = proofVerifier.sign(collect);
+                        SignedObject signedCollect = sign(collect);
 
                         out.writeObject(signedCollect);
 
@@ -1647,7 +1583,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
                         CollectData collect = new CollectData(this.reconfManager.getStaticConf().getProcessId(), -1, new RoundValuePair(-1, new byte[0]), new HashSet<RoundValuePair>());
 
-                        SignedObject signedCollect = proofVerifier.sign(collect);
+                        SignedObject signedCollect = sign(collect);
 
                         out.writeObject(signedCollect);
 
@@ -1713,7 +1649,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                 }
                 else collect = new CollectData(this.reconfManager.getStaticConf().getProcessId(), -1, new RoundValuePair(-1, new byte[0]), new HashSet<RoundValuePair>());
 
-                SignedObject signedCollect = proofVerifier.sign(collect);
+                SignedObject signedCollect = sign(collect);
 
                 lcManager.addCollect(ts, signedCollect);
             }
@@ -1907,7 +1843,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                         lcManager.setCollects(ts, signedCollects);
 
                         // o predicado sound e verdadeiro?
-                        if (lcManager.sound(lcManager.selectCollects(ts, currentEid, proofVerifier))) {
+                        if (lcManager.sound(lcManager.selectCollects(ts, currentEid))) {
 
                             finalise(ts, lastHighestEid, currentEid, signedCollects, propose, batchSize, false);
                         }
@@ -1948,11 +1884,11 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         int batchSize = -1;
 
         // normalizar os collects e aplicar-lhes o predicado "sound"
-        if (lcManager.sound(lcManager.selectCollects(ts, currentEid, proofVerifier))) {
+        if (lcManager.sound(lcManager.selectCollects(ts, currentEid))) {
 
             signedCollects = lcManager.getCollects(ts); // todos collects originais que esta replica recebeu
 
-            Consensus cons = new Consensus(-1, -1); // este objecto só serve para obter o batchsize,
+            Consensus cons = new Consensus(-1); // este objecto só serve para obter o batchsize,
                                                     // a partir do codigo que esta dentro do createPropose()
 
             propose = createPropose(cons);
@@ -2035,7 +1971,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         }
         byte[] tmpval = null;
 
-        HashSet<CollectData> selectedColls = lcManager.selectCollects(signedCollects, currentEid, proofVerifier);
+        HashSet<CollectData> selectedColls = lcManager.selectCollects(signedCollects, currentEid);
 
         // obter um valor que satisfaca o predicado "bind"
         tmpval = lcManager.getBindValue(selectedColls);

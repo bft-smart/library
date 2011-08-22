@@ -18,6 +18,7 @@
 
 package navigators.smart.tom.core.messages;
 
+import navigators.smart.communication.SystemMessage;
 import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;

@@ -28,8 +28,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import navigators.smart.tom.ServiceReplica;
 import navigators.smart.tom.util.DebugInfo;
 import java.util.Scanner;
@@ -101,7 +99,6 @@ public class RandomServer extends ServiceReplica {
             new DataOutputStream(out).writeInt(value);
             return out.toByteArray();
         } catch (IOException ex) {
-            Logger.getLogger(CounterServer.class.getName()).log(Level.SEVERE, null, ex);
             return null;
         }
     }

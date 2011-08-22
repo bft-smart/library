@@ -29,9 +29,9 @@ import java.util.Set;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import navigators.smart.paxosatwar.executionmanager.ProofVerifier;
 import navigators.smart.paxosatwar.executionmanager.RoundValuePair;
 import navigators.smart.reconfiguration.ReconfigurationManager;
+import navigators.smart.tom.core.TOMLayer;
 import navigators.smart.tom.core.messages.TOMMessage;
 
 /**
@@ -63,6 +63,7 @@ public class LCManager {
     //stuff from the TOM layer that this object needss
     private ReconfigurationManager reconfManager;
     private MessageDigest md;
+    private TOMLayer tomLayer;
 
     /**
      * Constructor
@@ -70,8 +71,8 @@ public class LCManager {
      * @param reconfManager The reconfiguration manager from TOM layer
      * @param md The message digest engine from TOM layer
      */
-    public LCManager(ReconfigurationManager reconfManager, MessageDigest md) {
-
+    public LCManager(TOMLayer tomLayer,ReconfigurationManager reconfManager, MessageDigest md) {
+        this.tomLayer = tomLayer;
         this.lastts = 0;
         this.nextts = 0;
 
@@ -574,13 +575,13 @@ public class LCManager {
      * @param eid the eid to which to normalize the collects
      * @return a set of correctly signed and normalized collect data structures
      */
-    public HashSet<CollectData> selectCollects(int ts, int eid, ProofVerifier pv) {
+    public HashSet<CollectData> selectCollects(int ts, int eid) {
 
         HashSet<SignedObject> c = collects.get(ts);
 
         if (c == null) return null;
 
-        return normalizeCollects(getSignedCollects(c, pv), eid);
+        return normalizeCollects(getSignedCollects(c), eid);
         
     }
 
@@ -591,16 +592,16 @@ public class LCManager {
      * @param eid the eid to which to normalize the collects
      * @return a set of correctly signed and normalized collect data structures
      */
-    public HashSet<CollectData> selectCollects(HashSet<SignedObject> signedObjects, int eid, ProofVerifier pv) {
+    public HashSet<CollectData> selectCollects(HashSet<SignedObject> signedObjects, int eid) {
 
         if (signedObjects == null) return null;
 
-        return normalizeCollects(getSignedCollects(signedObjects, pv), eid);
+        return normalizeCollects(getSignedCollects(signedObjects), eid);
 
     }
 
     // Filters the correctly signed collects
-    private HashSet<CollectData> getSignedCollects(HashSet<SignedObject> signedCollects, ProofVerifier pv) {
+    private HashSet<CollectData> getSignedCollects(HashSet<SignedObject> signedCollects) {
 
         HashSet<CollectData> colls = new HashSet<CollectData>();
 
@@ -608,11 +609,9 @@ public class LCManager {
 
             CollectData c;
             try {
-
                 c = (CollectData) so.getObject();
                 int sender = c.getPid();
-                if (pv.validSignature(so, sender)) {
-
+                if (tomLayer.verifySignature(so, sender)) {
                     colls.add(c);
                 }
             } catch (IOException ex) {

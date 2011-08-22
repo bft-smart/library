@@ -30,7 +30,6 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Level;
@@ -38,7 +37,7 @@ import java.util.logging.Logger;
 
 import navigators.smart.reconfiguration.ReconfigurationManager;
 import navigators.smart.tom.ServiceReplica;
-import navigators.smart.tom.core.messages.SystemMessage;
+import navigators.smart.communication.SystemMessage;
 
 /**
  *
@@ -150,7 +149,6 @@ public class ServersCommunicationLayer extends Thread {
         byte[] data = bOut.toByteArray();
 
         for (int i : targets) {
-            //br.ufsc.das.tom.util.Logger.println("(ServersCommunicationLayer.send) Sending msg to replica "+i);
             try {
                 if (i == me) {
                     inQueue.put(sm);
@@ -165,7 +163,6 @@ public class ServersCommunicationLayer extends Thread {
                 ex.printStackTrace();
             }
         }
-    //br.ufsc.das.tom.util.Logger.println("(ServersCommunicationLayer.send) Finished sending messages to replicas");
     }
 
     public void shutdown() {
@@ -217,8 +214,8 @@ public class ServersCommunicationLayer extends Thread {
 
                 //******* EDUARDO BEGIN **************//
                 if (!this.manager.isInInitView() &&
-                        !this.manager.isInCurrentView() &&
-                        (this.manager.getStaticConf().getTTPId() != remoteId)) {
+                     !this.manager.isInCurrentView() &&
+                     (this.manager.getStaticConf().getTTPId() != remoteId)) {
                     waitViewLock.lock();
                     pendingConn.add(new PendingConnection(newSocket, remoteId));
                     waitViewLock.unlock();
@@ -226,8 +223,6 @@ public class ServersCommunicationLayer extends Thread {
                     establishConnection(newSocket, remoteId);
                 }
                 //******* EDUARDO END **************//
-
-
 
             } catch (SocketTimeoutException ex) {
             //timeout on the accept... do nothing

@@ -134,8 +134,8 @@ public class ThroughputLatencyTestServer extends TOMReceiver {
         //do throughput calculations
         numDecides++;
         //consensusLatencySt.store(msg.consensusExecutionTime);
-        totalLatencySt1.store(msg.requestTotalLatency);
-        batchSt1.store(msg.consensusBatchSize);
+        totalLatencySt1.store(msg.deliveryTime - msg.receptionTime);
+        //batchSt1.store(msg.consensusBatchSize);
 
         if (numDecides == 1) {
             lastDecideTimeInstant = receiveInstant;

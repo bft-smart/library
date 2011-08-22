@@ -20,7 +20,6 @@ package navigators.smart.communication.client.netty;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.io.ObjectOutputStream;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
@@ -30,6 +29,8 @@ import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.ListIterator;
 import java.util.concurrent.Executors;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -149,16 +150,13 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
         }
     }
 
-    //TODO: Falta fechar as conexoes para servidores q sairam
+    @Override
     public void updateConnections() {
         try {
-
-            //******* EDUARDO BEGIN **************//
             Mac macDummy = Mac.getInstance(manager.getStaticConf().getHmacAlgorithm());
             int[] currV = manager.getCurrentViewProcesses();
-            //******* EDUARDO END **************//
 
-
+            //open connections with new servers
             for (int i = 0; i < currV.length; i++) {
                 rl.readLock().lock();
                 if (sessionTable.get(currV[i]) == null) {
@@ -177,7 +175,10 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
                         bootstrap.setOption("connectTimeoutMillis", 10000);
 
                         // Set up the default event pipeline.
-                        bootstrap.setPipelineFactory(new NettyClientPipelineFactory(this, true, sessionTable, authKey, macDummy.getMacLength(), manager, rl, signatureLength, new ReentrantLock()));
+                        bootstrap.setPipelineFactory(
+                                new NettyClientPipelineFactory(this, true, sessionTable,
+                                authKey, macDummy.getMacLength(), manager, rl, signatureLength,
+                                new ReentrantLock()));
 
 
                         //******* EDUARDO BEGIN **************//
@@ -202,6 +203,28 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
                     rl.writeLock().unlock();
                 } else rl.readLock().unlock();
             }
+            
+            //close connections with removed servers
+            //ANB: This code need to be tested!!!
+            ListIterator ids = new LinkedList(sessionTable.keySet()).listIterator();
+            while (ids.hasNext()) {
+                int id = (Integer) ids.next();
+
+                boolean found = false;
+                for (int v : currV) {
+                    if (v == id) {
+                        found = true;
+                        break;
+                    }
+                }
+
+                if (!found) {
+                    NettyClientServerSession cs =
+                            (NettyClientServerSession) sessionTable.remove(id);
+                    cs.getChannel().close();
+                }
+            }
+
         } catch (NoSuchAlgorithmException ex) {
         }
     }
@@ -296,71 +319,40 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
     }
 
     @Override
-    public void send(boolean sign, int[] targets, TOMMessage sm, boolean serializeClassHeaders) {
+    public void send(boolean sign, int[] targets, TOMMessage sm) {
         if (sm.serializedMessage == null) {
+
             //serialize message
             DataOutputStream dos = null;
-            ObjectOutputStream oos = null;
-
-            byte[] data = null;
             try {
                 ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                if (!serializeClassHeaders) {
-                    dos = new DataOutputStream(baos);
-                    sm.wExternal(dos);
-                    dos.flush();
-                    sm.includesClassHeader = false;
-                } else {
-                    oos = new ObjectOutputStream(baos);
-                    oos.writeObject(sm);
-                    oos.flush();
-                    sm.includesClassHeader = true;
-                }
-                data = baos.toByteArray();
-                sm.serializedMessage = data;
+                dos = new DataOutputStream(baos);
+                sm.wExternal(dos);
+                dos.flush();
+                sm.serializedMessage = baos.toByteArray();
             } catch (IOException ex) {
                 Logger.println("Impossible to serialize message: " + sm);
             } finally {
                 try {
-                    if (dos != null) {
-                        dos.close();
-                    }
-                    if (oos != null) {
-                        oos.close();
-                    }
-                } catch (IOException ex) {
-                }
+                    dos.close();
+                } catch (IOException ex) { }
             }
-        } else {
-            sm.includesClassHeader = false;
         }
 
+        //Logger.println("Sending message with "+sm.serializedMessage.length+" bytes of content.");
+
         //produce signature
-        if (sm.serializedMessageSignature == null && sign) {
-            //******* EDUARDO BEGIN **************//
-            byte[] data2 = signMessage(manager.getStaticConf().getRSAPrivateKey(), sm.serializedMessage);
-            //******* EDUARDO END **************//
-            sm.serializedMessageSignature = data2;
+        if (sign && sm.serializedMessageSignature == null) {
+            sm.serializedMessageSignature = signMessage(
+                    manager.getStaticConf().getRSAPrivateKey(), sm.serializedMessage);
         }
 
         int sent = 0;
         for (int i = targets.length - 1; i >= 0; i--) {
-            /**********************************************************/
-            /********************MALICIOUS CODE************************/
-            /**********************************************************/
-            //don't send the message to server 0 if my id is 5
-            /*
-            if (conf.getProcessId() == 5 && (i == 0)) {
-            continue;
-            }
-             */
-            /**********************************************************/
-            /**********************************************************/
-            /**********************************************************/
             sm.destination = targets[i];
 
             rl.readLock().lock();
-            Channel channel = (Channel) ((NettyClientServerSession) sessionTable.get(targets[i])).getChannel();
+            Channel channel = ((NettyClientServerSession) sessionTable.get(targets[i])).getChannel();
             rl.readLock().unlock();
             if (channel.isConnected()) {
                 sm.signed = sign;
@@ -371,8 +363,9 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
             }
 
         }
-        
+
         if (sent < manager.getCurrentViewF() + 1) {
+            //if less than f+1 servers are connected send an exception to the client
             throw new RuntimeException("Impossible to connect to servers!");
         }
     }
@@ -392,8 +385,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
         } finally {
             try {
                 dos.close();
-            } catch (IOException ex) {
-            }
+            } catch (IOException ex) { }
         }
 
         //******* EDUARDO BEGIN **************//

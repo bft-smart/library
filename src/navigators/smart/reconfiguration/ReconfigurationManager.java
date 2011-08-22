@@ -9,7 +9,6 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.StringTokenizer;
-import navigators.smart.paxosatwar.Consensus;
 import navigators.smart.tom.core.TOMLayer;
 import navigators.smart.tom.core.messages.TOMMessage;
 import navigators.smart.tom.util.TOMUtil;
@@ -24,7 +23,8 @@ public class ReconfigurationManager extends ViewManager {
     public static final int REMOVE_SERVER = 1;
     public static final int CHANGE_F = 2;
     public static final int TOM_NORMAL_REQUEST = 0;
-    public static final int TOM_RECONFIG_REQUEST = 1;
+    public static final int TOM_READONLY_REQUEST = 1;
+    public static final int TOM_RECONFIG_REQUEST = 2;
     private int quorumF; // f replicas
     private int quorum2F; // f * 2 replicas
     private int quorumStrong; // ((n + f) / 2) replicas

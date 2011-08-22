@@ -18,21 +18,13 @@
 
 package navigators.smart.communication;
 
-import static navigators.smart.communication.ServerCommunicationSystem.RR_MSG;
-import static navigators.smart.communication.ServerCommunicationSystem.RT_MSG;
-import static navigators.smart.communication.ServerCommunicationSystem.TOM_REPLY_MSG;
-import static navigators.smart.communication.ServerCommunicationSystem.TOM_REQUEST_MSG;
 import static navigators.smart.paxosatwar.messages.MessageFactory.COLLECT;
-
-
-import java.io.ObjectOutputStream;
 
 import navigators.smart.paxosatwar.messages.PaxosMessage;
 import navigators.smart.paxosatwar.roles.Acceptor;
 import navigators.smart.paxosatwar.roles.Proposer;
 import navigators.smart.statemanagment.SMMessage;
 import navigators.smart.tom.core.TOMLayer;
-import navigators.smart.tom.core.messages.SystemMessage;
 import navigators.smart.tom.core.messages.TOMMessage;
 import navigators.smart.tom.core.timer.messages.ForwardedMessage;
 import navigators.smart.tom.core.timer.messages.RTMessage;
@@ -66,15 +58,8 @@ public class MessageHandler {
     protected void processData(SystemMessage sm) {
         if (sm instanceof PaxosMessage) {
             PaxosMessage paxosMsg = (PaxosMessage) sm;
-            //Logger.println("(MessageHandler.processData) PAXOS_MSG received: " + paxosMsg);
-            if (paxosMsg.getPaxosType() == COLLECT) {
-                //the proposer layer only handle COLLECT messages
-                Logger.println("(MessageHandler.processData) delivering COLLECT message");
-                proposer.deliver(paxosMsg);
-            } else {
-                Logger.println("(MessageHandler.processData) delivering a paxos message");
-                acceptor.deliver(paxosMsg);
-            }
+            Logger.println("(MessageHandler.processData) delivering a paxos message");
+            acceptor.deliver(paxosMsg);
         } else if (sm instanceof RTMessage) {
             RTMessage rtMsg = (RTMessage) sm;
             Logger.println("(MessageHandler.processData) RT_MSG received: " + rtMsg + " (replica " + rtMsg.getSender() + ")");
@@ -95,82 +80,14 @@ public class MessageHandler {
 
         /** ISTO E CODIGO DO JOAO, PARA TRATAR DA TRANSFERENCIA DE ESTADO */
         } else if (sm instanceof SMMessage) {
-
             Logger.println("(MessageHandler.processData) receiving a state managment message from replica " + sm.getSender());
             SMMessage smsg = (SMMessage) sm;
             if (smsg.getType() == TOMUtil.SM_REQUEST) {
                 tomLayer.SMRequestDeliver(smsg);
-            }
-            else {
+            } else {
                 tomLayer.SMReplyDeliver(smsg);
             }
         /******************************************************************/
         }
     }
-
-    protected void getData(SystemMessage msg, int type, ObjectOutputStream obOut) throws Exception {
-        if (type == TOM_REQUEST_MSG || type == TOM_REPLY_MSG) {
-            getBytes((TOMMessage) msg, obOut);
-        } else if (type == RR_MSG || type == RT_MSG) {
-            obOut.writeObject(msg);
-        } else {//if (type == PAXOS_MSG){
-            getBytes((PaxosMessage) msg, obOut);
-        }
-    }
-
-    //******* EDUARDO BEGIN **************//
-    //Nao estava sendo usado pra nada!
-   /* public byte[] getData(SystemMessage msg) {
-        ByteArrayOutputStream bOut = new ByteArrayOutputStream();
-
-        try {
-            ObjectOutputStream obOut = new ObjectOutputStream(bOut);
-
-            obOut.writeObject(msg);
-        } catch (IOException ex) {
-            ex.printStackTrace();
-        }
-
-        return bOut.toByteArray();
-    }*/
-    //******* EDUARDO END **************//
-
-
-    //utility methods to convert PaxosMessages to bytes and vice-versa
-    private void getBytes(PaxosMessage msg, ObjectOutputStream obOut) throws Exception {
-        obOut.writeInt(msg.getNumber());
-        obOut.writeInt(msg.getRound());
-        obOut.writeInt(msg.getSender());
-        obOut.writeInt(msg.getPaxosType());
-        obOut.writeObject(msg.getValue());
-        obOut.writeObject(msg.getProof());
-    }
-
-    /*
-    private PaxosMessage getPaxosMsg(ObjectInputStream obIn) throws Exception {
-    int number = obIn.readInt();
-    int round = obIn.readInt();
-    int from = obIn.readInt();
-    int paxosT = obIn.readInt();
-    Object value = obIn.readObject();
-    Object proof = obIn.readObject();
-    return new PaxosMessage(paxosT, number, round, from, value, proof);
-    }
-     */
-
-    //utility methods to convert TOMMessage to bytes and vice-versa
-    private void getBytes(TOMMessage msg, ObjectOutputStream obOut) throws Exception {
-        obOut.writeInt(msg.getSender());
-        obOut.writeInt(msg.getSequence());
-        obOut.writeObject(msg.getContent());
-    }
-
-    /*
-    private TOMMessage getTOMMsg(ObjectInputStream obIn) throws Exception {
-    int sender = obIn.readInt();
-    int sequence = obIn.readInt();
-    Object content = obIn.readObject();
-    return new TOMMessage(sender, sequence, content, TOM_REQUEST_MSG);
-    }
-     */
 }

@@ -18,6 +18,7 @@
 
 package navigators.smart.tom.core.messages;
 
+import navigators.smart.communication.SystemMessage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInput;
@@ -43,8 +44,8 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
     
     private int session; // Sequence number defined by the client
     private int sequence; // Sequence number defined by the client
+
     private byte[] content = null; // Content of the message
-    private boolean readOnlyRequest = false; //this is a read only request
 
     //the fields bellow are not serialized!!!
     private transient int id; // ID for this message. It should be unique
@@ -52,10 +53,8 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
     public transient long timestamp = 0; // timestamp to be used by the application
     public transient byte[] nonces = null; // nonces to be used by the applciation
 
-    //Esses dois Campos servem pra que?
     public transient int destination = -1; // message destination
     public transient boolean signed = false; // is this message signed?
-    public transient boolean includesClassHeader = false; //are class header serialized
 
     public transient long receptionTime;//the reception time of this message
     public transient boolean timeout = false;//this message was timed out?
@@ -66,11 +65,14 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
     public transient byte[] serializedMessageMAC = null;
 
     //for benchmarking purposes
-    public transient long consensusStartTime=0;
-    public transient long consensusExecutionTime=0;
-    public transient int consensusBatchSize=0;
-    public transient long requestTotalLatency=0;
-
+    public transient long consensusStartTime = 0; //time the consensus is created
+    public transient long proposeReceivedTime = 0; //time the propose is received
+    public transient long weakSentTime = 0; //time the replica' weak message is sent
+    public transient long strongSentTime = 0; //time the replica' strong message is sent
+    public transient long decisionTime = 0; //time the decision is established
+    public transient long deliveryTime =0; //time the request is delivered
+    public transient long executedTime =0; //time the request is executed
+    
     //the reply associated with this message
     public transient TOMMessage reply = null;
 
@@ -81,24 +83,26 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
      * Creates a new instance of TOMMessage
      *
      * @param sender ID of the process which sent the message
+     * @param session Session id of the sender
      * @param sequence Sequence number defined by the client
      * @param content Content of the message
+     * @param view ViewId of the message
      */
     public TOMMessage(int sender, int session, int sequence, byte[] content, int view) {
-        this(sender,session,sequence,content, view, ReconfigurationManager.TOM_NORMAL_REQUEST, false);
+        this(sender,session,sequence,content, view, ReconfigurationManager.TOM_NORMAL_REQUEST);
     }
 
     /**
      * Creates a new instance of TOMMessage
      *
      * @param sender ID of the process which sent the message
+     * @param session Session id of the sender
      * @param sequence Sequence number defined by the client
      * @param content Content of the message
+     * @param view ViewId of the message
      * @param type Type of the request
-     * @param readOnlyRequest it is a read only request
      */
-       
-    public TOMMessage(int sender, int session, int sequence, byte[] content, int view, int type, boolean readOnlyRequest) {
+    public TOMMessage(int sender, int session, int sequence, byte[] content, int view, int type) {
         super(sender);
         this.session = session;
         this.sequence = sequence;
@@ -106,7 +110,6 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
         buildId();
         this.content = content;
         this.reqType = type;
-        this.readOnlyRequest = readOnlyRequest;
     }
 
     
@@ -173,13 +176,6 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
     }
 
     /**
-     * @return the readOnlyRequest
-     */
-    public boolean isReadOnlyRequest() {
-        return readOnlyRequest;
-    }
-    
-    /**
      * Verifies if two TOMMessage objects are equal.
      *
      * Two TOMMessage are equal if they have the same sender,
@@ -216,40 +212,6 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
         return "(" + sender + "," + sequence + ")";
     }
 
-    @Override
-    public void writeExternal(ObjectOutput out) throws IOException {
-        super.writeExternal(out);
-        out.writeInt(viewID);
-        out.writeInt(reqType);
-        out.writeInt(session);
-        out.writeInt(sequence);
-        if (content == null) {
-            out.writeInt(-1);
-        } else {
-            out.writeInt(content.length);
-            out.write(content);
-        }
-    }
-
-    @Override
-    public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
-        super.readExternal(in);
-        viewID = in.readInt();
-        reqType = in.readInt();
-        session = in.readInt();
-        sequence = in.readInt();
-        int toRead = in.readInt();
-        if (toRead != -1) {
-            content = new byte[toRead];
-            //in.readFully(content);
-            do {
-                toRead -= in.read(content, content.length - toRead, toRead);
-            } while (toRead > 0);
-        }
-
-        buildId();
-    }
-
     public void wExternal(DataOutput out) throws IOException {
         out.writeInt(sender);
         out.writeInt(viewID);
@@ -263,8 +225,6 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
             out.writeInt(content.length);
             out.write(content);
         }
-
-        out.writeBoolean(isReadOnlyRequest());
     }
 
     public void rExternal(DataInput in) throws IOException, ClassNotFoundException {
@@ -277,11 +237,8 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
         int toRead = in.readInt();
         if (toRead != -1) {
             content = new byte[toRead];
-
             in.readFully(content);
         }
-
-        readOnlyRequest = in.readBoolean();
 
         buildId();
     }

@@ -23,7 +23,7 @@ import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
 
-import navigators.smart.tom.core.messages.SystemMessage;
+import navigators.smart.communication.SystemMessage;
 
 
 /**

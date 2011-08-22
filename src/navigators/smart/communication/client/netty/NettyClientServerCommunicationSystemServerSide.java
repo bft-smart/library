@@ -15,13 +15,11 @@
  *
  * You should have received a copy of the GNU General Public License along with SMaRt.  If not, see <http://www.gnu.org/licenses/>.
  */
-
 package navigators.smart.communication.client.netty;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.io.ObjectOutputStream;
 import java.net.InetSocketAddress;
 import java.security.NoSuchAlgorithmException;
 import java.security.spec.InvalidKeySpecException;
@@ -36,7 +34,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.logging.Level;
-import java.util.logging.Logger;
 
 import javax.crypto.Mac;
 import javax.crypto.SecretKey;
@@ -45,9 +42,9 @@ import javax.crypto.spec.PBEKeySpec;
 
 import navigators.smart.communication.client.CommunicationSystemServerSide;
 import navigators.smart.communication.client.RequestReceiver;
-import navigators.smart.communication.server.ServerConnection;
 import navigators.smart.reconfiguration.ReconfigurationManager;
 import navigators.smart.tom.core.messages.TOMMessage;
+import navigators.smart.tom.util.Logger;
 import navigators.smart.tom.util.TOMUtil;
 
 import org.jboss.netty.bootstrap.ServerBootstrap;
@@ -61,31 +58,20 @@ import org.jboss.netty.channel.MessageEvent;
 import org.jboss.netty.channel.SimpleChannelHandler;
 import org.jboss.netty.channel.socket.nio.NioServerSocketChannelFactory;
 
-
 /**
  *
  * @author Paulo
  */
 @ChannelPipelineCoverage("all")
-public class NettyClientServerCommunicationSystemServerSide extends SimpleChannelHandler implements CommunicationSystemServerSide  {
-
-     /**
-     * number of measures used to calculate statistics
-     */
-    //private final int BENCHMARK_PERIOD = 100000;
+public class NettyClientServerCommunicationSystemServerSide extends SimpleChannelHandler implements CommunicationSystemServerSide {
 
     private static final String PASSWORD = "newcs";
     private RequestReceiver requestReceiver;
     private HashMap sessionTable;
     private ReentrantReadWriteLock rl;
     private SecretKey authKey;
-    //private long numReceivedMsgs = 0;
-    //private long lastMeasurementStart = 0;
-    //private long max=0;
     private List<TOMMessage> requestsReceived = Collections.synchronizedList(new ArrayList<TOMMessage>());
     private ReentrantLock lock = new ReentrantLock();
-
-
     private ReconfigurationManager manager;
 
     public NettyClientServerCommunicationSystemServerSide(ReconfigurationManager manager) {
@@ -101,16 +87,9 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
             //Configure the server.
             /* Cached thread pool */
             ServerBootstrap bootstrap = new ServerBootstrap(
-                new NioServerSocketChannelFactory(
-                        Executors.newCachedThreadPool(),
-                        Executors.newCachedThreadPool()));
-
-            /* Fixed thread pool
-            ServerBootstrap bootstrap = new ServerBootstrap(
-                new NioServerSocketChannelFactory(
-                        Executors.newFixedThreadPool(conf.getNumberOfNIOThreads()),
-                        Executors.newFixedThreadPool(conf.getNumberOfNIOThreads())));
-            */
+                    new NioServerSocketChannelFactory(
+                    Executors.newCachedThreadPool(),
+                    Executors.newCachedThreadPool()));
 
             //******* EDUARDO BEGIN **************//
             Mac macDummy = Mac.getInstance(manager.getStaticConf().getHmacAlgorithm());
@@ -122,26 +101,24 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
             bootstrap.setOption("child.keepAlive", true);
 
             //Set up the default event pipeline.
-            bootstrap.setPipelineFactory(new NettyServerPipelineFactory(this,false,sessionTable,authKey,macDummy.getMacLength(),manager,rl,TOMUtil.getSignatureSize(manager), new ReentrantLock() ));
+            bootstrap.setPipelineFactory(new NettyServerPipelineFactory(this, false, sessionTable, authKey, macDummy.getMacLength(), manager, rl, TOMUtil.getSignatureSize(manager), new ReentrantLock()));
 
             //Bind and start to accept incoming connections.
-            bootstrap.bind(new InetSocketAddress( manager.getStaticConf().getHost(
-                     manager.getStaticConf().getProcessId()),
-                      manager.getStaticConf().getPort( manager.getStaticConf().getProcessId())));
+            bootstrap.bind(new InetSocketAddress(manager.getStaticConf().getHost(
+                    manager.getStaticConf().getProcessId()),
+                    manager.getStaticConf().getPort(manager.getStaticConf().getProcessId())));
 
             System.out.println("#Bound to port " + manager.getStaticConf().getPort(manager.getStaticConf().getProcessId()));
             System.out.println("#myId " + manager.getStaticConf().getProcessId());
             System.out.println("#n " + manager.getCurrentViewN());
             System.out.println("#f " + manager.getCurrentViewF());
-            System.out.println("#requestTimeout= " +  manager.getStaticConf().getRequestTimeout());
-            System.out.println("#maxBatch= " +  manager.getStaticConf().getMaxBatchSize());
-            System.out.println("#Using MACs = " +  manager.getStaticConf().getUseMACs());
+            System.out.println("#requestTimeout= " + manager.getStaticConf().getRequestTimeout());
+            System.out.println("#maxBatch= " + manager.getStaticConf().getMaxBatchSize());
+            System.out.println("#Using MACs = " + manager.getStaticConf().getUseMACs());
             System.out.println("#Using Signatures = " + manager.getStaticConf().getUseSignatures());
-        //******* EDUARDO END **************//
+            //******* EDUARDO END **************//
         } catch (InvalidKeySpecException ex) {
-            Logger.getLogger(ServerConnection.class.getName()).log(Level.SEVERE, null, ex);
         } catch (NoSuchAlgorithmException ex) {
-            Logger.getLogger(ServerConnection.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
 
@@ -159,7 +136,7 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
         TOMMessage sm = (TOMMessage) e.getMessage();
 
         //******* EDUARDO BEGIN **************//
-        if (manager.getStaticConf().getCommBuffering()>0) {
+        if (manager.getStaticConf().getCommBuffering() > 0) {
             lock.lock();
             requestsReceived.add(sm);
             if (requestsReceived.size()>= manager.getStaticConf().getCommBuffering()){
@@ -172,78 +149,20 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
                 requestsReceived = new ArrayList<TOMMessage>();
             }
             lock.unlock();
-        }
-        else {
+        } else {
             //delivers message to TOMLayer
             requestReceiver.requestReceived(sm);
         }
-        /*obtains and unlocks client lock (that guarantees one thread per client)
-        rl.readLock().lock();
-        Lock clientLock = ((NettyClientServerSession)sessionTable.get(sm.getSender())).getLock();
-        int lastMsgReceived = ((NettyClientServerSession)sessionTable.get(sm.getSender())).getLastMsgReceived();
-        if (sm.getSequence() != lastMsgReceived+1)
-            System.out.println("(Netty message received) WARNING: Received request "+sm+" but last message received was "+lastMsgReceived);
-        ((NettyClientServerSession)sessionTable.get(sm.getSender())).setLastMsgReceived(sm.getSequence());
-        rl.readLock().unlock();
-        clientLock.unlock();
-         */
-         /*
-        lock.lock();
-        numReceivedMsgs++;
-        if (numReceivedMsgs == 1) {
-            lastMeasurementStart = System.currentTimeMillis();
-        } else if (numReceivedMsgs==BENCHMARK_PERIOD) {
-            long elapsedTime = System.currentTimeMillis() - lastMeasurementStart;
-            double opsPerSec_ = ((double)BENCHMARK_PERIOD)/(elapsedTime/1000.0);
-            long opsPerSec = Math.round(opsPerSec_);
-            if (opsPerSec>max)
-                max = opsPerSec;
-            System.out.println("(Netty messageReceived) Last "+BENCHMARK_PERIOD+" NETTY messages were received at a rate of " + opsPerSec + " msgs per second");
-            System.out.println("(Netty messageReceived) Max NETTY through. until now: " + max + " ops per second");
-            System.out.println("(Netty messageReceived) Active clients: " + sessionTable.size());
-            numReceivedMsgs = 0;
-        }
-        lock.unlock();
-        */
     }
-/*
-    @Override
-    public void writeRequested(ChannelHandlerContext ctx, MessageEvent e) throws Exception {
-        //System.out.println("Message sent");
-        TOMMessage sm = (TOMMessage) e.getMessage();
-        long duration = System.nanoTime() - (Long)session.getAttribute("startInstant");
-        int counter = (Integer) session.getAttribute("msgCount");
-        session.setAttribute("msgCount",++counter);
-        Storage st = (Storage) session.getAttribute("storage");
-        if (counter>benchmarkPeriod/2){
-            st.store(duration);
-            session.setAttribute("storage",st);
-        }
 
-        if (st.getCount()==benchmarkPeriod/2){
-                System.out.println("TOM delay: Average time for "+benchmarkPeriod/2+" executions (-10%) = "+st.getAverage(true)/1000+ " us ");
-                System.out.println("TOM delay: Standard desviation for "+benchmarkPeriod/2+" executions (-10%) = "+st.getDP(true)/1000 + " us ");
-                System.out.println("TOM delay: Average time for "+benchmarkPeriod/2+" executions (all samples) = "+st.getAverage(false)/1000+ " us ");
-                System.out.println("TOM delay: Standard desviation for "+benchmarkPeriod/2+" executions (all samples) = "+st.getDP(false)/1000 + " us ");
-                System.out.println("TOM delay: Maximum time for "+benchmarkPeriod/2+" executions (-10%) = "+st.getMax(true)/1000+ " us ");
-                System.out.println("TOM delay: Maximum time for "+benchmarkPeriod/2+" executions (all samples) = "+st.getMax(false)/1000+ " us ");
-                st = new Storage(benchmarkPeriod/2);
-                session.setAttribute("storage",st);
-                session.setAttribute("msgCount",0);
-        }
-    }
-*/
-     @Override
+    @Override
     public void channelConnected(
             ChannelHandlerContext ctx, ChannelStateEvent e) {
-        navigators.smart.tom.util.Logger.println("Session Created, active clients="+sessionTable.size());
-        //session.setAttribute("storage",st);
-        //session.setAttribute("msgCount",0);
-
+        navigators.smart.tom.util.Logger.println("Session Created, active clients=" + sessionTable.size());
     }
 
     @Override
-     public void channelClosed(
+    public void channelClosed(
             ChannelHandlerContext ctx, ChannelStateEvent e) {
         rl.writeLock().lock();
         //removes session from sessionTable
@@ -256,83 +175,65 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
                 int key = (Integer) m.getKey();
                 sessionTable.remove(key);
                 System.out.println("#Removed client channel with ID= " + key);
-                System.out.println("#active clients="+sessionTable.size());
+                System.out.println("#active clients=" + sessionTable.size());
                 break;
             }
         }
         rl.writeLock().unlock();
-        navigators.smart.tom.util.Logger.println("Session Closed, active clients="+sessionTable.size());
+        navigators.smart.tom.util.Logger.println("Session Closed, active clients=" + sessionTable.size());
     }
 
     public void setRequestReceiver(RequestReceiver tl) {
         this.requestReceiver = tl;
     }
 
+    @Override
     public void send(int[] targets, TOMMessage sm, boolean serializeClassHeaders) {
-         //serialize message
-            DataOutputStream dos = null;
-            ObjectOutputStream oos = null;
+        //serialize message
+        DataOutputStream dos = null;
 
-            byte[] data = null;
+        byte[] data = null;
+        try {
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            dos = new DataOutputStream(baos);
+            sm.wExternal(dos);
+            dos.flush();
+            data = baos.toByteArray();
+            sm.serializedMessage = data;
+        } catch (IOException ex) {
+            Logger.println("Error enconding message.");
+        } finally {
             try {
-                ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                if (!serializeClassHeaders) {
-                    dos = new DataOutputStream(baos);
-                    sm.wExternal(dos);
-                    dos.flush();
-                    sm.includesClassHeader = false;
-                }
-                else {
-                    oos = new ObjectOutputStream(baos);
-                    oos.writeObject(sm);
-                    oos.flush();
-                    sm.includesClassHeader = true;
-                }
-                data = baos.toByteArray();
-                sm.serializedMessage = data;
-            } catch (IOException ex) {
-                Logger.getLogger(NettyClientServerCommunicationSystemClientSide.class.getName()).log(Level.SEVERE, null, ex);
-            } finally {
-                try {
-                    if (dos != null) {
-                        dos.close();
-                    }
-                    if (oos != null) {
-                        oos.close();
-                    }
-                } catch (IOException ex) {
-                    Logger.getLogger(NettyClientServerCommunicationSystemClientSide.class.getName()).log(Level.SEVERE, null, ex);
-                }
-            }
+                dos.close();
+            } catch (IOException ex) {}
+        }
 
 
         //replies are not signed in the current JBP version
         sm.signed = false;
         //produce signature if necessary (never in the current version)
-        if (sm.signed){
+        if (sm.signed) {
             //******* EDUARDO BEGIN **************//
-            byte[] data2 = TOMUtil.signMessage( manager.getStaticConf().getRSAPrivateKey(), data);
+            byte[] data2 = TOMUtil.signMessage(manager.getStaticConf().getRSAPrivateKey(), data);
             //******* EDUARDO END **************//
             sm.serializedMessageSignature = data2;
         }
         for (int i = 0; i < targets.length; i++) {
             rl.readLock().lock();
-            NettyClientServerSession ncss = (NettyClientServerSession)sessionTable.get(targets[i]);
-            if (ncss!=null){
+            NettyClientServerSession ncss = (NettyClientServerSession) sessionTable.get(targets[i]);
+            if (ncss != null) {
                 
                 Channel session = ncss.getChannel();
                 rl.readLock().unlock();
                 sm.destination = targets[i];
                 //send message
-                ChannelFuture f = session.write(sm);
                 try {
-                    f.await();
+                    session.write(sm).await();
                 } catch (InterruptedException ex) {
-                    Logger.getLogger(NettyClientServerCommunicationSystemServerSide.class.getName()).log(Level.SEVERE, null, ex);
                 }
-            }
-            else
+            } else {
                 rl.readLock().unlock();
+            }
         }
     }
 }

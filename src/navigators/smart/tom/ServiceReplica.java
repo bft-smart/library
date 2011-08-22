@@ -49,9 +49,10 @@ public abstract class ServiceReplica extends TOMReceiver implements Runnable {
     private boolean isToJoin = false;
     private ReentrantLock waitTTPJoinMsgLock = new ReentrantLock();
     private Condition canProceed = waitTTPJoinMsgLock.newCondition();
-    //private byte[] startState = null;
 
     /** ISTO E CODIGO DO JOAO, PARA TRATAR DOS CHECKPOINTS */
+    private ReentrantLock requestsLock = new ReentrantLock();
+    private Condition requestsCondition = requestsLock.newCondition();
     private boolean isQueueEmpty = true;
     /*******************************************************/
 
@@ -173,10 +174,10 @@ public abstract class ServiceReplica extends TOMReceiver implements Runnable {
 
     private void initReplica() {
         // Initialize messages queue received from the TOM layer
-        this.requestQueue = new LinkedBlockingQueue<TOMMessage>();
+        requestQueue = new LinkedBlockingQueue<TOMMessage>();
 
-        this.replicaThread = new Thread(this);
-        this.replicaThread.start(); // starts the replica
+        replicaThread = new Thread(this);
+        replicaThread.start(); // starts the replica
     }
     //******* EDUARDO END **************//
 
@@ -190,13 +191,11 @@ public abstract class ServiceReplica extends TOMReceiver implements Runnable {
             setState(this.startState);
             this.startState = null;
         }*/
-
-        /**ISTO E CODIGO DO JOAO, PARA TENTAR RESOLVER UM BUG */
-        cs.start();
-        /******************************************************/
         
         //******* EDUARDO END **************//
-        
+
+        cs.start(); //this is not good! we have to reengineer the initialization code
+
         while (true) {
             TOMMessage msg = null;
 
@@ -205,11 +204,12 @@ public abstract class ServiceReplica extends TOMReceiver implements Runnable {
             } catch (InterruptedException ex) {
                 continue;
             }
-            msg.requestTotalLatency = System.currentTimeMillis() - msg.consensusStartTime;
-            // Deliver the message to the application, and get the response
 
+            // Deliver the message to the application, and get the response
             byte[] response = executeCommand(msg.getSender(), msg.timestamp,
-                    msg.nonces, msg.getContent(), msg.isReadOnlyRequest(), msg.getDebugInfo());
+                    msg.nonces, msg.getContent(), 
+                    msg.getReqType() == ReconfigurationManager.TOM_READONLY_REQUEST,
+                    msg.getDebugInfo());
 
             /** ISTO E CODIGO DO JOAO, PARA TRATAR DOS CHECKPOINTS */
             requestsLock.lock();
@@ -270,8 +270,6 @@ public abstract class ServiceReplica extends TOMReceiver implements Runnable {
     }
 
     /** ISTO E CODIGO DO JOAO, PARA TRATAR DOS CHECKPOINTS */
-    private ReentrantLock requestsLock = new ReentrantLock();
-    private Condition requestsCondition = requestsLock.newCondition();
 
     @Override
     public byte[] getState() { //TODO: Ha por aqui uma condicao de corrida!
@@ -314,7 +312,6 @@ public abstract class ServiceReplica extends TOMReceiver implements Runnable {
                 Logger.getLogger(ServiceReplica.class.getName()).log(Level.SEVERE, null, ex);
             }
         }
-
         requestsLock.unlock();
     }
 
