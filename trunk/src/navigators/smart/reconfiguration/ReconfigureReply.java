@@ -28,17 +28,13 @@ public class ReconfigureReply implements Externalizable {
     
     private int execLeader = -1;
     
-    private byte[] startState;
-    
-    
     public ReconfigureReply() {
     }
     
-    public ReconfigureReply(View newView, String[] joinSet, int lastExectConsensus, int leader, byte[] startState) {
+    public ReconfigureReply(View newView, String[] joinSet, int lastExectConsensus, int leader) {
       this.newView = newView;
       this.lastExecConsId = lastExectConsensus;
       this.execLeader = leader;
-      this.startState = startState;
       
       if(joinSet == null){
           this.joinSet = new String[0];
@@ -49,13 +45,7 @@ public class ReconfigureReply implements Externalizable {
 
     public View getView() {
         return newView;
-    }
-
-    public byte[] getStartState() {
-        return this.startState;
-    }
-    
-    
+    }    
     
     public String[] getJoinSet() {
         return joinSet;
@@ -84,13 +74,7 @@ public class ReconfigureReply implements Externalizable {
        
        for(int i=0; i < joinSet.length;i++){
            out.writeUTF(joinSet[i]);
-       }
-       
-       out.writeInt(startState.length);
-       out.write(startState);
-       
-       
-       
+       }       
     }
 
     @Override
@@ -102,10 +86,6 @@ public class ReconfigureReply implements Externalizable {
         for(int i = 0; i < joinSet.length;i++){
             joinSet[i] = in.readUTF();
         }
-        
-        this.startState = new byte[in.readInt()];
-        in.read(this.startState);
-        
     }
     
     
