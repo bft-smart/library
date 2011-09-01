@@ -22,22 +22,15 @@ import java.io.ByteArrayOutputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.ByteArrayInputStream;
-import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.Serializable;
 import java.security.MessageDigest;
 import java.security.PrivateKey;
 import java.security.Signature;
 import java.security.SignedObject;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.locks.Condition;
@@ -63,12 +56,8 @@ import navigators.smart.statemanagment.TransferableState;
 import navigators.smart.tom.TOMRequestReceiver;
 import navigators.smart.tom.core.messages.TOMMessage;
 import navigators.smart.tom.core.messages.TOMMessageType;
-import navigators.smart.tom.core.timer.RTInfo;
 import navigators.smart.tom.core.timer.RequestsTimer;
 import navigators.smart.tom.core.timer.messages.ForwardedMessage;
-import navigators.smart.tom.core.timer.messages.RTCollect;
-import navigators.smart.tom.core.timer.messages.RTLeaderChange;
-import navigators.smart.tom.core.timer.messages.RTMessage;
 import navigators.smart.tom.util.BatchBuilder;
 import navigators.smart.tom.util.BatchReader;
 import navigators.smart.tom.util.Logger;
@@ -100,8 +89,6 @@ public final class TOMLayer extends Thread implements RequestReceiver {
     /** The id of the consensus being executed (or -1 if there is none) */
     private int inExecution = -1;
     private int lastExecuted = -1;
-    private Map<Integer, RTInfo> timeoutInfo = new HashMap<Integer, RTInfo>();
-    private ReentrantLock lockTI = new ReentrantLock();
     
     private MessageDigest md;
     private Signature engine;
@@ -456,61 +443,6 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
         return requests;
     }
-//    /**
-//     * TODO: este metodo nao e usado. Pode desaparecer?
-//     * @param br
-//     * @return
-//     */
-//    public final boolean verifyTimestampAndNonces(BatchReader br) {
-//        long timestamp = br.getTimestamp();
-//
-//        if (conf.canVerifyTimestamps()) {
-//            //br.ufsc.das.util.tom.Logger.println("(TOMLayer.verifyTimestampAndNonces) verifying timestamp "+timestamp+">"+lastTimestamp+"?");
-//            if (timestamp > lastTimestamp) {
-//                lastTimestamp = timestamp;
-//            } else {
-//                System.err.println("########################################################");
-//                System.err.println("- timestamp received " + timestamp + " <= " + lastTimestamp);
-//                System.err.println("- maybe the proposer have a non-synchronized clock");
-//                System.err.println("########################################################");
-//                return false;
-//            }
-//        }
-//
-//        return br.getNumberOfNonces() == conf.getNumberOfNonces();
-//    }
-
-    /**
-     * Invoked when a timeout for a TOM message is triggered.
-     *
-     * @param reqId Request ID of the message to which the timeout is related to
-     * @return True if the request is still pending and the timeout was not triggered before, false otherwise
-     */
-    public boolean requestTimeout(List<TOMMessage> requestList) {
-        List<byte[][]> serializedRequestList = new LinkedList<byte[][]>();
-
-        //verify if the request is still pending
-        for (Iterator<TOMMessage> i = requestList.listIterator(); i.hasNext();) {
-            TOMMessage request = i.next();
-            if (clientsManager.isPending(request.getId())) {
-                RTInfo rti = getTimeoutInfo(request.getId());
-                if (!rti.isTimeout(this.reconfManager.getStaticConf().getProcessId())) {
-                    serializedRequestList.add(
-                            new byte[][]{request.serializedMessage, request.serializedMessageSignature});
-                    timeout(this.reconfManager.getStaticConf().getProcessId(), request, rti);
-                    Logger.println("(TOMLayer.requestTimeout) Must send timeout for reqId=" + request.getId());
-                }
-            }
-        }
-
-        if (!requestList.isEmpty()) {
-            sendTimeoutMessage(serializedRequestList);
-            return true;
-        } else {
-            return false;
-        }
-    }
-
     public void forwardRequestToLeader(TOMMessage request) {
         int leaderId = lm.getCurrentLeader();
         System.out.println("(TOMLayer.forwardRequestToLeader) forwarding " + request + " to " + leaderId);
@@ -519,345 +451,6 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         communication.send(new int[]{leaderId}, 
                 new ForwardedMessage(this.reconfManager.getStaticConf().getProcessId(), request));
             //******* EDUARDO END **************//
-    }
-
-    /**
-     * Sends a RT-TIMEOUT message to other processes.
-     *
-     * @param request the message that caused the timeout
-     */
-    public void sendTimeoutMessage(List<byte[][]> serializedRequestList) {
-        System.out.println("Estou a ser invocado!!");
-        //******* EDUARDO BEGIN **************//
-        communication.send(this.reconfManager.getCurrentViewOtherAcceptors(),
-                new RTMessage(TOMUtil.STOP, -1, this.reconfManager.getStaticConf().getProcessId(), serializedRequestList));
-       //******* EDUARDO END **************//
-    }
-
-    /**
-     * Sends a RT-COLLECT message to other processes
-     * TODO: Se se o novo leader for este processo, nao e enviada nenhuma mensagem. Isto estara bem feito?
-     * @param reqId ID of the message which triggered the timeout
-     * @param collect Proof for the timeout
-     */
-    public void sendCollectMessage(int reqId, RTCollect collect) {
-            //******* EDUARDO BEGIN **************//
-        RTMessage rtm = new RTMessage(TOMUtil.SYNC, reqId,
-                this.reconfManager.getStaticConf().getProcessId(), sign(collect));
-
-        if (collect.getNewLeader() == this.reconfManager.getStaticConf().getProcessId()) {
-            RTInfo rti = getTimeoutInfo(reqId);
-            collect((SignedObject) rtm.getContent(), this.reconfManager.getStaticConf().getProcessId(), rti);
-            //******* EDUARDO END **************//
-        } else {
-            int[] target = {collect.getNewLeader()};
-            this.communication.send(target, rtm);
-        }
-
-        
-    }
-
-    /**
-     * Sends a RT-LEADER message to other processes. It also updates the leader
-     *
-     * @param reqId ID of the message which triggered the timeout
-     * @param timeout Timeout number
-     * @param rtLC Proofs for the leader change
-     */
-    public void sendNewLeaderMessage(int reqId, RTLeaderChange rtLC) {
-        
-         //******* EDUARDO BEGIN **************//
-        RTMessage rtm = new RTMessage(TOMUtil.CATCH_UP, reqId, this.reconfManager.getStaticConf().getProcessId(), rtLC);
-        //br.ufsc.das.util.Logger.println("Atualizando leader para "+rtLC.newLeader+" a partir de "+rtLC.start);
-        updateLeader(reqId, rtLC.start, rtLC.newLeader);
-
-        communication.send(this.reconfManager.getCurrentViewOtherAcceptors(), rtm);
-        //******* EDUARDO END **************//
-    }
-
-    /**
-     * Updates the leader of the PaW algorithm. This is triggered upon a timeout
-     * for a pending message.
-     *
-     * @param reqId ID of the message which triggered the timeout
-     * @param start Consensus where the new leader belongs
-     * @param newLeader Replica ID of the new leader
-     * @param timeout Timeout number
-     */
-    private void updateLeader(int reqId, int start, int newLeader) {
-        lm.addLeaderInfo(start, 0, newLeader); // update the leader
-        leaderChanged = true;
-
-        leaderLock.lock(); // Signal the TOMlayer thread, if this replica is the leader
-        //******* EDUARDO BEGIN **************//
-        if (lm.getLeader(getLastExec() + 1, 0) == this.reconfManager.getStaticConf().getProcessId()) {
-            iAmLeader.signal();
-        }
-        //******* EDUARDO END **************//
-        leaderLock.unlock();
-
-        removeTimeoutInfo(reqId); // remove timeout infos
-        //requestsTimer.startTimer(clientsManager.getPending(reqId)); // restarts the timer
-        execManager.restart(); // restarts the execution manager
-    }
-
-    /**
-     * This method is invoked when the comunication system needs to deliver a message related to timeouts
-     * for a pending TOM message
-     * @param msg The timeout related message being delivered
-     */
-    public void deliverTimeoutRequest(RTMessage msg) {
-        switch (msg.getRTType()) {
-            case TOMUtil.STOP:
-                 {
-                    Logger.println("(TOMLayer.deliverTimeoutRequest) receiving timeout message from " + msg.getSender());
-                    List<byte[][]> serializedRequestList = (List<byte[][]>) msg.getContent();
-
-                    for (Iterator<byte[][]> i = serializedRequestList.iterator(); i.hasNext();) {
-                        byte[][] serializedRequest = i.next();
-
-                        if (serializedRequest == null || serializedRequest.length != 2) {
-                            return;
-                        }
-
-                        TOMMessage request;
-
-                        //deserialize the message
-                        try {
-                            DataInputStream ois = new DataInputStream(
-                                    new ByteArrayInputStream(serializedRequest[0]));
-                            request = new TOMMessage();
-                            request.rExternal(ois);
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                            clientsManager.getClientsLock().unlock();
-                            Logger.println("(TOMLayer.deliverTimeoutRequest) invalid request.");
-                            return;
-                        }
-
-                        request.serializedMessage = serializedRequest[0];
-                        request.serializedMessageSignature = serializedRequest[1];
-
-                        if (clientsManager.requestReceived(request, false)) { //Is this a pending message?
-                            RTInfo rti = getTimeoutInfo(request.getId());
-                            timeout(msg.getSender(), request, rti);
-                        }
-                    }
-                }
-                break;
-            case TOMUtil.SYNC:
-                 {
-                    Logger.println("(TOMLayer.deliverTimeoutRequest) receiving collect for message " + msg.getReqId() + " from " + msg.getSender());
-                    SignedObject so = (SignedObject) msg.getContent();
-                    if (verifySignature(so, msg.getSender())) { // valid signature?
-                        try {
-                            RTCollect rtc = (RTCollect) so.getObject();
-                            int reqId = rtc.getReqId();
-
-                            int nl = chooseNewLeader();
-
-                            //******* EDUARDO BEGIN **************//
-                            if (nl == this.reconfManager.getStaticConf().getProcessId() && nl == rtc.getNewLeader()) { // If this is process the new leader?
-                            //******* EDUARDO END **************//
-                                RTInfo rti = getTimeoutInfo(reqId);
-                                collect(so, msg.getSender(), rti);
-                            }
-                        } catch (ClassNotFoundException cnfe) {
-                            cnfe.printStackTrace(System.err);
-                        } catch (IOException ioe) {
-                            ioe.printStackTrace(System.err);
-                        }
-                    }
-                }
-                break;
-            case TOMUtil.CATCH_UP:
-                 {
-                    Logger.println("1 recebendo newLeader de " + msg.getSender());
-                    RTLeaderChange rtLC = (RTLeaderChange) msg.getContent();
-                    RTCollect[] rtc = getValid(msg.getReqId(), rtLC.proof);
-
-                    if (rtLC.isAGoodStartLeader(rtc, this.reconfManager.getCurrentViewF())) { // Is it a legitm and valid leader?
-                        Logger.println("Atualizando leader para " + rtLC.newLeader + " a partir de " + rtLC.start);
-                        updateLeader(msg.getReqId(), rtLC.start, rtLC.newLeader);
-                    //FALTA... eliminar dados referentes a consensos maiores q start.
-                    }
-                }
-                break;
-        }
-    }
-
-    /**
-     * Retrieves the timeout information for a given timeout. If the timeout
-     * info does not exist, we create one.
-     *
-     * @param reqId ID of the message which triggered the timeout
-     * @return The timeout information
-     */
-    public RTInfo getTimeoutInfo(int reqId) {
-        lockTI.lock();
-        RTInfo ti = timeoutInfo.get(reqId);
-        if (ti == null) {
-            ti = new RTInfo(this.reconfManager, reqId, this);
-            timeoutInfo.put(reqId, ti);
-        }
-        lockTI.unlock();
-        return ti;
-    }
-
-    /**
-     * Removes the timeout information for a given timeout.
-     *
-     * @param reqId ID of the message which triggered the timeout
-     * @return The timeout information
-     */
-    private void removeTimeoutInfo(int reqId) {
-        lockTI.lock();
-        timeoutInfo.remove(reqId);
-        lockTI.unlock();
-    }
-
-    /**
-     * Invoked by the TOM layer to notify that a  timeout ocurred in a replica, and to
-     * compute the necessary tasks
-     * @param a Replica ID where this timeout occurred
-     * @param request the request that provoked the timeout
-     * @param rti the timeout info for this request
-     */
-    public void timeout(int acceptor, TOMMessage request, RTInfo rti) {
-        rti.setTimeout(acceptor);
-
-        int reqId = rti.getRequestId();
-
-        //******* EDUARDO BEGIN **************//
-        if (rti.countTimeouts() > reconfManager.getQuorumF() && 
-                !rti.isTimeout(reconfManager.getStaticConf().getProcessId())) {
-            rti.setTimeout(reconfManager.getStaticConf().getProcessId());
-        //******* EDUARDO END **************//
-            
-            List<byte[][]> serializedRequestList = new LinkedList<byte[][]>();
-            serializedRequestList.add(
-                    new byte[][]{request.serializedMessage, request.serializedMessageSignature});
-
-            sendTimeoutMessage(serializedRequestList);
-        /*
-        if (requestsTimer != null) {
-        requestsTimer.startTimer(clientsManager.getPending(reqId));
-        }
-         */
-        }
-
-        //******* EDUARDO BEGIN **************//
-        if (rti.countTimeouts() > reconfManager.getQuorumStrong() && !rti.isCollected()) {
-        //******* EDUARDO END **************//
-            rti.setCollected();
-            /*
-            requestsTimer.stopTimer(clientsManager.getPending(reqId));
-             */
-            execManager.stop();
-
-            int newLeader = chooseNewLeader();
-
-            int last = -1;
-            if (getInExec() != -1) {
-                last = getInExec();
-            } else {
-                last = getLastExec();
-            }
-
-            Logger.println("(TOMLayer.timeout) sending COLLECT to " + newLeader +
-                    " for " + reqId + " with last execution = " + last);
-            sendCollectMessage(reqId, new RTCollect(newLeader, last, reqId));
-        }
-    }
-
-    /**
-     * Invoked by the TOM layer when a collect message is received, and to
-     * compute the necessary tasks
-     * @param c Proof from the replica that sent the message
-     * @param a ID of the replica which sent the message
-     */
-    public void collect(SignedObject c, int a, RTInfo rti) {
-        Logger.println("COLLECT 1");
-        rti.setCollect(a, c);
-
-        //******* EDUARDO BEGIN **************//
-        if (rti.countCollect() > 2 * reconfManager.getCurrentViewF() && !rti.isNewLeaderSent()) {
-        //******* EDUARDO END **************//
-            rti.setNewLeaderSent();
-            Logger.println("COLLECT 2");
-
-            SignedObject collect[] = rti.getCollect();
-
-            RTCollect[] rtc = new RTCollect[collect.length];
-            for (int i = 0; i < collect.length; i++) {
-                if (collect[i] != null) {
-                    try {
-                        rtc[i] = (RTCollect) collect[i].getObject();
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
-                }
-            }
-
-            Logger.println("COLLECT 3");
-            //******* EDUARDO BEGIN **************//
-            RTInfo.NextLeaderAndConsensusInfo nextLeaderCons =
-                    rti.getStartLeader(rtc, reconfManager.getCurrentViewF());
-            //******* EDUARDO END **************//
-            RTLeaderChange rtLC = new RTLeaderChange(collect, nextLeaderCons.leader,
-                    nextLeaderCons.cons);
-
-            sendNewLeaderMessage(rti.getRequestId(), rtLC);
-        }
-    }
-
-    private int chooseNewLeader() {
-        int lastRoundNumber = 0; //the number of the last round successfully executed
-
-        Execution lastExec = execManager.getExecution(getLastExec());
-        if (lastExec != null) {
-            Round lastRound = lastExec.getDecisionRound();
-            if (lastRound != null) {
-                lastRoundNumber = lastRound.getNumber();
-            }
-        }
-
-        
-        //******* EDUARDO BEGIN **************//
-        int pos = reconfManager.getCurrentViewPos(lm.getLeader(getLastExec(), lastRoundNumber));
-        
-        return this.reconfManager.getCurrentViewProcesses()[(pos + 1) % reconfManager.getCurrentViewN()];
-        
-        //return (lm.getLeader(getLastExec(), lastRoundNumber) + 1) % reconfManager.getCurrentViewN();
-        //******* EDUARDO END **************//
-    }
-
-    /**
-     * Gets an array of valid RTCollect proofs
-     *
-     * @param reqId ID of the message which triggered the timeout
-     * @param timeout Timeout number
-     * @param proof Array of signed objects containing the proofs to be verified
-     * @return The sub-set of proofs that are valid
-     */
-    private RTCollect[] getValid(int reqId, SignedObject[] proof) {
-        Collection<RTCollect> valid = new HashSet<RTCollect>();
-        try {
-            for (int i = 0; i < proof.length; i++) {
-                if (proof[i] != null && verifySignature(proof[i], i)) { // is the signature valid?
-                    RTCollect rtc = (RTCollect) proof[i].getObject();
-                    // Does this proof refers to the specified message id and timeout?
-                    if (rtc != null && rtc.getReqId() == reqId) {
-                        valid.add(rtc);
-                    }
-
-                }
-            }
-        } catch (Exception e) {
-            e.printStackTrace(System.out);
-        }
-
-        return valid.toArray(new RTCollect[0]); // return the valid proofs ans an array
     }
 
     /** ISTO E CODIGO DO JOAO, PARA TRATAR DOS CHECKPOINTS */
