@@ -74,16 +74,15 @@ public abstract class TOMReceiver implements TOMRequestReceiver {
         // Assemble the total order messaging layer
         MessageFactory messageFactory = new MessageFactory(me);
         
-        
         LeaderModule lm = new LeaderModule(reconfManager);
-        
-        
+                
         Acceptor acceptor = new Acceptor(cs, messageFactory, lm, reconfManager);
+        cs.setAcceptor(acceptor);
+        
         Proposer proposer = new Proposer(cs, messageFactory, reconfManager);
 
         ExecutionManager manager = new ExecutionManager(reconfManager, acceptor, proposer,
                                me, reconfManager.getStaticConf().getFreezeInitialTimeout());
-
         acceptor.setManager(manager);
         proposer.setManager(manager);
 

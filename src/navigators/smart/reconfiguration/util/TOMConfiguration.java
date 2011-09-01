@@ -50,7 +50,7 @@ public class TOMConfiguration extends Configuration {
     private int useMACs;
     private int useSignatures;
     private boolean  stateTransferEnabled;
-    private int checkpoint_period;
+    private int checkpointPeriod;
     private int useControlFlow;
     
     
@@ -230,9 +230,9 @@ public class TOMConfiguration extends Configuration {
 
             s = (String) configs.remove("system.totalordermulticast.checkpoint_period");
             if (s == null) {
-                checkpoint_period = 1;
+                checkpointPeriod = 1;
             } else {
-                checkpoint_period = Integer.parseInt(s);
+                checkpointPeriod = Integer.parseInt(s);
             }
 
             s = (String) configs.remove("system.communication.useControlFlow");
@@ -416,8 +416,8 @@ public class TOMConfiguration extends Configuration {
     /**
      * Indicates the checkpoint period used when fetching the state from the application
      */
-    public int getCheckpoint_period() {
-        return checkpoint_period;
+    public int getCheckpointPeriod() {
+        return checkpointPeriod;
     }
 
      /**

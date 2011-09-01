@@ -17,20 +17,16 @@
  */
 package navigators.smart.tom;
 
-import java.io.ByteArrayInputStream;
-import java.io.DataInputStream;
-import java.io.IOException;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.logging.Level;
 
-import navigators.smart.reconfiguration.ReconfigurationManager;
 import navigators.smart.reconfiguration.ReconfigureReply;
 import navigators.smart.reconfiguration.View;
 import navigators.smart.tom.core.messages.TOMMessage;
+import navigators.smart.tom.core.messages.TOMMessageType;
 import navigators.smart.tom.util.Extractor;
 import navigators.smart.tom.util.Logger;
 import navigators.smart.tom.util.TOMUtil;
@@ -52,7 +48,6 @@ public class ServiceProxy extends TOMSender {
     private TOMMessage replies[] = null; // Replies from replicas are stored here
     private int receivedReplies = 0; // Number of received replies
     private TOMMessage response = null; // Reply delivered to the application
-    //private LinkedList<TOMMessage> aheadOfTimeReplies = new LinkedList<TOMMessage>();
     private int invokeTimeout = 60;
     private Comparator comparator;
     private Extractor extractor;
@@ -92,6 +87,10 @@ public class ServiceProxy extends TOMSender {
         } else {
             init(processId, configHome);
         }
+
+        //replyQuorum = (int) Math.ceil((getViewManager().getCurrentViewN()
+        //        + getViewManager().getCurrentViewF()) / 2) + 1;
+        replyQuorum = getViewManager().getCurrentViewF() + 1;
 
         replies = new TOMMessage[getViewManager().getCurrentViewN()];
 
@@ -140,12 +139,12 @@ public class ServiceProxy extends TOMSender {
      * @return The reply from the replicas related to request
      */
     public byte[] invoke(byte[] request) {
-        return invoke(request, ReconfigurationManager.TOM_NORMAL_REQUEST);
+        return invoke(request, TOMMessageType.REQUEST);
     }
 
     public byte[] invoke(byte[] request, boolean readOnly) {
-        int type = (readOnly) ? ReconfigurationManager.TOM_READONLY_REQUEST
-                : ReconfigurationManager.TOM_NORMAL_REQUEST;
+        TOMMessageType type = (readOnly) ? TOMMessageType.READONLY_REQUEST
+                : TOMMessageType.REQUEST;
         return invoke(request, type);
     }
 
@@ -159,7 +158,7 @@ public class ServiceProxy extends TOMSender {
      *        reconfig requests.
      * @return The reply from the replicas related to request
      */
-    public byte[] invoke(byte[] request, int reqType) {
+    public byte[] invoke(byte[] request, TOMMessageType reqType) {
         canSendLock.lock();
 
         // Clean all statefull data to prepare for receiving next replies
@@ -167,16 +166,11 @@ public class ServiceProxy extends TOMSender {
         receivedReplies = 0;
         response = null;
 
-        replyQuorum = (int) Math.ceil((getViewManager().getCurrentViewN()
-                + getViewManager().getCurrentViewF()) / 2) + 1;
-
         // Send the request to the replicas, and get its ID
         reqId = generateRequestId();
         TOMulticast(request, reqId, reqType);
 
-        Logger.println("Sending request (readOnly = "
-                + (reqType == ReconfigurationManager.TOM_READONLY_REQUEST)
-                + ") with reqId=" + reqId);
+        Logger.println("Sending request (" + reqType + ") with reqId=" + reqId);
         Logger.println("Expected number of matching replies: " + replyQuorum);
 
         // This instruction blocks the thread, until a response is obtained.
@@ -202,7 +196,7 @@ public class ServiceProxy extends TOMSender {
             Logger.println("Received n-f replies and no response could be extracted.");
 
             canSendLock.unlock();
-            if (reqType == ReconfigurationManager.TOM_READONLY_REQUEST) {
+            if (reqType == TOMMessageType.READONLY_REQUEST) {
                 //invoke the operation again, whitout the read-only flag
                 Logger.println("###################RETRY#######################");
                 return invoke(request);
@@ -212,7 +206,7 @@ public class ServiceProxy extends TOMSender {
         } else {
             //normal operation
             //******* EDUARDO BEGIN **************//
-            if (reqType == ReconfigurationManager.TOM_NORMAL_REQUEST) {
+            if (reqType == TOMMessageType.REQUEST) {
                 //Reply to a normal request!
                 if (response.getViewID() == getViewManager().getCurrentViewId()) {
                     ret = response.getContent(); // return the response
@@ -274,42 +268,15 @@ public class ServiceProxy extends TOMSender {
             return;
         }
 
-        //******* EDUARDO BEGIN **************//
         int pos = getViewManager().getCurrentViewPos(reply.getSender());
         if (pos < 0) { //ignore messages that don't come from replicas
             canReceiveLock.unlock();
             return;
         }
-        //******* EDUARDO END **************//
 
-        /*
-        if (reply.getSequence() > reqId) { // Is this a reply for the last request sent?
-        Logger.println("Storing reply from "+reply.getSender()+" with reqId:"+reply.getSequence());
-        aheadOfTimeReplies.add(reply);
-        } else 
-         */
         if (reply.getSequence() == reqId) {
             Logger.println("Receiving reply from " + reply.getSender() +
                     " with reqId:" + reply.getSequence() + ". Putting on pos=" + pos);
-
-
-
-            /*
-            if(receivedReplies == 0) {
-            //If this is the first reply received for reqId, lets look at ahead
-            //of time messages to process possible messages for this reqId that
-            //were already received
-            for(ListIterator<TOMMessage> li = aheadOfTimeReplies.listIterator(); li.hasNext(); ) {
-            TOMMessage rr = li.next();
-            if(rr.getSequence() == reqId) {
-            int rpos = getViewManager().getCurrentViewPos(rr.getSender());
-            if(replies[rpos] == null) receivedReplies++;
-            replies[rpos] = rr;
-            li.remove();
-            }
-            }
-            }
-             */
 
             if (replies[pos] == null) {
                 receivedReplies++;
@@ -319,7 +286,8 @@ public class ServiceProxy extends TOMSender {
             // Compare the reply just received, to the others
             int sameContent = 1;
             for (int i = 0; i < replies.length; i++) {
-                if (i != pos && replies[i] != null && (comparator.compare(replies[i].getContent(), reply.getContent()) == 0)) {
+                if (i != pos && replies[i] != null && 
+                        (comparator.compare(replies[i].getContent(), reply.getContent()) == 0)) {
                     sameContent++;
 
                     if (sameContent >= replyQuorum) {

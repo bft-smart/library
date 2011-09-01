@@ -25,13 +25,15 @@ import navigators.smart.tom.util.Storage;
 /**
  * Simple server that just acknowledge the reception of a request.
  */
-public class LatencyServer extends ServiceReplica {
+public final class ThroughputLatencyServer extends ServiceReplica {
     
     private int interval;
     private int hashs;
     private int replySize;
     
     private int iterations = 0;
+    private long throughputMeasurementStartTime = System.currentTimeMillis();
+            
     private Storage totalLatency = null;
     private Storage consensusLatency = null;
     private Storage preConsLatency = null;
@@ -40,7 +42,7 @@ public class LatencyServer extends ServiceReplica {
     private Storage weakLatency = null;
     private Storage strongLatency = null;
 
-    public LatencyServer(int id, int interval, int hashs, int replySize) {
+    public ThroughputLatencyServer(int id, int interval, int hashs, int replySize) {
         super(id);
 
         this.interval = interval;
@@ -68,6 +70,7 @@ public class LatencyServer extends ServiceReplica {
     
     public byte[] execute(byte[] command, MessageContext msgCtx) {        
         iterations++;
+        
         if(msgCtx.getConsensusId() == -1) {
             return new byte[replySize];
         }
@@ -82,6 +85,9 @@ public class LatencyServer extends ServiceReplica {
 
         if(iterations % interval == 0) {
             System.out.println("--- Measurements after "+ iterations+" ops ("+interval+" samples) ---");
+            
+            System.out.println("Throughput = " +  (float)(interval*1000/(float)(System.currentTimeMillis()-throughputMeasurementStartTime)) +" operations/sec");            
+            
             System.out.println("Total latency = " + totalLatency.getAverage(false) / 1000 + " (+/- "+ (long)totalLatency.getDP(false) / 1000 +") us ");
             totalLatency.reset();
             System.out.println("Consensus latency = " + consensusLatency.getAverage(false) / 1000 + " (+/- "+ (long)consensusLatency.getDP(false) / 1000 +") us ");
@@ -96,6 +102,8 @@ public class LatencyServer extends ServiceReplica {
             weakLatency.reset();
             System.out.println("Strong latency = " + strongLatency.getAverage(false) / 1000 + " (+/- "+ (long)strongLatency.getDP(false) / 1000 +") us ");
             strongLatency.reset();
+            
+            throughputMeasurementStartTime = System.currentTimeMillis();
         }
 
         return new byte[replySize];
@@ -103,7 +111,7 @@ public class LatencyServer extends ServiceReplica {
 
     public static void main(String[] args){
         if(args.length < 4) {
-            System.out.println("Use: java ...LatencyServer <processId> <measurement interval> <processing hashs> <reply size>");
+            System.out.println("Usage: ... ThroughputLatencyServer <processId> <measurement interval> <processing hashs> <reply size>");
             System.exit(-1);
         }
 
@@ -112,7 +120,7 @@ public class LatencyServer extends ServiceReplica {
         int hashs = Integer.parseInt(args[2]);
         int replySize = Integer.parseInt(args[3]);
 
-        new LatencyServer(processId,interval,hashs,replySize);
+        new ThroughputLatencyServer(processId,interval,hashs,replySize);
     }
 
     @Override

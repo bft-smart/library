@@ -27,9 +27,9 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 
-import navigators.smart.reconfiguration.ReconfigurationManager;
 import navigators.smart.tom.TOMSender;
 import navigators.smart.tom.core.messages.TOMMessage;
+import navigators.smart.tom.core.messages.TOMMessageType;
 import navigators.smart.tom.util.Storage;
 
 public class LatencyTestClient extends TOMSender {
@@ -91,8 +91,7 @@ public class LatencyTestClient extends TOMSender {
 
                     last_send_instant = System.nanoTime();
                     this.TOMulticast(command, generateRequestId(), 
-                            (readOnly)?ReconfigurationManager.TOM_READONLY_REQUEST:
-                                ReconfigurationManager.TOM_NORMAL_REQUEST);
+                            (readOnly)?TOMMessageType.READONLY_REQUEST:TOMMessageType.REQUEST);
 
                     this.sm.acquire();
 
@@ -117,6 +116,7 @@ public class LatencyTestClient extends TOMSender {
         }
     }
 
+    @Override
     public void replyReceived(TOMMessage reply) {
         long receive_instant = System.nanoTime();
 

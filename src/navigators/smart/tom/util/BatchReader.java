@@ -20,7 +20,6 @@ package navigators.smart.tom.util;
 
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
-import java.io.ObjectInputStream;
 import java.nio.ByteBuffer;
 import java.util.Random;
 import navigators.smart.reconfiguration.ReconfigurationManager;
@@ -59,7 +58,6 @@ public final class BatchReader {
         TOMMessage[] requests = new TOMMessage[numberOfMessages];
 
         for (int i = 0; i < numberOfMessages; i++) {
-
             //read the message and its signature from the batch
             int messageSize = proposalBuffer.getInt();
 

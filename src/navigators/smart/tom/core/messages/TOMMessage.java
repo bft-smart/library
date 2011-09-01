@@ -27,9 +27,6 @@ import java.io.DataOutput;
 import java.io.DataOutputStream;
 import java.io.Externalizable;
 import java.io.IOException;
-import java.io.ObjectInput;
-import java.io.ObjectOutput;
-import navigators.smart.reconfiguration.ReconfigurationManager;
 import navigators.smart.tom.util.DebugInfo;
 
 /**
@@ -39,7 +36,7 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 
      //******* EDUARDO BEGIN **************//
     private int viewID; //current sender view
-    private int reqType; // request type: application or reconfiguration request
+    private TOMMessageType type; // request type: application or reconfiguration request
      //******* EDUARDO END **************//
     
     private int session; // Sequence number defined by the client
@@ -75,6 +72,7 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
     
     //the reply associated with this message
     public transient TOMMessage reply = null;
+    public transient boolean alreadyProposed = false;
 
     public TOMMessage() {
     }
@@ -89,7 +87,7 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
      * @param view ViewId of the message
      */
     public TOMMessage(int sender, int session, int sequence, byte[] content, int view) {
-        this(sender,session,sequence,content, view, ReconfigurationManager.TOM_NORMAL_REQUEST);
+        this(sender,session,sequence,content, view, TOMMessageType.REQUEST);
     }
 
     /**
@@ -102,14 +100,14 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
      * @param view ViewId of the message
      * @param type Type of the request
      */
-    public TOMMessage(int sender, int session, int sequence, byte[] content, int view, int type) {
+    public TOMMessage(int sender, int session, int sequence, byte[] content, int view, TOMMessageType type) {
         super(sender);
         this.session = session;
         this.sequence = sequence;
         this.viewID = view;
         buildId();
         this.content = content;
-        this.reqType = type;
+        this.type = type;
     }
 
     
@@ -155,8 +153,8 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
         return viewID;
     }
 
-    public int getReqType() {
-        return reqType;
+    public TOMMessageType getReqType() {
+        return type;
     }
 
     /**
@@ -176,10 +174,11 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
     }
 
     /**
-     * Verifies if two TOMMessage objects are equal.
+     * Verifies if two TOMMessage are equal. For performance reasons, the method
+     * only verifies if the send and sequence are equal.
      *
-     * Two TOMMessage are equal if they have the same sender,
-     * sequence number and content.
+     * Two TOMMessage are equal if they have the same sender, sequence number
+     * and content.
      */
     @Override
     public boolean equals(Object o) {
@@ -193,10 +192,7 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 
         TOMMessage mc = (TOMMessage) o;
 
-        //TODO: não precisa mais verificar se o conteúdo é igual????
         return (mc.getSender() == sender) && (mc.getSequence() == sequence);
-        /* return (mc.getSender() == sender) && (mc.getSequence() == sequence) &&
-                Arrays.equals(mc.getContent(), this.content); */
     }
 
     @Override
@@ -215,7 +211,7 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
     public void wExternal(DataOutput out) throws IOException {
         out.writeInt(sender);
         out.writeInt(viewID);
-        out.writeInt(reqType);
+        out.writeInt(type.toInt());
         out.writeInt(session);
         out.writeInt(sequence);
 
@@ -230,7 +226,7 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
     public void rExternal(DataInput in) throws IOException, ClassNotFoundException {
         sender = in.readInt();
         viewID = in.readInt();
-        reqType = in.readInt();
+        type = TOMMessageType.fromInt(in.readInt());
         session = in.readInt();
         sequence = in.readInt();
 

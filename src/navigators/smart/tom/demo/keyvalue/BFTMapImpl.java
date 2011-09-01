@@ -2,8 +2,8 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-
 package navigators.smart.tom.demo.keyvalue;
+
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
@@ -19,36 +19,35 @@ import java.util.HashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import navigators.smart.tom.MessageContext;
 import navigators.smart.tom.ServiceReplica;
-import navigators.smart.tom.util.DebugInfo;
-
 
 /**
  *
  * @author sweta
  */
-
-//This class extends ServiceReplica and overrides its functions serializeState(), deserializeState() and executeCommand().
+//This class extends ServiceReplica and overrides its functions serializeState(), deserializeState() and executeOrdered().
 public class BFTMapImpl extends ServiceReplica {
 
+    BFTMAPUtil bftReplica = new BFTMAPUtil();
+    
     //The constructor passes the id of the server to the super class
     public BFTMapImpl(int id) {
         super(id);
     }
-    HashMap<String,byte[]> info2 = new HashMap<String,byte[]>();
-    BFTMAPUtil bftReplica = new BFTMAPUtil();
+
     @Override
     protected byte[] serializeState() {
         try {
-            
+
             //save to file (not needed for now)
             ObjectOutput out = new ObjectOutputStream(new FileOutputStream("MyObject.ser"));
             out.writeObject(bftReplica);
             out.close();
 
             // serialize to byte array and return
-            ByteArrayOutputStream bos = new ByteArrayOutputStream() ;
-            out = new ObjectOutputStream(bos) ;
+            ByteArrayOutputStream bos = new ByteArrayOutputStream();
+            out = new ObjectOutputStream(bos);
             out.writeObject(bftReplica);
             out.close();
             return bos.toByteArray();
@@ -67,8 +66,8 @@ public class BFTMapImpl extends ServiceReplica {
             in.close();
 
             // serialize to byte array and return
-            ByteArrayInputStream bis = new ByteArrayInputStream(state) ;
-            in = new ObjectInputStream(bis) ;
+            ByteArrayInputStream bis = new ByteArrayInputStream(state);
+            in = new ObjectInputStream(bis);
             bftReplica = (BFTMAPUtil) in.readObject();
             in.close();
 
@@ -81,14 +80,14 @@ public class BFTMapImpl extends ServiceReplica {
 
     @Override
     @SuppressWarnings("static-access")
-    public byte[] executeCommand(int clientId, long timestamp, byte[] nonces, byte[] command, boolean readOnly, DebugInfo info) {
+    public byte[] executeOrdered(byte[] command, MessageContext msgCtx) {
         try {
             ByteArrayInputStream in = new ByteArrayInputStream(command);
             ByteArrayOutputStream out = null;
             byte[] reply = null;
             int cmd = new DataInputStream(in).readInt();
             switch (cmd) {
-            //operations on the hashmap
+                //operations on the hashmap
                 case BFTMAPUtil.PUT:
                     String tableName = new DataInputStream(in).readUTF();
                     String key = new DataInputStream(in).readUTF();
@@ -107,12 +106,12 @@ public class BFTMapImpl extends ServiceReplica {
                     break;
                 case BFTMAPUtil.GET:
                     String tableName1 = new DataInputStream(in).readUTF();
-                    System.out.println("tablename"+tableName1);
+                    System.out.println("tablename" + tableName1);
                     String id1 = new DataInputStream(in).readUTF();
                     System.out.println("ID received" + id1);
                     byte[] b1 = bftReplica.getEntry(tableName1, id1);
                     String value1 = new String(b1);
-                    System.out.println("The value to be get is"+value1);
+                    System.out.println("The value to be get is" + value1);
                     out = new ByteArrayOutputStream();
                     new DataOutputStream(out).writeBytes(value1);
                     reply = out.toByteArray();
@@ -153,29 +152,29 @@ public class BFTMapImpl extends ServiceReplica {
                     reply = out.toByteArray();
                     break;
                 case BFTMAPUtil.CHECK:
-                    
+
                     String tableName7 = new DataInputStream(in).readUTF();
                     String id4 = new DataInputStream(in).readUTF();
                     System.out.println("Table Key received" + id4);
-                    byte[] b5 = bftReplica.getEntry(tableName7,id4);
+                    byte[] b5 = bftReplica.getEntry(tableName7, id4);
                     boolean tableExists1 = b5 != null;
                     out = new ByteArrayOutputStream();
                     new DataOutputStream(out).writeBoolean(tableExists1);
                     reply = out.toByteArray();
                     break;
                 case BFTMAPUtil.TAB_CREATE:
-                    String table4= new DataInputStream(in).readUTF();
+                    String table4 = new DataInputStream(in).readUTF();
                     //ByteArrayInputStream in1 = new ByteArrayInputStream(command);
-                    ObjectInputStream in2 = new ObjectInputStream(in) ;
-                    HashMap<String,byte[]> table=null;
-            try {
-                table = (HashMap<String, byte[]>) in2.readObject();
-            } catch (ClassNotFoundException ex) {
-                Logger.getLogger(BFTMapImpl.class.getName()).log(Level.SEVERE, null, ex);
-            }
-                    HashMap<String,byte[]> table1=bftReplica.addTable(table4, table);
-                    ByteArrayOutputStream bos = new ByteArrayOutputStream() ;
-                    ObjectOutputStream  out1 = new ObjectOutputStream(bos) ;
+                    ObjectInputStream in2 = new ObjectInputStream(in);
+                    HashMap<String, byte[]> table = null;
+                    try {
+                        table = (HashMap<String, byte[]>) in2.readObject();
+                    } catch (ClassNotFoundException ex) {
+                        Logger.getLogger(BFTMapImpl.class.getName()).log(Level.SEVERE, null, ex);
+                    }
+                    HashMap<String, byte[]> table1 = bftReplica.addTable(table4, table);
+                    ByteArrayOutputStream bos = new ByteArrayOutputStream();
+                    ObjectOutputStream out1 = new ObjectOutputStream(bos);
                     out1.writeObject(table1);
                     out1.close();
                     in.close();
@@ -184,28 +183,29 @@ public class BFTMapImpl extends ServiceReplica {
 
                 case BFTMAPUtil.TAB_REMOVE:
                     String tableName3 = new DataInputStream(in).readUTF();
-                    HashMap<String,byte[]> info4=bftReplica.removeTable(tableName3);
-                    ByteArrayOutputStream bos2 = new ByteArrayOutputStream() ;
-                    ObjectOutputStream  out3 = new ObjectOutputStream(bos2) ;
+                    HashMap<String, byte[]> info4 = bftReplica.removeTable(tableName3);
+                    ByteArrayOutputStream bos2 = new ByteArrayOutputStream();
+                    ObjectOutputStream out3 = new ObjectOutputStream(bos2);
                     out3.writeObject(info4);
                     out3.close();
                     out3.close();
                     reply = bos2.toByteArray();
                     break;
 
-                
+
             }
             return reply;
         } catch (IOException ex) {
             Logger.getLogger(BFTMapImpl.class.getName()).log(Level.SEVERE, null, ex);
             return null;
         }
-
-
-       
-        }
-    
-
     }
 
+    @Override
+    @SuppressWarnings("static-access")
+    public byte[] executeUnordered(byte[] command, MessageContext msgCtx) {
+        System.err.println("WARNING: unordered operations not supported!");
+        return new byte[0];
+    }
 
+}

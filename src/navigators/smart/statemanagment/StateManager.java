@@ -53,7 +53,7 @@ public class StateManager {
 
         //******* EDUARDO BEGIN **************//
         this.manager = manager;
-        int k = this.manager.getStaticConf().getCheckpoint_period();
+        int k = this.manager.getStaticConf().getCheckpointPeriod();
         //******* EDUARDO END **************//
 
         this.log = new StateLog(k);

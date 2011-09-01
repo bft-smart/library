@@ -30,8 +30,9 @@ public interface TOMRequestReceiver {
      * ordered request, and where the code to handle the request is to be written
      *
      * @param msg the delivered request
+     * @param msgCtx the context of the message being delivered
      */
-    public void receiveOrderedMessage(TOMMessage msg);
+    public void receiveOrderedMessage(TOMMessage msg, MessageContext msgCtx);
 
     /**
      * This is the method invoked by the TOMLayer to deliver a read only request
@@ -39,7 +40,7 @@ public interface TOMRequestReceiver {
      *
      * @param msg The request delivered by the TOM layer
      */
-    public void receiveMessage(TOMMessage msg);
+    public void receiveMessage(TOMMessage msg, MessageContext msgCtx);
 
     /**
      * This method is used by the TOM Layer to retrieve the state of the application. This must be

@@ -15,147 +15,141 @@
  * 
  * You should have received a copy of the GNU General Public License along with SMaRt.  If not, see <http://www.gnu.org/licenses/>.
  */
-
 package navigators.smart.tom.demo;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-
 
 import navigators.smart.tom.TOMSender;
 import navigators.smart.tom.core.messages.TOMMessage;
 
-
 public class ThroughputTestClient extends TOMSender implements Runnable {
-    
-    private int exec;
+
+    private int burst;
     private int argSize;
     private int interval;
     private int id = 0;
-    //private CommunicationSystemClientSide cs;
     private int f;
     private int n;
     private int currentId = 0;
-    //private Hashtable sessionTable;
-    //private TOMConfiguration conf;
 
-    public ThroughputTestClient(int id, int exec, int argSize, int interval)  {
+    public ThroughputTestClient(int id, int burst, int argSize, int interval) {
         this.id = id;
-        this.exec = exec;
+        this.burst = burst;
         this.argSize = argSize;
-        this.interval = interval;        
-        //id for this client
+        this.interval = interval;
         this.currentId = id;
-        //this.conf = conf;
-        //create the configuration object
-        
-        //create the communication system
 
-        //cs = CommunicationSystemClientSideFactory.getCommunicationSystemClientSide(conf);
-        
-        
-        
         //initialize the TOM sender
         this.init(id);
     }
 
+    @Override
     public void run() {
         this.f = getViewManager().getCurrentViewF();
         this.n = getViewManager().getCurrentViewN();
-        
-        //LinkedList<TOMMessage> generatedMessages = null;
+
+        IntervalSleeper sl = new IntervalSleeper(interval);
+
+        ArrayList<TOMMessage> generatedMessages = null;
+
         try {
             System.out.println("(" + currentId + ") Let's sleep 10 seconds to wait for (possible) other clients");
             Thread.sleep(10000);
+
+            //BBB start
             /*
-            if (conf.getUseSignatures()==1){
-                System.out.println("Pre-generating signed requests ...");
-                generatedMessages = new LinkedList();
-                //pre-generate and sign the messages to be sent
-                for (int i = 0; i < exec; i++) {
-                    byte[] command = new byte[4 + argSize];
-                    ByteArrayOutputStream out = new ByteArrayOutputStream(4);
-                    try {
-                        new DataOutputStream(out).writeInt(-2);
-                    } catch (IOException ex) {
-                        java.util.logging.Logger.getLogger(LatencyTestClient.class.getName()).log(Level.SEVERE, null, ex);
-                    }
-                    System.arraycopy(out.toByteArray(), 0, command, 0, 4);
-                    generatedMessages.add(this.sign(command));
-                }
+            
+            if (/**conf.getUseSignatures()1==1){ //assinaturas ligadas
+            System.out.println("Pre-generating signed requests ...");
+            generatedMessages = new ArrayList();
+            //pre-generate and sign the messages to be sent
+            for (int i = 0; i < /**exec100; i++) { //BBB end
+            byte[] command = new byte[4 + argSize];
+            ByteArrayOutputStream out = new ByteArrayOutputStream(4);
+            try {
+            new DataOutputStream(out).writeInt(-2);
+            } catch (IOException ex) {
+            java.util.logging.Logger.getLogger(LatencyTestClient.class.getName()).log(Level.SEVERE, null, ex);
             }
-            */
+            System.arraycopy(out.toByteArray(), 0, command, 0, 4);
+            generatedMessages.add(this.sign(command));
+            }
+            }
+             */
             try {
                 System.out.println("Sending requests ...");
                 long startTimeInstant = System.currentTimeMillis();
-                for (int i = 0; i < exec; i++) {
+
+                int count = 0;
+                long currMsg = 0;
+                
+                while (true) {
+                    for (int i = 0; i < burst; i++) {
                         int currId = currentId;
+                        //BBB start
                         byte[] command = new byte[4 + argSize];
                         ByteArrayOutputStream out = new ByteArrayOutputStream(4);
                         try {
                             new DataOutputStream(out).writeInt(-2);
-                        } catch (IOException ex) {
-                            java.util.logging.Logger.getLogger(LatencyTestClient.class.getName()).log(Level.SEVERE, null, ex);
-                        }
+                        } catch (IOException ex) { ex.printStackTrace(System.err); }
                         System.arraycopy(out.toByteArray(), 0, command, 0, 4);
-                        this.TOMulticast(command);
-                    if ((i!=0) && ((i % 1000) == 0)) {
-                        long elapsedTime = System.currentTimeMillis() - startTimeInstant;
-                        double opsPerSec_ = ((double)1000)/(((double)elapsedTime/1000));
-                        long opsPerSec = Math.round(opsPerSec_);
-                        System.out.println(i + "/" + exec + " messages sent, elapsedTime="+elapsedTime+", throughput="+opsPerSec+" per sec");
-                        startTimeInstant = System.currentTimeMillis();
-                    }
-                    //checks if the interval is greater or equal than the precision of the timer (1000 us = 1 ms)
-                    if (interval >= 1000) {
-                        try {
-                            //sleeps interval/1000 ms before sending next request
-                            Thread.sleep(interval/1000);
-                            //Thread.sleep(interval);
-                        } catch (InterruptedException ex) {
-                            ex.printStackTrace();
+                        this.TOMulticast(/**generatedMessages.get((int) (currMsg % 100))**/
+                                command);
+                        currMsg++;
+
+                        //BBB start
+                        count += burst;
+                        //BBB end
+
+                        //BBB start
+                        //todos os count eram i
+                        //(opsPerSec/5) era opsPerSec
+                        if ((count != 0) && ((count % 1000) == 0)) {
+                            long elapsedTime = System.currentTimeMillis() - startTimeInstant;
+                            double opsPerSec_ = ((double) 1000) / (((double) elapsedTime / 1000));
+                            long opsPerSec = Math.round(opsPerSec_);
+                            System.out.println(count + " messages sent, elapsedTime=" + elapsedTime + ", throughput=" + (opsPerSec / 5) + " per sec");
+                            startTimeInstant = System.currentTimeMillis();
                         }
                     }
-                    else if (interval!=0) {
-                        //sleep 1 ms when a sufficient number of executions has been done
-                        if ((i!=0) && (i%(1000/interval)==0)){
-                            Thread.sleep(1);
-                        }
-                    }
+                    sl.delay(1); //1 x 'interval'ms
                 }
-                System.out.println("Press Ctrl+C to stop");
-                Thread.sleep(Long.MAX_VALUE);
+
             } catch (InterruptedException ex) {
-                Logger.getLogger(ThroughputTestClient.class.getName()).log(Level.SEVERE, null, ex);
+                ex.printStackTrace(System.err);
             }
         } catch (InterruptedException ex) {
-            Logger.getLogger(ThroughputTestClient.class.getName()).log(Level.SEVERE, null, ex);
+            ex.printStackTrace(System.err);
         }
     }
 
     public static void main(String[] args) {
         if (args.length < 5) {
-            System.out.println("Usage: java ThroughputTestClient <process id (>=1000)> <number of messages> <argument size (bytes)> <interval (us)> <numThreads>");
+            System.err.println("Usage:... ThroughputTestClient <initial process id (>1000)> <num. msgs in a burst> <msg size (bytes)> <burst interval> <num threads>");
             System.exit(-1);
         }
 
         int id = new Integer(args[0]);
-        if (id < 1000) {
-            System.err.println("Error: process id needs to be greater or equal than 1000");
+        if (id <= 1000) {
+            System.err.println("Error: process id needs to be greater than 1000");
             System.exit(-11);
         }
+        
         int numThreads = new Integer(args[4]);
         Thread[] t = new Thread[numThreads];
-        //TOMConfiguration conf = new TOMConfiguration(id);
-        for (int i=0; i<numThreads; i++){
-            //TOMConfiguration conf1 = new TOMConfiguration(conf,1000*i+id);
-            t[i] = new Thread(new ThroughputTestClient(id+i, new Integer(args[1]),
-                new Integer(args[2]), new Integer(args[3])));
+        for (int i = 0; i < numThreads; i++) {
+            t[i] = new Thread(new ThroughputTestClient(id + i, new Integer(args[1]),
+                    new Integer(args[2]), new Integer(args[3])));
             t[i].start();
         }
+        
         try {
             t[numThreads - 1].join();
         } catch (InterruptedException ex) {
@@ -163,7 +157,71 @@ public class ThroughputTestClient extends TOMSender implements Runnable {
         }
     }
 
+    @Override
     public void replyReceived(TOMMessage reply) {
         //throw new UnsupportedOperationException("Not used...");
+    }
+
+    /**
+    
+    Classe para o relogio.
+    
+    @author Marcelo Pasin
+    
+     **/
+    private class IntervalSleeper extends TimerTask {
+
+        private Timer timer;
+        long interval, lastick;
+        boolean waiting = true;
+
+        /**
+         * Create an interval timer. This timer starts at creation time and ticks at
+         * every interval. Calls to sleep() wait until next tick.
+         * @param interval
+         */
+        public IntervalSleeper(int interval) {
+            timer = new Timer();
+            timer.schedule(this, interval, interval);
+            this.interval = interval;
+            lastick = System.currentTimeMillis();
+        }
+
+        @Override
+        public void run() {
+            synchronized (this) {
+                waiting = false;
+                notify();
+            }
+        }
+
+        /**
+         * This method waits for the next clock tick.
+         * @return the number of intervals elapsed since last call (or creation)
+         * @throws InterruptedException
+         */
+        public int sleep() throws InterruptedException {
+            synchronized (this) {
+                while (waiting) {
+                    wait(0);
+                }
+                waiting = true;
+            }
+            long end = System.currentTimeMillis();
+            int ret = (int) ((end - lastick) / interval);
+            lastick = lastick + interval * ret;
+            return ret;
+        }
+
+        public void delay(int howMany/**, int tick**/
+                ) throws InterruptedException {
+            //int end = Integer.parseInt(args[0]);
+            //IntervalSleeper sl = new IntervalSleeper(tick);
+
+            for (int i = 0; i < howMany; i++) {
+                int n = this.sleep();
+                //System.out.println("tick... " + System.currentTimeMillis() + " n=" + n);
+            }
+        }
     }
 }

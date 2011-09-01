@@ -15,133 +15,97 @@
  * 
  * You should have received a copy of the GNU General Public License along with SMaRt.  If not, see <http://www.gnu.org/licenses/>.
  */
-
 package navigators.smart.tom.demo;
-
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 import navigators.smart.communication.ServerCommunicationSystem;
 import navigators.smart.reconfiguration.ReconfigurationManager;
+import navigators.smart.tom.MessageContext;
 import navigators.smart.tom.TOMReceiver;
 import navigators.smart.tom.core.messages.TOMMessage;
 
-
-
 public class ThroughputTestServer extends TOMReceiver {
-    
+
     private ServerCommunicationSystem cs;
     private int id;
     private int interval;
-    private long numDecides=0;
+    private long numDecides = 0;
     private long lastDecideTimeInstant;
-    private long max=0;
-    
+    private long max = 0;
+
     public ThroughputTestServer(int id, int interval) {
         this.id = id;
         this.interval = interval;
     }
 
-    
-
-    private void run(){
-
+    private void setup() {
         //create the configuration object
-
         ReconfigurationManager manager = new ReconfigurationManager(id);
 
         try {
-
             //create the communication system
-
-            cs = new ServerCommunicationSystem(manager,null);
-
+            cs = new ServerCommunicationSystem(manager, null);
         } catch (Exception ex) {
-
-            Logger.getLogger(ThroughputTestServer.class.getName()).log(Level.SEVERE, null, ex);
-
             throw new RuntimeException("Unable to build a communication system.");
-
         }
 
         //build the TOM server stack
+        this.init(cs, manager);
 
-        this.init(cs,manager);
-        
         /**IST OE CODIGO DO JOAO, PARA TENTAR RESOLVER UM BUG */
         cs.start();
         /******************************************************/
     }
 
-    
-
-    public void receiveOrderedMessage(TOMMessage msg){
-
-        long receiveInstant =  System.currentTimeMillis();          
+    @Override
+    public void receiveOrderedMessage(TOMMessage msg, MessageContext msgCtx) {
+        long receiveInstant = System.currentTimeMillis();
 
         numDecides++;
 
-
-
         if (numDecides == 1) {
-
             lastDecideTimeInstant = receiveInstant;
-
-        } else if (numDecides==interval) {
-
+        } else if (numDecides == interval) {
             long elapsedTime = receiveInstant - lastDecideTimeInstant;
 
-            double opsPerSec_ = ((double)interval)/(elapsedTime/1000.0);
+            double opsPerSec_ = ((double) interval) / (elapsedTime / 1000.0);
 
             long opsPerSec = Math.round(opsPerSec_);
 
-            if (opsPerSec>max)
-
+            if (opsPerSec > max) {
                 max = opsPerSec;
+            }
 
-            System.out.println("Last "+interval+" decisions were done at a rate of " + opsPerSec + " ops per second");
-
+            System.out.println("Last " + interval + " decisions were done at a rate of " + opsPerSec + " ops per second");
             System.out.println("Maximum throughput until now: " + max + " ops per second");
-
             numDecides = -1;
-
         }
-
     }
 
-    
-
-    public static void main(String[] args){
-
-        if(args.length < 2) {
-
-            System.out.println("Use: java ThroughputTestServer <processId> <measurement interval (in messages)>");
-
-            System.exit(-1);
-
-        }
-
-
-
-        new ThroughputTestServer(Integer.parseInt(args[0]),Integer.parseInt(args[1])).run();
-
-    }
-
+    @Override
     public byte[] getState() {
         return new byte[1];
     }
 
+    @Override
     public void setState(byte[] state) {
-
     }
 
-    public void receiveMessage(TOMMessage msg) {
-        throw new UnsupportedOperationException("Not supported yet.");
+    @Override
+    public void receiveMessage(TOMMessage msg, MessageContext msgCtx) {
+        throw new UnsupportedOperationException("Not supported.");
     }
 
+    @Override
     public void waitForProcessingRequests() {
-        throw new UnsupportedOperationException("Not supported yet.");
+        throw new UnsupportedOperationException("Not supported.");
     }
 
-}
+    public static void main(String[] args) {
+        if (args.length < 2) {
+            System.out.println("Usage:... ThroughputTestServer <processId> <measurement interval (in messages)>");
+            System.exit(-1);
+        }
 
+        new ThroughputTestServer(Integer.parseInt(args[0]), Integer.parseInt(args[1])).setup();
+    }
+}

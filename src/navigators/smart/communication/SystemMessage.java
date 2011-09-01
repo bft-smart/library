@@ -25,12 +25,10 @@ import java.io.ObjectOutput;
 
 /**
  * This is the super-class for all other kinds of messages created by JBP
- * TODO: Apenas sao criados objectos de sub-classes desta. Porque na otornar esta class abstract?
- * TODO: Esta classe nao se enquadra melhor no package de comunicacao?
  * 
  */
 
-public class SystemMessage implements Externalizable {
+public abstract class SystemMessage implements Externalizable {
 
     protected int sender; // ID of the process which sent the message
 
@@ -56,10 +54,12 @@ public class SystemMessage implements Externalizable {
     }
 
     // This methods implement the Externalizable interface
+    @Override
     public void writeExternal(ObjectOutput out) throws IOException {
         out.writeInt(sender);
     }
     
+    @Override
     public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
         sender = in.readInt();
     }

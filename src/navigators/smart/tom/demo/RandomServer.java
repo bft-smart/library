@@ -29,14 +29,14 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import navigators.smart.tom.ServiceReplica;
-import navigators.smart.tom.util.DebugInfo;
 import java.util.Scanner;
+import navigators.smart.tom.MessageContext;
 
 /**
  *
  * @author Joao Sousa
  */
-public class RandomServer extends ServiceReplica {
+public final class RandomServer extends ServiceReplica {
 
     private int value = 0;
     private int iterations = 0;
@@ -56,17 +56,7 @@ public class RandomServer extends ServiceReplica {
     }
 
     @Override
-    public byte[] executeCommand(int clientId, long timestamp, byte[] nonces, byte[] command, boolean readOnly, DebugInfo info) {
-        /**********ISTO E CODIGO MARTELADO, PARA FAZER AVALIACOES **************/
-        //System.out.println(currentTime);
-        if (initialTime > -1) currentTime = System.currentTimeMillis() - initialTime;
-        else {
-              initialTime = System.currentTimeMillis();
-              currentTime = 0;
-        }
-        //if ((this.id == 4) && (currentTime >= 60000)) leave();
-        /***********************************************************************/
-        
+    public byte[] executeOrdered(byte[] command, MessageContext msgCtx) {
         iterations++;
         try {
             DataInputStream input = new DataInputStream(new ByteArrayInputStream(command));
@@ -92,18 +82,43 @@ public class RandomServer extends ServiceReplica {
                     System.out.println("(" + id + ")[server] Operator: /");
                     break;
             }
-            //value += increment;
-            if (info == null) System.out.println("(" + id + ")[server] (" + iterations + ") Current value: " + value);
-            else System.out.println("(" + id + ")[server] (" + iterations + " / " + info.eid + ") Current value: " + value);
+            
+            System.out.println("(" + id + ")[server] (" + iterations + " / " + 
+                    msgCtx.getConsensusId() + ") Current value: " + value);
+            
             ByteArrayOutputStream out = new ByteArrayOutputStream(4);
             new DataOutputStream(out).writeInt(value);
             return out.toByteArray();
         } catch (IOException ex) {
-            return null;
+            System.err.println("Invalid request received!");
+            return new byte[0];
         }
     }
 
-    public static void main(String[] args){
+    /**
+     * Just return the current value of the counter.
+     * 
+     * @param command
+     * @param msgCtx
+     * @return 
+     */
+    @Override
+    public byte[] executeUnordered(byte[] command, MessageContext msgCtx) {
+        iterations++;
+        try {
+            System.out.println("(" + id + ")[server] (" + iterations + " / " + 
+                    msgCtx.getConsensusId() + ") Current value: " + value);
+            
+            ByteArrayOutputStream out = new ByteArrayOutputStream(4);
+            new DataOutputStream(out).writeInt(value);
+            return out.toByteArray();
+        } catch (IOException ex) {
+            System.err.println("Never happens!");
+            return new byte[0];
+        }        
+    }
+
+        public static void main(String[] args){
         if(args.length < 1) {
             System.out.println("Use: java RandomServer <processId>");
             System.exit(-1);
