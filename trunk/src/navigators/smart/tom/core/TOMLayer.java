@@ -29,6 +29,7 @@ import java.security.MessageDigest;
 import java.security.PrivateKey;
 import java.security.Signature;
 import java.security.SignedObject;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
@@ -347,29 +348,8 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
         Logger.println("(TOMLayer.run) creating a PROPOSE with " + numberOfMessages + " msgs");
 
-        int totalMessageSize = 0; //total size of the messages being batched
-
-        byte[][] messages = new byte[numberOfMessages][]; //bytes of the message (or its hash)
-        byte[][] signatures = new byte[numberOfMessages][]; //bytes of the message (or its hash)
-
-        // Fill the array of bytes for the messages/signatures being batched
-        int i = 0;
-        for (Iterator<TOMMessage> li = pendingRequests.iterator(); li.hasNext(); i++) {
-            TOMMessage msg = li.next();
-            //Logger.println("(TOMLayer.run) adding req " + msg + " to PROPOSE");
-            messages[i] = msg.serializedMessage;
-            signatures[i] = msg.serializedMessageSignature;
-
-            totalMessageSize += messages[i].length;
-        }
-
-        // return the batch
-        return bb.createBatch(System.currentTimeMillis(), numberOfNonces, numberOfMessages, totalMessageSize, 
-                this.reconfManager.getStaticConf().getUseSignatures() == 1, messages, signatures,this.reconfManager);
+        return bb.makeBatch(pendingRequests, numberOfNonces, System.currentTimeMillis(),reconfManager);
     }
-
-
-
     /**
      * This is the main code for this thread. It basically waits until this replica becomes the leader,
      * and when so, proposes a value to the other acceptors
@@ -1362,14 +1342,20 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                     if (lcManager.getCurrentRequestTimedOut() != null) {
 
                         //TODO: Se isto estiver a null, e porque nao houve timeout. Fazer o q?
+                        byte[] msgs = bb.makeBatch(lcManager.getCurrentRequestTimedOut(), 0, 0, reconfManager);
+                        List<TOMMessage> temp = lcManager.getCurrentRequestTimedOut();
                         out.writeBoolean(true);
-                        out.writeObject(lcManager.getCurrentRequestTimedOut());
+                        out.writeObject(msgs);
                     }
                     else {
                         out.writeBoolean(false);
                     }
 
                     byte[] payload = bos.toByteArray();
+
+                    out.flush();
+                    bos.flush();
+
                     out.close();
                     bos.close();
 
@@ -1428,7 +1414,8 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
                     //TODO: Se isto estiver a null, e porque nao houve timeout. Fazer o q?
                     out.writeBoolean(true);
-                    out.writeObject(lcManager.getCurrentRequestTimedOut());
+                    byte[] msgs = bb.makeBatch(lcManager.getCurrentRequestTimedOut(), 0, 0, reconfManager);
+                    out.writeObject(msgs);
                 }
                 else {
                     out.writeBoolean(false);
@@ -1626,20 +1613,17 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                             bis = new ByteArrayInputStream(msg.getPayload());
                             ois = new ObjectInputStream(bis);
 
-                            boolean hasReq = ois.readBoolean();
+                            boolean hasReqs = ois.readBoolean();
                             clientsManager.getClientsLock().lock();
 
-                            if (hasReq) {
+                            if (hasReqs) {
 
                                 // Guardar os pedidos que a outra replica nao conseguiu ordenar
                                 //TODO: Os requests  tem q ser verificados!
-                                List<TOMMessage> requests = (List<TOMMessage>) ois.readObject();
-
-                                for (TOMMessage r : requests) {
-
-                                    clientsManager.requestReceived(r, false);
-                                }
-
+                                byte[] temp = (byte[]) ois.readObject();
+                                BatchReader batchReader = new BatchReader(temp,
+                                        reconfManager.getStaticConf().getUseSignatures() == 1);
+                                TOMMessage[] requests = batchReader.deserialiseRequests(reconfManager);
                             }
                             clientsManager.getClientsLock().unlock();
 

@@ -19,8 +19,10 @@
 package navigators.smart.tom.util;
 
 import java.nio.ByteBuffer;
+import java.util.Collection;
 import java.util.Random;
 import navigators.smart.reconfiguration.ReconfigurationManager;
+import navigators.smart.tom.core.messages.TOMMessage;
 
 /**
  * Batch format: TIMESTAMP(long) + N_NONCES(int) + SEED(long) +
@@ -35,7 +37,7 @@ public final class BatchBuilder {
     private Random rnd = new Random();
 
     /** build buffer */
-    public byte[] createBatch(long timestamp, int numberOfNonces, int numberOfMessages, int totalMessagesSize, boolean useSignatures, byte[][] messages, byte[][] signatures, ReconfigurationManager manager) {
+    private byte[] createBatch(long timestamp, int numberOfNonces, int numberOfMessages, int totalMessagesSize, boolean useSignatures, byte[][] messages, byte[][] signatures, ReconfigurationManager manager) {
         int size = 20 + //timestamp 8, nonces 4, nummessages 4
                 (numberOfNonces > 0 ? 8 : 0) + //seed if needed
                 (numberOfMessages*(4+(useSignatures?TOMUtil.getSignatureSize(manager):0)))+ // msglength + signature for each msg
@@ -69,4 +71,29 @@ public final class BatchBuilder {
         }
     }
 
+        public byte[] makeBatch(Collection<TOMMessage> msgs, int numNounces, long timestamp, ReconfigurationManager reconfManager) {
+
+        int numMsgs = msgs.size();
+        int totalMessageSize = 0; //total size of the messages being batched
+
+        byte[][] messages = new byte[numMsgs][]; //bytes of the message (or its hash)
+        byte[][] signatures = new byte[numMsgs][]; //bytes of the message (or its hash)
+
+        // Fill the array of bytes for the messages/signatures being batched
+        int i = 0;
+        for (TOMMessage msg : msgs) {
+            //TOMMessage msg = msgs.next();
+            //Logger.println("(TOMLayer.run) adding req " + msg + " to PROPOSE");
+            messages[i] = msg.serializedMessage;
+            signatures[i] = msg.serializedMessageSignature;
+
+            totalMessageSize += messages[i].length;
+            i++;
+        }
+
+        // return the batch
+        return createBatch(timestamp, numNounces, numMsgs, totalMessageSize,
+                reconfManager.getStaticConf().getUseSignatures() == 1, messages, signatures,reconfManager);
+
+    }
 }
