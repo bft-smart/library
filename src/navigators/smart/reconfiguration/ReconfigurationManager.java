@@ -159,7 +159,7 @@ public class ReconfigurationManager extends ViewManager {
 
 
         //ret = reconfigure(updates.get(i).getContent());
-        return reconfigure(jSetInfo, jSet, rSet, f, eid, decisionRound, null);
+        return reconfigure(jSetInfo, jSet, rSet, f, eid, decisionRound);
     }
 
     private boolean contains(int id, List<Integer> list) {
@@ -171,7 +171,7 @@ public class ReconfigurationManager extends ViewManager {
         return false;
     }
 
-    private byte[] reconfigure(List<String> jSetInfo, List<Integer> jSet, List<Integer> rSet, int f, int eid, int decisionRound, byte[] state) {
+    private byte[] reconfigure(List<String> jSetInfo, List<Integer> jSet, List<Integer> rSet, int f, int eid, int decisionRound) {
         //ReconfigureRequest request = (ReconfigureRequest) TOMUtil.getObject(req);
         // Hashtable<Integer, String> props = request.getProperties();
         // int f = Integer.valueOf(props.get(CHANGE_F));
@@ -208,7 +208,7 @@ public class ReconfigurationManager extends ViewManager {
 
 
         return TOMUtil.getBytes(new ReconfigureReply(newV, jSetInfo.toArray(new String[0]),
-                tomLayer.getLastExec(), tomLayer.lm.getLeader(eid, decisionRound), state));
+                tomLayer.getLastExec(), tomLayer.lm.getLeader(eid, decisionRound)));
     }
 
     public TOMMessage[] clearUpdates() {
