@@ -6,6 +6,7 @@
 package navigators.smart.reconfiguration;
 
 import navigators.smart.tom.ServiceProxy;
+import navigators.smart.tom.core.messages.TOMMessageType;
 import navigators.smart.tom.util.TOMUtil;
 
 /**
@@ -52,7 +53,7 @@ public class Reconfiguration {
         byte[] signature = TOMUtil.signMessage(proxy.getViewManager().getStaticConf().getRSAPrivateKey(),
                                                                             request.toString().getBytes());
         request.setSignature(signature);
-        byte[] reply = proxy.invoke(TOMUtil.getBytes(request), ReconfigurationManager.TOM_RECONFIG_REQUEST);
+        byte[] reply = proxy.invoke(TOMUtil.getBytes(request), TOMMessageType.RECONFIG);
         request = null;
         return (ReconfigureReply)TOMUtil.getObject(reply);
    }

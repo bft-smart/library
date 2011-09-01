@@ -26,20 +26,19 @@ import navigators.smart.paxosatwar.executionmanager.LeaderModule;
 import navigators.smart.paxosatwar.executionmanager.Round;
 import navigators.smart.paxosatwar.messages.MessageFactory;
 import navigators.smart.paxosatwar.messages.PaxosMessage;
-import navigators.smart.paxosatwar.messages.Proof;
 import navigators.smart.reconfiguration.ReconfigurationManager;
 import navigators.smart.tom.core.TOMLayer;
 import navigators.smart.tom.util.Logger;
 
 
 /**
- * This class represents the acceptor role in the paxos protocol.
- * This class work together with the TOMulticastLayer class in order to
+ * This class represents the acceptor role in the consensus protocol.
+ * This class work together with the TOMLayer class in order to
  * supply a atomic multicast service.
  *
  * @author Alysson Bessani
  */
-public class Acceptor {
+public final class Acceptor {
 
     private int me; // This replica ID
     private ExecutionManager manager; // Execution manager of consensus's executions
@@ -47,12 +46,11 @@ public class Acceptor {
     private ServerCommunicationSystem communication; // Replicas comunication system
     private LeaderModule leaderModule; // Manager for information about leaders
     private TOMLayer tomLayer; // TOM layer
-    private AcceptedPropose nextProp = null; // next value to be proposed
     private ReconfigurationManager reconfManager;
 
     /**
      * Creates a new instance of Acceptor.
-     * @param communication Replicas comunication system
+     * @param communication Replicas communication system
      * @param factory Message factory for PaW messages
      * @param verifier Proof verifier
      * @param conf TOM configuration
@@ -60,7 +58,6 @@ public class Acceptor {
     public Acceptor(ServerCommunicationSystem communication, MessageFactory factory,
                                 LeaderModule lm, ReconfigurationManager manager) {
         this.communication = communication;
-        this.communication.setAcceptor(this);
         this.me = manager.getStaticConf().getProcessId();
         this.factory = factory;
         this.leaderModule = lm;
@@ -88,25 +85,23 @@ public class Acceptor {
     }
 
     /**
-     * Called by communication layer to delivery paxos messages. This method
+     * Called by communication layer to delivery Paxos messages. This method
      * only verifies if the message can be executed and calls process message
      * (storing it on an out of context message buffer if this is not the case)
      *
-     * @param msg Paxos messages delivered by the comunication layer
+     * @param msg Paxos messages delivered by the communication layer
      */
     public final void deliver(PaxosMessage msg) {
         if (manager.checkLimits(msg)) {
             processMessage(msg);
-        }else{
-            if(msg.getPaxosType() == MessageFactory.PROPOSE){
-                Logger.println("(Acceptor.deliver) Propose out of context: "+msg.getNumber());
-            }
+        } else {
+            tomLayer.processOutOfContext();
         }
     }
 
     /**
-     * Called when a paxos message is received or when a out of context message must be processed.
-     * It processes the received messsage acording to its type
+     * Called when a Paxos message is received or when a out of context message must be processed.
+     * It processes the received message according to its type
      *
      * @param msg The message to be processed
      */
@@ -114,7 +109,7 @@ public class Acceptor {
         Execution execution = manager.getExecution(msg.getNumber());
 
         execution.lock.lock();
-        Round round = execution.getRound(msg.getRound(), this.reconfManager);
+        Round round = execution.getRound(msg.getRound(), reconfManager);
         switch (msg.getPaxosType()){
             case MessageFactory.PROPOSE:{
                     proposeReceived(round, msg);
@@ -136,39 +131,10 @@ public class Acceptor {
      * @param msg The PROPOSE message to by processed
      */
      public void proposeReceived(Round round, PaxosMessage msg) {
-        byte[] value = msg.getValue();
-        int p = msg.getSender();
-
-        Logger.println("(Acceptor.proposeReceived) PROPOSE for "+round.getNumber()+","+round.getExecution().getId()+" received from "+ p);
-
-        if (leaderModule.getCurrentLeader() == p) {
-            executePropose(round, value);
+        if (msg.getSender() == leaderModule.getCurrentLeader()) {
+            executePropose(round, msg.getValue());
         } else {
-            Logger.println("Propose received is not from the leader");
-        }
-    }
-
-    /**
-     * Called by the delivery thread. Executes the next accepted propose.
-     *
-     * @param eid Consensus's execution ID
-     * @return True if there is a next value to be proposed and it belongs to
-     * the specified execution, false otherwise
-     */
-    public boolean executeAcceptedPendent(int eid) {
-        if (nextProp != null && nextProp.eid == eid) {
-            Execution execution = manager.getExecution(eid);
-            execution.lock.lock();
-
-            Round round = execution.getRound(nextProp.r, this.reconfManager);
-            executePropose(round, nextProp.value);
-            nextProp = null;
-
-            execution.lock.unlock();
-            return true;
-        } else {
-            nextProp = null;
-            return false;
+            Logger.println("Propose received is not from the expected leader");
         }
     }
 
@@ -182,6 +148,9 @@ public class Acceptor {
         int eid = round.getExecution().getId();
         Logger.println("(Acceptor.executePropose) executing propose for " + eid + "," + round.getNumber());
 
+        long consensusStartTime = System.nanoTime();
+
+        
         if(round.propValue == null) { //only accept one propose per round
             round.propValue = value;
             round.propValueHash = tomLayer.computeHash(value);
@@ -197,16 +166,13 @@ public class Acceptor {
             round.deserializedPropValue = tomLayer.checkProposedValue(value);
 
             if (round.deserializedPropValue != null && !round.isWeakSetted(me)) {
-                //benchmarking code
                 if(round.getExecution().getLearner().firstMessageProposed == null) {
                     round.getExecution().getLearner().firstMessageProposed = round.deserializedPropValue[0];
                 }
-                round.getExecution().getLearner().firstMessageProposed.consensusStartTime = System.nanoTime();
+                round.getExecution().getLearner().firstMessageProposed.consensusStartTime = consensusStartTime;
                 round.getExecution().getLearner().firstMessageProposed.proposeReceivedTime = System.nanoTime();
-                //benchmarking code end
-
-                if(Logger.debug)
-                    Logger.println("(Acceptor.executePropose) sending weak for " + eid);
+                
+                Logger.println("(Acceptor.executePropose) sending weak for " + eid);
 
                 round.setWeak(me, round.propValueHash);
                 round.getExecution().getLearner().firstMessageProposed.weakSentTime = System.nanoTime();
@@ -214,6 +180,8 @@ public class Acceptor {
                         factory.createWeak(eid, round.getNumber(), round.propValueHash));
 
                 computeWeak(eid, round, round.propValueHash);
+                
+                manager.processOutOfContext(round.getExecution());
             }
         }
     }
@@ -258,8 +226,16 @@ public class Acceptor {
                 
                 round.setStrong(me, value);
 
-                round.getExecution().getLearner().firstMessageProposed.strongSentTime = System.nanoTime();
-
+                try{
+                    round.getExecution().getLearner().firstMessageProposed.strongSentTime = System.nanoTime();
+                } catch (Exception e) {
+                    System.out.println(round.getExecution().getId());
+                    System.out.println(round.getExecution().getLearner().firstMessageProposed);
+                    System.out.println(round.propValue);
+                    System.out.println(round.propValueHash);
+                    System.exit(-1);
+                }
+                
                 communication.send(this.reconfManager.getCurrentViewOtherAcceptors(),
                         factory.createStrong(eid, round.getNumber(), value));
                 computeStrong(eid, round, value);
@@ -288,8 +264,8 @@ public class Acceptor {
     }
 
     /**
-     * Computes strongly accepted values according to the standard PaW specification (sends
-     * DECIDE messages, according to the number of strongly accepted values received)
+     * Computes strongly accepted values according to the standard consensus
+     * specification
      * @param round Round of the receives message
      * @param value Value sent in the message
      */
@@ -304,7 +280,7 @@ public class Acceptor {
     }
 
     /**
-     * This is the metodh invoked when a value is decided by this process
+     * This is the method invoked when a value is decided by this process
      * @param round Round at which the decision is made
      * @param value The decided value (got from WEAK or STRONG messages)
      */
@@ -315,25 +291,6 @@ public class Acceptor {
                 leaderModule.getLeader(round.getExecution().getId(),
                 round.getNumber()));
 
-        //round.getTimeoutTask().cancel();
         round.getExecution().decided(round, value);
-    }
-
-    /**
-     * This class is a data structure for a propose that was accepted
-     */
-    private class AcceptedPropose {
-
-        public int eid;
-        public int r;
-        public byte[] value;
-        public Proof p;
-
-        public AcceptedPropose(int eid, int r, byte[] value, Proof p) {
-            this.eid = eid;
-            this.r = r;
-            this.value = value;
-            this.p = p;
-        }
     }
 }

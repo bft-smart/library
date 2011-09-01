@@ -22,9 +22,7 @@ public class ReconfigurationManager extends ViewManager {
     public static final int ADD_SERVER = 0;
     public static final int REMOVE_SERVER = 1;
     public static final int CHANGE_F = 2;
-    public static final int TOM_NORMAL_REQUEST = 0;
-    public static final int TOM_READONLY_REQUEST = 1;
-    public static final int TOM_RECONFIG_REQUEST = 2;
+    
     private int quorumF; // f replicas
     private int quorum2F; // f * 2 replicas
     private int quorumStrong; // ((n + f) / 2) replicas
@@ -118,7 +116,7 @@ public class ReconfigurationManager extends ViewManager {
         }
     }
 
-    public byte[] executeUpdates(int eid, int decisionRound, byte[] state) {
+    public byte[] executeUpdates(int eid, int decisionRound) {
 
 
         List jSet = new LinkedList();
@@ -161,7 +159,7 @@ public class ReconfigurationManager extends ViewManager {
 
 
         //ret = reconfigure(updates.get(i).getContent());
-        return reconfigure(jSetInfo, jSet, rSet, f, eid, decisionRound, state);
+        return reconfigure(jSetInfo, jSet, rSet, f, eid, decisionRound, null);
     }
 
     private boolean contains(int id, List<Integer> list) {

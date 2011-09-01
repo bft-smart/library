@@ -36,11 +36,10 @@ public class Consensus {
     private Round decisionRound = null;
     private byte[] decision = null; // decided value
     private TOMMessage[] deserializedDecision = null; // decided value (deserialized)
-
+    
     //for benchmarking
     public TOMMessage firstMessageProposed = null;
     public int batchSize = 0;
-
 
     /**
      * Creates a new instance of Consensus
@@ -53,11 +52,7 @@ public class Consensus {
     }
 
     public void decided(Round round) {
-        //synchronized (sync) {
-            //this.decision = decision;
-            this.decisionRound = round;
-            //sync.notifyAll();
-        //}
+        this.decisionRound = round;
     }
 
     public Round getDecisionRound() {
@@ -69,36 +64,20 @@ public class Consensus {
      * @return Decided Value
      */
     public byte[] getDecision() {
-        //synchronized (sync) {  //TODO is this sync needed? cspann
-            while (decision == null) {
-                waitForPropose(); // Eduardo: deve ter um waitForDecision separando (agora funciona pq é só um sleep)
-                decision = decisionRound.propValue;
-            }
-            return decision;
-        //}
+        while (decision == null) {
+            waitForPropose(); // Eduardo: deve ter um waitForDecision separando (agora funciona pq é só um sleep)
+            decision = decisionRound.propValue;
+        }
+        return decision;
     }
 
     public TOMMessage[] getDeserializedDecision() {
-        //synchronized (sync) {
-            while (deserializedDecision == null) {
-                waitForPropose();
-                deserializedDecision = decisionRound.deserializedPropValue;
-            }
-        //}
+        while (deserializedDecision == null) {
+            waitForPropose();
+            deserializedDecision = decisionRound.deserializedPropValue;
+        }
         return deserializedDecision;
     }
-
-    /**public void setDeserialisedDecision(TOMMessage[] deserialised) {
-
-        //System.out.println("Chamou o setDeserialisedDecision......");
-        //synchronized (sync) {
-        if(this.deserializedDecision == null){
-            this.deserializedDecision = deserialised;
-        }
-            //sync.notifyAll();
-        //}
-
-    }*/
 
     /**
      * The Execution ID for this consensus
@@ -109,12 +88,12 @@ public class Consensus {
     }
 
     private void waitForPropose() {
-        while(decisionRound.deserializedPropValue == null) {
-            try{
-                Logger.println("waiting for propose for "+eid);
+        while (decisionRound.deserializedPropValue == null) {
+            try {
+                Logger.println("waiting for propose for " + eid);
                 Thread.sleep(1);
-            }catch(InterruptedException ie) {}
+            } catch (InterruptedException ie) {
+            }
         }
     }
-
 }

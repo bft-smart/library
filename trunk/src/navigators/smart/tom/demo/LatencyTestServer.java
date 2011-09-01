@@ -24,6 +24,7 @@ import java.util.logging.Logger;
 
 import navigators.smart.communication.ServerCommunicationSystem;
 import navigators.smart.reconfiguration.ReconfigurationManager;
+import navigators.smart.tom.MessageContext;
 import navigators.smart.tom.TOMReceiver;
 import navigators.smart.tom.core.messages.TOMMessage;
 
@@ -59,7 +60,7 @@ public class LatencyTestServer extends TOMReceiver {
         /******************************************************/
     }
     
-    public void receiveOrderedMessage(TOMMessage msg){
+    public void receiveOrderedMessage(TOMMessage msg, navigators.smart.tom.MessageContext msgCtx){
         TOMMessage reply = new TOMMessage(id,session,msg.getSequence(),
                 msg.getContent(),msg.getViewID());
 
@@ -70,7 +71,7 @@ public class LatencyTestServer extends TOMReceiver {
     }
     
     @Override
-    public void receiveMessage(TOMMessage msg) {
+    public void receiveMessage(TOMMessage msg, MessageContext msgCtx) {
         TOMMessage reply = new TOMMessage(id,session,msg.getSequence(),
                 msg.getContent(),msg.getViewID());
 

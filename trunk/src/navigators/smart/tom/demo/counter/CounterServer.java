@@ -23,18 +23,16 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
+import navigators.smart.tom.MessageContext;
 import navigators.smart.tom.ServiceReplica;
-import navigators.smart.tom.util.DebugInfo;
 
 
 /**
  * Example replica that implements a BFT replicated service (a counter).
  *
  */
-public class CounterServer extends ServiceReplica {
+public final class CounterServer extends ServiceReplica {
     
     private int counter = 0;
     private int iterations = 0;
@@ -51,21 +49,32 @@ public class CounterServer extends ServiceReplica {
     
     
     @Override
-    public byte[] executeCommand(int clientId, long timestamp, byte[] nonces, byte[] command, boolean readOnly, DebugInfo info) {
-        
+    public byte[] executeOrdered(byte[] command, MessageContext msgCtx) {
+        return execute(command,msgCtx);
+    }
+    
+    @Override
+    public byte[] executeUnordered(byte[] command, MessageContext msgCtx) {
+        return execute(command,msgCtx);
+    }
+    
+    public byte[] execute(byte[] command, MessageContext msgCtx) {
         iterations++;
         try {
             int increment = new DataInputStream(new ByteArrayInputStream(command)).readInt();
-            System.out.println("read-only request: "+readOnly);
+            System.out.println("read-only request: "+(msgCtx.getConsensusId() == -1));
             counter += increment;
-            if (info == null) System.out.println("[server] (" + iterations + ") Counter incremented: " + counter);
-            else System.out.println("[server] (" + iterations + " / " + info.eid + ") Counter incremented: " + counter);
+            if (msgCtx.getConsensusId() == -1)
+                System.out.println("[server] (" + iterations + ") Counter incremented: " + counter);
+            else
+                System.out.println("[server] (" + iterations + " / " + msgCtx.getConsensusId() + ") Counter incremented: " + counter);
+            
             ByteArrayOutputStream out = new ByteArrayOutputStream(4);
             new DataOutputStream(out).writeInt(counter);
             return out.toByteArray();
         } catch (IOException ex) {
-            Logger.getLogger(CounterServer.class.getName()).log(Level.SEVERE, null, ex);
-            return null;
+            System.err.println("Invalid request received!");
+            return new byte[0];
         }
     }
 

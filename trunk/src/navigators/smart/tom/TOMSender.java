@@ -27,12 +27,12 @@ import navigators.smart.communication.client.CommunicationSystemClientSideFactor
 import navigators.smart.communication.client.ReplyReceiver;
 import navigators.smart.reconfiguration.ViewManager;
 import navigators.smart.tom.core.messages.TOMMessage;
+import navigators.smart.tom.core.messages.TOMMessageType;
 
 
 
 /**
- * This class is used to
- * multicast data to a group of replicas
+ * This class is used to multicast messages to replicas and receive replies.
  */
 public abstract class TOMSender implements ReplyReceiver {
 
@@ -164,7 +164,7 @@ public abstract class TOMSender implements ReplyReceiver {
      * @param reqId unique integer that identifies this request
      * @param reqType TOM_NORMAL, TOM_READONLY or TOM_RECONFIGURATION
      */
-    public void TOMulticast(byte[] m, int reqId, int reqType) {
+    public void TOMulticast(byte[] m, int reqId, TOMMessageType reqType) {
         cs.send(useSignatures, viewManager.getCurrentViewProcesses(),
                 new TOMMessage(me, session, reqId, m, viewManager.getCurrentViewId(),
                 reqType));
