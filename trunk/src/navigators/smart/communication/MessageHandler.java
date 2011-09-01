@@ -25,7 +25,6 @@ import navigators.smart.statemanagment.SMMessage;
 import navigators.smart.tom.core.TOMLayer;
 import navigators.smart.tom.core.messages.TOMMessage;
 import navigators.smart.tom.core.timer.messages.ForwardedMessage;
-import navigators.smart.tom.core.timer.messages.RTMessage;
 import navigators.smart.tom.util.TOMUtil;
 import navigators.smart.tom.leaderchange.LCMessage;
 
@@ -51,10 +50,6 @@ public class MessageHandler {
         if (sm instanceof PaxosMessage) {
             PaxosMessage paxosMsg = (PaxosMessage) sm;
             acceptor.deliver(paxosMsg);
-        } else if (sm instanceof RTMessage) {
-            RTMessage rtMsg = (RTMessage) sm;
-            tomLayer.deliverTimeoutRequest(rtMsg);
-
         /*** ISTO E CODIGO DO JOAO, RELACIONADO COM A TROCA DE LIDER */
         } else if (sm instanceof LCMessage) {
             LCMessage lcMsg = (LCMessage) sm;
