@@ -29,7 +29,7 @@ import navigators.smart.tom.core.TOMLayer;
  * Print information about the replica when it is shutdown.
  *
  */
-public class ShutdownThread extends Thread {
+public class ShutdownHookThread extends Thread {
 
     private ServerCommunicationSystem scs;
     private LeaderModule lm;
@@ -37,7 +37,7 @@ public class ShutdownThread extends Thread {
     private ExecutionManager manager;
     private TOMLayer tomLayer;
 
-    public ShutdownThread(ServerCommunicationSystem scs, LeaderModule lm,
+    public ShutdownHookThread(ServerCommunicationSystem scs, LeaderModule lm,
             Acceptor acceptor, ExecutionManager manager, TOMLayer tomLayer) {
         this.scs = scs;
         this.lm = lm;

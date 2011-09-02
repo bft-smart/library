@@ -15,24 +15,18 @@
  *
  * You should have received a copy of the GNU General Public License along with SMaRt.  If not, see <http://www.gnu.org/licenses/>.
  */
-
 package navigators.smart.communication.client;
 
 import navigators.smart.communication.client.netty.NettyClientServerCommunicationSystemClientSide;
 import navigators.smart.reconfiguration.ViewManager;
-
 
 /**
  *
  * @author Paulo
  */
 public class CommunicationSystemClientSideFactory {
-    public static CommunicationSystemClientSide getCommunicationSystemClientSide(ViewManager manager){
-         if (manager.getStaticConf().clientServerCommSystem() == 1){
-            return new NettyClientServerCommunicationSystemClientSide(manager);
-         }
 
-         System.out.println("Error: no client-server communication system is defined");
-         return null;
+    public static CommunicationSystemClientSide getCommunicationSystemClientSide(ViewManager manager) {
+        return new NettyClientServerCommunicationSystemClientSide(manager);
     }
 }

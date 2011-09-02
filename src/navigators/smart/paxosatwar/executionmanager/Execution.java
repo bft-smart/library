@@ -57,10 +57,9 @@ public class Execution {
      * @param consensus Consensus instance to which this execution works for
      * @param initialTimeout Initial timeout for rounds
      */
-    protected Execution(ExecutionManager manager, Consensus consensus, long initialTimeout) {
+    protected Execution(ExecutionManager manager, Consensus consensus) {
         this.manager = manager;
         this.consensus = consensus;
-        this.initialTimeout = initialTimeout;
     }
 
     /**
@@ -107,7 +106,7 @@ public class Execution {
 
         Round round = rounds.get(number);
         if(round == null && create){
-            round = new Round(recManager, this, number, initialTimeout);
+            round = new Round(recManager, this, number);
             rounds.put(number, round);
         }
 
@@ -179,7 +178,7 @@ public class Execution {
         }
 
         max++;
-        Round round = new Round(recManager, this, max, initialTimeout);
+        Round round = new Round(recManager, this, max);
         rounds.put(max, round);
 
         roundsLock.unlock();
@@ -224,7 +223,7 @@ public class Execution {
      */
     public Round getLastRound() {
         roundsLock.lock();
-        if (rounds.size() == 0) {
+        if (rounds.isEmpty()) {
             roundsLock.unlock();
             return null;
         }
@@ -234,7 +233,7 @@ public class Execution {
     }
 
     /**
-     * Informs wether or not the execution is decided
+     * Informs whether or not the execution is decided
      *
      * @return True if it is decided, false otherwise
      */
@@ -246,7 +245,7 @@ public class Execution {
      * Called by the Acceptor, to set the decided value
      *
      * @param value The decided value
-     * @param round The round at which a desision was made
+     * @param round The round at which a decision was made
      */
     public void decided(Round round, byte[] value) {
         if (!decided) {

@@ -16,7 +16,7 @@
  * You should have received a copy of the GNU General Public License along with SMaRt.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package navigators.smart.tom.core.timer.messages;
+package navigators.smart.tom.core.timer;
 
 import java.io.IOException;
 import java.io.ObjectInput;

@@ -24,7 +24,7 @@ import navigators.smart.paxosatwar.roles.Acceptor;
 import navigators.smart.statemanagment.SMMessage;
 import navigators.smart.tom.core.TOMLayer;
 import navigators.smart.tom.core.messages.TOMMessage;
-import navigators.smart.tom.core.timer.messages.ForwardedMessage;
+import navigators.smart.tom.core.timer.ForwardedMessage;
 import navigators.smart.tom.util.TOMUtil;
 import navigators.smart.tom.leaderchange.LCMessage;
 

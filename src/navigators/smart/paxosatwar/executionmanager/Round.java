@@ -32,18 +32,17 @@ import navigators.smart.tom.core.messages.TOMMessage;
 public class Round implements Serializable {
 
     private transient Execution execution; // Execution where the round belongs to
-    //private transient TimeoutTask timeoutTask; // Timeout ssociated with this round
+    
     private int number; // Round's number
     private int me; // Process ID
     private boolean[] weakSetted;
     private boolean[] strongSetted;
     private byte[][] weak; // weakling accepted values from other processes
     private byte[][] strong; // strongly accepted values from other processes
-    private byte[][] decide; // values decided by other processes
     private Collection<Integer> freeze = null; // processes where this round was freezed
     private boolean frozen = false; // is this round frozen?
     private boolean collected = false; // indicates if a collect message for this round was already sent
-    //private long timeout; // duration of the timeout
+    
     private boolean alreadyRemoved = false; // indicates if this round was removed from its execution
 
     public byte[] propValue = null; // proposed value
@@ -60,7 +59,7 @@ public class Round implements Serializable {
      * @param number Number of the round
      * @param timeout Timeout duration for this round
      */
-    protected Round(ReconfigurationManager manager, Execution parent, int number, long timeout) {
+    protected Round(ReconfigurationManager manager, Execution parent, int number) {
         this.execution = parent;
         this.number = number;
         this.manager = manager;
@@ -80,22 +79,15 @@ public class Round implements Serializable {
         if (number == 0) {
             this.weak = new byte[n][];
             this.strong = new byte[n][];
-            this.decide = new byte[n][];
 
             Arrays.fill((Object[]) weak, null);
             Arrays.fill((Object[]) strong, null);
-            Arrays.fill((Object[]) decide, null);
         } else {
             Round previousRound = execution.getRound(number - 1, manager);
 
             this.weak = previousRound.getWeak();
             this.strong = previousRound.getStrong();
-            this.decide = previousRound.getDecide();
         }
-
-        //define the timeout for this round (not used anymore)
-        //this.timeout = (int) Math.pow(2, number) * timeout;
-        //execution.getManager().getAcceptor().scheduleTimeout(this);
     }
 
     /**
@@ -154,22 +146,6 @@ public class Round implements Serializable {
     }
 
     /**
-     * Sets the timeout associated with this round
-     * @param timeoutTask The timeout associated with this round
-     */
-    /*public void setTimeoutTask(TimeoutTask timeoutTask) {
-        this.timeoutTask = timeoutTask;
-    }*/
-
-    /**
-     * Retrieves the timeout associated with this round
-     * @param timeoutTask The timeout associated with this round
-     */
-    /*public TimeoutTask getTimeoutTask() {
-        return timeoutTask;
-    }*/
-
-    /**
      * Informs if there is a weakly accepted value from a replica
      * @param acceptor The replica ID
      * @return True if there is a weakly accepted value from a replica, false otherwise
@@ -186,17 +162,6 @@ public class Round implements Serializable {
     public boolean isStrongSetted(int acceptor) {
         //******* EDUARDO BEGIN **************//
         return strong[this.manager.getCurrentViewPos(acceptor)] != null;
-        //******* EDUARDO END **************//
-    }
-
-    /**
-     * Informs if there is a decided value from a replica
-     * @param acceptor The replica ID
-     * @return True if there is a decided value from a replica, false otherwise
-     */
-    public boolean isDecideSetted(int acceptor) {
-        //******* EDUARDO BEGIN **************//
-        return decide[this.manager.getCurrentViewPos(acceptor)] != null;
         //******* EDUARDO END **************//
     }
 
@@ -269,36 +234,6 @@ public class Round implements Serializable {
     }
 
     /**
-     * Retrieves the decided value by the specified replica
-     * @param acceptor The replica ID
-     * @return The value decided by the specified replica
-     */
-    public byte[] getDecide(int acceptor) {
-        //******* EDUARDO BEGIN **************//
-        return decide[this.manager.getCurrentViewPos(acceptor)];
-        //******* EDUARDO END **************//
-    }
-
-    /**
-     * Retrives all the decided values by all replicas
-     * @return The values decided by all replicas
-     */
-    public byte[][] getDecide() {
-        return decide;
-    }
-
-    /**
-     * Sets the decided value by the specified replica
-     * @param acceptor The replica ID
-     * @param value The value decided by the specified replica
-     */
-    public void setDecide(int acceptor, byte[] value) {
-        //******* EDUARDO BEGIN **************//
-        decide[this.manager.getCurrentViewPos(acceptor)] = value;
-        //******* EDUARDO END **************//
-    }
-
-    /**
      * Indicates if a collect message for this round was already sent
      * @return True if done so, false otherwise
      */
@@ -367,15 +302,6 @@ public class Round implements Serializable {
     }
 
     /**
-     * Retrives the ammount of replicas that decided a specified value
-     * @param value The value in question
-     * @return Ammount of replicas that decided the specified value
-     */
-    public int countDecide(byte[] value) {
-        return count(null,decide, value);
-    }
-
-    /**
      * Counts how many times 'value' occurs in 'array'
      * @param array Array where to count
      * @param value Value to count
@@ -413,12 +339,10 @@ public class Round implements Serializable {
         for (int i = 0; i < weak.length - 1; i++) {
             buffWeak.append(str(weak[i]) + " [" + (weak[i] != null ? weak[i].length : 0) + " bytes] ,");
             buffStrong.append(str(strong[i]) + " [" + (strong[i] != null ? strong[i].length : 0) + " bytes] ,");
-            buffDecide.append(str(decide[i]) + " [" + (decide[i] != null ? decide[i].length : 0) + " bytes] ,");
         }
 
         buffWeak.append(str(weak[weak.length - 1]) + " [" + (weak[weak.length - 1] != null ? weak[weak.length - 1].length : 0) + " bytes])");
         buffStrong.append(str(strong[strong.length - 1]) + " [" + (strong[strong.length - 1] != null ? strong[strong.length - 1].length : 0) + " bytes])");
-        buffDecide.append(str(decide[decide.length - 1]) + " [" + (decide[decide.length - 1] != null ? decide[decide.length - 1].length : 0) + " bytes])");
 
         return "eid=" + execution.getId() + " r=" + getNumber() + " " + buffWeak + " " + buffStrong + " " + buffDecide;
     }
@@ -438,7 +362,7 @@ public class Round implements Serializable {
     }
     
     /**
-     * Limpa toda a informacao que tem sobre o consenso (proposes, weaks, strons e decides)
+     * Clear all round info.
      */
     public void clear() {
 
@@ -452,10 +376,8 @@ public class Round implements Serializable {
 
         this.weak = new byte[n][];
         this.strong = new byte[n][];
-        this.decide = new byte[n][];
 
         Arrays.fill((Object[]) weak, null);
         Arrays.fill((Object[]) strong, null);
-        Arrays.fill((Object[]) decide, null);
     }
 }

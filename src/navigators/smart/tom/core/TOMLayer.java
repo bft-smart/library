@@ -57,7 +57,7 @@ import navigators.smart.tom.TOMRequestReceiver;
 import navigators.smart.tom.core.messages.TOMMessage;
 import navigators.smart.tom.core.messages.TOMMessageType;
 import navigators.smart.tom.core.timer.RequestsTimer;
-import navigators.smart.tom.core.timer.messages.ForwardedMessage;
+import navigators.smart.tom.core.timer.ForwardedMessage;
 import navigators.smart.tom.util.BatchBuilder;
 import navigators.smart.tom.util.BatchReader;
 import navigators.smart.tom.util.Logger;
@@ -158,7 +158,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         try {
             this.engine = Signature.getInstance("SHA1withRSA");
         } catch (Exception e) {
-            e.printStackTrace();
+            e.printStackTrace(System.err);
         }
 
         this.prk = reconfManager.getStaticConf().getRSAPrivateKey();
@@ -180,7 +180,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
     /**
      * Computes an hash for a TOM message
      * @param message
-     * @return Hash for teh specified TOM message
+     * @return Hash for the specified TOM message
      */
     public final byte[] computeHash(byte[] data) {
         byte[] ret = null;
@@ -1102,13 +1102,11 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
                             if (ois.readBoolean()) { // conteudo do ultimo eid decidido
 
-
                                 last = ois.readInt();
 
                                 lastValue = (byte[]) ois.readObject();
 
                                 //TODO: Falta a prova!
-
                             }
 
                             lastData = new LastEidData(msg.getSender(), last, lastValue, null);
@@ -1142,12 +1140,10 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
                                 catch_up(ts);
                             }
-
                         } catch (IOException ex) {
-                            java.util.logging.Logger.getLogger(TOMLayer.class.getName()).log(Level.SEVERE, null, ex);
+                            ex.printStackTrace(System.err);
                         } catch (ClassNotFoundException ex) {
-                            java.util.logging.Logger.getLogger(TOMLayer.class.getName()).log(Level.SEVERE, null, ex);
-
+                            ex.printStackTrace(System.err);
                         }
 
                   }
@@ -1304,7 +1300,6 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             r.propValueHash = hash;
             r.propValue = propose;
             r.deserializedPropValue = checkProposedValue(propose);
-            r.setDecide(me, hash);
             exec.decided(r, hash); // entregar a decisao a delivery thread
         }
         byte[] tmpval = null;

@@ -20,7 +20,9 @@ package navigators.smart.communication.client.netty;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.net.ConnectException;
 import java.net.InetSocketAddress;
+import java.nio.channels.ClosedChannelException;
 import java.security.NoSuchAlgorithmException;
 import java.security.spec.InvalidKeySpecException;
 import java.util.ArrayList;
@@ -33,7 +35,6 @@ import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import java.util.logging.Level;
 
 import javax.crypto.Mac;
 import javax.crypto.SecretKey;
@@ -49,7 +50,6 @@ import navigators.smart.tom.util.TOMUtil;
 
 import org.jboss.netty.bootstrap.ServerBootstrap;
 import org.jboss.netty.channel.Channel;
-import org.jboss.netty.channel.ChannelFuture;
 import org.jboss.netty.channel.ChannelHandlerContext;
 import org.jboss.netty.channel.ChannelPipelineCoverage;
 import org.jboss.netty.channel.ChannelStateEvent;
@@ -123,47 +123,27 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
     }
 
     @Override
-    public void exceptionCaught(
-            ChannelHandlerContext ctx, ExceptionEvent e) {
-        //if (!(e.getCause() instanceof ClosedChannelException))
-        System.out.println("Excepção no  CS (server side)!");
-               e.getCause().printStackTrace();
-    }
-
-    @Override
-    public void messageReceived(
-            ChannelHandlerContext ctx, MessageEvent e) {
-        TOMMessage sm = (TOMMessage) e.getMessage();
-
-        //******* EDUARDO BEGIN **************//
-        if (manager.getStaticConf().getCommBuffering() > 0) {
-            lock.lock();
-            requestsReceived.add(sm);
-            if (requestsReceived.size()>= manager.getStaticConf().getCommBuffering()){
-        //******* EDUARDO END **************//
-                for (int i=0; i<requestsReceived.size(); i++) {
-                    //delivers message to TOMLayer
-                    requestReceiver.requestReceived(requestsReceived.get(i));
-                }
-                requestsReceived = null;
-                requestsReceived = new ArrayList<TOMMessage>();
-            }
-            lock.unlock();
+    public void exceptionCaught( ChannelHandlerContext ctx, ExceptionEvent e) {
+        if (!(e.getCause() instanceof ClosedChannelException) && !(e.getCause() instanceof ConnectException)) {
+            System.out.println("Connection with client closed...");
         } else {
-            //delivers message to TOMLayer
-            requestReceiver.requestReceived(sm);
+            e.getCause().printStackTrace(System.err);
         }
     }
 
     @Override
-    public void channelConnected(
-            ChannelHandlerContext ctx, ChannelStateEvent e) {
-        navigators.smart.tom.util.Logger.println("Session Created, active clients=" + sessionTable.size());
+    public void messageReceived(ChannelHandlerContext ctx, MessageEvent e) {
+        //delivers message to TOMLayer
+        requestReceiver.requestReceived((TOMMessage) e.getMessage());
     }
 
     @Override
-    public void channelClosed(
-            ChannelHandlerContext ctx, ChannelStateEvent e) {
+    public void channelConnected( ChannelHandlerContext ctx, ChannelStateEvent e) {
+        Logger.println("Session Created, active clients=" + sessionTable.size());
+    }
+
+    @Override
+    public void channelClosed( ChannelHandlerContext ctx, ChannelStateEvent e) {
         rl.writeLock().lock();
         //removes session from sessionTable
         Set s = sessionTable.entrySet();

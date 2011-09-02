@@ -26,7 +26,7 @@ import navigators.smart.paxosatwar.roles.Acceptor;
 import navigators.smart.paxosatwar.roles.Proposer;
 import navigators.smart.reconfiguration.ReconfigurationManager;
 import navigators.smart.tom.core.TOMLayer;
-import navigators.smart.tom.util.ShutdownThread;
+import navigators.smart.tom.util.ShutdownHookThread;
 
 /**
  * This class is used to
@@ -36,19 +36,18 @@ import navigators.smart.tom.util.ShutdownThread;
 public abstract class TOMReceiver implements TOMRequestReceiver {
 
     private boolean tomStackCreated = false;
+    private ReplicaContext replicaCtx = null;
 
-   
     public void init(ServerCommunicationSystem cs, ReconfigurationManager reconfManager) {
         this.init(cs, reconfManager,-1,-1);
     }
     
     /**
-     * This metohd initializes the object
+     * This method initializes the object
      * 
-     * @param cs Server side comunication System
+     * @param cs Server side communication System
      * @param conf Total order messaging configuration
      */
-    //public void init(ServerCommunicationSystem cs, TOMConfiguration conf) {
     public void init(ServerCommunicationSystem cs, ReconfigurationManager reconfManager, 
                           int lastExec, int lastLeader) {
         if (tomStackCreated) { // if this object was already initialized, don't do it again
@@ -56,19 +55,11 @@ public abstract class TOMReceiver implements TOMRequestReceiver {
         }
        
         //******* EDUARDO BEGIN **************//
-        
-        // Get group of replicas
-        //int[] group = new int[conf.getN()];
-        //for (int i = 0; i < group.length; i++) {
-          //  group[i] = i;
-        //}
-
         int me = reconfManager.getStaticConf().getProcessId(); // this process ID
 
         if (!reconfManager.isInCurrentView()) {
             throw new RuntimeException("I'm not an acceptor!");
         }
-
         //******* EDUARDO END **************//
         
         // Assemble the total order messaging layer
@@ -82,7 +73,8 @@ public abstract class TOMReceiver implements TOMRequestReceiver {
         Proposer proposer = new Proposer(cs, messageFactory, reconfManager);
 
         ExecutionManager manager = new ExecutionManager(reconfManager, acceptor, proposer,
-                               me, reconfManager.getStaticConf().getFreezeInitialTimeout());
+                               me);
+        
         acceptor.setManager(manager);
         proposer.setManager(manager);
 
@@ -99,9 +91,22 @@ public abstract class TOMReceiver implements TOMRequestReceiver {
 
         acceptor.setTOMLayer(tomLayer);
 
-        Runtime.getRuntime().addShutdownHook(new ShutdownThread(cs,lm,acceptor,manager,tomLayer));
+        if(reconfManager.getStaticConf().isShutdownHookEnabled()){
+            Runtime.getRuntime().addShutdownHook(new ShutdownHookThread(cs,lm,acceptor,manager,tomLayer));
+        }
         tomLayer.start(); // start the layer execution
         tomStackCreated = true;
+        
+        replicaCtx = new ReplicaContext(cs, reconfManager);
+    }
+
+    /**
+     * Obtains the current replica context (getting access to several information
+     * and capabilities of the replication engine).
+     * 
+     * @return this replica context
+     */
+    public final ReplicaContext getReplicaContext() {
+        return replicaCtx;
     }
 }
-

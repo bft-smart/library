@@ -28,7 +28,6 @@ public class TOMConfiguration extends Configuration {
     protected int n;
     protected int f;
     protected int requestTimeout;
-    protected int freezeInitialTimeout;
     protected int tomPeriod;
     protected int paxosHighMark;
     protected int revivalHighMark;
@@ -37,20 +36,18 @@ public class TOMConfiguration extends Configuration {
     protected int numberOfNonces;
     protected int inQueueSize;
     protected int outQueueSize;
-    protected boolean decideMessagesEnabled;
+    protected boolean shutdownHookEnabled;
     protected boolean verifyTimestamps;
     protected boolean useSenderThread;
     protected RSAKeyLoader rsaLoader;
-    protected Logger log;
-    protected int clientServerCommSystem;
-    private int maxMessageSize;
     private int debug;
     private int numNIOThreads;   
-    private int commBuffering;
     private int useMACs;
     private int useSignatures;
+
     private boolean  stateTransferEnabled;
     private int checkpointPeriod;
+    
     private int useControlFlow;
     
     
@@ -84,26 +81,8 @@ public class TOMConfiguration extends Configuration {
                 f = Integer.parseInt(s);
             }
 
-            s = (String) configs.remove("system.paxos.freeze.timeout");
-            if (s == null) {
-                freezeInitialTimeout = n * 10;
-            } else {
-                freezeInitialTimeout = Integer.parseInt(s);
-            }
-
-            s = (String) configs.remove("system.paxos.decideMessages");
-            if (s == null) {
-                decideMessagesEnabled = false;
-            } else {
-                decideMessagesEnabled = Boolean.parseBoolean(s);
-            }
-
-            s = (String) configs.remove("system.totalordermulticast.timeout");
-            if (s == null) {
-                requestTimeout = freezeInitialTimeout / 2;
-            } else {
-                requestTimeout = Integer.parseInt(s);
-            }
+            s = (String) configs.remove("system.shutdownhook");
+            shutdownHookEnabled = (s != null)? Boolean.parseBoolean(s): false;
 
             s = (String) configs.remove("system.totalordermulticast.period");
             if (s == null) {
@@ -137,13 +116,6 @@ public class TOMConfiguration extends Configuration {
                 maxBatchSize = 100;
             } else {
                 maxBatchSize = Integer.parseInt(s);
-            }
-
-            s = (String) configs.remove("system.totalordermulticast.maxMessageSize");
-            if (s == null) {
-                maxMessageSize = 200; //the same as used in upright
-            } else {
-                maxMessageSize = Integer.parseInt(s);
             }
 
             s = (String) configs.remove("system.debug");
@@ -185,26 +157,11 @@ public class TOMConfiguration extends Configuration {
                 useSenderThread = Boolean.parseBoolean(s);
             }
 
-            s = (String) configs.remove("system.communication.clientServerCommSystem");
-            if (s == null) {
-                clientServerCommSystem = 1;
-            } else {
-                clientServerCommSystem = Integer.parseInt(s);
-            }
-
-
             s = (String) configs.remove("system.communication.numNIOThreads");
             if (s == null) {
                 numNIOThreads = 2;
             } else {
                 numNIOThreads = Integer.parseInt(s);
-            }
-
-             s = (String) configs.remove("system.communication.commBuffering");
-            if (s == null) {
-                commBuffering = 0;
-            } else {
-                commBuffering = Integer.parseInt(s);
             }
 
             s = (String) configs.remove("system.communication.useMACs");
@@ -279,19 +236,16 @@ public class TOMConfiguration extends Configuration {
             if (s == null) {
                 outQueueSize = 1000;
             } else {
-
                 outQueueSize = Integer.parseInt(s);
                 if (outQueueSize < 1) {
                     outQueueSize = 1000;
                 }
-
             }
             
             rsaLoader = new RSAKeyLoader(this, TOMConfiguration.configHome);
 
         } catch (Exception e) {
-            System.err.println("Wrong system.config file format.");
-            e.printStackTrace();
+            e.printStackTrace(System.err);
         }
 
     }
@@ -308,10 +262,6 @@ public class TOMConfiguration extends Configuration {
         return ttpId;
     }
     
-    public int getMaxMessageSize() {
-        return maxMessageSize;
-    }
-
     public int getRequestTimeout() {
         return requestTimeout;
     }
@@ -328,14 +278,6 @@ public class TOMConfiguration extends Configuration {
         return f;
     }
 
-    public int getTOMPeriod() {
-        return tomPeriod;
-    }
-
-    public int getFreezeInitialTimeout() {
-        return freezeInitialTimeout;
-    }
-
     public int getPaxosHighMark() {
         return paxosHighMark;
     }
@@ -348,8 +290,8 @@ public class TOMConfiguration extends Configuration {
         return maxBatchSize;
     }
 
-    public boolean isDecideMessagesEnabled() {
-        return decideMessagesEnabled;
+    public boolean isShutdownHookEnabled() {
+        return shutdownHookEnabled;
     }
 
     public boolean isStateTransferEnabled() {
@@ -372,14 +314,6 @@ public class TOMConfiguration extends Configuration {
         return useSenderThread;
     }
 
-    /**
-     *
-     * @return 0 (Netty), 1 (MINA)
-     */
-    public int clientServerCommSystem() {
-        return clientServerCommSystem;
-    }
-
      /**
      *     *
      */
@@ -390,13 +324,6 @@ public class TOMConfiguration extends Configuration {
     /**     * @return the numberOfNonces     */
     public int getNumberOfNonces() {
         return numberOfNonces;
-    }
-
-    /**
-     * Number of requests from clients buffered by the client communication system before delivering to the TOM Layer
-     */
-    public int getCommBuffering() {
-        return commBuffering;
     }
 
     /**
@@ -427,38 +354,21 @@ public class TOMConfiguration extends Configuration {
         return useControlFlow;
     }
 
-   /* public PublicKey[] getRSAServersPublicKeys() {
-        try {
-            return rsaLoader.loadServersPublicKeys();
-        } catch (Exception e) {
-            e.printStackTrace();
-            return null;
-        }
-
-    }*/
-
     public PublicKey getRSAPublicKey(int id) {
         try {
             return rsaLoader.loadPublicKey(id);
         } catch (Exception e) {
-            e.printStackTrace();
+            e.printStackTrace(System.err);
             return null;
         }
 
     }
-
-   /* public void increasePortNumber() {
-        for (int i = 0; i < getN(); i++) {
-            hosts.setPort(i, hosts.getPort(i) + 1);
-        }
-
-    }
-*/
+    
     public PrivateKey getRSAPrivateKey() {
         try {
             return rsaLoader.loadPrivateKey();
         } catch (Exception e) {
-            e.printStackTrace();
+            e.printStackTrace(System.err);
             return null;
         }
     }
