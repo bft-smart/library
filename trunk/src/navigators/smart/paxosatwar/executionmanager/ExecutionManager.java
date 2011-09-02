@@ -64,7 +64,6 @@ public final class ExecutionManager {
     private Round stoppedRound = null; // round at which the current execution was stoppped
     private ReentrantLock stoppedMsgsLock = new ReentrantLock(); //lock for stopped messages
     private TOMLayer tomLayer; // TOM layer associated with this execution manager
-    private long initialTimeout; // initial timeout for rounds
     private int paxosHighMark; // Paxos high mark for consensus instances
     /** ISTO E CODIGO DO JOAO, PARA TRATAR DA TRANSFERENCIA DE ESTADO */
     private int revivalHighMark; // Paxos high mark for consensus instances when this replica EID equals 0
@@ -81,14 +80,12 @@ public final class ExecutionManager {
      * @param initialTimeout initial timeout for rounds
      */
     public ExecutionManager(ReconfigurationManager manager, Acceptor acceptor,
-            Proposer proposer, int me, long initialTimeout) {
+            Proposer proposer, int me) {
         //******* EDUARDO BEGIN **************//
         this.reconfManager = manager;
         this.acceptor = acceptor;
         this.proposer = proposer;
-        //this.acceptors = manager.getCurrentViewProcesses();
         //this.me = me;
-        this.initialTimeout = initialTimeout;
 
         this.paxosHighMark = reconfManager.getStaticConf().getPaxosHighMark();
         /** ISTO E CODIGO DO JOAO, PARA TRATAR DA TRANSFERENCIA DE ESTADO */
@@ -299,8 +296,8 @@ public final class ExecutionManager {
     /**
      * Returns the specified consensus' execution
      *
-     * @param eid ID of the consensus' execution to be returned
-     * @return The consensus' execution specified
+     * @param eid ID of the consensus execution to be returned
+     * @return The consensus execution specified
      */
     public Execution getExecution(int eid) {
         executionsLock.lock();
@@ -312,7 +309,7 @@ public final class ExecutionManager {
             //let's create one...
             Consensus cons = new Consensus(eid);
 
-            execution = new Execution(this, cons, initialTimeout);
+            execution = new Execution(this, cons);
 
             //...and add it to the executions table
             executions.put(eid, execution);
@@ -394,6 +391,7 @@ public final class ExecutionManager {
         outOfContextLock.unlock();
     }
 
+    @Override
     public String toString() {
         return stoppedMsgs.toString();
     }

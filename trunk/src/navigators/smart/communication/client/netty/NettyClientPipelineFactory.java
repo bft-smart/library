@@ -66,6 +66,7 @@ public class NettyClientPipelineFactory implements ChannelPipelineFactory {
     }
 
 
+    @Override
     public ChannelPipeline getPipeline() throws Exception {
         ChannelPipeline p = pipeline();
         p.addLast("decoder", new NettyTOMMessageDecoder(isClient, sessionTable, authKey, macLength,manager,rl,signatureLength,manager.getStaticConf().getUseMACs()==1?true:false));

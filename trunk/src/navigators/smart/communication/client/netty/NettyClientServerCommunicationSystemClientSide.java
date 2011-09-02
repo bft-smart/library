@@ -20,15 +20,15 @@ package navigators.smart.communication.client.netty;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.net.ConnectException;
+import java.nio.channels.ClosedChannelException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.Signature;
 import java.security.spec.InvalidKeySpecException;
 import java.util.ArrayList;
-import java.util.Enumeration;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.ListIterator;
 import java.util.concurrent.Executors;
@@ -143,10 +143,13 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
                             + "mas temos que fazer os servidores armazenarem as view em um lugar default.");
 
                 } catch (InvalidKeyException ex) {
+                        ex.printStackTrace(System.err);
                 }
             }
         } catch (InvalidKeySpecException ex) {
+            ex.printStackTrace(System.err);
         } catch (NoSuchAlgorithmException ex) {
+            ex.printStackTrace(System.err);
         }
     }
 
@@ -231,10 +234,11 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, ExceptionEvent e) {
-        //if (!(e.getCause() instanceof ClosedChannelException) && !(e.getCause() instanceof ConnectException)) {
-        System.out.println("Excepção no  CS (client side)!");
-        e.getCause().printStackTrace();
-        //}
+        if (!(e.getCause() instanceof ClosedChannelException) && !(e.getCause() instanceof ConnectException)) {
+            System.out.println("Connection with server closed.");
+        } else {
+            e.getCause().printStackTrace(System.err);
+        }
     }
 
     @Override

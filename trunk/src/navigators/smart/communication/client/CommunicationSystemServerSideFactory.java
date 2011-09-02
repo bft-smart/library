@@ -15,12 +15,10 @@
  *
  * You should have received a copy of the GNU General Public License along with SMaRt.  If not, see <http://www.gnu.org/licenses/>.
  */
-
 package navigators.smart.communication.client;
 
 import navigators.smart.communication.client.netty.NettyClientServerCommunicationSystemServerSide;
 import navigators.smart.reconfiguration.ReconfigurationManager;
-
 
 /**
  *
@@ -28,13 +26,7 @@ import navigators.smart.reconfiguration.ReconfigurationManager;
  */
 public class CommunicationSystemServerSideFactory {
 
-    public static CommunicationSystemServerSide getCommunicationSystemServerSide(ReconfigurationManager manager){
-         if (manager.getStaticConf().clientServerCommSystem() == 1){
-            return new NettyClientServerCommunicationSystemServerSide(manager);
-         }
-
-         System.out.println("Error: no client-server communication system is defined");
-         return null;
+    public static CommunicationSystemServerSide getCommunicationSystemServerSide(ReconfigurationManager manager) {
+        return new NettyClientServerCommunicationSystemServerSide(manager);
     }
-
 }

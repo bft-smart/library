@@ -107,7 +107,7 @@ public class ServerCommunicationSystem extends Thread {
         long count = 0;
         while (true) {
             try {
-                if (count % 1000 == 0) {
+                if (count % 1000 == 0 && count > 0) {
                     Logger.println("(ServerCommunicationSystem.run) After " + count + " messages, inQueue size=" + inQueue.size());
                 }
 
