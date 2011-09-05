@@ -28,11 +28,8 @@ import java.security.MessageDigest;
 import java.security.PrivateKey;
 import java.security.Signature;
 import java.security.SignedObject;
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Timer;
-import java.util.TimerTask;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Level;
@@ -49,10 +46,7 @@ import navigators.smart.paxosatwar.executionmanager.LeaderModule;
 import navigators.smart.paxosatwar.executionmanager.Round;
 import navigators.smart.paxosatwar.roles.Acceptor;
 import navigators.smart.reconfiguration.ReconfigurationManager;
-import navigators.smart.statemanagment.SMMessage;
-import navigators.smart.statemanagment.StateLog;
 import navigators.smart.statemanagment.StateManager;
-import navigators.smart.statemanagment.TransferableState;
 import navigators.smart.tom.TOMRequestReceiver;
 import navigators.smart.tom.core.messages.TOMMessage;
 import navigators.smart.tom.core.messages.TOMMessageType;
@@ -81,7 +75,8 @@ public final class TOMLayer extends Thread implements RequestReceiver {
     private ServerCommunicationSystem communication; // Communication system between replicas
     //private OutOfContextMessageThread ot; // Thread which manages messages that do not belong to the current execution
     private DeliveryThread dt; // Thread which delivers total ordered messages to the appication
-    
+    private StateManager stateManager = null; // object which deals with the state transfer protocol
+
     /** Manage timers for pending requests */
     public RequestsTimer requestsTimer;
     /** Store requests received but still not ordered */
@@ -171,7 +166,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         this.dt.start();
 
         /** ISTO E CODIGO DO JOAO, PARA TRATAR DOS CHECKPOINTS E TRANSFERENCIA DE ESTADO*/
-        this.stateManager = new StateManager(this.reconfManager);
+        this.stateManager = new StateManager(this.reconfManager, this, dt);
         /*******************************************************/
     }
 
@@ -453,31 +448,6 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             //******* EDUARDO END **************//
     }
 
-    /** ISTO E CODIGO DO JOAO, PARA TRATAR DOS CHECKPOINTS */
-    private StateManager stateManager = null;
-    private ReentrantLock lockState = new ReentrantLock();
-    private ReentrantLock lockTimer = new ReentrantLock();
-    private Timer stateTimer = null;
-
-    public void saveState(byte[] state, int lastEid, int decisionRound, int leader) {
-
-        StateLog log = stateManager.getLog();
-
-        lockState.lock();
-
-        Logger.println("(TOMLayer.saveState) Saving state of EID " + lastEid + ", round " + decisionRound + " and leader " + leader);
-
-        log.newCheckpoint(state, computeHash(state));
-        log.setLastEid(-1);
-        log.setLastCheckpointEid(lastEid);
-        log.setLastCheckpointRound(decisionRound);
-        log.setLastCheckpointLeader(leader);
-        
-        lockState.unlock();
-
-        Logger.println("(TOMLayer.saveState) Finished saving state of EID " + lastEid + ", round " + decisionRound + " and leader " + leader);
-    }
-
     public boolean isRetrievingState() {
         //lockTimer.lock();
         boolean result =  stateManager != null && stateManager.getWaiting() != -1;
@@ -505,225 +475,10 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         }
     }
 
-    public void saveBatch(byte[] batch, int lastEid, int decisionRound, int leader) {
-
-        StateLog log = stateManager.getLog();
-
-        lockState.lock();
-
-        Logger.println("(TOMLayer.saveBatch) Saving batch of EID " + lastEid + ", round " + decisionRound + " and leader " + leader);
-
-        log.addMessageBatch(batch, decisionRound, leader);
-        log.setLastEid(lastEid);
-
-        lockState.unlock();
-
-        Logger.println("(TOMLayer.saveBatch) Finished saving batch of EID " + lastEid + ", round " + decisionRound + " and leader " + leader);
+    public StateManager getStateManager() {
+        return stateManager;
     }
-
-    /** ISTO E CODIGO DO JOAO, PARA TRATAR DA TRANSFERENCIA DE ESTADO */
-    
-    public void requestState(int sender, int eid) {
-
-        //******* EDUARDO BEGIN **************//
-        if (reconfManager.getStaticConf().isStateTransferEnabled()) {
-        //******* EDUARDO END **************//
-
-            Logger.println("(TOMLayer.requestState) The state transfer protocol is enabled");
-
-            if (stateManager.getWaiting() == -1) {
-
-                Logger.println("(TOMLayer.requestState) I'm not waiting for any state, so I will keep record of this message");
-                stateManager.addEID(sender, eid);
-
-                if (stateManager.getLastEID() < eid && stateManager.moreThenF_EIDs(eid)) {
-
-                    Logger.println("(TOMLayer.requestState) I have now more than " + reconfManager.getCurrentViewF() + " messages for EID " + eid + " which are beyond EID " + stateManager.getLastEID());
-
-                    requestsTimer.clearAll();
-                    stateManager.setLastEID(eid);
-                    stateManager.setWaiting(eid - 1);
-                    //stateManager.emptyReplicas(eid);// isto causa uma excepcao
-
-                    SMMessage smsg = new SMMessage(reconfManager.getStaticConf().getProcessId(), 
-                            eid - 1, TOMUtil.SM_REQUEST, stateManager.getReplica(), null);
-                    communication.send(reconfManager.getCurrentViewOtherAcceptors(), smsg);
-
-                    Logger.println("(TOMLayer.requestState) I just sent a request to the other replicas for the state up to EID " + (eid - 1));
-
-                    TimerTask stateTask =  new TimerTask() {
-                        public void run() {
-
-                        lockTimer.lock();
-
-                        Logger.println("(TimerTask.run) Timeout for the replica that was supposed to send the complete state. Changing desired replica.");
-                        System.out.println("Timeout no timer do estado!");
-
-                        stateManager.setWaiting(-1);
-                        stateManager.changeReplica();
-                        stateManager.emptyStates();
-                        stateManager.setReplicaState(null);
-
-                        lockTimer.unlock();
-                        }
-                    };
-
-                    Timer stateTimer = new Timer("state timer");
-                    stateTimer.schedule(stateTask,1500);
-                }
-            }
-        }
-        else {
-            System.out.println("##################################################################################");
-            System.out.println("- Ahead-of-time message discarded");
-            System.out.println("- If many messages of the same consensus are discarded, the replica can halt!");
-            System.out.println("- Try to increase the 'system.paxos.highMarc' configuration parameter.");
-            System.out.println("- Last consensus executed: " + lastExecuted);
-            System.out.println("##################################################################################");
-        }
-        /************************* TESTE *************************
-        System.out.println("[/TOMLayer.requestState]");
-        /************************* TESTE *************************/
-    }
-
-    public void SMRequestDeliver(SMMessage msg) {
-
-        //******* EDUARDO BEGIN **************//
-        if (reconfManager.getStaticConf().isStateTransferEnabled()) {
-        //******* EDUARDO END **************//
-
-            Logger.println("(TOMLayer.SMRequestDeliver) The state transfer protocol is enabled");
-            
-            lockState.lock();
-
-            Logger.println("(TOMLayer.SMRequestDeliver) I received a state request for EID " + msg.getEid() + " from replica " + msg.getSender());
-
-            boolean sendState = msg.getReplica() == reconfManager.getStaticConf().getProcessId();
-            if (sendState) Logger.println("(TOMLayer.SMRequestDeliver) I should be the one sending the state");
-
-            TransferableState state = stateManager.getLog().getTransferableState(msg.getEid(), sendState);
-
-            lockState.unlock();
-
-            if (state == null) {
-                Logger.println("(TOMLayer.SMRequestDeliver) I don't have the state requested :-(");
-
-              state = new TransferableState();
-            }
-
-            int[] targets = { msg.getSender() };
-            SMMessage smsg = new SMMessage(reconfManager.getStaticConf().getProcessId(), 
-                    msg.getEid(), TOMUtil.SM_REPLY, -1, state);
-
-            // malicious code, to force the replica not to send the state
-            //if (reconfManager.getStaticConf().getProcessId() != 0 || !sendState)
-            communication.send(targets, smsg);
-
-            Logger.println("(TOMLayer.SMRequestDeliver) I sent the state for checkpoint " + state.getLastCheckpointEid() + " with batches until EID " + state.getLastEid());
-
-        }
-    }
-
-    public void SMReplyDeliver(SMMessage msg) {
-
-        //******* EDUARDO BEGIN **************//
-
-        lockTimer.lock();
-        if (reconfManager.getStaticConf().isStateTransferEnabled()) {
-        //******* EDUARDO END **************//
-
-            Logger.println("(TOMLayer.SMReplyDeliver) The state transfer protocol is enabled");
-            Logger.println("(TOMLayer.SMReplyDeliver) I received a state reply for EID " + msg.getEid() + " from replica " + msg.getSender());
-
-            if (stateManager.getWaiting() != -1 && msg.getEid() == stateManager.getWaiting()) {
-
-                Logger.println("(TOMLayer.SMReplyDeliver) The reply is for the EID that I want!");
-            
-                if (msg.getSender() == stateManager.getReplica() && msg.getState().getState() != null) {
-                    Logger.println("(TOMLayer.SMReplyDeliver) I received the state, from the replica that I was expecting");
-                    stateManager.setReplicaState(msg.getState().getState());
-                    if (stateTimer != null) stateTimer.cancel();
-                }
-
-                stateManager.addState(msg.getSender(),msg.getState());
-
-                if (stateManager.moreThanF_Replies()) {
-
-                    Logger.println("(TOMLayer.SMReplyDeliver) I have at least " + reconfManager.getCurrentViewF() + " replies!");
-
-                    TransferableState state = stateManager.getValidHash();
-
-                    int haveState = 0;
-                    if (stateManager.getReplicaState() != null) {
-                        byte[] hash = null;
-                        hash = computeHash(stateManager.getReplicaState());
-                        if (state != null) {
-                            if (Arrays.equals(hash, state.getStateHash())) haveState = 1;
-                            else if (stateManager.getNumValidHashes() > reconfManager.getCurrentViewF()) haveState = -1;
-
-                        }
-                    }
-
-                    if (state != null && haveState == 1) {
-
-                        Logger.println("(TOMLayer.SMReplyDeliver) The state of those replies is good!");
-
-                        state.setState(stateManager.getReplicaState());
-                    
-                        lockState.lock();
-
-                        stateManager.getLog().update(state);
-
-                        lockState.unlock();
-
-                        dt.deliverLock();
-
-                        //ot.OutOfContextLock();
-
-                        stateManager.setWaiting(-1);
-
-                        dt.update(state);
-                        processOutOfContext();
-
-                        dt.canDeliver();
-
-                        //ot.OutOfContextUnlock();
-                        dt.deliverUnlock();
-                    
-                        stateManager.emptyStates();
-                        stateManager.setReplicaState(null);
-
-                        System.out.println("Actualizei o estado!");
-
-                    //******* EDUARDO BEGIN **************//
-                    } else if (state == null && (reconfManager.getCurrentViewN() / 2) < stateManager.getReplies()) {
-                    //******* EDUARDO END **************//
-                        
-                        Logger.println("(TOMLayer.SMReplyDeliver) I have more than " + 
-                                (reconfManager.getCurrentViewN() / 2) + " messages that are no good!");
-
-                        stateManager.setWaiting(-1);
-                        stateManager.emptyStates();
-                        stateManager.setReplicaState(null);
-
-                        if (stateTimer != null) stateTimer.cancel();
-                    } else if (haveState == -1) {
-
-                        Logger.println("(TOMLayer.SMReplyDeliver) The replica from which I expected the state, sent one which doesn't match the hash of the others, or it never sent it at all");
-
-                        stateManager.setWaiting(-1);
-                        stateManager.changeReplica();
-                        stateManager.emptyStates();
-                        stateManager.setReplicaState(null);
-
-                        if (stateTimer != null) stateTimer.cancel();
-                    }
-                }
-            }
-        }
-        lockTimer.unlock();
-    }
-
+   
     /*** ISTO E CODIGO DO JOAO, RELACIONADO COM A TROCA DE LIDER */
 
     /**

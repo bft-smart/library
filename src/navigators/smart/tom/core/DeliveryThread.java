@@ -113,7 +113,8 @@ public final class DeliveryThread extends Thread {
     public void update(TransferableState state) {
 
         int lastCheckpointEid = state.getLastCheckpointEid();
-        int lastEid = state.getLastEid();
+        //int lastEid = state.getLastEid();
+        int lastEid = lastCheckpointEid + (state.getMessageBatches() != null ? state.getMessageBatches().length : 0);
 
         Logger.println("(DeliveryThread.update) I'm going to update myself from EID "
                 + lastCheckpointEid + " to EID " + lastEid);
@@ -146,6 +147,15 @@ public final class DeliveryThread extends Thread {
                 //******* EDUARDO END **************//
             } catch (Exception e) {
                 e.printStackTrace(System.err);
+                if (e instanceof ArrayIndexOutOfBoundsException) {
+
+                    
+                            
+                    System.out.println("Eid do ultimo checkpoint: " + state.getLastCheckpointEid());
+                    System.out.println("Eid do ultimo consenso: " + state.getLastEid());
+                    System.out.println("numero de mensagens supostamente no batch: " + (state.getLastEid() - state.getLastCheckpointEid() + 1));
+                    System.out.println("numero de mensagens realmente no batch: " + state.getMessageBatches().length);
+                }
             }
 
         }
@@ -319,11 +329,11 @@ public final class DeliveryThread extends Thread {
             if ((cons.getId() > 0) && ((cons.getId() % manager.getStaticConf().getCheckpointPeriod()) == 0)) {
                 Logger.println("(DeliveryThread.run) Performing checkpoint for consensus " + cons.getId());
                 byte[] state = receiver.getState();
-                tomLayer.saveState(state, cons.getId(), cons.getDecisionRound().getNumber(), tomLayer.lm.getLeader(cons.getId(), cons.getDecisionRound().getNumber()));
+                tomLayer.getStateManager().saveState(state, cons.getId(), cons.getDecisionRound().getNumber(), tomLayer.lm.getLeader(cons.getId(), cons.getDecisionRound().getNumber()));
                 //TODO: possivelmente fazer mais alguma coisa
             } else {
                 Logger.println("(DeliveryThread.run) Storing message batch in the state log for consensus " + cons.getId());
-                tomLayer.saveBatch(cons.getDecision(), cons.getId(), cons.getDecisionRound().getNumber(), tomLayer.lm.getLeader(cons.getId(), cons.getDecisionRound().getNumber()));
+                tomLayer.getStateManager().saveBatch(cons.getDecision(), cons.getId(), cons.getDecisionRound().getNumber(), tomLayer.lm.getLeader(cons.getId(), cons.getDecisionRound().getNumber()));
                 //TODO: possivelmente fazer mais alguma coisa
             }
         }

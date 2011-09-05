@@ -216,8 +216,18 @@ public final class ExecutionManager {
             Logger.println("(ExecutionManager.checkLimits) Message for execution "
                     + msg.getNumber() + " is beyond the paxos highmark, adding it to out of context set");
             addOutOfContextMessage(msg);
-            
-            tomLayer.requestState(msg.getSender(),  msg.getNumber());
+
+            if (reconfManager.getStaticConf().isStateTransferEnabled())
+                tomLayer.getStateManager().requestState(msg.getSender(),  msg.getNumber());
+
+            else {
+                System.out.println("##################################################################################");
+                System.out.println("- Ahead-of-time message discarded");
+                System.out.println("- If many messages of the same consensus are discarded, the replica can halt!");
+                System.out.println("- Try to increase the 'system.paxos.highMarc' configuration parameter.");
+                System.out.println("- Last consensus executed: " + lastConsId);
+                System.out.println("##################################################################################");
+            }
             /******************************************************************/
         }
         

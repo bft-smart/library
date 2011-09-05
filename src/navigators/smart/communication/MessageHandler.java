@@ -65,9 +65,9 @@ public class MessageHandler {
         } else if (sm instanceof SMMessage) {
             SMMessage smsg = (SMMessage) sm;
             if (smsg.getType() == TOMUtil.SM_REQUEST) {
-                tomLayer.SMRequestDeliver(smsg);
+                tomLayer.getStateManager().SMRequestDeliver(smsg);
             } else {
-                tomLayer.SMReplyDeliver(smsg);
+                tomLayer.getStateManager().SMReplyDeliver(smsg);
             }
         /******************************************************************/
         }
