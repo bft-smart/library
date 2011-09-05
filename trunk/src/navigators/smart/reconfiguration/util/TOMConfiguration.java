@@ -91,6 +91,16 @@ public class TOMConfiguration extends Configuration {
                 tomPeriod = Integer.parseInt(s);
             }
 
+            s = (String) configs.remove("system.totalordermulticast.timeout");
+            if (s == null) {
+                requestTimeout = 10000;
+            } else {
+                requestTimeout = Integer.parseInt(s);
+                if (requestTimeout < 0) {
+                    requestTimeout = 0;
+                }
+            }
+
             s = (String) configs.remove("system.totalordermulticast.highMark");
             if (s == null) {
                 paxosHighMark = 10000;
