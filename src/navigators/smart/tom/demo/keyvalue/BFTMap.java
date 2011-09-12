@@ -43,7 +43,7 @@ public class BFTMap implements Map<String,HashMap<String,byte[]>> {
             new DataOutputStream(out).writeInt(BFTMAPUtil.GET);
             new DataOutputStream(out).writeUTF(tableName);
             
-            byte[] rep = KVProxy.invoke(out.toByteArray(),true);
+            byte[] rep = KVProxy.invoke(out.toByteArray(),false);
             ByteArrayInputStream bis = new ByteArrayInputStream(rep) ;
             ObjectInputStream in = new ObjectInputStream(bis) ;
             HashMap<String,byte[]> table = (HashMap<String,byte[]>) in.readObject();
@@ -65,7 +65,7 @@ public class BFTMap implements Map<String,HashMap<String,byte[]>> {
             new DataOutputStream(out).writeInt(BFTMAPUtil.GET);
             new DataOutputStream(out).writeUTF(tableName);
             new DataOutputStream(out).writeUTF(key);
-            byte[] rep = KVProxy.invoke(out.toByteArray(), true);
+            byte[] rep = KVProxy.invoke(out.toByteArray(), false);
             return rep;
         } catch (IOException ex) {
             Logger.getLogger(BFTMap.class.getName()).log(Level.SEVERE, null, ex);
@@ -83,7 +83,7 @@ public class BFTMap implements Map<String,HashMap<String,byte[]>> {
             ObjectOutputStream  out1 = new ObjectOutputStream(out) ;
             out1.writeObject(value);
             out1.close();
-            byte[] rep = KVProxy.invoke(out.toByteArray(),true);
+            byte[] rep = KVProxy.invoke(out.toByteArray(),false);
             ByteArrayInputStream bis = new ByteArrayInputStream(rep) ;
             ObjectInputStream in = new ObjectInputStream(bis) ;
             HashMap<String,byte[]> table = (HashMap<String,byte[]>) in.readObject();
@@ -106,7 +106,7 @@ public class BFTMap implements Map<String,HashMap<String,byte[]>> {
             new DataOutputStream(out).writeUTF(tableName);
             new DataOutputStream(out).writeUTF(key);
             new DataOutputStream(out).writeUTF(new String(value));
-            byte[] rep = KVProxy.invoke(out.toByteArray(),true);
+            byte[] rep = KVProxy.invoke(out.toByteArray(),false);
             return rep;
         } catch (IOException ex) {
             Logger.getLogger(BFTMap.class.getName()).log(Level.SEVERE, null, ex);
@@ -187,7 +187,7 @@ public class BFTMap implements Map<String,HashMap<String,byte[]>> {
             out = new ByteArrayOutputStream();
             new DataOutputStream(out).writeInt(BFTMAPUtil.TAB_CREATE_CHECK);
             new DataOutputStream(out).writeUTF((String) key);
-            byte[] rep = KVProxy.invoke(out.toByteArray(),true);
+            byte[] rep = KVProxy.invoke(out.toByteArray(),false);
             ByteArrayInputStream in = new ByteArrayInputStream(rep);
             boolean res = new DataInputStream(in).readBoolean();
             return res;
@@ -207,7 +207,7 @@ public class BFTMap implements Map<String,HashMap<String,byte[]>> {
             new DataOutputStream(out).writeInt(BFTMAPUtil.CHECK);
             new DataOutputStream(out).writeUTF((String) tableName);
             new DataOutputStream(out).writeUTF((String) key);
-            byte[] rep = KVProxy.invoke(out.toByteArray(),true);
+            byte[] rep = KVProxy.invoke(out.toByteArray(),false);
             ByteArrayInputStream in = new ByteArrayInputStream(rep);
             boolean res = new DataInputStream(in).readBoolean();
             return res;
