@@ -22,6 +22,7 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
+import java.net.ConnectException;
 import java.net.Socket;
 import java.net.UnknownHostException;
 import java.security.NoSuchAlgorithmException;
@@ -263,6 +264,8 @@ public class ServerConnection {
                 }
             } catch (UnknownHostException ex) {
                 ex.printStackTrace();
+            } catch (ConnectException ex) {
+                System.err.println("Impossível restabelecer ligação a servidor");
             } catch (IOException ex) {
                 ex.printStackTrace();
             }

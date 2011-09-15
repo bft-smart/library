@@ -28,10 +28,8 @@ public class TOMConfiguration extends Configuration {
     protected int n;
     protected int f;
     protected int requestTimeout;
-    protected int tomPeriod;
     protected int paxosHighMark;
     protected int revivalHighMark;
-    protected int replyVerificationTime;
     protected int maxBatchSize;
     protected int numberOfNonces;
     protected int inQueueSize;
@@ -41,7 +39,6 @@ public class TOMConfiguration extends Configuration {
     protected boolean useSenderThread;
     protected RSAKeyLoader rsaLoader;
     private int debug;
-    private int numNIOThreads;   
     private int useMACs;
     private int useSignatures;
 
@@ -83,13 +80,6 @@ public class TOMConfiguration extends Configuration {
 
             s = (String) configs.remove("system.shutdownhook");
             shutdownHookEnabled = (s != null)? Boolean.parseBoolean(s): false;
-
-            s = (String) configs.remove("system.totalordermulticast.period");
-            if (s == null) {
-                tomPeriod = n * 5;
-            } else {
-                tomPeriod = Integer.parseInt(s);
-            }
 
             s = (String) configs.remove("system.totalordermulticast.timeout");
             if (s == null) {
@@ -139,13 +129,6 @@ public class TOMConfiguration extends Configuration {
                     Logger.debug = true;
             }
 
-            s = (String) configs.remove("system.totalordermulticast.replayVerificationTime");
-            if (s == null) {
-                replyVerificationTime = 0;
-            } else {
-                replyVerificationTime = Integer.parseInt(s);
-            }
-
             s = (String) configs.remove("system.totalordermulticast.nonces");
             if (s == null) {
                 numberOfNonces = 0;
@@ -165,13 +148,6 @@ public class TOMConfiguration extends Configuration {
                 useSenderThread = false;
             } else {
                 useSenderThread = Boolean.parseBoolean(s);
-            }
-
-            s = (String) configs.remove("system.communication.numNIOThreads");
-            if (s == null) {
-                numNIOThreads = 2;
-            } else {
-                numNIOThreads = Integer.parseInt(s);
             }
 
             s = (String) configs.remove("system.communication.useMACs");
@@ -276,10 +252,6 @@ public class TOMConfiguration extends Configuration {
         return requestTimeout;
     }
 
-    public int getReplyVerificationTime() {
-        return replyVerificationTime;
-    }
-
     public int getN() {
         return n;
     }
@@ -322,13 +294,6 @@ public class TOMConfiguration extends Configuration {
 
     public boolean isUseSenderThread() {
         return useSenderThread;
-    }
-
-     /**
-     *     *
-     */
-    public int getNumberOfNIOThreads() {
-        return numNIOThreads;
     }
 
     /**     * @return the numberOfNonces     */

@@ -226,16 +226,10 @@ public final class Acceptor {
                 
                 round.setStrong(me, value);
 
-                try{
+                if (round.getExecution().getLearner().firstMessageProposed != null) {
                     round.getExecution().getLearner().firstMessageProposed.strongSentTime = System.nanoTime();
-                } catch (Exception e) {
-                    System.out.println(round.getExecution().getId());
-                    System.out.println(round.getExecution().getLearner().firstMessageProposed);
-                    System.out.println(round.propValue);
-                    System.out.println(round.propValueHash);
-                    System.exit(-1);
                 }
-                
+
                 communication.send(this.reconfManager.getCurrentViewOtherAcceptors(),
                         factory.createStrong(eid, round.getNumber(), value));
                 computeStrong(eid, round, value);

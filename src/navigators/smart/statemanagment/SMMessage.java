@@ -37,6 +37,7 @@ public class SMMessage extends SystemMessage implements Externalizable {
     private int eid; // Execution ID up to which the sender needs to be updated
     private int type; // Message type
     private int replica; // Replica that should send the state
+    private int view; // Current view
 
     /**
      * Constructs a SMMessage
@@ -46,7 +47,7 @@ public class SMMessage extends SystemMessage implements Externalizable {
      * @param replica Replica that should send the state
      * @param state State log
      */
-    public SMMessage(int sender, int eid, int type, int replica, TransferableState state) {
+    public SMMessage(int sender, int eid, int type, int replica, TransferableState state, int view) {
 
         super(sender);
         this.state = state;
@@ -54,6 +55,7 @@ public class SMMessage extends SystemMessage implements Externalizable {
         this.type = type;
         this.replica = replica;
         this.sender = sender;
+        this.view = view;
 
     }
 
@@ -92,6 +94,14 @@ public class SMMessage extends SystemMessage implements Externalizable {
         return replica;
     }
 
+    /**
+     * Retrieves the view that the replica had when sending the state
+     * @return The view that the replica had when sending the state
+     */
+    public int getView() {
+        return view;
+    }
+
     @Override
     public void writeExternal(ObjectOutput out) throws IOException{
         super.writeExternal(out);
@@ -100,6 +110,7 @@ public class SMMessage extends SystemMessage implements Externalizable {
         out.writeInt(eid);
         out.writeInt(type);
         out.writeInt(replica);
+        out.writeInt(view);
         out.writeObject(state);
     }
 
@@ -111,6 +122,7 @@ public class SMMessage extends SystemMessage implements Externalizable {
         eid = in.readInt();
         type = in.readInt();
         replica = in.readInt();
+        view = in.readInt();
         state = (TransferableState) in.readObject();
     }
 }

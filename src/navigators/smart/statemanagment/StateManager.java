@@ -26,6 +26,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import navigators.smart.reconfiguration.ReconfigurationManager;
 import navigators.smart.tom.core.DeliveryThread;
 import navigators.smart.tom.core.TOMLayer;
+import navigators.smart.tom.leaderchange.LCManager;
 import navigators.smart.tom.util.Logger;
 import navigators.smart.tom.util.TOMUtil;
 
@@ -40,6 +41,7 @@ public class StateManager {
     private StateLog log;
     private HashSet<SenderEid> senderEids = null;
     private HashSet<SenderState> senderStates = null;
+    private HashSet<SenderView> senderViews = null;
 
     private ReentrantLock lockState = new ReentrantLock();
     private ReentrantLock lockTimer = new ReentrantLock();
@@ -53,9 +55,10 @@ public class StateManager {
 
     private ReconfigurationManager reconfManager;
     private TOMLayer tomLayer;
-    DeliveryThread dt;
+    private DeliveryThread dt;
+    private LCManager lcManager;
     
-    public StateManager(ReconfigurationManager manager, TOMLayer tomLayer, DeliveryThread dt) {
+    public StateManager(ReconfigurationManager manager, TOMLayer tomLayer, DeliveryThread dt, LCManager lcManager) {
 
         //******* EDUARDO BEGIN **************//
         this.reconfManager = manager;
@@ -64,10 +67,13 @@ public class StateManager {
 
         this.tomLayer = tomLayer;
         this.dt = dt;
+        this.lcManager = lcManager;
 
         this.log = new StateLog(k);
         senderEids = new HashSet<SenderEid>();
         senderStates = new HashSet<SenderState>();
+        senderViews = new HashSet<SenderView>();
+
         this.replica = 0;
 
         if (replica == manager.getStaticConf().getProcessId()) changeReplica();
@@ -101,7 +107,6 @@ public class StateManager {
     public byte[] getReplicaState() {
         return state;
     }
-
     public void addEID(int sender, int eid) {
         senderEids.add(new SenderEid(sender, eid));
     }
@@ -113,6 +118,53 @@ public class StateManager {
     public void emptyEIDs(int eid) {
         for (SenderEid m : senderEids)
             if (m.eid <= eid) senderEids.remove(m);
+    }
+
+    public boolean moreThanF_EIDs(int eid) {
+
+        int count = 0;
+        HashSet<Integer> replicasCounted = new HashSet<Integer>();
+
+        for (SenderEid m : senderEids) {
+            if (m.eid == eid && !replicasCounted.contains(m.sender)) {
+                replicasCounted.add(m.sender);
+                count++;
+            }
+        }
+
+        //******* EDUARDO BEGIN **************//
+        return count > reconfManager.getCurrentViewF();
+        //******* EDUARDO END **************//
+    }
+
+    public void addView(int sender, int view) {
+        senderViews.add(new SenderView(sender, view));
+    }
+
+    public void emptyViews() {
+        senderViews.clear();
+    }
+
+    public void emptyViews(int view) {
+        for (SenderView m : senderViews)
+            if (m.view <= view) senderViews.remove(m);
+    }
+    
+    public boolean moreThan2F_Views(int view) {
+
+        int count = 0;
+        HashSet<Integer> replicasCounted = new HashSet<Integer>();
+
+        for (SenderView m : senderViews) {
+            if (m.view == view && !replicasCounted.contains(m.sender)) {
+                replicasCounted.add(m.sender);
+                count++;
+            }
+        }
+
+        //******* EDUARDO BEGIN **************//
+        return count > reconfManager.getQuorum2F();
+        //******* EDUARDO END **************//
     }
 
     public void addState(int sender, TransferableState state) {
@@ -138,22 +190,7 @@ public class StateManager {
         return lastEid;
     }
 
-    public boolean moreThenF_EIDs(int eid) {
 
-        int count = 0;
-        HashSet<Integer> replicasCounted = new HashSet<Integer>();
-
-        for (SenderEid m : senderEids) {
-            if (m.eid == eid && !replicasCounted.contains(m.sender)) {
-                replicasCounted.add(m.sender);
-                count++;
-            }
-        }
-
-        //******* EDUARDO BEGIN **************//
-        return count > reconfManager.getCurrentViewF();
-        //******* EDUARDO END **************//
-    }
     public boolean moreThanF_Replies() {
 
         int count = 0;
@@ -217,33 +254,6 @@ public class StateManager {
         return log;
     }
 
-    private class SenderEid {
-
-        private int sender;
-        private int eid;
-
-        SenderEid(int sender, int eid) {
-            this.sender = sender;
-            this.eid = eid;
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (obj instanceof SenderEid) {
-                SenderEid m = (SenderEid) obj;
-                return (m.eid == this.eid && m.sender == this.sender);
-            }
-            return false;
-        }
-
-        @Override
-        public int hashCode() {
-            int hash = 1;
-            hash = hash * 31 + this.sender;
-            hash = hash * 31 + this.eid;
-            return hash;
-        }
-    }
     public void saveState(byte[] state, int lastEid, int decisionRound, int leader) {
 
         StateLog thisLog = getLog();
@@ -288,7 +298,7 @@ public class StateManager {
                 Logger.println("(TOMLayer.requestState) I'm not waiting for any state, so I will keep record of this message");
                 addEID(sender, eid);
 
-                if (getLastEID() < eid && moreThenF_EIDs(eid)) {
+                if (getLastEID() < eid && moreThanF_EIDs(eid)) {
 
                     Logger.println("(TOMLayer.requestState) I have now more than " + reconfManager.getCurrentViewF() + " messages for EID " + eid + " which are beyond EID " + getLastEID());
 
@@ -298,7 +308,7 @@ public class StateManager {
                     //stateManager.emptyReplicas(eid);// isto causa uma excepcao
 
                     SMMessage smsg = new SMMessage(reconfManager.getStaticConf().getProcessId(),
-                            eid - 1, TOMUtil.SM_REQUEST, getReplica(), null);
+                            eid - 1, TOMUtil.SM_REQUEST, getReplica(), null, -1);
                     tomLayer.getCommunication().send(reconfManager.getCurrentViewOtherAcceptors(), smsg);
 
                     Logger.println("(TOMLayer.requestState) I just sent a request to the other replicas for the state up to EID " + (eid - 1));
@@ -357,7 +367,7 @@ public class StateManager {
 
             int[] targets = { msg.getSender() };
             SMMessage smsg = new SMMessage(reconfManager.getStaticConf().getProcessId(),
-                    msg.getEid(), TOMUtil.SM_REPLY, -1, thisState);
+                    msg.getEid(), TOMUtil.SM_REPLY, -1, thisState, lcManager.getLastts());
 
             // malicious code, to force the replica not to send the state
             //if (reconfManager.getStaticConf().getProcessId() != 0 || !sendState)
@@ -380,6 +390,10 @@ public class StateManager {
             Logger.println("(TOMLayer.SMReplyDeliver) I received a state reply for EID " + msg.getEid() + " from replica " + msg.getSender());
 
             if (getWaiting() != -1 && msg.getEid() == getWaiting()) {
+
+                int currentView = -1;
+                addView(msg.getSender(), msg.getView());
+                if (moreThan2F_Views(msg.getView())) currentView = msg.getView();
 
                 Logger.println("(TOMLayer.SMReplyDeliver) The reply is for the EID that I want!");
 
@@ -408,7 +422,11 @@ public class StateManager {
                         }
                     }
 
-                    if (state != null && haveState == 1) {
+                    if (state != null && haveState == 1 && currentView > -1) {
+
+                        lcManager.setLastts(currentView);
+                        lcManager.setLastts(currentView);
+                        tomLayer.lm.setNewTS(currentView);
 
                         Logger.println("(TOMLayer.SMReplyDeliver) The state of those replies is good!");
 
@@ -468,6 +486,62 @@ public class StateManager {
         lockTimer.unlock();
     }
 
+    private class SenderView {
+
+        private int sender;
+        private int view;
+
+        SenderView(int sender, int view) {
+            this.sender = sender;
+            this.view = view;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj instanceof SenderEid) {
+                SenderEid m = (SenderEid) obj;
+                return (m.eid == this.view && m.sender == this.sender);
+            }
+            return false;
+        }
+
+        @Override
+        public int hashCode() {
+            int hash = 1;
+            hash = hash * 31 + this.sender;
+            hash = hash * 31 + this.view;
+            return hash;
+        }
+    }
+
+    private class SenderEid {
+
+        private int sender;
+        private int eid;
+
+        SenderEid(int sender, int eid) {
+            this.sender = sender;
+            this.eid = eid;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj instanceof SenderEid) {
+                SenderEid m = (SenderEid) obj;
+                return (m.eid == this.eid && m.sender == this.sender);
+            }
+            return false;
+        }
+
+        @Override
+        public int hashCode() {
+            int hash = 1;
+            hash = hash * 31 + this.sender;
+            hash = hash * 31 + this.eid;
+            return hash;
+        }
+    }
+    
     private class SenderState {
 
         private int sender;

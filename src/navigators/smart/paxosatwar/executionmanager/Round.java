@@ -25,6 +25,7 @@ import java.util.Collection;
 import java.util.TreeSet;
 import navigators.smart.reconfiguration.ReconfigurationManager;
 import navigators.smart.tom.core.messages.TOMMessage;
+import org.apache.commons.codec.binary.Base64;
 
 /**
  * This class stands for a round of an execution of a consensus
@@ -351,8 +352,8 @@ public class Round implements Serializable {
         if(obj == null) {
             return "*";
         } else {
-            sun.misc.BASE64Encoder b64 = new sun.misc.BASE64Encoder();
-            return b64.encode(obj);
+
+            return Base64.encodeBase64String(obj);
         }
     }
 
