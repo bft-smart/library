@@ -166,7 +166,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         this.dt.start();
 
         /** ISTO E CODIGO DO JOAO, PARA TRATAR DOS CHECKPOINTS E TRANSFERENCIA DE ESTADO*/
-        this.stateManager = new StateManager(this.reconfManager, this, dt);
+        this.stateManager = new StateManager(this.reconfManager, this, dt, lcManager);
         /*******************************************************/
     }
 
@@ -300,7 +300,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         boolean readOnly = (msg.getReqType() == TOMMessageType.READONLY_REQUEST);
         if (clientsManager.requestReceived(msg, true, !readOnly, communication)) {
             if (readOnly) {
-                dt.deliverUnordered(msg);
+                dt.deliverUnordered(msg, lcManager.getLastts());
             } else {
                 messagesLock.lock();
                 haveMessages.signal();
@@ -478,7 +478,11 @@ public final class TOMLayer extends Thread implements RequestReceiver {
     public StateManager getStateManager() {
         return stateManager;
     }
-   
+
+    public LCManager getLCManager() {
+        return lcManager;
+    }
+
     /*** ISTO E CODIGO DO JOAO, RELACIONADO COM A TROCA DE LIDER */
 
     /**

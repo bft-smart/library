@@ -18,7 +18,6 @@
 
 package navigators.smart.reconfiguration.util;
 
-import navigators.smart.tom.util.*;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.math.BigInteger;
@@ -36,10 +35,8 @@ public class Configuration {
     
     protected int processId;
     protected boolean authentication;
-    protected boolean channelsBlocking;
     protected BigInteger DH_P;
     protected BigInteger DH_G;
-    protected int autoConnectLimit;
     protected Map configs;
     protected HostsConfig hosts;
     
@@ -100,21 +97,7 @@ public class Configuration {
             }else{
                 authentication = (s.equalsIgnoreCase("true"))?true:false;
             }
-            
-            s = (String) configs.remove("system.autoconnect");
-            if(s == null){
-                autoConnectLimit = -1;
-            }else{
-                autoConnectLimit = Integer.parseInt(s);
-            }
-
-            s = (String) configs.remove("system.channels.blocking");
-            if(s == null){
-                channelsBlocking = false;
-            }else{
-                channelsBlocking = (s.equalsIgnoreCase("true"))?true:false;
-            }
-            
+           
             if(authentication){
                 s = (String)configs.remove("system.authentication.P");
                 if( s != null){
@@ -149,15 +132,6 @@ public class Configuration {
             return false;
         }
         return true;
-    }
-    
-    
-    public final boolean useBlockingChannels(){
-        return this.channelsBlocking;
-    }
-    
-    public final int getAutoConnectLimit(){
-        return this.autoConnectLimit;
     }
     
     public final boolean useAuthentication(){

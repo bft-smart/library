@@ -61,7 +61,6 @@ public final class ExecutionManager {
     private boolean stopped = false; // Is the execution manager stopped?
     // When the execution manager is stopped, incoming paxos messages are stored here
     private Queue<PaxosMessage> stoppedMsgs = new LinkedList<PaxosMessage>();
-    private Round stoppedRound = null; // round at which the current execution was stoppped
     private ReentrantLock stoppedMsgsLock = new ReentrantLock(); //lock for stopped messages
     private TOMLayer tomLayer; // TOM layer associated with this execution manager
     private int paxosHighMark; // Paxos high mark for consensus instances
@@ -130,10 +129,10 @@ public final class ExecutionManager {
         Logger.println("(ExecutionManager.stoping) Stoping execution manager");
         stoppedMsgsLock.lock();
         this.stopped = true;
-        if (tomLayer.getInExec() != -1) {
-            stoppedRound = getExecution(tomLayer.getInExec()).getLastRound();
-            //stoppedRound.getTimeoutTask().cancel();
-            Logger.println("(ExecutionManager.stop) Stoping round " + stoppedRound.getNumber() + " of consensus " + stoppedRound.getExecution().getId());
+        int inExec = tomLayer.getInExec();
+        if (inExec != -1) {
+
+            Logger.println("(ExecutionManager.stop) Stoping consensus " + inExec);
         }
         stoppedMsgsLock.unlock();
     }

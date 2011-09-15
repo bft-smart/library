@@ -25,6 +25,7 @@ import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import org.apache.commons.codec.binary.Base64;
 
 /**
  * Utility class used to generate a key pair for some process id on
@@ -71,8 +72,8 @@ public class RSAKeyPairGenerator {
     
     private String getKeyAsString(Key key) {
         byte[] keyBytes = key.getEncoded();
-        sun.misc.BASE64Encoder b64 = new sun.misc.BASE64Encoder();
-        return b64.encode(keyBytes);
+
+        return Base64.encodeBase64String(keyBytes);
     }
 
     public static void main(String[] args){

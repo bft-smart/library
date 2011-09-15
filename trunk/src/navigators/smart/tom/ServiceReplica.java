@@ -205,7 +205,8 @@ public abstract class ServiceReplica extends TOMReceiver implements Runnable {
                 continue;
             }
 
-            msg.msgCtx.getFirstInBatch().executedTime = System.nanoTime();
+            if (msg.msgCtx.getFirstInBatch() != null)
+                msg.msgCtx.getFirstInBatch().executedTime = System.nanoTime();
         
             // Deliver the message to the application, and get the response
             response = (msg.msgCtx.getConsensusId() == -1) ? 

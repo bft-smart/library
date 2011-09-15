@@ -53,7 +53,20 @@ public class MessageHandler {
         /*** ISTO E CODIGO DO JOAO, RELACIONADO COM A TROCA DE LIDER */
         } else if (sm instanceof LCMessage) {
             LCMessage lcMsg = (LCMessage) sm;
-            System.out.println("(MessageHandler.processData) LC_MSG received: " + lcMsg + " (replica " + lcMsg.getSender() + ")");
+
+            String type = null;
+            switch (lcMsg.getType()) {
+                case TOMUtil.STOP:
+                    type = "STOP";
+                    break;
+                case TOMUtil.SYNC:
+                    type = "SYNC";
+                    break;
+                case TOMUtil.CATCH_UP:
+                    type = "CATCH_UP";
+                    break;
+            }
+            System.out.println("(MessageHandler.processData) LC_MSG received: " + type + " / " + lcMsg.getTs() + " (replica " + lcMsg.getSender() + ")");
             tomLayer.deliverTimeoutRequest(lcMsg);
         /**************************************************************/
 

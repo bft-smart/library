@@ -26,6 +26,7 @@ import java.security.spec.EncodedKeySpec;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.Hashtable;
+import org.apache.commons.codec.binary.Base64;
 
 /**
  * Used to load JCA public and private keys from conf/keys/publickey<id> and
@@ -150,9 +151,7 @@ public class RSAKeyLoader {
 
         KeyFactory keyFactory = KeyFactory.getInstance("RSA");
 
-        sun.misc.BASE64Decoder b64 = new sun.misc.BASE64Decoder();
-
-        EncodedKeySpec privateKeySpec = new PKCS8EncodedKeySpec(b64.decodeBuffer(key));
+        EncodedKeySpec privateKeySpec = new PKCS8EncodedKeySpec(Base64.decodeBase64(key));
 
         PrivateKey privateKey = keyFactory.generatePrivate(privateKeySpec);
 
@@ -162,11 +161,9 @@ public class RSAKeyLoader {
 
     private PublicKey getPublicKeyFromString(String key) throws Exception {
 
-        sun.misc.BASE64Decoder b64 = new sun.misc.BASE64Decoder();
-
         KeyFactory keyFactory = KeyFactory.getInstance("RSA");
 
-        EncodedKeySpec publicKeySpec = new X509EncodedKeySpec(b64.decodeBuffer(key));
+        EncodedKeySpec publicKeySpec = new X509EncodedKeySpec(Base64.decodeBase64(key));
 
         PublicKey publicKey = keyFactory.generatePublic(publicKeySpec);
 

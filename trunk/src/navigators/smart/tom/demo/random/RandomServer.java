@@ -21,7 +21,7 @@
  * and open the template in the editor.
  */
 
-package navigators.smart.tom.demo;
+package navigators.smart.tom.demo.random;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -84,7 +84,7 @@ public final class RandomServer extends ServiceReplica {
             }
             
             System.out.println("(" + id + ")[server] (" + iterations + " / " + 
-                    msgCtx.getConsensusId() + ") Current value: " + value);
+                    msgCtx.getConsensusId() + " / " + msgCtx.getView() + ") Current value: " + value);
             
             ByteArrayOutputStream out = new ByteArrayOutputStream(4);
             new DataOutputStream(out).writeInt(value);

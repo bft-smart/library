@@ -16,13 +16,15 @@ import navigators.smart.tom.core.messages.TOMMessage;
 public class MessageContext {
     private long timestamp;
     private byte[] nonces;
+    private int view;
     private int consensusId;
     private int sender;
     private TOMMessage firstInBatch; //to be replaced by a statistics class
 
-    public MessageContext(long timestamp, byte[] nonces, int consensusId, int sender, TOMMessage firstInBatch) {
+    public MessageContext(long timestamp, byte[] nonces, int view, int consensusId, int sender, TOMMessage firstInBatch) {
         this.timestamp = timestamp;
         this.nonces = nonces;
+        this.view = view;
         this.consensusId = consensusId;
         this.sender = sender;
         this.firstInBatch = firstInBatch;
@@ -47,6 +49,13 @@ public class MessageContext {
      */
     public int getConsensusId() {
         return consensusId;
+    }
+
+    /**
+     * @return the view
+     */
+    public int getView() {
+        return view;
     }
 
     /**

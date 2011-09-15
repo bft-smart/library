@@ -138,7 +138,7 @@ public final class DeliveryThread extends Thread {
 
                 tomLayer.clientsManager.requestsOrdered(requests);
 
-                deliverMessages(eid, requests);
+                deliverMessages(eid, tomLayer.getLCManager().getLastts(), requests);
 
                 //******* EDUARDO BEGIN **************//
                 if (manager.hasUpdates()) {
@@ -214,7 +214,7 @@ public final class DeliveryThread extends Thread {
                 //clean the ordered messages from the pending buffer
                 tomLayer.clientsManager.requestsOrdered(requests);
 
-                deliverMessages(cons.getId(), requests);
+                deliverMessages(cons.getId(), tomLayer.getLCManager().getLastts(), requests);
 
                 //******* EDUARDO BEGIN **************//
                 if (manager.hasUpdates()) {
@@ -270,14 +270,14 @@ public final class DeliveryThread extends Thread {
         return requests;
     }
 
-    public void deliverUnordered(TOMMessage request) {
+    public void deliverUnordered(TOMMessage request, int view) {
         MessageContext msgCtx = new MessageContext(System.currentTimeMillis(),
-                new byte[0], -1, request.getSender(), null);
+                new byte[0], view, -1, request.getSender(), null);
 
         receiver.receiveMessage(request, msgCtx);
     }
 
-    private void deliverMessages(int consId, TOMMessage[] requests) {
+    private void deliverMessages(int consId, int view, TOMMessage[] requests) {
         TOMMessage firstRequest = requests[0];
         
         for (TOMMessage request: requests) {
@@ -287,7 +287,7 @@ public final class DeliveryThread extends Thread {
                     
                     //create a context for the batch of messages to be delivered
                     MessageContext msgCtx = new MessageContext(firstRequest.timestamp, 
-                            firstRequest.nonces, consId, request.getSender(), firstRequest);
+                            firstRequest.nonces, view, consId, request.getSender(), firstRequest);
 
                     request.deliveryTime = System.nanoTime();
 

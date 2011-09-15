@@ -21,7 +21,7 @@
  * and open the template in the editor.
  */
 
-package navigators.smart.tom.demo;
+package navigators.smart.tom.demo.random;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
