@@ -37,8 +37,7 @@ public class Proposer {
      * 
      * @param communication Replicas communication system
      * @param factory Factory for PaW messages
-     * @param verifier Proof verifier
-     * @param conf TOM configuration
+     * @param manager Reconfiguration Manager
      */
     public Proposer(ServerCommunicationSystem communication, MessageFactory factory,
             ReconfigurationManager manager) {

@@ -25,9 +25,7 @@ import navigators.smart.tom.util.Logger;
  *
  * This class represents a Consensus Instance.
  *
- * @param <E> Type of the decided Object
  *
- * @author unkown
  * @author Christian Spann <christian.spann at uni-ulm.de>
  */
 public class Consensus {
@@ -43,9 +41,7 @@ public class Consensus {
 
     /**
      * Creates a new instance of Consensus
-     * @param proposer The proposer role of PaW algorithm
      * @param eid The execution ID for this consensus
-     * @param startTime The consensus start time
      */
     public Consensus(int eid) {
         this.eid = eid;

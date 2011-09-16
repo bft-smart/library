@@ -56,9 +56,9 @@ public class Round implements Serializable {
 
     /**
      * Creates a new instance of Round for acceptors
+     * @param manager Reconfiguration Manager
      * @param parent Execution to which this round belongs
      * @param number Number of the round
-     * @param timeout Timeout duration for this round
      */
     protected Round(ReconfigurationManager manager, Execution parent, int number) {
         this.execution = parent;

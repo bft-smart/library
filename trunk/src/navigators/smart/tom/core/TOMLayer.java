@@ -119,7 +119,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
      * @param lm Leader module
      * @param a Acceptor role of the PaW algorithm
      * @param cs Communication system between replicas
-     * @param conf TOM configuration
+     * @param recManager Reconfiguration Manager
      */
     public TOMLayer(ExecutionManager manager,
             TOMRequestReceiver receiver,
@@ -174,7 +174,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
     /**
      * Computes an hash for a TOM message
-     * @param message
+     * @param data Data from which to generate the hash
      * @return Hash for the specified TOM message
      */
     public final byte[] computeHash(byte[] data) {
@@ -401,9 +401,8 @@ public final class TOMLayer extends Thread implements RequestReceiver {
      *
      * TODO: verify timestamps and nonces
      *
-     * @param round the Round for which this value is being proposed
      * @param proposedValue the value being proposed
-     * @return
+     * @return Valid messages contained in the proposed value
      */
     public TOMMessage[] checkProposedValue(byte[] proposedValue) {
         Logger.println("(TOMLayer.isProposedValueValid) starting");

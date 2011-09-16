@@ -98,7 +98,7 @@ public abstract class ServiceReplica extends TOMReceiver implements Runnable {
     /**
      * Constructor
      * @param id Replica ID
-     * @param isToJoin: if true, the replica tries to join the system, otherwise it waits for TTP message
+     * @param isToJoin if true, the replica tries to join the system, otherwise it waits for TTP message
      * informing its join
      */
     public ServiceReplica(int id, boolean isToJoin) {
@@ -343,7 +343,7 @@ public abstract class ServiceReplica extends TOMReceiver implements Runnable {
      * therefore, ensure the determinism required in a replicated state machine.
      *
      * @param command the command issue by the client
-     * @param MessageContext msgCtx information related with the command
+     * @param msgCtx information related with the command
      * 
      * @return the reply for the request issued by the client
      */
@@ -357,7 +357,7 @@ public abstract class ServiceReplica extends TOMReceiver implements Runnable {
      * sender.
      * 
      * @param command the command issue by the client
-     * @param MessageContext msgCtx information related with the command
+     * @param msgCtx information related with the command
      * 
      * @return the reply for the request issued by the client
      */

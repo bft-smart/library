@@ -52,8 +52,8 @@ public final class Acceptor {
      * Creates a new instance of Acceptor.
      * @param communication Replicas communication system
      * @param factory Message factory for PaW messages
-     * @param verifier Proof verifier
-     * @param conf TOM configuration
+     * @param lm Leader Module
+     * @param manager Reconfiguration Manager
      */
     public Acceptor(ServerCommunicationSystem communication, MessageFactory factory,
                                 LeaderModule lm, ReconfigurationManager manager) {

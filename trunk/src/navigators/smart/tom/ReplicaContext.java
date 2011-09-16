@@ -32,7 +32,7 @@ public class ReplicaContext {
      * send a message to one or more clients.
      * 
      * @param targets the target receivers of the message
-     * @param sm the message to be sent
+     * @param msg the message to be sent
      */
     public void sendMessage(int[] targets, TOMMessage msg) {
         cs.send(targets, msg);

@@ -125,7 +125,6 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
     
     /**
      * Retrieves the debug info from the TOM layer
-     * @return The debug info from the TOM layer
      */
     public void  setDebugInfo(DebugInfo info) {
         this.info = info;

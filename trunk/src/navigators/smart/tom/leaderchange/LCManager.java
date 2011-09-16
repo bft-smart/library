@@ -258,7 +258,7 @@ public class LCManager {
     /**
      * Defines the set of last eids related to a timestamp
      * @param ts timestamp for the last eid info
-     * @param colls a set of last eid data
+     * @param lasts a set of last eid data
      */
     public void setLastEids(int ts, HashSet<LastEidData> lasts) {
 
@@ -268,7 +268,7 @@ public class LCManager {
     /**
      * Keep collect from an incoming SYNC message
      * @param ts the current timestamp
-     * @param collect the collect data
+     * @param signedCollect the signed collect data
      */
     public void addCollect(int ts, SignedObject signedCollect) {
 
@@ -391,19 +391,14 @@ public class LCManager {
      */
     public boolean binds(int round, byte[] value, HashSet<CollectData> collects) {
 
-        /*System.out.println(value != null);
-        System.out.println(collects != null);
-        System.out.println(collects.size() > reconfManager.getCurrentViewN() - reconfManager.getCurrentViewF());
-        System.out.println(quorumHighest(round, value, collects));
-        System.out.println(certifiedValue(round, value, collects));*/
         return (value != null && collects != null && collects.size() > (reconfManager.getCurrentViewN() - reconfManager.getCurrentViewF()))
                 && quorumHighest(round, value, collects) && certifiedValue(round, value, collects);
     }
 
     /**
      * Devolve um valor que seja bind, que seja diferente de nulo e com round maior ou igual a zero
-     * @param collects
-     * @return
+     * @param collects Conjunto de collects de onde determinar o valor
+     * @return O valor bind
      */
     public byte[] getBindValue(HashSet<CollectData> collects) {
 
@@ -588,7 +583,7 @@ public class LCManager {
     /**
      * Fetchs a set of correctly signed and normalized collect data structures from the
      * specified original set of collects
-     * @param collects original set of collects
+     * @param signedObjects original set of signed collects
      * @param eid the eid to which to normalize the collects
      * @return a set of correctly signed and normalized collect data structures
      */
