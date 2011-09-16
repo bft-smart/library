@@ -43,7 +43,6 @@ public class TransferableState implements Serializable {
      * Constructs a TansferableState
      * This constructor should be used when there is a valid state to construct the object with
      * @param messageBatches Batches received since the last checkpoint.
-     * @param nextEid Execution ID for the last checkpoint
      * @param state State associated with the last checkpoint
      * @param stateHash Hash of the state associated with the last checkpoint
      */

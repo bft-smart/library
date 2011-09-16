@@ -55,7 +55,6 @@ public class Execution {
      *
      * @param manager Execution manager for this execution
      * @param consensus Consensus instance to which this execution works for
-     * @param initialTimeout Initial timeout for rounds
      */
     protected Execution(ExecutionManager manager, Consensus consensus) {
         this.manager = manager;

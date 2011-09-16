@@ -54,7 +54,6 @@ public class CollectData implements Externalizable {
      * @param eid id da execucao
      * @param quorumWeaks ultimo valor recebido de um quorum bizantino de WEAKS
      * @param writeSet valores escritos pela replica
-     * @param signature assinatura da replica
      */
     public CollectData(int pid, int eid, RoundValuePair quorumWeaks, HashSet<RoundValuePair> writeSet) {
         

@@ -55,7 +55,6 @@ public class ServiceProxy extends TOMSender {
     /**
      * Constructor
      *
-     * @see bellow
      */
     public ServiceProxy(int processId) {
         this(processId, null, null, null);
@@ -64,7 +63,6 @@ public class ServiceProxy extends TOMSender {
     /**
      * Constructor
      *
-     * @see bellow
      */
     public ServiceProxy(int processId, String configHome) {
         this(processId, configHome, null, null);
@@ -73,7 +71,7 @@ public class ServiceProxy extends TOMSender {
     /**
      * Constructor
      *
-     * @param id Process id for this client (should be different from replicas)
+     * @param processId Process id for this client (should be different from replicas)
      * @param configHome Configuration directory for BFT-SMART
      * @param replyComparator used for comparing replies from different servers
      *                        to extract one returned by f+1

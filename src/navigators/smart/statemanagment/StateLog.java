@@ -88,7 +88,7 @@ public class StateLog {
 
     /**
      * Sets the decision round for the last checkpoint
-     * @param lastCheckpointEid Decision round for the last checkpoint
+     * @param lastCheckpointRound Decision round for the last checkpoint
      */
     public void setLastCheckpointRound(int lastCheckpointRound) {
 
@@ -106,7 +106,7 @@ public class StateLog {
 
     /**
      * Sets the leader for the last checkpoint
-     * @param lastCheckpointEid Leader for the last checkpoint
+     * @param lastCheckpointLeader Leader for the last checkpoint
      */
     public void setLastCheckpointLeader(int lastCheckpointLeader) {
 
@@ -161,7 +161,6 @@ public class StateLog {
      * in the same order in which they are delivered to the application. Only
      * the 'k' batches received after the last checkpoint are supposed to be kept
      * @param batch The batch of messages to be kept.
-     * @return True if the batch was added to the log, false otherwise
      */
     public void addMessageBatch(byte[] batch, int round, int leader) {
 

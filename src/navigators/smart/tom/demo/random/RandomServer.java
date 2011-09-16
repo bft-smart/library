@@ -98,9 +98,9 @@ public final class RandomServer extends ServiceReplica {
     /**
      * Just return the current value of the counter.
      * 
-     * @param command
-     * @param msgCtx
-     * @return 
+     * @param command Command to b executed
+     * @param msgCtx Context of  the message received
+     * @return Reply t obe sent to the client
      */
     @Override
     public byte[] executeUnordered(byte[] command, MessageContext msgCtx) {

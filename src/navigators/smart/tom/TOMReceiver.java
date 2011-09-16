@@ -46,7 +46,7 @@ public abstract class TOMReceiver implements TOMRequestReceiver {
      * This method initializes the object
      * 
      * @param cs Server side communication System
-     * @param conf Total order messaging configuration
+     * @param reconfManager  Reconfiguration Manager
      */
     public void init(ServerCommunicationSystem cs, ReconfigurationManager reconfManager, 
                           int lastExec, int lastLeader) {

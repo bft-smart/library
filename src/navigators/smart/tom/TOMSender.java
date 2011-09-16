@@ -80,8 +80,7 @@ public abstract class TOMSender implements ReplyReceiver {
      * This method initializes the object
      * TODO: Perguntar se este metodo n pode antes ser protected (compila como protected, mas mesmo assim...)
      *
-     * @param cs Client side comunication system
-     * @param conf Client side comunication system configuration
+     * @param processId ID of the process
      * @param sequence Initial sequence number for data multicast
      *
      * 
@@ -102,8 +101,7 @@ public abstract class TOMSender implements ReplyReceiver {
      * This method initializes the object
      * TODO: Perguntar se este metodo n pode antes ser protected (compila como protected, mas mesmo assim...)
      *
-     * @param cs Client side comunication system
-     * @param conf Total order messaging configuration
+     * @param processId ID of the process
      */
     public void init(int processId) {
         this.viewManager = new ViewManager(processId);
@@ -151,7 +149,7 @@ public abstract class TOMSender implements ReplyReceiver {
     /**
      * Multicast a TOMMessage to the group of replicas
      *
-     * @param m Data to be multicast
+     * @param sm Message to be multicast
      */
     public void TOMulticast(TOMMessage sm) {
         cs.send(useSignatures, this.viewManager.getCurrentViewProcesses(), sm);

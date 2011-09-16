@@ -71,12 +71,10 @@ public final class ExecutionManager {
     /**
      * Creates a new instance of ExecutionManager
      *
+     * @param manager Reconfiguration Manager
      * @param acceptor Acceptor role of the PaW algorithm
      * @param proposer Proposer role of the PaW algorithm
-     * @param acceptors Process ID's of all replicas, including this one
-     * @param f Maximum number of replicas that can be faulty
      * @param me This process ID
-     * @param initialTimeout initial timeout for rounds
      */
     public ExecutionManager(ReconfigurationManager manager, Acceptor acceptor,
             Proposer proposer, int me) {

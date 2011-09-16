@@ -48,7 +48,7 @@ public final class DeliveryThread extends Thread {
      * Creates a new instance of DeliveryThread
      * @param tomLayer TOM layer
      * @param receiver Object that receives requests from clients
-     * @param conf TOM configuration
+     * @param manager Reconfiguration Manager
      */
     public DeliveryThread(TOMLayer tomLayer, TOMRequestReceiver receiver, ReconfigurationManager manager) {
         super("Delivery Thread");
