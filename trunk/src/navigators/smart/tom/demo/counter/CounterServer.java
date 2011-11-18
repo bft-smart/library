@@ -62,12 +62,12 @@ public final class CounterServer extends ServiceReplica {
         iterations++;
         try {
             int increment = new DataInputStream(new ByteArrayInputStream(command)).readInt();
-            System.out.println("read-only request: "+(msgCtx.getConsensusId() == -1));
+            //System.out.println("read-only request: "+(msgCtx.getConsensusId() == -1));
             counter += increment;
             if (msgCtx.getConsensusId() == -1)
-                System.out.println("[server] (" + iterations + ") Counter incremented: " + counter);
+                System.out.println("(" + iterations + ") Counter incremented: " + counter);
             else
-                System.out.println("[server] (" + iterations + " / " + msgCtx.getConsensusId() + ") Counter incremented: " + counter);
+                System.out.println("(" + iterations + " / " + msgCtx.getConsensusId() + ") Counter incremented: " + counter);
             
             ByteArrayOutputStream out = new ByteArrayOutputStream(4);
             new DataOutputStream(out).writeInt(counter);

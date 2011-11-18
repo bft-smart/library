@@ -23,7 +23,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.locks.ReentrantLock;
-import navigators.smart.reconfiguration.ReconfigurationManager;
+import navigators.smart.reconfiguration.ServerViewManager;
 
 /**
  * This class manages information about the leader of each round of each consensus
@@ -37,12 +37,12 @@ public class LeaderModule {
     private Map<Integer, List<ConsInfo>> leaderInfos = new HashMap<Integer, List<ConsInfo>>();
     
     // este e a nova maneira de guardar info sobre o lider, desacoplada do consenso
-    private ReconfigurationManager reconfManager;
+    private ServerViewManager reconfManager;
     private int currentTS;
     /**
      * Creates a new instance of LeaderModule
      */
-    public LeaderModule(ReconfigurationManager reconfManager) {
+    public LeaderModule(ServerViewManager reconfManager) {
         addLeaderInfo(-1, 0, 0);
         addLeaderInfo(0, 0, 0);
         this.reconfManager = reconfManager;

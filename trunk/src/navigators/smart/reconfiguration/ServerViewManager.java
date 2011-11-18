@@ -9,6 +9,7 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.StringTokenizer;
+import navigators.smart.reconfiguration.views.View;
 import navigators.smart.tom.core.TOMLayer;
 import navigators.smart.tom.core.messages.TOMMessage;
 import navigators.smart.tom.util.TOMUtil;
@@ -17,7 +18,7 @@ import navigators.smart.tom.util.TOMUtil;
  *
  * @author eduardo
  */
-public class ReconfigurationManager extends ViewManager {
+public class ServerViewManager extends ViewManager {
 
     public static final int ADD_SERVER = 0;
     public static final int REMOVE_SERVER = 1;
@@ -31,37 +32,55 @@ public class ReconfigurationManager extends ViewManager {
     private int[] lastJoinStet;
     private List<TOMMessage> updates = new LinkedList<TOMMessage>();
     private TOMLayer tomLayer;
-
-    public ReconfigurationManager(int procId) {
-        super(procId);
+   // protected View initialView;
+    
+    public ServerViewManager(int procId) {
+        this(procId,"");
+        /*super(procId);
+        initialView = new View(0, getStaticConf().getInitialView(), 
+                getStaticConf().getF(), getInitAdddresses());
+        getViewStore().storeView(initialView);
+        reconfigureTo(initialView);*/
     }
 
-    public ReconfigurationManager(int procId, String configHome) {
+    public ServerViewManager(int procId, String configHome) {
         super(procId, configHome);
+        View cv = getViewStore().readView();
+        if(cv == null){
+            reconfigureTo(new View(0, getStaticConf().getInitialView(), 
+                getStaticConf().getF(), getInitAdddresses()));
+        }else{
+            reconfigureTo(cv);
+        }
+       
     }
 
+    private InetSocketAddress[] getInitAdddresses() {
+
+        int nextV[] = getStaticConf().getInitialView();
+        InetSocketAddress[] addresses = new InetSocketAddress[nextV.length];
+        for (int i = 0; i < nextV.length; i++) {
+            addresses[i] = getStaticConf().getRemoteAddress(nextV[i]);
+        }
+
+        return addresses;
+    }
+    
     public void setTomLayer(TOMLayer tomLayer) {
         this.tomLayer = tomLayer;
     }
 
-    public View getInitialView() {
-        return initialView;
-    }
-
-    public View getCurrentView() {
-        return this.currentView;
-    }
-
-    public boolean isInInitView() {
-        return this.initialView.isMember(getStaticConf().getProcessId());
-    }
-
+    
     public boolean isInCurrentView() {
+        return this.currentView.isMember(getStaticConf().getProcessId());
+    }
+
+    /*public boolean isInCurrentView() {
         if (this.currentView != null) {
             return this.currentView.isMember(getStaticConf().getProcessId());
         }
         return false;
-    }
+    }*/
 
     public int[] getCurrentViewOtherAcceptors() {
         return this.otherProcesses;
@@ -137,12 +156,14 @@ public class ReconfigurationManager extends ViewManager {
                 if (key == ADD_SERVER) {
                     StringTokenizer str = new StringTokenizer(value, ":");
                     if (str.countTokens() > 2) {
-                        jSetInfo.add(value);
                         int id = Integer.parseInt(str.nextToken());
-                        jSet.add(id);
-                        String host = str.nextToken();
-                        int port = Integer.valueOf(str.nextToken());
-                        this.getStaticConf().addHostInfo(id, host, port);
+                        if(!isCurrentViewMember(id) && !contains(id, jSet)){
+                            jSetInfo.add(value);
+                            jSet.add(id);
+                            String host = str.nextToken();
+                            int port = Integer.valueOf(str.nextToken());
+                            this.getStaticConf().addHostInfo(id, host, port);
+                        }
                     }
                 } else if (key == REMOVE_SERVER) {
                     if (isCurrentViewMember(Integer.parseInt(value))) {
@@ -203,12 +224,11 @@ public class ReconfigurationManager extends ViewManager {
         System.out.println("new view: " + newV);
         System.out.println("lastJoinSet: " + jSet);
 
+        //TODO:Eliminar todas as informações guardadas sobre cada processo em rSet 
+        //processos que executaram o leave!!!
         reconfigureTo(newV);
-
-
-
         return TOMUtil.getBytes(new ReconfigureReply(newV, jSetInfo.toArray(new String[0]),
-                tomLayer.getLastExec(), tomLayer.lm.getLeader(eid, decisionRound)));
+                 eid, tomLayer.lm.getLeader(eid, decisionRound)));
     }
 
     public TOMMessage[] clearUpdates() {
@@ -249,10 +269,13 @@ public class ReconfigurationManager extends ViewManager {
         }
     }
 
+    
     @Override
-    public void reconfigureTo(View newView) {
+    public final void reconfigureTo(View newView) {
+        this.currentView = newView;
+        getViewStore().storeView(this.currentView);
         if (newView.isMember(getStaticConf().getProcessId())) {
-            this.currentView = newView;
+            //É membro da view atual
             otherProcesses = new int[currentView.getProcesses().length - 1];
             int c = 0;
             for (int i = 0; i < currentView.getProcesses().length; i++) {
@@ -267,8 +290,10 @@ public class ReconfigurationManager extends ViewManager {
             this.quorumFastDecide = (int) Math.ceil((this.currentView.getN() + 3 * this.quorumF) / 2);
         } else if (this.currentView != null && this.currentView.isMember(getStaticConf().getProcessId())) {
             //TODO: Saiu do sistema em newView -> LEAVE
-            this.currentView = newView;
-
+            //CODIGO PARA O LEAVE
+        }else{
+            //TODO: Ainda não entrou no sistema
+            
         }
     }
 

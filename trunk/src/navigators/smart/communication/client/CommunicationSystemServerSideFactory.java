@@ -18,7 +18,7 @@
 package navigators.smart.communication.client;
 
 import navigators.smart.communication.client.netty.NettyClientServerCommunicationSystemServerSide;
-import navigators.smart.reconfiguration.ReconfigurationManager;
+import navigators.smart.reconfiguration.ServerViewManager;
 
 /**
  *
@@ -26,7 +26,7 @@ import navigators.smart.reconfiguration.ReconfigurationManager;
  */
 public class CommunicationSystemServerSideFactory {
 
-    public static CommunicationSystemServerSide getCommunicationSystemServerSide(ReconfigurationManager manager) {
+    public static CommunicationSystemServerSide getCommunicationSystemServerSide(ServerViewManager manager) {
         return new NettyClientServerCommunicationSystemServerSide(manager);
     }
 }

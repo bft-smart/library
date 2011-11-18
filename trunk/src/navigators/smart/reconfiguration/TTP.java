@@ -2,7 +2,6 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-
 package navigators.smart.reconfiguration;
 
 import java.io.BufferedReader;
@@ -10,7 +9,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
-import java.util.Hashtable;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Scanner;
@@ -18,6 +16,7 @@ import java.util.StringTokenizer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import navigators.smart.communication.server.ServerConnection;
+import navigators.smart.reconfiguration.views.View;
 
 /**
  *
@@ -27,42 +26,43 @@ public class TTP {
 
     private int id;
     private Reconfiguration rec = null;
-    private Hashtable<Integer, ServerConnection> connections = new Hashtable<Integer, ServerConnection>();
-    private ReconfigurationManager manager;
-    
+    //private Hashtable<Integer, ServerConnection> connections = new Hashtable<Integer, ServerConnection>();
+    private ServerViewManager manager;
     //Apenas precisa notificar quem está entrando, pois os que já estão no sistema executarão
     //a requisição de reconfiguração
     private List<Integer> addIds = new LinkedList<Integer>();
-    
+
     public TTP() {
         this("");
     }
 
-    
-    
     public TTP(String configHome) {
         this.id = loadID(configHome);
-        this.manager = new ReconfigurationManager(id, configHome);
+        this.manager = new ServerViewManager(id, configHome);
         this.rec = new Reconfiguration(id);
     }
 
-    private int loadID(String configHome){
-        try{
-            String path =  "";
+    public void connect(){
+        this.rec.connect();
+    }
+    
+    private int loadID(String configHome) {
+        try {
+            String path = "";
             String sep = System.getProperty("file.separator");
-            if(configHome == null || configHome.equals("")){
-                   path = "config"+sep+"system.config";
-            }else{
-                  path = configHome+sep+"system.config";
+            if (configHome == null || configHome.equals("")) {
+                path = "config" + sep + "system.config";
+            } else {
+                path = configHome + sep + "system.config";
             }
             FileReader fr = new FileReader(path);
             BufferedReader rd = new BufferedReader(fr);
             String line = null;
-            while((line = rd.readLine()) != null){
-                if(!line.startsWith("#")){
-                    StringTokenizer str = new StringTokenizer(line,"=");
-                    if(str.countTokens() > 1 && 
-                            str.nextToken().trim().equals("system.ttp.id")){
+            while ((line = rd.readLine()) != null) {
+                if (!line.startsWith("#")) {
+                    StringTokenizer str = new StringTokenizer(line, "=");
+                    if (str.countTokens() > 1
+                            && str.nextToken().trim().equals("system.ttp.id")) {
                         fr.close();
                         rd.close();
                         return Integer.parseInt(str.nextToken().trim());
@@ -72,52 +72,48 @@ public class TTP {
             fr.close();
             rd.close();
             return -1;
-        }catch(Exception e){
+        } catch (Exception e) {
             e.printStackTrace(System.out);
             return -1;
         }
     }
-     
-    public void addServer(int id, String ip, int port){
-         rec.addServer(id, ip, port);
-         addIds.add(id);
+
+    public void addServer(int id, String ip, int port) {
+        this.manager.getStaticConf().addHostInfo(id, ip, port);
+        rec.addServer(id, ip, port);
+        addIds.add(id);
     }
-    
-    public void removeServer(int id){
+
+    public void removeServer(int id) {
         rec.removeServer(id);
     }
 
-    public void setF(int f){
-      rec.setF(f);
+    public void setF(int f) {
+        rec.setF(f);
     }
-      
-    public void executeUpdates(){
+
+    public void executeUpdates() {
+        connect();
         ReconfigureReply r = rec.execute();
         View v = r.getView();
-        System.out.println("New view f: "+v.getF());
-        
-        TTPMessage msg = new TTPMessage(id,r);
-        
-        if(addIds.size() > 0){ //ESTE TESTE QUE FALTA!
-            sendResponse(addIds.toArray(new Integer[1]),msg);
+        System.out.println("New view f: " + v.getF());
+
+        TTPMessage msg = new TTPMessage(id, r);
+
+        if (addIds.size() > 0) { 
+            sendResponse(addIds.toArray(new Integer[1]), msg);
             addIds.clear();
         }
 
-        
-   }
 
-     private ServerConnection getConnection(int remoteId) {
-        ServerConnection ret = this.connections.get(remoteId);
-        if (ret == null) {
-            ret = new ServerConnection(manager, null, remoteId, null, null);
-            this.connections.put(remoteId, ret);
-        }
-        return ret;
     }
 
-    
-    
-     public void sendResponse(Integer[] targets, TTPMessage sm) {
+    private ServerConnection getConnection(int remoteId) {
+         return new ServerConnection(manager, null, remoteId, null, null);
+            
+    }
+
+    public void sendResponse(Integer[] targets, TTPMessage sm) {
         ByteArrayOutputStream bOut = new ByteArrayOutputStream();
 
         try {
@@ -135,28 +131,24 @@ public class TTP {
                     getConnection(i.intValue()).send(data);
                 }
             } catch (InterruptedException ex) {
-                ex.printStackTrace();
+               // ex.printStackTrace();
+                System.err.println(ex);
             }
         }
-    //br.ufsc.das.tom.util.Logger.println("(ServersCommunicationLayer.send) Finished sending messages to replicas");
+        //br.ufsc.das.tom.util.Logger.println("(ServersCommunicationLayer.send) Finished sending messages to replicas");
     }
 
-    
-    
-    
-    
-    public void close(){
+    public void close() {
         rec.close();
     }
-    
-    
-    public static void main(String[] args){
-        
+
+    public static void main(String[] args) {
+
         TTP ttp = null;
-        
-        if(args.length > 0){
+
+        if (args.length > 0) {
             ttp = new TTP(args[0]);
-        }else{
+        } else {
             ttp = new TTP("");
         }
 
@@ -165,47 +157,55 @@ public class TTP {
         String str = null;
         do {
             str = scan.nextLine();
-            StringTokenizer token = new StringTokenizer(str);
-            String cmd = token.nextToken();
-            int arg = Integer.parseInt(token.nextToken());
-            if (cmd.equals("add")) {
-
-                int port = (arg * 10) + 11000;
-                ttp.addServer(arg, "127.0.0.1", port);
-            }
-            else if (cmd.equals("rem")) {
-                ttp.removeServer(arg);
+            String cmd = "";
+            int arg = -1;
+            try {
+                StringTokenizer token = new StringTokenizer(str);
+                cmd = token.nextToken();
+                arg = Integer.parseInt(token.nextToken());
+            } catch (Exception e) {
             }
 
-            ttp.executeUpdates();
-        } while(!str.equals("exit"));
+            if (arg >= 0) {
+                if (cmd.equals("add")) {
+
+                    int port = (arg * 10) + 11000;
+                    ttp.addServer(arg, "127.0.0.1", port);
+                } else if (cmd.equals("rem")) {
+                    ttp.removeServer(arg);
+                }
+
+                ttp.executeUpdates();
+            }
+
+        } while (!str.equals("exit"));
+
+        System.out.println("TCHAU!");
+
+        ttp.close();
         System.exit(0);
-        ttp.addServer(4, "127.0.0.1", 11040);
+        /*ttp.addServer(4, "127.0.0.1", 11040);
         
         ttp.executeUpdates();
         ttp.close();
         
         try {
-            Thread.sleep(10000);
+        Thread.sleep(10000);
         } catch (InterruptedException ex) {
-            Logger.getLogger(TTP.class.getName()).log(Level.SEVERE, null, ex);
+        Logger.getLogger(TTP.class.getName()).log(Level.SEVERE, null, ex);
         }
-
+        
         if(args.length > 0){
-            ttp = new TTP(args[0]);
+        ttp = new TTP(args[0]);
         }else{
-            ttp = new TTP("");
+        ttp = new TTP("");
         }
-
+        
         ttp.removeServer(4);
         
         ttp.executeUpdates();
         ttp.close();
-
-        System.exit(0);
+        
+        System.exit(0);*/
     }
-    
-    
-    
-    
 }

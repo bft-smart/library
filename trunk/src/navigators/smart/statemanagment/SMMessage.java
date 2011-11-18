@@ -37,7 +37,7 @@ public class SMMessage extends SystemMessage implements Externalizable {
     private int eid; // Execution ID up to which the sender needs to be updated
     private int type; // Message type
     private int replica; // Replica that should send the state
-    private int view; // Current view
+    private int regency; // Current regency
 
     /**
      * Constructs a SMMessage
@@ -47,7 +47,7 @@ public class SMMessage extends SystemMessage implements Externalizable {
      * @param replica Replica that should send the state
      * @param state State log
      */
-    public SMMessage(int sender, int eid, int type, int replica, TransferableState state, int view) {
+    public SMMessage(int sender, int eid, int type, int replica, TransferableState state, int regency) {
 
         super(sender);
         this.state = state;
@@ -55,7 +55,7 @@ public class SMMessage extends SystemMessage implements Externalizable {
         this.type = type;
         this.replica = replica;
         this.sender = sender;
-        this.view = view;
+        this.regency = regency;
 
     }
 
@@ -95,11 +95,11 @@ public class SMMessage extends SystemMessage implements Externalizable {
     }
 
     /**
-     * Retrieves the view that the replica had when sending the state
-     * @return The view that the replica had when sending the state
+     * Retrieves the regency that the replica had when sending the state
+     * @return The regency that the replica had when sending the state
      */
-    public int getView() {
-        return view;
+    public int getRegency() {
+        return regency;
     }
 
     @Override
@@ -110,7 +110,7 @@ public class SMMessage extends SystemMessage implements Externalizable {
         out.writeInt(eid);
         out.writeInt(type);
         out.writeInt(replica);
-        out.writeInt(view);
+        out.writeInt(regency);
         out.writeObject(state);
     }
 
@@ -122,7 +122,7 @@ public class SMMessage extends SystemMessage implements Externalizable {
         eid = in.readInt();
         type = in.readInt();
         replica = in.readInt();
-        view = in.readInt();
+        regency = in.readInt();
         state = (TransferableState) in.readObject();
     }
 }

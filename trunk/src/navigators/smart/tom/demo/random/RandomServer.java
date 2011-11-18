@@ -84,7 +84,7 @@ public final class RandomServer extends ServiceReplica {
             }
             
             System.out.println("(" + id + ")[server] (" + iterations + " / " + 
-                    msgCtx.getConsensusId() + " / " + msgCtx.getView() + ") Current value: " + value);
+                    msgCtx.getConsensusId() + " / " + msgCtx.getRegency() + ") Current value: " + value);
             
             ByteArrayOutputStream out = new ByteArrayOutputStream(4);
             new DataOutputStream(out).writeInt(value);

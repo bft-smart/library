@@ -55,7 +55,14 @@ public class CounterClient {
             int numberOfOps = (args.length > 2) ? Integer.parseInt(args[2]) : 1000;
 
             boolean wait = false;
-            Logger.debug = true;
+            
+            if((args.length > 2 && args[2].equals("wait")) ||
+                    (args.length > 3 && args[3].equals("wait"))){
+                wait = true;
+            }
+            
+            
+            Logger.debug = false;
             BufferedReader inReader = new BufferedReader(new InputStreamReader(System.in));
 
             for (int i = 0; i < numberOfOps; i++) {

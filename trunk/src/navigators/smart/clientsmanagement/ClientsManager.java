@@ -24,7 +24,7 @@ import java.util.Map.Entry;
 import java.util.concurrent.locks.ReentrantLock;
 import navigators.smart.communication.ServerCommunicationSystem;
 
-import navigators.smart.reconfiguration.ReconfigurationManager;
+import navigators.smart.reconfiguration.ServerViewManager;
 import navigators.smart.tom.core.messages.TOMMessage;
 import navigators.smart.tom.core.timer.RequestsTimer;
 import navigators.smart.tom.util.Logger;
@@ -35,12 +35,12 @@ import navigators.smart.tom.util.Logger;
  */
 public class ClientsManager {
 
-    private ReconfigurationManager manager;
+    private ServerViewManager manager;
     private RequestsTimer timer;
     private HashMap<Integer, ClientData> clientsData = new HashMap<Integer, ClientData>();
     private ReentrantLock clientsLock = new ReentrantLock();
 
-    public ClientsManager(ReconfigurationManager manager, RequestsTimer timer) {
+    public ClientsManager(ServerViewManager manager, RequestsTimer timer) {
         this.manager = manager;
         this.timer = timer;
     }

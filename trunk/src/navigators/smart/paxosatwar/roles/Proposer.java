@@ -20,7 +20,7 @@ package navigators.smart.paxosatwar.roles;
 import navigators.smart.communication.ServerCommunicationSystem;
 import navigators.smart.paxosatwar.executionmanager.ExecutionManager;
 import navigators.smart.paxosatwar.messages.MessageFactory;
-import navigators.smart.reconfiguration.ReconfigurationManager;
+import navigators.smart.reconfiguration.ServerViewManager;
 
 /**
  * This class represents the proposer role in the consensus protocol.
@@ -30,17 +30,18 @@ public class Proposer {
     private ExecutionManager manager = null; // Execution manager of consensus's executions
     private MessageFactory factory; // Factory for PaW messages
     private ServerCommunicationSystem communication; // Replicas comunication system
-    private ReconfigurationManager reconfManager;
+    private ServerViewManager reconfManager;
 
     /**
      * Creates a new instance of Proposer
      * 
      * @param communication Replicas communication system
      * @param factory Factory for PaW messages
-     * @param manager Reconfiguration Manager
+     * @param verifier Proof verifier
+     * @param conf TOM configuration
      */
     public Proposer(ServerCommunicationSystem communication, MessageFactory factory,
-            ReconfigurationManager manager) {
+            ServerViewManager manager) {
         this.communication = communication;
         this.factory = factory;
         this.reconfManager = manager;

@@ -15,18 +15,33 @@
  *
  * You should have received a copy of the GNU General Public License along with SMaRt.  If not, see <http://www.gnu.org/licenses/>.
  */
-package navigators.smart.communication.client;
 
-import navigators.smart.communication.client.netty.NettyClientServerCommunicationSystemClientSide;
-import navigators.smart.reconfiguration.ClientViewManager;
+package navigators.smart.reconfiguration.views;
 
-/**
- *
- * @author Paulo
- */
-public class CommunicationSystemClientSideFactory {
 
-    public static CommunicationSystemClientSide getCommunicationSystemClientSide(ClientViewManager manager) {
-        return new NettyClientServerCommunicationSystemClientSide(manager);
+import java.net.InetSocketAddress;
+
+
+
+
+public class TestViewSerialization {
+
+    /**
+     * @param args the command line arguments
+     */
+    public static void main(String[] args) throws Exception {
+        int[] ids = {1,2,3,4};
+        InetSocketAddress[] in = new InetSocketAddress[4];
+        in[0] = new InetSocketAddress("127.0.0.1",1234);
+        in[1] = new InetSocketAddress("127.0.0.1",1234);
+        in[2] = new InetSocketAddress("127.0.0.1",1234);
+        in[3] = new InetSocketAddress("127.0.0.1",1234);
+        View v = new View(10, ids,1,in);
+        ViewStorage st = new DefaultViewStorage();
+        st.storeView(v);
+        
+        View r = st.readView();
+        System.out.println(r);
     }
+
 }

@@ -22,7 +22,6 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
-import java.net.ConnectException;
 import java.net.Socket;
 import java.net.UnknownHostException;
 import java.security.NoSuchAlgorithmException;
@@ -37,7 +36,7 @@ import javax.crypto.SecretKey;
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.PBEKeySpec;
 
-import navigators.smart.reconfiguration.ReconfigurationManager;
+import navigators.smart.reconfiguration.ServerViewManager;
 import navigators.smart.reconfiguration.TTPMessage;
 import navigators.smart.tom.ServiceReplica;
 import navigators.smart.communication.SystemMessage;
@@ -56,7 +55,7 @@ public class ServerConnection {
     private static final String MAC_ALGORITHM = "HmacMD5";
     private static final long POOL_TIME = 5000;
     //private static final int SEND_QUEUE_SIZE = 50;
-    private ReconfigurationManager manager;
+    private ServerViewManager manager;
     private Socket socket;
     private DataOutputStream socketOutStream = null;
     private DataInputStream socketInStream = null;
@@ -73,7 +72,7 @@ public class ServerConnection {
     private Lock sendLock;
     private boolean doWork = true;
 
-    public ServerConnection(ReconfigurationManager manager, Socket socket, int remoteId,
+    public ServerConnection(ServerViewManager manager, Socket socket, int remoteId,
             LinkedBlockingQueue<SystemMessage> inQueue, ServiceReplica replica) {
 
         this.manager = manager;
@@ -264,8 +263,6 @@ public class ServerConnection {
                 }
             } catch (UnknownHostException ex) {
                 ex.printStackTrace();
-            } catch (ConnectException ex) {
-                System.err.println("Impossível restabelecer ligação a servidor");
             } catch (IOException ex) {
                 ex.printStackTrace();
             }
@@ -509,6 +506,7 @@ public class ServerConnection {
                     } catch (ClassNotFoundException ex) {
                         ex.printStackTrace();
                     } catch (IOException ex) {
+                        //ex.printStackTrace();
                         if (doWork) {
                             closeSocket();
                             waitAndConnect();

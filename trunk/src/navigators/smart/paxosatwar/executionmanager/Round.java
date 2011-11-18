@@ -23,7 +23,7 @@ import java.security.SignedObject;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.TreeSet;
-import navigators.smart.reconfiguration.ReconfigurationManager;
+import navigators.smart.reconfiguration.ServerViewManager;
 import navigators.smart.tom.core.messages.TOMMessage;
 import org.apache.commons.codec.binary.Base64;
 
@@ -52,15 +52,15 @@ public class Round implements Serializable {
     public SignedObject[] proofs; // proof from other processes
 
 
-    private ReconfigurationManager manager;
+    private ServerViewManager manager;
 
     /**
      * Creates a new instance of Round for acceptors
-     * @param manager Reconfiguration Manager
      * @param parent Execution to which this round belongs
      * @param number Number of the round
+     * @param timeout Timeout duration for this round
      */
-    protected Round(ReconfigurationManager manager, Execution parent, int number) {
+    protected Round(ServerViewManager manager, Execution parent, int number) {
         this.execution = parent;
         this.number = number;
         this.manager = manager;
@@ -118,7 +118,11 @@ public class Round implements Serializable {
             Arrays.fill((SignedObject[]) proofs, null);
         }
         //******* EDUARDO BEGIN **************//
-        proofs[this.manager.getCurrentViewPos(acceptor)] = proof;
+        
+        int p = this.manager.getCurrentViewPos(acceptor);
+        if(p >= 0){
+            proofs[p] = proof;
+        }
         //******* EDUARDO END **************//
     }
 
@@ -152,7 +156,15 @@ public class Round implements Serializable {
      * @return True if there is a weakly accepted value from a replica, false otherwise
      */
     public boolean isWeakSetted(int acceptor) {
-        return weak[this.manager.getCurrentViewPos(acceptor)] != null;
+        
+        //******* EDUARDO BEGIN **************//
+        int p = this.manager.getCurrentViewPos(acceptor);
+        if(p >= 0){
+            return weak[p] != null;
+        }else{
+            return false;
+        }
+        //******* EDUARDO END **************//
     }
 
     /**
@@ -162,7 +174,12 @@ public class Round implements Serializable {
      */
     public boolean isStrongSetted(int acceptor) {
         //******* EDUARDO BEGIN **************//
-        return strong[this.manager.getCurrentViewPos(acceptor)] != null;
+        int p = this.manager.getCurrentViewPos(acceptor);
+        if(p >= 0){
+            return strong[p] != null;
+        }else{
+            return false;
+        }
         //******* EDUARDO END **************//
     }
 
@@ -173,7 +190,12 @@ public class Round implements Serializable {
      */
     public byte[] getWeak(int acceptor) {
         //******* EDUARDO BEGIN **************//
-        return this.weak[this.manager.getCurrentViewPos(acceptor)];
+        int p = this.manager.getCurrentViewPos(acceptor);
+        if(p >= 0){        
+            return this.weak[p];
+        }else{
+            return null;
+        }
         //******* EDUARDO END **************//
     }
 
@@ -193,7 +215,7 @@ public class Round implements Serializable {
     public void setWeak(int acceptor, byte[] value) { // TODO: Condicao de corrida?
         //******* EDUARDO BEGIN **************//
         int p = this.manager.getCurrentViewPos(acceptor);
-        if (!weakSetted[p] && !isFrozen()) { //it can only be setted once
+        if (p >=0 && !weakSetted[p] && !isFrozen()) { //it can only be setted once
             weak[p] = value;
             weakSetted[p] = true;
         }
@@ -207,7 +229,12 @@ public class Round implements Serializable {
      */
     public byte[] getStrong(int acceptor) {
         //******* EDUARDO BEGIN **************//
-        return strong[this.manager.getCurrentViewPos(acceptor)];
+         int p = this.manager.getCurrentViewPos(acceptor);
+        if(p >= 0){        
+        return strong[p];
+        }else{
+            return null;
+        }
         //******* EDUARDO END **************//
     }
 
@@ -227,7 +254,7 @@ public class Round implements Serializable {
     public void setStrong(int acceptor, byte[] value) { // TODO: condicao de corrida?
         //******* EDUARDO BEGIN **************//
         int p = this.manager.getCurrentViewPos(acceptor);
-        if (!strongSetted[p] && !isFrozen()) { //it can only be setted once
+        if (p >= 0 && !strongSetted[p] && !isFrozen()) { //it can only be setted once
             strong[p] = value;
             strongSetted[p] = true;
         }
@@ -352,7 +379,6 @@ public class Round implements Serializable {
         if(obj == null) {
             return "*";
         } else {
-
             return Base64.encodeBase64String(obj);
         }
     }

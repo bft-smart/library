@@ -5,6 +5,7 @@
 
 package navigators.smart.reconfiguration;
 
+import navigators.smart.reconfiguration.views.View;
 
 /**
  *

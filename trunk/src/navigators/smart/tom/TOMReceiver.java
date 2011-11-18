@@ -24,7 +24,7 @@ import navigators.smart.paxosatwar.executionmanager.LeaderModule;
 import navigators.smart.paxosatwar.messages.MessageFactory;
 import navigators.smart.paxosatwar.roles.Acceptor;
 import navigators.smart.paxosatwar.roles.Proposer;
-import navigators.smart.reconfiguration.ReconfigurationManager;
+import navigators.smart.reconfiguration.ServerViewManager;
 import navigators.smart.tom.core.TOMLayer;
 import navigators.smart.tom.util.ShutdownHookThread;
 
@@ -38,7 +38,7 @@ public abstract class TOMReceiver implements TOMRequestReceiver {
     private boolean tomStackCreated = false;
     private ReplicaContext replicaCtx = null;
 
-    public void init(ServerCommunicationSystem cs, ReconfigurationManager reconfManager) {
+    public void init(ServerCommunicationSystem cs, ServerViewManager reconfManager) {
         this.init(cs, reconfManager,-1,-1);
     }
     
@@ -46,9 +46,9 @@ public abstract class TOMReceiver implements TOMRequestReceiver {
      * This method initializes the object
      * 
      * @param cs Server side communication System
-     * @param reconfManager  Reconfiguration Manager
+     * @param conf Total order messaging configuration
      */
-    public void init(ServerCommunicationSystem cs, ReconfigurationManager reconfManager, 
+    public void init(ServerCommunicationSystem cs, ServerViewManager reconfManager, 
                           int lastExec, int lastLeader) {
         if (tomStackCreated) { // if this object was already initialized, don't do it again
             return;
@@ -79,7 +79,7 @@ public abstract class TOMReceiver implements TOMRequestReceiver {
         proposer.setManager(manager);
 
         TOMLayer tomLayer = new TOMLayer(manager, this, lm, acceptor, cs, reconfManager);
-
+        
         manager.setTOMLayer(tomLayer);
         
         //******* EDUARDO BEGIN **************//
