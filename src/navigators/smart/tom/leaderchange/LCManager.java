@@ -29,8 +29,8 @@ import java.util.Set;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import navigators.smart.paxosatwar.executionmanager.RoundValuePair;
-import navigators.smart.reconfiguration.ReconfigurationManager;
+import navigators.smart.paxosatwar.executionmanager.TimestampValuePair;
+import navigators.smart.reconfiguration.ServerViewManager;
 import navigators.smart.tom.core.TOMLayer;
 import navigators.smart.tom.core.messages.TOMMessage;
 
@@ -44,12 +44,12 @@ import navigators.smart.tom.core.messages.TOMMessage;
 public class LCManager {
 
     //timestamp info
-    private int lastts;
-    private int nextts;
+    private int lastreg;
+    private int nextreg;
 
     //locks
-    private ReentrantLock lasttsLock;
-    private ReentrantLock nexttsLock;
+    private ReentrantLock lastregLock;
+    private ReentrantLock nextregLock;
     private ReentrantLock StopsLock;
 
     //requests that timed out
@@ -61,7 +61,7 @@ public class LCManager {
     private HashMap<Integer,HashSet<SignedObject>> collects;
 
     //stuff from the TOM layer that this object needss
-    private ReconfigurationManager reconfManager;
+    private ServerViewManager SVManager;
     private MessageDigest md;
     private TOMLayer tomLayer;
 
@@ -71,20 +71,20 @@ public class LCManager {
      * @param reconfManager The reconfiguration manager from TOM layer
      * @param md The message digest engine from TOM layer
      */
-    public LCManager(TOMLayer tomLayer,ReconfigurationManager reconfManager, MessageDigest md) {
+    public LCManager(TOMLayer tomLayer,ServerViewManager reconfManager, MessageDigest md) {
         this.tomLayer = tomLayer;
-        this.lastts = 0;
-        this.nextts = 0;
+        this.lastreg = 0;
+        this.nextreg = 0;
 
-        this.lasttsLock = new ReentrantLock();
-        this.nexttsLock = new ReentrantLock();
+        this.lastregLock = new ReentrantLock();
+        this.nextregLock = new ReentrantLock();
         this.StopsLock = new ReentrantLock();
 
         this.stops = new HashMap<Integer,HashSet<Integer>>();
         this.lastEids = new HashMap<Integer, HashSet<LastEidData>>();
         this.collects = new HashMap<Integer, HashSet<SignedObject>>();
 
-        this.reconfManager = reconfManager;
+        this.SVManager = reconfManager;
         this.md = md;
     }
 
@@ -103,31 +103,31 @@ public class LCManager {
     }
 
     /**
-     * Get lock for lastts
+     * Get lock for lastreg
      */
-    public void lasttsLock() {
-        lasttsLock.lock();
+    public void lastregLock() {
+        lastregLock.lock();
     }
 
     /**
-     * Release lock for lastts
+     * Release lock for lastreg
      */
-    public void lasttsUnlock() {
-        lasttsLock.unlock();
+    public void lastregUnlock() {
+        lastregLock.unlock();
     }
 
     /**
-     * Get lock for nextts
+     * Get lock for nextreg
      */
-    public void nexttsLock() {
-        nexttsLock.lock();
+    public void nextregLock() {
+        nextregLock.lock();
     }
 
     /**
-     * Release lock for nextts
+     * Release lock for nextreg
      */
-    public void nexttsUnlock() {
-        nexttsLock.unlock();
+    public void nextregUnlock() {
+        nextregLock.unlock();
     }
 
     /**
@@ -148,177 +148,177 @@ public class LCManager {
     }
 
     /**
-     * Set the previous timestamp
-     * @param lastts current timestamp
+     * Set the previous regency
+     * @param lastreg current regency
      */
-    public void setLastts(int lastts) {
-        this.lastts = lastts;
+    public void setLastReg(int lastreg) {
+        this.lastreg = lastreg;
     }
 
     /**
-     * The current timestamp
-     * @return current timestamp
+     * The current regency
+     * @return current regency
      */
-    public int getLastts() {
-        return lastts;
+    public int getLastReg() {
+        return lastreg;
     }
 
     /**
-     * Set the next timestamp
-     * @param nextts next timestamp
+     * Set the next regency
+     * @param nextts next regency
      */
-    public void setNextts(int nextts) {
-        this.nextts = nextts;
+    public void setNextReg(int nextreg) {
+        this.nextreg = nextreg;
     }
 
     /**
-     * The next timestamp
-     * @return next timestamp
+     * The next regency
+     * @return next regency
      */
-    public int getNextts() {
-        return nextts;
+    public int getNextReg() {
+        return nextreg;
     }
 
     /**
      * Keep information about an incoming STOP message
-     * @param ts the next timestamp
+     * @param regency the next regency
      * @param pid the process that sent the message
      */
-    public void addStop(int ts, int pid) {
-        HashSet<Integer> pids = stops.get(ts);
+    public void addStop(int regency, int pid) {
+        HashSet<Integer> pids = stops.get(regency);
         if (pids == null) pids = new HashSet<Integer>();
         pids.add(pid);
-        stops.put(ts, pids);
+        stops.put(regency, pids);
     }
 
     /**
-     * Discard information about STOP messages up to timestamp ts
+     * Discard information about STOP messages up to specified regency
      * @param ts timestamp up to which to discard messages
      */
-    public void removeStops(int ts) {
-        Set<Integer> tss = stops.keySet();
-        for (int t : tss) {
-            if (t <= ts) stops.remove(t);
+    public void removeStops(int regency) {
+        Set<Integer> regencies = stops.keySet();
+        for (int t : regencies) {
+            if (t <= regency) stops.remove(t);
         }
     }
 
     /**
      * Get the quantity of stored STOP information
-     * @param ts timestamp to be considered
+     * @param regency Regency to be considered
      * @return quantity of stored STOP information for given timestamp
      */
-    public int getStopsSize(int ts) {
-        HashSet<Integer> pids = stops.get(ts);
+    public int getStopsSize(int regency) {
+        HashSet<Integer> pids = stops.get(regency);
         return pids == null ? 0 : pids.size();
     }
 
     /**
      * Keep last eid from an incoming SYNC message
-     * @param ts the current timestamp
+     * @param regency the current regency
      * @param lastEid the last eid data
      */
-    public void addLastEid(int ts, LastEidData lastEid) {
+    public void addLastEid(int regency, LastEidData lastEid) {
 
-        HashSet<LastEidData> last = lastEids.get(ts);
+        HashSet<LastEidData> last = lastEids.get(regency);
         if (last == null) last = new HashSet<LastEidData>();
         last.add(lastEid);
-        lastEids.put(ts, last);
+        lastEids.put(regency, last);
     }
 
     /**
-     * Discard last eid information up to timestamp ts
-     * @param ts timestamp up to which to discard information
+     * Discard last eid information up to the specified regency
+     * @param regency Regency up to which to discard information
      */
-    public void removeLastEids(int ts) {
-        Set<Integer> tss = lastEids.keySet();
-        for (int t : tss) {
-            if (t <= ts) lastEids.remove(t);
+    public void removeLastEids(int regency) {
+        Set<Integer> regencies = lastEids.keySet();
+        for (int t : regencies) {
+            if (t <= regency) lastEids.remove(t);
         }
     }
 
     /**
      * Get the quantity of stored last eid information
-     * @param ts timestamp to be considered
-     * @return quantity of stored last eid  information for given timestamp
+     * @param regency regency to be considered
+     * @return quantity of stored last eid  information for given regency
      */
-    public int getLastEidsSize(int ts) {
-        HashSet<LastEidData> last = lastEids.get(ts);
+    public int getLastEidsSize(int regency) {
+        HashSet<LastEidData> last = lastEids.get(regency);
         return last == null ? 0 : last.size();
     }
 
     /**
-     * Get the set of last eids related to a timestamp
-     * @param ts timestamp for the last eid info
+     * Get the set of last eids related to a regency
+     * @param regency Regency for the last eid info
      * @return a set of last eid data
      */
-    public HashSet<LastEidData> getLastEids(int ts) {
-        return lastEids.get(ts);
+    public HashSet<LastEidData> getLastEids(int regency) {
+        return lastEids.get(regency);
     }
 
     /**
-     * Defines the set of last eids related to a timestamp
-     * @param ts timestamp for the last eid info
+     * Defines the set of last eids related to a regency
+     * @param regency Regency for the last eid info
      * @param lasts a set of last eid data
      */
-    public void setLastEids(int ts, HashSet<LastEidData> lasts) {
+    public void setLastEids(int regency, HashSet<LastEidData> lasts) {
 
-        lastEids.put(ts, lasts);
+        lastEids.put(regency, lasts);
     }
 
     /**
      * Keep collect from an incoming SYNC message
-     * @param ts the current timestamp
+     * @param ts the current regency
      * @param signedCollect the signed collect data
      */
-    public void addCollect(int ts, SignedObject signedCollect) {
+    public void addCollect(int regency, SignedObject signedCollect) {
 
-        HashSet<SignedObject> c = collects.get(ts);
+        HashSet<SignedObject> c = collects.get(regency);
         if (c == null) c = new HashSet<SignedObject>();
         c.add(signedCollect);
-        collects.put(ts, c);
+        collects.put(regency, c);
     }
     
     /**
-     * Discard collect information up to timestamp ts
-     * @param ts timestamp up to which to discard information
+     * Discard collect information up to the given regency
+     * @param regency Regency up to which to discard information
      */
-    public void removeCollects(int ts) {
+    public void removeCollects(int regency) {
 
-        Set<Integer> tss = collects.keySet();
-        for (int t : tss) {
-            if (t <= ts) collects.remove(t);
+        Set<Integer> regencies = collects.keySet();
+        for (int t : regencies) {
+            if (t <= regency) collects.remove(t);
         }
 
     }
     
     /**
      * Get the quantity of stored collect information
-     * @param ts timestamp to be considered
-     * @return quantity of stored collect information for given timestamp
+     * @param regency Regency to be considered
+     * @return quantity of stored collect information for given regency
      */
-    public int getCollectsSize(int ts) {
+    public int getCollectsSize(int regency) {
 
-        HashSet<SignedObject> c = collects.get(ts);
+        HashSet<SignedObject> c = collects.get(regency);
         return c == null ? 0 : c.size();
     }
 
     /**
-     * Get the set of collects related to a timestamp
-     * @param ts timestamp for collects
+     * Get the set of collects related to a regency
+     * @param regency Regency for collects
      * @return a set of collect data
      */
-    public HashSet<SignedObject> getCollects(int ts) {
-        return collects.get(ts);
+    public HashSet<SignedObject> getCollects(int regency) {
+        return collects.get(regency);
     }
 
     /**
-     * Defines the set of collects related to a timestamp
-     * @param ts timestamp for the last eid info
+     * Defines the set of collects related to a regency
+     * @param regency Regency for the last eid info
      * @param colls a set of collect data
      */
-    public void setCollects(int ts, HashSet<SignedObject> colls) {
+    public void setCollects(int regency, HashSet<SignedObject> colls) {
 
-        collects.put(ts, colls);
+        collects.put(regency, colls);
     }
     /**
      * The all-important predicate "sound". This method must received a set of collects that were
@@ -331,12 +331,12 @@ public class LCManager {
 
         if (collects == null) return false;
         
-        HashSet<Integer> rounds = new HashSet<Integer>();
+        HashSet<Integer> timestamps = new HashSet<Integer>();
         HashSet<byte[]> values = new HashSet<byte[]>();
 
-        for (CollectData c : collects) { // apurar todos os rounds e valores que existem separadamente
+        for (CollectData c : collects) { // apurar todos os timestamps e valores que existem separadamente
 
-            rounds.add(c.getQuorumWeaks().getRound()); //guardar round recebido de um quorum bizantino de weaks
+            timestamps.add(c.getQuorumWeaks().getRound()); //guardar timestamp recebido de um quorum bizantino de weaks
 
             // guardar valor recebido de um quorum bizantino de weaks, caso nao seja um valor vazio
             if (!Arrays.equals(c.getQuorumWeaks().getValue(), new byte[0])) {
@@ -350,8 +350,8 @@ public class LCManager {
                 }
                 if (insert) values.add(c.getQuorumWeaks().getValue());
             }
-            for (RoundValuePair rv : c.getWriteSet()) { // guardar todos os rounds e valores escritos
-                rounds.add(rv.getRound());
+            for (TimestampValuePair rv : c.getWriteSet()) { // guardar todos os timestamps e valores escritos
+                timestamps.add(rv.getRound());
 
                 boolean insert = true; // este ciclo serve para evitar meter valores repetidos no conjunto
                 for (byte[] b : values) {
@@ -366,8 +366,8 @@ public class LCManager {
 
         }
 
-        // depois de ter todos os rounds e valores organizados, aplicar o predicado propriamente dito
-        for (int r : rounds) {
+        // depois de ter todos os timestamps e valores organizados, aplicar o predicado propriamente dito
+        for (int r : timestamps) {
             for (byte[] v : values) {
 
                 if (binds(r, v, collects)) {
@@ -384,19 +384,19 @@ public class LCManager {
      * The predicate "binds". This method must received a set of collects that were
      * filtered using the method selectCollects()
      *
-     * @param round the round to search for
+     * @param timestamp the timestamp to search for
      * @param value the value to search for
      * @param collects the collect data to which to apply the predicate.
      * @return see pages 252 and 253 from "Introduction to Reliable and Secure Distributed Programming"
      */
-    public boolean binds(int round, byte[] value, HashSet<CollectData> collects) {
+    public boolean binds(int timestamp, byte[] value, HashSet<CollectData> collects) {
 
-        return (value != null && collects != null && collects.size() > (reconfManager.getCurrentViewN() - reconfManager.getCurrentViewF()))
-                && quorumHighest(round, value, collects) && certifiedValue(round, value, collects);
+        return (value != null && collects != null && collects.size() > (SVManager.getCurrentViewN() - SVManager.getCurrentViewF()))
+                && quorumHighest(timestamp, value, collects) && certifiedValue(timestamp, value, collects);
     }
 
     /**
-     * Devolve um valor que seja bind, que seja diferente de nulo e com round maior ou igual a zero
+     * Devolve um valor que seja bind, que seja diferente de nulo e com timestamp maior ou igual a zero
      * @param collects Conjunto de collects de onde determinar o valor
      * @return O valor bind
      */
@@ -404,12 +404,12 @@ public class LCManager {
 
         if (collects == null) return null;
 
-        HashSet<Integer> rounds = new HashSet<Integer>();
+        HashSet<Integer> timestamps = new HashSet<Integer>();
         HashSet<byte[]> values = new HashSet<byte[]>();
 
-        for (CollectData c : collects) { // apurar todos os rounds e valores que existem separadamente
+        for (CollectData c : collects) { // apurar todos os timestamps e valores que existem separadamente
 
-            rounds.add(c.getQuorumWeaks().getRound()); //guardar round recebido de um quorum bizantino de weaks
+            timestamps.add(c.getQuorumWeaks().getRound()); //guardar round recebido de um quorum bizantino de weaks
 
             // guardar valor recebido de um quorum bizantino de weaks, caso nao seja um valor vazio
             if (!Arrays.equals(c.getQuorumWeaks().getValue(), new byte[0])) {
@@ -423,8 +423,8 @@ public class LCManager {
                 }
                 if (insert) values.add(c.getQuorumWeaks().getValue());
             }
-            for (RoundValuePair rv : c.getWriteSet()) { // guardar todos os rounds e valores escritos
-                rounds.add(rv.getRound());
+            for (TimestampValuePair rv : c.getWriteSet()) { // guardar todos os timestamps e valores escritos
+                timestamps.add(rv.getRound());
 
                 boolean insert = true; // este ciclo serve para evitar meter valores repetidos no conjunto
                 for (byte[] b : values) {
@@ -439,15 +439,15 @@ public class LCManager {
 
         }
 
-        // depois de ter todos os rounds e valores organizados, aplicar o predicado propriamente dito
-        for (int r : rounds) {
+        // depois de ter todos os timestamps e valores organizados, aplicar o predicado propriamente dito
+        for (int r : timestamps) {
             for (byte[] v : values) {
 
                 if (r >= 0 && binds(r, v, collects)) { // temos um valor que satisfaz o predicado?
 
                     // como estamos a lidar com hashes, temos que encontrar o valor original...
                     for (CollectData c : collects) {
-                        for (RoundValuePair rv : c.getWriteSet()) {
+                        for (TimestampValuePair rv : c.getWriteSet()) {
 
                             for (byte[] b : values) {
 
@@ -479,7 +479,7 @@ public class LCManager {
         boolean unbound = false;
         int count = 0;
 
-        if (collects.size() >= (reconfManager.getCurrentViewN() - reconfManager.getCurrentViewF())) {
+        if (collects.size() >= (SVManager.getCurrentViewN() - SVManager.getCurrentViewF())) {
 
 
             for (CollectData c : collects) {
@@ -489,7 +489,7 @@ public class LCManager {
         }
         else return false;
 
-        unbound = count > ((reconfManager.getCurrentViewN() + reconfManager.getCurrentViewF()) / 2);
+        unbound = count > ((SVManager.getCurrentViewN() + SVManager.getCurrentViewF()) / 2);
         return unbound;
         
     }
@@ -498,12 +498,12 @@ public class LCManager {
      * The predicate "quorumHighest". This method must received a set of collects that were
      * filtered using the method selectCollects()
      *
-     * @param round the round to search for
+     * @param timestamp the timestamp to search for
      * @param value the value to search for
      * @param collects the collect data to which to apply the predicate.
      * @return see pages 252 and 253 from "Introduction to Reliable and Secure Distributed Programming"
      */
-    public boolean quorumHighest(int round, byte[] value, HashSet<CollectData> collects) {
+    public boolean quorumHighest(int timestamp, byte[] value, HashSet<CollectData> collects) {
 
         if (collects == null || value == null) return false;
 
@@ -512,7 +512,7 @@ public class LCManager {
 
         for (CollectData c : collects) {
 
-            if (c.getQuorumWeaks().getRound() == round && Arrays.equals(value, c.getQuorumWeaks().getValue())) {
+            if (c.getQuorumWeaks().getRound() == timestamp && Arrays.equals(value, c.getQuorumWeaks().getValue())) {
 
                 appears = true;
                 break;
@@ -522,13 +522,13 @@ public class LCManager {
         int count = 0;
         for (CollectData c : collects) {
 
-            if ((c.getQuorumWeaks().getRound() < round)
-                    || (c.getQuorumWeaks().getRound() == round && Arrays.equals(value, c.getQuorumWeaks().getValue())))
+            if ((c.getQuorumWeaks().getRound() < timestamp)
+                    || (c.getQuorumWeaks().getRound() == timestamp && Arrays.equals(value, c.getQuorumWeaks().getValue())))
                         count++;
 
         }
 
-        quorum = count > ((reconfManager.getCurrentViewN() + reconfManager.getCurrentViewF()) / 2);
+        quorum = count > ((SVManager.getCurrentViewN() + SVManager.getCurrentViewF()) / 2);
         
         return appears && quorum;
     }
@@ -537,12 +537,12 @@ public class LCManager {
      * The predicate "certifiedValue". This method must received a set of collects that were
      * filtered using the method selectCollects()
      *
-     * @param round the round to search for
+     * @param timestamp the timestamp to search for
      * @param value the value to search for
      * @param collects the collect data to which to apply the predicate.
      * @return see page 253 from "Introduction to Reliable and Secure Distributed Programming"
      */
-    public boolean certifiedValue(int round, byte[] value, HashSet<CollectData> collects) {
+    public boolean certifiedValue(int timestamp, byte[] value, HashSet<CollectData> collects) {
 
         if (collects == null || value == null) return false;
 
@@ -551,28 +551,28 @@ public class LCManager {
         int count = 0;
         for (CollectData c : collects) {
 
-            for (RoundValuePair pv : c.getWriteSet()) {
+            for (TimestampValuePair pv : c.getWriteSet()) {
 
-                if (pv.getRound() >= round && Arrays.equals(value, pv.getHashedValue()))
+                if (pv.getRound() >= timestamp && Arrays.equals(value, pv.getHashedValue()))
                     count++;
             }
 
         }
 
-        certified = count > reconfManager.getCurrentViewF();
+        certified = count > SVManager.getCurrentViewF();
 
         return certified;
     }
 
     /**
      * Fetchs a set of correctly signed and normalized collect data structures
-     * @param ts the timestamp from which the collects were stored
+     * @param regency the regency from which the collects were stored
      * @param eid the eid to which to normalize the collects
      * @return a set of correctly signed and normalized collect data structures
      */
-    public HashSet<CollectData> selectCollects(int ts, int eid) {
+    public HashSet<CollectData> selectCollects(int regency, int eid) {
 
-        HashSet<SignedObject> c = collects.get(ts);
+        HashSet<SignedObject> c = collects.get(regency);
 
         if (c == null) return null;
 
@@ -634,7 +634,7 @@ public class LCManager {
                 result.add(c);
             }
             else {
-                result.add(new CollectData(c.getPid(), eid, new RoundValuePair(0, new byte[0]), new HashSet<RoundValuePair>()));
+                result.add(new CollectData(c.getPid(), eid, new TimestampValuePair(0, new byte[0]), new HashSet<TimestampValuePair>()));
             }
 
         }
@@ -642,7 +642,7 @@ public class LCManager {
         // fazer o hash dos valores em write set
         for (CollectData c : result) {
 
-            for (RoundValuePair rv : c.getWriteSet()) {
+            for (TimestampValuePair rv : c.getWriteSet()) {
 
                 if  (rv.getValue() != null && rv.getValue().length > 0)
                     rv.setHashedValue(md.digest(rv.getValue()));
@@ -677,14 +677,14 @@ public class LCManager {
     }
 
     /**
-     * Returns the value of the specified last eid for a given timestamp
-     * @param ts the related timestamp
+     * Returns the value of the specified last eid for a given regency
+     * @param regency the related regency
      * @param eid the last eid
      * @return null if there is no such eid or is invalid, otherwise returns the value
      */
-    public byte[] getLastEidValue(int ts, int eid) {
+    public byte[] getLastEidValue(int regency, int eid) {
 
-        HashSet<LastEidData> lasts = lastEids.get(ts);
+        HashSet<LastEidData> lasts = lastEids.get(regency);
 
         if (lasts == null) return null;
 

@@ -35,7 +35,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import navigators.smart.reconfiguration.ReconfigurationManager;
+import navigators.smart.reconfiguration.ServerViewManager;
 import navigators.smart.tom.ServiceReplica;
 import navigators.smart.communication.SystemMessage;
 
@@ -45,7 +45,7 @@ import navigators.smart.communication.SystemMessage;
  */
 public class ServersCommunicationLayer extends Thread {
 
-    private ReconfigurationManager manager;
+    private ServerViewManager manager;
     private LinkedBlockingQueue<SystemMessage> inQueue;
     private Hashtable<Integer, ServerConnection> connections = new Hashtable<Integer, ServerConnection>();
     private ServerSocket serverSocket;
@@ -58,7 +58,7 @@ public class ServersCommunicationLayer extends Thread {
     private ServiceReplica replica;
 
 
-    public ServersCommunicationLayer(ReconfigurationManager manager,
+    public ServersCommunicationLayer(ServerViewManager manager,
             LinkedBlockingQueue<SystemMessage> inQueue, ServiceReplica replica) throws Exception {
 
         //******* EDUARDO BEGIN **************//
@@ -67,8 +67,8 @@ public class ServersCommunicationLayer extends Thread {
         this.me = manager.getStaticConf().getProcessId();
         this.replica = replica;
 
-        //Tenta se conectar caso seja um membro da visão inicial. Caso contrario, espera pelo processamento do join!
-        if (manager.isInInitView()) {
+        //Tenta se conectar caso seja um membro da visão atual. Caso contrario, espera pelo processamento do join!
+        if (manager.isInCurrentView()) {
             int[] initialV = manager.getCurrentViewAcceptors();
             for (int i = 0; i < initialV.length; i++) {
                 if (initialV[i] != me) {
@@ -213,8 +213,7 @@ public class ServersCommunicationLayer extends Thread {
                 int remoteId = new DataInputStream(newSocket.getInputStream()).readInt();
 
                 //******* EDUARDO BEGIN **************//
-                if (!this.manager.isInInitView() &&
-                     !this.manager.isInCurrentView() &&
+                if (!this.manager.isInCurrentView() &&
                      (this.manager.getStaticConf().getTTPId() != remoteId)) {
                     waitViewLock.lock();
                     pendingConn.add(new PendingConnection(newSocket, remoteId));

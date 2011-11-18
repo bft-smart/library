@@ -21,7 +21,7 @@ package navigators.smart.communication.server;
 import java.util.concurrent.LinkedBlockingQueue;
 
 
-import navigators.smart.reconfiguration.ReconfigurationManager;
+import navigators.smart.reconfiguration.ServerViewManager;
 import navigators.smart.communication.SystemMessage;
 import navigators.smart.tom.core.messages.TOMMessage;
 import navigators.smart.tom.util.Storage;
@@ -36,7 +36,7 @@ public class Test {
     public static void main(String[] args) throws Exception {
 
         //******* EDUARDO BEGIN **************//
-        ReconfigurationManager manager = new ReconfigurationManager(Integer.parseInt(args[0]));
+        ServerViewManager manager = new ServerViewManager(Integer.parseInt(args[0]));
         LinkedBlockingQueue<SystemMessage> inQueue = new LinkedBlockingQueue<SystemMessage>();
         ServersCommunicationLayer scl = new ServersCommunicationLayer(manager, inQueue,null);
 

@@ -24,7 +24,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
 import navigators.smart.reconfiguration.ReconfigureReply;
-import navigators.smart.reconfiguration.View;
+import navigators.smart.reconfiguration.views.View;
 import navigators.smart.tom.core.messages.TOMMessage;
 import navigators.smart.tom.core.messages.TOMMessageType;
 import navigators.smart.tom.util.Extractor;
@@ -55,6 +55,7 @@ public class ServiceProxy extends TOMSender {
     /**
      * Constructor
      *
+     * @see bellow
      */
     public ServiceProxy(int processId) {
         this(processId, null, null, null);
@@ -63,6 +64,7 @@ public class ServiceProxy extends TOMSender {
     /**
      * Constructor
      *
+     * @see bellow
      */
     public ServiceProxy(int processId, String configHome) {
         this(processId, configHome, null, null);
@@ -245,10 +247,15 @@ public class ServiceProxy extends TOMSender {
 
     //******* EDUARDO BEGIN **************//
     private void reconfigureTo(View v) {
+        //System.out.println("Iniciou recTo");
         Logger.println("Installing a most up-to-date view with id=" + v.getId());
         getViewManager().reconfigureTo(v);
+        //System.out.println("recTo 1");
         replies = new TOMMessage[getViewManager().getCurrentViewN()];
+        //System.out.println("recTo 2");
         getCommunicationSystem().updateConnections();
+        //System.out.println("recTo 3");
+        //System.out.println("Terminou recTo");
     }
     //******* EDUARDO END **************//
 

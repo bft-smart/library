@@ -35,8 +35,10 @@ public class Configuration {
     
     protected int processId;
     protected boolean authentication;
+    protected boolean channelsBlocking;
     protected BigInteger DH_P;
     protected BigInteger DH_G;
+    protected int autoConnectLimit;
     protected Map configs;
     protected HostsConfig hosts;
     
@@ -47,6 +49,8 @@ public class Configuration {
     private int hmacSize = 160;
 
     protected static String configHome = "";
+
+   
     protected static String hostsFileName = "";
 
 
@@ -97,7 +101,21 @@ public class Configuration {
             }else{
                 authentication = (s.equalsIgnoreCase("true"))?true:false;
             }
-           
+            
+            s = (String) configs.remove("system.autoconnect");
+            if(s == null){
+                autoConnectLimit = -1;
+            }else{
+                autoConnectLimit = Integer.parseInt(s);
+            }
+
+            s = (String) configs.remove("system.channels.blocking");
+            if(s == null){
+                channelsBlocking = false;
+            }else{
+                channelsBlocking = (s.equalsIgnoreCase("true"))?true:false;
+            }
+            
             if(authentication){
                 s = (String)configs.remove("system.authentication.P");
                 if( s != null){
@@ -125,13 +143,21 @@ public class Configuration {
             e.printStackTrace(System.out);
         }
     }
-    
-    
+     
     public final boolean isHostSetted(int id){
         if(hosts.getHost(id) == null){
             return false;
         }
         return true;
+    }
+    
+    
+    public final boolean useBlockingChannels(){
+        return this.channelsBlocking;
+    }
+    
+    public final int getAutoConnectLimit(){
+        return this.autoConnectLimit;
     }
     
     public final boolean useAuthentication(){
@@ -210,14 +236,11 @@ public class Configuration {
     private void loadConfig(){
         configs = new Hashtable();
         try{
-            
-            String path =  "";
-            String sep = System.getProperty("file.separator");
             if(configHome == null || configHome.equals("")){
-                   path = "config"+sep+"system.config";
-            }else{
-                  path = configHome+sep+"system.config";
+                configHome="config";
             }
+            String sep = System.getProperty("file.separator");
+            String path =  configHome+sep+"system.config";;
             FileReader fr = new FileReader(path);
             BufferedReader rd = new BufferedReader(fr);
             String line = null;

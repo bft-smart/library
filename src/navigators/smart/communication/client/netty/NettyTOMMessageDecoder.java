@@ -65,8 +65,12 @@ public class NettyTOMMessageDecoder extends FrameDecoder {
     //private long max=0;
     //private Storage st;
     //private int count = 0;
-    //******* EDUARDO END **************//
-    private Signature signatureEngine;
+   
+    //private Signature signatureEngine;
+    
+    
+     //******* EDUARDO END **************//
+    
     private boolean useMAC;
 
     public NettyTOMMessageDecoder(boolean isClient, HashMap sessionTable, SecretKey authKey, int macLength, ViewManager manager, ReentrantReadWriteLock rl, int signatureLength, boolean useMAC) {

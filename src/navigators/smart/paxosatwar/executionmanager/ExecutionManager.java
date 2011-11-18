@@ -31,7 +31,7 @@ import navigators.smart.paxosatwar.messages.MessageFactory;
 import navigators.smart.paxosatwar.messages.PaxosMessage;
 import navigators.smart.paxosatwar.roles.Acceptor;
 import navigators.smart.paxosatwar.roles.Proposer;
-import navigators.smart.reconfiguration.ReconfigurationManager;
+import navigators.smart.reconfiguration.ServerViewManager;
 import navigators.smart.tom.core.TOMLayer;
 import navigators.smart.tom.util.Logger;
 
@@ -43,7 +43,7 @@ import navigators.smart.tom.util.Logger;
  */
 public final class ExecutionManager {
 
-    private ReconfigurationManager reconfManager;
+    private ServerViewManager reconfManager;
     private Acceptor acceptor; // Acceptor role of the PaW algorithm
     private Proposer proposer; // Proposer role of the PaW algorithm
     //******* EDUARDO BEGIN: agora estas variaveis estao todas concentradas na Reconfigurationmanager **************//
@@ -61,6 +61,7 @@ public final class ExecutionManager {
     private boolean stopped = false; // Is the execution manager stopped?
     // When the execution manager is stopped, incoming paxos messages are stored here
     private Queue<PaxosMessage> stoppedMsgs = new LinkedList<PaxosMessage>();
+    private Round stoppedRound = null; // round at which the current execution was stoppped
     private ReentrantLock stoppedMsgsLock = new ReentrantLock(); //lock for stopped messages
     private TOMLayer tomLayer; // TOM layer associated with this execution manager
     private int paxosHighMark; // Paxos high mark for consensus instances
@@ -71,12 +72,14 @@ public final class ExecutionManager {
     /**
      * Creates a new instance of ExecutionManager
      *
-     * @param manager Reconfiguration Manager
      * @param acceptor Acceptor role of the PaW algorithm
      * @param proposer Proposer role of the PaW algorithm
+     * @param acceptors Process ID's of all replicas, including this one
+     * @param f Maximum number of replicas that can be faulty
      * @param me This process ID
+     * @param initialTimeout initial timeout for rounds
      */
-    public ExecutionManager(ReconfigurationManager manager, Acceptor acceptor,
+    public ExecutionManager(ServerViewManager manager, Acceptor acceptor,
             Proposer proposer, int me) {
         //******* EDUARDO BEGIN **************//
         this.reconfManager = manager;
@@ -127,10 +130,10 @@ public final class ExecutionManager {
         Logger.println("(ExecutionManager.stoping) Stoping execution manager");
         stoppedMsgsLock.lock();
         this.stopped = true;
-        int inExec = tomLayer.getInExec();
-        if (inExec != -1) {
-
-            Logger.println("(ExecutionManager.stop) Stoping consensus " + inExec);
+        if (tomLayer.getInExec() != -1) {
+            stoppedRound = getExecution(tomLayer.getInExec()).getLastRound();
+            //stoppedRound.getTimeoutTask().cancel();
+            Logger.println("(ExecutionManager.stop) Stoping round " + stoppedRound.getNumber() + " of consensus " + stoppedRound.getExecution().getId());
         }
         stoppedMsgsLock.unlock();
     }
@@ -163,9 +166,11 @@ public final class ExecutionManager {
         
         int lastConsId = tomLayer.getLastExec();
         
+        int inExec = tomLayer.getInExec();
+        
         Logger.println("(ExecutionManager.checkLimits) Received message  " + msg);
         Logger.println("(ExecutionManager.checkLimits) I'm at execution " + 
-                tomLayer.getInExec() + " and my last execution is " + lastConsId);
+                inExec + " and my last execution is " + lastConsId);
         
         boolean isRetrievingState = tomLayer.isRetrievingState();
 
@@ -194,9 +199,16 @@ public final class ExecutionManager {
             } else {
                 if (isRetrievingState || 
                         msg.getNumber() > (lastConsId + 1) || 
-                        (tomLayer.getInExec() == -1 && msg.getPaxosType() != MessageFactory.PROPOSE)) { //not propose message for the next consensus
+                        (inExec != -1 && inExec < msg.getNumber()) || 
+                        (inExec == -1 && msg.getPaxosType() != MessageFactory.PROPOSE)) { //not propose message for the next consensus
                     Logger.println("(ExecutionManager.checkLimits) Message for execution " + 
                             msg.getNumber() + " is out of context, adding it to out of context set");
+                    
+                    
+                    //System.out.println("(ExecutionManager.checkLimits) Message for execution " + 
+                     //       msg.getNumber() + " is out of context, adding it to out of context set; isRetrievingState="+isRetrievingState);
+                    
+                    
                     addOutOfContextMessage(msg);
                 } else { //can process!
                     Logger.println("(ExecutionManager.checkLimits) message for execution " + 

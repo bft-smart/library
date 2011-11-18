@@ -25,7 +25,7 @@ import java.util.Set;
 import java.util.concurrent.locks.ReentrantLock;
 
 import navigators.smart.paxosatwar.Consensus;
-import navigators.smart.reconfiguration.ReconfigurationManager;
+import navigators.smart.reconfiguration.ServerViewManager;
 
 
 /**
@@ -45,8 +45,8 @@ public class Execution {
 
     //NOVOS ATRIBUTOS PARA A TROCA DE LIDER
     private int ets = 0;
-    private RoundValuePair quorumWeaks = new RoundValuePair(0, new byte[0]);
-    private HashSet<RoundValuePair> writeSet = new HashSet<RoundValuePair>();
+    private TimestampValuePair quorumWeaks = new TimestampValuePair(0, new byte[0]);
+    private HashSet<TimestampValuePair> writeSet = new HashSet<TimestampValuePair>();
 
     public ReentrantLock lock = new ReentrantLock(); //this execution lock (called by other classes)
 
@@ -55,6 +55,7 @@ public class Execution {
      *
      * @param manager Execution manager for this execution
      * @param consensus Consensus instance to which this execution works for
+     * @param initialTimeout Initial timeout for rounds
      */
     protected Execution(ExecutionManager manager, Consensus consensus) {
         this.manager = manager;
@@ -90,7 +91,7 @@ public class Execution {
      * @param number The number of the round
      * @return The round
      */
-    public Round getRound(int number, ReconfigurationManager recManager) {
+    public Round getRound(int number, ServerViewManager recManager) {
         return getRound(number,true, recManager);
     }
 
@@ -100,7 +101,7 @@ public class Execution {
      * @param create if the round is to be created if not existent
      * @return The round
      */
-    public Round getRound(int number, boolean create, ReconfigurationManager recManager) {
+    public Round getRound(int number, boolean create, ServerViewManager recManager) {
         roundsLock.lock();
 
         Round round = rounds.get(number);
@@ -127,14 +128,14 @@ public class Execution {
      */
     public void setQuorumWeaks(byte[] value) {
 
-        quorumWeaks = new RoundValuePair(ets, value);
+        quorumWeaks = new TimestampValuePair(ets, value);
     }
 
     /**
      * Devolve o valor lido de um quorum bizantino de WEAKS que ja tiver sido guardado
      * @return o valor lido de um quorum bizantino de WEAKS, se ja tiver sido obtido
      */
-    public RoundValuePair getQuorumWeaks() {
+    public TimestampValuePair getQuorumWeaks() {
         return quorumWeaks;
     }
 
@@ -144,7 +145,7 @@ public class Execution {
      */
     public void addWritten(byte[] value) {
 
-        writeSet.add(new RoundValuePair(ets, value));
+        writeSet.add(new TimestampValuePair(ets, value));
     }
 
     /**
@@ -153,20 +154,20 @@ public class Execution {
      */
     public void removeWritten(byte[] value) {
 
-        for (RoundValuePair rv : writeSet) {
+        for (TimestampValuePair rv : writeSet) {
 
             if (Arrays.equals(rv.getValue(), value)) writeSet.remove(rv);
         }
 
     }
-    public HashSet<RoundValuePair> getWriteSet() {
+    public HashSet<TimestampValuePair> getWriteSet() {
         return writeSet;
     }
     /**
      * Creates a round associated with this execution, supposedly the next
      * @return The round
      */
-    public Round createRound(ReconfigurationManager recManager) {
+    public Round createRound(ServerViewManager recManager) {
         roundsLock.lock();
 
         Set<Integer> keys = rounds.keySet();
@@ -247,7 +248,9 @@ public class Execution {
      * @param round The round at which a decision was made
      */
     public void decided(Round round, byte[] value) {
+        
         if (!decided) {
+       
             decided = true;
             decisionRound = round.getNumber();
 

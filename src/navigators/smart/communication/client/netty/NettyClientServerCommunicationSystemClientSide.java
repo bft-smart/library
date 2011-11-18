@@ -42,7 +42,7 @@ import javax.crypto.spec.PBEKeySpec;
 
 import navigators.smart.communication.client.CommunicationSystemClientSide;
 import navigators.smart.communication.client.ReplyReceiver;
-import navigators.smart.reconfiguration.ViewManager;
+import navigators.smart.reconfiguration.ClientViewManager;
 import navigators.smart.tom.core.messages.TOMMessage;
 import navigators.smart.tom.util.Logger;
 import navigators.smart.tom.util.TOMUtil;
@@ -71,7 +71,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
     //private static final int BENCHMARK_PERIOD = 10000;
     protected ReplyReceiver trr;
     //******* EDUARDO BEGIN **************//
-    private ViewManager manager;
+    private ClientViewManager manager;
     //******* EDUARDO END **************//
     private HashMap sessionTable = new HashMap();
     private ReentrantReadWriteLock rl;
@@ -83,7 +83,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
     private int signatureLength;
     private boolean closed = false;
 
-    public NettyClientServerCommunicationSystemClientSide(ViewManager manager) {
+    public NettyClientServerCommunicationSystemClientSide(ClientViewManager manager) {
         super();
         try {
             SecretKeyFactory fac = SecretKeyFactory.getInstance("PBEWithMD5AndDES");
@@ -143,7 +143,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
                             + "mas temos que fazer os servidores armazenarem as view em um lugar default.");
 
                 } catch (InvalidKeyException ex) {
-                        ex.printStackTrace(System.err);
+                    ex.printStackTrace(System.err);
                 }
             }
         } catch (InvalidKeySpecException ex) {
@@ -155,10 +155,10 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 
     @Override
     public void updateConnections() {
+        int[] currV = manager.getCurrentViewProcesses();
         try {
             Mac macDummy = Mac.getInstance(manager.getStaticConf().getHmacAlgorithm());
-            int[] currV = manager.getCurrentViewProcesses();
-
+            
             //open connections with new servers
             for (int i = 0; i < currV.length; i++) {
                 rl.readLock().lock();
@@ -188,6 +188,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
                         // Start the connection attempt.
                         ChannelFuture future = bootstrap.connect(manager.getRemoteAddress(currV[i]));
 
+
                         //creates MAC stuff
                         Mac macSend = Mac.getInstance(manager.getStaticConf().getHmacAlgorithm());
                         macSend.init(authKey);
@@ -202,34 +203,45 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
                         future.awaitUninterruptibly();
 
                     } catch (InvalidKeyException ex) {
+                        ex.printStackTrace();
                     }
                     rl.writeLock().unlock();
-                } else rl.readLock().unlock();
-            }
-            
-            //close connections with removed servers
-            //ANB: This code need to be tested!!!
-            ListIterator ids = new LinkedList(sessionTable.keySet()).listIterator();
-            while (ids.hasNext()) {
-                int id = (Integer) ids.next();
-
-                boolean found = false;
-                for (int v : currV) {
-                    if (v == id) {
-                        found = true;
-                        break;
-                    }
-                }
-
-                if (!found) {
-                    NettyClientServerSession cs =
-                            (NettyClientServerSession) sessionTable.remove(id);
-                    cs.getChannel().close();
+                } else {
+                    rl.readLock().unlock();
                 }
             }
-
         } catch (NoSuchAlgorithmException ex) {
         }
+        //close connections with removed servers
+        //ANB: This code need to be tested!!!
+        
+        //EDUARDO: o cliente demora muito para fechar o canal, sugiro
+        //outra forma (fechar depois por algum outra thread ou algo assim), talvez 
+        //pelo servidor!
+        
+        /*ListIterator ids = new LinkedList(sessionTable.keySet()).listIterator();
+        while (ids.hasNext()) {
+            int id = (Integer) ids.next();
+
+            boolean found = false;
+            for (int v : currV) {
+                if (v == id) {
+                    found = true;
+                    break;
+                }
+            }
+
+            if (!found) {
+                //System.out.println("vai fechar canal com " + id);
+                
+                NettyClientServerSession cs =
+                        (NettyClientServerSession) sessionTable.remove(id);
+                cs.getChannel().close();
+                //System.out.println("canal fechado " + id);
+            }
+        }*/
+
+
     }
 
     @Override
@@ -339,7 +351,8 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
             } finally {
                 try {
                     dos.close();
-                } catch (IOException ex) { }
+                } catch (IOException ex) {
+                }
             }
         }
 
@@ -363,6 +376,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
                 channel.write(sm);
                 sent++;
             } else {
+                //System.out.println("Channel to " + targets[i] + " is not connected");
                 Logger.println("Channel to " + targets[i] + " is not connected");
             }
 
@@ -389,7 +403,8 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
         } finally {
             try {
                 dos.close();
-            } catch (IOException ex) { }
+            } catch (IOException ex) {
+            }
         }
 
         //******* EDUARDO BEGIN **************//

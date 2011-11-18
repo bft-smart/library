@@ -47,7 +47,7 @@ public abstract class SystemMessage implements Externalizable {
     
     /**
      * Returns the ID of the process which sent the message
-     * @return ID of the process that sent the message
+     * @return
      */
     public final int getSender() {
         return sender;

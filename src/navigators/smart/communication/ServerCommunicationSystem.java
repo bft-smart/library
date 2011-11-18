@@ -25,7 +25,7 @@ import navigators.smart.communication.client.CommunicationSystemServerSideFactor
 import navigators.smart.communication.client.RequestReceiver;
 import navigators.smart.communication.server.ServersCommunicationLayer;
 import navigators.smart.paxosatwar.roles.Acceptor;
-import navigators.smart.reconfiguration.ReconfigurationManager;
+import navigators.smart.reconfiguration.ServerViewManager;
 import navigators.smart.tom.ServiceReplica;
 import navigators.smart.tom.core.TOMLayer;
 import navigators.smart.tom.core.messages.TOMMessage;
@@ -42,12 +42,12 @@ public class ServerCommunicationSystem extends Thread {
     protected MessageHandler messageHandler = new MessageHandler();
     private ServersCommunicationLayer serversConn;
     private CommunicationSystemServerSide clientsConn;
-    private ReconfigurationManager manager;
+    private ServerViewManager manager;
 
     /**
      * Creates a new instance of ServerCommunicationSystem
      */
-    public ServerCommunicationSystem(ReconfigurationManager manager, ServiceReplica replica) throws Exception {
+    public ServerCommunicationSystem(ServerViewManager manager, ServiceReplica replica) throws Exception {
         super("Server CS");
 
         this.manager = manager;
@@ -63,9 +63,9 @@ public class ServerCommunicationSystem extends Thread {
         serversConn = new ServersCommunicationLayer(manager, inQueue, replica);
 
         //******* EDUARDO BEGIN **************//
-        if (manager.isInCurrentView() || manager.isInInitView()) {
+       // if (manager.isInCurrentView() || manager.isInInitView()) {
             clientsConn = CommunicationSystemServerSideFactory.getCommunicationSystemServerSide(manager);
-        }
+       // }
         //******* EDUARDO END **************//
         //start();
     }
@@ -104,6 +104,7 @@ public class ServerCommunicationSystem extends Thread {
      */
     @Override
     public void run() {
+        
         long count = 0;
         while (true) {
             try {
@@ -115,6 +116,7 @@ public class ServerCommunicationSystem extends Thread {
 
                 if (sm != null) {
                     Logger.println("<-------receiving---------- " + sm);
+                    
                     messageHandler.processData(sm);
                     count++;
                 } else {                

@@ -25,7 +25,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import navigators.smart.communication.client.CommunicationSystemClientSide;
 import navigators.smart.communication.client.CommunicationSystemClientSideFactory;
 import navigators.smart.communication.client.ReplyReceiver;
-import navigators.smart.reconfiguration.ViewManager;
+import navigators.smart.reconfiguration.ClientViewManager;
 import navigators.smart.tom.core.messages.TOMMessage;
 import navigators.smart.tom.core.messages.TOMMessageType;
 
@@ -40,7 +40,7 @@ public abstract class TOMSender implements ReplyReceiver {
 
     //******* EDUARDO BEGIN **************//
     //private int[] group; // group of replicas
-    private ViewManager viewManager;
+    private ClientViewManager viewManager;
     //******* EDUARDO END **************//
     
     private int session = 0; // session id
@@ -71,7 +71,7 @@ public abstract class TOMSender implements ReplyReceiver {
     
     
     //******* EDUARDO BEGIN **************//
-    public ViewManager getViewManager(){
+    public ClientViewManager getViewManager(){
         return this.viewManager;
     }
     //******* EDUARDO END **************//
@@ -104,12 +104,12 @@ public abstract class TOMSender implements ReplyReceiver {
      * @param processId ID of the process
      */
     public void init(int processId) {
-        this.viewManager = new ViewManager(processId);
+        this.viewManager = new ClientViewManager(processId);
         startsCS();
     }
     
     public void init(int processId, String configHome) {
-        this.viewManager = new ViewManager(processId,configHome);
+        this.viewManager = new ClientViewManager(processId,configHome);
         startsCS();
     }
 

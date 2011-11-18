@@ -21,7 +21,7 @@ package navigators.smart.tom.util;
 import java.nio.ByteBuffer;
 import java.util.Collection;
 import java.util.Random;
-import navigators.smart.reconfiguration.ReconfigurationManager;
+import navigators.smart.reconfiguration.ServerViewManager;
 import navigators.smart.tom.core.messages.TOMMessage;
 
 /**
@@ -37,7 +37,7 @@ public final class BatchBuilder {
     private Random rnd = new Random();
 
     /** build buffer */
-    private byte[] createBatch(long timestamp, int numberOfNonces, int numberOfMessages, int totalMessagesSize, boolean useSignatures, byte[][] messages, byte[][] signatures, ReconfigurationManager manager) {
+    private byte[] createBatch(long timestamp, int numberOfNonces, int numberOfMessages, int totalMessagesSize, boolean useSignatures, byte[][] messages, byte[][] signatures, ServerViewManager manager) {
         int size = 20 + //timestamp 8, nonces 4, nummessages 4
                 (numberOfNonces > 0 ? 8 : 0) + //seed if needed
                 (numberOfMessages*(4+(useSignatures?TOMUtil.getSignatureSize(manager):0)))+ // msglength + signature for each msg
@@ -71,7 +71,7 @@ public final class BatchBuilder {
         }
     }
 
-        public byte[] makeBatch(Collection<TOMMessage> msgs, int numNounces, long timestamp, ReconfigurationManager reconfManager) {
+        public byte[] makeBatch(Collection<TOMMessage> msgs, int numNounces, long timestamp, ServerViewManager reconfManager) {
 
         int numMsgs = msgs.size();
         int totalMessageSize = 0; //total size of the messages being batched

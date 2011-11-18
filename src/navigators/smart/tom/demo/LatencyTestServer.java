@@ -23,7 +23,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import navigators.smart.communication.ServerCommunicationSystem;
-import navigators.smart.reconfiguration.ReconfigurationManager;
+import navigators.smart.reconfiguration.ServerViewManager;
 import navigators.smart.tom.MessageContext;
 import navigators.smart.tom.TOMReceiver;
 import navigators.smart.tom.core.messages.TOMMessage;
@@ -44,7 +44,7 @@ public class LatencyTestServer extends TOMReceiver {
     
     public void run(){
         //create the configuration object
-        ReconfigurationManager manager = new ReconfigurationManager(id);
+        ServerViewManager manager = new ServerViewManager(id);
         try {
             //create the communication system
             cs = new ServerCommunicationSystem(manager,null);

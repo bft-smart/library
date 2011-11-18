@@ -28,9 +28,9 @@ import java.io.ObjectOutput;
  * 
  * @author Joao Sousa
  */
-public class RoundValuePair implements Externalizable {
+public class TimestampValuePair implements Externalizable {
 
-    private int round; // round
+    private int timestamp; // timestamp
     private byte[] value; // valor
     private byte[] hashedValue; // sintese do valor
 
@@ -40,8 +40,8 @@ public class RoundValuePair implements Externalizable {
      * @param round Round
      * @param value Valor
      */
-    public RoundValuePair(int round, byte[] value) {
-        this.round = round;
+    public TimestampValuePair(int timestamp, byte[] value) {
+        this.timestamp = timestamp;
         this.value = value;
 
         this.hashedValue = new byte[0];
@@ -50,8 +50,8 @@ public class RoundValuePair implements Externalizable {
     /**
      * Construtor vazio
      */
-    public RoundValuePair() {
-        this.round = -1;
+    public TimestampValuePair() {
+        this.timestamp = -1;
         this.value = new byte[0];
 
         this.hashedValue = new byte[0];
@@ -77,7 +77,7 @@ public class RoundValuePair implements Externalizable {
      * @return Round
      */
     public int getRound() {
-        return round;
+        return timestamp;
     }
 
     /**
@@ -90,28 +90,28 @@ public class RoundValuePair implements Externalizable {
 
     @Override
     public boolean equals(Object o) {
-        if (o instanceof RoundValuePair) {
-            return ((RoundValuePair) o).round == round;
+        if (o instanceof TimestampValuePair) {
+            return ((TimestampValuePair) o).timestamp == timestamp;
         }
         return false;
     }
 
     @Override
     public int hashCode() {
-        return round;
+        return timestamp;
     }
     
     @Override
     public void writeExternal(ObjectOutput out) throws IOException{
 
-        out.writeInt(round);
+        out.writeInt(timestamp);
         out.writeObject(value);
     }
 
     @Override
     public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException{
 
-        round = in.readInt();
+        timestamp = in.readInt();
         value = (byte[]) in.readObject();
     }
 }

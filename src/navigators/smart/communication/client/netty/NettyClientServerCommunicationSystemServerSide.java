@@ -31,6 +31,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.locks.ReentrantLock;
@@ -43,7 +44,7 @@ import javax.crypto.spec.PBEKeySpec;
 
 import navigators.smart.communication.client.CommunicationSystemServerSide;
 import navigators.smart.communication.client.RequestReceiver;
-import navigators.smart.reconfiguration.ReconfigurationManager;
+import navigators.smart.reconfiguration.ServerViewManager;
 import navigators.smart.tom.core.messages.TOMMessage;
 import navigators.smart.tom.util.Logger;
 import navigators.smart.tom.util.TOMUtil;
@@ -70,11 +71,11 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
     private HashMap sessionTable;
     private ReentrantReadWriteLock rl;
     private SecretKey authKey;
-    private List<TOMMessage> requestsReceived = Collections.synchronizedList(new ArrayList<TOMMessage>());
-    private ReentrantLock lock = new ReentrantLock();
-    private ReconfigurationManager manager;
+    //private List<TOMMessage> requestsReceived = Collections.synchronizedList(new ArrayList<TOMMessage>());
+    //private ReentrantLock lock = new ReentrantLock();
+    private ServerViewManager manager;
 
-    public NettyClientServerCommunicationSystemServerSide(ReconfigurationManager manager) {
+    public NettyClientServerCommunicationSystemServerSide(ServerViewManager manager) {
         try {
             SecretKeyFactory fac = SecretKeyFactory.getInstance("PBEWithMD5AndDES");
             PBEKeySpec spec = new PBEKeySpec(PASSWORD.toCharArray());
@@ -128,41 +129,48 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
             System.out.println("Connection with client closed...");
         } else {
             e.getCause().printStackTrace(System.err);
+            System.out.println("ExceptionCaught "+ctx.getName());
+            
         }
     }
 
     @Override
     public void messageReceived(ChannelHandlerContext ctx, MessageEvent e) {
         //delivers message to TOMLayer
+        //System.out.println("Recebeu msg de "+((TOMMessage) e.getMessage()).toString());
         requestReceiver.requestReceived((TOMMessage) e.getMessage());
     }
 
     @Override
     public void channelConnected( ChannelHandlerContext ctx, ChannelStateEvent e) {
         Logger.println("Session Created, active clients=" + sessionTable.size());
+        System.out.println("Session Created, active clients=" + sessionTable.size());
     }
 
     @Override
     public void channelClosed( ChannelHandlerContext ctx, ChannelStateEvent e) {
         rl.writeLock().lock();
-        //removes session from sessionTable
-        Set s = sessionTable.entrySet();
-        Iterator i = s.iterator();
-        while (i.hasNext()) {
-            Map.Entry m = (Map.Entry) i.next();
-            NettyClientServerSession value = (NettyClientServerSession) m.getValue();
-            if (e.getChannel().equals(value.getChannel())) {
-                int key = (Integer) m.getKey();
-                sessionTable.remove(key);
-                System.out.println("#Removed client channel with ID= " + key);
-                System.out.println("#active clients=" + sessionTable.size());
-                break;
+        try {
+            Set s = sessionTable.entrySet();
+            Iterator i = s.iterator();
+            while (i.hasNext()) {
+                Entry m = (Entry) i.next();
+                NettyClientServerSession value = (NettyClientServerSession) m.getValue();
+                if (e.getChannel().equals(value.getChannel())) {
+                    int key = (Integer) m.getKey();
+                    sessionTable.remove(key);
+                    System.out.println("#Removed client channel with ID= " + key);
+                    System.out.println("#active clients=" + sessionTable.size());
+                    break;
+                }
             }
+        } finally {
+            rl.writeLock().unlock();
         }
-        rl.writeLock().unlock();
-        navigators.smart.tom.util.Logger.println("Session Closed, active clients=" + sessionTable.size());
+        Logger.println("Session Closed, active clients=" + sessionTable.size());
     }
 
+    @Override
     public void setRequestReceiver(RequestReceiver tl) {
         this.requestReceiver = tl;
     }

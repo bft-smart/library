@@ -26,7 +26,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import javax.crypto.SecretKey;
-import navigators.smart.reconfiguration.ReconfigurationManager;
+import navigators.smart.reconfiguration.ServerViewManager;
 import org.jboss.netty.channel.ChannelPipeline;
 import org.jboss.netty.channel.ChannelPipelineFactory;
 
@@ -44,11 +44,11 @@ public class NettyServerPipelineFactory implements ChannelPipelineFactory {
     SecretKey authKey;
     int macLength;
     int signatureLength;
-    ReconfigurationManager manager;
+    ServerViewManager manager;
     ReentrantReadWriteLock rl;
     ReentrantLock lock;
 
-    public NettyServerPipelineFactory(NettyClientServerCommunicationSystemServerSide ncs, boolean isClient, HashMap sessionTable, SecretKey authKey, int macLength, ReconfigurationManager manager, ReentrantReadWriteLock rl, int signatureLength, ReentrantLock lock) {
+    public NettyServerPipelineFactory(NettyClientServerCommunicationSystemServerSide ncs, boolean isClient, HashMap sessionTable, SecretKey authKey, int macLength, ServerViewManager manager, ReentrantReadWriteLock rl, int signatureLength, ReentrantLock lock) {
         this.ncs = ncs;
         this.isClient = isClient;
         this.sessionTable = sessionTable;

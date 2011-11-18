@@ -23,7 +23,7 @@ import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
 import java.util.HashSet;
-import navigators.smart.paxosatwar.executionmanager.RoundValuePair;
+import navigators.smart.paxosatwar.executionmanager.TimestampValuePair;
 
 /**
  * Esta classe representa um objecto COLLECT com as informacoes do consenso a decorrer
@@ -34,8 +34,8 @@ public class CollectData implements Externalizable {
 
     private int pid; // id do processo
     private int eid; // id da execucao
-    private RoundValuePair quorumWeaks; // ultimo valor recebido de um quorum bizantino de WEAKS
-    private HashSet<RoundValuePair> writeSet; // valores escritos pela replica
+    private TimestampValuePair quorumWeaks; // ultimo valor recebido de um quorum bizantino de WEAKS
+    private HashSet<TimestampValuePair> writeSet; // valores escritos pela replica
 
     /**
      * Constructor vazio
@@ -55,7 +55,7 @@ public class CollectData implements Externalizable {
      * @param quorumWeaks ultimo valor recebido de um quorum bizantino de WEAKS
      * @param writeSet valores escritos pela replica
      */
-    public CollectData(int pid, int eid, RoundValuePair quorumWeaks, HashSet<RoundValuePair> writeSet) {
+    public CollectData(int pid, int eid, TimestampValuePair quorumWeaks, HashSet<TimestampValuePair> writeSet) {
         
         this.pid = pid;
         this.eid = eid;
@@ -83,7 +83,7 @@ public class CollectData implements Externalizable {
      * Obter valor recebido de um quorum bizantino de WEAKS
      * @return valor recebido de um quorum bizantino de WEAKS
      */
-    public RoundValuePair getQuorumWeaks() {
+    public TimestampValuePair getQuorumWeaks() {
         return quorumWeaks;
     }
 
@@ -91,7 +91,7 @@ public class CollectData implements Externalizable {
      * Obter conjunto de valores escritos pela replica
      * @return conjunto de valore escritos pela replica
      */
-    public HashSet<RoundValuePair> getWriteSet() {
+    public HashSet<TimestampValuePair> getWriteSet() {
         return writeSet;
     }
 
@@ -123,7 +123,7 @@ public class CollectData implements Externalizable {
 
         pid = in.readInt();
         eid = in.readInt();
-        quorumWeaks = (RoundValuePair) in.readObject();
-        writeSet = (HashSet<RoundValuePair>) in.readObject();
+        quorumWeaks = (TimestampValuePair) in.readObject();
+        writeSet = (HashSet<TimestampValuePair>) in.readObject();
     }
 }

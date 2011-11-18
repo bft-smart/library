@@ -22,7 +22,7 @@ import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.nio.ByteBuffer;
 import java.util.Random;
-import navigators.smart.reconfiguration.ReconfigurationManager;
+import navigators.smart.reconfiguration.ServerViewManager;
 import navigators.smart.tom.core.messages.TOMMessage;
 
 /**
@@ -41,7 +41,7 @@ public final class BatchReader {
         this.useSignatures = useSignatures;
     }
 
-    public TOMMessage[] deserialiseRequests(ReconfigurationManager manager) {
+    public TOMMessage[] deserialiseRequests(ServerViewManager manager) {
 
         //obtain the timestamps to be delivered to the application
         long timestamp = proposalBuffer.getLong();

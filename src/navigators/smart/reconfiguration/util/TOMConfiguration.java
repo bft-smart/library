@@ -15,7 +15,6 @@
  * 
  * You should have received a copy of the GNU General Public License along with SMaRt.  If not, see <http://www.gnu.org/licenses/>.
  */
-
 package navigators.smart.reconfiguration.util;
 
 import navigators.smart.tom.util.Logger;
@@ -28,8 +27,10 @@ public class TOMConfiguration extends Configuration {
     protected int n;
     protected int f;
     protected int requestTimeout;
+    protected int tomPeriod;
     protected int paxosHighMark;
     protected int revivalHighMark;
+    protected int replyVerificationTime;
     protected int maxBatchSize;
     protected int numberOfNonces;
     protected int inQueueSize;
@@ -39,15 +40,12 @@ public class TOMConfiguration extends Configuration {
     protected boolean useSenderThread;
     protected RSAKeyLoader rsaLoader;
     private int debug;
+    private int numNIOThreads;
     private int useMACs;
     private int useSignatures;
-
-    private boolean  stateTransferEnabled;
+    private boolean stateTransferEnabled;
     private int checkpointPeriod;
-    
     private int useControlFlow;
-    
-    
     private int[] initialView;
     private int ttpId;
     
@@ -79,7 +77,14 @@ public class TOMConfiguration extends Configuration {
             }
 
             s = (String) configs.remove("system.shutdownhook");
-            shutdownHookEnabled = (s != null)? Boolean.parseBoolean(s): false;
+            shutdownHookEnabled = (s != null) ? Boolean.parseBoolean(s) : false;
+
+            s = (String) configs.remove("system.totalordermulticast.period");
+            if (s == null) {
+                tomPeriod = n * 5;
+            } else {
+                tomPeriod = Integer.parseInt(s);
+            }
 
             s = (String) configs.remove("system.totalordermulticast.timeout");
             if (s == null) {
@@ -123,10 +128,18 @@ public class TOMConfiguration extends Configuration {
                 Logger.debug = false;
             } else {
                 debug = Integer.parseInt(s);
-                if (debug==0)
+                if (debug == 0) {
                     Logger.debug = false;
-                else
+                } else {
                     Logger.debug = true;
+                }
+            }
+
+            s = (String) configs.remove("system.totalordermulticast.replayVerificationTime");
+            if (s == null) {
+                replyVerificationTime = 0;
+            } else {
+                replyVerificationTime = Integer.parseInt(s);
             }
 
             s = (String) configs.remove("system.totalordermulticast.nonces");
@@ -148,6 +161,13 @@ public class TOMConfiguration extends Configuration {
                 useSenderThread = false;
             } else {
                 useSenderThread = Boolean.parseBoolean(s);
+            }
+
+            s = (String) configs.remove("system.communication.numNIOThreads");
+            if (s == null) {
+                numNIOThreads = 2;
+            } else {
+                numNIOThreads = Integer.parseInt(s);
             }
 
             s = (String) configs.remove("system.communication.useMACs");
@@ -188,15 +208,15 @@ public class TOMConfiguration extends Configuration {
             s = (String) configs.remove("system.initial.view");
             if (s == null) {
                 initialView = new int[n];
-                for(int i=0; i<n; i++) {
-                     initialView[i] = i;
+                for (int i = 0; i < n; i++) {
+                    initialView[i] = i;
                 }
             } else {
-                 StringTokenizer str = new StringTokenizer(s,",");
-                 initialView = new int[str.countTokens()];
-                 for(int i = 0; i < initialView.length; i++){
-                     initialView[i] = Integer.parseInt(str.nextToken());
-                 }
+                StringTokenizer str = new StringTokenizer(s, ",");
+                initialView = new int[str.countTokens()];
+                for (int i = 0; i < initialView.length; i++) {
+                    initialView[i] = Integer.parseInt(str.nextToken());
+                }
             }
 
             s = (String) configs.remove("system.ttp.id");
@@ -205,7 +225,7 @@ public class TOMConfiguration extends Configuration {
             } else {
                 ttpId = Integer.parseInt(s);
             }
-            
+
             s = (String) configs.remove("system.communication.inQueueSize");
             if (s == null) {
                 inQueueSize = 1000;
@@ -227,7 +247,7 @@ public class TOMConfiguration extends Configuration {
                     outQueueSize = 1000;
                 }
             }
-            
+
             rsaLoader = new RSAKeyLoader(this, TOMConfiguration.configHome);
 
         } catch (Exception e) {
@@ -236,20 +256,34 @@ public class TOMConfiguration extends Configuration {
 
     }
 
-    public boolean isTheTTP(){
+    public String getViewStoreClass() {
+        String s = (String) configs.remove("view.storage.handler");
+        if (s == null) {
+            return "navigators.smart.reconfiguration.views.DefaultViewStorage";
+        } else {
+            return s;
+        }
+
+    }
+
+    public boolean isTheTTP() {
         return (this.getTTPId() == this.getProcessId());
     }
-    
-    public final int[] getInitialView(){
+
+    public final int[] getInitialView() {
         return this.initialView;
     }
 
     public int getTTPId() {
         return ttpId;
     }
-    
+
     public int getRequestTimeout() {
         return requestTimeout;
+    }
+
+    public int getReplyVerificationTime() {
+        return replyVerificationTime;
     }
 
     public int getN() {
@@ -296,6 +330,13 @@ public class TOMConfiguration extends Configuration {
         return useSenderThread;
     }
 
+    /**
+     *     *
+     */
+    public int getNumberOfNIOThreads() {
+        return numNIOThreads;
+    }
+
     /**     * @return the numberOfNonces     */
     public int getNumberOfNonces() {
         return numberOfNonces;
@@ -322,7 +363,7 @@ public class TOMConfiguration extends Configuration {
         return checkpointPeriod;
     }
 
-     /**
+    /**
      * Indicates if a simple control flow mechanism should be used to avoid an overflow of client requests
      */
     public int getUseControlFlow() {
@@ -338,7 +379,7 @@ public class TOMConfiguration extends Configuration {
         }
 
     }
-    
+
     public PrivateKey getRSAPrivateKey() {
         try {
             return rsaLoader.loadPrivateKey();

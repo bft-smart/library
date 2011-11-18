@@ -5,8 +5,8 @@
 package navigators.smart.tom;
 
 import navigators.smart.communication.ServerCommunicationSystem;
-import navigators.smart.reconfiguration.ReconfigurationManager;
-import navigators.smart.reconfiguration.View;
+import navigators.smart.reconfiguration.ServerViewManager;
+import navigators.smart.reconfiguration.views.View;
 import navigators.smart.reconfiguration.util.TOMConfiguration;
 import navigators.smart.tom.core.messages.TOMMessage;
 
@@ -17,12 +17,12 @@ import navigators.smart.tom.core.messages.TOMMessage;
 public class ReplicaContext {
     
     private ServerCommunicationSystem cs; // Server side comunication system
-    private ReconfigurationManager reconfManager;
+    private ServerViewManager SVManager;
 
     public ReplicaContext(ServerCommunicationSystem cs, 
-                                 ReconfigurationManager reconfManager) {
+                                 ServerViewManager SVManager) {
         this.cs = cs;
-        this.reconfManager = reconfManager;
+        this.SVManager = SVManager;
     }
     
     //TODO: implement a method that allow the replica to send a message with
@@ -44,7 +44,7 @@ public class ReplicaContext {
      * @return the static configuration of this replica
      */
     public TOMConfiguration getStaticConfiguration() {
-        return reconfManager.getStaticConf();
+        return SVManager.getStaticConf();
     }
     
     /**
@@ -53,6 +53,6 @@ public class ReplicaContext {
      * @return the current view of the replica group.
      */
     public View getCurrentView() {
-        return reconfManager.getCurrentView();
+        return SVManager.getCurrentView();
     }
 }

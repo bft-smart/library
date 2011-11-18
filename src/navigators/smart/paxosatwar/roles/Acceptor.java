@@ -26,7 +26,7 @@ import navigators.smart.paxosatwar.executionmanager.LeaderModule;
 import navigators.smart.paxosatwar.executionmanager.Round;
 import navigators.smart.paxosatwar.messages.MessageFactory;
 import navigators.smart.paxosatwar.messages.PaxosMessage;
-import navigators.smart.reconfiguration.ReconfigurationManager;
+import navigators.smart.reconfiguration.ServerViewManager;
 import navigators.smart.tom.core.TOMLayer;
 import navigators.smart.tom.util.Logger;
 
@@ -46,17 +46,17 @@ public final class Acceptor {
     private ServerCommunicationSystem communication; // Replicas comunication system
     private LeaderModule leaderModule; // Manager for information about leaders
     private TOMLayer tomLayer; // TOM layer
-    private ReconfigurationManager reconfManager;
+    private ServerViewManager reconfManager;
 
     /**
      * Creates a new instance of Acceptor.
      * @param communication Replicas communication system
      * @param factory Message factory for PaW messages
-     * @param lm Leader Module
-     * @param manager Reconfiguration Manager
+     * @param verifier Proof verifier
+     * @param conf TOM configuration
      */
     public Acceptor(ServerCommunicationSystem communication, MessageFactory factory,
-                                LeaderModule lm, ReconfigurationManager manager) {
+                                LeaderModule lm, ServerViewManager manager) {
         this.communication = communication;
         this.me = manager.getStaticConf().getProcessId();
         this.factory = factory;
@@ -226,10 +226,8 @@ public final class Acceptor {
                 
                 round.setStrong(me, value);
 
-                if (round.getExecution().getLearner().firstMessageProposed != null) {
-                    round.getExecution().getLearner().firstMessageProposed.strongSentTime = System.nanoTime();
-                }
-
+                round.getExecution().getLearner().firstMessageProposed.strongSentTime = System.nanoTime();
+                
                 communication.send(this.reconfManager.getCurrentViewOtherAcceptors(),
                         factory.createStrong(eid, round.getNumber(), value));
                 computeStrong(eid, round, value);

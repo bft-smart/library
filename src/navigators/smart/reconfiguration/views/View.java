@@ -3,7 +3,7 @@
  * and open the template in the editor.
  */
 
-package navigators.smart.reconfiguration;
+package navigators.smart.reconfiguration.views;
 
 import java.io.Serializable;
 import java.util.Arrays;

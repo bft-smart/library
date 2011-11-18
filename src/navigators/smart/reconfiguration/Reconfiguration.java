@@ -17,31 +17,38 @@ public class Reconfiguration {
 
     private ReconfigureRequest request;
     private ServiceProxy proxy;
-    
+    private int id;
     
     public Reconfiguration(int id) {
-        proxy = new ServiceProxy(id);
-        
-        request = new ReconfigureRequest(id);
+        this.id = id;
+         //proxy = new ServiceProxy(id);
+        //request = new ReconfigureRequest(id);
+    }
+    
+    public void connect(){
+        if(proxy == null){
+            proxy = new ServiceProxy(id);
+        }
     }
     
     public void addServer(int id, String ip, int port){
-        this.setReconfiguration(ReconfigurationManager.ADD_SERVER, id + ":" + ip + ":" + port);
+        this.setReconfiguration(ServerViewManager.ADD_SERVER, id + ":" + ip + ":" + port);
     }
     
     public void removeServer(int id){
-        this.setReconfiguration(ReconfigurationManager.REMOVE_SERVER, String.valueOf(id));
+        this.setReconfiguration(ServerViewManager.REMOVE_SERVER, String.valueOf(id));
     }
     
 
     public void setF(int f){
-      this.setReconfiguration(ReconfigurationManager.CHANGE_F,String.valueOf(f));  
+      this.setReconfiguration(ServerViewManager.CHANGE_F,String.valueOf(f));  
     }
     
     
     public void setReconfiguration(int prop, String value){
         if(request == null){
-            request = new ReconfigureRequest(proxy.getViewManager().getStaticConf().getProcessId());
+            //request = new ReconfigureRequest(proxy.getViewManager().getStaticConf().getProcessId());
+            request = new ReconfigureRequest(id);
         }
         request.setProperty(prop, value);
     }
@@ -60,6 +67,7 @@ public class Reconfiguration {
     
     public void close(){
         proxy.close();
+        proxy = null;
     }
     
 }

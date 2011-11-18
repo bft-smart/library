@@ -39,13 +39,13 @@ import navigators.smart.clientsmanagement.RequestList;
 import navigators.smart.communication.ServerCommunicationSystem;
 import navigators.smart.communication.client.RequestReceiver;
 import navigators.smart.paxosatwar.Consensus;
-import navigators.smart.paxosatwar.executionmanager.RoundValuePair;
+import navigators.smart.paxosatwar.executionmanager.TimestampValuePair;
 import navigators.smart.paxosatwar.executionmanager.Execution;
 import navigators.smart.paxosatwar.executionmanager.ExecutionManager;
 import navigators.smart.paxosatwar.executionmanager.LeaderModule;
 import navigators.smart.paxosatwar.executionmanager.Round;
 import navigators.smart.paxosatwar.roles.Acceptor;
-import navigators.smart.reconfiguration.ReconfigurationManager;
+import navigators.smart.reconfiguration.ServerViewManager;
 import navigators.smart.statemanagment.StateManager;
 import navigators.smart.tom.TOMRequestReceiver;
 import navigators.smart.tom.core.messages.TOMMessage;
@@ -110,7 +110,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
     private PrivateKey prk;
     
-    private ReconfigurationManager reconfManager;
+    private ServerViewManager reconfManager;
     
     /**
      * Creates a new instance of TOMulticastLayer
@@ -126,7 +126,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             LeaderModule lm,
             Acceptor a,
             ServerCommunicationSystem cs,
-            ReconfigurationManager recManager) {
+            ServerViewManager recManager) {
 
         super("TOM Layer");
 
@@ -246,9 +246,8 @@ public final class TOMLayer extends Thread implements RequestReceiver {
      * @param inEx ID of the consensus being executed at the moment
      */
     public void setInExec(int inEx) {
-        Logger.println("(TOMLayer.setInExec) modifying inExec from " + this.inExecution + " to " + inEx);
-
         proposeLock.lock();
+        Logger.println("(TOMLayer.setInExec) modifying inExec from " + this.inExecution + " to " + inEx);
         this.inExecution = inEx;
         if (inEx == -1  && !isRetrievingState()) {
             canPropose.signalAll();
@@ -300,7 +299,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         boolean readOnly = (msg.getReqType() == TOMMessageType.READONLY_REQUEST);
         if (clientsManager.requestReceived(msg, true, !readOnly, communication)) {
             if (readOnly) {
-                dt.deliverUnordered(msg, lcManager.getLastts());
+                dt.deliverUnordered(msg, lcManager.getLastReg());
             } else {
                 messagesLock.lock();
                 haveMessages.signal();
@@ -477,7 +476,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
     public StateManager getStateManager() {
         return stateManager;
     }
-
+   
     public LCManager getLCManager() {
         return lcManager;
     }
@@ -493,25 +492,25 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         ObjectOutputStream out = null;
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
 
-        lcManager.nexttsLock();
-        lcManager.lasttsLock();
+        lcManager.nextregLock();
+        lcManager.lastregLock();
 
         // ainda nao estou na fase de troca de lider?
-        if (lcManager.getNextts() == lcManager.getLastts()) {
+        if (lcManager.getNextReg() == lcManager.getLastReg()) {
 
-                lcManager.setNextts(lcManager.getLastts() + 1); // definir proximo timestamp
+                lcManager.setNextReg(lcManager.getLastReg() + 1); // definir proximo timestamp
 
-                int ts = lcManager.getNextts();
+                int regency = lcManager.getNextReg();
 
-                lcManager.nexttsUnlock();
-                lcManager.lasttsUnlock();
+                lcManager.nextregUnlock();
+                lcManager.lastregUnlock();
 
                 // guardar mensagens para ordenar
                 lcManager.setCurrentRequestTimedOut(requestList);
 
                 // guardar informacao da mensagem que vou enviar
                 lcManager.StopsLock();
-                lcManager.addStop(ts, this.reconfManager.getStaticConf().getProcessId());
+                lcManager.addStop(regency, this.reconfManager.getStaticConf().getProcessId());
                 lcManager.StopsUnlock();
 
                 execManager.stop(); // parar execucao do consenso
@@ -541,7 +540,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
                     // enviar mensagem STOP
                     communication.send(this.reconfManager.getCurrentViewOtherAcceptors(),
-                    new LCMessage(this.reconfManager.getStaticConf().getProcessId(), TOMUtil.STOP, ts, payload));
+                    new LCMessage(this.reconfManager.getStaticConf().getProcessId(), TOMUtil.STOP, regency, payload));
 
                 } catch (IOException ex) {
                     java.util.logging.Logger.getLogger(TOMLayer.class.getName()).log(Level.SEVERE, null, ex);
@@ -554,13 +553,13 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                     }
                 }
 
-                evaluateStops(ts); // avaliar mensagens stops
+                evaluateStops(regency); // avaliar mensagens stops
 
         }
 
         else {
-                lcManager.nexttsUnlock();
-                lcManager.lasttsUnlock();
+                lcManager.nextregUnlock();
+                lcManager.lastregUnlock();
         }
     }
 
@@ -570,19 +569,19 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         ObjectOutputStream out = null;
         ByteArrayOutputStream bos = null;
 
-        lcManager.nexttsLock();
-        lcManager.lasttsLock();
+        lcManager.nextregLock();
+        lcManager.lastregLock();
         lcManager.StopsLock();
 
         // passar para a fase de troca de lider se já tiver recebido mais de f mensagens
-        if (lcManager.getStopsSize(nextTS) > this.reconfManager.getQuorumF() && lcManager.getNextts() == lcManager.getLastts()) {
+        if (lcManager.getStopsSize(nextTS) > this.reconfManager.getQuorumF() && lcManager.getNextReg() == lcManager.getLastReg()) {
 
-            lcManager.setNextts(lcManager.getLastts() + 1); // definir proximo timestamp
+            lcManager.setNextReg(lcManager.getLastReg() + 1); // definir proximo timestamp
 
-            int ts = lcManager.getNextts();
+            int regency = lcManager.getNextReg();
 
             // guardar informacao da mensagem que vou enviar
-            lcManager.addStop(ts, this.reconfManager.getStaticConf().getProcessId());
+            lcManager.addStop(regency, this.reconfManager.getStaticConf().getProcessId());
 
             execManager.stop(); // parar execucao do consenso
 
@@ -610,7 +609,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
                 // enviar mensagem STOP
                 communication.send(this.reconfManager.getCurrentViewOtherAcceptors(),
-                    new LCMessage(this.reconfManager.getStaticConf().getProcessId(), TOMUtil.STOP, ts, payload));
+                    new LCMessage(this.reconfManager.getStaticConf().getProcessId(), TOMUtil.STOP, regency, payload));
 
             } catch (IOException ex) {
                 java.util.logging.Logger.getLogger(TOMLayer.class.getName()).log(Level.SEVERE, null, ex);
@@ -625,21 +624,21 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         }
 
         // posso passar para a fase de sincronizacao?
-        if (lcManager.getStopsSize(nextTS) > this.reconfManager.getQuorum2F() && lcManager.getNextts() > lcManager.getLastts()) {
+        if (lcManager.getStopsSize(nextTS) > this.reconfManager.getQuorum2F() && lcManager.getNextReg() > lcManager.getLastReg()) {
 
-            lcManager.setLastts(lcManager.getNextts()); // definir ultimo timestamp
+            lcManager.setLastReg(lcManager.getNextReg()); // definir ultimo timestamp
 
-            lcManager.nexttsUnlock();
+            lcManager.nextregUnlock();
 
-            int ts = lcManager.getLastts();
-            lcManager.lasttsUnlock();
+            int regency = lcManager.getLastReg();
+            lcManager.lastregUnlock();
 
             // evitar um memory leak
             lcManager.removeStops(nextTS);
 
             lcManager.StopsUnlock();
 
-            int leader = ts % this.reconfManager.getCurrentViewN(); // novo lider
+            int leader = regency % this.reconfManager.getCurrentViewN(); // novo lider
             int in = getInExec(); // eid a executar
             int last = getLastExec(); // ultimo eid decidido
 
@@ -670,8 +669,8 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
                         Execution exec = execManager.getExecution(in);
 
-                        RoundValuePair quorumWeaks = exec.getQuorumWeaks();
-                        HashSet<RoundValuePair> writeSet = exec.getWriteSet();
+                        TimestampValuePair quorumWeaks = exec.getQuorumWeaks();
+                        HashSet<TimestampValuePair> writeSet = exec.getWriteSet();
 
                         CollectData collect = new CollectData(this.reconfManager.getStaticConf().getProcessId(), in, quorumWeaks, writeSet);
 
@@ -683,7 +682,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
                     else {
 
-                        CollectData collect = new CollectData(this.reconfManager.getStaticConf().getProcessId(), -1, new RoundValuePair(-1, new byte[0]), new HashSet<RoundValuePair>());
+                        CollectData collect = new CollectData(this.reconfManager.getStaticConf().getProcessId(), -1, new TimestampValuePair(-1, new byte[0]), new HashSet<TimestampValuePair>());
 
                         SignedObject signedCollect = sign(collect);
 
@@ -699,7 +698,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                     bos.close();
 
                     leaderLock.lock();
-                    lm.setNewTS(ts);
+                    lm.setNewTS(regency);
                     leaderLock.unlock();
 
                     int[] b = new int[1];
@@ -707,7 +706,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
                     // enviar mensagem SYNC para o novo lider
                     communication.send(b,
-                        new LCMessage(this.reconfManager.getStaticConf().getProcessId(), TOMUtil.SYNC, ts, payload));
+                        new LCMessage(this.reconfManager.getStaticConf().getProcessId(), TOMUtil.SYNC, regency, payload));
 
                     //TODO: Voltar a ligar o timeout
 
@@ -737,30 +736,30 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                 }
                 else lastData = new LastEidData(this.reconfManager.getStaticConf().getProcessId(), last, null, null);
 
-                lcManager.addLastEid(ts, lastData);
+                lcManager.addLastEid(regency, lastData);
 
 
                 if (in > -1) { // conteudo do eid a executar
                     Execution exec = execManager.getExecution(in);
 
-                    RoundValuePair quorumWeaks = exec.getQuorumWeaks();
-                    HashSet<RoundValuePair> writeSet = exec.getWriteSet();
+                    TimestampValuePair quorumWeaks = exec.getQuorumWeaks();
+                    HashSet<TimestampValuePair> writeSet = exec.getWriteSet();
 
                     collect = new CollectData(this.reconfManager.getStaticConf().getProcessId(), in, quorumWeaks, writeSet);
 
                 }
-                else collect = new CollectData(this.reconfManager.getStaticConf().getProcessId(), -1, new RoundValuePair(-1, new byte[0]), new HashSet<RoundValuePair>());
+                else collect = new CollectData(this.reconfManager.getStaticConf().getProcessId(), -1, new TimestampValuePair(-1, new byte[0]), new HashSet<TimestampValuePair>());
 
                 SignedObject signedCollect = sign(collect);
 
-                lcManager.addCollect(ts, signedCollect);
+                lcManager.addCollect(regency, signedCollect);
             }
 
         }
         else {
             lcManager.StopsUnlock();
-            lcManager.nexttsUnlock();
-            lcManager.lasttsUnlock();
+            lcManager.nextregUnlock();
+            lcManager.lastregUnlock();
         }
     }
 
@@ -778,12 +777,12 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             case TOMUtil.STOP: // mensagens STOP
 
                 {
-                    lcManager.lasttsLock();
+                    lcManager.lastregLock();
 
                     // esta mensagem e para a proxima mudanca de lider?
-                    if (msg.getTs() == lcManager.getLastts() + 1) {
+                    if (msg.getTs() == lcManager.getLastReg() + 1) {
 
-                        lcManager.lasttsUnlock();
+                        lcManager.lastregUnlock();
 
                         try { // descerializar o conteudo da mensagem STOP
 
@@ -822,24 +821,24 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                         evaluateStops(msg.getTs()); // avaliar mensagens stops
                     }
                     else {
-                        lcManager.lasttsUnlock();
+                        lcManager.lastregUnlock();
                     }
                 }
                 break;
             case TOMUtil.SYNC: // mensagens SYNC
                 {
 
-                    int ts = msg.getTs();
+                    int regency = msg.getTs();
 
-                    lcManager.lasttsLock();
+                    lcManager.lastregLock();
 
                     // Sou o novo lider e estou a espera destas mensagem?
-                    if (ts == lcManager.getLastts() &&
-                            this.reconfManager.getStaticConf().getProcessId() == (ts % this.reconfManager.getCurrentViewN())) {
+                    if (regency == lcManager.getLastReg() &&
+                            this.reconfManager.getStaticConf().getProcessId() == (regency % this.reconfManager.getCurrentViewN())) {
 
                         //TODO: E preciso verificar a prova do ultimo consenso decidido e a assinatura do estado do consenso actual!
 
-                        lcManager.lasttsUnlock();
+                        lcManager.lastregUnlock();
 
                         LastEidData lastData = null;
                         SignedObject signedCollect = null;
@@ -849,8 +848,8 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
                         int in = -1;
 
-                        RoundValuePair quorumWeaks = null;
-                        HashSet<RoundValuePair> writeSet = null;
+                        TimestampValuePair quorumWeaks = null;
+                        HashSet<TimestampValuePair> writeSet = null;
 
 
                         try { // descerializar o conteudo da mensagem
@@ -869,7 +868,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
                             lastData = new LastEidData(msg.getSender(), last, lastValue, null);
 
-                            lcManager.addLastEid(ts, lastData);
+                            lcManager.addLastEid(regency, lastData);
 
                             // conteudo do eid a executar
 
@@ -887,16 +886,16 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                             ois.close();
                             bis.close();
 
-                            lcManager.addCollect(ts, signedCollect);
+                            lcManager.addCollect(regency, signedCollect);
 
                             int bizantineQuorum = (reconfManager.getCurrentViewN() + reconfManager.getCurrentViewF()) / 2;
 
                             // ja recebi mensagens de um quorum bizantino,
                             // referentes tanto ao ultimo eid como o actual?s
-                            if (lcManager.getLastEidsSize(ts) > bizantineQuorum &&
-                                    lcManager.getCollectsSize(ts) > bizantineQuorum) {
+                            if (lcManager.getLastEidsSize(regency) > bizantineQuorum &&
+                                    lcManager.getCollectsSize(regency) > bizantineQuorum) {
 
-                                catch_up(ts);
+                                catch_up(regency);
                             }
                         } catch (IOException ex) {
                             ex.printStackTrace(System.err);
@@ -909,14 +908,14 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             break;
         case TOMUtil.CATCH_UP: // mensagens de CATCH-UP
             {
-                int ts = msg.getTs();
+                int regency = msg.getTs();
 
-                lcManager.lasttsLock();
+                lcManager.lastregLock();
 
                 // Estou a espera desta mensagem, e recebi-a do novo lider?
-                if (msg.getTs() == lcManager.getLastts() && msg.getSender() == (ts % this.reconfManager.getCurrentViewN())) {
+                if (msg.getTs() == lcManager.getLastReg() && msg.getSender() == (regency % this.reconfManager.getCurrentViewN())) {
 
-                    lcManager.lasttsUnlock();
+                    lcManager.lastregUnlock();
 
                     LastEidData lastHighestEid = null;
                     int currentEid = -1;
@@ -935,12 +934,12 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                         propose = (byte[]) ois.readObject();
                         batchSize = ois.readInt();
 
-                        lcManager.setCollects(ts, signedCollects);
+                        lcManager.setCollects(regency, signedCollects);
 
                         // o predicado sound e verdadeiro?
-                        if (lcManager.sound(lcManager.selectCollects(ts, currentEid))) {
+                        if (lcManager.sound(lcManager.selectCollects(regency, currentEid))) {
 
-                            finalise(ts, lastHighestEid, currentEid, signedCollects, propose, batchSize, false);
+                            finalise(regency, lastHighestEid, currentEid, signedCollects, propose, batchSize, false);
                         }
 
                         ois.close();
@@ -955,7 +954,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
                 }
                 else {
-                    lcManager.lasttsUnlock();
+                    lcManager.lastregUnlock();
                 }
             }
             break;
@@ -966,12 +965,12 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
     // este metodo e usado para verificar se o lider pode fazer a mensagem catch-up
     // e tambem envia-la
-    private void catch_up(int ts) {
+    private void catch_up(int regency) {
 
         ObjectOutputStream out = null;
         ByteArrayOutputStream bos = null;
 
-        LastEidData lastHighestEid = lcManager.getHighestLastEid(ts);
+        LastEidData lastHighestEid = lcManager.getHighestLastEid(regency);
 
         int currentEid = lastHighestEid.getEid() + 1;
         HashSet<SignedObject> signedCollects = null;
@@ -979,9 +978,9 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         int batchSize = -1;
 
         // normalizar os collects e aplicar-lhes o predicado "sound"
-        if (lcManager.sound(lcManager.selectCollects(ts, currentEid))) {
+        if (lcManager.sound(lcManager.selectCollects(regency, currentEid))) {
 
-            signedCollects = lcManager.getCollects(ts); // todos collects originais que esta replica recebeu
+            signedCollects = lcManager.getCollects(regency); // todos collects originais que esta replica recebeu
 
             Consensus cons = new Consensus(-1); // este objecto só serve para obter o batchsize,
                                                     // a partir do codigo que esta dentro do createPropose()
@@ -1011,9 +1010,9 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
                 // enviar a mensagem CATCH-UP
                 communication.send(this.reconfManager.getCurrentViewOtherAcceptors(),
-                    new LCMessage(this.reconfManager.getStaticConf().getProcessId(), TOMUtil.CATCH_UP, ts, payload));
+                    new LCMessage(this.reconfManager.getStaticConf().getProcessId(), TOMUtil.CATCH_UP, regency, payload));
 
-                finalise(ts, lastHighestEid, currentEid, signedCollects, propose, batchSize, true);
+                finalise(regency, lastHighestEid, currentEid, signedCollects, propose, batchSize, true);
 
             } catch (IOException ex) {
                 java.util.logging.Logger.getLogger(TOMLayer.class.getName()).log(Level.SEVERE, null, ex);
@@ -1030,7 +1029,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
     // este metdo e invocado em todas as replicas, e serve para verificar e aplicar
     // a informacao enviada na mensagem catch-up
-    private void finalise(int ts, LastEidData lastHighestEid,
+    private void finalise(int regency, LastEidData lastHighestEid,
             int currentEid, HashSet<SignedObject> signedCollects, byte[] propose, int batchSize, boolean iAmLeader) {
 
         int me = this.reconfManager.getStaticConf().getProcessId();
@@ -1099,7 +1098,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             
             r.setWeak(me, hash);
 
-            lm.setNewTS(ts);
+            lm.setNewTS(regency);
 
             // resumir a execucao normal
             execManager.restart();

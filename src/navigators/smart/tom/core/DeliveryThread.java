@@ -24,7 +24,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 import navigators.smart.paxosatwar.Consensus;
-import navigators.smart.reconfiguration.ReconfigurationManager;
+import navigators.smart.reconfiguration.ServerViewManager;
 import navigators.smart.statemanagment.TransferableState;
 import navigators.smart.tom.TOMRequestReceiver;
 import navigators.smart.tom.core.messages.TOMMessage;
@@ -42,15 +42,15 @@ public final class DeliveryThread extends Thread {
     private LinkedBlockingQueue<Consensus> decided = new LinkedBlockingQueue<Consensus>(); // decided consensus
     private TOMLayer tomLayer; // TOM layer
     private TOMRequestReceiver receiver; // Object that receives requests from clients
-    private ReconfigurationManager manager;
+    private ServerViewManager manager;
 
     /**
      * Creates a new instance of DeliveryThread
      * @param tomLayer TOM layer
      * @param receiver Object that receives requests from clients
-     * @param manager Reconfiguration Manager
+     * @param conf TOM configuration
      */
-    public DeliveryThread(TOMLayer tomLayer, TOMRequestReceiver receiver, ReconfigurationManager manager) {
+    public DeliveryThread(TOMLayer tomLayer, TOMRequestReceiver receiver, ServerViewManager manager) {
         super("Delivery Thread");
 
         this.tomLayer = tomLayer;
@@ -65,7 +65,10 @@ public final class DeliveryThread extends Thread {
      * @param cons Consensus established as being decided
      */
     public void delivery(Consensus cons) {
-        if (!containsReconfig(cons)) {
+        
+        
+        
+        if (!containsGoodReconfig(cons)) {
             //set this consensus as the last executed
             tomLayer.setLastExec(cons.getId());
             //define that end of this execution
@@ -75,16 +78,18 @@ public final class DeliveryThread extends Thread {
         try {
             decided.put(cons);
             Logger.println("(DeliveryThread.delivery) Consensus " + cons.getId() + " finished. Decided size=" + decided.size());
+            //System.out.println("(DeliveryThread.delivery) Consensus " + cons.getId() + " finished. Decided size=" + decided.size());
         } catch (Exception e) {
             e.printStackTrace(System.out);
         }
     }
 
-    private boolean containsReconfig(Consensus cons) {
+    private boolean containsGoodReconfig(Consensus cons) {
         TOMMessage[] decidedMessages = cons.getDeserializedDecision();
 
         for (TOMMessage decidedMessage : decidedMessages) {
-            if (decidedMessage.getReqType() == TOMMessageType.RECONFIG) {
+            if (decidedMessage.getReqType() == TOMMessageType.RECONFIG
+                    && decidedMessage.getViewID() == manager.getCurrentViewId()) {
                 return true;
             }
         }
@@ -138,7 +143,7 @@ public final class DeliveryThread extends Thread {
 
                 tomLayer.clientsManager.requestsOrdered(requests);
 
-                deliverMessages(eid, tomLayer.getLCManager().getLastts(), requests);
+                deliverMessages(eid, tomLayer.getLCManager().getLastReg(), requests);
 
                 //******* EDUARDO BEGIN **************//
                 if (manager.hasUpdates()) {
@@ -192,6 +197,10 @@ public final class DeliveryThread extends Thread {
             deliverLock();
 
             while (tomLayer.isRetrievingState()) {
+                
+                
+                Logger.println("(DeliveryThread.run) Retrieving State.");
+                //System.out.println("(DeliveryThread.run) Retrieving State.");
                 canDeliver.awaitUninterruptibly();
             }
             /******************************************************************/
@@ -214,7 +223,7 @@ public final class DeliveryThread extends Thread {
                 //clean the ordered messages from the pending buffer
                 tomLayer.clientsManager.requestsOrdered(requests);
 
-                deliverMessages(cons.getId(), tomLayer.getLCManager().getLastts(), requests);
+                deliverMessages(cons.getId(), tomLayer.getLCManager().getLastReg(), requests);
 
                 //******* EDUARDO BEGIN **************//
                 if (manager.hasUpdates()) {
@@ -270,14 +279,14 @@ public final class DeliveryThread extends Thread {
         return requests;
     }
 
-    public void deliverUnordered(TOMMessage request, int view) {
+    public void deliverUnordered(TOMMessage request, int regency) {
         MessageContext msgCtx = new MessageContext(System.currentTimeMillis(),
-                new byte[0], view, -1, request.getSender(), null);
+                new byte[0], regency, -1, request.getSender(), null);
 
         receiver.receiveMessage(request, msgCtx);
     }
 
-    private void deliverMessages(int consId, int view, TOMMessage[] requests) {
+    private void deliverMessages(int consId, int regency, TOMMessage[] requests) {
         TOMMessage firstRequest = requests[0];
         
         for (TOMMessage request: requests) {
@@ -287,7 +296,7 @@ public final class DeliveryThread extends Thread {
                     
                     //create a context for the batch of messages to be delivered
                     MessageContext msgCtx = new MessageContext(firstRequest.timestamp, 
-                            firstRequest.nonces, view, consId, request.getSender(), firstRequest);
+                            firstRequest.nonces, regency, consId, request.getSender(), firstRequest);
 
                     request.deliveryTime = System.nanoTime();
 

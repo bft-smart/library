@@ -18,7 +18,7 @@
 package navigators.smart.tom.demo;
 
 import navigators.smart.communication.ServerCommunicationSystem;
-import navigators.smart.reconfiguration.ReconfigurationManager;
+import navigators.smart.reconfiguration.ServerViewManager;
 import navigators.smart.tom.MessageContext;
 import navigators.smart.tom.TOMReceiver;
 import navigators.smart.tom.core.messages.TOMMessage;
@@ -39,7 +39,7 @@ public class ThroughputTestServer extends TOMReceiver {
 
     private void setup() {
         //create the configuration object
-        ReconfigurationManager manager = new ReconfigurationManager(id);
+        ServerViewManager manager = new ServerViewManager(id);
 
         try {
             //create the communication system

@@ -27,11 +27,10 @@ import java.util.logging.Logger;
 
 import navigators.smart.communication.ServerCommunicationSystem;
 import navigators.smart.reconfiguration.Reconfiguration;
-import navigators.smart.reconfiguration.ReconfigurationManager;
+import navigators.smart.reconfiguration.ServerViewManager;
 import navigators.smart.reconfiguration.ReconfigureReply;
 import navigators.smart.reconfiguration.TTPMessage;
 import navigators.smart.tom.core.messages.TOMMessage;
-import navigators.smart.tom.core.messages.TOMMessageType;
 
 /**
  * This class implements a TOMReceiver, and also a replica for the server side of the application.
@@ -42,37 +41,34 @@ import navigators.smart.tom.core.messages.TOMMessageType;
 public abstract class ServiceReplica extends TOMReceiver implements Runnable {
 
     class MessageContextPair {
+
         TOMMessage message;
         MessageContext msgCtx;
-        
+
         MessageContextPair(TOMMessage message, MessageContext msgCtx) {
             this.message = message;
             this.msgCtx = msgCtx;
         }
     }
-    
     // replica ID
-    private int id; 
+    private int id;
     // Server side comunication system
-    private ServerCommunicationSystem cs = null; 
-     // Queue of messages received from the TOM layer
+    private ServerCommunicationSystem cs = null;
+    // Queue of messages received from the TOM layer
     private BlockingQueue<MessageContextPair> requestQueue = new LinkedBlockingQueue<MessageContextPair>();
     // Thread that runs the replica code
-    private Thread replicaThread; 
-    
+    private Thread replicaThread;
     private boolean active = false;
-    
-    private ReconfigurationManager reconfManager;
+    private ServerViewManager SVManager;
     private boolean isToJoin = false;
     private ReentrantLock waitTTPJoinMsgLock = new ReentrantLock();
     private Condition canProceed = waitTTPJoinMsgLock.newCondition();
-    
     /** ISTO E CODIGO DO JOAO, PARA TRATAR DOS CHECKPOINTS */
     private ReentrantLock requestsLock = new ReentrantLock();
     private Condition requestsCondition = requestsLock.newCondition();
     private boolean isQueueEmpty = true;
-    /*******************************************************/
 
+    /*******************************************************/
     /**
      * Constructor
      * @param id Replica ID
@@ -89,51 +85,51 @@ public abstract class ServiceReplica extends TOMReceiver implements Runnable {
      */
     public ServiceReplica(int id, String configHome) {
         this.id = id;
-        this.reconfManager = new ReconfigurationManager(id, configHome);
+        this.SVManager = new ServerViewManager(id, configHome);
         this.init();
     }
 
     //******* EDUARDO BEGIN **************//
-    
     /**
      * Constructor
      * @param id Replica ID
-     * @param isToJoin if true, the replica tries to join the system, otherwise it waits for TTP message
+     * @param isToJoin: if true, the replica tries to join the system, otherwise it waits for TTP message
      * informing its join
      */
     public ServiceReplica(int id, boolean isToJoin) {
         this(id, "", isToJoin);
     }
 
-    
-    
     public ServiceReplica(int id, String configHome, boolean isToJoin) {
         this.isToJoin = isToJoin;
         this.id = id;
-        this.reconfManager = new ReconfigurationManager(id, configHome);
-        
+        this.SVManager = new ServerViewManager(id, configHome);
+
         this.init();
     }
 
     //******* EDUARDO END **************//
-    
     // this method initializes the object
     private void init() {
 
         try {
-            cs = new ServerCommunicationSystem(this.reconfManager, this);
+            cs = new ServerCommunicationSystem(this.SVManager, this);
         } catch (Exception ex) {
             Logger.getLogger(TOMReceiver.class.getName()).log(Level.SEVERE, null, ex);
             throw new RuntimeException("Unable to build a communication system.");
         }
 
         //******* EDUARDO BEGIN **************//
-        
-        if (!this.reconfManager.isInInitView()) {
+
+        if (this.SVManager.isInCurrentView()) {
+            System.out.println("Esta na view atual: " + this.SVManager.getCurrentView());
+            super.init(cs, this.SVManager); // initiaze the TOM layer
+        } else {
             if (this.isToJoin) {
+                System.out.println("Vai enviar join: " + this.SVManager.getCurrentView());
                 //Não está na visão inicial e é para executar um join;
-                int port = this.reconfManager.getStaticConf().getServerToServerPort(id) - 1;
-                String ip = this.reconfManager.getStaticConf().getServerToServerRemoteAddress(id).getAddress().getHostAddress();
+                int port = this.SVManager.getStaticConf().getServerToServerPort(id) - 1;
+                String ip = this.SVManager.getStaticConf().getServerToServerRemoteAddress(id).getAddress().getHostAddress();
                 ReconfigureReply r = null;
                 Reconfiguration rec = new Reconfiguration(id);
                 do {
@@ -143,47 +139,51 @@ public abstract class ServiceReplica extends TOMReceiver implements Runnable {
                     r = rec.execute();
                 } while (!r.getView().isMember(id));
                 rec.close();
-                this.reconfManager.processJoinResult(r);
+                this.SVManager.processJoinResult(r);
 
                 // initiaze the TOM layer
-                super.init(cs, this.reconfManager, r.getLastExecConsId(), r.getExecLeader()); 
+                super.init(cs, this.SVManager, r.getLastExecConsId(), r.getExecLeader());
 
                 this.cs.updateServersConnections();
                 this.cs.joinViewReceived();
             } else {
                 //Não está na visão inicial e é apenas para aguardar pela view onde o join foi executado
+
+                System.out.println("Vai aguardar a TTP: " + this.SVManager.getCurrentView());
                 waitTTPJoinMsgLock.lock();
-                canProceed.awaitUninterruptibly();
-                waitTTPJoinMsgLock.unlock();
+                try {
+                    canProceed.awaitUninterruptibly();
+                } finally {
+                    waitTTPJoinMsgLock.unlock();
+                }
             }
 
-        } else {
-            super.init(cs, this.reconfManager); // initiaze the TOM layer
+
         }
         initReplica();
     }
 
     public void joinMsgReceived(TTPMessage msg) {
         ReconfigureReply r = msg.getReply();
-        
-        if(r.getView().isMember(id)){
-            this.reconfManager.processJoinResult(r);
-            super.init(cs, this.reconfManager, r.getLastExecConsId(), r.getExecLeader()); // initiaze the TOM layer
+
+        if (r.getView().isMember(id)) {
+            this.SVManager.processJoinResult(r);
+
+            super.init(cs, this.SVManager, r.getLastExecConsId(), r.getExecLeader()); // initiaze the TOM layer
             //this.startState = r.getStartState();
             cs.updateServersConnections();
             this.cs.joinViewReceived();
-  
-             waitTTPJoinMsgLock.lock();
-             canProceed.signalAll();
-             waitTTPJoinMsgLock.unlock();
+            waitTTPJoinMsgLock.lock();
+            canProceed.signalAll();
+            waitTTPJoinMsgLock.unlock();
         }
     }
 
-
     private void initReplica() {
         active = true;
-        cs.start(); 
-        
+
+        cs.start();
+
         replicaThread = new Thread(this);
         replicaThread.start(); // starts the replica
     }
@@ -196,22 +196,21 @@ public abstract class ServiceReplica extends TOMReceiver implements Runnable {
     public void run() {
         MessageContextPair msg = null;
         byte[] response = null;
-            
-        while (active) {         
+
+        while (active) {
             // Take a message received from the TOMLayer
             try {
-                msg = requestQueue.take(); 
+                msg = requestQueue.take();
             } catch (InterruptedException ex) {
                 continue;
             }
 
-            if (msg.msgCtx.getFirstInBatch() != null)
-                msg.msgCtx.getFirstInBatch().executedTime = System.nanoTime();
-        
+            msg.msgCtx.getFirstInBatch().executedTime = System.nanoTime();
+
             // Deliver the message to the application, and get the response
-            response = (msg.msgCtx.getConsensusId() == -1) ? 
-                    executeUnordered(msg.message.getContent(), msg.msgCtx):
-                    executeOrdered(msg.message.getContent(), msg.msgCtx);
+            response = (msg.msgCtx.getConsensusId() == -1)
+                    ? executeUnordered(msg.message.getContent(), msg.msgCtx)
+                    : executeOrdered(msg.message.getContent(), msg.msgCtx);
 
             // If the request queue is empty, notify the logging code
             requestsLock.lock();
@@ -220,24 +219,24 @@ public abstract class ServiceReplica extends TOMReceiver implements Runnable {
                 requestsCondition.signalAll();
             }
             requestsLock.unlock();
-            
+
             // build the reply and send it to the client
             msg.message.reply = new TOMMessage(id, msg.message.getSession(),
-                    msg.message.getSequence(), response, reconfManager.getCurrentViewId());            
+                    msg.message.getSequence(), response, SVManager.getCurrentViewId());
             cs.send(new int[]{msg.message.getSender()}, msg.message.reply);
         }
     }
 
     private boolean onlyUnorderedPending() {
-        for(MessageContextPair msg:requestQueue){
-            if(msg.msgCtx.getConsensusId() != -1) {
+        for (MessageContextPair msg : requestQueue) {
+            if (msg.msgCtx.getConsensusId() != -1) {
                 return false; //some message have consId != -1
             }
         }
-        
+
         return true; //all messages have consId = -1
     }
-    
+
     /**
      * This is the method invoked to deliver a totally ordered request.
      *
@@ -248,7 +247,7 @@ public abstract class ServiceReplica extends TOMReceiver implements Runnable {
         /** ISTO E CODIGO DO JOAO, PARA TRATAR DOS CHECKPOINTS */
         isQueueEmpty = false;
         /*******************************************************/
-        requestQueue.add(new MessageContextPair(msg,msgCtx));
+        requestQueue.add(new MessageContextPair(msg, msgCtx));
     }
 
     /**
@@ -275,7 +274,7 @@ public abstract class ServiceReplica extends TOMReceiver implements Runnable {
             r = rec.execute();
         } while (r.getView().isMember(id));
         rec.close();
-         this.cs.updateServersConnections();
+        this.cs.updateServersConnections();
     }
 
     /** ISTO E CODIGO DO JOAO, PARA TRATAR DOS CHECKPOINTS */
@@ -348,7 +347,7 @@ public abstract class ServiceReplica extends TOMReceiver implements Runnable {
      * @return the reply for the request issued by the client
      */
     public abstract byte[] executeOrdered(byte[] command, MessageContext msgCtx);
-    
+
     /**
      * Method called to execute a request totally ordered. It is meant to be
      * implemented by subclasses of this class. 
