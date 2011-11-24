@@ -39,7 +39,7 @@ public class Configuration {
     protected BigInteger DH_P;
     protected BigInteger DH_G;
     protected int autoConnectLimit;
-    protected Map configs;
+    protected Map<String, String> configs;
     protected HostsConfig hosts;
     
     //protected HostsConfig initialHosts;
