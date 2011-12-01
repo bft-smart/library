@@ -139,7 +139,6 @@ public class ServersCommunicationLayer extends Thread {
 
     public final void send(int[] targets, SystemMessage sm) {
         ByteArrayOutputStream bOut = new ByteArrayOutputStream(248);
-
         try {
             new ObjectOutputStream(bOut).writeObject(sm);
         } catch (IOException ex) {

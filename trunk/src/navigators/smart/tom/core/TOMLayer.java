@@ -282,19 +282,6 @@ public final class TOMLayer extends Thread implements RequestReceiver {
      */
     @Override
     public void requestReceived(TOMMessage msg) {
-        /**********************************************************/
-        /********************MALICIOUS CODE************************/
-        /**********************************************************/
-        //first server always ignores messages from the first client (with n=4)
-        /*
-        if (conf.getProcessId() == 0 && msg.getSender() == 4) {
-        return;
-        }
-      */
-        /**********************************************************/
-        /**********************************************************/
-        /**********************************************************/
-
         // check if this request is valid and add it to the client' pending requests list
         boolean readOnly = (msg.getReqType() == TOMMessageType.READONLY_REQUEST);
         if (clientsManager.requestReceived(msg, true, !readOnly, communication)) {
@@ -308,7 +295,6 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         } else {
             Logger.println("(TOMLayer.requestReceive) the received TOMMessage " + msg + " was discarded.");
         }
-
     }
 
     /**

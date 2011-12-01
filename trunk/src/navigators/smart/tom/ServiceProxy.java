@@ -49,7 +49,7 @@ public class ServiceProxy extends TOMSender {
     private int receivedReplies = 0; // Number of received replies
     private TOMMessage response = null; // Reply delivered to the application
     private int invokeTimeout = 60;
-    private Comparator comparator;
+    private Comparator<byte[]> comparator;
     private Extractor extractor;
 
     /**
@@ -81,7 +81,7 @@ public class ServiceProxy extends TOMSender {
      *                       quorum of replies
      */
     public ServiceProxy(int processId, String configHome,
-            Comparator replyComparator, Extractor replyExtractor) {
+            Comparator<byte[]> replyComparator, Extractor replyExtractor) {
         if (configHome == null) {
             init(processId);
         } else {
@@ -95,7 +95,6 @@ public class ServiceProxy extends TOMSender {
         replies = new TOMMessage[getViewManager().getCurrentViewN()];
 
         comparator = (replyComparator != null) ? replyComparator : new Comparator<byte[]>() {
-
             @Override
             public int compare(byte[] o1, byte[] o2) {
                 return Arrays.equals(o1, o2) ? 0 : -1;
@@ -294,7 +293,6 @@ public class ServiceProxy extends TOMSender {
                 if (i != pos && replies[i] != null && 
                         (comparator.compare(replies[i].getContent(), reply.getContent()) == 0)) {
                     sameContent++;
-
                     if (sameContent >= replyQuorum) {
                         response = extractor.extractResponse(replies, sameContent, pos);
                         reqId = -1;
@@ -311,7 +309,7 @@ public class ServiceProxy extends TOMSender {
                 reqId = -1;
                 this.sm.release(); // resumes the thread that is executing the "invoke" method
             }
-        }
+        } 
 
         // Critical section ends here. The semaphore can be released
         canReceiveLock.unlock();

@@ -56,9 +56,5 @@ public interface TOMRequestReceiver {
      */
     public void setState(byte[] state);
 
-    /**
-     * This method waits for the batch of messages to finish being processed
-     */
-    public void waitForProcessingRequests();
 }
 

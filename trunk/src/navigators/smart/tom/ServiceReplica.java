@@ -17,9 +17,6 @@
  */
 package navigators.smart.tom;
 
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Level;
@@ -38,7 +35,7 @@ import navigators.smart.tom.core.messages.TOMMessage;
  * Applications must create a class that extends this one, and implement the executeOrdered method
  *
  */
-public abstract class ServiceReplica extends TOMReceiver implements Runnable {
+public abstract class ServiceReplica extends TOMReceiver {
 
     class MessageContextPair {
 
@@ -54,19 +51,12 @@ public abstract class ServiceReplica extends TOMReceiver implements Runnable {
     private int id;
     // Server side comunication system
     private ServerCommunicationSystem cs = null;
-    // Queue of messages received from the TOM layer
-    private BlockingQueue<MessageContextPair> requestQueue = new LinkedBlockingQueue<MessageContextPair>();
-    // Thread that runs the replica code
-    private Thread replicaThread;
-    private boolean active = false;
     private ServerViewManager SVManager;
     private boolean isToJoin = false;
     private ReentrantLock waitTTPJoinMsgLock = new ReentrantLock();
     private Condition canProceed = waitTTPJoinMsgLock.newCondition();
     /** ISTO E CODIGO DO JOAO, PARA TRATAR DOS CHECKPOINTS */
     private ReentrantLock requestsLock = new ReentrantLock();
-    private Condition requestsCondition = requestsLock.newCondition();
-    private boolean isQueueEmpty = true;
 
     /*******************************************************/
     /**
@@ -180,75 +170,32 @@ public abstract class ServiceReplica extends TOMReceiver implements Runnable {
     }
 
     private void initReplica() {
-        active = true;
-
         cs.start();
-
-        replicaThread = new Thread(this);
-        replicaThread.start(); // starts the replica
     }
     //******* EDUARDO END **************//
 
-    /**
-     * This method runs the replica code
-     */
-    @Override
-    public void run() {
-        MessageContextPair msg = null;
-        byte[] response = null;
+	/**
+	 * This is the method invoked to deliver a totally ordered request.
+	 *
+	 * @param msg The request delivered by the delivery thread
+	 */
+	@Override
+	public final void receiveOrderedMessage(TOMMessage tomMsg, MessageContext msgCtx) {
+		MessageContextPair msg = new MessageContextPair(tomMsg, msgCtx);
+		byte[] response = null;
+		if (msg.msgCtx.getFirstInBatch() != null)
+			msg.msgCtx.getFirstInBatch().executedTime = System.nanoTime();
 
-        while (active) {
-            // Take a message received from the TOMLayer
-            try {
-                msg = requestQueue.take();
-            } catch (InterruptedException ex) {
-                continue;
-            }
+		// Deliver the message to the application, and get the response
+		response = (msg.msgCtx.getConsensusId() == -1) ? 
+				executeUnordered(msg.message.getContent(), msg.msgCtx):
+					executeOrdered(msg.message.getContent(), msg.msgCtx);
 
-            msg.msgCtx.getFirstInBatch().executedTime = System.nanoTime();
-
-            // Deliver the message to the application, and get the response
-            response = (msg.msgCtx.getConsensusId() == -1)
-                    ? executeUnordered(msg.message.getContent(), msg.msgCtx)
-                    : executeOrdered(msg.message.getContent(), msg.msgCtx);
-
-            // If the request queue is empty, notify the logging code
-            requestsLock.lock();
-            if (requestQueue.isEmpty() || onlyUnorderedPending()) {
-                isQueueEmpty = true;
-                requestsCondition.signalAll();
-            }
-            requestsLock.unlock();
-
-            // build the reply and send it to the client
-            msg.message.reply = new TOMMessage(id, msg.message.getSession(),
-                    msg.message.getSequence(), response, SVManager.getCurrentViewId());
-            cs.send(new int[]{msg.message.getSender()}, msg.message.reply);
-        }
-    }
-
-    private boolean onlyUnorderedPending() {
-        for (MessageContextPair msg : requestQueue) {
-            if (msg.msgCtx.getConsensusId() != -1) {
-                return false; //some message have consId != -1
-            }
-        }
-
-        return true; //all messages have consId = -1
-    }
-
-    /**
-     * This is the method invoked to deliver a totally ordered request.
-     *
-     * @param msg The request delivered by the delivery thread
-     */
-    @Override
-    public final void receiveOrderedMessage(TOMMessage msg, MessageContext msgCtx) {
-        /** ISTO E CODIGO DO JOAO, PARA TRATAR DOS CHECKPOINTS */
-        isQueueEmpty = false;
-        /*******************************************************/
-        requestQueue.add(new MessageContextPair(msg, msgCtx));
-    }
+		// build the reply and send it to the client
+		msg.message.reply = new TOMMessage(id, msg.message.getSession(),
+				msg.message.getSequence(), response, SVManager.getCurrentViewId());            
+		cs.send(new int[]{msg.message.getSender()}, msg.message.reply);
+	}
 
     /**
      * This is the method invoked to deliver a unordered (read-only) requests.
@@ -282,14 +229,6 @@ public abstract class ServiceReplica extends TOMReceiver implements Runnable {
     @Override
     public byte[] getState() { //TODO: Ha por aqui uma condicao de corrida!
         requestsLock.lock();
-
-        while (!isQueueEmpty) {
-            try {
-                requestsCondition.await(100, TimeUnit.MILLISECONDS);
-            } catch (InterruptedException ex) {
-                Logger.getLogger(ServiceReplica.class.getName()).log(Level.SEVERE, null, ex);
-            }
-        }
         byte[] state = serializeState();
         requestsLock.unlock();
         return state;
@@ -299,27 +238,7 @@ public abstract class ServiceReplica extends TOMReceiver implements Runnable {
     @Override
     public void setState(byte[] state) {
         requestsLock.lock();
-        while (!isQueueEmpty) {
-            try {
-                requestsCondition.await(100, TimeUnit.MILLISECONDS);
-            } catch (InterruptedException ex) {
-                Logger.getLogger(ServiceReplica.class.getName()).log(Level.SEVERE, null, ex);
-            }
-        }
         deserializeState(state);
-        requestsLock.unlock();
-    }
-
-    @Override
-    public void waitForProcessingRequests() {
-        requestsLock.lock();
-        while (!isQueueEmpty) {
-            try {
-                requestsCondition.await(100, TimeUnit.MILLISECONDS);
-            } catch (InterruptedException ex) {
-                Logger.getLogger(ServiceReplica.class.getName()).log(Level.SEVERE, null, ex);
-            }
-        }
         requestsLock.unlock();
     }
 

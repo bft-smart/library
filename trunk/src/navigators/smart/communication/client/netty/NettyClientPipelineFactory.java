@@ -18,9 +18,9 @@
 
 package navigators.smart.communication.client.netty;
 
-import java.util.HashMap;
 import static org.jboss.netty.channel.Channels.pipeline;
 
+import java.util.Map;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -41,7 +41,7 @@ public class NettyClientPipelineFactory implements ChannelPipelineFactory {
 
     NettyClientServerCommunicationSystemClientSide ncs;
     boolean isClient;
-    HashMap sessionTable;
+    Map sessionTable;
     SecretKey authKey;
     int macLength;
     int signatureLength;
@@ -53,7 +53,7 @@ public class NettyClientPipelineFactory implements ChannelPipelineFactory {
     ReentrantReadWriteLock rl;
     ReentrantLock lock;
 
-    public NettyClientPipelineFactory(NettyClientServerCommunicationSystemClientSide ncs, boolean isClient, HashMap sessionTable, SecretKey authKey, int macLength, ClientViewManager manager, ReentrantReadWriteLock rl, int signatureLength, ReentrantLock lock) {
+    public NettyClientPipelineFactory(NettyClientServerCommunicationSystemClientSide ncs, boolean isClient, Map sessionTable, SecretKey authKey, int macLength, ClientViewManager manager, ReentrantReadWriteLock rl, int signatureLength, ReentrantLock lock) {
         this.ncs = ncs;
         this.isClient = isClient;
         this.sessionTable = sessionTable;

@@ -248,12 +248,9 @@ public class Execution {
      * @param round The round at which a decision was made
      */
     public void decided(Round round, byte[] value) {
-        
         if (!decided) {
-       
             decided = true;
             decisionRound = round.getNumber();
-
             consensus.decided(round);
             manager.getTOMLayer().decided(consensus);
         }

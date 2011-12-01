@@ -95,11 +95,6 @@ public class ThroughputTestServer extends TOMReceiver {
         throw new UnsupportedOperationException("Not supported.");
     }
 
-    @Override
-    public void waitForProcessingRequests() {
-        throw new UnsupportedOperationException("Not supported.");
-    }
-
     public static void main(String[] args) {
         if (args.length < 2) {
             System.out.println("Usage:... ThroughputTestServer <processId> <measurement interval (in messages)>");

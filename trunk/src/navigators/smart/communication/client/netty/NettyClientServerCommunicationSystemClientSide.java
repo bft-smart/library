@@ -29,6 +29,7 @@ import java.security.Signature;
 import java.security.spec.InvalidKeySpecException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.LinkedList;
 import java.util.ListIterator;
 import java.util.concurrent.Executors;
@@ -73,7 +74,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
     //******* EDUARDO BEGIN **************//
     private ClientViewManager manager;
     //******* EDUARDO END **************//
-    private HashMap sessionTable = new HashMap();
+    private Map sessionTable = new HashMap();
     private ReentrantReadWriteLock rl;
     private SecretKey authKey;
     //the signature engine used in the system
