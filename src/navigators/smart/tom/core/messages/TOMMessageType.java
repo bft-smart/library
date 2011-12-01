@@ -21,7 +21,7 @@ public enum TOMMessageType {
             case READONLY_REQUEST: return 1;
             case REPLY: return 2;
             default: return 3;
-        }        
+        }
     }
     
     public static TOMMessageType fromInt(int i) {

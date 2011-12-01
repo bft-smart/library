@@ -193,7 +193,9 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
         } finally {
             try {
                 dos.close();
-            } catch (IOException ex) {}
+            } catch (IOException ex) {
+                Logger.println("Exception closing DataOutputStream: " + ex.getMessage());
+            }
         }
 
 
@@ -210,7 +212,6 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
             rl.readLock().lock();
             NettyClientServerSession ncss = (NettyClientServerSession) sessionTable.get(targets[i]);
             if (ncss != null) {
-                
                 Channel session = ncss.getChannel();
                 rl.readLock().unlock();
                 sm.destination = targets[i];

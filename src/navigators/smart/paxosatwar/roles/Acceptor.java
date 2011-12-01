@@ -130,12 +130,14 @@ public final class Acceptor {
      *
      * @param msg The PROPOSE message to by processed
      */
-     public void proposeReceived(Round round, PaxosMessage msg) {
-        if (msg.getSender() == leaderModule.getCurrentLeader()) {
-            executePropose(round, msg.getValue());
-        } else {
-            Logger.println("Propose received is not from the expected leader");
-        }
+    public void proposeReceived(Round round, PaxosMessage msg) {
+        int eid = round.getExecution().getId();
+    	Logger.println("(Acceptor.proposeReceived) PROPOSE for consensus " + eid);
+    	if (msg.getSender() == leaderModule.getCurrentLeader()) {
+    		executePropose(round, msg.getValue());
+    	} else {
+    		Logger.println("Propose received is not from the expected leader");
+    	}
     }
 
     /**
@@ -179,8 +181,12 @@ public final class Acceptor {
                 communication.send(this.reconfManager.getCurrentViewOtherAcceptors(),
                         factory.createWeak(eid, round.getNumber(), round.propValueHash));
 
+                Logger.println("(Acceptor.executePropose) weak sent for " + eid);
+                
                 computeWeak(eid, round, round.propValueHash);
                 
+                Logger.println("(Acceptor.executePropose) weak computed for " + eid);
+
                 manager.processOutOfContext(round.getExecution());
             }
         }

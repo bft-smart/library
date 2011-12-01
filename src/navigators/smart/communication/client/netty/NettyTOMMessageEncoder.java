@@ -21,12 +21,12 @@ package navigators.smart.communication.client.netty;
 import static org.jboss.netty.buffer.ChannelBuffers.buffer;
 
 import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import javax.crypto.Mac;
 
 import navigators.smart.tom.core.messages.TOMMessage;
-import navigators.smart.tom.util.Logger;
 
 import org.jboss.netty.buffer.ChannelBuffer;
 import org.jboss.netty.channel.ChannelHandlerContext;
@@ -40,13 +40,13 @@ import org.jboss.netty.channel.SimpleChannelHandler;
 public class NettyTOMMessageEncoder extends SimpleChannelHandler {
     
     private boolean isClient;
-    private HashMap sessionTable;
+    private Map sessionTable;
     private int macLength;
     private int signatureLength;
     private ReentrantReadWriteLock rl;
     private boolean useMAC;
 
-    public NettyTOMMessageEncoder(boolean isClient, HashMap sessionTable, int macLength, ReentrantReadWriteLock rl, int signatureLength, boolean useMAC){
+    public NettyTOMMessageEncoder(boolean isClient, Map sessionTable, int macLength, ReentrantReadWriteLock rl, int signatureLength, boolean useMAC){
         this.isClient = isClient;
         this.sessionTable = sessionTable;
         this.macLength = macLength;

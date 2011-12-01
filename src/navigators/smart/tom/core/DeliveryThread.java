@@ -65,20 +65,15 @@ public final class DeliveryThread extends Thread {
      * @param cons Consensus established as being decided
      */
     public void delivery(Consensus cons) {
-        
-        
-        
         if (!containsGoodReconfig(cons)) {
             //set this consensus as the last executed
             tomLayer.setLastExec(cons.getId());
             //define that end of this execution
             tomLayer.setInExec(-1);
         }
-
         try {
             decided.put(cons);
             Logger.println("(DeliveryThread.delivery) Consensus " + cons.getId() + " finished. Decided size=" + decided.size());
-            //System.out.println("(DeliveryThread.delivery) Consensus " + cons.getId() + " finished. Decided size=" + decided.size());
         } catch (Exception e) {
             e.printStackTrace(System.out);
         }
@@ -195,12 +190,8 @@ public final class DeliveryThread extends Thread {
         while (true) {
             /** ISTO E CODIGO DO JOAO, PARA TRATAR DA TRANSFERENCIA DE ESTADO */
             deliverLock();
-
             while (tomLayer.isRetrievingState()) {
-                
-                
                 Logger.println("(DeliveryThread.run) Retrieving State.");
-                //System.out.println("(DeliveryThread.run) Retrieving State.");
                 canDeliver.awaitUninterruptibly();
             }
             /******************************************************************/
@@ -282,7 +273,6 @@ public final class DeliveryThread extends Thread {
     public void deliverUnordered(TOMMessage request, int regency) {
         MessageContext msgCtx = new MessageContext(System.currentTimeMillis(),
                 new byte[0], regency, -1, request.getSender(), null);
-
         receiver.receiveMessage(request, msgCtx);
     }
 
@@ -318,8 +308,6 @@ public final class DeliveryThread extends Thread {
     }
 
     private void processReconfigMessages(int consId, int decisionRoundNumber) {
-        receiver.waitForProcessingRequests();
-
         byte[] response = manager.executeUpdates(consId, decisionRoundNumber);
         TOMMessage[] dests = manager.clearUpdates();
 

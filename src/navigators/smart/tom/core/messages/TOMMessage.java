@@ -34,278 +34,278 @@ import navigators.smart.tom.util.DebugInfo;
  */
 public class TOMMessage extends SystemMessage implements Externalizable, Comparable {
 
-     //******* EDUARDO BEGIN **************//
-    private int viewID; //current sender view
-    private TOMMessageType type; // request type: application or reconfiguration request
-     //******* EDUARDO END **************//
-    
-    private int session; // Sequence number defined by the client
-    private int sequence; // Sequence number defined by the client
+	//******* EDUARDO BEGIN **************//
+	private int viewID; //current sender view
+	private TOMMessageType type; // request type: application or reconfiguration request
+	//******* EDUARDO END **************//
 
-    private byte[] content = null; // Content of the message
+	private int session; // Sequence number defined by the client
+	private int sequence; // Sequence number defined by the client
 
-    //the fields bellow are not serialized!!!
-    private transient int id; // ID for this message. It should be unique
+	private byte[] content = null; // Content of the message
 
-    public transient long timestamp = 0; // timestamp to be used by the application
-    public transient byte[] nonces = null; // nonces to be used by the applciation
+	//the fields bellow are not serialized!!!
+	private transient int id; // ID for this message. It should be unique
 
-    public transient int destination = -1; // message destination
-    public transient boolean signed = false; // is this message signed?
+	public transient long timestamp = 0; // timestamp to be used by the application
+	public transient byte[] nonces = null; // nonces to be used by the applciation
 
-    public transient long receptionTime;//the reception time of this message
-    public transient boolean timeout = false;//this message was timed out?
+	public transient int destination = -1; // message destination
+	public transient boolean signed = false; // is this message signed?
 
-    //the bytes received from the client and its MAC and signature
-    public transient byte[] serializedMessage = null;
-    public transient byte[] serializedMessageSignature = null;
-    public transient byte[] serializedMessageMAC = null;
+	public transient long receptionTime;//the reception time of this message
+	public transient boolean timeout = false;//this message was timed out?
 
-    //for benchmarking purposes
-    public transient long consensusStartTime = 0; //time the consensus is created
-    public transient long proposeReceivedTime = 0; //time the propose is received
-    public transient long weakSentTime = 0; //time the replica' weak message is sent
-    public transient long strongSentTime = 0; //time the replica' strong message is sent
-    public transient long decisionTime = 0; //time the decision is established
-    public transient long deliveryTime =0; //time the request is delivered
-    public transient long executedTime =0; //time the request is executed
-    
-    //the reply associated with this message
-    public transient TOMMessage reply = null;
-    public transient boolean alreadyProposed = false;
+	//the bytes received from the client and its MAC and signature
+	public transient byte[] serializedMessage = null;
+	public transient byte[] serializedMessageSignature = null;
+	public transient byte[] serializedMessageMAC = null;
 
-    public TOMMessage() {
-    }
+	//for benchmarking purposes
+	public transient long consensusStartTime = 0; //time the consensus is created
+	public transient long proposeReceivedTime = 0; //time the propose is received
+	public transient long weakSentTime = 0; //time the replica' weak message is sent
+	public transient long strongSentTime = 0; //time the replica' strong message is sent
+	public transient long decisionTime = 0; //time the decision is established
+	public transient long deliveryTime =0; //time the request is delivered
+	public transient long executedTime =0; //time the request is executed
 
-    /**
-     * Creates a new instance of TOMMessage
-     *
-     * @param sender ID of the process which sent the message
-     * @param session Session id of the sender
-     * @param sequence Sequence number defined by the client
-     * @param content Content of the message
-     * @param view ViewId of the message
-     */
-    public TOMMessage(int sender, int session, int sequence, byte[] content, int view) {
-        this(sender,session,sequence,content, view, TOMMessageType.REQUEST);
-    }
+	//the reply associated with this message
+	public transient TOMMessage reply = null;
+	public transient boolean alreadyProposed = false;
 
-    /**
-     * Creates a new instance of TOMMessage
-     *
-     * @param sender ID of the process which sent the message
-     * @param session Session id of the sender
-     * @param sequence Sequence number defined by the client
-     * @param content Content of the message
-     * @param view ViewId of the message
-     * @param type Type of the request
-     */
-    public TOMMessage(int sender, int session, int sequence, byte[] content, int view, TOMMessageType type) {
-        super(sender);
-        this.session = session;
-        this.sequence = sequence;
-        this.viewID = view;
-        buildId();
-        this.content = content;
-        this.type = type;
-    }
+	public TOMMessage() {
+	}
 
-    
+	/**
+	 * Creates a new instance of TOMMessage
+	 *
+	 * @param sender ID of the process which sent the message
+	 * @param session Session id of the sender
+	 * @param sequence Sequence number defined by the client
+	 * @param content Content of the message
+	 * @param view ViewId of the message
+	 */
+	public TOMMessage(int sender, int session, int sequence, byte[] content, int view) {
+		this(sender,session,sequence,content, view, TOMMessageType.REQUEST);
+	}
 
-    /** ISTO E CODIGO DO JOAO, PARA TRATAR DE DEBUGGING */
-    private transient DebugInfo info = null; // Debug information
-    
-    /**
-     * Retrieves the debug info from the TOM layer
-     * @return The debug info from the TOM layer
-     */
-    public DebugInfo getDebugInfo() {
-        return info;
-    }
-    
-    /**
-     * Retrieves the debug info from the TOM layer
-     */
-    public void  setDebugInfo(DebugInfo info) {
-        this.info = info;
-    }
+	/**
+	 * Creates a new instance of TOMMessage
+	 *
+	 * @param sender ID of the process which sent the message
+	 * @param session Session id of the sender
+	 * @param sequence Sequence number defined by the client
+	 * @param content Content of the message
+	 * @param view ViewId of the message
+	 * @param type Type of the request
+	 */
+	public TOMMessage(int sender, int session, int sequence, byte[] content, int view, TOMMessageType type) {
+		super(sender);
+		this.session = session;
+		this.sequence = sequence;
+		this.viewID = view;
+		buildId();
+		this.content = content;
+		this.type = type;
+	}
 
-    /****************************************************/
 
-    /**
-     * Retrieves the session id of this message
-     * @return The session id of this message
-     */
-    public int getSession() {
-        return session;
-    }
 
-    /**
-     * Retrieves the sequence number defined by the client
-     * @return The sequence number defined by the client
-     */
-    public int getSequence() {
-        return sequence;
-    }
+	/** ISTO E CODIGO DO JOAO, PARA TRATAR DE DEBUGGING */
+	private transient DebugInfo info = null; // Debug information
 
-    public int getViewID() {
-        return viewID;
-    }
+	/**
+	 * Retrieves the debug info from the TOM layer
+	 * @return The debug info from the TOM layer
+	 */
+	public DebugInfo getDebugInfo() {
+		return info;
+	}
 
-    public TOMMessageType getReqType() {
-        return type;
-    }
+	/**
+	 * Retrieves the debug info from the TOM layer
+	 */
+	public void  setDebugInfo(DebugInfo info) {
+		this.info = info;
+	}
 
-    /**
-     * Retrieves the ID for this message. It should be unique
-     * @return The ID for this message.
-     */
-    public int getId() {
-        return id;
-    }
+	/****************************************************/
 
-    /**
-     * Retrieves the content of the message
-     * @return The content of the message
-     */
-    public byte[] getContent() {
-        return content;
-    }
+	/**
+	 * Retrieves the session id of this message
+	 * @return The session id of this message
+	 */
+	public int getSession() {
+		return session;
+	}
 
-    /**
-     * Verifies if two TOMMessage are equal. For performance reasons, the method
-     * only verifies if the send and sequence are equal.
-     *
-     * Two TOMMessage are equal if they have the same sender, sequence number
-     * and content.
-     */
-    @Override
-    public boolean equals(Object o) {
-        if (o == null) {
-            return false;
-        }
+	/**
+	 * Retrieves the sequence number defined by the client
+	 * @return The sequence number defined by the client
+	 */
+	public int getSequence() {
+		return sequence;
+	}
 
-        if (!(o instanceof TOMMessage)) {
-            return false;
-        }
+	public int getViewID() {
+		return viewID;
+	}
 
-        TOMMessage mc = (TOMMessage) o;
+	public TOMMessageType getReqType() {
+		return type;
+	}
 
-        return (mc.getSender() == sender) && (mc.getSequence() == sequence);
-    }
+	/**
+	 * Retrieves the ID for this message. It should be unique
+	 * @return The ID for this message.
+	 */
+	public int getId() {
+		return id;
+	}
 
-    @Override
-    public int hashCode() {
-        int hash = 5;
-        hash = 59 * hash + this.sequence;
-        hash = 59 * hash + this.getSender();
-        return hash;
-    }
+	/**
+	 * Retrieves the content of the message
+	 * @return The content of the message
+	 */
+	public byte[] getContent() {
+		return content;
+	}
 
-    @Override
-    public String toString() {
-        return "(" + sender + "," + sequence + ")";
-    }
+	/**
+	 * Verifies if two TOMMessage are equal. For performance reasons, the method
+	 * only verifies if the send and sequence are equal.
+	 *
+	 * Two TOMMessage are equal if they have the same sender, sequence number
+	 * and content.
+	 */
+	@Override
+	public boolean equals(Object o) {
+		if (o == null) {
+			return false;
+		}
 
-    public void wExternal(DataOutput out) throws IOException {
-        out.writeInt(sender);
-        out.writeInt(viewID);
-        out.writeInt(type.toInt());
-        out.writeInt(session);
-        out.writeInt(sequence);
+		if (!(o instanceof TOMMessage)) {
+			return false;
+		}
 
-        if (content == null) {
-            out.writeInt(-1);
-        } else {
-            out.writeInt(content.length);
-            out.write(content);
-        }
-    }
+		TOMMessage mc = (TOMMessage) o;
 
-    public void rExternal(DataInput in) throws IOException, ClassNotFoundException {
-        sender = in.readInt();
-        viewID = in.readInt();
-        type = TOMMessageType.fromInt(in.readInt());
-        session = in.readInt();
-        sequence = in.readInt();
+		return (mc.getSender() == sender) && (mc.getSequence() == sequence);
+	}
 
-        int toRead = in.readInt();
-        if (toRead != -1) {
-            content = new byte[toRead];
-            in.readFully(content);
-        }
+	@Override
+	public int hashCode() {
+		int hash = 5;
+		hash = 59 * hash + this.sequence;
+		hash = 59 * hash + this.getSender();
+		return hash;
+	}
 
-        buildId();
-    }
+	@Override
+	public String toString() {
+		return "(" + sender + "," + sequence + ")";
+	}
 
-    /**
-     * Used to build an unique id for the message
-     */
-    private void buildId() {
-        id = (sender << 20) | sequence;
-    }
+	public void wExternal(DataOutput out) throws IOException {
+		out.writeInt(sender);
+		out.writeInt(viewID);
+		out.writeInt(type.toInt());
+		out.writeInt(session);
+		out.writeInt(sequence);
 
-    /**
-     * Retrieves the process ID of the sender given a message ID
-     * @param id Message ID
-     * @return Process ID of the sender
-     */
-    public static int getSenderFromId(int id) {
-        return id >>> 20;
-    }
+		if (content == null) {
+			out.writeInt(-1);
+		} else {
+			out.writeInt(content.length);
+			out.write(content);
+		}
+	}
 
-    public static byte[] messageToBytes(TOMMessage m) {
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        DataOutputStream dos = new DataOutputStream(baos);
-        try{
-            m.wExternal(dos);
-            dos.flush();
-        }catch(Exception e) {
-        }
-        return baos.toByteArray();
-    }
+	public void rExternal(DataInput in) throws IOException, ClassNotFoundException {
+		sender = in.readInt();
+		viewID = in.readInt();
+		type = TOMMessageType.fromInt(in.readInt());
+		session = in.readInt();
+		sequence = in.readInt();
 
-    public static TOMMessage bytesToMessage(byte[] b) {
-        ByteArrayInputStream bais = new ByteArrayInputStream(b);
-        DataInputStream dis = new DataInputStream(bais);
+		int toRead = in.readInt();
+		if (toRead != -1) {
+			content = new byte[toRead];
+			in.readFully(content);
+		}
 
-        TOMMessage m = new TOMMessage();
-        try{
-            m.rExternal(dis);
-        }catch(Exception e) {
-            System.out.println("deu merda "+e);
-            return null;
-        }
-        
-        return m;
-    }
+		buildId();
+	}
 
-    @Override
-    public int compareTo(Object o) {
-        final int BEFORE = -1;
-        final int EQUAL = 0;
-        final int AFTER = 1;
+	/**
+	 * Used to build an unique id for the message
+	 */
+	 private void buildId() {
+		 id = (sender << 20) | sequence;
+	 }
 
-        TOMMessage tm = (TOMMessage)o;
+	 /**
+	  * Retrieves the process ID of the sender given a message ID
+	  * @param id Message ID
+	  * @return Process ID of the sender
+	  */
+	 public static int getSenderFromId(int id) {
+		 return id >>> 20;
+	 }
 
-        if (this.equals(tm))
-            return EQUAL;
+	 public static byte[] messageToBytes(TOMMessage m) {
+		 ByteArrayOutputStream baos = new ByteArrayOutputStream();
+		 DataOutputStream dos = new DataOutputStream(baos);
+		 try{
+			 m.wExternal(dos);
+			 dos.flush();
+		 }catch(Exception e) {
+		 }
+		 return baos.toByteArray();
+	 }
 
-        if (this.getSender() < tm.getSender())
-            return BEFORE;
-        if (this.getSender() > tm.getSender())
-            return AFTER;
+	 public static TOMMessage bytesToMessage(byte[] b) {
+		 ByteArrayInputStream bais = new ByteArrayInputStream(b);
+		 DataInputStream dis = new DataInputStream(bais);
 
-        if (this.getSession() < tm.getSession())
-            return BEFORE;
-        if (this.getSession() > tm.getSession())
-            return AFTER;
+		 TOMMessage m = new TOMMessage();
+		 try{
+			 m.rExternal(dis);
+		 }catch(Exception e) {
+			 System.out.println("deu merda "+e);
+			 return null;
+		 }
 
-        if (this.getSequence() < tm.getSequence())
-            return BEFORE;
-        if (this.getSequence() > tm.getSequence())
-            return AFTER;
+		 return m;
+	 }
 
-        return EQUAL;
-    }
+	 @Override
+	 public int compareTo(Object o) {
+		 final int BEFORE = -1;
+		 final int EQUAL = 0;
+		 final int AFTER = 1;
+
+		 TOMMessage tm = (TOMMessage)o;
+
+		 if (this.equals(tm))
+			 return EQUAL;
+
+		 if (this.getSender() < tm.getSender())
+			 return BEFORE;
+		 if (this.getSender() > tm.getSender())
+			 return AFTER;
+
+		 if (this.getSession() < tm.getSession())
+			 return BEFORE;
+		 if (this.getSession() > tm.getSession())
+			 return AFTER;
+
+		 if (this.getSequence() < tm.getSequence())
+			 return BEFORE;
+		 if (this.getSequence() > tm.getSequence())
+			 return AFTER;
+
+		 return EQUAL;
+	 }
 }

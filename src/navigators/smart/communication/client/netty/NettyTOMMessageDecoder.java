@@ -22,6 +22,7 @@ import java.io.DataInputStream;
 import java.security.Signature;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -51,7 +52,7 @@ public class NettyTOMMessageDecoder extends FrameDecoder {
      */
     //private final int BENCHMARK_PERIOD = 10000;
     private boolean isClient;
-    private HashMap sessionTable;
+    private Map sessionTable;
     private SecretKey authKey;
     //private Storage st;
     private int macSize;
@@ -73,7 +74,7 @@ public class NettyTOMMessageDecoder extends FrameDecoder {
     
     private boolean useMAC;
 
-    public NettyTOMMessageDecoder(boolean isClient, HashMap sessionTable, SecretKey authKey, int macLength, ViewManager manager, ReentrantReadWriteLock rl, int signatureLength, boolean useMAC) {
+    public NettyTOMMessageDecoder(boolean isClient, Map sessionTable, SecretKey authKey, int macLength, ViewManager manager, ReentrantReadWriteLock rl, int signatureLength, boolean useMAC) {
         this.isClient = isClient;
         this.sessionTable = sessionTable;
         this.authKey = authKey;
