@@ -28,8 +28,10 @@ import navigators.smart.tom.util.Storage;
 public final class ThroughputLatencyServer extends ServiceReplica {
     
     private int interval;
-    private int hashs;
     private int replySize;
+    private boolean context;
+    
+    private byte[] state;
     
     private int iterations = 0;
     private long throughputMeasurementStartTime = System.currentTimeMillis();
@@ -42,12 +44,17 @@ public final class ThroughputLatencyServer extends ServiceReplica {
     private Storage weakLatency = null;
     private Storage strongLatency = null;
 
-    public ThroughputLatencyServer(int id, int interval, int hashs, int replySize) {
+    public ThroughputLatencyServer(int id, int interval, int replySize, int stateSize, boolean context) {
         super(id);
 
         this.interval = interval;
-        this.hashs = hashs;
         this.replySize = replySize;
+        this.context = context;
+        
+        this.state = new byte[stateSize];
+        
+        for (int i = 0; i < stateSize ;i++)
+            state[i] = (byte) i;
 
         totalLatency = new Storage(interval);
         consensusLatency = new Storage(interval);
@@ -74,7 +81,7 @@ public final class ThroughputLatencyServer extends ServiceReplica {
         if(msgCtx.getConsensusId() == -1) {
             return new byte[replySize];
         }
-        
+     
         totalLatency.store(msgCtx.getFirstInBatch().executedTime - msgCtx.getFirstInBatch().receptionTime);
         consensusLatency.store(msgCtx.getFirstInBatch().decisionTime - msgCtx.getFirstInBatch().consensusStartTime);
         preConsLatency.store(msgCtx.getFirstInBatch().consensusStartTime - msgCtx.getFirstInBatch().receptionTime);
@@ -84,6 +91,8 @@ public final class ThroughputLatencyServer extends ServiceReplica {
         strongLatency.store(msgCtx.getFirstInBatch().decisionTime - msgCtx.getFirstInBatch().strongSentTime);
 
         if(iterations % interval == 0) {
+            if (context) System.out.println(iterations + " // " + msgCtx.getRegency() + " // " + msgCtx.getConsensusId());
+            
             System.out.println("--- Measurements after "+ iterations+" ops ("+interval+" samples) ---");
             
             System.out.println("Throughput = " +  (float)(interval*1000/(float)(System.currentTimeMillis()-throughputMeasurementStartTime)) +" operations/sec");            
@@ -110,22 +119,23 @@ public final class ThroughputLatencyServer extends ServiceReplica {
     }
 
     public static void main(String[] args){
-        if(args.length < 4) {
-            System.out.println("Usage: ... ThroughputLatencyServer <processId> <measurement interval> <processing hashs> <reply size>");
+        if(args.length < 5) {
+            System.out.println("Usage: ... ThroughputLatencyServer <processId> <measurement interval> <reply size> <state size> <context?>");
             System.exit(-1);
         }
 
         int processId = Integer.parseInt(args[0]);
         int interval = Integer.parseInt(args[1]);
-        int hashs = Integer.parseInt(args[2]);
-        int replySize = Integer.parseInt(args[3]);
+        int replySize = Integer.parseInt(args[2]);
+        int stateSize = Integer.parseInt(args[3]);
+        boolean context = Boolean.parseBoolean(args[4]);
 
-        new ThroughputLatencyServer(processId,interval,hashs,replySize);        
+        new ThroughputLatencyServer(processId,interval,replySize, stateSize, context);        
     }
 
     @Override
     protected byte[] serializeState() {
-        return new byte[0];
+        return state;
     }
 
     @Override
