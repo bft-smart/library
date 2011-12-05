@@ -34,8 +34,8 @@ public class ThroughputLatencyClient {
     
     @SuppressWarnings("static-access")
     public static void main(String[] args) throws IOException {
-        if (args.length < 6) {
-            System.out.println("Usage: ... ThroughputLatencyClient <num. threads> <process id> <number of operations> <request size> <interval> <read only?>");
+        if (args.length < 7) {
+            System.out.println("Usage: ... ThroughputLatencyClient <num. threads> <process id> <number of operations> <request size> <interval> <read only?> <verbose?>");
             System.exit(-1);
         }
 
@@ -46,6 +46,7 @@ public class ThroughputLatencyClient {
         int requestSize = Integer.parseInt(args[3]);
         int interval = Integer.parseInt(args[4]);
         boolean readOnly = Boolean.parseBoolean(args[5]);
+        boolean verbose = Boolean.parseBoolean(args[6]);
 
         Client[] c = new Client[numThreads];
         
@@ -56,7 +57,7 @@ public class ThroughputLatencyClient {
                 Logger.getLogger(ThroughputLatencyClient.class.getName()).log(Level.SEVERE, null, ex);
             }
             
-            c[i] = new ThroughputLatencyClient.Client(initId+i,numberOfOps,requestSize,interval,readOnly);
+            c[i] = new ThroughputLatencyClient.Client(initId+i,numberOfOps,requestSize,interval,readOnly, verbose);
             c[i].start();
         }
         
@@ -76,8 +77,9 @@ public class ThroughputLatencyClient {
         int requestSize;
         int interval;
         boolean readOnly;
+        boolean verbose;
         
-        public Client(int id, int numberOfOps, int requestSize, int interval, boolean readOnly) {
+        public Client(int id, int numberOfOps, int requestSize, int interval, boolean readOnly, boolean verbose) {
             super("Client "+id);
         
             this.id = id;
@@ -85,6 +87,7 @@ public class ThroughputLatencyClient {
             this.requestSize = requestSize;
             this.interval = interval;
             this.readOnly = readOnly;
+            this.verbose = verbose;
         }
 
         public void run() {
@@ -95,17 +98,23 @@ public class ThroughputLatencyClient {
 
             System.out.println("Warm up...");
 
-            for (int i = 0; i < numberOfOps / 2; i++) {
+            int req = 0;
+            
+            for (int i = 0; i < numberOfOps / 2; i++, req++) {
+                if (verbose) System.out.print("Sending req " + req + "...");
                 reply = proxy.invoke(request, readOnly);
+                if (verbose) System.out.println(" sent!");
             }
 
             Storage st = new Storage(numberOfOps / 2);
 
             System.out.println("Executing experiment for " + numberOfOps / 2 + " ops");
 
-            for (int i = 0; i < numberOfOps / 2; i++) {
+            for (int i = 0; i < numberOfOps / 2; i++, req++) {
                 long last_send_instant = System.nanoTime();
+                if (verbose) System.out.print("Sending req " + req + "...");
                 reply = proxy.invoke(request, readOnly);
+                if (verbose) System.out.println(" sent!");
                 st.store(System.nanoTime() - last_send_instant);
 
                 if (interval > 0) {
