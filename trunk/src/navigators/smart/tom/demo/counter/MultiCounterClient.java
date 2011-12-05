@@ -26,14 +26,14 @@ public class MultiCounterClient {
             System.out.println("Starting client "+id);
 
             //UNIX (not tested yet!)
-            //p[i] = Runtime.getRuntime().exec("/bin/sh -e java -cp dist/SMaRt.jar "
-            //        + "navigators.smart.tom.demo.counter.CounterClient " + id + " " + inc
-            //        + " > output-" + id + "-" + inc + ".txt 2>&1");
+            p[i] = Runtime.getRuntime().exec("/bin/sh -e java -cp dist/SMART-SVN.jar "
+                    + "navigators.smart.tom.demo.counter.CounterClient " + id + " " + inc + " 5000"
+                    + " > output-" + id + "-" + inc + ".txt 2>&1");
 
             //Windows
-            p[i] = Runtime.getRuntime().exec("cmd /c java -cp dist/SMaRt.jar "
-                    + "navigators.smart.tom.demo.counter.CounterClient " + id + " " + inc
-                    + " > output-" + id + "-" + inc + ".txt 2>&1");
+            //p[i] = Runtime.getRuntime().exec("cmd /c java -cp dist/SMaRt.jar "
+            //        + "navigators.smart.tom.demo.counter.CounterClient " + id + " " + inc
+            //        + " > output-" + id + "-" + inc + ".txt 2>&1");
         }
 
         for (int i = 0; i < numOfClients; i++) {

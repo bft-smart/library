@@ -90,37 +90,36 @@ public class ThroughputTestClient extends TOMSender implements Runnable {
                 int count = 0;
                 long currMsg = 0;
                 
-                while (true) {
-                    for (int i = 0; i < burst; i++) {
-                        int currId = currentId;
-                        //BBB start
-                        byte[] command = new byte[4 + argSize];
-                        ByteArrayOutputStream out = new ByteArrayOutputStream(4);
-                        try {
-                            new DataOutputStream(out).writeInt(-2);
-                        } catch (IOException ex) { ex.printStackTrace(System.err); }
-                        System.arraycopy(out.toByteArray(), 0, command, 0, 4);
-                        this.TOMulticast(/**generatedMessages.get((int) (currMsg % 100))**/
-                                command);
-                        currMsg++;
+                for (int i = 0; i < burst; i++) {
+                    int currId = currentId;
+                    //BBB start
+                    byte[] command = new byte[4 + argSize];
+                    ByteArrayOutputStream out = new ByteArrayOutputStream(4);
+                    try {
+                        new DataOutputStream(out).writeInt(-2);
+                    } catch (IOException ex) { ex.printStackTrace(System.err); }
+                    System.arraycopy(out.toByteArray(), 0, command, 0, 4);
+                    this.TOMulticast(/**generatedMessages.get((int) (currMsg % 100))**/
+                            command);
+                    currMsg++;
 
-                        //BBB start
-                        count += burst;
-                        //BBB end
+                    //BBB start
+                    count += burst;
+                    //BBB end
 
-                        //BBB start
-                        //todos os count eram i
-                        //(opsPerSec/5) era opsPerSec
-                        if ((count != 0) && ((count % 1000) == 0)) {
-                            long elapsedTime = System.currentTimeMillis() - startTimeInstant;
-                            double opsPerSec_ = ((double) 1000) / (((double) elapsedTime / 1000));
-                            long opsPerSec = Math.round(opsPerSec_);
-                            System.out.println(count + " messages sent, elapsedTime=" + elapsedTime + ", throughput=" + (opsPerSec / 5) + " per sec");
-                            startTimeInstant = System.currentTimeMillis();
-                        }
+                    //BBB start
+                    //todos os count eram i
+                    //(opsPerSec/5) era opsPerSec
+                    if ((count != 0) && ((count % 1000) == 0)) {
+                        long elapsedTime = System.currentTimeMillis() - startTimeInstant;
+                        double opsPerSec_ = ((double) 1000) / (((double) elapsedTime / 1000));
+                        long opsPerSec = Math.round(opsPerSec_);
+                        System.out.println(count + " messages sent, elapsedTime=" + elapsedTime + ", throughput=" + (opsPerSec / 5) + " per sec");
+                        startTimeInstant = System.currentTimeMillis();
                     }
                     sl.delay(1); //1 x 'interval'ms
                 }
+                System.exit(0);
 
             } catch (InterruptedException ex) {
                 ex.printStackTrace(System.err);

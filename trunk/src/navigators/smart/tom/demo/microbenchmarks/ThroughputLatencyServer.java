@@ -120,7 +120,7 @@ public final class ThroughputLatencyServer extends ServiceReplica {
         int hashs = Integer.parseInt(args[2]);
         int replySize = Integer.parseInt(args[3]);
 
-        new ThroughputLatencyServer(processId,interval,hashs,replySize);
+        new ThroughputLatencyServer(processId,interval,hashs,replySize);        
     }
 
     @Override

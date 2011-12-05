@@ -24,6 +24,7 @@ import java.io.ObjectOutputStream;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.Serializable;
+import java.math.BigInteger;
 import java.security.MessageDigest;
 import java.security.PrivateKey;
 import java.security.Signature;
@@ -766,7 +767,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                     lcManager.lastregLock();
 
                     // esta mensagem e para a proxima mudanca de lider?
-                    if (msg.getTs() == lcManager.getLastReg() + 1) {
+                    if (msg.getReg() == lcManager.getLastReg() + 1) {
 
                         lcManager.lastregUnlock();
 
@@ -801,10 +802,10 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
                         // guardar informacao sobre a mensagem STOP
                         lcManager.StopsLock();
-                        lcManager.addStop(msg.getTs(), msg.getSender());
+                        lcManager.addStop(msg.getReg(), msg.getSender());
                         lcManager.StopsUnlock();
 
-                        evaluateStops(msg.getTs()); // avaliar mensagens stops
+                        evaluateStops(msg.getReg()); // avaliar mensagens stops
                     }
                     else {
                         lcManager.lastregUnlock();
@@ -814,7 +815,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             case TOMUtil.SYNC: // mensagens SYNC
                 {
 
-                    int regency = msg.getTs();
+                    int regency = msg.getReg();
 
                     lcManager.lastregLock();
 
@@ -894,12 +895,12 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             break;
         case TOMUtil.CATCH_UP: // mensagens de CATCH-UP
             {
-                int regency = msg.getTs();
+                int regency = msg.getReg();
 
                 lcManager.lastregLock();
 
                 // Estou a espera desta mensagem, e recebi-a do novo lider?
-                if (msg.getTs() == lcManager.getLastReg() && msg.getSender() == (regency % this.reconfManager.getCurrentViewN())) {
+                if (msg.getReg() == lcManager.getLastReg() && msg.getSender() == (regency % this.reconfManager.getCurrentViewN())) {
 
                     lcManager.lastregUnlock();
 
@@ -1094,6 +1095,8 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                 imAmTheLeader();
             } // acordar a thread que propoem valores na operacao normal
 
+            
+            System.out.println(regency + " // WEAK: " + new BigInteger(r.propValueHash));
             // enviar mensagens WEAK para as outras replicas
             communication.send(this.reconfManager.getCurrentViewOtherAcceptors(),
                     acceptor.getFactory().createWeak(currentEid, r.getNumber(), r.propValueHash));

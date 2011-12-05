@@ -173,8 +173,13 @@ public class TransferableState implements Serializable {
 
                 if (this.messageBatches.length != tState.messageBatches.length) return false;
                  
-                for (int i = 0; i < this.messageBatches.length; i++)
-                    if (!this.messageBatches[i].equals(tState.messageBatches[i])) return false;
+                for (int i = 0; i < this.messageBatches.length; i++) {
+                    
+                    if (this.messageBatches[i] == null && tState.messageBatches[i] != null) return false;
+                    else if (this.messageBatches[i] != null && tState.messageBatches[i] == null) return false;
+                    else if (!(this.messageBatches[i] == null && tState.messageBatches[i] == null)) return false;                           
+                    else if (!this.messageBatches[i].equals(tState.messageBatches[i])) return false;
+                }
             }
             return (Arrays.equals(this.stateHash, tState.stateHash) &&
                     tState.lastCheckpointEid == this.lastCheckpointEid &&
