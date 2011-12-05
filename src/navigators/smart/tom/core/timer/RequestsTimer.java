@@ -107,7 +107,7 @@ public class RequestsTimer {
         watched.toArray(requests);
 
         for (TOMMessage request : requests) {
-            if (watched.remove(request) && watched.isEmpty() && rtTask != null) {
+            if (request != null && watched.remove(request) && watched.isEmpty() && rtTask != null) {
                 rtTask.cancel();
                 rtTask = null;
             }

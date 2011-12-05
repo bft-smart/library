@@ -66,7 +66,7 @@ public class LCMessage extends SystemMessage {
      * Obter timestamp da mudanca de lider e sincronizacao
      * @return timestamp da mudanca de lider e sincronizacao
      */
-    public int getTs() {
+    public int getReg() {
         return ts;
     }
 

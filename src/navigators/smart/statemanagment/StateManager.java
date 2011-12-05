@@ -409,20 +409,20 @@ public class StateManager {
 
                     Logger.println("(TOMLayer.SMReplyDeliver) I have at least " + SVManager.getCurrentViewF() + " replies!");
 
-                    TransferableState state = getValidHash();
+                    TransferableState recvState = getValidHash();
 
                     int haveState = 0;
                     if (getReplicaState() != null) {
                         byte[] hash = null;
                         hash = tomLayer.computeHash(getReplicaState());
-                        if (state != null) {
-                            if (Arrays.equals(hash, state.getStateHash())) haveState = 1;
+                        if (recvState != null) {
+                            if (Arrays.equals(hash, recvState.getStateHash())) haveState = 1;
                             else if (getNumValidHashes() > SVManager.getCurrentViewF()) haveState = -1;
 
                         }
                     }
 
-                    if (state != null && haveState == 1 && currentRegency > -1) {
+                    if (recvState != null && haveState == 1 && currentRegency > -1) {
 
                         lcManager.setLastReg(currentRegency);
                         lcManager.setLastReg(currentRegency);
@@ -430,11 +430,11 @@ public class StateManager {
 
                         Logger.println("(TOMLayer.SMReplyDeliver) The state of those replies is good!");
 
-                        state.setState(getReplicaState());
+                        recvState.setState(getReplicaState());
 
                         lockState.lock();
 
-                        getLog().update(state);
+                        getLog().update(recvState);
 
                         lockState.unlock();
 
@@ -444,7 +444,7 @@ public class StateManager {
 
                         setWaiting(-1);
 
-                        dt.update(state);
+                        dt.update(recvState);
                         tomLayer.processOutOfContext();
 
                         dt.canDeliver();
@@ -458,7 +458,7 @@ public class StateManager {
                         System.out.println("Actualizei o estado!");
 
                     //******* EDUARDO BEGIN **************//
-                    } else if (state == null && (SVManager.getCurrentViewN() / 2) < getReplies()) {
+                    } else if (recvState == null && (SVManager.getCurrentViewN() / 2) < getReplies()) {
                     //******* EDUARDO END **************//
 
                         Logger.println("(TOMLayer.SMReplyDeliver) I have more than " +

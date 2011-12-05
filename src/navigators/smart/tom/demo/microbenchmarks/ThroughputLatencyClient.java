@@ -19,6 +19,8 @@ package navigators.smart.tom.demo.microbenchmarks;
 
 import java.io.IOException;
 
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import navigators.smart.tom.ServiceProxy;
 import navigators.smart.tom.util.Storage;
 
@@ -48,6 +50,12 @@ public class ThroughputLatencyClient {
         Client[] c = new Client[numThreads];
         
         for(int i=0; i<numThreads; i++) {
+            try {
+                Thread.sleep(200);
+            } catch (InterruptedException ex) {
+                Logger.getLogger(ThroughputLatencyClient.class.getName()).log(Level.SEVERE, null, ex);
+            }
+            
             c[i] = new ThroughputLatencyClient.Client(initId+i,numberOfOps,requestSize,interval,readOnly);
             c[i].start();
         }
