@@ -26,24 +26,27 @@ import java.io.IOException;
 
 import navigators.smart.tom.MessageContext;
 import navigators.smart.tom.ServiceReplica;
+import navigators.smart.tom.server.Executable;
+import navigators.smart.tom.server.Recoverable;
 
 
 /**
  * Example replica that implements a BFT replicated service (a counter).
  *
  */
-public final class CounterServer extends ServiceReplica {
+public final class CounterServer implements Executable, Recoverable  {
     
+	private ServiceReplica replica;
     private int counter = 0;
     private int iterations = 0;
     
     public CounterServer(int id) {
-        super(id);
+    	replica = new ServiceReplica(id, this, this);
     }
     
      //******* EDUARDO BEGIN **************//
     public CounterServer(int id, boolean join) {
-        super(id,join);
+    	replica = new ServiceReplica(id, join, this, this);
     }
      //******* EDUARDO END **************//
     
@@ -93,7 +96,7 @@ public final class CounterServer extends ServiceReplica {
 
     /** ISTO E CODIGO DO JOAO, PARA TRATAR DOS CHECKPOINTS */
     @Override
-    protected byte[] serializeState() {
+    public byte[] getState() {
 
         //System.out.println("vai ler counter para: "+this.counter);
         
@@ -108,7 +111,7 @@ public final class CounterServer extends ServiceReplica {
     }
 
     @Override
-    protected void deserializeState(byte[] state) {
+    public void setState(byte[] state) {
 
         int value = 0;
         for (int i = 0; i < 4; i++) {

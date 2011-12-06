@@ -32,46 +32,9 @@ public class BFTMap implements Map<String, Map<String,byte[]>> {
 
 	ServiceProxy KVProxy = null;
 	BFTMap(int id) {
-		KVProxy = new ServiceProxy(id, "config", new VerboseComparator(), new VerboseExtractor());
+		KVProxy = new ServiceProxy(id, "config");
 	}
 	ByteArrayOutputStream out = null;
-
-    static class VerboseComparator implements Comparator<byte[]> {
-        @Override
-        public int compare(byte[] o1, byte[] o2) {
-            try{
-                int o1v = new DataInputStream(new ByteArrayInputStream(o1)).readInt();
-                int o2v = new DataInputStream(new ByteArrayInputStream(o2)).readInt();
-                System.out.println(Thread.currentThread().getName()+": comparing "+o1v+" and "+o2v);
-                return o1v == o2v?0:-1;
-            } catch(IOException ioe) {
-                return -1;
-            }
-        }
-    }
-
-    static class VerboseExtractor implements Extractor {
-        @Override
-        public TOMMessage extractResponse(TOMMessage[] replies, int sameContent, int lastReceived) {
-            System.out.print(Thread.currentThread().getName()+": Received replies = { ");
-
-            for(TOMMessage reply:replies) {
-                if(reply == null)
-                    continue;
-
-                try {
-                    int v = new DataInputStream(new ByteArrayInputStream(reply.getContent())).readInt();
-                    System.out.print(v+" ");
-                } catch (IOException ioe) {}
-            }
-
-            System.out.println("}");
-            System.out.println(Thread.currentThread().getName()+": # replies with the same content = "+sameContent);
-
-            return replies[lastReceived];
-        }
-
-    }
 
 	public Map<String,byte[]> get(String tableName) {
 		try {
@@ -191,7 +154,7 @@ public class BFTMap implements Map<String, Map<String,byte[]>> {
 		try {
 			out = new ByteArrayOutputStream();
 			new DataOutputStream(out).writeInt(KVRequestType.SIZE_TABLE);
-			byte[] rep = KVProxy.invoke(out.toByteArray(),false);
+			byte[] rep = KVProxy.invoke(out.toByteArray(), true);
 			ByteArrayInputStream in = new ByteArrayInputStream(rep);
 			int size = new DataInputStream(in).readInt();
 			return size;
@@ -206,7 +169,7 @@ public class BFTMap implements Map<String, Map<String,byte[]>> {
 			out = new ByteArrayOutputStream();
 			new DataOutputStream(out).writeInt(KVRequestType.SIZE);
 			new DataOutputStream(out).writeUTF(tableName);
-			byte[] rep = KVProxy.invoke(out.toByteArray(), false);
+			byte[] rep = KVProxy.invoke(out.toByteArray(), true);
 			ByteArrayInputStream in = new ByteArrayInputStream(rep);
 			int size = new DataInputStream(in).readInt();
 			return size;
@@ -223,9 +186,12 @@ public class BFTMap implements Map<String, Map<String,byte[]>> {
 			out = new ByteArrayOutputStream();
 			new DataOutputStream(out).writeInt(KVRequestType.TAB_CREATE_CHECK);
 			new DataOutputStream(out).writeUTF((String) key);
-			byte[] rep = KVProxy.invoke(out.toByteArray(),false);
+			byte[] rep = KVProxy.invoke(out.toByteArray(), true);
 			ByteArrayInputStream in = new ByteArrayInputStream(rep);
-			boolean res = new DataInputStream(in).readBoolean();
+			int contains = new DataInputStream(in).readInt();
+			boolean res = false;
+			if(contains == 1)
+				res = true;
 			return res;
 
 		} catch (IOException ex) {

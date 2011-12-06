@@ -21,19 +21,25 @@ import java.util.logging.Logger;
 
 import navigators.smart.tom.MessageContext;
 import navigators.smart.tom.ServiceReplica;
+import navigators.smart.tom.server.Executable;
+import navigators.smart.tom.server.Recoverable;
 
 /**
  *
  * @author sweta
+ * 
+ * This class will create a ServiceReplica and will initialize
+ * it with a implementation of Executable and Recoverable interfaces. 
  */
-//This class extends ServiceReplica and overrides its functions serializeState(), deserializeState() and executeOrdered().
-public class BFTMapImpl extends ServiceReplica {
 
-    BFTTableMap bftReplica = new BFTTableMap();
+public class BFTMapImpl implements Executable, Recoverable {
+
+    BFTTableMap tableMap = new BFTTableMap();
+    ServiceReplica replica = null;
     
     //The constructor passes the id of the server to the super class
     public BFTMapImpl(int id) {
-        super(id);
+    	replica = new ServiceReplica(id, this, this);
     }
 
     public static void main(String[] args){
@@ -45,18 +51,18 @@ public class BFTMapImpl extends ServiceReplica {
     }
     
     @Override
-    protected byte[] serializeState() {
+    public byte[] getState() {
         try {
 
             //save to file (not needed for now)
             ObjectOutput out = new ObjectOutputStream(new FileOutputStream("MyObject.ser"));
-            out.writeObject(bftReplica);
+            out.writeObject(tableMap);
             out.close();
 
             // serialize to byte array and return
             ByteArrayOutputStream bos = new ByteArrayOutputStream();
             out = new ObjectOutputStream(bos);
-            out.writeObject(bftReplica);
+            out.writeObject(tableMap);
             out.close();
             return bos.toByteArray();
         } catch (IOException ex) {
@@ -66,17 +72,17 @@ public class BFTMapImpl extends ServiceReplica {
     }
 
     @Override
-    protected void deserializeState(byte[] state) {
+    public void setState(byte[] state) {
         try {
             //save to file (not needed for now)
             ObjectInput in = new ObjectInputStream(new FileInputStream("MyObject.ser"));
-            bftReplica = (BFTTableMap) in.readObject();
+            tableMap = (BFTTableMap) in.readObject();
             in.close();
 
             // serialize to byte array and return
             ByteArrayInputStream bis = new ByteArrayInputStream(state);
             in = new ObjectInputStream(bis);
-            bftReplica = (BFTTableMap) in.readObject();
+            tableMap = (BFTTableMap) in.readObject();
             in.close();
 
         } catch (ClassNotFoundException ex) {
@@ -102,81 +108,35 @@ public class BFTMapImpl extends ServiceReplica {
                     String value = new DataInputStream(in).readUTF();
                     byte[] valueBytes = value.getBytes();
                     System.out.println("Key received: " + key);
-                    byte[] ret = bftReplica.addData(tableName, key, valueBytes);
+                    byte[] ret = tableMap.addData(tableName, key, valueBytes);
                     if (ret == null) {
 //                        System.out.println("Return is null, so there was no data before");
                         ret = new byte[0];
                     }
                     reply = valueBytes;
                     break;
-                case KVRequestType.GET:
-                    tableName = new DataInputStream(in).readUTF();
-                    System.out.println("tablename: " + tableName);
-                    key = new DataInputStream(in).readUTF();
-                    System.out.println("Key received: " + key);
-                    valueBytes = bftReplica.getEntry(tableName, key);
-                    value = new String(valueBytes);
-                    System.out.println("The value to be get is: " + value);
-                    out = new ByteArrayOutputStream();
-                    new DataOutputStream(out).writeBytes(value);
-                    reply = out.toByteArray();
-                    break;
-                case KVRequestType.SIZE:
-                    String tableName2 = new DataInputStream(in).readUTF();
-                    int size = bftReplica.getSize(tableName2);
-                    System.out.println("Size " + size);
-                    out = new ByteArrayOutputStream();
-                    new DataOutputStream(out).writeInt(size);
-                    reply = out.toByteArray();
-                    break;
-                case KVRequestType.SIZE_TABLE:
-                    int size1 = bftReplica.getSizeofTable();
-                    System.out.println("Size " + size1);
-                    out = new ByteArrayOutputStream();
-                    new DataOutputStream(out).writeInt(size1);
-                    reply = out.toByteArray();
-                    break;
                 case KVRequestType.REMOVE:
                     tableName = new DataInputStream(in).readUTF();
                     key = new DataInputStream(in).readUTF();
                     System.out.println("Key received: " + key);
-                    valueBytes = bftReplica.removeEntry(tableName, key);
+                    valueBytes = tableMap.removeEntry(tableName, key);
                     value = new String(valueBytes);
                     System.out.println("Value removed is : " + value);
                     out = new ByteArrayOutputStream();
                     new DataOutputStream(out).writeBytes(value);
                     reply = out.toByteArray();
                     break;
-                case KVRequestType.TAB_CREATE_CHECK:
-                    tableName = new DataInputStream(in).readUTF();
-                    System.out.println("Table of Table Key received: " + tableName);
-                    Map<String, byte[]> table = bftReplica.getName(tableName);
-                    boolean tableExists = table != null;
-                    out = new ByteArrayOutputStream();
-                    new DataOutputStream(out).writeBoolean(tableExists);
-                    reply = out.toByteArray();
-                    break;
-                case KVRequestType.CHECK:
-                    tableName = new DataInputStream(in).readUTF();
-                    key = new DataInputStream(in).readUTF();
-                    System.out.println("Table Key received: " + key);
-                    valueBytes = bftReplica.getEntry(tableName, key);
-                    boolean entryExists = valueBytes != null;
-                    out = new ByteArrayOutputStream();
-                    new DataOutputStream(out).writeBoolean(entryExists);
-                    reply = out.toByteArray();
-                    break;
                 case KVRequestType.TAB_CREATE:
                     tableName = new DataInputStream(in).readUTF();
                     //ByteArrayInputStream in1 = new ByteArrayInputStream(command);
                     ObjectInputStream objIn = new ObjectInputStream(in);
-                    table = null;
+                    Map table = null;
                     try {
                         table = (Map<String, byte[]>) objIn.readObject();
                     } catch (ClassNotFoundException ex) {
                         Logger.getLogger(BFTMapImpl.class.getName()).log(Level.SEVERE, null, ex);
                     }
-                    Map<String, byte[]> tableCreated = bftReplica.addTable(tableName, table);
+                    Map<String, byte[]> tableCreated = tableMap.addTable(tableName, table);
                     ByteArrayOutputStream bos = new ByteArrayOutputStream();
                     ObjectOutputStream objOut = new ObjectOutputStream(bos);
                     objOut.writeObject(tableCreated);
@@ -186,7 +146,7 @@ public class BFTMapImpl extends ServiceReplica {
                     break;
                 case KVRequestType.TAB_REMOVE:
                     tableName = new DataInputStream(in).readUTF();
-                    table = bftReplica.removeTable(tableName);
+                    table = tableMap.removeTable(tableName);
                     bos = new ByteArrayOutputStream();
                     objOut = new ObjectOutputStream(bos);
                     objOut.writeObject(table);
@@ -205,8 +165,66 @@ public class BFTMapImpl extends ServiceReplica {
     @Override
     @SuppressWarnings("static-access")
     public byte[] executeUnordered(byte[] command, MessageContext msgCtx) {
-        System.err.println("WARNING: unordered operations not supported!");
-        return new byte[0];
+    	try {
+	        ByteArrayInputStream in = new ByteArrayInputStream(command);
+	        ByteArrayOutputStream out = null;
+	        byte[] reply = null;
+	        int cmd = new DataInputStream(in).readInt();
+	        switch (cmd) {
+                case KVRequestType.SIZE_TABLE:
+                    int size1 = tableMap.getSizeofTable();
+                    System.out.println("Size " + size1);
+                    out = new ByteArrayOutputStream();
+                    new DataOutputStream(out).writeInt(size1);
+                    reply = out.toByteArray();
+                    break;
+                case KVRequestType.GET:
+                    String tableName = new DataInputStream(in).readUTF();
+                    System.out.println("tablename: " + tableName);
+                    String key = new DataInputStream(in).readUTF();
+                    System.out.println("Key received: " + key);
+                    byte[] valueBytes = tableMap.getEntry(tableName, key);
+                    String value = new String(valueBytes);
+                    System.out.println("The value to be get is: " + value);
+                    out = new ByteArrayOutputStream();
+                    new DataOutputStream(out).writeBytes(value);
+                    reply = out.toByteArray();
+                    break;
+                case KVRequestType.SIZE:
+                    tableName = new DataInputStream(in).readUTF();
+                    int size = tableMap.getSize(tableName);
+                    System.out.println("Size " + size);
+                    out = new ByteArrayOutputStream();
+                    new DataOutputStream(out).writeInt(size);
+                    reply = out.toByteArray();
+                    break;
+	            case KVRequestType.CHECK:
+	                tableName = new DataInputStream(in).readUTF();
+	                key = new DataInputStream(in).readUTF();
+	                System.out.println("Table Key received: " + key);
+	                valueBytes = tableMap.getEntry(tableName, key);
+	                boolean entryExists = valueBytes != null;
+	                out = new ByteArrayOutputStream();
+	                new DataOutputStream(out).writeBoolean(entryExists);
+	                reply = out.toByteArray();
+	                break;
+			    case KVRequestType.TAB_CREATE_CHECK:
+			        tableName = new DataInputStream(in).readUTF();
+			        System.out.println("Table of Table Key received: " + tableName);
+			        Map<String, byte[]> table = tableMap.getName(tableName);
+			        System.out.println("Table exists: " + table);
+			        boolean tableExists = (table != null);
+			        System.out.println("Table exists: " + tableExists);
+			        out = new ByteArrayOutputStream();
+			        new DataOutputStream(out).writeBoolean(tableExists);
+			        reply = out.toByteArray();
+			        break;
+	        }
+	        return reply;
+	    } catch (IOException ex) {
+	        Logger.getLogger(BFTMapImpl.class.getName()).log(Level.SEVERE, null, ex);
+	        return null;
+	    }
     }
 
 }

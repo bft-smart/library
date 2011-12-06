@@ -18,95 +18,48 @@
 
 package navigators.smart.tom;
 
-import navigators.smart.communication.ServerCommunicationSystem;
-import navigators.smart.paxosatwar.executionmanager.ExecutionManager;
-import navigators.smart.paxosatwar.executionmanager.LeaderModule;
-import navigators.smart.paxosatwar.messages.MessageFactory;
-import navigators.smart.paxosatwar.roles.Acceptor;
-import navigators.smart.paxosatwar.roles.Proposer;
-import navigators.smart.reconfiguration.ServerViewManager;
-import navigators.smart.tom.core.TOMLayer;
-import navigators.smart.tom.util.ShutdownHookThread;
+import navigators.smart.tom.core.messages.TOMMessage;
 
 /**
- * This class is used to
- * assemble a total order messaging layer
- *
+ * Interface meant for objects that receive requests from clients
  */
-public abstract class TOMReceiver implements TOMRequestReceiver {
-
-    private boolean tomStackCreated = false;
-    private ReplicaContext replicaCtx = null;
-
-    public void init(ServerCommunicationSystem cs, ServerViewManager reconfManager) {
-        this.init(cs, reconfManager,-1,-1);
-    }
-    
-    /**
-     * This method initializes the object
-     * 
-     * @param cs Server side communication System
-     * @param conf Total order messaging configuration
-     */
-    public void init(ServerCommunicationSystem cs, ServerViewManager reconfManager, 
-                          int lastExec, int lastLeader) {
-        if (tomStackCreated) { // if this object was already initialized, don't do it again
-            return;
-        }
-       
-        //******* EDUARDO BEGIN **************//
-        int me = reconfManager.getStaticConf().getProcessId(); // this process ID
-
-        if (!reconfManager.isInCurrentView()) {
-            throw new RuntimeException("I'm not an acceptor!");
-        }
-        //******* EDUARDO END **************//
-        
-        // Assemble the total order messaging layer
-        MessageFactory messageFactory = new MessageFactory(me);
-        
-        LeaderModule lm = new LeaderModule(reconfManager);
-                
-        Acceptor acceptor = new Acceptor(cs, messageFactory, lm, reconfManager);
-        cs.setAcceptor(acceptor);
-        
-        Proposer proposer = new Proposer(cs, messageFactory, reconfManager);
-
-        ExecutionManager manager = new ExecutionManager(reconfManager, acceptor, proposer,
-                               me);
-        
-        acceptor.setManager(manager);
-        proposer.setManager(manager);
-
-        TOMLayer tomLayer = new TOMLayer(manager, this, lm, acceptor, cs, reconfManager);
-        
-        manager.setTOMLayer(tomLayer);
-        
-        //******* EDUARDO BEGIN **************//
-        reconfManager.setTomLayer(tomLayer);
-        //******* EDUARDO END **************//
-        
-        cs.setTOMLayer(tomLayer);
-        cs.setRequestReceiver(tomLayer);
-
-        acceptor.setTOMLayer(tomLayer);
-
-        if(reconfManager.getStaticConf().isShutdownHookEnabled()){
-            Runtime.getRuntime().addShutdownHook(new ShutdownHookThread(cs,lm,acceptor,manager,tomLayer));
-        }
-        tomLayer.start(); // start the layer execution
-        tomStackCreated = true;
-        
-        replicaCtx = new ReplicaContext(cs, reconfManager);
-    }
+public interface TOMReceiver {
 
     /**
-     * Obtains the current replica context (getting access to several information
-     * and capabilities of the replication engine).
-     * 
-     * @return this replica context
+     * This is the method invoked by the DeliveryThread to deliver a message to the receiver.
+     * It is used to receive readonly messages. These types of messages are delivered as
+     * soon as they are received by TomLayer 
+     *
+     * @param msg The request delivered by the TOM layer
      */
-    public final ReplicaContext getReplicaContext() {
-        return replicaCtx;
-    }
+    public void receiveReadonlyMessage(TOMMessage msg, MessageContext msgCtx);
+
+	/**
+     * This is the method invoked by the DeliveryThread to deliver a batch of messages to
+     * the receiver.
+     * If the receiver implements the BatchExcetutable interface, the messages are delivered
+     * as a bath. Otherwise, messages are delivered one by one. 
+     *
+	 * @param consId The id of the consensus in which the messages were ordered.
+	 * @param regency
+	 * @param requests The batch with TOMMessage objects.
+	 */
+    public void receiveMessages(int consId, int regency, TOMMessage[] requests);
+
+
+    /**
+     * This method is used by the TOM Layer to retrieve the state of the application. This must be
+     * implemented by the programmer, and it should retrieve an array of bytes that contains the application
+     * state.
+     * @return An rray of bytes that can be diserialized into the application state
+     */
+    public byte[] getState();
+
+    /**
+     * This method is invoked by the TOM Layer in order to ser a state upon the aplication. This is done when
+     * a replica is delayed compared to the rest of the group, and when it recovers after a failure.
+     */
+    public void setState(byte[] state);
+
 }
+

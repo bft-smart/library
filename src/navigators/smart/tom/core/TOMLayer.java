@@ -48,7 +48,7 @@ import navigators.smart.paxosatwar.executionmanager.Round;
 import navigators.smart.paxosatwar.roles.Acceptor;
 import navigators.smart.reconfiguration.ServerViewManager;
 import navigators.smart.statemanagment.StateManager;
-import navigators.smart.tom.TOMRequestReceiver;
+import navigators.smart.tom.TOMReceiver;
 import navigators.smart.tom.core.messages.TOMMessage;
 import navigators.smart.tom.core.messages.TOMMessageType;
 import navigators.smart.tom.core.timer.RequestsTimer;
@@ -123,7 +123,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
      * @param recManager Reconfiguration Manager
      */
     public TOMLayer(ExecutionManager manager,
-            TOMRequestReceiver receiver,
+            TOMReceiver receiver,
             LeaderModule lm,
             Acceptor a,
             ServerCommunicationSystem cs,

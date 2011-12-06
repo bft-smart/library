@@ -20,12 +20,14 @@ package navigators.smart.tom.demo.microbenchmarks;
 
 import navigators.smart.tom.MessageContext;
 import navigators.smart.tom.ServiceReplica;
+import navigators.smart.tom.server.Executable;
+import navigators.smart.tom.server.Recoverable;
 import navigators.smart.tom.util.Storage;
 
 /**
  * Simple server that just acknowledge the reception of a request.
  */
-public final class ThroughputLatencyServer extends ServiceReplica {
+public final class ThroughputLatencyServer implements Executable, Recoverable {
     
     private int interval;
     private int replySize;
@@ -43,9 +45,10 @@ public final class ThroughputLatencyServer extends ServiceReplica {
     private Storage proposeLatency = null;
     private Storage weakLatency = null;
     private Storage strongLatency = null;
+    private ServiceReplica replica;
 
     public ThroughputLatencyServer(int id, int interval, int replySize, int stateSize, boolean context) {
-        super(id);
+        replica = new ServiceReplica(id, this, this);
 
         this.interval = interval;
         this.replySize = replySize;
@@ -65,12 +68,10 @@ public final class ThroughputLatencyServer extends ServiceReplica {
         strongLatency = new Storage(interval);
     }
     
-    @Override
     public byte[] executeOrdered(byte[] command, MessageContext msgCtx) {
         return execute(command,msgCtx);
     }
     
-    @Override
     public byte[] executeUnordered(byte[] command, MessageContext msgCtx) {
         return execute(command,msgCtx);
     }
@@ -133,12 +134,10 @@ public final class ThroughputLatencyServer extends ServiceReplica {
         new ThroughputLatencyServer(processId,interval,replySize, stateSize, context);        
     }
 
-    @Override
-    protected byte[] serializeState() {
+    public byte[] getState() {
         return state;
     }
 
-    @Override
-    protected void deserializeState(byte[] state) {
+    public void setState(byte[] state) {
     }
 }
