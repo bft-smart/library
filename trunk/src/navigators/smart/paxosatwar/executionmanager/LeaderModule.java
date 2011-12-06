@@ -74,7 +74,7 @@ public class LeaderModule {
      * Define o novo timestamp que identifica o lider
      * @param ts novo timestamp que identifica o lider
      */
-    public void setNewTS(int ts) {
+    public void setNewReg(int ts) {
         this.currentTS = ts;
     }
     
