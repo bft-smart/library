@@ -92,7 +92,7 @@ public final class ThroughputLatencyServer implements Executable, Recoverable {
         strongLatency.store(msgCtx.getFirstInBatch().decisionTime - msgCtx.getFirstInBatch().strongSentTime);
 
         if(iterations % interval == 0) {
-            if (context) System.out.println(iterations + " // " + msgCtx.getRegency() + " // " + msgCtx.getConsensusId());
+            if (context) System.out.println("--- (Context)  iterations: "+ iterations + " // regency: " + msgCtx.getRegency() + " // consensus: " + msgCtx.getConsensusId() + " ---");
             
             System.out.println("--- Measurements after "+ iterations+" ops ("+interval+" samples) ---");
             

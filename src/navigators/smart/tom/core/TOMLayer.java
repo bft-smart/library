@@ -551,7 +551,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
     }
 
     // este metodo e invocado aquando de um timeout ou da recepcao de uma mensagem STOP
-    private void evaluateStops(int nextTS) {
+    private void evaluateStops(int nextReg) {
 
         ObjectOutputStream out = null;
         ByteArrayOutputStream bos = null;
@@ -561,7 +561,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         lcManager.StopsLock();
 
         // passar para a fase de troca de lider se já tiver recebido mais de f mensagens
-        if (lcManager.getStopsSize(nextTS) > this.reconfManager.getQuorumF() && lcManager.getNextReg() == lcManager.getLastReg()) {
+        if (lcManager.getStopsSize(nextReg) > this.reconfManager.getQuorumF() && lcManager.getNextReg() == lcManager.getLastReg()) {
 
             lcManager.setNextReg(lcManager.getLastReg() + 1); // definir proximo timestamp
 
@@ -611,7 +611,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         }
 
         // posso passar para a fase de sincronizacao?
-        if (lcManager.getStopsSize(nextTS) > this.reconfManager.getQuorum2F() && lcManager.getNextReg() > lcManager.getLastReg()) {
+        if (lcManager.getStopsSize(nextReg) > this.reconfManager.getQuorum2F() && lcManager.getNextReg() > lcManager.getLastReg()) {
 
             lcManager.setLastReg(lcManager.getNextReg()); // definir ultimo timestamp
 
@@ -621,7 +621,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             lcManager.lastregUnlock();
 
             // evitar um memory leak
-            lcManager.removeStops(nextTS);
+            lcManager.removeStops(nextReg);
 
             lcManager.StopsUnlock();
 
@@ -685,7 +685,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                     bos.close();
 
                     leaderLock.lock();
-                    lm.setNewTS(regency);
+                    lm.setNewReg(regency);
                     leaderLock.unlock();
 
                     int[] b = new int[1];
@@ -1060,6 +1060,8 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
         if (tmpval != null) { // consegui chegar a algum valor?
 
+            lcManager.removeCollects(regency); // evitar memory leaks
+            
             exec = execManager.getExecution(currentEid);
             exec.incEts();
 
@@ -1085,7 +1087,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             
             r.setWeak(me, hash);
 
-            lm.setNewTS(regency);
+            lm.setNewReg(regency);
 
             // resumir a execucao normal
             execManager.restart();
