@@ -45,13 +45,14 @@ public class KVClient {
 			switch(cmd) {
 			//operations on the table
 			case KVRequestType.TAB_CREATE:
+				String tableName;
 				boolean tableExists = false;
 				do {
-					String tableName = console.readLine("Enter the HashMap name");
+					tableName = console.readLine("Enter the HashMap name");
 					tableExists = bftMap.containsKey(tableName);
 					if (!tableExists) {
 						//if the table name does not exist then create the table
-						bftMap.put(tableName,new HashMap<String,byte[]>());
+						bftMap.put(tableName, new HashMap<String,byte[]>());
 					}
 				} while(tableExists);
 				break;
@@ -66,7 +67,7 @@ public class KVClient {
 			case KVRequestType.TAB_REMOVE:
 				//Remove the table entry
 				tableExists = false;
-				String tableName = null;
+				tableName = null;
 				System.out.println("Executing remove operation on table of tables");
 				do {
 					tableName = console.readLine("Enter the valid table name you want to remove");

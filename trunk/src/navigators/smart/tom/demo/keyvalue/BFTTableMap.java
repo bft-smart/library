@@ -28,12 +28,8 @@ public class BFTTableMap implements Serializable {
 	}
 
 	public byte[] addData(String tableName, String key, byte[] value) {
-//		System.out.println("Table name: " + tableName);
-//		System.out.println("Table key: " + key);
-//		System.out.println("Value: " + new String(value));
 		Map<String,byte[]> table = tableMap.get(tableName);
 		if (table == null) System.out.println("This is null");
-//		System.out.println("Table: " + table);
 		byte[] ret = table.put(key,value);
 		return ret;
 	}

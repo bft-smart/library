@@ -31,12 +31,14 @@ import java.io.IOException;
 import navigators.smart.tom.ServiceReplica;
 import java.util.Scanner;
 import navigators.smart.tom.MessageContext;
+import navigators.smart.tom.server.Executable;
+import navigators.smart.tom.server.Recoverable;
 
 /**
  *
  * @author Joao Sousa
  */
-public final class RandomServer extends ServiceReplica {
+public final class RandomServer implements Executable, Recoverable {
 
     private int value = 0;
     private int iterations = 0;
@@ -45,17 +47,26 @@ public final class RandomServer extends ServiceReplica {
     private long initialTime = -1;
     private long currentTime = -1;
     /***********************************************************************/
-    public RandomServer(int id) {
-        super(id);
+    private ServiceReplica replica;
+    
+    public ServiceReplica getReplica() {
+		return replica;
+	}
+
+	public void setReplica(ServiceReplica replica) {
+		this.replica = replica;
+	}
+
+	public RandomServer(int id) {
+    	replica = new ServiceReplica(id, this, this);
         this.id = id;
     }
 
     public RandomServer(int id, boolean join) {
-        super(id,join);
+    	replica = new ServiceReplica(id, join, this, this);
         this.id = id;
     }
 
-    @Override
     public byte[] executeOrdered(byte[] command, MessageContext msgCtx) {
         iterations++;
         try {
@@ -102,7 +113,6 @@ public final class RandomServer extends ServiceReplica {
      * @param msgCtx Context of  the message received
      * @return Reply t obe sent to the client
      */
-    @Override
     public byte[] executeUnordered(byte[] command, MessageContext msgCtx) {
         iterations++;
         try {
@@ -133,12 +143,11 @@ public final class RandomServer extends ServiceReplica {
 
         Scanner scan = new Scanner(System.in);
         String ln = scan.nextLine();
-        if (ln != null) replica.leave();
+        if (ln != null) replica.getReplica().leave();
         //new RandomServer(Integer.parseInt(args[0]));
     }
 
-    @Override
-    protected byte[] serializeState() {
+    public byte[] getState() {
 
         byte[] b = new byte[4];
         //byte[] b = new byte[1024 * 1024 * 30];
@@ -152,8 +161,7 @@ public final class RandomServer extends ServiceReplica {
         //throw new UnsupportedOperationException("Not supported yet.");
     }
 
-    @Override
-    protected void deserializeState(byte[] state) {
+    public void setState(byte[] state) {
 
         int value = 0;
         for (int i = 0; i < 4; i++) {

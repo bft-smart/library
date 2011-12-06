@@ -26,7 +26,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import navigators.smart.paxosatwar.Consensus;
 import navigators.smart.reconfiguration.ServerViewManager;
 import navigators.smart.statemanagment.TransferableState;
-import navigators.smart.tom.TOMRequestReceiver;
+import navigators.smart.tom.TOMReceiver;
 import navigators.smart.tom.core.messages.TOMMessage;
 import navigators.smart.tom.core.messages.TOMMessageType;
 import navigators.smart.tom.util.BatchReader;
@@ -41,7 +41,7 @@ public final class DeliveryThread extends Thread {
 
     private LinkedBlockingQueue<Consensus> decided = new LinkedBlockingQueue<Consensus>(); // decided consensus
     private TOMLayer tomLayer; // TOM layer
-    private TOMRequestReceiver receiver; // Object that receives requests from clients
+    private TOMReceiver receiver; // Object that receives requests from clients
     private ServerViewManager manager;
 
     /**
@@ -50,7 +50,7 @@ public final class DeliveryThread extends Thread {
      * @param receiver Object that receives requests from clients
      * @param conf TOM configuration
      */
-    public DeliveryThread(TOMLayer tomLayer, TOMRequestReceiver receiver, ServerViewManager manager) {
+    public DeliveryThread(TOMLayer tomLayer, TOMReceiver receiver, ServerViewManager manager) {
         super("Delivery Thread");
 
         this.tomLayer = tomLayer;
@@ -273,38 +273,11 @@ public final class DeliveryThread extends Thread {
     public void deliverUnordered(TOMMessage request, int regency) {
         MessageContext msgCtx = new MessageContext(System.currentTimeMillis(),
                 new byte[0], regency, -1, request.getSender(), null);
-        receiver.receiveMessage(request, msgCtx);
+        receiver.receiveReadonlyMessage(request, msgCtx);
     }
 
     private void deliverMessages(int consId, int regency, TOMMessage[] requests) {
-        TOMMessage firstRequest = requests[0];
-        
-        for (TOMMessage request: requests) {
-            if (request.getViewID() == manager.getCurrentViewId()) {
-                if (request.getReqType() == TOMMessageType.REQUEST) {
-                    //normal request execution
-                    
-                    //create a context for the batch of messages to be delivered
-                    MessageContext msgCtx = new MessageContext(firstRequest.timestamp, 
-                            firstRequest.nonces, regency, consId, request.getSender(), firstRequest);
-
-                    request.deliveryTime = System.nanoTime();
-
-                    receiver.receiveOrderedMessage(request, msgCtx);
-                } else if (request.getReqType() == TOMMessageType.RECONFIG) {
-                    //Reconfiguration request to be processed after the batch
-                    manager.enqueueUpdate(request);
-                } else {
-                    throw new RuntimeException("Should never reach here!");
-                }
-            } else {
-                //message sender had an old view, resend the message to him
-                tomLayer.getCommunication().send(new int[]{request.getSender()},
-                        new TOMMessage(manager.getStaticConf().getProcessId(),
-                        request.getSession(), request.getSequence(),
-                        TOMUtil.getBytes(manager.getCurrentView()), manager.getCurrentViewId()));
-            }
-        }
+    	receiver.receiveMessages(consId, regency, requests);
     }
 
     private void processReconfigMessages(int consId, int decisionRoundNumber) {

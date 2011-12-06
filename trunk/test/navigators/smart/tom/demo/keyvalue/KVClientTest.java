@@ -39,26 +39,26 @@ public class KVClientTest {
 			command[4] = "3";
 			replica4 = new ProcessBuilder(command).redirectErrorStream(true).start();
 
-//			LogWriter lwriter1 = new LogWriter();
-//			lwriter1.setIn(replica1.getInputStream());
-//			lwriter1.setIndex(1);
-//			lwriter1.start();
-//
-//			LogWriter lwriter2 = new LogWriter();
-//			lwriter2.setIn(replica2.getInputStream());
-//			lwriter2.setIndex(2);
-//			lwriter2.start();
-//
-//			LogWriter lwriter3 = new LogWriter();
-//			lwriter3.setIn(replica3.getInputStream());
-//			lwriter3.setIndex(3);
-//			lwriter3.start();
-//
-//			LogWriter lwriter4 = new LogWriter();
-//			lwriter4.setIn(replica4.getInputStream());
-//			lwriter4.setIndex(4);
-//			lwriter4.start();
-//
+			LogWriter lwriter1 = new LogWriter();
+			lwriter1.setIn(replica1.getInputStream());
+			lwriter1.setIndex(1);
+			lwriter1.start();
+
+			LogWriter lwriter2 = new LogWriter();
+			lwriter2.setIn(replica2.getInputStream());
+			lwriter2.setIndex(2);
+			lwriter2.start();
+
+			LogWriter lwriter3 = new LogWriter();
+			lwriter3.setIn(replica3.getInputStream());
+			lwriter3.setIndex(3);
+			lwriter3.start();
+
+			LogWriter lwriter4 = new LogWriter();
+			lwriter4.setIn(replica4.getInputStream());
+			lwriter4.setIndex(4);
+			lwriter4.start();
+
 			System.out.println("Servers started");
 
 		} catch(IOException ioe) {
@@ -95,7 +95,6 @@ public class KVClientTest {
 				String key = "key" + (2+i);
 				String value = "value" + (2+i);
 				byte[] result =	bftMap.putEntry("TestTable1", key, value.getBytes());
-				System.out.println("----Key " + i + "inserted. Return:" + new String(result));
 			}
 			assertEquals("Main table size should be 101", 101, bftMap.size1("TestTable1"));
 

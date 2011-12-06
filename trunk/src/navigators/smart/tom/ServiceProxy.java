@@ -246,15 +246,10 @@ public class ServiceProxy extends TOMSender {
 
     //******* EDUARDO BEGIN **************//
     private void reconfigureTo(View v) {
-        //System.out.println("Iniciou recTo");
         Logger.println("Installing a most up-to-date view with id=" + v.getId());
         getViewManager().reconfigureTo(v);
-        //System.out.println("recTo 1");
         replies = new TOMMessage[getViewManager().getCurrentViewN()];
-        //System.out.println("recTo 2");
         getCommunicationSystem().updateConnections();
-        //System.out.println("recTo 3");
-        //System.out.println("Terminou recTo");
     }
     //******* EDUARDO END **************//
 
@@ -286,7 +281,7 @@ public class ServiceProxy extends TOMSender {
                 receivedReplies++;
             }
             replies[pos] = reply;
-
+            
             // Compare the reply just received, to the others
             int sameContent = 1;
             for (int i = 0; i < replies.length; i++) {

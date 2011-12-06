@@ -23,11 +23,23 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import navigators.smart.communication.ServerCommunicationSystem;
+import navigators.smart.paxosatwar.executionmanager.ExecutionManager;
+import navigators.smart.paxosatwar.executionmanager.LeaderModule;
+import navigators.smart.paxosatwar.messages.MessageFactory;
+import navigators.smart.paxosatwar.roles.Acceptor;
+import navigators.smart.paxosatwar.roles.Proposer;
 import navigators.smart.reconfiguration.Reconfiguration;
 import navigators.smart.reconfiguration.ServerViewManager;
 import navigators.smart.reconfiguration.ReconfigureReply;
 import navigators.smart.reconfiguration.TTPMessage;
+import navigators.smart.tom.core.TOMLayer;
 import navigators.smart.tom.core.messages.TOMMessage;
+import navigators.smart.tom.core.messages.TOMMessageType;
+import navigators.smart.tom.server.BatchExecutable;
+import navigators.smart.tom.server.Executable;
+import navigators.smart.tom.server.Recoverable;
+import navigators.smart.tom.util.ShutdownHookThread;
+import navigators.smart.tom.util.TOMUtil;
 
 /**
  * This class implements a TOMReceiver, and also a replica for the server side of the application.
@@ -35,7 +47,7 @@ import navigators.smart.tom.core.messages.TOMMessage;
  * Applications must create a class that extends this one, and implement the executeOrdered method
  *
  */
-public abstract class ServiceReplica extends TOMReceiver {
+public class ServiceReplica implements TOMReceiver {
 
     class MessageContextPair {
 
@@ -57,14 +69,20 @@ public abstract class ServiceReplica extends TOMReceiver {
     private Condition canProceed = waitTTPJoinMsgLock.newCondition();
     /** ISTO E CODIGO DO JOAO, PARA TRATAR DOS CHECKPOINTS */
     private ReentrantLock requestsLock = new ReentrantLock();
+    private Executable executor = null;
+    private Recoverable recoverer = null;
+    private TOMLayer tomLayer = null;
+    private boolean tomStackCreated = false;
+    private ReplicaContext replicaCtx = null;
+
 
     /*******************************************************/
     /**
      * Constructor
      * @param id Replica ID
      */
-    public ServiceReplica(int id) {
-        this(id, "");
+    public ServiceReplica(int id, Executable executor, Recoverable recoverer) {
+        this(id, "", executor, recoverer);
     }
 
     /**
@@ -73,9 +91,11 @@ public abstract class ServiceReplica extends TOMReceiver {
      * @param id Process ID
      * @param configHome Configuration directory for JBP
      */
-    public ServiceReplica(int id, String configHome) {
+    public ServiceReplica(int id, String configHome, Executable executor, Recoverable recoverer) {
         this.id = id;
         this.SVManager = new ServerViewManager(id, configHome);
+        this.executor = executor;
+        this.recoverer = recoverer;
         this.init();
     }
 
@@ -86,22 +106,24 @@ public abstract class ServiceReplica extends TOMReceiver {
      * @param isToJoin: if true, the replica tries to join the system, otherwise it waits for TTP message
      * informing its join
      */
-    public ServiceReplica(int id, boolean isToJoin) {
-        this(id, "", isToJoin);
+    public ServiceReplica(int id, boolean isToJoin, Executable executor, Recoverable recoverer) {
+        this(id, "", isToJoin, executor, recoverer);
     }
 
-    public ServiceReplica(int id, String configHome, boolean isToJoin) {
+    public ServiceReplica(int id, String configHome, boolean isToJoin, Executable executor, Recoverable recoverer) {
         this.isToJoin = isToJoin;
         this.id = id;
         this.SVManager = new ServerViewManager(id, configHome);
-
+        this.executor = executor;
+        this.recoverer = recoverer;
         this.init();
     }
+    
+    
 
     //******* EDUARDO END **************//
     // this method initializes the object
     private void init() {
-
         try {
             cs = new ServerCommunicationSystem(this.SVManager, this);
         } catch (Exception ex) {
@@ -113,7 +135,7 @@ public abstract class ServiceReplica extends TOMReceiver {
 
         if (this.SVManager.isInCurrentView()) {
             System.out.println("Esta na view atual: " + this.SVManager.getCurrentView());
-            super.init(cs, this.SVManager); // initiaze the TOM layer
+            initTOMLayer(-1, -1); // initiaze the TOM layer
         } else {
             if (this.isToJoin) {
                 System.out.println("Vai enviar join: " + this.SVManager.getCurrentView());
@@ -132,7 +154,7 @@ public abstract class ServiceReplica extends TOMReceiver {
                 this.SVManager.processJoinResult(r);
 
                 // initiaze the TOM layer
-                super.init(cs, this.SVManager, r.getLastExecConsId(), r.getExecLeader());
+                initTOMLayer(r.getLastExecConsId(), r.getExecLeader());
 
                 this.cs.updateServersConnections();
                 this.cs.joinViewReceived();
@@ -159,7 +181,7 @@ public abstract class ServiceReplica extends TOMReceiver {
         if (r.getView().isMember(id)) {
             this.SVManager.processJoinResult(r);
 
-            super.init(cs, this.SVManager, r.getLastExecConsId(), r.getExecLeader()); // initiaze the TOM layer
+            initTOMLayer(r.getLastExecConsId(), r.getExecLeader()); // initiaze the TOM layer
             //this.startState = r.getStartState();
             cs.updateServersConnections();
             this.cs.joinViewReceived();
@@ -180,35 +202,53 @@ public abstract class ServiceReplica extends TOMReceiver {
 	 * @param msg The request delivered by the delivery thread
 	 */
 	@Override
-	public final void receiveOrderedMessage(TOMMessage tomMsg, MessageContext msgCtx) {
-		MessageContextPair msg = new MessageContextPair(tomMsg, msgCtx);
+	public final void receiveReadonlyMessage(TOMMessage tomMsg, MessageContext msgCtx) {
 		byte[] response = null;
-		if (msg.msgCtx.getFirstInBatch() != null)
-			msg.msgCtx.getFirstInBatch().executedTime = System.nanoTime();
-
-		// Deliver the message to the application, and get the response
-		response = (msg.msgCtx.getConsensusId() == -1) ? 
-				executeUnordered(msg.message.getContent(), msg.msgCtx):
-					executeOrdered(msg.message.getContent(), msg.msgCtx);
+		response = executor.executeUnordered(tomMsg.getContent(), msgCtx);
 
 		// build the reply and send it to the client
-		msg.message.reply = new TOMMessage(id, msg.message.getSession(),
-				msg.message.getSequence(), response, SVManager.getCurrentViewId());            
-		cs.send(new int[]{msg.message.getSender()}, msg.message.reply);
+		tomMsg.reply = new TOMMessage(id, tomMsg.getSession(),
+				tomMsg.getSequence(), response, SVManager.getCurrentViewId());            
+		cs.send(new int[]{tomMsg.getSender()}, tomMsg.reply);
 	}
 
-    /**
-     * This is the method invoked to deliver a unordered (read-only) requests.
-     * These requests are enqueued for processing just like ordered requests.
-     *
-     * @param msg the request delivered by the TOM layer
-     */
-    @Override
-    public final void receiveMessage(TOMMessage msg, MessageContext msgCtx) {
-        receiveOrderedMessage(msg, msgCtx);
+    public void receiveMessages(int consId, int regency, TOMMessage[] requests) {
+    	if(executor instanceof BatchExecutable) {
+    	} else {
+        	TOMMessage firstRequest = requests[0];
+        	for (TOMMessage request: requests) {
+        		if (request.getViewID() == SVManager.getCurrentViewId()) {
+        			if (request.getReqType() == TOMMessageType.REQUEST) {
+        				byte[] response = null;
+        				//normal request execution
+        				//create a context for the batch of messages to be delivered
+        				MessageContext msgCtx = new MessageContext(firstRequest.timestamp, 
+        						firstRequest.nonces, regency, consId, request.getSender(), firstRequest);
+        				request.deliveryTime = System.nanoTime();
+        				response = executor.executeOrdered(request.getContent(), msgCtx);
+        	            // build the reply and send it to the client
+        	            request.reply = new TOMMessage(id, request.getSession(),
+        	                    request.getSequence(), response, SVManager.getCurrentViewId());
+        				cs.send(new int[]{request.getSender()}, request.reply);
+        			} else if (request.getReqType() == TOMMessageType.RECONFIG) {
+        				//Reconfiguration request to be processed after the batch
+        				SVManager.enqueueUpdate(request);
+        			} else {
+        				throw new RuntimeException("Should never reach here!");
+        			}
+        		} else {
+        			//message sender had an old view, resend the message to him
+        			tomLayer.getCommunication().send(new int[]{request.getSender()},
+        					new TOMMessage(SVManager.getStaticConf().getProcessId(),
+        							request.getSession(), request.getSequence(),
+        							TOMUtil.getBytes(SVManager.getCurrentView()), SVManager.getCurrentViewId()));
+        		}
+        	}
+    	}
     }
 
-    /**
+
+	/**
      * This method makes the replica leave the group
      */
     public void leave() {
@@ -229,7 +269,7 @@ public abstract class ServiceReplica extends TOMReceiver {
     @Override
     public byte[] getState() { //TODO: Ha por aqui uma condicao de corrida!
         requestsLock.lock();
-        byte[] state = serializeState();
+        byte[] state = recoverer.getState();
         requestsLock.unlock();
         return state;
 
@@ -238,46 +278,74 @@ public abstract class ServiceReplica extends TOMReceiver {
     @Override
     public void setState(byte[] state) {
         requestsLock.lock();
-        deserializeState(state);
+        recoverer.setState(state);
         requestsLock.unlock();
     }
 
-    protected abstract byte[] serializeState();
-
-    protected abstract void deserializeState(byte[] state);
-
-    /********************************************************/
-    
     /**
-     * Method called to execute a request totally ordered. It is meant to be
-     * implemented by subclasses of this class. 
+     * This method initializes the object
      * 
-     * The message context contains a lot of information about the request, such
-     * as timestamp, nonces and sender. The code for this method MUST use the value
-     * of timestamp instead of relying on its own local clock, and nonces instead
-     * of trying to generated its own random values.
-     * 
-     * This is important because this values are the same for all replicas, and
-     * therefore, ensure the determinism required in a replicated state machine.
-     *
-     * @param command the command issue by the client
-     * @param msgCtx information related with the command
-     * 
-     * @return the reply for the request issued by the client
+     * @param cs Server side communication System
+     * @param conf Total order messaging configuration
      */
-    public abstract byte[] executeOrdered(byte[] command, MessageContext msgCtx);
+    private void initTOMLayer(int lastExec, int lastLeader) {
+        if (tomStackCreated) { // if this object was already initialized, don't do it again
+            return;
+        }
+       
+        //******* EDUARDO BEGIN **************//
+        int me = SVManager.getStaticConf().getProcessId(); // this process ID
+
+        if (!SVManager.isInCurrentView()) {
+            throw new RuntimeException("I'm not an acceptor!");
+        }
+        //******* EDUARDO END **************//
+        
+        // Assemble the total order messaging layer
+        MessageFactory messageFactory = new MessageFactory(me);
+        
+        LeaderModule lm = new LeaderModule(SVManager);
+                
+        Acceptor acceptor = new Acceptor(cs, messageFactory, lm, SVManager);
+        cs.setAcceptor(acceptor);
+        
+        Proposer proposer = new Proposer(cs, messageFactory, SVManager);
+
+        ExecutionManager manager = new ExecutionManager(SVManager, acceptor, proposer, me);
+        
+        acceptor.setManager(manager);
+        proposer.setManager(manager);
+
+        tomLayer = new TOMLayer(manager, this, lm, acceptor, cs, SVManager);
+        
+        manager.setTOMLayer(tomLayer);
+        
+        //******* EDUARDO BEGIN **************//
+        SVManager.setTomLayer(tomLayer);
+        //******* EDUARDO END **************//
+        
+        cs.setTOMLayer(tomLayer);
+        cs.setRequestReceiver(tomLayer);
+
+        acceptor.setTOMLayer(tomLayer);
+
+        if(SVManager.getStaticConf().isShutdownHookEnabled()){
+            Runtime.getRuntime().addShutdownHook(new ShutdownHookThread(cs,lm,acceptor,manager,tomLayer));
+        }
+        tomLayer.start(); // start the layer execution
+        tomStackCreated = true;
+        
+        replicaCtx = new ReplicaContext(cs, SVManager);
+    }
 
     /**
-     * Method called to execute a request totally ordered. It is meant to be
-     * implemented by subclasses of this class. 
+     * Obtains the current replica context (getting access to several information
+     * and capabilities of the replication engine).
      * 
-     * The message context contains some useful information such as the command
-     * sender.
-     * 
-     * @param command the command issue by the client
-     * @param msgCtx information related with the command
-     * 
-     * @return the reply for the request issued by the client
+     * @return this replica context
      */
-    public abstract byte[] executeUnordered(byte[] command, MessageContext msgCtx);
+    public final ReplicaContext getReplicaContext() {
+        return replicaCtx;
+    }
+
 }

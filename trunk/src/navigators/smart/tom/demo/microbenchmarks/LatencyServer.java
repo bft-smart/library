@@ -20,12 +20,14 @@ package navigators.smart.tom.demo.microbenchmarks;
 
 import navigators.smart.tom.MessageContext;
 import navigators.smart.tom.ServiceReplica;
+import navigators.smart.tom.server.Executable;
+import navigators.smart.tom.server.Recoverable;
 import navigators.smart.tom.util.Storage;
 
 /**
  * Simple server that just acknowledge the reception of a request.
  */
-public class LatencyServer extends ServiceReplica {
+public class LatencyServer implements Executable, Recoverable {
     
     private int interval;
     private int hashs;
@@ -39,9 +41,10 @@ public class LatencyServer extends ServiceReplica {
     private Storage proposeLatency = null;
     private Storage weakLatency = null;
     private Storage strongLatency = null;
+    private ServiceReplica replica;
 
     public LatencyServer(int id, int interval, int hashs, int replySize) {
-        super(id);
+    	replica = new ServiceReplica(id, this, this);
 
         this.interval = interval;
         this.hashs = hashs;
@@ -115,12 +118,10 @@ public class LatencyServer extends ServiceReplica {
         new LatencyServer(processId,interval,hashs,replySize);
     }
 
-    @Override
-    protected byte[] serializeState() {
+    public byte[] getState() {
         return new byte[0];
     }
 
-    @Override
-    protected void deserializeState(byte[] state) {
+    public void setState(byte[] state) {
     }
 }
