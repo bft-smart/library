@@ -60,11 +60,11 @@ public class MessageHandler {
                 case TOMUtil.STOP:
                     type = "STOP";
                     break;
+                case TOMUtil.STOPDATA:
+                    type = "STOPDATA";
+                    break;
                 case TOMUtil.SYNC:
                     type = "SYNC";
-                    break;
-                case TOMUtil.CATCH_UP:
-                    type = "CATCH_UP";
                     break;
                 
             }

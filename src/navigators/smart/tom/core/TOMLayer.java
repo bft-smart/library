@@ -693,7 +693,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
                     // enviar mensagem SYNC para o novo lider
                     communication.send(b,
-                        new LCMessage(this.reconfManager.getStaticConf().getProcessId(), TOMUtil.SYNC, regency, payload));
+                        new LCMessage(this.reconfManager.getStaticConf().getProcessId(), TOMUtil.STOPDATA, regency, payload));
 
                     //TODO: Voltar a ligar o timeout
 
@@ -812,7 +812,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                     }
                 }
                 break;
-            case TOMUtil.SYNC: // mensagens SYNC
+            case TOMUtil.STOPDATA: // mensagens STOPDATA
                 {
 
                     int regency = msg.getReg();
@@ -893,7 +893,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                   }
             }
             break;
-        case TOMUtil.CATCH_UP: // mensagens de CATCH-UP
+        case TOMUtil.SYNC: // mensagens SYNC
             {
                 int regency = msg.getReg();
 
@@ -997,7 +997,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
                 // enviar a mensagem CATCH-UP
                 communication.send(this.reconfManager.getCurrentViewOtherAcceptors(),
-                    new LCMessage(this.reconfManager.getStaticConf().getProcessId(), TOMUtil.CATCH_UP, regency, payload));
+                    new LCMessage(this.reconfManager.getStaticConf().getProcessId(), TOMUtil.SYNC, regency, payload));
 
                 finalise(regency, lastHighestEid, currentEid, signedCollects, propose, batchSize, true);
 

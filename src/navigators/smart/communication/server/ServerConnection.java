@@ -171,7 +171,9 @@ public class ServerConnection {
      */
     private final void sendBytes(byte[] messageData) {
         int i = 0;
+        boolean abort = false;
         do {
+            if (abort) return; // if there is a need to reconnect, abort this method
             if (socket != null && socketOutStream != null) {
                 try {
                     //do an extra copy of the data to be sent, but on a single out stream write
@@ -191,9 +193,11 @@ public class ServerConnection {
                 } catch (IOException ex) {
                     closeSocket();
                     waitAndConnect();
+                    abort = true;
                 }
             } else {
                 waitAndConnect();
+                abort = true;
             }
             //br.ufsc.das.tom.util.Logger.println("(ServerConnection.sendBytes) iteration " + i);
             i++;
@@ -333,6 +337,7 @@ public class ServerConnection {
             } catch (InterruptedException ie) {
             }
 
+            outQueue.clear();
             reconnect(null);
         }
     }
