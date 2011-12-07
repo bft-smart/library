@@ -66,11 +66,14 @@ public class MessageHandler {
                 case TOMUtil.SYNC:
                     type = "SYNC";
                     break;
-                
+                default:
+                    type = "LOCAL";
+                    break;
             }
             
             System.out.println("(MessageHandler.processData) LC_MSG received: type " + type + ", regency " + lcMsg.getReg() + ", (replica " + lcMsg.getSender() + ")");
-            tomLayer.deliverTimeoutRequest(lcMsg);
+            if (lcMsg.TRIGGER_LC_LOCALLY) tomLayer.requestsTimer.run_lc_protocol();
+            else tomLayer.deliverTimeoutRequest(lcMsg);
         /**************************************************************/
 
         } else if (sm instanceof ForwardedMessage) {

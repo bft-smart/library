@@ -141,7 +141,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         if (reconfManager.getStaticConf().getRequestTimeout() == 0){
             this.requestsTimer = null;
         }
-        else this.requestsTimer = new RequestsTimer(this, reconfManager.getStaticConf().getRequestTimeout()); // Create requests timers manager (a thread)
+        else this.requestsTimer = new RequestsTimer(this, communication, reconfManager); // Create requests timers manager (a thread)
 
         this.clientsManager = new ClientsManager(reconfManager, requestsTimer); // Create clients manager
 
