@@ -26,8 +26,12 @@ import java.util.TimerTask;
 import java.util.TreeSet;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+import navigators.smart.communication.ServerCommunicationSystem;
+import navigators.smart.reconfiguration.ServerViewManager;
 import navigators.smart.tom.core.TOMLayer;
 import navigators.smart.tom.core.messages.TOMMessage;
+import navigators.smart.tom.leaderchange.LCMessage;
+import navigators.smart.tom.util.TOMUtil;
 
 
 /**
@@ -42,15 +46,24 @@ public class RequestsTimer {
     private long timeout;
     private TreeSet<TOMMessage> watched = new TreeSet<TOMMessage>();
     private ReentrantReadWriteLock rwLock = new ReentrantReadWriteLock();
+    
+    
+    private ServerCommunicationSystem communication; // Communication system between replicas
+    private ServerViewManager reconfManager; // Reconfiguration manager
+    
     //private Storage st1 = new Storage(100000);
     //private Storage st2 = new Storage(10000);
     /**
      * Creates a new instance of RequestsTimer
      * @param tomLayer TOM layer
      */
-    public RequestsTimer(TOMLayer tomLayer, long timeout) {
+    public RequestsTimer(TOMLayer tomLayer, ServerCommunicationSystem communication, ServerViewManager reconfManager) {
         this.tomLayer = tomLayer;
-        this.timeout = timeout;
+        
+        this.communication = communication;
+        this.reconfManager = reconfManager;
+        
+        this.timeout = this.reconfManager.getStaticConf().getRequestTimeout();
     }
 
     /**
@@ -115,6 +128,51 @@ public class RequestsTimer {
         rwLock.writeLock().unlock();
     }
     
+    public void run_lc_protocol() {
+     
+        System.out.println("(RequestTimerTask.run) EU NUNCA DEVIA CORRER QUANDO NAO HA TIMEOUTS");
+        rwLock.readLock().lock();
+
+        LinkedList<TOMMessage> pendingRequests = new LinkedList<TOMMessage>();
+
+        for (Iterator<TOMMessage> i = watched.iterator(); i.hasNext();) {
+            TOMMessage request = i.next();
+            if ((request.receptionTime + System.currentTimeMillis()) > timeout) {
+                pendingRequests.add(request);
+            } else {
+                break;
+            }
+        }
+
+        if (!pendingRequests.isEmpty()) {
+            for (ListIterator<TOMMessage> li = pendingRequests.listIterator(); li.hasNext(); ) {
+                TOMMessage request = li.next();
+                if (!request.timeout) {
+
+                    request.signed = request.serializedMessageSignature != null;
+                    tomLayer.forwardRequestToLeader(request);
+                    request.timeout = true;
+                    li.remove();
+                }
+            }
+
+            if (!pendingRequests.isEmpty()) {
+                System.out.println("Timeout for messages: " + pendingRequests);
+                //tomLayer.requestTimeout(pendingRequests);
+                tomLayer.triggerTimeout(pendingRequests);
+            }
+
+            rtTask = new RequestTimerTask();
+            timer.schedule(rtTask, timeout);
+        } else {
+            rtTask = null;
+            timer.purge();
+        }
+
+        rwLock.readLock().unlock();
+
+    }
+    
     class RequestTimerTask extends TimerTask {
 
         @Override
@@ -123,46 +181,12 @@ public class RequestsTimer {
          * message on the watched list.
          */
         public void run() {
-            System.out.println("(RequestTimerTask.run) EU NUNCA DEVIA CORRER QUANDO NAO HA TIMEOUTS");
-            rwLock.readLock().lock();
 
-            LinkedList<TOMMessage> pendingRequests = new LinkedList<TOMMessage>();
+            int[] myself = new int[1];
+            myself[0] = reconfManager.getStaticConf().getProcessId();
 
-            for (Iterator<TOMMessage> i = watched.iterator(); i.hasNext();) {
-                TOMMessage request = i.next();
-                if ((request.receptionTime + System.currentTimeMillis()) > timeout) {
-                    pendingRequests.add(request);
-                } else {
-                    break;
-                }
-            }
+            communication.send(myself, new LCMessage(-1, TOMUtil.TRIGGER_LC_LOCALLY, -1, null));
 
-            if (!pendingRequests.isEmpty()) {
-                for (ListIterator<TOMMessage> li = pendingRequests.listIterator(); li.hasNext(); ) {
-                    TOMMessage request = li.next();
-                    if (!request.timeout) {
-
-                        request.signed = request.serializedMessageSignature != null;
-                        tomLayer.forwardRequestToLeader(request);
-                        request.timeout = true;
-                        li.remove();
-                    }
-                }
-
-                if (!pendingRequests.isEmpty()) {
-                    System.out.println("Timeout for messages: " + pendingRequests);
-                    //tomLayer.requestTimeout(pendingRequests);
-                    tomLayer.triggerTimeout(pendingRequests);
-                }
-
-                rtTask = new RequestTimerTask();
-                timer.schedule(rtTask, timeout);
-            } else {
-                rtTask = null;
-                timer.purge();
-            }
-
-            rwLock.readLock().unlock();
         }
     }
 }

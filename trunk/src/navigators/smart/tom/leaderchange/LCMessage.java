@@ -19,10 +19,10 @@
 package navigators.smart.tom.leaderchange;
 
 import navigators.smart.communication.SystemMessage;
-import navigators.smart.tom.core.messages.*;
 import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
+import navigators.smart.tom.util.TOMUtil;
 
 /**
  * Mensagem usada na troca de lider e sincronizacao
@@ -33,11 +33,16 @@ public class LCMessage extends SystemMessage {
     private int type;
     private int ts;
     private byte[] payload;
+    public final boolean TRIGGER_LC_LOCALLY; // indicates that the replica should
+                                             // initiate the LC protocol locally
 
     /**
      * Constructor vazio
      */
-    public LCMessage(){}
+    public LCMessage(){
+    
+        this.TRIGGER_LC_LOCALLY = false;
+    }
 
 
     /**
@@ -52,6 +57,8 @@ public class LCMessage extends SystemMessage {
         this.type = type;
         this.ts = ts;
         this.payload = payload == null ? new byte[0] : payload;
+        if (type == TOMUtil.TRIGGER_LC_LOCALLY && from == -1) this.TRIGGER_LC_LOCALLY = true;
+        else this.TRIGGER_LC_LOCALLY  = false;
     }
 
     /**
