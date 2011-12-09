@@ -268,7 +268,9 @@ public class ServerConnection {
             } catch (UnknownHostException ex) {
                 ex.printStackTrace();
             } catch (IOException ex) {
-                ex.printStackTrace();
+                
+                System.out.println("Impossible to reconnect to replica " + remoteId);
+                //ex.printStackTrace();
             }
 
             if (socket != null) {

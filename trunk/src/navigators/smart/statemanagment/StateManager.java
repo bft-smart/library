@@ -74,7 +74,7 @@ public class StateManager {
         senderStates = new HashSet<SenderState>();
         senderRegencies = new HashSet<SenderRegency>();
 
-        this.replica = 0;
+        this.replica = 1;
 
         if (replica == manager.getStaticConf().getProcessId()) changeReplica();
         this.state = null;
@@ -208,7 +208,7 @@ public class StateManager {
         //******* EDUARDO END **************//
     }
 
-    public TransferableState getValidHash() {
+    private TransferableState getValidHash() {
 
         SenderState[] st = new SenderState[senderStates.size()];
         senderStates.toArray(st);

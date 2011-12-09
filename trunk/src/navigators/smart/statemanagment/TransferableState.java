@@ -37,7 +37,7 @@ public class TransferableState implements Serializable {
     private byte[] state; // State associated with the last checkpoint
     private byte[] stateHash; // Hash of the state associated with the last checkpoint
     private int lastEid = -1; // Execution ID for the last messages batch delivered to the application
-    private boolean hasState; // indicates if the TransferableState object has a valid state
+    private boolean hasState; // indicates if the replica really had the requested state
 
     /**
      * Constructs a TansferableState
@@ -172,13 +172,15 @@ public class TransferableState implements Serializable {
             if (this.messageBatches != null && tState.messageBatches != null) {
 
                 if (this.messageBatches.length != tState.messageBatches.length) return false;
-                 
+                
                 for (int i = 0; i < this.messageBatches.length; i++) {
                     
                     if (this.messageBatches[i] == null && tState.messageBatches[i] != null) return false;
-                    else if (this.messageBatches[i] != null && tState.messageBatches[i] == null) return false;
-                    else if (!(this.messageBatches[i] == null && tState.messageBatches[i] == null)) return false;                           
-                    else if (!this.messageBatches[i].equals(tState.messageBatches[i])) return false;
+
+                    if (this.messageBatches[i] != null && tState.messageBatches[i] == null) return false;
+                    
+                    if (!(this.messageBatches[i] == null && tState.messageBatches[i] == null) &&
+                        (!this.messageBatches[i].equals(tState.messageBatches[i]))) return false;
                 }
             }
             return (Arrays.equals(this.stateHash, tState.stateHash) &&
@@ -187,6 +189,7 @@ public class TransferableState implements Serializable {
                     tState.lastCheckpointLeader == this.lastCheckpointLeader &&
                     tState.lastEid == this.lastEid && tState.hasState == this.hasState);
         }
+        System.out.println("vai retornar FALSO!");
         return false;
     }
 
