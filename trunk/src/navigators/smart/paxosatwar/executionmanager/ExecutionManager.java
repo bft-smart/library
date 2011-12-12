@@ -227,7 +227,7 @@ public final class ExecutionManager {
             addOutOfContextMessage(msg);
 
             if (reconfManager.getStaticConf().isStateTransferEnabled())
-                tomLayer.getStateManager().requestState(msg.getSender(),  msg.getNumber());
+                tomLayer.getStateManager().analyzeState(msg.getSender(),  msg.getNumber());
 
             else {
                 System.out.println("##################################################################################");

@@ -24,6 +24,7 @@ import java.io.ObjectInput;
 import java.io.ObjectOutput;
 
 import navigators.smart.communication.SystemMessage;
+import navigators.smart.tom.util.TOMUtil;
 
 
 /**
@@ -38,6 +39,8 @@ public class SMMessage extends SystemMessage implements Externalizable {
     private int type; // Message type
     private int replica; // Replica that should send the state
     private int regency; // Current regency
+    public final boolean TRIGGER_SM_LOCALLY; // indicates that the replica should
+                                             // initiate the SM protocol locally
 
     /**
      * Constructs a SMMessage
@@ -57,10 +60,13 @@ public class SMMessage extends SystemMessage implements Externalizable {
         this.sender = sender;
         this.regency = regency;
 
+        if (type == TOMUtil.TRIGGER_SM_LOCALLY && sender == -1) this.TRIGGER_SM_LOCALLY = true;
+        else this.TRIGGER_SM_LOCALLY  = false;
+
     }
 
     public SMMessage() {
-        
+        this.TRIGGER_SM_LOCALLY = false;
     }
     /**
      * Retrieves the state log

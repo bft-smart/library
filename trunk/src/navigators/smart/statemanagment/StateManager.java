@@ -74,7 +74,7 @@ public class StateManager {
         senderStates = new HashSet<SenderState>();
         senderRegencies = new HashSet<SenderRegency>();
 
-        this.replica = 1;
+        this.replica = 0;
 
         if (replica == manager.getStaticConf().getProcessId()) changeReplica();
         this.state = null;
@@ -289,49 +289,23 @@ public class StateManager {
         Logger.println("(TOMLayer.saveBatch) Finished saving batch of EID " + lastEid + ", round " + decisionRound + " and leader " + leader);
     }
 
-    public void requestState(int sender, int eid) {
+    public void analyzeState(int sender, int eid) {
 
-            Logger.println("(TOMLayer.requestState) The state transfer protocol is enabled");
+            Logger.println("(TOMLayer.analyzeState) The state transfer protocol is enabled");
 
             if (getWaiting() == -1) {
 
-                Logger.println("(TOMLayer.requestState) I'm not waiting for any state, so I will keep record of this message");
+                Logger.println("(TOMLayer.analyzeState) I'm not waiting for any state, so I will keep record of this message");
                 addEID(sender, eid);
 
                 if (getLastEID() < eid && moreThanF_EIDs(eid)) {
 
-                    Logger.println("(TOMLayer.requestState) I have now more than " + SVManager.getCurrentViewF() + " messages for EID " + eid + " which are beyond EID " + getLastEID());
-
-                    if (tomLayer.requestsTimer != null) tomLayer.requestsTimer.clearAll();
+                    Logger.println("(TOMLayer.analyzeState) I have now more than " + SVManager.getCurrentViewF() + " messages for EID " + eid + " which are beyond EID " + getLastEID());
+                    
                     setLastEID(eid);
                     setWaiting(eid - 1);
-                    //stateManager.emptyReplicas(eid);// isto causa uma excepcao
-
-                    SMMessage smsg = new SMMessage(SVManager.getStaticConf().getProcessId(),
-                            eid - 1, TOMUtil.SM_REQUEST, getReplica(), null, -1);
-                    tomLayer.getCommunication().send(SVManager.getCurrentViewOtherAcceptors(), smsg);
-
-                    Logger.println("(TOMLayer.requestState) I just sent a request to the other replicas for the state up to EID " + (eid - 1));
-
-                    TimerTask stateTask =  new TimerTask() {
-                        public void run() {
-
-                        lockTimer.lock();
-
-                        Logger.println("(TimerTask.run) Timeout for the replica that was supposed to send the complete state. Changing desired replica.");
-                        System.out.println("Timeout no timer do estado!");
-
-                        setWaiting(-1);
-                        changeReplica();
-                        emptyStates();
-                        setReplicaState(null);
-
-                        lockTimer.unlock();
-                        }
-                    };
-
-                    Timer stateTimer = new Timer("state timer");
-                    stateTimer.schedule(stateTask,1500);
+        
+                    requestState();
                 }
             }
 
@@ -340,6 +314,55 @@ public class StateManager {
         /************************* TESTE *************************/
     }
 
+    private void requestState() {
+        if (tomLayer.requestsTimer != null) tomLayer.requestsTimer.clearAll();
+
+        //stateManager.emptyReplicas(eid);// isto causa uma excepcao
+
+        SMMessage smsg = new SMMessage(SVManager.getStaticConf().getProcessId(),
+                getWaiting(), TOMUtil.SM_REQUEST, getReplica(), null, -1);
+        tomLayer.getCommunication().send(SVManager.getCurrentViewOtherAcceptors(), smsg);
+
+        Logger.println("(TOMLayer.requestState) I just sent a request to the other replicas for the state up to EID " + getWaiting());
+
+        TimerTask stateTask =  new TimerTask() {
+            public void run() {
+
+
+                int[] myself = new int[1];
+                myself[0] = SVManager.getStaticConf().getProcessId();
+                                
+                tomLayer.getCommunication().send(myself, new SMMessage(-1, getWaiting(), TOMUtil.TRIGGER_SM_LOCALLY, -1, null, -1));
+
+                
+                
+            }
+        };
+
+        stateTimer = new Timer("state timer");
+        stateTimer.schedule(stateTask,1500);
+
+    }
+    
+    public void stateTimeout() {
+        lockTimer.lock();
+        
+        Logger.println("(StateManager.stateTimeout) Timeout for the replica that was supposed to send the complete state. Changing desired replica.");
+        System.out.println("Timeout no timer do estado!");
+
+
+        if (stateTimer != null) stateTimer.cancel();
+                
+        //setWaiting(-1);
+        changeReplica();
+        emptyStates();
+        setReplicaState(null);
+        
+        requestState();
+
+        lockTimer.unlock();
+    }
+    
     public void SMRequestDeliver(SMMessage msg) {
 
         //******* EDUARDO BEGIN **************//
@@ -467,16 +490,18 @@ public class StateManager {
                         setWaiting(-1);
                         emptyStates();
                         setReplicaState(null);
+                        //requestState();
 
                         if (stateTimer != null) stateTimer.cancel();
                     } else if (haveState == -1) {
 
                         Logger.println("(TOMLayer.SMReplyDeliver) The replica from which I expected the state, sent one which doesn't match the hash of the others, or it never sent it at all");
 
-                        setWaiting(-1);
+                        //setWaiting(-1);
                         changeReplica();
                         emptyStates();
                         setReplicaState(null);
+                        requestState();
 
                         if (stateTimer != null) stateTimer.cancel();
                     }
