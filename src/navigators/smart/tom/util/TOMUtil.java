@@ -45,6 +45,7 @@ public class TOMUtil {
     public static final int SM_REPLY = 7;
 
     public static final int TRIGGER_LC_LOCALLY = 8;
+    public static final int TRIGGER_SM_LOCALLY = 9;
     
     //the signature engine used in the system and the signatureSize
     private static Signature signatureEngine;

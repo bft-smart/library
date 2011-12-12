@@ -83,7 +83,11 @@ public class MessageHandler {
         /** ISTO E CODIGO DO JOAO, PARA TRATAR DA TRANSFERENCIA DE ESTADO */
         } else if (sm instanceof SMMessage) {
             SMMessage smsg = (SMMessage) sm;
-            if (smsg.getType() == TOMUtil.SM_REQUEST) {
+
+            if (smsg.TRIGGER_SM_LOCALLY) {
+                tomLayer.getStateManager().stateTimeout();
+            }
+            else if (smsg.getType() == TOMUtil.SM_REQUEST) {
                 tomLayer.getStateManager().SMRequestDeliver(smsg);
             } else {
                 tomLayer.getStateManager().SMReplyDeliver(smsg);
