@@ -66,6 +66,19 @@ public class RequestsTimer {
         this.timeout = this.reconfManager.getStaticConf().getRequestTimeout();
     }
 
+    public void startTimer() {
+        if (rtTask == null) {
+            rtTask = new RequestTimerTask();
+            timer.schedule(rtTask, timeout);
+        }
+    }
+    
+    public void stopTimer() {
+        if (rtTask != null) {
+            rtTask.cancel();
+            rtTask = null;
+        }
+    }
     /**
      * Creates a timer for the given request
      * @param request Request to which the timer is being createf for
@@ -74,10 +87,7 @@ public class RequestsTimer {
         //long startInstant = System.nanoTime();
         rwLock.writeLock().lock();
         watched.add(request);
-        if (watched.size() >= 1 && rtTask == null) {
-            rtTask = new RequestTimerTask();
-            timer.schedule(rtTask, timeout);
-        }
+        if (watched.size() >= 1) startTimer();
         rwLock.writeLock().unlock();
         /*
         st1.store(System.nanoTime() - startInstant);
@@ -96,10 +106,7 @@ public class RequestsTimer {
     public void unwatch(TOMMessage request) {
         //long startInstant = System.nanoTime();
         rwLock.writeLock().lock();
-        if (watched.remove(request) && watched.isEmpty() && rtTask != null) {
-            rtTask.cancel();
-            rtTask = null;
-        }
+        if (watched.remove(request) && watched.isEmpty()) stopTimer();
         rwLock.writeLock().unlock();
         /*
         st2.store(System.nanoTime() - startInstant);
@@ -159,11 +166,13 @@ public class RequestsTimer {
             if (!pendingRequests.isEmpty()) {
                 System.out.println("Timeout for messages: " + pendingRequests);
                 //tomLayer.requestTimeout(pendingRequests);
+                //stopTimer();
                 tomLayer.triggerTimeout(pendingRequests);
             }
-
-            rtTask = new RequestTimerTask();
-            timer.schedule(rtTask, timeout);
+            else {
+                rtTask = new RequestTimerTask();
+                timer.schedule(rtTask, timeout);
+            }
         } else {
             rtTask = null;
             timer.purge();
