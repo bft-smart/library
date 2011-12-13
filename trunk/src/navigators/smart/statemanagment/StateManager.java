@@ -448,7 +448,7 @@ public class StateManager {
                     if (recvState != null && haveState == 1 && currentRegency > -1) {
 
                         lcManager.setLastReg(currentRegency);
-                        lcManager.setLastReg(currentRegency);
+                        lcManager.setNextReg(currentRegency);
                         tomLayer.lm.setNewReg(currentRegency);
 
                         Logger.println("(TOMLayer.SMReplyDeliver) The state of those replies is good!");

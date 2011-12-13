@@ -483,8 +483,11 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         lcManager.lastregLock();
 
         // ainda nao estou na fase de troca de lider?
+        
+        System.out.println("TIMEOUT!!! " + lcManager.getNextReg() + " == " + lcManager.getLastReg());
         if (lcManager.getNextReg() == lcManager.getLastReg()) {
 
+                System.out.println("Vou passar a troca de lider para regencia " + lcManager.getNextReg());
                 lcManager.setNextReg(lcManager.getLastReg() + 1); // definir proximo timestamp
 
                 int regency = lcManager.getNextReg();
@@ -525,17 +528,21 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                     out.close();
                     bos.close();
 
+                    System.out.println("(1) MANDEI STOP para regencia " + regency);
+                    
                     // enviar mensagem STOP
                     communication.send(this.reconfManager.getCurrentViewOtherAcceptors(),
                     new LCMessage(this.reconfManager.getStaticConf().getProcessId(), TOMUtil.STOP, regency, payload));
 
                 } catch (IOException ex) {
+                    ex.printStackTrace();
                     java.util.logging.Logger.getLogger(TOMLayer.class.getName()).log(Level.SEVERE, null, ex);
                 } finally {
                     try {
                         out.close();
                         bos.close();
                     } catch (IOException ex) {
+                        ex.printStackTrace();
                         java.util.logging.Logger.getLogger(TOMLayer.class.getName()).log(Level.SEVERE, null, ex);
                     }
                 }
@@ -553,6 +560,8 @@ public final class TOMLayer extends Thread implements RequestReceiver {
     // este metodo e invocado aquando de um timeout ou da recepcao de uma mensagem STOP
     private void evaluateStops(int nextReg) {
 
+        System.out.println("Metodo evaluateStops com regencia " + nextReg);
+        System.out.println("(1) Numero de STOPS: " + lcManager.getStopsSize(nextReg));
         ObjectOutputStream out = null;
         ByteArrayOutputStream bos = null;
 
@@ -560,9 +569,14 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         lcManager.lastregLock();
         lcManager.StopsLock();
 
+        System.out.println("(1) " + (lcManager.getStopsSize(nextReg) > this.reconfManager.getQuorumF()) + " " + (lcManager.getNextReg() == lcManager.getLastReg()));
         // passar para a fase de troca de lider se já tiver recebido mais de f mensagens
         if (lcManager.getStopsSize(nextReg) > this.reconfManager.getQuorumF() && lcManager.getNextReg() == lcManager.getLastReg()) {
 
+            System.out.println("STOPs suficientes para regencia " + nextReg);
+            
+            //requestsTimer.stopTimer();
+            
             lcManager.setNextReg(lcManager.getLastReg() + 1); // definir proximo timestamp
 
             int regency = lcManager.getNextReg();
@@ -594,25 +608,32 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                 out.close();
                 bos.close();
 
+                System.out.println("(2) MANDEI STOP para regencia " + regency);
+                
                 // enviar mensagem STOP
                 communication.send(this.reconfManager.getCurrentViewOtherAcceptors(),
                     new LCMessage(this.reconfManager.getStaticConf().getProcessId(), TOMUtil.STOP, regency, payload));
 
             } catch (IOException ex) {
+                ex.printStackTrace();
                 java.util.logging.Logger.getLogger(TOMLayer.class.getName()).log(Level.SEVERE, null, ex);
             } finally {
                 try {
                     out.close();
                     bos.close();
                 } catch (IOException ex) {
+                    ex.printStackTrace();
                     java.util.logging.Logger.getLogger(TOMLayer.class.getName()).log(Level.SEVERE, null, ex);
                 }
             }
         }
-
+        System.out.println("(2) Numero de STOPS: " + lcManager.getStopsSize(nextReg));
+        
+        System.out.println("(2) " + (lcManager.getStopsSize(nextReg) > this.reconfManager.getQuorum2F()) + " " + (lcManager.getNextReg() > lcManager.getLastReg()));
         // posso passar para a fase de sincronizacao?
         if (lcManager.getStopsSize(nextReg) > this.reconfManager.getQuorum2F() && lcManager.getNextReg() > lcManager.getLastReg()) {
 
+            System.out.println("Posso passar para a proxima fase de troca de lider para regencia " + nextReg);
             lcManager.setLastReg(lcManager.getNextReg()); // definir ultimo timestamp
 
             lcManager.nextregUnlock();
@@ -624,6 +645,8 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             lcManager.removeStops(nextReg);
 
             lcManager.StopsUnlock();
+            
+            //requestsTimer.startTimer();
 
             int leader = regency % this.reconfManager.getCurrentViewN(); // novo lider
             int in = getInExec(); // eid a executar
@@ -691,6 +714,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                     int[] b = new int[1];
                     b[0] = leader;
 
+                    System.out.println("MANDEI STOPDATA para regencia " + regency);
                     // enviar mensagem SYNC para o novo lider
                     communication.send(b,
                         new LCMessage(this.reconfManager.getStaticConf().getProcessId(), TOMUtil.STOPDATA, regency, payload));
@@ -698,12 +722,14 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                     //TODO: Voltar a ligar o timeout
 
                 } catch (IOException ex) {
+                    ex.printStackTrace();
                     java.util.logging.Logger.getLogger(TOMLayer.class.getName()).log(Level.SEVERE, null, ex);
                 } finally {
                     try {
                         out.close();
                         bos.close();
                     } catch (IOException ex) {
+                        ex.printStackTrace();
                         java.util.logging.Logger.getLogger(TOMLayer.class.getName()).log(Level.SEVERE, null, ex);
                     }
                 }
@@ -764,10 +790,13 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             case TOMUtil.STOP: // mensagens STOP
 
                 {
+                    System.out.println("Recebi STOP para regencia " + msg.getReg());
                     lcManager.lastregLock();
 
                     // esta mensagem e para a proxima mudanca de lider?
                     if (msg.getReg() == lcManager.getLastReg() + 1) {
+                        
+                        System.out.println("Este stop e para a proxima regencia!");
 
                         lcManager.lastregUnlock();
 
@@ -794,8 +823,10 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                             bis.close();
 
                         } catch (IOException ex) {
+                            ex.printStackTrace();
                             java.util.logging.Logger.getLogger(TOMLayer.class.getName()).log(Level.SEVERE, null, ex);
                         } catch (ClassNotFoundException ex) {
+                            ex.printStackTrace();
                             java.util.logging.Logger.getLogger(TOMLayer.class.getName()).log(Level.SEVERE, null, ex);
 
                         }
@@ -933,8 +964,10 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                         bis.close();
 
                     } catch (IOException ex) {
+                        ex.printStackTrace();
                         java.util.logging.Logger.getLogger(TOMLayer.class.getName()).log(Level.SEVERE, null, ex);
                     } catch (ClassNotFoundException ex) {
+                        ex.printStackTrace();
                         java.util.logging.Logger.getLogger(TOMLayer.class.getName()).log(Level.SEVERE, null, ex);
 
                     }
@@ -995,6 +1028,8 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                 out.close();
                 bos.close();
 
+                System.out.println("MANDEI SYNC para regencia " + regency);
+                            
                 // enviar a mensagem CATCH-UP
                 communication.send(this.reconfManager.getCurrentViewOtherAcceptors(),
                     new LCMessage(this.reconfManager.getStaticConf().getProcessId(), TOMUtil.SYNC, regency, payload));
@@ -1002,12 +1037,14 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                 finalise(regency, lastHighestEid, currentEid, signedCollects, propose, batchSize, true);
 
             } catch (IOException ex) {
+                ex.printStackTrace();
                 java.util.logging.Logger.getLogger(TOMLayer.class.getName()).log(Level.SEVERE, null, ex);
             } finally {
                 try {
                     out.close();
                     bos.close();
                 } catch (IOException ex) {
+                    ex.printStackTrace();
                     java.util.logging.Logger.getLogger(TOMLayer.class.getName()).log(Level.SEVERE, null, ex);
                 }
             }
@@ -1098,8 +1135,8 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             } // acordar a thread que propoem valores na operacao normal
 
             
-            System.out.println(regency + " // WEAK: " + new BigInteger(r.propValueHash));
-            // enviar mensagens WEAK para as outras replicas
+            System.out.println(regency + " // WEAK: " + new String(r.propValueHash));
+            // enviar mensagens WEAK para as outras replicas           
             communication.send(this.reconfManager.getCurrentViewOtherAcceptors(),
                     acceptor.getFactory().createWeak(currentEid, r.getNumber(), r.propValueHash));
 
