@@ -83,18 +83,23 @@ public class KVClient {
 				System.out.println("Execute put function");
 				String value = null;
 				tableName = null;
-				String key = null;
+				String index = null;
+				String times = null;
 					tableName = console.readLine("Enter the valid table name in which you want to enter the data");
-					tableExists = bftMap.containsKey(tableName);
-					if (tableExists) {
+//					tableExists = bftMap.containsKey(tableName);
+//					if (tableExists) {
 						//if the table name does not exist then create the table
-						key = console.readLine("Enter the key");
+						index = console.readLine("Enter the index");
+						times = console.readLine("Enter how many inserts");
 						value = console.readLine("Enter the value");
-					}
+//					}
 
 				byte[] resultBytes;
-				for(int i=0; i< 100; i++) {
+				int init = Integer.parseInt(index);
+				int total = Integer.parseInt(times);
+				for(int i=0; i< total; i++) {
 				byte[] valueBytes = value.getBytes();
+				String key = "Key" + (i+init);
 				resultBytes = bftMap.putEntry(tableName, key, valueBytes);
 				System.out.println("Result : "+new String(resultBytes));
 				}
@@ -105,7 +110,7 @@ public class KVClient {
 				tableExists = false;
 				boolean keyExists = false;
 				tableName = null;
-				key = null;
+				String key = null;
 				do {
 					tableName = console.readLine("Enter the valid table name from which you want to get the values");
 					tableExists = bftMap.containsKey(tableName);

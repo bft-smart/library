@@ -154,6 +154,54 @@ public class BFTMapImpl implements Executable, Recoverable {
                     objOut.close();
                     reply = bos.toByteArray();
                     break;
+
+            
+                case KVRequestType.SIZE_TABLE:
+                    int size1 = tableMap.getSizeofTable();
+                    System.out.println("Size " + size1);
+                    out = new ByteArrayOutputStream();
+                    new DataOutputStream(out).writeInt(size1);
+                    reply = out.toByteArray();
+                    break;
+                case KVRequestType.GET:
+                    tableName = new DataInputStream(in).readUTF();
+                    System.out.println("tablename: " + tableName);
+                    key = new DataInputStream(in).readUTF();
+                    System.out.println("Key received: " + key);
+                    valueBytes = tableMap.getEntry(tableName, key);
+                    value = new String(valueBytes);
+                    System.out.println("The value to be get is: " + value);
+                    out = new ByteArrayOutputStream();
+                    new DataOutputStream(out).writeBytes(value);
+                    reply = out.toByteArray();
+                    break;
+                case KVRequestType.SIZE:
+                    String tableName2 = new DataInputStream(in).readUTF();
+                    int size = tableMap.getSize(tableName2);
+                    out = new ByteArrayOutputStream();
+                    new DataOutputStream(out).writeInt(size);
+                    reply = out.toByteArray();
+                    break;
+	            case KVRequestType.CHECK:
+	                tableName = new DataInputStream(in).readUTF();
+	                key = new DataInputStream(in).readUTF();
+	                System.out.println("Table Key received: " + key);
+	                valueBytes = tableMap.getEntry(tableName, key);
+	                boolean entryExists = valueBytes != null;
+	                out = new ByteArrayOutputStream();
+	                new DataOutputStream(out).writeBoolean(entryExists);
+	                reply = out.toByteArray();
+	                break;
+			    case KVRequestType.TAB_CREATE_CHECK:
+			        tableName = new DataInputStream(in).readUTF();
+			        System.out.println("Table of Table Key received: " + tableName);
+			        table = tableMap.getName(tableName);
+			        boolean tableExists = (table != null);
+			        System.out.println("Table exists: " + tableExists);
+			        out = new ByteArrayOutputStream();
+			        new DataOutputStream(out).writeBoolean(tableExists);
+			        reply = out.toByteArray();
+			        break;
             }
             return reply;
         } catch (IOException ex) {
@@ -162,7 +210,6 @@ public class BFTMapImpl implements Executable, Recoverable {
         }
     }
 
-    @Override
     @SuppressWarnings("static-access")
     public byte[] executeUnordered(byte[] command, MessageContext msgCtx) {
     	try {
@@ -191,8 +238,8 @@ public class BFTMapImpl implements Executable, Recoverable {
                     reply = out.toByteArray();
                     break;
                 case KVRequestType.SIZE:
-                    tableName = new DataInputStream(in).readUTF();
-                    int size = tableMap.getSize(tableName);
+                    String tableName2 = new DataInputStream(in).readUTF();
+                    int size = tableMap.getSize(tableName2);
                     System.out.println("Size " + size);
                     out = new ByteArrayOutputStream();
                     new DataOutputStream(out).writeInt(size);
@@ -212,7 +259,6 @@ public class BFTMapImpl implements Executable, Recoverable {
 			        tableName = new DataInputStream(in).readUTF();
 			        System.out.println("Table of Table Key received: " + tableName);
 			        Map<String, byte[]> table = tableMap.getName(tableName);
-			        System.out.println("Table exists: " + table);
 			        boolean tableExists = (table != null);
 			        System.out.println("Table exists: " + tableExists);
 			        out = new ByteArrayOutputStream();

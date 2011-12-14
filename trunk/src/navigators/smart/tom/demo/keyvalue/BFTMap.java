@@ -10,14 +10,11 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.Collection;
-import java.util.Comparator;
 import java.util.Set;
 
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import navigators.smart.tom.ServiceProxy;
-import navigators.smart.tom.core.messages.TOMMessage;
-import navigators.smart.tom.util.Extractor;
 
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -188,10 +185,7 @@ public class BFTMap implements Map<String, Map<String,byte[]>> {
 			new DataOutputStream(out).writeUTF((String) key);
 			byte[] rep = KVProxy.invoke(out.toByteArray(), true);
 			ByteArrayInputStream in = new ByteArrayInputStream(rep);
-			int contains = new DataInputStream(in).readInt();
-			boolean res = false;
-			if(contains == 1)
-				res = true;
+			boolean res = new DataInputStream(in).readBoolean();
 			return res;
 
 		} catch (IOException ex) {
@@ -209,7 +203,7 @@ public class BFTMap implements Map<String, Map<String,byte[]>> {
 			new DataOutputStream(out).writeInt(KVRequestType.CHECK);
 			new DataOutputStream(out).writeUTF((String) tableName);
 			new DataOutputStream(out).writeUTF((String) key);
-			byte[] rep = KVProxy.invoke(out.toByteArray(),false);
+			byte[] rep = KVProxy.invoke(out.toByteArray(),true);
 			ByteArrayInputStream in = new ByteArrayInputStream(rep);
 			boolean res = new DataInputStream(in).readBoolean();
 			return res;
