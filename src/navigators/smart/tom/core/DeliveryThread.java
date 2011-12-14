@@ -31,7 +31,6 @@ import navigators.smart.tom.core.messages.TOMMessage;
 import navigators.smart.tom.core.messages.TOMMessageType;
 import navigators.smart.tom.util.BatchReader;
 import navigators.smart.tom.util.Logger;
-import navigators.smart.tom.util.TOMUtil;
 
 /**
  * This class implements a thread which will deliver totally ordered requests to the application

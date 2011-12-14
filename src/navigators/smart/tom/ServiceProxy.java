@@ -88,9 +88,9 @@ public class ServiceProxy extends TOMSender {
             init(processId, configHome);
         }
 
-        //replyQuorum = (int) Math.ceil((getViewManager().getCurrentViewN()
-        //        + getViewManager().getCurrentViewF()) / 2) + 1;
-        replyQuorum = getViewManager().getCurrentViewF() + 1;
+        replyQuorum = (int) Math.ceil((getViewManager().getCurrentViewN()
+                + getViewManager().getCurrentViewF()) / 2) + 1;
+//        replyQuorum = getViewManager().getCurrentViewF() + 1;
 
         replies = new TOMMessage[getViewManager().getCurrentViewN()];
 
