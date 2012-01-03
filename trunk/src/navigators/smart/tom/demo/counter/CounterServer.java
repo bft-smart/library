@@ -26,7 +26,7 @@ import java.io.IOException;
 
 import navigators.smart.tom.MessageContext;
 import navigators.smart.tom.ServiceReplica;
-import navigators.smart.tom.server.Executable;
+import navigators.smart.tom.server.SingleExecutable;
 import navigators.smart.tom.server.Recoverable;
 
 
@@ -34,7 +34,7 @@ import navigators.smart.tom.server.Recoverable;
  * Example replica that implements a BFT replicated service (a counter).
  *
  */
-public final class CounterServer implements Executable, Recoverable  {
+public final class CounterServer implements SingleExecutable, Recoverable  {
     
 	private ServiceReplica replica;
     private int counter = 0;
