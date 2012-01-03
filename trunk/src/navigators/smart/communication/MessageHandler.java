@@ -83,7 +83,21 @@ public class MessageHandler {
         /** ISTO E CODIGO DO JOAO, PARA TRATAR DA TRANSFERENCIA DE ESTADO */
         } else if (sm instanceof SMMessage) {
             SMMessage smsg = (SMMessage) sm;
-
+            
+            String type = null;
+            switch(smsg.getType()) {
+                
+                case TOMUtil.SM_REQUEST:
+                    type = "SM_REQUEST";
+                    break;
+                case TOMUtil.SM_REPLY:
+                    type = "SM_REPLY";
+                    break;
+                default:
+                    type = "LOCAL";
+                    break;
+            }
+            System.out.println("(MessageHandler.processData) SM_MSG received: type " + type + ", regency " + smsg.getRegency() + ", (replica " + smsg.getSender() + ")");
             if (smsg.TRIGGER_SM_LOCALLY) {
                 tomLayer.getStateManager().stateTimeout();
             }

@@ -215,7 +215,7 @@ public class Round implements Serializable {
     public void setWeak(int acceptor, byte[] value) { // TODO: Condicao de corrida?
         //******* EDUARDO BEGIN **************//
         int p = this.manager.getCurrentViewPos(acceptor);
-        if (p >=0 && !weakSetted[p] && !isFrozen()) { //it can only be setted once
+        if (p >=0 && /*!weakSetted[p] &&*/ !isFrozen()) { //it can only be setted once
             weak[p] = value;
             weakSetted[p] = true;
         }
@@ -254,7 +254,7 @@ public class Round implements Serializable {
     public void setStrong(int acceptor, byte[] value) { // TODO: condicao de corrida?
         //******* EDUARDO BEGIN **************//
         int p = this.manager.getCurrentViewPos(acceptor);
-        if (p >= 0 && !strongSetted[p] && !isFrozen()) { //it can only be setted once
+        if (p >= 0 /*&& !strongSetted[p]*/ && !isFrozen()) { //it can only be setted once
             strong[p] = value;
             strongSetted[p] = true;
         }

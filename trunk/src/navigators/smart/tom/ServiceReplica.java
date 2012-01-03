@@ -210,7 +210,7 @@ public class ServiceReplica implements TOMReceiver {
 		// build the reply and send it to the client
 		tomMsg.reply = new TOMMessage(id, tomMsg.getSession(),
 				tomMsg.getSequence(), response, SVManager.getCurrentViewId());            
-		cs.send(new int[]{tomMsg.getSender()}, tomMsg.reply);
+                cs.send(new int[]{tomMsg.getSender()}, tomMsg.reply);
 	}
 
     public void receiveMessages(int consId, int regency, TOMMessage[] requests) {
@@ -227,10 +227,10 @@ public class ServiceReplica implements TOMReceiver {
         						firstRequest.nonces, regency, consId, request.getSender(), firstRequest);
         				request.deliveryTime = System.nanoTime();
         				response = ((SingleExecutable)executor).executeOrdered(request.getContent(), msgCtx);
-        	            // build the reply and send it to the client
-        	            request.reply = new TOMMessage(id, request.getSession(),
-        	                    request.getSequence(), response, SVManager.getCurrentViewId());
-        				cs.send(new int[]{request.getSender()}, request.reply);
+                                        // build the reply and send it to the client
+                                        request.reply = new TOMMessage(id, request.getSession(),
+                                        request.getSequence(), response, SVManager.getCurrentViewId());
+                                        cs.send(new int[]{request.getSender()}, request.reply);
         			} else if (request.getReqType() == TOMMessageType.RECONFIG) {
         				//Reconfiguration request to be processed after the batch
         				SVManager.enqueueUpdate(request);

@@ -47,11 +47,6 @@ public class LCManager {
     private int lastreg;
     private int nextreg;
 
-    //locks
-    private ReentrantLock lastregLock;
-    private ReentrantLock nextregLock;
-    private ReentrantLock StopsLock;
-
     //requests that timed out
     private List<TOMMessage> currentRequestTimedOut = null;
 
@@ -76,58 +71,12 @@ public class LCManager {
         this.lastreg = 0;
         this.nextreg = 0;
 
-        this.lastregLock = new ReentrantLock();
-        this.nextregLock = new ReentrantLock();
-        this.StopsLock = new ReentrantLock();
-
         this.stops = new HashMap<Integer,HashSet<Integer>>();
         this.lastEids = new HashMap<Integer, HashSet<LastEidData>>();
         this.collects = new HashMap<Integer, HashSet<SignedObject>>();
 
         this.SVManager = reconfManager;
         this.md = md;
-    }
-
-    /**
-     * Get lock for STOP info
-     */
-    public void StopsLock() {
-        StopsLock.lock();
-    }
-
-    /**
-     * Release lock for STOP info
-     */
-    public void StopsUnlock() {
-        StopsLock.unlock();
-    }
-
-    /**
-     * Get lock for lastreg
-     */
-    public void lastregLock() {
-        lastregLock.lock();
-    }
-
-    /**
-     * Release lock for lastreg
-     */
-    public void lastregUnlock() {
-        lastregLock.unlock();
-    }
-
-    /**
-     * Get lock for nextreg
-     */
-    public void nextregLock() {
-        nextregLock.lock();
-    }
-
-    /**
-     * Release lock for nextreg
-     */
-    public void nextregUnlock() {
-        nextregLock.unlock();
     }
 
     /**

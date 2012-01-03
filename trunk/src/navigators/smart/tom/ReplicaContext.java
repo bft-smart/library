@@ -8,7 +8,6 @@ import navigators.smart.communication.ServerCommunicationSystem;
 import navigators.smart.reconfiguration.ServerViewManager;
 import navigators.smart.reconfiguration.views.View;
 import navigators.smart.reconfiguration.util.TOMConfiguration;
-import navigators.smart.tom.core.messages.TOMMessage;
 
 /**
  *
@@ -27,17 +26,7 @@ public class ReplicaContext {
     
     //TODO: implement a method that allow the replica to send a message with
     //total order to all other replicas
-    
-    /**
-     * send a message to one or more clients.
-     * 
-     * @param targets the target receivers of the message
-     * @param msg the message to be sent
-     */
-    public void sendMessage(int[] targets, TOMMessage msg) {
-        cs.send(targets, msg);
-    }
-    
+       
     /**
      * Returns the static configuration of this replica.
      * 
