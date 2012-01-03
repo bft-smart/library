@@ -20,14 +20,14 @@ package navigators.smart.tom.demo.microbenchmarks;
 
 import navigators.smart.tom.MessageContext;
 import navigators.smart.tom.ServiceReplica;
-import navigators.smart.tom.server.Executable;
+import navigators.smart.tom.server.SingleExecutable;
 import navigators.smart.tom.server.Recoverable;
 import navigators.smart.tom.util.Storage;
 
 /**
  * Simple server that just acknowledge the reception of a request.
  */
-public class LatencyServer implements Executable, Recoverable {
+public class LatencyServer implements SingleExecutable, Recoverable {
     
     private int interval;
     private int hashs;

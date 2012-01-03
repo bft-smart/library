@@ -21,7 +21,7 @@ import java.util.logging.Logger;
 
 import navigators.smart.tom.MessageContext;
 import navigators.smart.tom.ServiceReplica;
-import navigators.smart.tom.server.Executable;
+import navigators.smart.tom.server.SingleExecutable;
 import navigators.smart.tom.server.Recoverable;
 
 /**
@@ -32,7 +32,7 @@ import navigators.smart.tom.server.Recoverable;
  * it with a implementation of Executable and Recoverable interfaces. 
  */
 
-public class BFTMapImpl implements Executable, Recoverable {
+public class BFTMapImpl implements SingleExecutable, Recoverable {
 
     BFTTableMap tableMap = new BFTTableMap();
     ServiceReplica replica = null;

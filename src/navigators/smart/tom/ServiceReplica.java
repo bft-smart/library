@@ -38,6 +38,7 @@ import navigators.smart.tom.core.messages.TOMMessageType;
 import navigators.smart.tom.server.BatchExecutable;
 import navigators.smart.tom.server.Executable;
 import navigators.smart.tom.server.Recoverable;
+import navigators.smart.tom.server.SingleExecutable;
 import navigators.smart.tom.util.ShutdownHookThread;
 import navigators.smart.tom.util.TOMUtil;
 
@@ -225,7 +226,7 @@ public class ServiceReplica implements TOMReceiver {
         				MessageContext msgCtx = new MessageContext(firstRequest.timestamp, 
         						firstRequest.nonces, regency, consId, request.getSender(), firstRequest);
         				request.deliveryTime = System.nanoTime();
-        				response = executor.executeOrdered(request.getContent(), msgCtx);
+        				response = ((SingleExecutable)executor).executeOrdered(request.getContent(), msgCtx);
         	            // build the reply and send it to the client
         	            request.reply = new TOMMessage(id, request.getSession(),
         	                    request.getSequence(), response, SVManager.getCurrentViewId());
