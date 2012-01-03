@@ -71,6 +71,8 @@ public class ShutdownHookThread extends Thread {
         //System.err.println("Pending requests: " +
         //        tomLayer.clientsManager.getPendingRequests());
         //System.err.println("Requests timers: " + tomLayer.requestsTimer);
+        
+        //System.out.println("Pending Requests: " + tomLayer.clientsManager.getPendingRequests());
         System.err.println("---------- ---------- ----------");
     }
 }

@@ -258,7 +258,6 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
     public void messageReceived(
             ChannelHandlerContext ctx, MessageEvent e) {
         TOMMessage sm = (TOMMessage) e.getMessage();
-
         //delivers message to replyReceived callback
         trr.replyReceived(sm);
     }

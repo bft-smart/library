@@ -125,6 +125,7 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 
     @Override
     public void exceptionCaught( ChannelHandlerContext ctx, ExceptionEvent e) {
+        e.getCause().printStackTrace();
         if (!(e.getCause() instanceof ClosedChannelException) && !(e.getCause() instanceof ConnectException)) {
             System.out.println("Connection with client closed...");
         } else {
@@ -137,7 +138,6 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
     @Override
     public void messageReceived(ChannelHandlerContext ctx, MessageEvent e) {
         //delivers message to TOMLayer
-        //System.out.println("Recebeu msg de "+((TOMMessage) e.getMessage()).toString());
         requestReceiver.requestReceived((TOMMessage) e.getMessage());
     }
 
@@ -175,8 +175,11 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
         this.requestReceiver = tl;
     }
 
+    private ReentrantLock sendLock = new ReentrantLock();
     @Override
     public void send(int[] targets, TOMMessage sm, boolean serializeClassHeaders) {
+        
+        //sendLock.lock();
         //serialize message
         DataOutputStream dos = null;
 
@@ -198,7 +201,6 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
             }
         }
 
-
         //replies are not signed in the current JBP version
         sm.signed = false;
         //produce signature if necessary (never in the current version)
@@ -208,7 +210,9 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
             //******* EDUARDO END **************//
             sm.serializedMessageSignature = data2;
         }
+
         for (int i = 0; i < targets.length; i++) {
+            
             rl.readLock().lock();
             NettyClientServerSession ncss = (NettyClientServerSession) sessionTable.get(targets[i]);
             if (ncss != null) {
@@ -216,13 +220,14 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
                 rl.readLock().unlock();
                 sm.destination = targets[i];
                 //send message
-                try {
-                    session.write(sm).await();
-                } catch (InterruptedException ex) {
-                }
+                sendLock.lock();
+                session.write(sm); // This used to invoke "await". Removed to avoid blockage and race condition.
+                sendLock.unlock();
             } else {
                 rl.readLock().unlock();
             }
         }
+        //sendLock.unlock();
+
     }
 }

@@ -48,7 +48,7 @@ public class ServiceProxy extends TOMSender {
     private TOMMessage replies[] = null; // Replies from replicas are stored here
     private int receivedReplies = 0; // Number of received replies
     private TOMMessage response = null; // Reply delivered to the application
-    private int invokeTimeout = 60;
+    private int invokeTimeout = 40;
     private Comparator<byte[]> comparator;
     private Extractor extractor;
 
@@ -180,6 +180,10 @@ public class ServiceProxy extends TOMSender {
                 Logger.println("###################TIMEOUT#######################");
                 Logger.println("Reply timeout for reqId=" + reqId);
                 canSendLock.unlock();
+                
+                System.out.print(reqId + " // TIMEOUT // ");
+                System.out.println("Replies received: " + receivedReplies);
+                
                 return null;
             }
         } catch (InterruptedException ex) {
@@ -260,6 +264,7 @@ public class ServiceProxy extends TOMSender {
      */
     @Override
     public void replyReceived(TOMMessage reply) {
+        
         canReceiveLock.lock();
         if (reqId == -1) {//no message being expected
             Logger.println("throwing out request: sender=" + reply.getSender() + " reqId=" + reply.getSequence());

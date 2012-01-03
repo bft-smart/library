@@ -166,7 +166,7 @@ public class RequestsTimer {
             if (!pendingRequests.isEmpty()) {
                 System.out.println("Timeout for messages: " + pendingRequests);
                 //tomLayer.requestTimeout(pendingRequests);
-                //stopTimer();
+                stopTimer();
                 tomLayer.triggerTimeout(pendingRequests);
             }
             else {
