@@ -17,6 +17,8 @@
  */
 package navigators.smart.tom;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Level;
@@ -214,9 +216,93 @@ public class ServiceReplica implements TOMReceiver {
 	}
 
     public void receiveMessages(int consId, int regency, TOMMessage[] requests) {
-    	if(executor instanceof BatchExecutable) {
+		TOMMessage firstRequest = requests[0];
+
+		if(executor instanceof BatchExecutable) {
+    		//DEBUG
+            navigators.smart.tom.util.Logger.println("BATCHEXECUTOR");
+			
+			int numRequests = 0;
+			
+			//Messages to put in the batch
+			List<TOMMessage> toBatch = new ArrayList<TOMMessage>();
+			
+			//Message Contexts (one Context per message in the batch)
+			List<MessageContext> msgCtxts = new ArrayList<MessageContext>();
+			
+			for (TOMMessage request : requests) {
+				if (request.getViewID() == SVManager.getCurrentViewId()) {
+					
+					//If message is a request, put message in the toBatch list
+					if (request.getReqType() == TOMMessageType.REQUEST) {
+						numRequests++;
+						
+						//Make new message context
+						MessageContext msgCtx = new MessageContext(
+								firstRequest.timestamp, firstRequest.nonces,
+								regency, consId, request.getSender(),
+								firstRequest);
+						
+						//Put context in the message context list
+						msgCtxts.add(msgCtx);
+						
+						request.deliveryTime = System.nanoTime();
+						
+						//Add message to the ToBatch list
+						toBatch.add(request);
+					} else if (request.getReqType() == TOMMessageType.RECONFIG) {
+						// Reconfiguration request to be processed after the
+						// batch
+						SVManager.enqueueUpdate(request);
+					} else {
+						throw new RuntimeException("Should never reach here!");
+					}
+					
+				} else {
+					// message sender had an old view, resend the message to
+					// him
+					tomLayer.getCommunication().send(
+							new int[] { request.getSender() },
+							new TOMMessage(SVManager.getStaticConf()
+									.getProcessId(), request.getSession(),
+									request.getSequence(), TOMUtil
+											.getBytes(SVManager
+													.getCurrentView()),
+									SVManager.getCurrentViewId()));
+				}
+			}
+			
+			//In the end, if there are messages in the Batch
+			if(numRequests > 0){
+				//Make new batch to deliver
+				byte[][] batch = new byte[numRequests][];
+				
+				//Put messages in the batch
+				int line = 0;
+				for(TOMMessage m : toBatch){
+					batch[line] = m.getContent();
+				}
+				
+				MessageContext[] msgContexts = new MessageContext[msgCtxts.size()];
+				
+				msgContexts = msgCtxts.toArray(msgContexts);
+				
+				//Deliver the batch and wait for replies
+				byte[][] replies = ((BatchExecutable) executor).executeBatch(batch, msgContexts);
+				
+				//Send the replies back to the client
+				for(int index = 0; index < toBatch.size(); index++){
+					TOMMessage request = toBatch.get(index);
+					request.reply = new TOMMessage(id,
+							request.getSession(), request.getSequence(),
+							replies[index], SVManager.getCurrentViewId());
+					cs.send(new int[] { request.getSender() }, request.reply);
+				}
+				
+				//DEBUG
+	            navigators.smart.tom.util.Logger.println("BATCHEXECUTOR END");
+			}
     	} else {
-        	TOMMessage firstRequest = requests[0];
         	for (TOMMessage request: requests) {
         		if (request.getViewID() == SVManager.getCurrentViewId()) {
         			if (request.getReqType() == TOMMessageType.REQUEST) {
