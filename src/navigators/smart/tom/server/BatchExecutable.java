@@ -15,6 +15,6 @@ public interface BatchExecutable extends Executable {
 	 * @param msgCtx
 	 * @return
 	 */
-    public byte[][] executeBatch(byte[][] command, MessageContext msgCtx);
+    public byte[][] executeBatch(byte[][] command, MessageContext[] msgCtx);
 
 }
