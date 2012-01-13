@@ -179,7 +179,6 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
     @Override
     public void send(int[] targets, TOMMessage sm, boolean serializeClassHeaders) {
         
-        //sendLock.lock();
         //serialize message
         DataOutputStream dos = null;
 
@@ -227,7 +226,5 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
                 rl.readLock().unlock();
             }
         }
-        //sendLock.unlock();
-
     }
 }

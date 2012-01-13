@@ -32,6 +32,7 @@ public final class ThroughputLatencyServer implements SingleExecutable, Recovera
     
     private int interval;
     private int replySize;
+    private float maxTp = -1;
     private boolean context;
     
     private byte[] state;
@@ -92,12 +93,17 @@ public final class ThroughputLatencyServer implements SingleExecutable, Recovera
         weakLatency.store(msgCtx.getFirstInBatch().strongSentTime - msgCtx.getFirstInBatch().weakSentTime);
         strongLatency.store(msgCtx.getFirstInBatch().decisionTime - msgCtx.getFirstInBatch().strongSentTime);
 
+        float tp = -1;
         if(iterations % interval == 0) {
             if (context) System.out.println("--- (Context)  iterations: "+ iterations + " // regency: " + msgCtx.getRegency() + " // consensus: " + msgCtx.getConsensusId() + " ---");
             
             System.out.println("--- Measurements after "+ iterations+" ops ("+interval+" samples) ---");
             
-            System.out.println("Throughput = " +  (float)(interval*1000/(float)(System.currentTimeMillis()-throughputMeasurementStartTime)) +" operations/sec");            
+            tp = (float)(interval*1000/(float)(System.currentTimeMillis()-throughputMeasurementStartTime));
+            
+            if (tp > maxTp) maxTp = tp;
+            
+            System.out.println("Throughput = " + tp +" operations/sec (Maximum observed: " + maxTp + " ops/sec)");            
             
             System.out.println("Total latency = " + totalLatency.getAverage(false) / 1000 + " (+/- "+ (long)totalLatency.getDP(false) / 1000 +") us ");
             totalLatency.reset();
