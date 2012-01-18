@@ -28,8 +28,11 @@ import java.util.Map;
 public class BFTMap implements Map<String, Map<String,byte[]>> {
 
 	ServiceProxy KVProxy = null;
-	BFTMap(int id) {
+        private boolean useReadOnly;
+        
+	BFTMap(int id, boolean useReadOnly) {
 		KVProxy = new ServiceProxy(id, "config");
+                this.useReadOnly = useReadOnly;
 	}
 	ByteArrayOutputStream out = null;
 
@@ -151,7 +154,7 @@ public class BFTMap implements Map<String, Map<String,byte[]>> {
 		try {
 			out = new ByteArrayOutputStream();
 			new DataOutputStream(out).writeInt(KVRequestType.SIZE_TABLE);
-			byte[] rep = KVProxy.invoke(out.toByteArray(), true);
+			byte[] rep = KVProxy.invoke(out.toByteArray(), useReadOnly);
 			ByteArrayInputStream in = new ByteArrayInputStream(rep);
 			int size = new DataInputStream(in).readInt();
 			return size;
@@ -166,7 +169,7 @@ public class BFTMap implements Map<String, Map<String,byte[]>> {
 			out = new ByteArrayOutputStream();
 			new DataOutputStream(out).writeInt(KVRequestType.SIZE);
 			new DataOutputStream(out).writeUTF(tableName);
-			byte[] rep = KVProxy.invoke(out.toByteArray(), true);
+			byte[] rep = KVProxy.invoke(out.toByteArray(), useReadOnly);
 			ByteArrayInputStream in = new ByteArrayInputStream(rep);
 			int size = new DataInputStream(in).readInt();
 			return size;
@@ -183,7 +186,7 @@ public class BFTMap implements Map<String, Map<String,byte[]>> {
 			out = new ByteArrayOutputStream();
 			new DataOutputStream(out).writeInt(KVRequestType.TAB_CREATE_CHECK);
 			new DataOutputStream(out).writeUTF((String) key);
-			byte[] rep = KVProxy.invoke(out.toByteArray(), true);
+			byte[] rep = KVProxy.invoke(out.toByteArray(), useReadOnly);
 			ByteArrayInputStream in = new ByteArrayInputStream(rep);
 			boolean res = new DataInputStream(in).readBoolean();
 			return res;
@@ -203,7 +206,7 @@ public class BFTMap implements Map<String, Map<String,byte[]>> {
 			new DataOutputStream(out).writeInt(KVRequestType.CHECK);
 			new DataOutputStream(out).writeUTF((String) tableName);
 			new DataOutputStream(out).writeUTF((String) key);
-			byte[] rep = KVProxy.invoke(out.toByteArray(),true);
+			byte[] rep = KVProxy.invoke(out.toByteArray(),useReadOnly);
 			ByteArrayInputStream in = new ByteArrayInputStream(rep);
 			boolean res = new DataInputStream(in).readBoolean();
 			return res;
