@@ -81,6 +81,9 @@ public class TOMUtil {
             obOut = new ObjectOutputStream(bOut);
 
             obOut.writeObject(o);
+            
+            obOut.flush();
+            bOut.flush();
             obOut.close();
             bOut.close();
 

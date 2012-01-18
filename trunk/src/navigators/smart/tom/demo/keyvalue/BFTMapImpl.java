@@ -31,7 +31,6 @@ import navigators.smart.tom.server.Recoverable;
  * This class will create a ServiceReplica and will initialize
  * it with a implementation of Executable and Recoverable interfaces. 
  */
-
 public class BFTMapImpl implements SingleExecutable, Recoverable {
 
     BFTTableMap tableMap = new BFTTableMap();
@@ -54,16 +53,15 @@ public class BFTMapImpl implements SingleExecutable, Recoverable {
     public byte[] getState() {
         try {
 
-            //save to file (not needed for now)
-            ObjectOutput out = new ObjectOutputStream(new FileOutputStream("MyObject.ser"));
-            out.writeObject(tableMap);
-            out.close();
-
             // serialize to byte array and return
             ByteArrayOutputStream bos = new ByteArrayOutputStream();
-            out = new ObjectOutputStream(bos);
+            ObjectOutput out = new ObjectOutputStream(bos);
             out.writeObject(tableMap);
+            
+            out.flush();
+            bos.flush();
             out.close();
+            bos.close();
             return bos.toByteArray();
         } catch (IOException ex) {
             Logger.getLogger(BFTMapImpl.class.getName()).log(Level.SEVERE, null, ex);
@@ -74,16 +72,13 @@ public class BFTMapImpl implements SingleExecutable, Recoverable {
     @Override
     public void setState(byte[] state) {
         try {
-            //save to file (not needed for now)
-            ObjectInput in = new ObjectInputStream(new FileInputStream("MyObject.ser"));
-            tableMap = (BFTTableMap) in.readObject();
-            in.close();
 
             // serialize to byte array and return
             ByteArrayInputStream bis = new ByteArrayInputStream(state);
-            in = new ObjectInputStream(bis);
+            ObjectInput in = new ObjectInputStream(bis);
             tableMap = (BFTTableMap) in.readObject();
             in.close();
+            bis.close();
 
         } catch (ClassNotFoundException ex) {
             Logger.getLogger(BFTMapImpl.class.getName()).log(Level.SEVERE, null, ex);

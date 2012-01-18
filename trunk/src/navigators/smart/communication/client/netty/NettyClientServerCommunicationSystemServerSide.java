@@ -138,7 +138,9 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
     @Override
     public void messageReceived(ChannelHandlerContext ctx, MessageEvent e) {
         //delivers message to TOMLayer
-        requestReceiver.requestReceived((TOMMessage) e.getMessage());
+        
+        if (requestReceiver == null) System.out.println("RECEIVER NULO!!!!!!!!!!!!");
+        else requestReceiver.requestReceived((TOMMessage) e.getMessage());
     }
 
     @Override

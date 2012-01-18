@@ -199,6 +199,8 @@ public class ServerViewManager extends ViewManager {
         lastJoinStet = new int[jSet.size()];
         int[] nextV = new int[currentView.getN() + jSet.size() - rSet.size()];
         int p = 0;
+        
+       boolean forceLC = false;
         for (int i = 0; i < jSet.size(); i++) {
             lastJoinStet[i] = jSet.get(i);
             nextV[p++] = jSet.get(i);
@@ -207,6 +209,10 @@ public class ServerViewManager extends ViewManager {
         for (int i = 0; i < currentView.getProcesses().length; i++) {
             if (!contains(currentView.getProcesses()[i], rSet)) {
                 nextV[p++] = currentView.getProcesses()[i];
+            } else if (tomLayer.lm.getCurrentLeader() == currentView.getProcesses()[i]) {
+                
+                forceLC = true;
+ 
             }
         }
 
@@ -227,6 +233,15 @@ public class ServerViewManager extends ViewManager {
         //TODO:Eliminar todas as informações guardadas sobre cada processo em rSet 
         //processos que executaram o leave!!!
         reconfigureTo(newV);
+        
+        if (forceLC) {
+            
+            //TODO: Reactive it and make it work
+            /*System.out.println("Forcing leader change");
+            tomLayer.requestsTimer.stopTimer();
+            tomLayer.triggerTimeout(new LinkedList<TOMMessage>());*/
+                
+        } 
         return TOMUtil.getBytes(new ReconfigureReply(newV, jSetInfo.toArray(new String[0]),
                  eid, tomLayer.lm.getLeader(eid, decisionRound)));
     }
@@ -290,7 +305,7 @@ public class ServerViewManager extends ViewManager {
             this.quorumFastDecide = (int) Math.ceil((this.currentView.getN() + 3 * this.quorumF) / 2);
         } else if (this.currentView != null && this.currentView.isMember(getStaticConf().getProcessId())) {
             //TODO: Saiu do sistema em newView -> LEAVE
-            //CODIGO PARA O LEAVE
+            //CODIGO PARA O LEAVE   
         }else{
             //TODO: Ainda não entrou no sistema
             
