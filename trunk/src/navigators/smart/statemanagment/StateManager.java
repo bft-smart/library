@@ -42,6 +42,7 @@ public class StateManager {
     private HashSet<SenderEid> senderEids = null;
     private HashSet<SenderState> senderStates = null;
     private HashSet<SenderRegency> senderRegencies = null;
+    private HashSet<SenderLeader> senderLeaders = null;
 
     private ReentrantLock lockState = new ReentrantLock();
     private ReentrantLock lockTimer = new ReentrantLock();
@@ -73,6 +74,7 @@ public class StateManager {
         senderEids = new HashSet<SenderEid>();
         senderStates = new HashSet<SenderState>();
         senderRegencies = new HashSet<SenderRegency>();
+        senderLeaders = new HashSet<SenderLeader>();
 
         this.replica = 0;
 
@@ -140,7 +142,11 @@ public class StateManager {
     public void addRegency(int sender, int regency) {
         senderRegencies.add(new SenderRegency(sender, regency));
     }
-
+    
+    public void addLeader(int sender, int leader) {
+        senderLeaders.add(new SenderLeader(sender, leader));
+    }
+    
     public void emptyRegencies() {
         senderRegencies.clear();
     }
@@ -166,7 +172,24 @@ public class StateManager {
         return count > SVManager.getQuorum2F();
         //******* EDUARDO END **************//
     }
+    
+    public boolean moreThan2F_Leaders(int leader) {
 
+        int count = 0;
+        HashSet<Integer> replicasCounted = new HashSet<Integer>();
+
+        for (SenderLeader m : senderLeaders) {
+            if (m.leader == leader && !replicasCounted.contains(m.sender)) {
+                replicasCounted.add(m.sender);
+                count++;
+            }
+        }
+
+        //******* EDUARDO BEGIN **************//
+        return count > SVManager.getQuorum2F();
+        //******* EDUARDO END **************//
+    }
+    
     public void addState(int sender, TransferableState state) {
         senderStates.add(new SenderState(sender, state));
     }
@@ -320,7 +343,7 @@ public class StateManager {
         //stateManager.emptyReplicas(eid);// isto causa uma excepcao
 
         SMMessage smsg = new SMMessage(SVManager.getStaticConf().getProcessId(),
-                getWaiting(), TOMUtil.SM_REQUEST, getReplica(), null, -1);
+                getWaiting(), TOMUtil.SM_REQUEST, getReplica(), null, -1, -1);
         tomLayer.getCommunication().send(SVManager.getCurrentViewOtherAcceptors(), smsg);
 
         Logger.println("(TOMLayer.requestState) I just sent a request to the other replicas for the state up to EID " + getWaiting());
@@ -332,7 +355,7 @@ public class StateManager {
                 int[] myself = new int[1];
                 myself[0] = SVManager.getStaticConf().getProcessId();
                                 
-                tomLayer.getCommunication().send(myself, new SMMessage(-1, getWaiting(), TOMUtil.TRIGGER_SM_LOCALLY, -1, null, -1));
+                tomLayer.getCommunication().send(myself, new SMMessage(-1, getWaiting(), TOMUtil.TRIGGER_SM_LOCALLY, -1, null, -1, -1));
 
                 
                 
@@ -390,7 +413,7 @@ public class StateManager {
 
             int[] targets = { msg.getSender() };
             SMMessage smsg = new SMMessage(SVManager.getStaticConf().getProcessId(),
-                    msg.getEid(), TOMUtil.SM_REPLY, -1, thisState, lcManager.getLastReg());
+                    msg.getEid(), TOMUtil.SM_REPLY, -1, thisState, lcManager.getLastReg(), tomLayer.lm.getCurrentLeader());
 
             // malicious code, to force the replica not to send the state
             //if (reconfManager.getStaticConf().getProcessId() != 0 || !sendState)
@@ -415,9 +438,12 @@ public class StateManager {
             if (getWaiting() != -1 && msg.getEid() == getWaiting()) {
 
                 int currentRegency = -1;
+                int currentLeader = -1;
                 addRegency(msg.getSender(), msg.getRegency());
+                addLeader(msg.getSender(), msg.getLeader());
                 if (moreThan2F_Regencies(msg.getRegency())) currentRegency = msg.getRegency();
-
+                if (moreThan2F_Leaders(msg.getLeader())) currentLeader = msg.getLeader();
+                
                 Logger.println("(TOMLayer.SMReplyDeliver) The reply is for the EID that I want!");
 
                 if (msg.getSender() == getReplica() && msg.getState().getState() != null) {
@@ -445,11 +471,12 @@ public class StateManager {
                         }
                     }
 
-                    if (recvState != null && haveState == 1 && currentRegency > -1) {
+                    if (recvState != null && haveState == 1 && currentRegency > -1 && currentLeader > -1) {
 
                         lcManager.setLastReg(currentRegency);
                         lcManager.setNextReg(currentRegency);
                         tomLayer.lm.setNewReg(currentRegency);
+                        tomLayer.lm.setNewLeader(currentLeader);
 
                         Logger.println("(TOMLayer.SMReplyDeliver) The state of those replies is good!");
 
@@ -523,9 +550,9 @@ public class StateManager {
 
         @Override
         public boolean equals(Object obj) {
-            if (obj instanceof SenderEid) {
-                SenderEid m = (SenderEid) obj;
-                return (m.eid == this.regency && m.sender == this.sender);
+            if (obj instanceof SenderRegency) {
+                SenderRegency m = (SenderRegency) obj;
+                return (m.regency == this.regency && m.sender == this.sender);
             }
             return false;
         }
@@ -535,6 +562,34 @@ public class StateManager {
             int hash = 1;
             hash = hash * 31 + this.sender;
             hash = hash * 31 + this.regency;
+            return hash;
+        }
+    }
+    
+    private class SenderLeader {
+
+        private int sender;
+        private int leader;
+
+        SenderLeader(int sender, int leader) {
+            this.sender = sender;
+            this.leader = leader;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj instanceof SenderLeader) {
+                SenderLeader m = (SenderLeader) obj;
+                return (m.leader == this.leader && m.sender == this.sender);
+            }
+            return false;
+        }
+
+        @Override
+        public int hashCode() {
+            int hash = 1;
+            hash = hash * 31 + this.sender;
+            hash = hash * 31 + this.leader;
             return hash;
         }
     }

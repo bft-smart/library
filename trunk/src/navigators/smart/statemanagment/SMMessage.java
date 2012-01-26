@@ -39,6 +39,7 @@ public class SMMessage extends SystemMessage implements Externalizable {
     private int type; // Message type
     private int replica; // Replica that should send the state
     private int regency; // Current regency
+    private int leader; // Current leader
     public final boolean TRIGGER_SM_LOCALLY; // indicates that the replica should
                                              // initiate the SM protocol locally
 
@@ -50,7 +51,7 @@ public class SMMessage extends SystemMessage implements Externalizable {
      * @param replica Replica that should send the state
      * @param state State log
      */
-    public SMMessage(int sender, int eid, int type, int replica, TransferableState state, int regency) {
+    public SMMessage(int sender, int eid, int type, int replica, TransferableState state, int regency, int leader) {
 
         super(sender);
         this.state = state;
@@ -59,6 +60,7 @@ public class SMMessage extends SystemMessage implements Externalizable {
         this.replica = replica;
         this.sender = sender;
         this.regency = regency;
+        this.leader = leader;
 
         if (type == TOMUtil.TRIGGER_SM_LOCALLY && sender == -1) this.TRIGGER_SM_LOCALLY = true;
         else this.TRIGGER_SM_LOCALLY  = false;
@@ -107,7 +109,15 @@ public class SMMessage extends SystemMessage implements Externalizable {
     public int getRegency() {
         return regency;
     }
-
+    
+    /**
+     * Retrieves the leader that the replica had when sending the state
+     * @return The leader that the replica had when sending the state
+     */
+    public int getLeader() {
+        return leader;
+    }
+    
     @Override
     public void writeExternal(ObjectOutput out) throws IOException{
         super.writeExternal(out);
@@ -117,6 +127,7 @@ public class SMMessage extends SystemMessage implements Externalizable {
         out.writeInt(type);
         out.writeInt(replica);
         out.writeInt(regency);
+        out.writeInt(leader);
         out.writeObject(state);
     }
 
@@ -129,6 +140,7 @@ public class SMMessage extends SystemMessage implements Externalizable {
         type = in.readInt();
         replica = in.readInt();
         regency = in.readInt();
+        leader = in.readInt();
         state = (TransferableState) in.readObject();
     }
 }

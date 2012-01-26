@@ -39,6 +39,7 @@ public class LeaderModule {
     // este e a nova maneira de guardar info sobre o lider, desacoplada do consenso
     private ServerViewManager reconfManager;
     private int currentTS;
+    private int currentLeader;
     /**
      * Creates a new instance of LeaderModule
      */
@@ -47,6 +48,7 @@ public class LeaderModule {
         addLeaderInfo(0, 0, 0);
         this.reconfManager = reconfManager;
         currentTS = 0;
+        currentLeader = 0;
     }
 
     /**
@@ -78,12 +80,16 @@ public class LeaderModule {
         this.currentTS = ts;
     }
     
+    public void setNewLeader (int leader) {
+        this.currentLeader = leader;
+    }
     /**
      * Obtem o lider currente, a partir do timestamp que tem
      * @return Lider currente
      */
     public int getCurrentLeader() {
-        return (currentTS % this.reconfManager.getCurrentViewN());
+        //return (currentTS % this.reconfManager.getCurrentViewN());
+        return currentLeader;
     }
     /**
      * Retrieves the tuple for the specified round, given a list of tuples

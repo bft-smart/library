@@ -286,8 +286,8 @@ public final class Acceptor {
         round.getExecution().getLearner().firstMessageProposed.decisionTime = System.nanoTime();
 
         leaderModule.decided(round.getExecution().getId(),
-                leaderModule.getLeader(round.getExecution().getId(),
-                round.getNumber()));
+                tomLayer.lm.getCurrentLeader()/*leaderModule.getLeader(round.getExecution().getId(),
+                round.getNumber())*/);
 
         round.getExecution().decided(round, value);
     }

@@ -54,7 +54,7 @@ public class ShutdownHookThread extends Thread {
         Round r = manager.getExecution(tomLayer.getLastExec()).getLastRound();
         //******* EDUARDO BEGIN **************//
         if(r != null){
-            System.err.println("Last executed leader: " + lm.getLeader(r.getExecution().getId(),r.getNumber()));
+            System.err.println("Last executed leader: " + tomLayer.lm.getCurrentLeader()/*lm.getLeader(r.getExecution().getId(),r.getNumber())*/);
             System.err.println("State of the last executed round: "+r.toString());
         }
         //******* EDUARDO END **************//
@@ -62,7 +62,7 @@ public class ShutdownHookThread extends Thread {
         if(tomLayer.getInExec() != -1) {
             Round r2 = manager.getExecution(tomLayer.getInExec()).getLastRound();
             if(r2 != null) {
-                System.out.println("Consensus in execution leader: " + lm.getLeader(r2.getExecution().getId(),r.getNumber()));
+                System.out.println("Consensus in execution leader: " + tomLayer.lm.getCurrentLeader()/*lm.getLeader(r2.getExecution().getId(),r.getNumber())*/);
                 System.err.println("State of the round in execution: "+r2.toString());
             }
         }
