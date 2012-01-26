@@ -59,6 +59,8 @@ public class LCManager {
     private ServerViewManager SVManager;
     private MessageDigest md;
     private TOMLayer tomLayer;
+    
+    private int currentLeader;
 
     /**
      * Constructor
@@ -70,6 +72,7 @@ public class LCManager {
         this.tomLayer = tomLayer;
         this.lastreg = 0;
         this.nextreg = 0;
+        this.currentLeader = 0;
 
         this.stops = new HashMap<Integer,HashSet<Integer>>();
         this.lastEids = new HashMap<Integer, HashSet<LastEidData>>();
@@ -78,7 +81,34 @@ public class LCManager {
         this.SVManager = reconfManager;
         this.md = md;
     }
+    public int getNewLeader() {
 
+        int[] proc = SVManager.getCurrentViewProcesses();
+        int minProc = proc[0];
+        int maxProc = proc[0];
+        
+        
+        System.out.println("PROCESSOS: ");
+        for (int i = 0; i < proc.length; i++)
+            System.out.println(proc[i]);
+            
+        for (int p : proc) {
+            if (p < minProc) minProc = p;
+            if (p > maxProc) maxProc = p;
+        }
+ 
+        
+        do {
+            currentLeader++;
+            if (currentLeader > maxProc) {
+
+                currentLeader = minProc;    
+            }
+        } while(!SVManager.isCurrentViewMember(currentLeader));
+        
+        return currentLeader;
+    }
+    
     /**
      * This is meant to keep track of timed out messages in this replica
      *

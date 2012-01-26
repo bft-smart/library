@@ -618,10 +618,14 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             
             requestsTimer.startTimer();
 
-            int leader = regency % this.reconfManager.getCurrentViewN(); // novo lider
+            //int leader = regency % this.reconfManager.getCurrentViewN(); // novo lider
+            int leader = lcManager.getNewLeader();
             int in = getInExec(); // eid a executar
             int last = getLastExec(); // ultimo eid decidido
             
+            lm.setNewReg(regency);
+            lm.setNewLeader(leader);
+                    
             // Se eu nao for o lider, tenho que enviar uma mensagem STOPDATA para ele
             if (leader != this.reconfManager.getStaticConf().getProcessId()) {
 
@@ -676,8 +680,6 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                     byte[] payload = bos.toByteArray();
                     out.close();
                     bos.close();
-
-                    lm.setNewReg(regency);
 
                     int[] b = new int[1];
                     b[0] = leader;
@@ -801,7 +803,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
                     // Sou o novo lider e estou a espera destas mensagem?
                     if (regency == lcManager.getLastReg() &&
-                            this.reconfManager.getStaticConf().getProcessId() == (regency % this.reconfManager.getCurrentViewN())) {
+                            this.reconfManager.getStaticConf().getProcessId() == lm.getCurrentLeader()/*(regency % this.reconfManager.getCurrentViewN())*/) {
                         
                         //TODO: E preciso verificar a prova do ultimo consenso decidido e a assinatura do estado do consenso actual!
 
@@ -877,7 +879,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
                 // Estou a espera desta mensagem, e recebi-a do novo lider?
                 if (msg.getReg() == lcManager.getLastReg() &&
-                        msg.getReg() == lcManager.getNextReg() && msg.getSender() == (regency % this.reconfManager.getCurrentViewN())) {
+                        msg.getReg() == lcManager.getNextReg() && msg.getSender() == lm.getCurrentLeader()/*(regency % this.reconfManager.getCurrentViewN())*/) {
 
                     LastEidData lastHighestEid = null;
                     int currentEid = -1;

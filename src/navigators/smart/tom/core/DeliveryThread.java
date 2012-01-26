@@ -298,11 +298,11 @@ public final class DeliveryThread extends Thread {
             if ((cons.getId() > 0) && ((cons.getId() % manager.getStaticConf().getCheckpointPeriod()) == 0)) {
                 Logger.println("(DeliveryThread.run) Performing checkpoint for consensus " + cons.getId());
                 byte[] state = receiver.getState();
-                tomLayer.getStateManager().saveState(state, cons.getId(), cons.getDecisionRound().getNumber(), tomLayer.lm.getLeader(cons.getId(), cons.getDecisionRound().getNumber()));
+                tomLayer.getStateManager().saveState(state, cons.getId(), cons.getDecisionRound().getNumber(), tomLayer.lm.getCurrentLeader()/*tomLayer.lm.getLeader(cons.getId(), cons.getDecisionRound().getNumber())*/);
                 //TODO: possivelmente fazer mais alguma coisa
             } else {
                 Logger.println("(DeliveryThread.run) Storing message batch in the state log for consensus " + cons.getId());
-                tomLayer.getStateManager().saveBatch(cons.getDecision(), cons.getId(), cons.getDecisionRound().getNumber(), tomLayer.lm.getLeader(cons.getId(), cons.getDecisionRound().getNumber()));
+                tomLayer.getStateManager().saveBatch(cons.getDecision(), cons.getId(), cons.getDecisionRound().getNumber(), tomLayer.lm.getCurrentLeader()/*tomLayer.lm.getLeader(cons.getId(), cons.getDecisionRound().getNumber())*/);
                 //TODO: possivelmente fazer mais alguma coisa
             }
         }

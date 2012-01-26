@@ -243,7 +243,7 @@ public class ServerViewManager extends ViewManager {
                 
         } 
         return TOMUtil.getBytes(new ReconfigureReply(newV, jSetInfo.toArray(new String[0]),
-                 eid, tomLayer.lm.getLeader(eid, decisionRound)));
+                 eid, tomLayer.lm.getCurrentLeader() /*tomLayer.lm.getLeader(eid, decisionRound)*/));
     }
 
     public TOMMessage[] clearUpdates() {
