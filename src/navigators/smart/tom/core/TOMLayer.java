@@ -167,7 +167,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         this.dt.start();
 
         /** ISTO E CODIGO DO JOAO, PARA TRATAR DOS CHECKPOINTS E TRANSFERENCIA DE ESTADO*/
-        this.stateManager = new StateManager(this.reconfManager, this, dt, lcManager);
+        this.stateManager = new StateManager(this.reconfManager, this, dt, lcManager, execManager);
         /*******************************************************/
     }
 
@@ -482,11 +482,14 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
         ObjectOutputStream out = null;
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
-
-        // ainda nao estou na fase de troca de lider?
         
-        if (lcManager.getNextReg() == lcManager.getLastReg()) {
+        requestsTimer.stopTimer();
+        requestsTimer.Enabled(false);
+                
+        // ainda nao estou na fase de troca de lider?
 
+        if (lcManager.getNextReg() == lcManager.getLastReg()) {
+               
                 lcManager.setNextReg(lcManager.getLastReg() + 1); // definir proximo timestamp
 
                 int regency = lcManager.getNextReg();
@@ -555,7 +558,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         // passar para a fase de troca de lider se já tiver recebido mais de f mensagens
         if (lcManager.getStopsSize(nextReg) > this.reconfManager.getQuorumF() && lcManager.getNextReg() == lcManager.getLastReg()) {
 
-           
+           requestsTimer.Enabled(false);
             requestsTimer.stopTimer();
             
             lcManager.setNextReg(lcManager.getLastReg() + 1); // definir proximo timestamp
@@ -616,6 +619,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             // evitar um memory leak
             lcManager.removeStops(nextReg);
             
+            requestsTimer.Enabled(true);
             requestsTimer.startTimer();
 
             //int leader = regency % this.reconfManager.getCurrentViewN(); // novo lider

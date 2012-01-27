@@ -65,6 +65,8 @@ public final class DeliveryThread extends Thread {
      */
     public void delivery(Consensus cons) {
         if (!containsGoodReconfig(cons)) {
+
+            Logger.println("(DeliveryThread.delivery) Consensus ID " + cons.getId() + " does not contain good reconfiguration");
             //set this consensus as the last executed
             tomLayer.setLastExec(cons.getId());
             //define that end of this execution

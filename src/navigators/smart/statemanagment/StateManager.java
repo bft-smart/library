@@ -20,9 +20,12 @@ package navigators.smart.statemanagment;
 
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Queue;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.locks.ReentrantLock;
+import navigators.smart.paxosatwar.executionmanager.ExecutionManager;
+import navigators.smart.paxosatwar.messages.PaxosMessage;
 import navigators.smart.reconfiguration.ServerViewManager;
 import navigators.smart.tom.core.DeliveryThread;
 import navigators.smart.tom.core.TOMLayer;
@@ -58,8 +61,9 @@ public class StateManager {
     private TOMLayer tomLayer;
     private DeliveryThread dt;
     private LCManager lcManager;
+    private ExecutionManager execManager;
     
-    public StateManager(ServerViewManager manager, TOMLayer tomLayer, DeliveryThread dt, LCManager lcManager) {
+    public StateManager(ServerViewManager manager, TOMLayer tomLayer, DeliveryThread dt, LCManager lcManager, ExecutionManager execManager) {
 
         //******* EDUARDO BEGIN **************//
         this.SVManager = manager;
@@ -69,6 +73,7 @@ public class StateManager {
         this.tomLayer = tomLayer;
         this.dt = dt;
         this.lcManager = lcManager;
+        this.execManager = execManager;
 
         this.log = new StateLog(k);
         senderEids = new HashSet<SenderEid>();
@@ -495,8 +500,26 @@ public class StateManager {
                         setWaiting(-1);
 
                         dt.update(recvState);
+                        
+                        //Deal with stopped messages that may come from synchronization phase
+                        if (execManager.stopped()) {
+                        
+                            Queue<PaxosMessage> stoppedMsgs = execManager.getStoppedMsgs();
+                        
+                            for (PaxosMessage stopped : stoppedMsgs) {
+                                
+                                if (stopped.getNumber() > msg.getEid())
+                                    execManager.addOutOfContextMessage(stopped);
+                            }
+                            
+                            execManager.clearStopped();
+                            execManager.restart();
+                        }
+                        
+                        
+                        
                         tomLayer.processOutOfContext();
-
+                        
                         dt.canDeliver();
 
                         //ot.OutOfContextUnlock();
@@ -507,6 +530,9 @@ public class StateManager {
 
                         System.out.println("Actualizei o estado!");
 
+                        tomLayer.requestsTimer.Enabled(true);
+                        tomLayer.requestsTimer.startTimer();
+                        
                     //******* EDUARDO BEGIN **************//
                     } else if (recvState == null && (SVManager.getCurrentViewN() / 2) < getReplies()) {
                     //******* EDUARDO END **************//

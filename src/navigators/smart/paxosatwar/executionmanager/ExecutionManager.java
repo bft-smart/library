@@ -123,6 +123,18 @@ public final class ExecutionManager {
         return proposer;
     }
 
+    
+    public boolean stopped() {
+        return stopped;
+    }
+    
+    public Queue<PaxosMessage> getStoppedMsgs() {
+        return stoppedMsgs;
+    }
+    
+    public void clearStopped() {
+        stoppedMsgs.clear();
+    }
     /**
      * Stops this execution manager
      */
@@ -138,6 +150,8 @@ public final class ExecutionManager {
         stoppedMsgsLock.unlock();
     }
 
+    
+    
     /**
      * Restarts this execution manager
      */
@@ -388,7 +402,7 @@ public final class ExecutionManager {
      *
      * @param m Out of context message to be stored
      */
-    private void addOutOfContextMessage(PaxosMessage m) {
+    public void addOutOfContextMessage(PaxosMessage m) {
         outOfContextLock.lock();
         /******* BEGIN OUTOFCONTEXT CRITICAL SECTION *******/
         if (m.getPaxosType() == MessageFactory.PROPOSE) {
