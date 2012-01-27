@@ -31,6 +31,7 @@ import navigators.smart.reconfiguration.ServerViewManager;
 import navigators.smart.tom.core.TOMLayer;
 import navigators.smart.tom.core.messages.TOMMessage;
 import navigators.smart.tom.leaderchange.LCMessage;
+import navigators.smart.tom.util.Logger;
 import navigators.smart.tom.util.TOMUtil;
 
 
@@ -47,6 +48,7 @@ public class RequestsTimer {
     private TreeSet<TOMMessage> watched = new TreeSet<TOMMessage>();
     private ReentrantReadWriteLock rwLock = new ReentrantReadWriteLock();
     
+    private boolean enabled = true;
     
     private ServerCommunicationSystem communication; // Communication system between replicas
     private ServerViewManager reconfManager; // Reconfiguration manager
@@ -79,6 +81,11 @@ public class RequestsTimer {
             rtTask = null;
         }
     }
+    
+    public void Enabled(boolean phase) {
+        
+        enabled = phase;
+    }
     /**
      * Creates a timer for the given request
      * @param request Request to which the timer is being createf for
@@ -87,7 +94,7 @@ public class RequestsTimer {
         //long startInstant = System.nanoTime();
         rwLock.writeLock().lock();
         watched.add(request);
-        if (watched.size() >= 1) startTimer();
+        if (watched.size() >= 1 && enabled) startTimer();
         rwLock.writeLock().unlock();
         /*
         st1.store(System.nanoTime() - startInstant);
@@ -166,7 +173,7 @@ public class RequestsTimer {
             if (!pendingRequests.isEmpty()) {
                 System.out.println("Timeout for messages: " + pendingRequests);
                 //tomLayer.requestTimeout(pendingRequests);
-                stopTimer();
+                //if (reconfManager.getStaticConf().getProcessId() == 4) Logger.debug = true;
                 tomLayer.triggerTimeout(pendingRequests);
             }
             else {
