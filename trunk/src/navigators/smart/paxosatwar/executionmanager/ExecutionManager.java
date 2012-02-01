@@ -67,7 +67,8 @@ public final class ExecutionManager {
     private int paxosHighMark; // Paxos high mark for consensus instances
     /** ISTO E CODIGO DO JOAO, PARA TRATAR DA TRANSFERENCIA DE ESTADO */
     private int revivalHighMark; // Paxos high mark for consensus instances when this replica EID equals 0
-
+    private int timeoutHighMark; // Paxos high mark for a timed-out replica
+    
     /******************************************************************/
     /**
      * Creates a new instance of ExecutionManager
@@ -90,6 +91,7 @@ public final class ExecutionManager {
         this.paxosHighMark = reconfManager.getStaticConf().getPaxosHighMark();
         /** ISTO E CODIGO DO JOAO, PARA TRATAR DA TRANSFERENCIA DE ESTADO */
         this.revivalHighMark = reconfManager.getStaticConf().getRevivalHighMark();
+        this.timeoutHighMark = reconfManager.getStaticConf().getTimeoutHighMark();
         /******************************************************************/
         //******* EDUARDO END **************//
     }
@@ -199,7 +201,8 @@ public final class ExecutionManager {
         // enquanto a replica esta a receber o estado das outras e a actualizar-se
         if (isRetrievingState || // Is this replica retrieving a state?
                 (!(lastConsId == -1 && msg.getNumber() >= (lastConsId + revivalHighMark)) && //not a recovered replica
-                (msg.getNumber() > lastConsId && (msg.getNumber() < (lastConsId + paxosHighMark))))) { // not an ahead of time message
+                (msg.getNumber() > lastConsId && (msg.getNumber() < (lastConsId + paxosHighMark)))) && // not an ahead of time message
+                !(stopped && msg.getNumber() >= (lastConsId + timeoutHighMark))) { // not a timed-out replica which needs to fetch the state
 
             if (stopped) {//just an optimization to avoid calling the lock in normal case
                 stoppedMsgsLock.lock();
@@ -228,11 +231,13 @@ public final class ExecutionManager {
                     Logger.println("(ExecutionManager.checkLimits) message for execution " + 
                             msg.getNumber() + " can be processed");
                     
+                    //Logger.debug = false;
                     canProcessTheMessage = true;
                 }
             }
         } else if ((lastConsId == -1 && msg.getNumber() >= (lastConsId + revivalHighMark)) || //recovered...
-                (msg.getNumber() >= (lastConsId + paxosHighMark))) { //or too late replica
+                (msg.getNumber() >= (lastConsId + paxosHighMark)) ||  //or too late replica...
+                (stopped && msg.getNumber() >= (lastConsId + timeoutHighMark))) { // or a timed-out replica which needs to fetch the state
 
             //Start state transfer
             /** ISTO E CODIGO DO JOAO, PARA TRATAR DA TRANSFERENCIA DE ESTADO */
@@ -240,9 +245,10 @@ public final class ExecutionManager {
                     + msg.getNumber() + " is beyond the paxos highmark, adding it to out of context set");
             addOutOfContextMessage(msg);
 
-            if (reconfManager.getStaticConf().isStateTransferEnabled())
+            if (reconfManager.getStaticConf().isStateTransferEnabled()) {
+                //Logger.debug = true;
                 tomLayer.getStateManager().analyzeState(msg.getSender(),  msg.getNumber());
-
+            }
             else {
                 System.out.println("##################################################################################");
                 System.out.println("- Ahead-of-time message discarded");

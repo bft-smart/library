@@ -172,6 +172,7 @@ public class RequestsTimer {
 
             if (!pendingRequests.isEmpty()) {
                 System.out.println("Timeout for messages: " + pendingRequests);
+                //Logger.debug = true;
                 //tomLayer.requestTimeout(pendingRequests);
                 //if (reconfManager.getStaticConf().getProcessId() == 4) Logger.debug = true;
                 tomLayer.triggerTimeout(pendingRequests);

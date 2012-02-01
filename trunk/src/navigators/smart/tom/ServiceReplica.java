@@ -303,27 +303,40 @@ public class ServiceReplica implements TOMReceiver {
 	            navigators.smart.tom.util.Logger.println("BATCHEXECUTOR END");
 			}
     	} else {
+                    
+                navigators.smart.tom.util.Logger.println("(ServiceReplica.receiveMessages) singe executor for consensus " + consId);
         	for (TOMMessage request: requests) {
         		if (request.getViewID() == SVManager.getCurrentViewId()) {
+                            
+                                navigators.smart.tom.util.Logger.println("(ServiceReplica.receiveMessages) same view");
         			if (request.getReqType() == TOMMessageType.REQUEST) {
+                                    
+                                        navigators.smart.tom.util.Logger.println("(ServiceReplica.receiveMessages) this is a REQUEST type message");
         				byte[] response = null;
         				//normal request execution
         				//create a context for the batch of messages to be delivered
         				MessageContext msgCtx = new MessageContext(firstRequest.timestamp, 
         						firstRequest.nonces, regency, consId, request.getSender(), firstRequest);
         				request.deliveryTime = System.nanoTime();
+                                        
+                                        navigators.smart.tom.util.Logger.println("(ServiceReplica.receiveMessages) executing message " + request.getSequence() + " from " + request.getSender() + " decided in consensus " + consId);
         				response = ((SingleExecutable)executor).executeOrdered(request.getContent(), msgCtx);
                                         // build the reply and send it to the client
                                         request.reply = new TOMMessage(id, request.getSession(),
                                         request.getSequence(), response, SVManager.getCurrentViewId());
+                                        
+                                        navigators.smart.tom.util.Logger.println("(ServiceReplica.receiveMessages) sending reply to " + request.getSender());
                                         cs.send(new int[]{request.getSender()}, request.reply);
         			} else if (request.getReqType() == TOMMessageType.RECONFIG) {
         				//Reconfiguration request to be processed after the batch
+                                    navigators.smart.tom.util.Logger.println("(ServiceReplica.receiveMessages) Enqueing an update");
         				SVManager.enqueueUpdate(request);
         			} else {
         				throw new RuntimeException("Should never reach here!");
         			}
         		} else {
+                            
+                                navigators.smart.tom.util.Logger.println("(ServiceReplica.receiveMessages) sending current view to " + request.getSender());
         			//message sender had an old view, resend the message to him
         			tomLayer.getCommunication().send(new int[]{request.getSender()},
         					new TOMMessage(SVManager.getStaticConf().getProcessId(),
