@@ -30,6 +30,7 @@ public class TOMConfiguration extends Configuration {
     protected int tomPeriod;
     protected int paxosHighMark;
     protected int revivalHighMark;
+    protected int timeoutHighMark;
     protected int replyVerificationTime;
     protected int maxBatchSize;
     protected int numberOfNonces;
@@ -116,6 +117,16 @@ public class TOMConfiguration extends Configuration {
                 }
             }
 
+            s = (String) configs.remove("system.totalordermulticast.timeout_highMark");
+            if (s == null) {
+                timeoutHighMark = 100;
+            } else {
+                timeoutHighMark = Integer.parseInt(s);
+                if (timeoutHighMark < 1) {
+                    timeoutHighMark = 1;
+                }
+            }
+            
             s = (String) configs.remove("system.totalordermulticast.maxbatchsize");
             if (s == null) {
                 maxBatchSize = 100;
@@ -301,7 +312,11 @@ public class TOMConfiguration extends Configuration {
     public int getRevivalHighMark() {
         return revivalHighMark;
     }
-
+    
+    public int getTimeoutHighMark() {
+        return timeoutHighMark;
+    }
+    
     public int getMaxBatchSize() {
         return maxBatchSize;
     }
