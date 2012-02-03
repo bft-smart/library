@@ -24,19 +24,19 @@ import java.io.ObjectInput;
 import java.io.ObjectOutput;
 
 /**
- * Dados sobre o ultimo consenso decidido
+ * Data about the last consensus decision
  *
  * @author Joao Sousa
  */
 public class LastEidData implements Externalizable {
 
-    private int pid; // id do processo
-    private int eid; // id da execucao
-    private byte[] eidDecision; // valor decidido
-    private byte[] eidProof; // prova de decisao
-
+    private int pid; // process id
+    private int eid; // execution id
+    private byte[] eidDecision; // decision value
+    private byte[] eidProof; // proof of the decision
+    
     /**
-     * Constructor vazio
+     * Empty constructor
      */
     public LastEidData() {
         pid = -1;
@@ -46,12 +46,12 @@ public class LastEidData implements Externalizable {
     }
 
     /**
-     * Cosntructor
+     * Constructor
      * 
-     * @param pid id do processo
-     * @param eid id da execucao
-     * @param eidDecision valor decidido
-     * @param eidProof prova de decisao
+     * @param pid process id
+     * @param eid execution id
+     * @param eidDecision decision value
+     * @param eidProof proof of the decision
      */
     public LastEidData(int pid, int eid, byte[] eidDecision, byte[] eidProof) {
 
@@ -62,32 +62,32 @@ public class LastEidData implements Externalizable {
     }
 
     /**
-     * Obter id da execucao
-     * @return id da execucao
+     * Get execution id
+     * @return execution id
      */
     public int getEid() {
         return eid;
     }
 
     /**
-     * Obter valor decidido
-     * @return valor decidido
+     * Get decision value
+     * @return decision value
      */
     public byte[] getEidDecision() {
         return eidDecision;
     }
 
     /**
-     * Obter prova de decisao
-     * @return prova de decisao
+     * Get proof of the decision
+     * @return proof of the decision
      */
     public byte[] getEidProof() {
         return eidProof;
     }
 
     /**
-     * Obter id do processo
-     * @return id do processo
+     * Get process id
+     * @return process id
      */
     public int getPid() {
         return pid;

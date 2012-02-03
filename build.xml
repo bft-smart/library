@@ -6,6 +6,7 @@
 	<property name="build.dir" location="bin" />
 	<property name="dist.dir" location="bin" />
 	<property name="lib.dir" location="lib" />
+	<property name="lib" location="lib" />
 	<target name="main" depends="compile, jar" description="Main target">
 		<echo>
             Building the .jar file.

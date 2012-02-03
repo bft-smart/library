@@ -94,11 +94,11 @@ public final class CounterServer implements SingleExecutable, Recoverable  {
         }
     }
 
-    /** ISTO E CODIGO DO JOAO, PARA TRATAR DOS CHECKPOINTS */
+    /** THIS IS JOAO'S CODE, TO HANDLE CHECKPOINTS */
     @Override
     public byte[] getState() {
 
-        //System.out.println("vai ler counter para: "+this.counter);
+        //System.out.println("reading counter: "+this.counter);
         
         byte[] b = new byte[4];
         for (int i = 0; i < 4; i++) {
@@ -119,11 +119,11 @@ public final class CounterServer implements SingleExecutable, Recoverable  {
             value += (state[i] & 0x000000FF) << shift;
         }
 
-        //System.out.println("vai setar counter para: "+value);
+        //System.out.println("setting counter to: "+value);
         
         this.counter = value;
         
-       // System.out.println("Valor de counter deserializeState "+this.counter);
+       // System.out.println("Value of deserialized counter "+this.counter);
     }
     /********************************************************/
 }

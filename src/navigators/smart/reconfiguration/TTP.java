@@ -28,8 +28,8 @@ public class TTP {
     private Reconfiguration rec = null;
     //private Hashtable<Integer, ServerConnection> connections = new Hashtable<Integer, ServerConnection>();
     private ServerViewManager manager;
-    //Apenas precisa notificar quem está entrando, pois os que já estão no sistema executarão
-    //a requisição de reconfiguração
+    //Need only inform those that are entering the systems, as those already
+    //in the system will execute the reconfiguration request
     private List<Integer> addIds = new LinkedList<Integer>();
 
     public TTP() {

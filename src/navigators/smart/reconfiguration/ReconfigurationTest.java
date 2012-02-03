@@ -22,7 +22,7 @@ public class ReconfigurationTest {
         ReconfigureRequest request = new ReconfigureRequest(id);
         request.setProperty("f","1");
         
-        System.out.println("Vai enviar a reconf!!!");
+        System.out.println("Going to send a reconf!!!");
         
         byte[] reply = proxy.invoke(TOMUtil.getBytes(request), ReconfigurationManager.TOM_RECONFIG_REQUEST, false);
         

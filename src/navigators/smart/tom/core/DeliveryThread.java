@@ -93,7 +93,7 @@ public final class DeliveryThread extends Thread {
         return false;
     }
 
-    /** ISTO E CODIGO DO JOAO, PARA TRATAR DA TRANSFERENCIA DE ESTADO */
+    /** THIS IS JOAO'S CODE, TO HANDLE STATE TRANSFER */
     private ReentrantLock deliverLock = new ReentrantLock();
     private Condition canDeliver = deliverLock.newCondition();
 
@@ -189,7 +189,7 @@ public final class DeliveryThread extends Thread {
     @Override
     public void run() {
         while (true) {
-            /** ISTO E CODIGO DO JOAO, PARA TRATAR DA TRANSFERENCIA DE ESTADO */
+            /** THIS IS JOAO'S CODE, TO HANDLE STATE TRANSFER */
             deliverLock();
             while (tomLayer.isRetrievingState()) {
                 Logger.println("(DeliveryThread.run) Retrieving State.");
@@ -227,7 +227,7 @@ public final class DeliveryThread extends Thread {
                 }
                 //******* EDUARDO END **************//
 
-                /** ISTO E CODIGO DO JOAO, PARA TRATAR DOS CHECKPOINTS */
+                /** THIS IS JOAO'S CODE, TO HANDLE CHECKPOINTS */
                 logDecision(cons);
                 /********************************************************/
                 //define the last stable consensus... the stable consensus can
@@ -244,7 +244,7 @@ public final class DeliveryThread extends Thread {
                 e.printStackTrace(System.err);
             }
 
-            /** ISTO E CODIGO DO JOAO, PARA TRATAR DA TRANSFERENCIA DE ESTADO */
+            /** THIS IS JOAO'S CODE, TO HANDLE STATE TRANSFER */
             deliverUnlock();
             /******************************************************************/
         }

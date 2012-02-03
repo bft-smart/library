@@ -230,8 +230,8 @@ public class ServerViewManager extends ViewManager {
         System.out.println("new view: " + newV);
         System.out.println("lastJoinSet: " + jSet);
 
-        //TODO:Eliminar todas as informações guardadas sobre cada processo em rSet 
-        //processos que executaram o leave!!!
+        //TODO:Remove all information stored about each process in rSet
+        //processes execute the leave!!!
         reconfigureTo(newV);
         
         if (forceLC) {
@@ -304,10 +304,10 @@ public class ServerViewManager extends ViewManager {
             this.quorumStrong = (int) Math.ceil((this.currentView.getN() + this.quorumF) / 2);
             this.quorumFastDecide = (int) Math.ceil((this.currentView.getN() + 3 * this.quorumF) / 2);
         } else if (this.currentView != null && this.currentView.isMember(getStaticConf().getProcessId())) {
-            //TODO: Saiu do sistema em newView -> LEAVE
-            //CODIGO PARA O LEAVE   
+            //TODO: Left the system in newView -> LEAVE
+            //CODE for LEAVE   
         }else{
-            //TODO: Ainda não entrou no sistema
+            //TODO: Didn't enter the system yet
             
         }
     }

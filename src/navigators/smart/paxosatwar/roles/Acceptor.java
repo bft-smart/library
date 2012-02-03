@@ -157,7 +157,7 @@ public final class Acceptor {
             round.propValue = value;
             round.propValueHash = tomLayer.computeHash(value);
             
-            /*** CODIGO PARA A TROCA DE LIDER ********/
+            /*** LEADER CHANGE CODE ********/
             round.getExecution().addWritten(value);
             /*****************************************/
 
@@ -226,7 +226,7 @@ public final class Acceptor {
             if (!round.isStrongSetted(me)) {
                 Logger.println("(Acceptor.computeWeak) sending STRONG for " + eid);
 
-                /**** CODIGO PARA A TROCA DE LIDER! ******/
+                /**** LEADER CHANGE CODE! ******/
                 round.getExecution().setQuorumWeaks(value);
                 /*****************************************/
                 

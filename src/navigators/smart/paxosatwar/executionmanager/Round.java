@@ -212,7 +212,7 @@ public class Round implements Serializable {
      * @param acceptor The replica ID
      * @param value The value weakly accepted from the specified replica
      */
-    public void setWeak(int acceptor, byte[] value) { // TODO: Condicao de corrida?
+    public void setWeak(int acceptor, byte[] value) { // TODO: Race condition?
         //******* EDUARDO BEGIN **************//
         int p = this.manager.getCurrentViewPos(acceptor);
         if (p >=0 && /*!weakSetted[p] &&*/ !isFrozen()) { //it can only be setted once
@@ -251,7 +251,7 @@ public class Round implements Serializable {
      * @param acceptor The replica ID
      * @param value The value strongly accepted from the specified replica
      */
-    public void setStrong(int acceptor, byte[] value) { // TODO: condicao de corrida?
+    public void setStrong(int acceptor, byte[] value) { // TODO: race condition?
         //******* EDUARDO BEGIN **************//
         int p = this.manager.getCurrentViewPos(acceptor);
         if (p >= 0 /*&& !strongSetted[p]*/ && !isFrozen()) { //it can only be setted once

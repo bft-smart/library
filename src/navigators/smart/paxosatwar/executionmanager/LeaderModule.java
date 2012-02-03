@@ -36,7 +36,7 @@ public class LeaderModule {
     // of the process that was the leader for that round
     private Map<Integer, List<ConsInfo>> leaderInfos = new HashMap<Integer, List<ConsInfo>>();
     
-    // este e a nova maneira de guardar info sobre o lider, desacoplada do consenso
+    // This is the new way of storing info about the leader, uncoupled from consensus
     private ServerViewManager reconfManager;
     private int currentTS;
     private int currentLeader;
@@ -73,8 +73,8 @@ public class LeaderModule {
     }
     
     /**
-     * Define o novo timestamp que identifica o lider
-     * @param ts novo timestamp que identifica o lider
+     * Define the new timestamp that identifies the leader
+     * @param ts new timestamp that identifies leader
      */
     public void setNewReg(int ts) {
         this.currentTS = ts;
@@ -84,8 +84,8 @@ public class LeaderModule {
         this.currentLeader = leader;
     }
     /**
-     * Obtem o lider currente, a partir do timestamp que tem
-     * @return Lider currente
+     * Get the current leader, based on its timestamp
+     * @return current leader
      */
     public int getCurrentLeader() {
         //return (currentTS % this.reconfManager.getCurrentViewN());
@@ -123,7 +123,7 @@ public class LeaderModule {
 
     /**
      * Retrieves the replica ID of the leader for the specified consensus's execution ID and round number
-     * TODO: Isto e mais do que um getter. Sera q nao se devia mudar isto?
+     * TODO: This is more than a getter. Should'nt we change that?
      * @param c consensus's execution ID
      * @param r Round number for the specified consensus
      * @return The replica ID of the leader
@@ -167,7 +167,7 @@ public class LeaderModule {
     public void removeStableConsenusInfos(int c) {
         List list = leaderInfos.get(c + 1);
 
-        if (list == null) {//nunca vai acontecer isso!!!
+        if (list == null) {//this will never happen!!!
             System.err.println("- Executing a code that wasn't supposed to be executed :-)");
             System.err.println("- And we have some reports there is a bug here!");
             list = new LinkedList();
@@ -181,17 +181,17 @@ public class LeaderModule {
     }
     /******************* METODO ORIGINAL *************/
 
-    /** ISTO E CODIGO DO JOAO, PARA TRATAR DA TRANSFERENCIA DE ESTADO */
+    /** THIS IS JOAO'S CODE, FOR HANDLING STATE TRANSFER */
     private ReentrantLock leaderInfosLock = new ReentrantLock();
 
     public void removeStableConsenusInfos(int c) {
 
         leaderInfosLock.lock();
 
-        //******* EDUARDO BEGIN: se é instável remove e pronto! **************//
+        //******* EDUARDO BEGIN: if its unstable, remove it! **************//
         /*List list = leaderInfos.get(c + 1);
 
-        if (list == null) {//nunca vai acontecer isso!!!
+        if (list == null) {//this will never happen!!!
             System.err.println("- Executing a code that wasn't supposed to be executed :-)");
             System.err.println("- And we have some reports there is a bug here!");
             list = new LinkedList();
@@ -216,7 +216,7 @@ public class LeaderModule {
 
         List list = leaderInfos.get(cEnd + 1);
 
-        if (list == null) {//nunca vai acontecer isso!!!
+        if (list == null) {//this will never happen!!!
             //System.err.println("- Executing a code that wasn't supposed to be executed :-)");
             //System.err.println("- And we have some reports there is a bug here!");
             list = new LinkedList();

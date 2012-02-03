@@ -34,9 +34,9 @@ import navigators.smart.tom.util.Logger;
 import navigators.smart.tom.util.TOMUtil;
 
 /**
- * TODO: Não sei se esta classe sera usada. Para já, deixo ficar
+ * TODO: Don't know if this class will be used. For now, leave it here
  *
- *  Verificar se as alterações para suportar dinamismo estão corretas
+ *  Check if the changes for supporting dynamicity are correct
  * @author Joao Sousa
  */
 public class StateManager {
@@ -98,7 +98,7 @@ public class StateManager {
         //******* EDUARDO BEGIN **************//
         int pos = -1;
         do {
-            //TODO: Verificar se continua correto
+            //TODO: Check if still correct
             pos = this.SVManager.getCurrentViewPos(replica);
             replica = this.SVManager.getCurrentViewProcesses()[(pos + 1) % SVManager.getCurrentViewN()];
 
@@ -345,7 +345,7 @@ public class StateManager {
     private void requestState() {
         if (tomLayer.requestsTimer != null) tomLayer.requestsTimer.clearAll();
 
-        //stateManager.emptyReplicas(eid);// isto causa uma excepcao
+        //stateManager.emptyReplicas(eid);// this causes an exception
 
         SMMessage smsg = new SMMessage(SVManager.getStaticConf().getProcessId(),
                 getWaiting(), TOMUtil.SM_REQUEST, getReplica(), null, -1, -1);
@@ -528,7 +528,7 @@ public class StateManager {
                         emptyStates();
                         setReplicaState(null);
 
-                        System.out.println("Actualizei o estado!");
+                        System.out.println("I updated the state!");
 
                         tomLayer.requestsTimer.Enabled(true);
                         tomLayer.requestsTimer.startTimer();

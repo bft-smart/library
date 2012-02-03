@@ -112,7 +112,7 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 
 
 
-	/** ISTO E CODIGO DO JOAO, PARA TRATAR DE DEBUGGING */
+	/** THIS IS JOAO'S CODE, FOR DEBUGGING */
 	private transient DebugInfo info = null; // Debug information
 
 	/**

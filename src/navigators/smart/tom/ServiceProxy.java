@@ -236,8 +236,8 @@ public class ServiceProxy extends TOMSender {
                         ret = response.getContent();
                     }
                 } else {
-                    //Caso a reconfiguração nao foi executada porque algum parametro
-                    // da requisição estava incorreto: o processo queria fazer algo que nao é permitido
+                    //If the reconfiguration has not been execute because some paramter
+                    // of the request was wrong: process wanted to to something that is not allowed
                     ret = response.getContent();
                 }
             }

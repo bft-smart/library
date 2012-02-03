@@ -26,19 +26,19 @@ import java.util.HashSet;
 import navigators.smart.paxosatwar.executionmanager.TimestampValuePair;
 
 /**
- * Esta classe representa um objecto COLLECT com as informacoes do consenso a decorrer
+ * This class represents a COLLECT object with the information about the running consensus
  *
  * @author Joao Sousa
  */
 public class CollectData implements Externalizable {
 
-    private int pid; // id do processo
-    private int eid; // id da execucao
-    private TimestampValuePair quorumWeaks; // ultimo valor recebido de um quorum bizantino de WEAKS
-    private HashSet<TimestampValuePair> writeSet; // valores escritos pela replica
-
+    private int pid; // process id
+    private int eid; // execution id
+    private TimestampValuePair quorumWeaks; // last value recevied from a Byzantine quorum of WEAKS
+    private HashSet<TimestampValuePair> writeSet; // values written by the replica
+    
     /**
-     * Constructor vazio
+     * Empty constructor
      */
     public CollectData() {
         pid = -1;
@@ -50,10 +50,10 @@ public class CollectData implements Externalizable {
     /**
      * Constructor
      *
-     * @param pid id do processo
-     * @param eid id da execucao
-     * @param quorumWeaks ultimo valor recebido de um quorum bizantino de WEAKS
-     * @param writeSet valores escritos pela replica
+     * @param pid process id
+     * @param eid execution id
+     * @param quorumWeaks last value recevied from a Byzantine quorum of WEAKS
+     * @param writeSet values written by the replica
      */
     public CollectData(int pid, int eid, TimestampValuePair quorumWeaks, HashSet<TimestampValuePair> writeSet) {
         
@@ -64,32 +64,32 @@ public class CollectData implements Externalizable {
     }
 
     /**
-     * Obter id da execucao
-     * @return id da execucao
+     * Get execution id
+     * @return exection id
      */
     public int getEid() {
         return eid;
     }
 
     /**
-     * Obter id do processo
-     * @return id do processo
+     * Get process id
+     * @return process id
      */
     public int getPid() {
         return pid;
     }
 
     /**
-     * Obter valor recebido de um quorum bizantino de WEAKS
-     * @return valor recebido de um quorum bizantino de WEAKS
+     * Get value received from a Byzantine quorum of WEAKS
+     * @return value received from a Byzantine quorum of WEAKS
      */
     public TimestampValuePair getQuorumWeaks() {
         return quorumWeaks;
     }
 
     /**
-     * Obter conjunto de valores escritos pela replica
-     * @return conjunto de valore escritos pela replica
+     * Get set of values written by the replica
+     * @return set of values written by the replica
      */
     public HashSet<TimestampValuePair> getWriteSet() {
         return writeSet;

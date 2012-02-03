@@ -67,7 +67,7 @@ public class ServersCommunicationLayer extends Thread {
         this.me = manager.getStaticConf().getProcessId();
         this.replica = replica;
 
-        //Tenta se conectar caso seja um membro da visão atual. Caso contrario, espera pelo processamento do join!
+        //Try connecting if a member of the current view. Otherwise, wait until the Join has been processed!
         if (manager.isInCurrentView()) {
             int[] initialV = manager.getCurrentViewAcceptors();
             for (int i = 0; i < initialV.length; i++) {
@@ -152,7 +152,7 @@ public class ServersCommunicationLayer extends Thread {
                 if (i == me) {
                     inQueue.put(sm);
                 } else {
-                    //System.out.println("Vai enviar msg para: "+i);
+                    //System.out.println("Going to send message to: "+i);
                     //******* EDUARDO BEGIN **************//
                     //connections[i].send(data);
                     getConnection(i).send(data);
@@ -204,7 +204,7 @@ public class ServersCommunicationLayer extends Thread {
         while (doWork) {
             try {
 
-                //System.out.println("Esperando por servers conexoes");
+                //System.out.println("Waiting for server connections");
 
                 Socket newSocket = serverSocket.accept();
 
@@ -243,9 +243,9 @@ public class ServersCommunicationLayer extends Thread {
         if ((this.manager.getStaticConf().getTTPId() == remoteId) || this.manager.isCurrentViewMember(remoteId)) {
             connectionsLock.lock();
             //System.out.println("Vai se conectar com: "+remoteId);
-            if (this.connections.get(remoteId) == null) { //Isso nunca pode acontecer!!!
+            if (this.connections.get(remoteId) == null) { //This must never happen!!!
                 //first time that this connection is being established
-                //System.out.println("ISSO NUNCA ACONTECE....."+remoteId);
+                //System.out.println("THIS DOES NOT HAPPEN....."+remoteId);
                 this.connections.put(remoteId, new ServerConnection(manager, newSocket, remoteId, inQueue, replica));
             } else {
                 //reconnection
@@ -254,7 +254,7 @@ public class ServersCommunicationLayer extends Thread {
             connectionsLock.unlock();
 
         } else {
-            //System.out.println("Vai fechar a conexão de: "+remoteId);
+            //System.out.println("Closing connection of: "+remoteId);
             newSocket.close();
         }
     }
@@ -287,10 +287,10 @@ public class ServersCommunicationLayer extends Thread {
     }
 
 
-    //******* EDUARDO BEGIN: Entry da lista que guarda as conexoes pendentes, pois
-    //um servidor apenas pode aceitar conexoes depois de conhecer a visao corrente, i.e.,
-    //depois da receber a resposta do join **************//
-    //Isso é para que um servidor nao aceite conexoes de todo mundo!
+    //******* EDUARDO BEGIN: List entry that stores pending connections,
+    // as a server may accept connections only after learning the current view,
+    // i.e., after receiving the response to the join*************//
+    // This is for avoiding that the server accepts connectsion from everywhere
     public class PendingConnection {
 
         public Socket s;

@@ -70,7 +70,7 @@ public class ServiceReplica implements TOMReceiver {
     private boolean isToJoin = false;
     private ReentrantLock waitTTPJoinMsgLock = new ReentrantLock();
     private Condition canProceed = waitTTPJoinMsgLock.newCondition();
-    /** ISTO E CODIGO DO JOAO, PARA TRATAR DOS CHECKPOINTS */
+    /** THIS IS JOAO'S CODE, TO HANDLE CHECKPOINTS */
     private ReentrantLock requestsLock = new ReentrantLock();
     private Executable executor = null;
     private Recoverable recoverer = null;
@@ -137,11 +137,11 @@ public class ServiceReplica implements TOMReceiver {
         //******* EDUARDO BEGIN **************//
 
         if (this.SVManager.isInCurrentView()) {
-            System.out.println("Esta na view atual: " + this.SVManager.getCurrentView());
+            System.out.println("In current view: " + this.SVManager.getCurrentView());
             initTOMLayer(-1, -1); // initiaze the TOM layer
         } else {
             if (this.isToJoin) {
-                System.out.println("Vai enviar join: " + this.SVManager.getCurrentView());
+                System.out.println("Sending join: " + this.SVManager.getCurrentView());
                 //Não está na visão inicial e é para executar um join;
                 int port = this.SVManager.getStaticConf().getServerToServerPort(id) - 1;
                 String ip = this.SVManager.getStaticConf().getServerToServerRemoteAddress(id).getAddress().getHostAddress();
@@ -162,9 +162,8 @@ public class ServiceReplica implements TOMReceiver {
                 this.cs.updateServersConnections();
                 this.cs.joinViewReceived();
             } else {
-                //Não está na visão inicial e é apenas para aguardar pela view onde o join foi executado
-
-                System.out.println("Vai aguardar a TTP: " + this.SVManager.getCurrentView());
+                //Not in the initial view, just waiting for the view where the join has been executed
+                System.out.println("Waiting for the TTP: " + this.SVManager.getCurrentView());
                 waitTTPJoinMsgLock.lock();
                 try {
                     canProceed.awaitUninterruptibly();
@@ -364,10 +363,10 @@ public class ServiceReplica implements TOMReceiver {
         this.cs.updateServersConnections();
     }
 
-    /** ISTO E CODIGO DO JOAO, PARA TRATAR DOS CHECKPOINTS */
+    /** THIS IS JOAO'S CODE, TO HANDLE CHECKPOINTS */
 
     @Override
-    public byte[] getState() { //TODO: Ha por aqui uma condicao de corrida!
+    public byte[] getState() { //TODO: Here is race condition!
         requestsLock.lock();
         byte[] state = recoverer.getState();
         requestsLock.unlock();
