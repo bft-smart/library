@@ -50,7 +50,7 @@ public class MessageHandler {
         if (sm instanceof PaxosMessage) {
             PaxosMessage paxosMsg = (PaxosMessage) sm;
             acceptor.deliver(paxosMsg);
-        /*** ISTO E CODIGO DO JOAO, RELACIONADO COM A TROCA DE LIDER */
+        /*** This is Joao's code, related to leader change */
         } else if (sm instanceof LCMessage) {
             LCMessage lcMsg = (LCMessage) sm;
             
@@ -80,7 +80,7 @@ public class MessageHandler {
             TOMMessage request = ((ForwardedMessage) sm).getRequest();
             tomLayer.requestReceived(request);
 
-        /** ISTO E CODIGO DO JOAO, PARA TRATAR DA TRANSFERENCIA DE ESTADO */
+        /** This is Joao's code, to handle state transfer */
         } else if (sm instanceof SMMessage) {
             SMMessage smsg = (SMMessage) sm;
             

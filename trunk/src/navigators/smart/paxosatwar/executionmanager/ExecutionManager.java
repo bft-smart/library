@@ -46,7 +46,7 @@ public final class ExecutionManager {
     private ServerViewManager reconfManager;
     private Acceptor acceptor; // Acceptor role of the PaW algorithm
     private Proposer proposer; // Proposer role of the PaW algorithm
-    //******* EDUARDO BEGIN: agora estas variaveis estao todas concentradas na Reconfigurationmanager **************//
+    //******* EDUARDO BEGIN: now these variables are all concentrated in the Reconfigurationmanager **************//
     //private int me; // This process ID
     //private int[] acceptors; // Process ID's of all replicas, including this one
     //private int[] otherAcceptors; // Process ID's of all replicas, except this one
@@ -65,7 +65,7 @@ public final class ExecutionManager {
     private ReentrantLock stoppedMsgsLock = new ReentrantLock(); //lock for stopped messages
     private TOMLayer tomLayer; // TOM layer associated with this execution manager
     private int paxosHighMark; // Paxos high mark for consensus instances
-    /** ISTO E CODIGO DO JOAO, PARA TRATAR DA TRANSFERENCIA DE ESTADO */
+    /** THIS IS JOAO'S CODE, TO HANDLE THE STATE TRANSFER */
     private int revivalHighMark; // Paxos high mark for consensus instances when this replica EID equals 0
     private int timeoutHighMark; // Paxos high mark for a timed-out replica
     
@@ -89,7 +89,7 @@ public final class ExecutionManager {
         //this.me = me;
 
         this.paxosHighMark = reconfManager.getStaticConf().getPaxosHighMark();
-        /** ISTO E CODIGO DO JOAO, PARA TRATAR DA TRANSFERENCIA DE ESTADO */
+        /** THIS IS JOAO'S CODE, TO HANDLE THE STATE TRANSFER */
         this.revivalHighMark = reconfManager.getStaticConf().getRevivalHighMark();
         this.timeoutHighMark = reconfManager.getStaticConf().getTimeoutHighMark();
         /******************************************************************/
@@ -196,9 +196,9 @@ public final class ExecutionManager {
 
         boolean canProcessTheMessage = false;
 
-        /** ISTO E CODIGO DO JOAO, PARA TRATAR DA TRANSFERENCIA DE ESTADO */
-        // Isto serve para re-direccionar as mensagens para o out of context
-        // enquanto a replica esta a receber o estado das outras e a actualizar-se
+        /** THIS IS JOAO'S CODE, TO HANDLE THE STATE TRANSFER */
+        // This serves to re-direct the messages to the out of context
+        // while a replica is receiving the state of the others and updating itself
         if (isRetrievingState || // Is this replica retrieving a state?
                 (!(lastConsId == -1 && msg.getNumber() >= (lastConsId + revivalHighMark)) && //not a recovered replica
                 (msg.getNumber() > lastConsId && (msg.getNumber() < (lastConsId + paxosHighMark)))) && // not an ahead of time message
@@ -240,7 +240,7 @@ public final class ExecutionManager {
                 (stopped && msg.getNumber() >= (lastConsId + timeoutHighMark))) { // or a timed-out replica which needs to fetch the state
 
             //Start state transfer
-            /** ISTO E CODIGO DO JOAO, PARA TRATAR DA TRANSFERENCIA DE ESTADO */
+            /** THIS IS JOAO'S CODE, FOR HANLDING THE STATE TRANSFER */
             Logger.println("(ExecutionManager.checkLimits) Message for execution "
                     + msg.getNumber() + " is beyond the paxos highmark, adding it to out of context set");
             addOutOfContextMessage(msg);
@@ -306,7 +306,7 @@ public final class ExecutionManager {
         return execution;
     }
 
-    /** ISTO E CODIGO DO JOAO, PARA TRATAR DA TRANSFERENCIA DE ESTADO */
+    /** THIS IS JOAO'S CODE, FOR HANDLING THE STATE TRANSFER */
     public void removeOutOfContexts(int id) {
 
         outOfContextLock.lock();

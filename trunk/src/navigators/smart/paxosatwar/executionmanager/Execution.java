@@ -43,7 +43,7 @@ public class Execution {
     private long initialTimeout; // Initial timeout for rounds
     private int decisionRound = -1; // round at which a desision was made
 
-    //NOVOS ATRIBUTOS PARA A TROCA DE LIDER
+    //NEW ATTRIBUTES FOR THE LEADER CHANGE
     private int ets = 0;
     private TimestampValuePair quorumWeaks = new TimestampValuePair(0, new byte[0]);
     private HashSet<TimestampValuePair> writeSet = new HashSet<TimestampValuePair>();
@@ -82,7 +82,7 @@ public class Execution {
      * This is the consensus instance to which this execution works for
      * @return Consensus instance to which this execution works for
      */
-    public Consensus getLearner() { // TODO: Porque se chama getLearner?
+    public Consensus getLearner() { // TODO: Why it is called getLearner?
         return consensus;
     }
 
@@ -116,14 +116,14 @@ public class Execution {
     }
     
     /**
-     * Incrementar o ETS desta replica
+     * Increment the ETS of this replica
      */
     public void incEts() {
         ets++;
     }
 
     /**
-     * Guardar o valor lido de um quorum bizantino de WEAKS
+     * Store the value read from a Byzantine quorum of WEAKS
      * @param value
      */
     public void setQuorumWeaks(byte[] value) {
@@ -132,16 +132,18 @@ public class Execution {
     }
 
     /**
-     * Devolve o valor lido de um quorum bizantino de WEAKS que ja tiver sido guardado
-     * @return o valor lido de um quorum bizantino de WEAKS, se ja tiver sido obtido
+     * Return the value read from a Byzantine quorum of WEAKS that has
+     * previously been stored
+     * @return the value read from a Byzantine quorum of WEAKS, if such
+     * value has been obtained already
      */
     public TimestampValuePair getQuorumWeaks() {
         return quorumWeaks;
     }
 
     /**
-     * Adicionar valor um que se que escrever no writeSet
-     * @param value Valor a escrever no writeSet
+     * Add a value that shall be written to the writeSet
+     * @param value Value to write to the writeSet
      */
     public void addWritten(byte[] value) {
 
@@ -149,7 +151,7 @@ public class Execution {
     }
 
     /**
-     * Remover um valor ja escrito em writeSet
+     * Remove an already writte value from  writeSet
      * @param value valor a remover do writeSet
      */
     public void removeWritten(byte[] value) {

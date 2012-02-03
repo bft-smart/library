@@ -24,21 +24,21 @@ import java.io.ObjectInput;
 import java.io.ObjectOutput;
 
 /**
- * Esta classe associa um round a um valor
+ * This class associates a round to a value
  * 
  * @author Joao Sousa
  */
 public class TimestampValuePair implements Externalizable {
 
     private int timestamp; // timestamp
-    private byte[] value; // valor
-    private byte[] hashedValue; // sintese do valor
-
+    private byte[] value; // value
+    private byte[] hashedValue; // hash of the value
+    
 
     /**
-     * Construtor
+     * Constructor
      * @param round Round
-     * @param value Valor
+     * @param value Value
      */
     public TimestampValuePair(int timestamp, byte[] value) {
         this.timestamp = timestamp;
@@ -48,7 +48,7 @@ public class TimestampValuePair implements Externalizable {
     }
 
     /**
-     * Construtor vazio
+     * Empty construtor
      */
     public TimestampValuePair() {
         this.timestamp = -1;
@@ -57,7 +57,7 @@ public class TimestampValuePair implements Externalizable {
         this.hashedValue = new byte[0];
     }
     /**
-     * Defenir sintese do valor
+     * Set the value's hash
      * @param hashedValue Sintese do valor
      */
     public void setHashedValue(byte[] hashedValue) {
@@ -65,15 +65,15 @@ public class TimestampValuePair implements Externalizable {
     }
 
     /**
-     * Obter sintese do valor
-     * @return sintese do valor
+     * Get the value's hash
+     * @return hash of the value
      */
     public byte[] getHashedValue() {
         return hashedValue;
     }
 
     /**
-     * Obter round
+     * Get round
      * @return Round
      */
     public int getRound() {
@@ -81,8 +81,8 @@ public class TimestampValuePair implements Externalizable {
     }
 
     /**
-     * Obter valor
-     * @return Valor
+     * Get value
+     * @return Value
      */
     public byte[] getValue() {
         return value;

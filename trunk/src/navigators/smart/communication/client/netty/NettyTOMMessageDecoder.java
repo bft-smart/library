@@ -60,7 +60,7 @@ public class NettyTOMMessageDecoder extends FrameDecoder {
     private ViewManager manager;
     private boolean firstTime;
     private ReentrantReadWriteLock rl;
-    //******* EDUARDO BEGIN: comentei algumas variaveis que nao estavam sendo usadas **************//
+    //******* EDUARDO BEGIN: commented out some unused variables **************//
     //private long numReceivedMsgs = 0;
     //private long lastMeasurementStart = 0;
     //private long max=0;

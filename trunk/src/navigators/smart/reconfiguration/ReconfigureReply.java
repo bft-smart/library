@@ -23,8 +23,9 @@ public class ReconfigureReply implements Externalizable {
     
     
     
-    //O ideal agora era identificar os consensos como uma tula (Nº view, Nº consenso em ordem crescente)
-    //Ex: (0,0),(0,1)... update para proxima view... (1,0),(1,1),....
+    //The ideal thing now would be identifying the consensus with a
+    // tuple (view number, consensus number in increasing order)
+    //Ex: (0,0),(0,1)... update to next view... (1,0),(1,1),....
     private int lastExecConsId = -1;
     
     private int execLeader = -1;

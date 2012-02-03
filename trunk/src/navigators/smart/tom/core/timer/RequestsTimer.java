@@ -118,7 +118,7 @@ public class RequestsTimer {
         /*
         st2.store(System.nanoTime() - startInstant);
         if (st2.getCount()==10000){
-            System.out.println("Media do RequestsTimer.unwatch(): "+st2.getAverage(false)/1000 + " us");
+            System.out.println("Average of RequestsTimer.unwatch(): "+st2.getAverage(false)/1000 + " us");
             st2.reset();
         }
         */
@@ -144,7 +144,7 @@ public class RequestsTimer {
     
     public void run_lc_protocol() {
      
-        System.out.println("(RequestTimerTask.run) EU NUNCA DEVIA CORRER QUANDO NAO HA TIMEOUTS");
+        System.out.println("(RequestTimerTask.run) I SOULD NEVER RUN WHEN THERE IS NO TIMEOUT");
         rwLock.readLock().lock();
 
         LinkedList<TOMMessage> pendingRequests = new LinkedList<TOMMessage>();

@@ -86,7 +86,7 @@ public class ServerConnection {
         this.outQueue = new LinkedBlockingQueue<byte[]>(this.manager.getStaticConf().getOutQueueSize());
 
         //******* EDUARDO BEGIN **************//
-        //É para se conectar ao processo remoto ou apenas aguardar a conexao?
+        // Connect to the remote process or just wait for the connection?
         if (isToConnect()) {
             //I have to connect to the remote server
             try {
@@ -205,13 +205,13 @@ public class ServerConnection {
     }
 
     //******* EDUARDO BEGIN **************//
-    //retorna true caso o processo deve se conectar ao processo remoto, false no contrário
+    //return true of a process shall connect to the remote process, false otherwise
     private boolean isToConnect() {
         if (this.manager.getStaticConf().getTTPId() == remoteId) {
-            //Deve aguardar o pedido de conexao vindo da TTP, nao tentar se conectar a ela
+            //Need to wait for the connection request from the TTP, do not tray to connect to it
             return false;
         } else if (this.manager.getStaticConf().getTTPId() == this.manager.getStaticConf().getProcessId()) {
-            //Se for a TTP deve se conectar ao processo remoto
+            //If this is a TTP, one must connect to the remote process
             return true;
         }
         boolean ret = false;
@@ -219,20 +219,20 @@ public class ServerConnection {
             boolean me = this.manager.isInLastJoinSet(this.manager.getStaticConf().getProcessId());
             boolean remote = this.manager.isInLastJoinSet(remoteId);
 
-            //ou os dois são antigos no sistema (entraram em visoes anteriores)
-            //ou os dois entraram na ultima reconfiguração
+            //either both endpoints are old in the system (entered the system in a previous view),
+            //or both entered during the last reconfiguration
             if ((me && remote) || (!me && !remote)) {
-                //neste caso, abre a conexao quem tem o ID maior
+                //in this case, the node with higher ID starts the connection
                 if (this.manager.getStaticConf().getProcessId() > remoteId) {
                     ret = true;
                 }
-            //este processo é antigo e o outro entrou na ultima reconfiguração
+            //this process is the older one, and the other one entered in the last reconfiguration
             } else if (!me && remote) {
                 ret = true;
 
-            } //else if (me && !remote) { //este processo entrou na ultima reconfiguração e o outro é antigo
-        //ret=false; //nem precisaria porque ret já é false
-        //}
+            } //else if (me && !remote) { //this process entered in the last reconfig and the other one is old
+                //ret=false; //not necessary, as ret already is false
+            //}
         }
         return ret;
     }
@@ -445,8 +445,8 @@ public class ServerConnection {
         }
     }
 
-    //******* EDUARDO BEGIN: thread especial para receber mensagens indicando a entrada no sistema, vindas da da TTP **************//
-    //Simplesmente entrega a mensagens para a replica, indicando a sua entrada no sistema
+    //******* EDUARDO BEGIN: special thread for receiving messages indicating the entrance into the system, coming from the TTP **************//
+    // Simly pass the messages to the replica, indicating its entry into the system
     //TODO: Ask eduardo why a new thread is needed!!! 
     //TODO2: Remove all duplicated code
 

@@ -25,7 +25,7 @@ import java.io.ObjectOutput;
 import navigators.smart.tom.util.TOMUtil;
 
 /**
- * Mensagem usada na troca de lider e sincronizacao
+ * Message used during leader change and synchronization
  * @author Joao Sousa
  */
 public class LCMessage extends SystemMessage {
@@ -37,7 +37,7 @@ public class LCMessage extends SystemMessage {
                                              // initiate the LC protocol locally
 
     /**
-     * Constructor vazio
+     * Empty constructor
      */
     public LCMessage(){
     
@@ -47,10 +47,10 @@ public class LCMessage extends SystemMessage {
 
     /**
      * Constructor
-     * @param from replica que fabrica este mensagem
-     * @param type tipo de mensagem (STOP, SYNC, CATCH-UP)
-     * @param ts timestamp da mudanca de lider e sincronizacao
-     * @param payload dados que vem na mensagem
+     * @param from replica that creates this message
+     * @param type type of the message (STOP, SYNC, CATCH-UP)
+     * @param ts timestamp of leader change and synchronization
+     * @param payload dada that comes with the message
      */
     public LCMessage(int from, int type, int ts, byte[] payload) {
         super(from);
@@ -62,24 +62,24 @@ public class LCMessage extends SystemMessage {
     }
 
     /**
-     * Obter tipo de mensagem
-     * @return tipo de mensagem
+     * Get type of message
+     * @return type of message
      */
     public int getType() {
         return type;
     }
 
     /**
-     * Obter timestamp da mudanca de lider e sincronizacao
-     * @return timestamp da mudanca de lider e sincronizacao
+     * Get timestamp of leader change and synchronization
+     * @return timestamp of leader change and synchronization
      */
     public int getReg() {
         return ts;
     }
 
     /**
-     * Obter dados da mensagem
-     * @return dados da mensagem
+     * Obter data of the message
+     * @return data of the message
      */
     public byte[] getPayload() {
         return payload;

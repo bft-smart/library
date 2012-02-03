@@ -313,13 +313,13 @@ public class LCManager {
         HashSet<Integer> timestamps = new HashSet<Integer>();
         HashSet<byte[]> values = new HashSet<byte[]>();
 
-        for (CollectData c : collects) { // apurar todos os timestamps e valores que existem separadamente
-
-            timestamps.add(c.getQuorumWeaks().getRound()); //guardar timestamp recebido de um quorum bizantino de weaks
-
-            // guardar valor recebido de um quorum bizantino de weaks, caso nao seja um valor vazio
+        for (CollectData c : collects) { // organize all existing timestamps and values separately
+            
+            timestamps.add(c.getQuorumWeaks().getRound()); //store timestamp received from a Byzatine quorum of WEAKS
+            
+            // store value received from a Byzantine quorum of WEAKS, unless it is an empty value
             if (!Arrays.equals(c.getQuorumWeaks().getValue(), new byte[0])) {
-                boolean insert = true; // este ciclo serve para evitar meter valores repetidos no conjunto
+                boolean insert = true; // this loop avoids putting duplicated values in the set
                 for (byte[] b : values) {
 
                     if (Arrays.equals(b, c.getQuorumWeaks().getValue())) {
@@ -329,10 +329,10 @@ public class LCManager {
                 }
                 if (insert) values.add(c.getQuorumWeaks().getValue());
             }
-            for (TimestampValuePair rv : c.getWriteSet()) { // guardar todos os timestamps e valores escritos
+            for (TimestampValuePair rv : c.getWriteSet()) { // store all timestamps and written values
                 timestamps.add(rv.getRound());
 
-                boolean insert = true; // este ciclo serve para evitar meter valores repetidos no conjunto
+                boolean insert = true; // this loop avoids putting duplicated values in the set
                 for (byte[] b : values) {
 
                     if (Arrays.equals(b, rv.getHashedValue())) {
@@ -345,7 +345,7 @@ public class LCManager {
 
         }
 
-        // depois de ter todos os timestamps e valores organizados, aplicar o predicado propriamente dito
+        // after having organized all timestamps and values, properly apply the predicate
         for (int r : timestamps) {
             for (byte[] v : values) {
 
@@ -375,9 +375,10 @@ public class LCManager {
     }
 
     /**
-     * Devolve um valor que seja bind, que seja diferente de nulo e com timestamp maior ou igual a zero
-     * @param collects Conjunto de collects de onde determinar o valor
-     * @return O valor bind
+     * Return a value that is "bind", that is different from null, and
+     * with a timestamp greater or equal to zero
+     * @param collects Set of collects from which to determine the value
+     * @return The bind value
      */
     public byte[] getBindValue(HashSet<CollectData> collects) {
 
@@ -386,13 +387,13 @@ public class LCManager {
         HashSet<Integer> timestamps = new HashSet<Integer>();
         HashSet<byte[]> values = new HashSet<byte[]>();
 
-        for (CollectData c : collects) { // apurar todos os timestamps e valores que existem separadamente
+        for (CollectData c : collects) { // organize all existing timestamps and values separately
 
-            timestamps.add(c.getQuorumWeaks().getRound()); //guardar round recebido de um quorum bizantino de weaks
-
-            // guardar valor recebido de um quorum bizantino de weaks, caso nao seja um valor vazio
+            timestamps.add(c.getQuorumWeaks().getRound()); //store round received from a Byzantine quorum of weaks
+            
+            // store value received from a Byzantine quorum of weaks, unless it is an empty value
             if (!Arrays.equals(c.getQuorumWeaks().getValue(), new byte[0])) {
-                boolean insert = true; // este ciclo serve para evitar meter valores repetidos no conjunto
+                boolean insert = true; // this loops avoids putting duplicated values in the set
                 for (byte[] b : values) {
 
                     if (Arrays.equals(b, c.getQuorumWeaks().getValue())) {
@@ -402,10 +403,10 @@ public class LCManager {
                 }
                 if (insert) values.add(c.getQuorumWeaks().getValue());
             }
-            for (TimestampValuePair rv : c.getWriteSet()) { // guardar todos os timestamps e valores escritos
+            for (TimestampValuePair rv : c.getWriteSet()) { // store all timestamps and written values
                 timestamps.add(rv.getRound());
 
-                boolean insert = true; // este ciclo serve para evitar meter valores repetidos no conjunto
+                boolean insert = true; // this loops avoids putting duplicated values in the set
                 for (byte[] b : values) {
 
                     if (Arrays.equals(b, rv.getHashedValue())) {
@@ -418,13 +419,13 @@ public class LCManager {
 
         }
 
-        // depois de ter todos os timestamps e valores organizados, aplicar o predicado propriamente dito
+        // after having organized all timestamps and values, properly apply the predicate
         for (int r : timestamps) {
             for (byte[] v : values) {
 
-                if (r >= 0 && binds(r, v, collects)) { // temos um valor que satisfaz o predicado?
-
-                    // como estamos a lidar com hashes, temos que encontrar o valor original...
+                if (r >= 0 && binds(r, v, collects)) { // do we have a value that satisfys the predicate?
+                    
+                    // as we are handling hashes, we have to find the original value
                     for (CollectData c : collects) {
                         for (TimestampValuePair rv : c.getWriteSet()) {
 
@@ -606,7 +607,7 @@ public class LCManager {
 
         HashSet<CollectData> result = new HashSet<CollectData>();
 
-        // se houver collects referentes a outros consensos, assumir que ainda estao no round zero do consenso que queremos
+        // if there are collects refering to other consensus instances, lets assume that they are still at round zero of the consensus we want
         for (CollectData c : collects) {
 
             if (c.getEid() == eid) {
@@ -618,7 +619,7 @@ public class LCManager {
 
         }
 
-        // fazer o hash dos valores em write set
+        // calculate hash of the values in the write set
         for (CollectData c : result) {
 
             for (TimestampValuePair rv : c.getWriteSet()) {
@@ -648,7 +649,7 @@ public class LCManager {
        
         for (LastEidData l : lasts) {
 
-            //TODO: FALTA VERIFICAR A PROVA!!!!
+            //TODO: CHECK OF THE PROOF IS MISSING!!!!
             if (l.getEid() > highest.getEid()) highest = l;
         }
 
@@ -673,7 +674,7 @@ public class LCManager {
 
             if (l.getEid() == eid) {
 
-                //TODO: FALTA VERIFICAR A PROVA!!!!
+                //TODO: CHECK OF THE PROOF IS MISSING!!!!
                 result = l.getEidDecision();
                 break;
             }

@@ -189,7 +189,7 @@ public class TransferableState implements Serializable {
                     tState.lastCheckpointLeader == this.lastCheckpointLeader &&
                     tState.lastEid == this.lastEid && tState.hasState == this.hasState);
         }
-        System.out.println("vai retornar FALSO!");
+        System.out.println("returing FALSE!");
         return false;
     }
 

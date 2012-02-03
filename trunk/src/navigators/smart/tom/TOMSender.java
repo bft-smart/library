@@ -56,7 +56,7 @@ public abstract class TOMSender implements ReplyReceiver {
     /**
      * Creates a new instance of TOMulticastSender
      *
-     * TODO: Isto pode mesmo estar vazio?
+     * TODO: This may really be empty?
      */
     public TOMSender() {
     }
@@ -78,7 +78,7 @@ public abstract class TOMSender implements ReplyReceiver {
     
     /**
      * This method initializes the object
-     * TODO: Perguntar se este metodo n pode antes ser protected (compila como protected, mas mesmo assim...)
+     * TODO: Ask if this method cannot be protected (compiles, but....)
      *
      * @param processId ID of the process
      * @param sequence Initial sequence number for data multicast
@@ -99,7 +99,7 @@ public abstract class TOMSender implements ReplyReceiver {
     //******* EDUARDO BEGIN **************//
     /**
      * This method initializes the object
-     * TODO: Perguntar se este metodo n pode antes ser protected (compila como protected, mas mesmo assim...)
+     * TODO: Ask if this method cannot be protected (compiles, but....)
      *
      * @param processId ID of the process
      */

@@ -31,20 +31,20 @@ import navigators.smart.communication.SystemMessage;
  */
 public class PaxosMessage extends SystemMessage {
 
-    private int number; //execution ID for this message TODO: Isto n devia chamar-se 'eid'?
+    private int number; //execution ID for this message TODO: Shouldn't this be called 'eid'?
     private int round; // Round number to which this message belongs to
     private int paxosType; // Message type
     private byte[] value = null; // Value used when message type is PROPOSE
     private Object proof; // Proof used when message type is COLLECT
 
     /**
-     * Creates a paxos message. Not used. TODO: Q tal meter isto como private?
+     * Creates a paxos message. Not used. TODO: How about making it private?
      */
     public PaxosMessage(){}
 
     /**
      * Creates a paxos message. Used by the message factory to create a COLLECT or PROPOSE message
-     * TODO: Q tal meter isto sem quantificador, para ser so visivel no mesmo package?
+     * TODO: How about removing the modifier, to make it visible just within the package?
      * @param paxosType This should be MessageFactory.COLLECT or MessageFactory.PROPOSE
      * @param id Consensus's execution ID
      * @param round Round number
@@ -66,7 +66,7 @@ public class PaxosMessage extends SystemMessage {
 
     /**
      * Creates a paxos message. Used by the message factory to create a WEAK, STRONG, or DECIDE message
-     * TODO: Q tal meter isto sem quantificador, para ser so visivel no mesmo package?
+     * TODO: How about removing the modifier, to make it visible just within the package?
      * @param paxosType This should be MessageFactory.WEAK, MessageFactory.STRONG or MessageFactory.DECIDE
      * @param id Consensus's execution ID
      * @param round Round number
@@ -81,7 +81,7 @@ public class PaxosMessage extends SystemMessage {
 
     /**
      * Creates a paxos message. Used by the message factory to create a FREEZE message
-     * TODO: Q tal meter isto sem quantificador, para ser so visivel no mesmo package?
+     * TODO: How about removing the modifier, to make it visible just within the package?
      * @param paxosType This should be MessageFactory.FREEZE
      * @param id Consensus's execution ID
      * @param round Round number

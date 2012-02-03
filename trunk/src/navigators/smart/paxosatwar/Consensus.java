@@ -65,7 +65,7 @@ public class Consensus {
      */
     public byte[] getDecision() {
         while (decision == null) {
-            waitForPropose(); // Eduardo: deve ter um waitForDecision separando (agora funciona pq é só um sleep)
+            waitForPropose(); // Eduardo: should have a separate waitForDecision  (works for now, because it is just a sleep)
             decision = decisionRound.propValue;
         }
         return decision;

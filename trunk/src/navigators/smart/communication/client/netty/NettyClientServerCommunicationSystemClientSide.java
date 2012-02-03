@@ -140,8 +140,8 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 
                 } catch (java.lang.NullPointerException ex) {
                     //What the fuck is this??? This is not possible!!!
-                    System.err.println("Deve resolver o problema, e acho que não trás outras implicações :-), "
-                            + "mas temos que fazer os servidores armazenarem as view em um lugar default.");
+                    System.err.println("Should fix the problem, and I think it has no other implications :-), "
+                            + "but we must make the servers store the view in a different place.");
 
                 } catch (InvalidKeyException ex) {
                     ex.printStackTrace(System.err);
@@ -216,9 +216,9 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
         //close connections with removed servers
         //ANB: This code need to be tested!!!
         
-        //EDUARDO: o cliente demora muito para fechar o canal, sugiro
-        //outra forma (fechar depois por algum outra thread ou algo assim), talvez 
-        //pelo servidor!
+        //EDUARDO: The client takes a lot of time to close the channel, I suggest
+        //a different approac (close later by a different thread or something like that),
+        //maybe by the server!
         
         /*ListIterator ids = new LinkedList(sessionTable.keySet()).listIterator();
         while (ids.hasNext()) {
@@ -233,12 +233,12 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
             }
 
             if (!found) {
-                //System.out.println("vai fechar canal com " + id);
+                //System.out.println("Going to close channel to " + id);
                 
                 NettyClientServerSession cs =
                         (NettyClientServerSession) sessionTable.remove(id);
                 cs.getChannel().close();
-                //System.out.println("canal fechado " + id);
+                //System.out.println("Channel closed " + id);
             }
         }*/
 
