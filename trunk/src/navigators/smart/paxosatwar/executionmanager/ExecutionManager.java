@@ -201,8 +201,8 @@ public final class ExecutionManager {
         // while a replica is receiving the state of the others and updating itself
         if (isRetrievingState || // Is this replica retrieving a state?
                 (!(lastConsId == -1 && msg.getNumber() >= (lastConsId + revivalHighMark)) && //not a recovered replica
-                (msg.getNumber() > lastConsId && (msg.getNumber() < (lastConsId + paxosHighMark)))) && // not an ahead of time message
-                !(stopped && msg.getNumber() >= (lastConsId + timeoutHighMark))) { // not a timed-out replica which needs to fetch the state
+                (msg.getNumber() > lastConsId && (msg.getNumber() < (lastConsId + paxosHighMark))) && // not an ahead of time message
+                !(stopped && msg.getNumber() >= (lastConsId + timeoutHighMark)))) { // not a timed-out replica which needs to fetch the state
 
             if (stopped) {//just an optimization to avoid calling the lock in normal case
                 stoppedMsgsLock.lock();

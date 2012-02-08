@@ -139,7 +139,7 @@ public final class DeliveryThread extends Thread {
 
                 tomLayer.clientsManager.requestsOrdered(requests);
 
-                deliverMessages(eid, tomLayer.getLCManager().getLastReg(), requests);
+                deliverMessages(eid, tomLayer.getLCManager().getLastReg(), false, requests);
 
                 //******* EDUARDO BEGIN **************//
                 if (manager.hasUpdates()) {
@@ -215,7 +215,7 @@ public final class DeliveryThread extends Thread {
                 //clean the ordered messages from the pending buffer
                 tomLayer.clientsManager.requestsOrdered(requests);
 
-                deliverMessages(cons.getId(), tomLayer.getLCManager().getLastReg(), requests);
+                deliverMessages(cons.getId(), tomLayer.getLCManager().getLastReg(), true, requests);
 
                 //******* EDUARDO BEGIN **************//
                 if (manager.hasUpdates()) {
@@ -277,8 +277,8 @@ public final class DeliveryThread extends Thread {
         receiver.receiveReadonlyMessage(request, msgCtx);
     }
 
-    private void deliverMessages(int consId, int regency, TOMMessage[] requests) {
-    	receiver.receiveMessages(consId, regency, requests);
+    private void deliverMessages(int consId, int regency, boolean fromConsensus, TOMMessage[] requests) {
+        receiver.receiveMessages(consId, regency, fromConsensus, requests);
     }
 
     private void processReconfigMessages(int consId, int decisionRoundNumber) {

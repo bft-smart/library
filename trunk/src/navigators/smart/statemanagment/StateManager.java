@@ -27,6 +27,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import navigators.smart.paxosatwar.executionmanager.ExecutionManager;
 import navigators.smart.paxosatwar.messages.PaxosMessage;
 import navigators.smart.reconfiguration.ServerViewManager;
+import navigators.smart.reconfiguration.views.View;
 import navigators.smart.tom.core.DeliveryThread;
 import navigators.smart.tom.core.TOMLayer;
 import navigators.smart.tom.leaderchange.LCManager;
@@ -44,6 +45,7 @@ public class StateManager {
     private StateLog log;
     private HashSet<SenderEid> senderEids = null;
     private HashSet<SenderState> senderStates = null;
+    private HashSet<SenderView> senderViews = null;
     private HashSet<SenderRegency> senderRegencies = null;
     private HashSet<SenderLeader> senderLeaders = null;
 
@@ -78,6 +80,7 @@ public class StateManager {
         this.log = new StateLog(k);
         senderEids = new HashSet<SenderEid>();
         senderStates = new HashSet<SenderState>();
+        senderViews = new HashSet<SenderView>();
         senderRegencies = new HashSet<SenderRegency>();
         senderLeaders = new HashSet<SenderLeader>();
 
@@ -151,7 +154,9 @@ public class StateManager {
     public void addLeader(int sender, int leader) {
         senderLeaders.add(new SenderLeader(sender, leader));
     }
-    
+    public void addView(int sender, View view) {
+        senderViews.add(new SenderView(sender, view));
+    }
     public void emptyRegencies() {
         senderRegencies.clear();
     }
@@ -185,6 +190,23 @@ public class StateManager {
 
         for (SenderLeader m : senderLeaders) {
             if (m.leader == leader && !replicasCounted.contains(m.sender)) {
+                replicasCounted.add(m.sender);
+                count++;
+            }
+        }
+
+        //******* EDUARDO BEGIN **************//
+        return count > SVManager.getQuorum2F();
+        //******* EDUARDO END **************//
+    }
+
+    public boolean moreThan2F_Views(View view) {
+
+        int count = 0;
+        HashSet<Integer> replicasCounted = new HashSet<Integer>();
+
+        for (SenderView m : senderViews) {
+            if (m.view.equals(view) && !replicasCounted.contains(m.sender)) {
                 replicasCounted.add(m.sender);
                 count++;
             }
@@ -348,7 +370,7 @@ public class StateManager {
         //stateManager.emptyReplicas(eid);// this causes an exception
 
         SMMessage smsg = new SMMessage(SVManager.getStaticConf().getProcessId(),
-                getWaiting(), TOMUtil.SM_REQUEST, getReplica(), null, -1, -1);
+                getWaiting(), TOMUtil.SM_REQUEST, getReplica(), null, null, -1, -1);
         tomLayer.getCommunication().send(SVManager.getCurrentViewOtherAcceptors(), smsg);
 
         Logger.println("(TOMLayer.requestState) I just sent a request to the other replicas for the state up to EID " + getWaiting());
@@ -360,7 +382,7 @@ public class StateManager {
                 int[] myself = new int[1];
                 myself[0] = SVManager.getStaticConf().getProcessId();
                                 
-                tomLayer.getCommunication().send(myself, new SMMessage(-1, getWaiting(), TOMUtil.TRIGGER_SM_LOCALLY, -1, null, -1, -1));
+                tomLayer.getCommunication().send(myself, new SMMessage(-1, getWaiting(), TOMUtil.TRIGGER_SM_LOCALLY, -1, null, null, -1, -1));
 
                 
                 
@@ -418,7 +440,7 @@ public class StateManager {
 
             int[] targets = { msg.getSender() };
             SMMessage smsg = new SMMessage(SVManager.getStaticConf().getProcessId(),
-                    msg.getEid(), TOMUtil.SM_REPLY, -1, thisState, lcManager.getLastReg(), tomLayer.lm.getCurrentLeader());
+                    msg.getEid(), TOMUtil.SM_REPLY, -1, thisState, SVManager.getCurrentView(), lcManager.getLastReg(), tomLayer.lm.getCurrentLeader());
 
             // malicious code, to force the replica not to send the state
             //if (reconfManager.getStaticConf().getProcessId() != 0 || !sendState)
@@ -444,10 +466,18 @@ public class StateManager {
 
                 int currentRegency = -1;
                 int currentLeader = -1;
+                View currentView = null;
                 addRegency(msg.getSender(), msg.getRegency());
                 addLeader(msg.getSender(), msg.getLeader());
+                addView(msg.getSender(), msg.getView());
                 if (moreThan2F_Regencies(msg.getRegency())) currentRegency = msg.getRegency();
                 if (moreThan2F_Leaders(msg.getLeader())) currentLeader = msg.getLeader();
+                if (moreThan2F_Views(msg.getView())) {
+                    currentView = msg.getView();
+                    if (currentView.isMember(SVManager.getStaticConf().getProcessId())) {
+                        System.out.println("Not a member anymore!");
+                    }
+                }
                 
                 Logger.println("(TOMLayer.SMReplyDeliver) The reply is for the EID that I want!");
 
@@ -476,15 +506,16 @@ public class StateManager {
                         }
                     }
 
-                    if (recvState != null && haveState == 1 && currentRegency > -1 && currentLeader > -1) {
-
+                    if (recvState != null && haveState == 1 && currentRegency > -1 &&
+                            currentLeader > -1 && currentView != null) {
+                        
+                        Logger.println("(TOMLayer.SMReplyDeliver) The state of those replies is good!");
+                        
                         lcManager.setLastReg(currentRegency);
                         lcManager.setNextReg(currentRegency);
                         tomLayer.lm.setNewReg(currentRegency);
                         tomLayer.lm.setNewLeader(currentLeader);
-
-                        Logger.println("(TOMLayer.SMReplyDeliver) The state of those replies is good!");
-
+                        
                         recvState.setState(getReplicaState());
 
                         lockState.lock();
@@ -516,9 +547,12 @@ public class StateManager {
                             execManager.restart();
                         }
                         
-                        
-                        
                         tomLayer.processOutOfContext();
+                        
+                        if (SVManager.getCurrentViewId() != currentView.getId()) {
+                            System.out.println("Installing current view!");
+                            SVManager.reconfigureTo(currentView);
+                        }
                         
                         dt.canDeliver();
 
@@ -672,6 +706,34 @@ public class StateManager {
             int hash = 1;
             hash = hash * 31 + this.sender;
             hash = hash * 31 + this.state.hashCode();
+            return hash;
+        }
+    }
+
+    private class SenderView {
+
+        private int sender;
+        private View view;
+
+        SenderView(int sender, View view) {
+            this.sender = sender;
+            this.view = view;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj instanceof SenderView) {
+                SenderView m = (SenderView) obj;
+                return (this.view.equals(m.view) && m.sender == this.sender);
+            }
+            return false;
+        }
+
+        @Override
+        public int hashCode() {
+            int hash = 1;
+            hash = hash * 31 + this.sender;
+            hash = hash * 31 + this.view.hashCode();
             return hash;
         }
     }

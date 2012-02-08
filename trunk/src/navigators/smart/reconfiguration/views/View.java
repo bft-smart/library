@@ -80,5 +80,29 @@ public class View implements Serializable {
  	public InetSocketAddress getAddress(int id) {
  		return addresses.get(id);
  	}
+        
+    @Override
+    public boolean equals(Object obj) {
+        if (obj instanceof View) {
+            View v = (View) obj;
+            return (this.addresses.equals(v.addresses) &&
+                    Arrays.equals(this.processes, v.processes)
+                    && this.id == v.id && this.f == v.f);
+            
+        }
+        return false;
+    }
     
+    public int hashCode() {
+        int hash = 1;
+        hash = hash * 31 + this.id;
+        hash = hash * 31 + this.f;
+        if (this.processes != null) {
+            for (int i = 0; i < this.processes.length; i++) hash = hash * 31 + this.processes[i];
+        } else {
+            hash = hash * 31 + 0;
+        }
+        hash = hash * 31 + this.addresses.hashCode();
+        return hash;
+    }
 }
