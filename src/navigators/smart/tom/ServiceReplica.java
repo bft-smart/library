@@ -214,7 +214,7 @@ public class ServiceReplica implements TOMReceiver {
                 cs.send(new int[]{tomMsg.getSender()}, tomMsg.reply);
 	}
 
-    public void receiveMessages(int consId, int regency, TOMMessage[] requests) {
+    public void receiveMessages(int consId, int regency, boolean fromConsensus, TOMMessage[] requests) {
 		TOMMessage firstRequest = requests[0];
 
 		if(executor instanceof BatchExecutable) {
@@ -230,7 +230,7 @@ public class ServiceReplica implements TOMReceiver {
 			List<MessageContext> msgCtxts = new ArrayList<MessageContext>();
 			
 			for (TOMMessage request : requests) {
-				if (request.getViewID() == SVManager.getCurrentViewId()) {
+				if (!fromConsensus || request.getViewID() == SVManager.getCurrentViewId()) {
 					
 					//If message is a request, put message in the toBatch list
 					if (request.getReqType() == TOMMessageType.REQUEST) {
@@ -257,9 +257,9 @@ public class ServiceReplica implements TOMReceiver {
 						throw new RuntimeException("Should never reach here!");
 					}
 					
-				} else {
+				} else if (fromConsensus && request.getViewID() < SVManager.getCurrentViewId()) {
 					// message sender had an old view, resend the message to
-					// him
+					// him (but only if it came from consensus an not state transfer)
 					tomLayer.getCommunication().send(
 							new int[] { request.getSender() },
 							new TOMMessage(SVManager.getStaticConf()
@@ -290,14 +290,15 @@ public class ServiceReplica implements TOMReceiver {
 				byte[][] replies = ((BatchExecutable) executor).executeBatch(batch, msgContexts);
 				
 				//Send the replies back to the client
-				for(int index = 0; index < toBatch.size(); index++){
-					TOMMessage request = toBatch.get(index);
-					request.reply = new TOMMessage(id,
-							request.getSession(), request.getSequence(),
+                                if (fromConsensus) {
+                                    for(int index = 0; index < toBatch.size(); index++){
+                                        	TOMMessage request = toBatch.get(index);
+                                            request.reply = new TOMMessage(id,
+                                            		request.getSession(), request.getSequence(),
 							replies[index], SVManager.getCurrentViewId());
-					cs.send(new int[] { request.getSender() }, request.reply);
-				}
-				
+                                            cs.send(new int[] { request.getSender() }, request.reply);
+                                    }
+                                }
 				//DEBUG
 	            navigators.smart.tom.util.Logger.println("BATCHEXECUTOR END");
 			}
@@ -305,7 +306,8 @@ public class ServiceReplica implements TOMReceiver {
                     
                 navigators.smart.tom.util.Logger.println("(ServiceReplica.receiveMessages) singe executor for consensus " + consId);
         	for (TOMMessage request: requests) {
-        		if (request.getViewID() == SVManager.getCurrentViewId()) {
+                    
+        		if (!fromConsensus || request.getViewID() == SVManager.getCurrentViewId()) {
                             
                                 navigators.smart.tom.util.Logger.println("(ServiceReplica.receiveMessages) same view");
         			if (request.getReqType() == TOMMessageType.REQUEST) {
@@ -321,11 +323,14 @@ public class ServiceReplica implements TOMReceiver {
                                         navigators.smart.tom.util.Logger.println("(ServiceReplica.receiveMessages) executing message " + request.getSequence() + " from " + request.getSender() + " decided in consensus " + consId);
         				response = ((SingleExecutable)executor).executeOrdered(request.getContent(), msgCtx);
                                         // build the reply and send it to the client
-                                        request.reply = new TOMMessage(id, request.getSession(),
-                                        request.getSequence(), response, SVManager.getCurrentViewId());
                                         
-                                        navigators.smart.tom.util.Logger.println("(ServiceReplica.receiveMessages) sending reply to " + request.getSender());
-                                        cs.send(new int[]{request.getSender()}, request.reply);
+                                        if (fromConsensus) {
+                                            request.reply = new TOMMessage(id, request.getSession(),
+                                            request.getSequence(), response, SVManager.getCurrentViewId());
+                                        
+                                            navigators.smart.tom.util.Logger.println("(ServiceReplica.receiveMessages) sending reply to " + request.getSender());
+                                            cs.send(new int[]{request.getSender()}, request.reply);
+                                        }
         			} else if (request.getReqType() == TOMMessageType.RECONFIG) {
         				//Reconfiguration request to be processed after the batch
                                     navigators.smart.tom.util.Logger.println("(ServiceReplica.receiveMessages) Enqueing an update");
@@ -333,7 +338,7 @@ public class ServiceReplica implements TOMReceiver {
         			} else {
         				throw new RuntimeException("Should never reach here!");
         			}
-        		} else {
+        		} else if (fromConsensus && request.getViewID() < SVManager.getCurrentViewId()) {
                             
                                 navigators.smart.tom.util.Logger.println("(ServiceReplica.receiveMessages) sending current view to " + request.getSender());
         			//message sender had an old view, resend the message to him
@@ -341,7 +346,10 @@ public class ServiceReplica implements TOMReceiver {
         					new TOMMessage(SVManager.getStaticConf().getProcessId(),
         							request.getSession(), request.getSequence(),
         							TOMUtil.getBytes(SVManager.getCurrentView()), SVManager.getCurrentViewId()));
-        		}
+        		} else {
+                            
+                            System.out.println("WTF no consenso numero " + consId);
+                        }
         	}
     	}
     }

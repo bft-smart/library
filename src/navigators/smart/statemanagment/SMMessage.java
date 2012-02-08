@@ -24,6 +24,7 @@ import java.io.ObjectInput;
 import java.io.ObjectOutput;
 
 import navigators.smart.communication.SystemMessage;
+import navigators.smart.reconfiguration.views.View;
 import navigators.smart.tom.util.TOMUtil;
 
 
@@ -35,6 +36,7 @@ import navigators.smart.tom.util.TOMUtil;
 public class SMMessage extends SystemMessage implements Externalizable {
 
     private TransferableState state; // State log
+    private View view;
     private int eid; // Execution ID up to which the sender needs to be updated
     private int type; // Message type
     private int replica; // Replica that should send the state
@@ -51,10 +53,11 @@ public class SMMessage extends SystemMessage implements Externalizable {
      * @param replica Replica that should send the state
      * @param state State log
      */
-    public SMMessage(int sender, int eid, int type, int replica, TransferableState state, int regency, int leader) {
+    public SMMessage(int sender, int eid, int type, int replica, TransferableState state, View view, int regency, int leader) {
 
         super(sender);
         this.state = state;
+        this.view = view;
         this.eid = eid;
         this.type = type;
         this.replica = replica;
@@ -77,7 +80,15 @@ public class SMMessage extends SystemMessage implements Externalizable {
     public TransferableState getState() {
         return state;
     }
-
+    
+    /**
+     * Retrieves the state log
+     * @return The state Log
+     */
+    public View getView() {
+        return view;
+    }
+    
     /**
      * Retrieves the type of the message
      * @return The type of the message
@@ -129,6 +140,7 @@ public class SMMessage extends SystemMessage implements Externalizable {
         out.writeInt(regency);
         out.writeInt(leader);
         out.writeObject(state);
+        out.writeObject(view);
     }
 
     @Override
@@ -142,5 +154,6 @@ public class SMMessage extends SystemMessage implements Externalizable {
         regency = in.readInt();
         leader = in.readInt();
         state = (TransferableState) in.readObject();
+        view = (View) in.readObject();
     }
 }

@@ -44,7 +44,7 @@ public interface TOMReceiver {
 	 * @param regency
 	 * @param requests The batch with TOMMessage objects.
 	 */
-    public void receiveMessages(int consId, int regency, TOMMessage[] requests);
+    public void receiveMessages(int consId, int regency, boolean fromConsensus, TOMMessage[] requests);
 
 
     /**

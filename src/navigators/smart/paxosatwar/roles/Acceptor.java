@@ -282,7 +282,7 @@ public final class Acceptor {
      * @param round Round at which the decision is made
      * @param value The decided value (got from WEAK or STRONG messages)
      */
-    private void decide(Round round, byte[] value) {
+    private void decide(Round round, byte[] value) {        
         round.getExecution().getLearner().firstMessageProposed.decisionTime = System.nanoTime();
 
         leaderModule.decided(round.getExecution().getId(),
