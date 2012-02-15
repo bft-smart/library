@@ -45,6 +45,7 @@ public class RequestsTimer {
     private RequestTimerTask rtTask = null;
     private TOMLayer tomLayer; // TOM layer
     private long timeout;
+    private long shortTimeout;
     private TreeSet<TOMMessage> watched = new TreeSet<TOMMessage>();
     private ReentrantReadWriteLock rwLock = new ReentrantReadWriteLock();
     
@@ -66,12 +67,19 @@ public class RequestsTimer {
         this.reconfManager = reconfManager;
         
         this.timeout = this.reconfManager.getStaticConf().getRequestTimeout();
+        this.shortTimeout = -1;
     }
 
+    public void setShortTimeout(long shortTimeout) {
+        this.shortTimeout = shortTimeout;
+    }
+    
     public void startTimer() {
         if (rtTask == null) {
+            long t = (shortTimeout > -1 ? shortTimeout : timeout);
+            //shortTimeout = -1;
             rtTask = new RequestTimerTask();
-            timer.schedule(rtTask, timeout);
+            timer.schedule(rtTask, t);
         }
     }
     
@@ -144,6 +152,8 @@ public class RequestsTimer {
     
     public void run_lc_protocol() {
      
+        long t = (shortTimeout > -1 ? shortTimeout : timeout);
+        
         System.out.println("(RequestTimerTask.run) I SOULD NEVER RUN WHEN THERE IS NO TIMEOUT");
         rwLock.readLock().lock();
 
@@ -151,7 +161,7 @@ public class RequestsTimer {
 
         for (Iterator<TOMMessage> i = watched.iterator(); i.hasNext();) {
             TOMMessage request = i.next();
-            if ((request.receptionTime + System.currentTimeMillis()) > timeout) {
+            if ((request.receptionTime + System.currentTimeMillis()) > t) {
                 pendingRequests.add(request);
             } else {
                 break;
@@ -179,7 +189,7 @@ public class RequestsTimer {
             }
             else {
                 rtTask = new RequestTimerTask();
-                timer.schedule(rtTask, timeout);
+                timer.schedule(rtTask, t);
             }
         } else {
             rtTask = null;

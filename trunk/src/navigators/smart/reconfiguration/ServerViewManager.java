@@ -228,6 +228,7 @@ public class ServerViewManager extends ViewManager {
         View newV = new View(currentView.getId() + 1, nextV, f,addresses);
 
         System.out.println("new view: " + newV);
+        System.out.println("installed on eid: " + eid);
         System.out.println("lastJoinSet: " + jSet);
 
         //TODO:Remove all information stored about each process in rSet
@@ -237,9 +238,11 @@ public class ServerViewManager extends ViewManager {
         if (forceLC) {
             
             //TODO: Reactive it and make it work
-            /*System.out.println("Forcing leader change");
+            System.out.println("Shortening LC timeout");
             tomLayer.requestsTimer.stopTimer();
-            tomLayer.triggerTimeout(new LinkedList<TOMMessage>());*/
+            tomLayer.requestsTimer.setShortTimeout(3000);
+            tomLayer.requestsTimer.startTimer();
+            //tomLayer.triggerTimeout(new LinkedList<TOMMessage>());
                 
         } 
         return TOMUtil.getBytes(new ReconfigureReply(newV, jSetInfo.toArray(new String[0]),
