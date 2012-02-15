@@ -255,8 +255,16 @@ public class Round implements Serializable {
         //******* EDUARDO BEGIN **************//
         int p = this.manager.getCurrentViewPos(acceptor);
         if (p >= 0 /*&& !strongSetted[p]*/ && !isFrozen()) { //it can only be setted once
-            strong[p] = value;
-            strongSetted[p] = true;
+            try {
+                strong[p] = value;
+                strongSetted[p] = true;
+            }
+            catch (ArrayIndexOutOfBoundsException ex) {
+                System.out.println("BRONCA! EID: " + this.execution.getId());
+                System.out.println("BRONCA! PID: " + acceptor);
+                System.out.println("BRONCA! INDEX: " + p);
+                throw ex;
+            }
         }
         //******* EDUARDO END **************//
     }

@@ -628,6 +628,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             lcManager.removeStops(nextReg);
             
             requestsTimer.Enabled(true);
+            requestsTimer.setShortTimeout(-1);
             requestsTimer.startTimer();
 
             //int leader = regency % this.reconfManager.getCurrentViewN(); // new leader
