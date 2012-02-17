@@ -24,6 +24,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.TreeSet;
 import navigators.smart.reconfiguration.ServerViewManager;
+import navigators.smart.reconfiguration.views.View;
 import navigators.smart.tom.core.messages.TOMMessage;
 import org.apache.commons.codec.binary.Base64;
 
@@ -51,6 +52,7 @@ public class Round implements Serializable {
     public byte[] propValueHash = null; // proposed value hash
     public SignedObject[] proofs; // proof from other processes
 
+    private View lastView = null;
 
     private ServerViewManager manager;
 
@@ -66,6 +68,7 @@ public class Round implements Serializable {
         this.manager = manager;
         //ExecutionManager manager = execution.getManager();
 
+        this.lastView = manager.getCurrentView();
         this.me = manager.getStaticConf().getProcessId();
 
         //int[] acceptors = manager.getAcceptors();
@@ -91,6 +94,50 @@ public class Round implements Serializable {
         }
     }
 
+    // If a view change takes place and concurrentely this consensus is still
+    // receiving messages, the weak and strong arrays must be updated
+    private void updateArrays() {
+        
+        if (lastView.getId() != manager.getCurrentViewId()) {
+            
+            int n = manager.getCurrentViewN();
+            
+            byte[][] weak = new byte[n][];
+            byte[][] strong = new byte[n][];
+            
+            boolean[] weakSetted = new boolean[n];
+            boolean[] strongSetted = new boolean[n];
+
+            Arrays.fill(weakSetted, false);
+            Arrays.fill(strongSetted, false);
+        
+            for (int pid : lastView.getProcesses()) {
+                
+                if (manager.isCurrentViewMember(pid)) {
+                    
+                    int currentPos = manager.getCurrentViewPos(pid);
+                    int lastPos = lastView.getPos(pid);
+                    
+                    weak[currentPos] = this.weak[lastPos];
+                    strong[currentPos] = this.strong[lastPos];
+
+                    weakSetted[currentPos] = this.weakSetted[lastPos];
+                    strongSetted[currentPos] = this.strongSetted[lastPos];
+
+                }
+            }
+            
+            this.weak = weak;
+            this.strong = strong;
+
+            this.weakSetted = weakSetted;
+            this.strongSetted = strongSetted;
+
+            lastView = manager.getCurrentView();
+            
+        }
+    }
+            
     /**
      * Set this round as removed from its execution
      */
@@ -113,6 +160,9 @@ public class Round implements Serializable {
      * @param proof proof received
      */
     public void setCollectProof(int acceptor, SignedObject proof) {
+        
+        updateArrays();
+                
         if (proofs == null) {
             proofs = new SignedObject[weak.length];
             Arrays.fill((SignedObject[]) proofs, null);
@@ -157,6 +207,8 @@ public class Round implements Serializable {
      */
     public boolean isWeakSetted(int acceptor) {
         
+        updateArrays();
+        
         //******* EDUARDO BEGIN **************//
         int p = this.manager.getCurrentViewPos(acceptor);
         if(p >= 0){
@@ -173,6 +225,9 @@ public class Round implements Serializable {
      * @return True if there is a strongly accepted value from a replica, false otherwise
      */
     public boolean isStrongSetted(int acceptor) {
+        
+        updateArrays();
+        
         //******* EDUARDO BEGIN **************//
         int p = this.manager.getCurrentViewPos(acceptor);
         if(p >= 0){
@@ -189,6 +244,9 @@ public class Round implements Serializable {
      * @return The value weakly accepted from the specified replica
      */
     public byte[] getWeak(int acceptor) {
+        
+        updateArrays();
+        
         //******* EDUARDO BEGIN **************//
         int p = this.manager.getCurrentViewPos(acceptor);
         if(p >= 0){        
@@ -213,6 +271,9 @@ public class Round implements Serializable {
      * @param value The value weakly accepted from the specified replica
      */
     public void setWeak(int acceptor, byte[] value) { // TODO: Race condition?
+        
+        updateArrays();
+        
         //******* EDUARDO BEGIN **************//
         int p = this.manager.getCurrentViewPos(acceptor);
         if (p >=0 && /*!weakSetted[p] &&*/ !isFrozen()) { //it can only be setted once
@@ -228,6 +289,9 @@ public class Round implements Serializable {
      * @return The value strongly accepted from the specified replica
      */
     public byte[] getStrong(int acceptor) {
+        
+        updateArrays();
+        
         //******* EDUARDO BEGIN **************//
          int p = this.manager.getCurrentViewPos(acceptor);
         if(p >= 0){        
@@ -252,19 +316,14 @@ public class Round implements Serializable {
      * @param value The value strongly accepted from the specified replica
      */
     public void setStrong(int acceptor, byte[] value) { // TODO: race condition?
+        
+        updateArrays();
+        
         //******* EDUARDO BEGIN **************//
         int p = this.manager.getCurrentViewPos(acceptor);
         if (p >= 0 /*&& !strongSetted[p]*/ && !isFrozen()) { //it can only be setted once
-            try {
-                strong[p] = value;
-                strongSetted[p] = true;
-            }
-            catch (ArrayIndexOutOfBoundsException ex) {
-                System.out.println("BRONCA! EID: " + this.execution.getId());
-                System.out.println("BRONCA! PID: " + acceptor);
-                System.out.println("BRONCA! INDEX: " + p);
-                throw ex;
-            }
+            strong[p] = value;
+            strongSetted[p] = true;
         }
         //******* EDUARDO END **************//
     }
