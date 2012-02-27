@@ -1,0 +1,18 @@
+#summary This pages describes how BFT-SMaRt works.
+
+= Introduction =
+
+BFT-SMaRt is a replication library written in Java. It implements state machine replication. It is designed to tolerate Byzantine faults, while still being highly efficient - even if some replicas are faulty. In this page we describe how this library works, in a high level of abstraction.
+
+= State Machine Replication (SMR) =
+
+= Byzantine Fault Tolerance (BFT) =
+
+= State Transfer =
+
+= Reconfiguration =
+
+Add your content here.  Format your content with:
+  * Text in *bold* or _italic_
+  * Headings, paragraphs, and lists
+  * Automatic links to other wiki pages
