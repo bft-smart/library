@@ -126,7 +126,7 @@ public class ThroughputLatencyClient {
                 if (dos) {
                     //proxy.asycInvoke(request);
                     reqId = proxy.generateRequestId();
-                    proxy.TOMulticast(request, reqId, (readOnly) ? TOMMessageType.READONLY_REQUEST : TOMMessageType.REQUEST); 
+                    proxy.TOMulticast(request, reqId, (readOnly) ? TOMMessageType.UNORDERED_REQUEST : TOMMessageType.ORDERED_REQUEST); 
                 }
                 else reply = proxy.invoke(request, readOnly);
                 if (verbose) System.out.println(" sent!");
@@ -144,7 +144,7 @@ public class ThroughputLatencyClient {
                 if (dos) {
                     //proxy.asycInvoke(request);
                     reqId = proxy.generateRequestId();
-                    proxy.TOMulticast(request, reqId, (readOnly) ? TOMMessageType.READONLY_REQUEST : TOMMessageType.REQUEST); 
+                    proxy.TOMulticast(request, reqId, (readOnly) ? TOMMessageType.UNORDERED_REQUEST : TOMMessageType.ORDERED_REQUEST); 
 
                 }
                 else reply = proxy.invoke(request, readOnly);

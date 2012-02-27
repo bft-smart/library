@@ -233,7 +233,7 @@ public class ServiceReplica implements TOMReceiver {
 				if (!fromConsensus || request.getViewID() == SVManager.getCurrentViewId()) {
 					
 					//If message is a request, put message in the toBatch list
-					if (request.getReqType() == TOMMessageType.REQUEST) {
+					if (request.getReqType() == TOMMessageType.ORDERED_REQUEST) {
 						numRequests++;
 						
 						//Make new message context
@@ -310,7 +310,7 @@ public class ServiceReplica implements TOMReceiver {
         		if (!fromConsensus || request.getViewID() == SVManager.getCurrentViewId()) {
                             
                                 navigators.smart.tom.util.Logger.println("(ServiceReplica.receiveMessages) same view");
-        			if (request.getReqType() == TOMMessageType.REQUEST) {
+        			if (request.getReqType() == TOMMessageType.ORDERED_REQUEST) {
                                     
                                         navigators.smart.tom.util.Logger.println("(ServiceReplica.receiveMessages) this is a REQUEST type message");
         				byte[] response = null;

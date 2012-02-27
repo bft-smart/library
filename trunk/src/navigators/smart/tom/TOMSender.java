@@ -49,10 +49,6 @@ public abstract class TOMSender implements ReplyReceiver {
     private Lock lock = new ReentrantLock(); // lock to manage concurrent access to this object by other threads
     private boolean useSignatures = false;
 
-    
-    
-    
-    
     /**
      * Creates a new instance of TOMulticastSender
      *
@@ -74,29 +70,7 @@ public abstract class TOMSender implements ReplyReceiver {
     public ClientViewManager getViewManager(){
         return this.viewManager;
     }
-    //******* EDUARDO END **************//
-    
-    /**
-     * This method initializes the object
-     * TODO: Ask if this method cannot be protected (compiles, but....)
-     *
-     * @param processId ID of the process
-     * @param sequence Initial sequence number for data multicast
-     *
-     * 
-     */
-    public void init(int processId, int sequence) {
-        this.init(processId);
-        this.sequence = sequence;
-    }
-    
-    public void init(int processId, String configHome, int sequence) {
-        this.init(processId, configHome);
-        this.sequence = sequence;
-    }
 
-    
-    //******* EDUARDO BEGIN **************//
     /**
      * This method initializes the object
      * TODO: Ask if this method cannot be protected (compiles, but....)
@@ -166,6 +140,11 @@ public abstract class TOMSender implements ReplyReceiver {
         cs.send(useSignatures, viewManager.getCurrentViewProcesses(),
                 new TOMMessage(me, session, reqId, m, viewManager.getCurrentViewId(),
                 reqType));
+    }
+    
+    public void sendMessageToTargets(byte[] m, int reqId, int[] targets) {
+        cs.send(useSignatures, targets,
+                new TOMMessage(me, session, reqId, m, viewManager.getCurrentViewId(), TOMMessageType.UNORDERED_REQUEST));
     }
     
     /**
