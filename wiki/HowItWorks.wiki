@@ -10,9 +10,9 @@ SMR is a replication technique where an arbitrary number of clients issue comman
 
 The goal of this technique is to make the state at each replica to evolve in a consistent way, thus making the service completely and accurately replicated at each replica. In order to achieve this behavior, it is necessary to satisfy three properties:
 
-* Replicas only apply deterministic changes to the state;
-* All replicas start with the same state;
-* All replicas execute the same sequence of operations.
+   * Replicas only apply deterministic changes to the state;
+   * All replicas start with the same state;
+   * All replicas execute the same sequence of operations.
 
 The first two requirements can be fulfilled without any special library, but the last one requires the replicas to communicate among themselfs, and that they execute a complex agreement protocol, in order to garantee that the commands are executed in the same order across all replicas.
 
