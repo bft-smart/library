@@ -284,7 +284,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
     @Override
     public void requestReceived(TOMMessage msg) {
         // check if this request is valid and add it to the client' pending requests list
-        boolean readOnly = (msg.getReqType() == TOMMessageType.READONLY_REQUEST);
+        boolean readOnly = (msg.getReqType() == TOMMessageType.UNORDERED_REQUEST);
         if (clientsManager.requestReceived(msg, true, !readOnly, communication)) {
             if (readOnly) {
                 dt.deliverUnordered(msg, lcManager.getLastReg());

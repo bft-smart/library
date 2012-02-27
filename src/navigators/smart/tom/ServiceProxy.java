@@ -138,12 +138,12 @@ public class ServiceProxy extends TOMSender {
      * @return The reply from the replicas related to request
      */
     public byte[] invoke(byte[] request) {
-        return invoke(request, TOMMessageType.REQUEST);
+        return invoke(request, TOMMessageType.ORDERED_REQUEST);
     }
 
     public byte[] invoke(byte[] request, boolean readOnly) {
-        TOMMessageType type = (readOnly) ? TOMMessageType.READONLY_REQUEST
-                : TOMMessageType.REQUEST;
+        TOMMessageType type = (readOnly) ? TOMMessageType.UNORDERED_REQUEST
+                : TOMMessageType.ORDERED_REQUEST;
         return invoke(request, type);
     }
 
@@ -199,7 +199,7 @@ public class ServiceProxy extends TOMSender {
             Logger.println("Received n-f replies and no response could be extracted.");
 
             canSendLock.unlock();
-            if (reqType == TOMMessageType.READONLY_REQUEST) {
+            if (reqType == TOMMessageType.ORDERED_REQUEST) {
                 //invoke the operation again, whitout the read-only flag
                 Logger.println("###################RETRY#######################");
                 return invoke(request);
@@ -209,7 +209,7 @@ public class ServiceProxy extends TOMSender {
         } else {
             //normal operation
             //******* EDUARDO BEGIN **************//
-            if (reqType == TOMMessageType.REQUEST) {
+            if (reqType == TOMMessageType.UNORDERED_REQUEST) {
                 //Reply to a normal request!
                 if (response.getViewID() == getViewManager().getCurrentViewId()) {
                     ret = response.getContent(); // return the response

@@ -23,7 +23,7 @@ public class KVClientTest {
 			System.out.println("Starting the servers");
 			command[0] = "java";
 			command[1] = "-cp";
-			command[2] = "bin/SMaRt.jar:lib/slf4j-api-1.5.8.jar:lib/slf4j-jdk14-1.5.8.jar:lib/netty-3.1.1.GA.jar:lib/commons-codec-1.5.jar";
+			command[2] = "bin/BFT-SMaRt.jar:lib/slf4j-api-1.5.8.jar:lib/slf4j-jdk14-1.5.8.jar:lib/netty-3.1.1.GA.jar:lib/commons-codec-1.5.jar";
 			command[3] = "navigators.smart.tom.demo.keyvalue.BFTMapImpl";
 			command[4] = "0";
 			
@@ -91,7 +91,7 @@ public class KVClientTest {
 	public void testRegularCase() {
 		try{
 			Thread.sleep(1000);
-			BFTMap bftMap = new BFTMap(1001);
+			BFTMap bftMap = new BFTMap(1001, true);
 			bftMap.put("TestTable1", new HashMap<String,byte[]>());
 			bftMap.putEntry("TestTable1", "key1", "value1".getBytes());
 			assertEquals("Main table size should be 1", 1, bftMap.size1("TestTable1"));
@@ -122,7 +122,7 @@ public class KVClientTest {
 	public void testStopNonLeader() {
 		try{
 			Thread.sleep(1000);
-			BFTMap bftMap = new BFTMap(1001);
+			BFTMap bftMap = new BFTMap(1001, true);
 			bftMap.put("TestTable2", new HashMap<String,byte[]>());
 			bftMap.putEntry("TestTable2", "key1", "value1".getBytes());
 			assertEquals("Main table size should be 1", 1, bftMap.size1("TestTable2"));
@@ -158,7 +158,7 @@ public class KVClientTest {
 	public void testStopAndStartNonLeader() {
 		try{
 			Thread.sleep(5000);
-			BFTMap bftMap = new BFTMap(1001);
+			BFTMap bftMap = new BFTMap(1001, true);
 			Thread.sleep(1000);
 			bftMap.put("TestTable3", new HashMap<String,byte[]>());
 			
@@ -227,7 +227,7 @@ public class KVClientTest {
 	public void testStopLeader() {
 		try{
 			Thread.sleep(1000);
-			BFTMap bftMap = new BFTMap(1001);
+			BFTMap bftMap = new BFTMap(1001, true);
 			Thread.sleep(1000);
 			bftMap.put("TestTable4", new HashMap<String,byte[]>());
 			bftMap.putEntry("TestTable4", "key1", "value1".getBytes());
@@ -272,7 +272,7 @@ public class KVClientTest {
 	public void testStopLeaders() {
 		try{
 			Thread.sleep(1000);
-			BFTMap bftMap = new BFTMap(1001);
+			BFTMap bftMap = new BFTMap(1001, true);
 			Thread.sleep(1000);
 			bftMap.put("TestTable5", new HashMap<String,byte[]>());
 			
