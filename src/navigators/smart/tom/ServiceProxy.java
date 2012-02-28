@@ -23,6 +23,8 @@ import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
+import navigators.smart.communication.client.ReplyListener;
+import navigators.smart.communication.client.ReplyReceiver;
 import navigators.smart.reconfiguration.ReconfigureReply;
 import navigators.smart.reconfiguration.views.View;
 import navigators.smart.tom.core.messages.TOMMessage;
@@ -51,6 +53,7 @@ public class ServiceProxy extends TOMSender {
     private int invokeTimeout = 40;
     private Comparator<byte[]> comparator;
     private Extractor extractor;
+    private ReplyListener replyListener = null;
 
     /**
      * Constructor
@@ -108,6 +111,7 @@ public class ServiceProxy extends TOMSender {
                 return replies[lastReceived];
             }
         };
+        replyListener = null;
     }
 
     /**
@@ -164,6 +168,7 @@ public class ServiceProxy extends TOMSender {
         Arrays.fill(replies, null);
         receivedReplies = 0;
         response = null;
+        replyListener = null;
 
         // Send the request to the replicas, and get its ID
         reqId = generateRequestId();
@@ -248,6 +253,11 @@ public class ServiceProxy extends TOMSender {
         return ret;
     }
 
+    public void invokeAsynchronous(byte[] request, ReplyListener listener, int[] targets) {
+        reqId = generateRequestId();
+    	sendMessageToTargets(request, reqId, targets);
+    }
+
     //******* EDUARDO BEGIN **************//
     private void reconfigureTo(View v) {
         Logger.println("Installing a most up-to-date view with id=" + v.getId());
@@ -264,7 +274,6 @@ public class ServiceProxy extends TOMSender {
      */
     @Override
     public void replyReceived(TOMMessage reply) {
-        
         canReceiveLock.lock();
         if (reqId == -1) {//no message being expected
             Logger.println("throwing out request: sender=" + reply.getSender() + " reqId=" + reply.getSequence());
@@ -279,6 +288,12 @@ public class ServiceProxy extends TOMSender {
         }
 
         if (reply.getSequence() == reqId) {
+        	if(replyListener != null) {
+        		replyListener.replyReceived(reply);
+                canReceiveLock.unlock();
+                return;
+        	}
+        	
             Logger.println("Receiving reply from " + reply.getSender() +
                     " with reqId:" + reply.getSequence() + ". Putting on pos=" + pos);
 
