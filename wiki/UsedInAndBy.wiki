@@ -15,8 +15,7 @@ Projects in which components use BFT-SMaRt:
 
 Non-complete list of papers that use BFT-SMaRt or parts of its code base:
 
- * Rüdiger Kapitza, Johannes Behl, Christian Cachin, Tobias Distler, Simon Kuhnle, Seyed Vahid Mohammadi, Wolfgang Schröder-Preikschat,  Klaus Stengel. CheapBFT: Resource-efficient Byzantine Fault Tolerance.
-EuroSys'12: The 7th ACM SIGOPS/EuroSys European Systems Conference. Bern, Switzerland. April 2012.
+ * Rüdiger Kapitza, Johannes Behl, Christian Cachin, Tobias Distler, Simon Kuhnle, Seyed Vahid Mohammadi, Wolfgang Schröder-Preikschat,  Klaus Stengel. CheapBFT: Resource-efficient Byzantine Fault Tolerance. EuroSys'12: The 7th ACM SIGOPS/EuroSys European Systems Conference. Bern, Switzerland. April 2012.
 
  * Giuliana Veronese, Miguel Correia, Alysson Bessani, Lau Lung, Paulo Verissimo. Efficient Byzantine Fault Tolerance. IEEE Transactions on Computers (To appear). October 2011.
 
