@@ -1,0 +1,20 @@
+#summary Papers and Projects that use BFT-SMaRt.
+#labels Phase-Support
+
+= Projects =
+
+ * DepSpace
+ * TClouds[http://www.tclouds-projec.eu xyz]
+ * MASSIF
+ * SecFuNet
+ * TRONE
+
+= Papers =
+
+
+= Details =
+
+Add your content here.  Format your content with:
+  * Text in *bold* or _italic_
+  * Headings, paragraphs, and lists
+  * Automatic links to other wiki pages
