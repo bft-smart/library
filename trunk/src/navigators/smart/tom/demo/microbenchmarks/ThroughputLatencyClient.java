@@ -128,7 +128,11 @@ public class ThroughputLatencyClient {
                     reqId = proxy.generateRequestId();
                     proxy.TOMulticast(request, reqId, (readOnly) ? TOMMessageType.UNORDERED_REQUEST : TOMMessageType.ORDERED_REQUEST); 
                 }
-                else reply = proxy.invoke(request, readOnly);
+                else
+                	if(readOnly)
+                		reply = proxy.invokeUnordered(request);
+                	else
+                		reply = proxy.invokeOrdered(request);
                 if (verbose) System.out.println(" sent!");
 
                 if (verbose && (req % 1000 == 0)) System.out.println(this.id + " // " + req + " operations sent!");
@@ -147,7 +151,11 @@ public class ThroughputLatencyClient {
                     proxy.TOMulticast(request, reqId, (readOnly) ? TOMMessageType.UNORDERED_REQUEST : TOMMessageType.ORDERED_REQUEST); 
 
                 }
-                else reply = proxy.invoke(request, readOnly);
+                else
+                	if(readOnly)
+                		reply = proxy.invokeUnordered(request);
+                	else
+                		reply = proxy.invokeOrdered(request);
                 if (verbose) System.out.println(this.id + " // sent!");
                 st.store(System.nanoTime() - last_send_instant);
 

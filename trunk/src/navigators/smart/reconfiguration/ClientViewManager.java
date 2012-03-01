@@ -13,8 +13,6 @@ import navigators.smart.reconfiguration.views.View;
  */
 public class ClientViewManager extends ViewManager{
 
-
-
     public ClientViewManager(int procId) {
         super(procId);
         View cv = getViewStore().readView();
@@ -26,7 +24,6 @@ public class ClientViewManager extends ViewManager{
         }
     }
 
-    
     public ClientViewManager(int procId, String configHome) {
         super(procId, configHome);
         View cv = getViewStore().readView();

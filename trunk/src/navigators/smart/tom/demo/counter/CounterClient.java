@@ -84,7 +84,11 @@ public class CounterClient {
                 new DataOutputStream(out).writeInt(inc);
 
                 System.out.println("Counter sending: " + i);
-                byte[] reply = counterProxy.invoke(out.toByteArray(), (inc == 0));
+                byte[] reply;
+                if(inc == 0)
+                	reply = counterProxy.invokeUnordered(out.toByteArray());
+                else
+                	reply = counterProxy.invokeOrdered(out.toByteArray());
                 if(reply != null) {
                     int newValue = new DataInputStream(new ByteArrayInputStream(reply)).readInt();
                     System.out.println("Counter value: " + newValue);
