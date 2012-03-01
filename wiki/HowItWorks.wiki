@@ -1,4 +1,5 @@
 #summary This pages describes how BFT-SMaRt works.
+#labels Phase-Design
 
 = Introduction =
 
