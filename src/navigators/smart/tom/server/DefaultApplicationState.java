@@ -16,10 +16,11 @@
  * You should have received a copy of the GNU General Public License along with SMaRt.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package navigators.smart.statemanagment;
+package navigators.smart.tom.server;
 
 import java.io.Serializable;
 import java.util.Arrays;
+import navigators.smart.statemanagment.ApplicationState;
 
 /**
  * This classe represents a state tranfered from a replica to another. The state associated with the last
@@ -28,16 +29,17 @@ import java.util.Arrays;
  * 
  * @author Jo�o Sousa
  */
-public class TransferableState implements Serializable {
+public class DefaultApplicationState implements ApplicationState {
 
-    private BatchInfo[] messageBatches; // batches received since the last checkpoint.
+    protected byte[] state; // State associated with the last checkpoint
+    protected byte[] stateHash; // Hash of the state associated with the last checkpoint
+    protected int lastEid = -1; // Execution ID for the last messages batch delivered to the application
+    protected boolean hasState; // indicates if the replica really had the requested state
+
+    private CommandsInfo[] messageBatches; // batches received since the last checkpoint.
     private int lastCheckpointEid; // Execution ID for the last checkpoint
     private int lastCheckpointRound; // Round for the last checkpoint
     private int lastCheckpointLeader; // Leader for the last checkpoint
-    private byte[] state; // State associated with the last checkpoint
-    private byte[] stateHash; // Hash of the state associated with the last checkpoint
-    private int lastEid = -1; // Execution ID for the last messages batch delivered to the application
-    private boolean hasState; // indicates if the replica really had the requested state
 
     /**
      * Constructs a TansferableState
@@ -46,8 +48,8 @@ public class TransferableState implements Serializable {
      * @param state State associated with the last checkpoint
      * @param stateHash Hash of the state associated with the last checkpoint
      */
-    public TransferableState(BatchInfo[] messageBatches, int lastCheckpointEid, int lastCheckpointRound, int lastCheckpointLeader, int lastEid, byte[] state, byte[] stateHash) {
-
+    public DefaultApplicationState(CommandsInfo[] messageBatches, int lastCheckpointEid, int lastCheckpointRound, int lastCheckpointLeader, int lastEid, byte[] state, byte[] stateHash) {
+       
         this.messageBatches = messageBatches; // batches received since the last checkpoint.
         this.lastCheckpointEid = lastCheckpointEid; // Execution ID for the last checkpoint
         this.lastCheckpointRound = lastCheckpointRound; // Round for the last checkpoint
@@ -62,7 +64,9 @@ public class TransferableState implements Serializable {
      * Constructs a TansferableState
      * This constructor should be used when there isn't a valid state to construct the object with
      */
-    public TransferableState() {
+    public DefaultApplicationState() {
+
+        
         this.messageBatches = null; // batches received since the last checkpoint.
         this.lastCheckpointEid = -1; // Execution ID for the last checkpoint
         this.lastCheckpointRound = -1; // Round for the last checkpoint
@@ -72,7 +76,16 @@ public class TransferableState implements Serializable {
         this.stateHash = null;
         this.hasState = false;
     }
+    
+    
+    public void setSerializedState(byte[] state) {
+        this.state = state;
+    }
 
+    public byte[] getSerializedState() {
+        return state;
+    }
+      
     /**
      * Indicates if the TransferableState object has a valid state
      * @return true if it has a valid state, false otherwise
@@ -81,52 +94,6 @@ public class TransferableState implements Serializable {
         return hasState;
     }
 
-    /**
-     * Retrieves all batches of messages
-     * @return Batch of messages
-     */
-    public BatchInfo[] getMessageBatches() {
-        return messageBatches;
-    }
-
-    /**
-     * Retrieves the specified batch of messages
-     * @param eid Execution ID associated with the batch to be fetched
-     * @return The batch of messages associated with the batch correspondent execution ID
-     */
-    public BatchInfo getMessageBatch(int eid) {
-        if (eid >= lastCheckpointEid && eid <= lastEid) {
-            return messageBatches[eid - lastCheckpointEid - 1];
-        }
-        else return null;
-    }
-
-    /**
-     * Retrieves the execution ID for the last checkpoint
-     * @return Execution ID for the last checkpoint, or -1 if no checkpoint was yet executed
-     */
-    public int getLastCheckpointEid() {
-
-        return lastCheckpointEid;
-    }
-
-    /**
-     * Retrieves the decision round for the last checkpoint
-     * @return Decision round for the last checkpoint, or -1 if no checkpoint was yet executed
-     */
-    public int getLastCheckpointRound() {
-
-        return lastCheckpointRound;
-    }
-
-    /**
-     * Retrieves the leader for the last checkpoint
-     * @return Leader for the last checkpoint, or -1 if no checkpoint was yet executed
-     */
-    public int getLastCheckpointLeader() {
-
-        return lastCheckpointLeader;
-    }
 
     /**
      * Retrieves the execution ID for the last messages batch delivered to the application
@@ -160,11 +127,58 @@ public class TransferableState implements Serializable {
     public void setState(byte[] state) {
         this.state = state;
     }
+    
+    /**
+     * Retrieves all batches of messages
+     * @return Batch of messages
+     */
+    public CommandsInfo[] getMessageBatches() {
+        return messageBatches;
+    }
+
+    /**
+     * Retrieves the specified batch of messages
+     * @param eid Execution ID associated with the batch to be fetched
+     * @return The batch of messages associated with the batch correspondent execution ID
+     */
+    public CommandsInfo getMessageBatch(int eid) {
+        if (eid >= lastCheckpointEid && eid <= lastEid) {
+            return messageBatches[eid - lastCheckpointEid - 1];
+        }
+        else return null;
+    }
+
+    /**
+     * Retrieves the execution ID for the last checkpoint
+     * @return Execution ID for the last checkpoint, or -1 if no checkpoint was yet executed
+     */
+    public int getLastCheckpointEid() {
+
+        return lastCheckpointEid;
+    }
+
+    /**
+     * Retrieves the decision round for the last checkpoint
+     * @return Decision round for the last checkpoint, or -1 if no checkpoint was yet executed
+     */
+    public int getLastCheckpointRound() {
+
+        return lastCheckpointRound;
+    }
+
+    /**
+     * Retrieves the leader for the last checkpoint
+     * @return Leader for the last checkpoint, or -1 if no checkpoint was yet executed
+     */
+    public int getLastCheckpointLeader() {
+
+        return lastCheckpointLeader;
+    }
 
     @Override
     public boolean equals(Object obj) {
-        if (obj instanceof TransferableState) {
-            TransferableState tState = (TransferableState) obj;
+        if (obj instanceof DefaultApplicationState) {
+            DefaultApplicationState tState = (DefaultApplicationState) obj;
 
             if ((this.messageBatches != null && tState.messageBatches == null) ||
                     (this.messageBatches == null && tState.messageBatches != null)) return false;
@@ -219,4 +233,5 @@ public class TransferableState implements Serializable {
         }
         return hash;
     }
+
 }

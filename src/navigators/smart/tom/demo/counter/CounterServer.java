@@ -24,6 +24,7 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 
+import navigators.smart.statemanagment.ApplicationState;
 import navigators.smart.tom.MessageContext;
 import navigators.smart.tom.ServiceReplica;
 import navigators.smart.tom.server.SingleExecutable;
@@ -95,7 +96,6 @@ public final class CounterServer implements SingleExecutable, Recoverable  {
     }
 
     /** THIS IS JOAO'S CODE, TO HANDLE CHECKPOINTS */
-    @Override
     public byte[] getState() {
 
         //System.out.println("reading counter: "+this.counter);
@@ -110,7 +110,6 @@ public final class CounterServer implements SingleExecutable, Recoverable  {
         //throw new UnsupportedOperationException("Not supported yet.");
     }
 
-    @Override
     public void setState(byte[] state) {
 
         int value = 0;
@@ -124,6 +123,16 @@ public final class CounterServer implements SingleExecutable, Recoverable  {
         this.counter = value;
         
        // System.out.println("Value of deserialized counter "+this.counter);
+    }
+
+    @Override
+    public ApplicationState getState(int eid, boolean sendState) {
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
+
+    @Override
+    public int setState(int eid, ApplicationState state) {
+        throw new UnsupportedOperationException("Not supported yet.");
     }
     /********************************************************/
 }
