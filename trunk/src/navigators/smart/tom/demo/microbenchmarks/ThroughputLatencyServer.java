@@ -18,6 +18,7 @@
 
 package navigators.smart.tom.demo.microbenchmarks;
 
+import navigators.smart.statemanagment.ApplicationState;
 import navigators.smart.tom.MessageContext;
 import navigators.smart.tom.ServiceReplica;
 import navigators.smart.tom.server.Executable;
@@ -146,5 +147,15 @@ public final class ThroughputLatencyServer implements SingleExecutable, Recovera
     }
 
     public void setState(byte[] state) {
+    }
+
+    @Override
+    public ApplicationState getState(int eid, boolean sendState) {
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
+
+    @Override
+    public int setState(int eid, ApplicationState state) {
+        throw new UnsupportedOperationException("Not supported yet.");
     }
 }

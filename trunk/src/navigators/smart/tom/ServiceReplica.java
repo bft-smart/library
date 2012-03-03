@@ -214,7 +214,7 @@ public class ServiceReplica implements TOMReceiver {
                 cs.send(new int[]{tomMsg.getSender()}, tomMsg.reply);
 	}
 
-    public void receiveMessages(int consId, int regency, boolean fromConsensus, TOMMessage[] requests) {
+    public void receiveMessages(int consId, int regency, boolean fromConsensus, TOMMessage[] requests, byte[] decision) {
 		TOMMessage firstRequest = requests[0];
 
 		if(executor instanceof BatchExecutable) {
@@ -280,6 +280,7 @@ public class ServiceReplica implements TOMReceiver {
 				int line = 0;
 				for(TOMMessage m : toBatch){
 					batch[line] = m.getContent();
+                                        line++;
 				}
 				
 				MessageContext[] msgContexts = new MessageContext[msgCtxts.size()];
@@ -373,8 +374,8 @@ public class ServiceReplica implements TOMReceiver {
 
     /** THIS IS JOAO'S CODE, TO HANDLE CHECKPOINTS */
 
-    @Override
-    public byte[] getState() { //TODO: Here is race condition!
+    /*@Override
+    public byte[] getState() {
         requestsLock.lock();
         byte[] state = recoverer.getState();
         requestsLock.unlock();
@@ -387,7 +388,7 @@ public class ServiceReplica implements TOMReceiver {
         requestsLock.lock();
         recoverer.setState(state);
         requestsLock.unlock();
-    }
+    }*/
 
     /**
      * This method initializes the object
@@ -423,7 +424,7 @@ public class ServiceReplica implements TOMReceiver {
         acceptor.setManager(manager);
         proposer.setManager(manager);
 
-        tomLayer = new TOMLayer(manager, this, lm, acceptor, cs, SVManager);
+        tomLayer = new TOMLayer(manager, this, recoverer, lm, acceptor, cs, SVManager);
         
         manager.setTOMLayer(tomLayer);
         

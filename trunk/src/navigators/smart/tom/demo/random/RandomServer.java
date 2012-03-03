@@ -28,6 +28,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import navigators.smart.statemanagment.ApplicationState;
 import navigators.smart.tom.ServiceReplica;
 import java.util.Scanner;
 import navigators.smart.tom.MessageContext;
@@ -170,6 +171,16 @@ public final class RandomServer implements Executable, Recoverable {
         }
 
         this.value = value;
+    }
+
+    @Override
+    public ApplicationState getState(int eid, boolean sendState) {
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
+
+    @Override
+    public int setState(int eid, ApplicationState state) {
+        throw new UnsupportedOperationException("Not supported yet.");
     }
 
 }

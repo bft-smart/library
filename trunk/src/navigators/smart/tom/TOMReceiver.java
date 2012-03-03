@@ -44,7 +44,7 @@ public interface TOMReceiver {
 	 * @param regency
 	 * @param requests The batch with TOMMessage objects.
 	 */
-    public void receiveMessages(int consId, int regency, boolean fromConsensus, TOMMessage[] requests);
+    public void receiveMessages(int consId, int regency, boolean fromConsensus, TOMMessage[] requests, byte[] decision);
 
 
     /**
@@ -53,13 +53,13 @@ public interface TOMReceiver {
      * state.
      * @return An rray of bytes that can be diserialized into the application state
      */
-    public byte[] getState();
+    //public byte[] getState();
 
     /**
      * This method is invoked by the TOM Layer in order to ser a state upon the aplication. This is done when
      * a replica is delayed compared to the rest of the group, and when it recovers after a failure.
      */
-    public void setState(byte[] state);
+    //public void setState(byte[] state);
 
 }
 

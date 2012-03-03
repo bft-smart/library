@@ -16,7 +16,7 @@
  * You should have received a copy of the GNU General Public License along with SMaRt.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package navigators.smart.statemanagment;
+package navigators.smart.tom.server;
 
 /**
  * This classes serves as a log for the state associated with the last checkpoint, and the message
@@ -28,7 +28,7 @@ package navigators.smart.statemanagment;
  */
 public class StateLog {
 
-    private BatchInfo[] messageBatches; // batches received since the last checkpoint.
+    private CommandsInfo[] messageBatches; // batches received since the last checkpoint.
     private int lastCheckpointEid; // Execution ID for the last checkpoint
     private int lastCheckpointRound; // Decision round for the last checkpoint
     private int lastCheckpointLeader; // Leader for the last checkpoint
@@ -43,7 +43,7 @@ public class StateLog {
      */
     public StateLog(int k) {
 
-        this.messageBatches = new BatchInfo[k - 1];
+        this.messageBatches = new CommandsInfo[k - 1];
         this.lastCheckpointEid = -1;
         this.lastCheckpointRound = -1;
         this.lastCheckpointLeader = -1;
@@ -162,11 +162,11 @@ public class StateLog {
      * the 'k' batches received after the last checkpoint are supposed to be kept
      * @param batch The batch of messages to be kept.
      */
-    public void addMessageBatch(byte[] batch, int round, int leader) {
+    public void addMessageBatch(byte[][] commands, int round, int leader) {
 
         if (position < messageBatches.length) {
 
-            messageBatches[position] = new BatchInfo(batch, round, leader);
+            messageBatches[position] = new CommandsInfo(commands, round, leader);
             position++;
         }
     }
@@ -176,7 +176,7 @@ public class StateLog {
      * @param eid Execution ID associated with the batch to be fetched
      * @return The batch of messages associated with the batch correspondent execution ID
      */
-    public BatchInfo getMessageBatch(int eid) {
+    public CommandsInfo getMessageBatch(int eid) {
         if (eid > lastCheckpointEid && eid <= lastEid) {
             return messageBatches[eid - lastCheckpointEid - 1];
         }
@@ -187,7 +187,7 @@ public class StateLog {
      * Retrieves all the stored batches kept since the last checkpoint
      * @return All the stored batches kept since the last checkpoint
      */
-    public BatchInfo[] getMessageBatches() {
+    public CommandsInfo[] getMessageBatches() {
         return messageBatches;
     }
 
@@ -203,17 +203,17 @@ public class StateLog {
      * @param eid Execution ID correspondent to desired state
      * @return TransferableState Object containing this log information
      */
-    public TransferableState getTransferableState(int eid, boolean setState) {
+    public DefaultApplicationState getTransferableState(int eid, boolean setState) {
 
         if (lastCheckpointEid > -1 && eid >= lastCheckpointEid) {
 
-            BatchInfo[] batches = null;
+            CommandsInfo[] batches = null;
 
              if  (eid <= lastEid) {
                 int size = eid - lastCheckpointEid ;
             
                 if (size > 0) {
-                    batches = new BatchInfo[size];
+                    batches = new CommandsInfo[size];
 
                     for (int i = 0; i < size; i++)
                         batches[i] = messageBatches[i];
@@ -222,7 +222,7 @@ public class StateLog {
 
                     batches = messageBatches;
              }
-            return new TransferableState(batches, lastCheckpointEid, lastCheckpointRound, lastCheckpointLeader, eid, (setState ? state : null), stateHash);
+            return new DefaultApplicationState(batches, lastCheckpointEid, lastCheckpointRound, lastCheckpointLeader, eid, (setState ? state : null), stateHash);
 
         }
         else return null;
@@ -232,7 +232,7 @@ public class StateLog {
      * Updates this log, according to the information contained in the TransferableState object
      * @param transState TransferableState object containing the information which is used to updated this log
      */
-    public void update(TransferableState transState) {
+    public void update(DefaultApplicationState transState) {
 
         position = 0;
         if (transState.getMessageBatches() != null) {
