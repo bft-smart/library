@@ -8,6 +8,8 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectInputStream;
@@ -17,8 +19,12 @@ import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import navigators.smart.statemanagment.ApplicationState;
 import navigators.smart.tom.MessageContext;
 import navigators.smart.tom.ServiceReplica;
+import navigators.smart.tom.server.BatchExecutable;
+import navigators.smart.tom.server.DefaultRecoverable;
+import navigators.smart.tom.server.DefaultApplicationState;
 import navigators.smart.tom.server.SingleExecutable;
 import navigators.smart.tom.server.Recoverable;
 
@@ -29,13 +35,14 @@ import navigators.smart.tom.server.Recoverable;
  * This class will create a ServiceReplica and will initialize
  * it with a implementation of Executable and Recoverable interfaces. 
  */
-public class BFTMapImpl implements SingleExecutable, Recoverable {
+public class BFTMapImpl extends DefaultRecoverable {
 
     BFTTableMap tableMap = new BFTTableMap();
     ServiceReplica replica = null;
     
     //The constructor passes the id of the server to the super class
     public BFTMapImpl(int id) {
+        super();
     	replica = new ServiceReplica(id, this, this);
     }
 
@@ -48,7 +55,7 @@ public class BFTMapImpl implements SingleExecutable, Recoverable {
     }
     
     @Override
-    public byte[] getState() {
+    public byte[] getSnapshot() {
         try {
 
             // serialize to byte array and return
@@ -64,11 +71,12 @@ public class BFTMapImpl implements SingleExecutable, Recoverable {
         } catch (IOException ex) {
             Logger.getLogger(BFTMapImpl.class.getName()).log(Level.SEVERE, null, ex);
             return new byte[0];
-        }
+        }   
     }
+    
 
     @Override
-    public void setState(byte[] state) {
+    public void installSnapshot(byte[] state) {
         try {
 
             // serialize to byte array and return
@@ -87,120 +95,130 @@ public class BFTMapImpl implements SingleExecutable, Recoverable {
 
     @Override
     @SuppressWarnings("static-access")
-    public byte[] executeOrdered(byte[] command, MessageContext msgCtx) {
-        try {
-            ByteArrayInputStream in = new ByteArrayInputStream(command);
-            ByteArrayOutputStream out = null;
-            byte[] reply = null;
-            int cmd = new DataInputStream(in).readInt();
-            switch (cmd) {
-                //operations on the hashmap
-                case KVRequestType.PUT:
-                    String tableName = new DataInputStream(in).readUTF();
-                    String key = new DataInputStream(in).readUTF();
-                    String value = new DataInputStream(in).readUTF();
-                    byte[] valueBytes = value.getBytes();
-                    System.out.println("Key received: " + key);
-                    byte[] ret = tableMap.addData(tableName, key, valueBytes);
-                    if (ret == null) {
-//                        System.out.println("Return is null, so there was no data before");
-                        ret = new byte[0];
-                    }
-                    reply = valueBytes;
-                    break;
-                case KVRequestType.REMOVE:
-                    tableName = new DataInputStream(in).readUTF();
-                    key = new DataInputStream(in).readUTF();
-                    System.out.println("Key received: " + key);
-                    valueBytes = tableMap.removeEntry(tableName, key);
-                    value = new String(valueBytes);
-                    System.out.println("Value removed is : " + value);
-                    out = new ByteArrayOutputStream();
-                    new DataOutputStream(out).writeBytes(value);
-                    reply = out.toByteArray();
-                    break;
-                case KVRequestType.TAB_CREATE:
-                    tableName = new DataInputStream(in).readUTF();
-                    //ByteArrayInputStream in1 = new ByteArrayInputStream(command);
-                    ObjectInputStream objIn = new ObjectInputStream(in);
-                    Map table = null;
-                    try {
-                        table = (Map<String, byte[]>) objIn.readObject();
-                    } catch (ClassNotFoundException ex) {
-                        Logger.getLogger(BFTMapImpl.class.getName()).log(Level.SEVERE, null, ex);
-                    }
-                    Map<String, byte[]> tableCreated = tableMap.addTable(tableName, table);
-                    ByteArrayOutputStream bos = new ByteArrayOutputStream();
-                    ObjectOutputStream objOut = new ObjectOutputStream(bos);
-                    objOut.writeObject(tableCreated);
-                    objOut.close();
-                    in.close();
-                    reply = bos.toByteArray();
-                    break;
-                case KVRequestType.TAB_REMOVE:
-                    tableName = new DataInputStream(in).readUTF();
-                    table = tableMap.removeTable(tableName);
-                    bos = new ByteArrayOutputStream();
-                    objOut = new ObjectOutputStream(bos);
-                    objOut.writeObject(table);
-                    objOut.close();
-                    objOut.close();
-                    reply = bos.toByteArray();
-                    break;
-
+    public byte[][] executeBatch2(byte[][] commands, MessageContext[] msgCtxs) {
+        
+        byte [][] replies = new byte[commands.length][];
+        for (int i = 0; i < commands.length; i++) {
             
-                case KVRequestType.SIZE_TABLE:
-                    int size1 = tableMap.getSizeofTable();
-                    System.out.println("Size " + size1);
-                    out = new ByteArrayOutputStream();
-                    new DataOutputStream(out).writeInt(size1);
-                    reply = out.toByteArray();
-                    break;
-                case KVRequestType.GET:
-                    tableName = new DataInputStream(in).readUTF();
-                    System.out.println("tablename: " + tableName);
-                    key = new DataInputStream(in).readUTF();
-                    System.out.println("Key received: " + key);
-                    valueBytes = tableMap.getEntry(tableName, key);
-                    value = new String(valueBytes);
-                    System.out.println("The value to be get is: " + value);
-                    out = new ByteArrayOutputStream();
-                    new DataOutputStream(out).writeBytes(value);
-                    reply = out.toByteArray();
-                    break;
-                case KVRequestType.SIZE:
-                    String tableName2 = new DataInputStream(in).readUTF();
-                    int size = tableMap.getSize(tableName2);
-                    out = new ByteArrayOutputStream();
-                    new DataOutputStream(out).writeInt(size);
-                    reply = out.toByteArray();
-                    break;
-	            case KVRequestType.CHECK:
-	                tableName = new DataInputStream(in).readUTF();
-	                key = new DataInputStream(in).readUTF();
-	                System.out.println("Table Key received: " + key);
-	                valueBytes = tableMap.getEntry(tableName, key);
-	                boolean entryExists = valueBytes != null;
-	                out = new ByteArrayOutputStream();
-	                new DataOutputStream(out).writeBoolean(entryExists);
-	                reply = out.toByteArray();
-	                break;
-			    case KVRequestType.TAB_CREATE_CHECK:
-			        tableName = new DataInputStream(in).readUTF();
-			        System.out.println("Table of Table Key received: " + tableName);
-			        table = tableMap.getName(tableName);
-			        boolean tableExists = (table != null);
-			        System.out.println("Table exists: " + tableExists);
-			        out = new ByteArrayOutputStream();
-			        new DataOutputStream(out).writeBoolean(tableExists);
-			        reply = out.toByteArray();
-			        break;
-            }
-            return reply;
-        } catch (IOException ex) {
-            Logger.getLogger(BFTMapImpl.class.getName()).log(Level.SEVERE, null, ex);
-            return null;
+            byte [] command = commands[i];
+            
+            // O MENSSAGE CONTEXT APARECE A NULO QUANDO SE INSTALA O ESTADO!!!
+            //MessageContext msgCtx = msgCtxs[i];
+            try {
+                ByteArrayInputStream in = new ByteArrayInputStream(command);
+                ByteArrayOutputStream out = null;
+                byte[] reply = null;
+                int cmd = new DataInputStream(in).readInt();
+                switch (cmd) {
+                    //operations on the hashmap
+                    case KVRequestType.PUT:
+                        String tableName = new DataInputStream(in).readUTF();
+                        String key = new DataInputStream(in).readUTF();
+                        String value = new DataInputStream(in).readUTF();
+                        byte[] valueBytes = value.getBytes();
+                        System.out.println("Key received: " + key);
+                        byte[] ret = tableMap.addData(tableName, key, valueBytes);
+                        if (ret == null) {
+    //                        System.out.println("Return is null, so there was no data before");
+                            ret = new byte[0];
+                        }
+                        reply = valueBytes;
+                        break;
+                    case KVRequestType.REMOVE:
+                        tableName = new DataInputStream(in).readUTF();
+                        key = new DataInputStream(in).readUTF();
+                        System.out.println("Key received: " + key);
+                        valueBytes = tableMap.removeEntry(tableName, key);
+                        value = new String(valueBytes);
+                        System.out.println("Value removed is : " + value);
+                        out = new ByteArrayOutputStream();
+                        new DataOutputStream(out).writeBytes(value);
+                        reply = out.toByteArray();
+                        break;
+                    case KVRequestType.TAB_CREATE:
+                        tableName = new DataInputStream(in).readUTF();
+                        //ByteArrayInputStream in1 = new ByteArrayInputStream(command);
+                        ObjectInputStream objIn = new ObjectInputStream(in);
+                        Map table = null;
+                        try {
+                            table = (Map<String, byte[]>) objIn.readObject();
+                        } catch (ClassNotFoundException ex) {
+                            Logger.getLogger(BFTMapImpl.class.getName()).log(Level.SEVERE, null, ex);
+                        }
+                        Map<String, byte[]> tableCreated = tableMap.addTable(tableName, table);
+                        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+                        ObjectOutputStream objOut = new ObjectOutputStream(bos);
+                        objOut.writeObject(tableCreated);
+                        objOut.close();
+                        in.close();
+                        reply = bos.toByteArray();
+                        break;
+                    case KVRequestType.TAB_REMOVE:
+                        tableName = new DataInputStream(in).readUTF();
+                        table = tableMap.removeTable(tableName);
+                        bos = new ByteArrayOutputStream();
+                        objOut = new ObjectOutputStream(bos);
+                        objOut.writeObject(table);
+                        objOut.close();
+                        objOut.close();
+                        reply = bos.toByteArray();
+                        break;
+
+
+                    case KVRequestType.SIZE_TABLE:
+                        int size1 = tableMap.getSizeofTable();
+                        System.out.println("Size " + size1);
+                        out = new ByteArrayOutputStream();
+                        new DataOutputStream(out).writeInt(size1);
+                        reply = out.toByteArray();
+                        break;
+                    case KVRequestType.GET:
+                        tableName = new DataInputStream(in).readUTF();
+                        System.out.println("tablename: " + tableName);
+                        key = new DataInputStream(in).readUTF();
+                        System.out.println("Key received: " + key);
+                        valueBytes = tableMap.getEntry(tableName, key);
+                        value = new String(valueBytes);
+                        System.out.println("The value to be get is: " + value);
+                        out = new ByteArrayOutputStream();
+                        new DataOutputStream(out).writeBytes(value);
+                        reply = out.toByteArray();
+                        break;
+                    case KVRequestType.SIZE:
+                        String tableName2 = new DataInputStream(in).readUTF();
+                        int size = tableMap.getSize(tableName2);
+                        out = new ByteArrayOutputStream();
+                        new DataOutputStream(out).writeInt(size);
+                        reply = out.toByteArray();
+                        break;
+                        case KVRequestType.CHECK:
+                            tableName = new DataInputStream(in).readUTF();
+                            key = new DataInputStream(in).readUTF();
+                            System.out.println("Table Key received: " + key);
+                            valueBytes = tableMap.getEntry(tableName, key);
+                            boolean entryExists = valueBytes != null;
+                            out = new ByteArrayOutputStream();
+                            new DataOutputStream(out).writeBoolean(entryExists);
+                            reply = out.toByteArray();
+                            break;
+                                case KVRequestType.TAB_CREATE_CHECK:
+                                    tableName = new DataInputStream(in).readUTF();
+                                    System.out.println("Table of Table Key received: " + tableName);
+                                    table = tableMap.getName(tableName);
+                                    boolean tableExists = (table != null);
+                                    System.out.println("Table exists: " + tableExists);
+                                    out = new ByteArrayOutputStream();
+                                    new DataOutputStream(out).writeBoolean(tableExists);
+                                    reply = out.toByteArray();
+                                    break;
+                    }
+                    replies[i] = reply;
+                } catch (IOException ex) {
+                    Logger.getLogger(BFTMapImpl.class.getName()).log(Level.SEVERE, null, ex);
+                    return null;
+                }
         }
+        return replies;
     }
 
     @SuppressWarnings("static-access")
