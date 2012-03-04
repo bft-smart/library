@@ -11,7 +11,15 @@ The instructions to run the demo are in the file README.txt.
 = Creating your oun application =
 
 
-Add your content here.  Format your content with:
-  * Text in *bold* or _italic_
-  * Headings, paragraphs, and lists
-  * Automatic links to other wiki pages
+BFT-SMaRt provides the middleware protocol to order and deliver client requests to applications. In order to use BFT-SMaRt, it is needed to implement the client code which will call the message send interface and the server application which will receive the ordered client messages.
+
+==Client code==
+
+Clients can send messages to replicas using the class {{{navigators.smart.tom.ServiceProxy}}}. To send ordered messages to the replicas the {{{invokeOrdered()}}} method must be called. To send messages that don't need to be ordered, the method to be called is {{{invokeUnordered()}}}.
+A third option to send messages is {{{invokeAsynchronous()}}}. This last method permits specify for which servers the message has to be send. It also permits implement a custom processing of the server replies through the interface {{{navigators.smart.communication.client.ReplyListener}}}.
+
+==Server code==
+
+To process the requests on the server side, the application must implement the interfaces suitable to the business needs and use {{{navigators.smart.tom.ServiceReplica}}} class to receive the requests.
+The interfaces to be implemented allows the processing of ordered and unordered requests, transfer and store state, process batch of requests batches and forward replies to clients.
+The interfaces to be implemented are in the package {{{navigators.smart.tom.server}}}.
