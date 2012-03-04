@@ -1,8 +1,9 @@
-#summary One-sentence summary of this page.
+#summary How to run demos and use BFT-SMaRt interfaces.
 
-= Introduction =
+= BFT-SMaRt demos =
 
-Add your content here.
+There are several demo applications packed together with BFT-SMaRt source code.
+These demos are in the package {{{navigators.smart.tom.demo}}}
 
 
 = Details =
