@@ -3,10 +3,13 @@
 = BFT-SMaRt demos =
 
 There are several demo applications packed together with BFT-SMaRt source code.
-These demos are in the package {{{navigators.smart.tom.demo}}}
+These demos are in the package {{{navigators.smart.tom.demo}}}.
+
+The instructions to run the demo are in the file README.txt.
 
 
-= Details =
+= Creating your oun application =
+
 
 Add your content here.  Format your content with:
   * Text in *bold* or _italic_
