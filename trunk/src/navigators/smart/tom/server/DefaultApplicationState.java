@@ -181,29 +181,50 @@ public class DefaultApplicationState implements ApplicationState {
             DefaultApplicationState tState = (DefaultApplicationState) obj;
 
             if ((this.messageBatches != null && tState.messageBatches == null) ||
-                    (this.messageBatches == null && tState.messageBatches != null)) return false;
+                    (this.messageBatches == null && tState.messageBatches != null)) {
+                //System.out.println("[DefaultApplicationState] returing FALSE1!");
+                return false;
+            }
 
             if (this.messageBatches != null && tState.messageBatches != null) {
 
-                if (this.messageBatches.length != tState.messageBatches.length) return false;
+                if (this.messageBatches.length != tState.messageBatches.length) {
+                    //System.out.println("[DefaultApplicationState] returing FALSE2!");
+                    return false;
+                }
                 
                 for (int i = 0; i < this.messageBatches.length; i++) {
                     
-                    if (this.messageBatches[i] == null && tState.messageBatches[i] != null) return false;
+                    if (this.messageBatches[i] == null && tState.messageBatches[i] != null) {
+                        //System.out.println("[DefaultApplicationState] returing FALSE3!");
+                        return false;
+                    }
 
-                    if (this.messageBatches[i] != null && tState.messageBatches[i] == null) return false;
+                    if (this.messageBatches[i] != null && tState.messageBatches[i] == null) {
+                        //System.out.println("[DefaultApplicationState] returing FALSE4!");
+                        return false;
+                    }
                     
                     if (!(this.messageBatches[i] == null && tState.messageBatches[i] == null) &&
-                        (!this.messageBatches[i].equals(tState.messageBatches[i]))) return false;
+                        (!this.messageBatches[i].equals(tState.messageBatches[i]))) {
+                        //System.out.println("[DefaultApplicationState] returing FALSE5!" + (this.messageBatches[i] == null) + " " + (tState.messageBatches[i] == null));
+                        return false;
+                    }
                 }
             }
+            //System.out.print("[DefaultApplicationState] returing.........");
+            //System.out.println(Arrays.equals(this.stateHash, tState.stateHash) + " && " +
+            //        (tState.lastCheckpointEid == this.lastCheckpointEid) + " && " +
+            //        (tState.lastCheckpointRound == this.lastCheckpointRound) + " && " +
+            //        (tState.lastCheckpointLeader == this.lastCheckpointLeader) + " && " +
+            //        (tState.lastEid == this.lastEid) + " && " + (tState.hasState == this.hasState));
             return (Arrays.equals(this.stateHash, tState.stateHash) &&
                     tState.lastCheckpointEid == this.lastCheckpointEid &&
                     tState.lastCheckpointRound == this.lastCheckpointRound &&
                     tState.lastCheckpointLeader == this.lastCheckpointLeader &&
                     tState.lastEid == this.lastEid && tState.hasState == this.hasState);
         }
-        System.out.println("returing FALSE!");
+        //System.out.println("[DefaultApplicationState] returing FALSE!");
         return false;
     }
 

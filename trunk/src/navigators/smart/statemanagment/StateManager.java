@@ -49,7 +49,7 @@ public class StateManager {
     private HashSet<SenderRegency> senderRegencies = null;
     private HashSet<SenderLeader> senderLeaders = null;
 
-    private ReentrantLock lockState = new ReentrantLock();
+    //private ReentrantLock lockState = new ReentrantLock();
     private ReentrantLock lockTimer = new ReentrantLock();
 
     private Timer stateTimer = null;
@@ -160,6 +160,14 @@ public class StateManager {
         senderRegencies.clear();
     }
 
+    public void emptyViews() {
+        senderViews.clear();
+    }
+    
+    public void emptyLeaders() {
+        senderLeaders.clear();
+    }
+    
     public void emptyRegencies(int regency) {
         for (SenderRegency m : senderRegencies)
             if (m.regency <= regency) senderRegencies.remove(m);
@@ -263,11 +271,14 @@ public class StateManager {
         senderStates.toArray(st);
         int count = 0;
 
-        for (int i = 0; i < st.length; i++) {
+        for (int i = 0; i < st.length; i++, count = 0) {
 
-            for (int j = i; j < st.length; j++) {
+            for (int j = 0; j < st.length; j++) {
 
+                System.out.println("PID " + st[j].sender + " sent EID " + st[j].state.getLastEid());
+                //System.out.println(st[i].state.equals(st[j].state) + " && " + st[j].state.hasState());
                 if (st[i].state.equals(st[j].state) && st[j].state.hasState()) count++;
+                System.out.println("Count: " + count);
                 //******* EDUARDO BEGIN **************//
                 if (count > SVManager.getCurrentViewF()) return st[j].state;
                 //******* EDUARDO END **************//
@@ -366,6 +377,10 @@ public class StateManager {
         //setWaiting(-1);
         changeReplica();
         emptyStates();
+        emptyEIDs();
+        emptyLeaders();
+        emptyRegencies();
+        emptyViews();
         setReplicaState(null);
         
         requestState();
@@ -382,7 +397,7 @@ public class StateManager {
 
             System.out.println("(TOMLayer.SMRequestDeliver) The state transfer protocol is enabled");
 
-            lockState.lock();
+            //lockState.lock();
 
             System.out.println("(TOMLayer.SMRequestDeliver) I received a state request for EID " + msg.getEid() + " from replica " + msg.getSender());
 
@@ -392,7 +407,7 @@ public class StateManager {
             //TransferableState thisState = getLog().getTransferableState(msg.getEid(), sendState);
             ApplicationState thisState = dt.getRecoverer().getState(msg.getEid(), sendState);
                     
-            lockState.unlock();
+            //lockState.unlock();
 
             if (thisState == null) {
                 System.out.println("(TOMLayer.SMRequestDeliver) I don't have the state requested :-(");
@@ -437,7 +452,7 @@ public class StateManager {
                 if (moreThan2F_Views(msg.getView())) {
                     currentView = msg.getView();
                     if (currentView.isMember(SVManager.getStaticConf().getProcessId())) {
-                        System.out.println("Not a member anymore!");
+                        System.out.println("Not a member!");
                     }
                 }
                 
@@ -453,9 +468,11 @@ public class StateManager {
 
                 if (moreThanF_Replies()) {
 
-                    System.out.println("(TOMLayer.SMReplyDeliver) I have at least " + SVManager.getCurrentViewF() + " replies!");
+                    System.out.println("(TOMLayer.SMReplyDeliver) I have more than " + SVManager.getCurrentViewF() + " replies!");
 
+                    System.out.println("[StateManager.getValidHash]");
                     ApplicationState recvState = getValidHash();
+                    System.out.println("[/StateManager.getValidHash]");
 
                     int haveState = 0;
                     if (getReplicaState() != null) {
@@ -493,7 +510,10 @@ public class StateManager {
 
                         setWaiting(-1);
 
-                        dt.update(msg.getEid(), recvState);
+                        //Logger.debug = true;
+                        
+                        System.out.println("EID requested " + msg.getEid());
+                        dt.update(recvState);
                         
                         //Deal with stopped messages that may come from synchronization phase
                         if (execManager.stopped()) {
@@ -502,7 +522,7 @@ public class StateManager {
                         
                             for (PaxosMessage stopped : stoppedMsgs) {
                                 
-                                if (stopped.getNumber() > msg.getEid())
+                                if (stopped.getNumber() > recvState.getLastEid() /*msg.getEid()*/)
                                     execManager.addOutOfContextMessage(stopped);
                             }
                             
@@ -510,6 +530,7 @@ public class StateManager {
                             execManager.restart();
                         }
                         
+                        Logger.println("Processing out of context messages");
                         tomLayer.processOutOfContext();
                         
                         if (SVManager.getCurrentViewId() != currentView.getId()) {
@@ -523,6 +544,10 @@ public class StateManager {
                         dt.deliverUnlock();
 
                         emptyStates();
+                        emptyEIDs();
+                        emptyLeaders();
+                        emptyRegencies();
+                        emptyViews();
                         setReplicaState(null);
 
                         System.out.println("I updated the state!");
@@ -539,6 +564,10 @@ public class StateManager {
 
                         setWaiting(-1);
                         emptyStates();
+                        emptyEIDs();
+                        emptyLeaders();
+                        emptyRegencies();
+                        emptyViews();
                         setReplicaState(null);
                         //requestState();
 
@@ -550,6 +579,10 @@ public class StateManager {
                         //setWaiting(-1);
                         changeReplica();
                         emptyStates();
+                        emptyEIDs();
+                        emptyLeaders();
+                        emptyRegencies();
+                        emptyViews();
                         setReplicaState(null);
                         requestState();
 

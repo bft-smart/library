@@ -221,7 +221,7 @@ public final class ExecutionManager {
                     Logger.println("(ExecutionManager.checkLimits) Message for execution " + 
                             msg.getNumber() + " is out of context, adding it to out of context set");
                     
-                    
+
                     //System.out.println("(ExecutionManager.checkLimits) Message for execution " + 
                      //       msg.getNumber() + " is out of context, adding it to out of context set; isRetrievingState="+isRetrievingState);
                     
@@ -230,7 +230,7 @@ public final class ExecutionManager {
                 } else { //can process!
                     Logger.println("(ExecutionManager.checkLimits) message for execution " + 
                             msg.getNumber() + " can be processed");
-                    
+            
                     //Logger.debug = false;
                     canProcessTheMessage = true;
                 }

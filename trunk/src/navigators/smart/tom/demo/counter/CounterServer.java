@@ -24,9 +24,13 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.concurrent.locks.ReentrantLock;
 import navigators.smart.statemanagment.ApplicationState;
 import navigators.smart.tom.MessageContext;
 import navigators.smart.tom.ServiceReplica;
+import navigators.smart.tom.server.BatchExecutable;
 import navigators.smart.tom.server.SingleExecutable;
 import navigators.smart.tom.server.Recoverable;
 
@@ -35,14 +39,24 @@ import navigators.smart.tom.server.Recoverable;
  * Example replica that implements a BFT replicated service (a counter).
  *
  */
-public final class CounterServer implements SingleExecutable, Recoverable  {
+public final class CounterServer implements BatchExecutable, Recoverable  {
     
-	private ServiceReplica replica;
+    private ServiceReplica replica;
     private int counter = 0;
     private int iterations = 0;
     
+    private MessageDigest md;
+    private ReentrantLock stateLock = new ReentrantLock();
+    private int lastEid = -1;
+    
     public CounterServer(int id) {
     	replica = new ServiceReplica(id, this, this);
+
+        try {
+            md = MessageDigest.getInstance("MD5"); // TODO: shouldn't it be SHA?
+        } catch (NoSuchAlgorithmException ex) {
+            ex.printStackTrace();
+        }
     }
     
      //******* EDUARDO BEGIN **************//
@@ -53,12 +67,23 @@ public final class CounterServer implements SingleExecutable, Recoverable  {
     
     
     @Override
-    public byte[] executeOrdered(byte[] command, MessageContext msgCtx) {
-        return execute(command,msgCtx);
+    public byte[][] executeBatch(byte[][] commands, MessageContext[] msgCtxs) {
+        
+        stateLock.lock();
+        
+        byte [][] replies = new byte[commands.length][];
+        for (int i = 0; i < commands.length; i++) {
+            replies[i] = execute(commands[i],msgCtxs[i]);
+        }
+        
+        stateLock.unlock();
+        
+        return replies;
     }
     
     @Override
     public byte[] executeUnordered(byte[] command, MessageContext msgCtx) {
+                
         return execute(command,msgCtx);
     }
     
@@ -68,6 +93,8 @@ public final class CounterServer implements SingleExecutable, Recoverable  {
             int increment = new DataInputStream(new ByteArrayInputStream(command)).readInt();
             //System.out.println("read-only request: "+(msgCtx.getConsensusId() == -1));
             counter += increment;
+            lastEid = msgCtx.getConsensusId();
+            
             if (msgCtx.getConsensusId() == -1)
                 System.out.println("(" + iterations + ") Counter incremented: " + counter);
             else
@@ -96,43 +123,47 @@ public final class CounterServer implements SingleExecutable, Recoverable  {
     }
 
     /** THIS IS JOAO'S CODE, TO HANDLE CHECKPOINTS */
-    public byte[] getState() {
 
-        //System.out.println("reading counter: "+this.counter);
+
+    @Override
+    public ApplicationState getState(int eid, boolean sendState) {
+        
+        stateLock.lock();
+        
+        if (eid == -1 || eid > lastEid) return new CounterState();
         
         byte[] b = new byte[4];
+        byte[] d = null;
+
         for (int i = 0; i < 4; i++) {
             int offset = (b.length - 1 - i) * 8;
             b[i] = (byte) ((counter >>> offset) & 0xFF);
         }
-        return b;
 
-        //throw new UnsupportedOperationException("Not supported yet.");
+        stateLock.unlock();
+        
+        d = md.digest(b);
+        
+        return new CounterState(lastEid, (sendState ? b : null), d);
     }
 
-    public void setState(byte[] state) {
+    @Override
+    public int setState(ApplicationState state) {
 
         int value = 0;
         for (int i = 0; i < 4; i++) {
             int shift = (4 - 1 - i) * 8;
-            value += (state[i] & 0x000000FF) << shift;
+            value += (state.getSerializedState()[i] & 0x000000FF) << shift;
         }
 
         //System.out.println("setting counter to: "+value);
         
+        stateLock.lock();
         this.counter = value;
-        
-       // System.out.println("Value of deserialized counter "+this.counter);
+        stateLock.unlock();
+        this.lastEid = state.getLastEid();
+        return state.getLastEid();
     }
 
-    @Override
-    public ApplicationState getState(int eid, boolean sendState) {
-        throw new UnsupportedOperationException("Not supported yet.");
-    }
-
-    @Override
-    public int setState(int eid, ApplicationState state) {
-        throw new UnsupportedOperationException("Not supported yet.");
-    }
     /********************************************************/
 }

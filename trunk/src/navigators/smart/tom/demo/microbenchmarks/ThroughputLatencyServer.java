@@ -155,7 +155,7 @@ public final class ThroughputLatencyServer implements SingleExecutable, Recovera
     }
 
     @Override
-    public int setState(int eid, ApplicationState state) {
+    public int setState(ApplicationState state) {
         throw new UnsupportedOperationException("Not supported yet.");
     }
 }

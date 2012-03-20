@@ -32,6 +32,7 @@ import navigators.smart.statemanagment.ApplicationState;
 import navigators.smart.tom.ServiceReplica;
 import java.util.Scanner;
 import navigators.smart.tom.MessageContext;
+import navigators.smart.tom.server.DefaultRecoverable;
 import navigators.smart.tom.server.Executable;
 import navigators.smart.tom.server.Recoverable;
 
@@ -39,7 +40,7 @@ import navigators.smart.tom.server.Recoverable;
  *
  * @author Joao Sousa
  */
-public final class RandomServer implements Executable, Recoverable {
+public final class RandomServer extends DefaultRecoverable {
 
     private int value = 0;
     private int iterations = 0;
@@ -95,7 +96,7 @@ public final class RandomServer implements Executable, Recoverable {
                     break;
             }
             
-            System.out.println("(" + id + ")[server] (" + iterations + " / " + 
+            if (msgCtx != null) System.out.println("(" + id + ")[server] (" + iterations + " / " + 
                     msgCtx.getConsensusId() + " / " + msgCtx.getRegency() + ") Current value: " + value);
             
             ByteArrayOutputStream out = new ByteArrayOutputStream(4);
@@ -174,13 +175,35 @@ public final class RandomServer implements Executable, Recoverable {
     }
 
     @Override
-    public ApplicationState getState(int eid, boolean sendState) {
-        throw new UnsupportedOperationException("Not supported yet.");
+    public void installSnapshot(byte[] state) {
+        int value = 0;
+        for (int i = 0; i < 4; i++) {
+            int shift = (4 - 1 - i) * 8;
+            value += (state[i] & 0x000000FF) << shift;
+        }
+
+        this.value = value;
     }
 
     @Override
-    public int setState(int eid, ApplicationState state) {
-        throw new UnsupportedOperationException("Not supported yet.");
+    public byte[] getSnapshot() {
+        byte[] b = new byte[4];
+        //byte[] b = new byte[1024 * 1024 * 30];
+        //for (int i = 0; i > b.length; i++) b[i] = (byte) i;
+        for (int i = 0; i < 4; i++) {
+            int offset = (b.length - 1 - i) * 8;
+            b[i] = (byte) ((value >>> offset) & 0xFF);
+        }
+        return b;
+    }
+
+    @Override
+    public byte[][] executeBatch2(byte[][] commands, MessageContext[] msgCtxs) {
+        byte [][] replies = new byte[commands.length][];
+        for (int i = 0; i < commands.length; i++) {
+            replies[i] = executeOrdered(commands[i], (msgCtxs  != null ? msgCtxs[i] : null));
+        }
+        return replies;
     }
 
 }

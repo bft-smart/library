@@ -123,11 +123,12 @@ public final class DeliveryThread extends Thread {
         canDeliver.signalAll();
     }
 
-    public void update(int eid, ApplicationState state) {
+    public void update(ApplicationState state) {
        
-        int lastEid =  recoverer.setState(eid, state);
+        int lastEid =  recoverer.setState(state);
 
         //set this consensus as the last executed
+        System.out.println("Setting last EID to " + lastEid);
         tomLayer.setLastExec(lastEid);
 
         //define the last stable consensus... the stable consensus can
