@@ -58,6 +58,7 @@ public class BFTMapImpl extends DefaultRecoverable {
     public byte[] getSnapshot() {
         try {
 
+            //System.out.println("[getSnapshot] tables: " + tableMap.getSizeofTable());
             // serialize to byte array and return
             ByteArrayOutputStream bos = new ByteArrayOutputStream();
             ObjectOutput out = new ObjectOutputStream(bos);

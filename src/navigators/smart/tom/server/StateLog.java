@@ -18,6 +18,8 @@
 
 package navigators.smart.tom.server;
 
+import org.apache.commons.codec.binary.Base64;
+
 /**
  * This classes serves as a log for the state associated with the last checkpoint, and the message
  * batches received since the same checkpoint until the present. The state associated with the last
@@ -65,7 +67,7 @@ public class StateLog {
         position = 0;
         this.state = state;
         this.stateHash = stateHash;
-
+        
     }
 
     /**
@@ -203,13 +205,14 @@ public class StateLog {
      * @param eid Execution ID correspondent to desired state
      * @return TransferableState Object containing this log information
      */
-    public DefaultApplicationState getTransferableState(int eid, boolean setState) {
+    public DefaultApplicationState getApplicationState(int eid, boolean setState) {
 
         if (lastCheckpointEid > -1 && eid >= lastCheckpointEid) {
 
             CommandsInfo[] batches = null;
 
-             if  (eid <= lastEid) {
+            int lastEid = -1;
+             if  (eid <= this.lastEid) {
                 int size = eid - lastCheckpointEid ;
             
                 if (size > 0) {
@@ -218,11 +221,13 @@ public class StateLog {
                     for (int i = 0; i < size; i++)
                         batches[i] = messageBatches[i];
                 }
-             } else if (lastEid > -1) {
+                lastEid = eid;
+             } else if (this.lastEid > -1) {
 
                     batches = messageBatches;
+                    lastEid = this.lastEid;
              }
-            return new DefaultApplicationState(batches, lastCheckpointEid, lastCheckpointRound, lastCheckpointLeader, eid, (setState ? state : null), stateHash);
+            return new DefaultApplicationState(batches, lastCheckpointEid, lastCheckpointRound, lastCheckpointLeader, lastEid, (setState ? state : null), stateHash);
 
         }
         else return null;

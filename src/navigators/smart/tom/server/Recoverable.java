@@ -25,6 +25,6 @@ public interface Recoverable {
      * @param state State obtained in the state transfer protocol
      * @return 
      */
-    public int setState(int eid, ApplicationState state);
+    public int setState(ApplicationState state);
 	
 }

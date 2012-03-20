@@ -20,11 +20,12 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
     
     public static final int CHECKPOINT_PERIOD = 50;
 
-    private ReentrantLock lockState = new ReentrantLock();
+    private ReentrantLock logLock = new ReentrantLock();
     private ReentrantLock hashLock = new ReentrantLock();
+    private ReentrantLock stateLock = new ReentrantLock();
     
     private MessageDigest md;
-    
+        
     private StateLog log;
     
     public DefaultRecoverable() {
@@ -39,17 +40,24 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
     public byte[][] executeBatch(byte[][] commands, MessageContext[] msgCtxs) {
         
         int eid = msgCtxs[0].getConsensusId();
+            
+        stateLock.lock();
+        byte[][] replies = executeBatch2(commands, msgCtxs);
+        stateLock.unlock();
         
         if ((eid > 0) && ((eid % CHECKPOINT_PERIOD) == 0)) {
-            Logger.println("(DeliveryThread.run) Performing checkpoint for consensus " + eid);
-            saveState(getSnapshot(), eid, 0, 0/*tomLayer.lm.getLeader(cons.getId(), cons.getDecisionRound().getNumber())*/);
+            Logger.println("(DefaultRecoverable.executeBatch) Performing checkpoint for consensus " + eid);
+            stateLock.lock();
+            byte[] snapshot = getSnapshot();
+            stateLock.unlock();
+            saveState(snapshot, eid, 0, 0/*tomLayer.lm.getLeader(cons.getId(), cons.getDecisionRound().getNumber())*/);
         } else {
-            Logger.println("(DeliveryThread.run) Storing message batch in the state log for consensus " + eid);
+            Logger.println("(DefaultRecoverable.executeBatch) Storing message batch in the state log for consensus " + eid);
             saveCommands(commands, eid, 0, 0/*tomLayer.lm.getLeader(cons.getId(), cons.getDecisionRound().getNumber())*/);
         }
 
-            
-        return executeBatch2(commands, msgCtxs);    }
+        return replies;
+    }
 
     
     public final byte[] computeHash(byte[] data) {
@@ -68,7 +76,7 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
 
         StateLog thisLog = getLog();
 
-        lockState.lock();
+        logLock.lock();
 
         Logger.println("(TOMLayer.saveState) Saving state of EID " + lastEid + ", round " + decisionRound + " and leader " + leader);
 
@@ -78,10 +86,10 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
         thisLog.setLastCheckpointRound(decisionRound);
         thisLog.setLastCheckpointLeader(leader);
 
-        lockState.unlock();
-        System.out.println("fiz checkpoint");
+        logLock.unlock();
+        /*System.out.println("fiz checkpoint");
         System.out.println("tamanho do snapshot: " + snapshot.length);
-        System.out.println("tamanho do log: " + thisLog.getMessageBatches().length);
+        System.out.println("tamanho do log: " + thisLog.getMessageBatches().length);*/
         Logger.println("(TOMLayer.saveState) Finished saving state of EID " + lastEid + ", round " + decisionRound + " and leader " + leader);
     }
 
@@ -89,42 +97,49 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
 
         StateLog thisLog = getLog();
 
-        lockState.lock();
+        logLock.lock();
 
         Logger.println("(TOMLayer.saveBatch) Saving batch of EID " + lastEid + ", round " + decisionRound + " and leader " + leader);
 
         thisLog.addMessageBatch(commands, decisionRound, leader);
         thisLog.setLastEid(lastEid);
 
-        lockState.unlock();
+        logLock.unlock();
         
-        System.out.println("guardei comandos");
-        System.out.println("tamanho do log: " + thisLog.getNumBatches());
+        /*System.out.println("guardei comandos");
+        System.out.println("tamanho do log: " + thisLog.getNumBatches());*/
         Logger.println("(TOMLayer.saveBatch) Finished saving batch of EID " + lastEid + ", round " + decisionRound + " and leader " + leader);
     }
 
     @Override
     public ApplicationState getState(int eid, boolean sendState) {
-        return (eid > -1 ? getLog().getTransferableState(eid, sendState) : new DefaultApplicationState());
+        logLock.lock();
+        ApplicationState ret = (eid > -1 ? getLog().getApplicationState(eid, sendState) : new DefaultApplicationState());
+        logLock.unlock();
+        return ret;
     }
     
     @Override
-    public int setState(int recvEid, ApplicationState recvState) {
+    public int setState(ApplicationState recvState) {
         
         int lastEid = -1;
         if (recvState instanceof DefaultApplicationState) {
             
             DefaultApplicationState state = (DefaultApplicationState) recvState;
             
+            System.out.println("(DefaultRecoverable.setState) last eid in state: " + state.getLastEid());
+            
             getLog().update(state);
             
             int lastCheckpointEid = state.getLastCheckpointEid();
-            //int lastEid = state.getLastEid();
-            lastEid = lastCheckpointEid + (state.getMessageBatches() != null ? state.getMessageBatches().length : 0);
+            
+            lastEid = state.getLastEid();
+            //lastEid = lastCheckpointEid + (state.getMessageBatches() != null ? state.getMessageBatches().length : 0);
 
-            navigators.smart.tom.util.Logger.println("(DeliveryThread.update) I'm going to update myself from EID "
+            navigators.smart.tom.util.Logger.println("(DefaultRecoverable.setState) I'm going to update myself from EID "
                     + lastCheckpointEid + " to EID " + lastEid);
 
+            stateLock.lock();
             installSnapshot(state.getState());
 
             // INUTIL??????
@@ -133,13 +148,16 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
 
             for (int eid = lastCheckpointEid + 1; eid <= lastEid; eid++) {
                 try {
+                    
+                    navigators.smart.tom.util.Logger.println("(DefaultRecoverable.setState) interpreting and verifying batched requests for eid " + eid);
+                    System.out.println("(DefaultRecoverable.setState) interpreting and verifying batched requests for eid " + eid);
+                    if (state.getMessageBatch(eid) == null) System.out.println("(DefaultRecoverable.setState) " + eid + " NULO!!!");
+                    
                     byte[][] commands = state.getMessageBatch(eid).commands; // take a batch
 
                     // INUTIL??????
                     //tomLayer.lm.addLeaderInfo(eid, state.getMessageBatch(eid).round,
                     //        state.getMessageBatch(eid).leader);
-
-                    navigators.smart.tom.util.Logger.println("(DeliveryThread.update) interpreting and verifying batched requests.");
 
                     //TROCAR POR EXECUTE E ARRAY DE MENSAGENS!!!!!!
                     //TOMMessage[] requests = new BatchReader(batch,
@@ -172,6 +190,7 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
                 }
 
             }
+            stateLock.unlock();
 
         }
 

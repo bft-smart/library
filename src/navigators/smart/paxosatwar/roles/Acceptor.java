@@ -93,8 +93,11 @@ public final class Acceptor {
      */
     public final void deliver(PaxosMessage msg) {
         if (manager.checkLimits(msg)) {
+            Logger.println("processing paxos msg with id " + msg.getNumber());
+            //Logger.debug = false;
             processMessage(msg);
         } else {
+            Logger.println("out of context msg with id " + msg.getNumber());
             tomLayer.processOutOfContext();
         }
     }
