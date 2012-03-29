@@ -23,14 +23,10 @@ import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import navigators.smart.statemanagment.ApplicationState;
 import navigators.smart.tom.MessageContext;
+import navigators.smart.tom.ReplicaContext;
 import navigators.smart.tom.ServiceReplica;
-import navigators.smart.tom.server.BatchExecutable;
 import navigators.smart.tom.server.DefaultRecoverable;
-import navigators.smart.tom.server.DefaultApplicationState;
-import navigators.smart.tom.server.SingleExecutable;
-import navigators.smart.tom.server.Recoverable;
 
 /**
  *
@@ -43,6 +39,7 @@ public class BFTListImpl extends DefaultRecoverable {
 
     BFTMapList tableList = new BFTMapList();
     ServiceReplica replica = null;
+    ReplicaContext replicaCtx;
     
     //The constructor passes the id of the server to the super class
     public BFTListImpl(int id) {
@@ -50,6 +47,10 @@ public class BFTListImpl extends DefaultRecoverable {
     	replica = new ServiceReplica(id, this, this);
     }
 
+    public void setReplicaContext(ReplicaContext replicaCtx) {
+    	this.replicaCtx = replicaCtx;
+    }
+    
     public static void main(String[] args){
         if(args.length < 1) {
             System.out.println("Use: java BFTMapImpl <processId>");
