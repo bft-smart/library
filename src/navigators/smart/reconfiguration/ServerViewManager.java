@@ -200,7 +200,7 @@ public class ServerViewManager extends ViewManager {
         int[] nextV = new int[currentView.getN() + jSet.size() - rSet.size()];
         int p = 0;
         
-       boolean forceLC = false;
+        boolean forceLC = false;
         for (int i = 0; i < jSet.size(); i++) {
             lastJoinStet[i] = jSet.get(i);
             nextV[p++] = jSet.get(i);

@@ -5,17 +5,17 @@
 
 package navigators.smart.tom.demo.keyvalue;
 import java.io.IOException;
+import java.util.Random;
 import java.util.Scanner;
 
 import java.io.Console;
 import java.util.HashMap;
-import java.util.Random;
 
 /**
  *
  * @author sweta
  */
-/*public class KVClient {
+public class KVClient {
 
 
 	public static void main(String[] args) throws IOException {
@@ -74,7 +74,7 @@ import java.util.Random;
 					tableName = console.readLine("Enter the valid table name you want to remove");
 					tableExists = bftMap.containsKey(tableName);
 
-				} while(tableExists);
+				} while(!tableExists);
 				bftMap.remove(tableName);
 				System.out.println("Table removed");
 				break;
@@ -90,19 +90,22 @@ import java.util.Random;
 //					tableExists = bftMap.containsKey(tableName);
 //					if (tableExists) {
 						//if the table name does not exist then create the table
-						index = console.readLine("Enter the index");
+//						index = console.readLine("Enter the index");
 						times = console.readLine("Enter how many inserts");
-						value = console.readLine("Enter the value");
+						String byteSize = console.readLine("Enter the size of the value in bytes");
 //					}
 
 				byte[] resultBytes;
-				int init = Integer.parseInt(index);
+//				int init = Integer.parseInt(index);
 				int total = Integer.parseInt(times);
 				for(int i=0; i< total; i++) {
-				byte[] valueBytes = value.getBytes();
-				String key = "Key" + (i+init);
-				resultBytes = bftMap.putEntry(tableName, key, valueBytes);
-				System.out.println("Result : "+new String(resultBytes));
+					String key = String.valueOf(i);
+					while(key.length() < 4)
+						key = "0" + key;
+					Random rand = new Random();
+					byte[] byteArray = new byte[Integer.parseInt(byteSize)];
+					rand.nextBytes(byteArray);
+					resultBytes = bftMap.putEntry(tableName, key, byteArray);
 				}
 				break;
 
@@ -172,86 +175,4 @@ import java.util.Random;
 			}
 		}
 	}
-}*/
-public class KVClient
-{
-	static int inc = 0;
-
-	public static void main(String[] args){
-		if(args.length < 2)
-		{
-			System.out.println("Usage: java KVClient <process id> <use readonly?>");
-			System.exit(-1);
-		}
-
-		int idProcess = Integer.parseInt(args[0]);//get process id
-
-		BFTMap bftMap = new BFTMap(idProcess, Boolean.parseBoolean(args[1]));
-		String tableName = "table-"+idProcess;
-
-		try {
-			createTable(bftMap,tableName);
-		} catch (Exception e1) {
-			System.out.println("Problems: Inserting a new value into the table("+tableName+"): "+e1.getLocalizedMessage());
-			System.exit(1);	
-		}
-
-		while(true)
-		{
-			try {
-				boolean result = insertValue(bftMap,tableName);
-				if(!result)
-				{
-					System.out.println("Problems: Inserting a new value into the table("+tableName+")");
-					System.exit(1);	
-				}
-
-				int sizeTable = getSizeTable(bftMap);
-				
-				System.out.println("Size of the table("+tableName+"): "+sizeTable);
-			} catch (Exception e) {
-				bftMap = new BFTMap(idProcess, Boolean.parseBoolean(args[1]));
-				try {
-					createTable(bftMap,tableName);
-				} catch (Exception e1) {
-					System.out.println("problems :-(");
-				}
-			}
-		}
-	}
-
-	private static boolean createTable(BFTMap bftMap, String nameTable) throws Exception
-	{
-		boolean tableExists;
-
-		tableExists = bftMap.containsKey(nameTable);
-		if (tableExists == false)
-			bftMap.put(nameTable, new HashMap<String,byte[]>());
-
-		return tableExists;
-	}
-
-	private static boolean insertValue(BFTMap bftMap, String nameTable) throws Exception
-	{
-
-		String key = "Key" + (inc++);
-		String value = Integer.toString(new Random().nextInt());
-		byte[] valueBytes = value.getBytes();
-
-		byte[] resultBytes = bftMap.putEntry(nameTable, key, valueBytes);
-		if(resultBytes== null)
-			throw new Exception();
-		System.out.println("Result : "+new String(resultBytes));
-
-		return true;
-	}
-
-	private static int getSizeTable(BFTMap bftMap) throws Exception
-	{
-		int res = bftMap.size();
-		if(res == -1)
-			throw new Exception();
-		return  res;
-	}
-
 }

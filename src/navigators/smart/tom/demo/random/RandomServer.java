@@ -29,12 +29,13 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import navigators.smart.statemanagment.ApplicationState;
+import navigators.smart.tom.ReplicaContext;
 import navigators.smart.tom.ServiceReplica;
 import java.util.Scanner;
 import navigators.smart.tom.MessageContext;
-import navigators.smart.tom.server.DefaultRecoverable;
 import navigators.smart.tom.server.Executable;
 import navigators.smart.tom.server.Recoverable;
+import navigators.smart.tom.server.defaultservices.DefaultRecoverable;
 
 /**
  *
@@ -50,6 +51,7 @@ public final class RandomServer extends DefaultRecoverable {
     private long currentTime = -1;
     /***********************************************************************/
     private ServiceReplica replica;
+    private ReplicaContext replicaContext;
     
     public ServiceReplica getReplica() {
 		return replica;
@@ -59,7 +61,11 @@ public final class RandomServer extends DefaultRecoverable {
 		this.replica = replica;
 	}
 
-	public RandomServer(int id) {
+    public void setReplicaContext(ReplicaContext replicaContext) {
+    	this.replicaContext = replicaContext;
+    }
+
+    public RandomServer(int id) {
     	replica = new ServiceReplica(id, this, this);
         this.id = id;
     }

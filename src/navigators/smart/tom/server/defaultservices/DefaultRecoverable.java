@@ -2,7 +2,7 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-package navigators.smart.tom.server;
+package navigators.smart.tom.server.defaultservices;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -10,6 +10,10 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Level;
 import navigators.smart.statemanagment.ApplicationState;
 import navigators.smart.tom.MessageContext;
+import navigators.smart.tom.server.BatchExecutable;
+import navigators.smart.tom.server.DefaultApplicationState;
+import navigators.smart.tom.server.Recoverable;
+import navigators.smart.tom.server.StateLog;
 import navigators.smart.tom.util.Logger;
 
 /**

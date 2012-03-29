@@ -29,6 +29,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.concurrent.locks.ReentrantLock;
 import navigators.smart.statemanagment.ApplicationState;
 import navigators.smart.tom.MessageContext;
+import navigators.smart.tom.ReplicaContext;
 import navigators.smart.tom.ServiceReplica;
 import navigators.smart.tom.server.BatchExecutable;
 import navigators.smart.tom.server.SingleExecutable;
@@ -44,6 +45,7 @@ public final class CounterServer implements BatchExecutable, Recoverable  {
     private ServiceReplica replica;
     private int counter = 0;
     private int iterations = 0;
+    private ReplicaContext replicaContext = null;
     
     private MessageDigest md;
     private ReentrantLock stateLock = new ReentrantLock();
@@ -65,6 +67,9 @@ public final class CounterServer implements BatchExecutable, Recoverable  {
     }
      //******* EDUARDO END **************//
     
+    public void setReplicaContext(ReplicaContext replicaContext) {
+    	this.replicaContext = replicaContext;
+    }
     
     @Override
     public byte[][] executeBatch(byte[][] commands, MessageContext[] msgCtxs) {

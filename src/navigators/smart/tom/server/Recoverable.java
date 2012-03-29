@@ -1,6 +1,7 @@
 package navigators.smart.tom.server;
 
 import navigators.smart.statemanagment.ApplicationState;
+import navigators.smart.tom.ReplicaContext;
 
 /**
  * 
@@ -8,6 +9,8 @@ import navigators.smart.statemanagment.ApplicationState;
  *
  */
 public interface Recoverable {
+	
+	public void setReplicaContext(ReplicaContext replicaContext);
 	
     /**
      * 

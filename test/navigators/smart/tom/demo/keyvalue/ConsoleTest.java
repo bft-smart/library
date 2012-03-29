@@ -3,8 +3,6 @@ package navigators.smart.tom.demo.keyvalue;
 import static org.junit.Assert.*;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.util.HashMap;
 
 import org.junit.AfterClass;
@@ -88,7 +86,7 @@ public class ConsoleTest {
 	public void testRegularCase() {
 		try{
 			Thread.sleep(1000);
-			BFTMap bftMap = new BFTMap(1001, true);
+			BFTMap bftMap = new BFTMap(1001);
 			bftMap.put("TestTable1", new HashMap<String,byte[]>());
 			bftMap.putEntry("TestTable1", "key1", "value1".getBytes());
 			assertEquals("Main table size should be 1", 1, bftMap.size1("TestTable1"));
@@ -130,7 +128,7 @@ public class ConsoleTest {
 	public void testStopAndStartNonLeader() {
 		try{
 			Thread.sleep(1000);
-			BFTMap bftMap = new BFTMap(1001, true);
+			BFTMap bftMap = new BFTMap(1001);
 			bftMap.put("TestTable2", new HashMap<String,byte[]>());
 			
 			for(int i = 0; i < 65; i++) {
