@@ -20,6 +20,7 @@ package navigators.smart.tom.demo.microbenchmarks;
 
 import navigators.smart.statemanagment.ApplicationState;
 import navigators.smart.tom.MessageContext;
+import navigators.smart.tom.ReplicaContext;
 import navigators.smart.tom.ServiceReplica;
 import navigators.smart.tom.server.SingleExecutable;
 import navigators.smart.tom.server.Recoverable;
@@ -43,6 +44,7 @@ public class LatencyServer implements SingleExecutable, Recoverable {
     private Storage weakLatency = null;
     private Storage strongLatency = null;
     private ServiceReplica replica;
+    private ReplicaContext replicaContext;
 
     public LatencyServer(int id, int interval, int hashs, int replySize) {
     	replica = new ServiceReplica(id, this, this);
@@ -60,6 +62,10 @@ public class LatencyServer implements SingleExecutable, Recoverable {
         strongLatency = new Storage(interval);
     }
     
+    public void setReplicaContext(ReplicaContext replicaContext) {
+    	this.replicaContext = replicaContext;
+    }
+
     @Override
     public byte[] executeOrdered(byte[] command, MessageContext msgCtx) {
         return execute(command,msgCtx);
