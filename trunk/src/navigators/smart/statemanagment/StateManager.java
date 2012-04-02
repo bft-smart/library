@@ -18,8 +18,16 @@
 
 package navigators.smart.statemanagment;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectInputStream;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Queue;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -30,7 +38,9 @@ import navigators.smart.reconfiguration.ServerViewManager;
 import navigators.smart.reconfiguration.views.View;
 import navigators.smart.tom.core.DeliveryThread;
 import navigators.smart.tom.core.TOMLayer;
+import navigators.smart.tom.demo.keyvalue.BFTTableMap;
 import navigators.smart.tom.leaderchange.LCManager;
+import navigators.smart.tom.server.DefaultApplicationState;
 import navigators.smart.tom.server.Recoverable;
 import navigators.smart.tom.util.Logger;
 import navigators.smart.tom.util.TOMUtil;
@@ -427,6 +437,56 @@ public class StateManager {
 
         }
     }
+    
+    public void temp(byte[] state) {
+        try {
+
+            // serialize to byte array and return
+            ByteArrayInputStream bis = new ByteArrayInputStream(state);
+            ObjectInput in = new ObjectInputStream(bis);
+            BFTTableMap tableMap = (BFTTableMap) in.readObject();
+            in.close();
+            bis.close();
+            showTables(tableMap);
+
+        } catch (ClassNotFoundException ex) {
+            ex.printStackTrace();
+        } catch (IOException ex) {
+            ex.printStackTrace();
+        }
+    }
+    
+    public void showTables(BFTTableMap tableMap) {
+        try {
+            Map<String, Map<String, byte[]>> tables = tableMap.getTables();
+            Collection<String> tableNames = tables.keySet();
+            ByteArrayOutputStream baos = new ByteArrayOutputStream(10000);
+            DataOutputStream dos = new DataOutputStream(baos);
+            for(String tableName : tableNames) {
+                System.out.println("[StateManager][showTables] Table name: " + tableName);
+                dos.writeUTF(tableName);
+                Map<String, byte[]> tableTmp = tables.get(tableName);
+                dos.writeInt(tableTmp.size());
+                for(String key : tableTmp.keySet()) {
+                    dos.writeUTF(key);
+                    dos.flush();
+                    byte[] value = tableTmp.get(key);
+                    dos.writeInt(value.length);
+                    dos.write(value);
+                    dos.flush();
+                    System.out.println("[StateManager][showTables] ---- Size of  key '" + key + "': " + value.length);
+                }
+                System.out.println("[StateManager][showTables] ---- Count of rows for table '" + tableName + "': " + tableTmp.size());
+                dos.flush();
+            }
+            byte[] state = baos.toByteArray();
+            System.out.println("[StateManager][showTables] Current byte array size: " + state.length);
+            //return state;
+        } catch (IOException ex) {
+            ex.printStackTrace();
+            //return new byte[0];
+        }
+    }
 
     public void SMReplyDeliver(SMMessage msg) {
 
@@ -455,6 +515,12 @@ public class StateManager {
                         System.out.println("Not a member!");
                     }
                 }
+                
+                /*if (msg.getState().hasState()) {
+                    System.out.println("(TOMLayer.SMReplyDeliver) Snapshot da replica " + msg.getSender() + " para o estado " + ((DefaultApplicationState) msg.getState()).getLastCheckpointEid());
+                    temp(msg.getState().getSerializedState());
+                    
+                }*/
                 
                 System.out.println("(TOMLayer.SMReplyDeliver) The reply is for the EID that I want!");
 
@@ -492,6 +558,8 @@ public class StateManager {
                         
                         lcManager.setLastReg(currentRegency);
                         lcManager.setNextReg(currentRegency);
+                        lcManager.setNewLeader(currentLeader);
+                                                
                         tomLayer.lm.setNewReg(currentRegency);
                         tomLayer.lm.setNewLeader(currentLeader);
                         

@@ -109,6 +109,11 @@ public class LCManager {
         return currentLeader;
     }
     
+    public void setNewLeader(int leader) {
+        
+        currentLeader = leader;
+    }
+    
     /**
      * This is meant to keep track of timed out messages in this replica
      *
