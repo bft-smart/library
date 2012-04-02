@@ -61,7 +61,6 @@ import navigators.smart.tom.leaderchange.LCMessage;
 import navigators.smart.tom.leaderchange.CollectData;
 import navigators.smart.tom.leaderchange.LCManager;
 import navigators.smart.tom.leaderchange.LastEidData;
-import navigators.smart.tom.server.Recoverable;
 
 
 /**
@@ -125,7 +124,6 @@ public final class TOMLayer extends Thread implements RequestReceiver {
      */
     public TOMLayer(ExecutionManager manager,
             TOMReceiver receiver,
-            Recoverable recoverer,
             LeaderModule lm,
             Acceptor a,
             ServerCommunicationSystem cs,
@@ -165,7 +163,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         this.lcManager = new LCManager(this,recManager, md);
         /*************************************************************/
 
-        this.dt = new DeliveryThread(this, receiver, recoverer, this.reconfManager); // Create delivery thread
+        this.dt = new DeliveryThread(this, receiver, this.reconfManager); // Create delivery thread
         this.dt.start();
 
         /** THIS IS JOAO'S CODE, TO HANDLE CHECKPOINTS AND STATE TRANSFER */
@@ -1030,14 +1028,14 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         if (getLastExec() + 1 < lastHighestEid.getEid()) {
             //TODO: Case in which it is necessary to apply state transfer
 
-            System.out.println("NEEDING TO USE STATE TRANSFER!! (" + lastHighestEid.getEid() + ")");
+            System.out.println("NEEDING TO USE STATE TRANSFER!!");
 
         } else if (getLastExec() + 1 == lastHighestEid.getEid()) {
         // Is this replica still executing the last decided consensus?
             
             //TODO: it is necessary to verify the proof
             
-            System.out.println("I'm still at the eid before the most recent one!!! (" + lastHighestEid.getEid() + ")");
+            System.out.println("I'm still at the eid before the most recent onedl!");
             
             exec = execManager.getExecution(lastHighestEid.getEid());
             r = exec.getLastRound();

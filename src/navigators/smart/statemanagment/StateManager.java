@@ -18,16 +18,8 @@
 
 package navigators.smart.statemanagment;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.io.ObjectInput;
-import java.io.ObjectInputStream;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Queue;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -38,10 +30,7 @@ import navigators.smart.reconfiguration.ServerViewManager;
 import navigators.smart.reconfiguration.views.View;
 import navigators.smart.tom.core.DeliveryThread;
 import navigators.smart.tom.core.TOMLayer;
-import navigators.smart.tom.demo.keyvalue.BFTTableMap;
 import navigators.smart.tom.leaderchange.LCManager;
-import navigators.smart.tom.server.DefaultApplicationState;
-import navigators.smart.tom.server.Recoverable;
 import navigators.smart.tom.util.Logger;
 import navigators.smart.tom.util.TOMUtil;
 
@@ -53,13 +42,14 @@ import navigators.smart.tom.util.TOMUtil;
  */
 public class StateManager {
 
+    private StateLog log;
     private HashSet<SenderEid> senderEids = null;
     private HashSet<SenderState> senderStates = null;
     private HashSet<SenderView> senderViews = null;
     private HashSet<SenderRegency> senderRegencies = null;
     private HashSet<SenderLeader> senderLeaders = null;
 
-    //private ReentrantLock lockState = new ReentrantLock();
+    private ReentrantLock lockState = new ReentrantLock();
     private ReentrantLock lockTimer = new ReentrantLock();
 
     private Timer stateTimer = null;
@@ -67,7 +57,7 @@ public class StateManager {
     private int lastEid;
     private int waitingEid;
     private int replica;
-    private ApplicationState state;
+    private byte[] state;
 
     private ServerViewManager SVManager;
     private TOMLayer tomLayer;
@@ -87,6 +77,7 @@ public class StateManager {
         this.lcManager = lcManager;
         this.execManager = execManager;
 
+        this.log = new StateLog(k);
         senderEids = new HashSet<SenderEid>();
         senderStates = new HashSet<SenderState>();
         senderViews = new HashSet<SenderView>();
@@ -118,11 +109,11 @@ public class StateManager {
         } while (replica == SVManager.getStaticConf().getProcessId());
     }
 
-    public void setReplicaState(ApplicationState state) {
+    public void setReplicaState(byte[] state) {
         this.state = state;
     }
 
-    public ApplicationState getReplicaState() {
+    public byte[] getReplicaState() {
         return state;
     }
 
@@ -170,14 +161,6 @@ public class StateManager {
         senderRegencies.clear();
     }
 
-    public void emptyViews() {
-        senderViews.clear();
-    }
-    
-    public void emptyLeaders() {
-        senderLeaders.clear();
-    }
-    
     public void emptyRegencies(int regency) {
         for (SenderRegency m : senderRegencies)
             if (m.regency <= regency) senderRegencies.remove(m);
@@ -234,7 +217,7 @@ public class StateManager {
         //******* EDUARDO END **************//
     }
     
-    public void addState(int sender, ApplicationState state) {
+    public void addState(int sender, TransferableState state) {
         senderStates.add(new SenderState(sender, state));
     }
 
@@ -275,20 +258,17 @@ public class StateManager {
         //******* EDUARDO END **************//
     }
 
-    private ApplicationState getValidHash() {
+    private TransferableState getValidHash() {
 
         SenderState[] st = new SenderState[senderStates.size()];
         senderStates.toArray(st);
         int count = 0;
 
-        for (int i = 0; i < st.length; i++, count = 0) {
+        for (int i = 0; i < st.length; i++) {
 
-            for (int j = 0; j < st.length; j++) {
+            for (int j = i; j < st.length; j++) {
 
-                System.out.println("PID " + st[j].sender + " sent EID " + st[j].state.getLastEid());
-                //System.out.println(st[i].state.equals(st[j].state) + " && " + st[j].state.hasState());
                 if (st[i].state.equals(st[j].state) && st[j].state.hasState()) count++;
-                System.out.println("Count: " + count);
                 //******* EDUARDO BEGIN **************//
                 if (count > SVManager.getCurrentViewF()) return st[j].state;
                 //******* EDUARDO END **************//
@@ -318,6 +298,45 @@ public class StateManager {
 
     public int getReplies() {
         return senderStates.size();
+    }
+
+    public StateLog getLog() {
+        return log;
+    }
+
+    public void saveState(byte[] state, int lastEid, int decisionRound, int leader) {
+
+        StateLog thisLog = getLog();
+
+        lockState.lock();
+
+        Logger.println("(TOMLayer.saveState) Saving state of EID " + lastEid + ", round " + decisionRound + " and leader " + leader);
+
+        thisLog.newCheckpoint(state, tomLayer.computeHash(state));
+        thisLog.setLastEid(-1);
+        thisLog.setLastCheckpointEid(lastEid);
+        thisLog.setLastCheckpointRound(decisionRound);
+        thisLog.setLastCheckpointLeader(leader);
+
+        lockState.unlock();
+
+        Logger.println("(TOMLayer.saveState) Finished saving state of EID " + lastEid + ", round " + decisionRound + " and leader " + leader);
+    }
+
+    public void saveBatch(byte[] batch, int lastEid, int decisionRound, int leader) {
+
+        StateLog thisLog = getLog();
+
+        lockState.lock();
+
+        Logger.println("(TOMLayer.saveBatch) Saving batch of EID " + lastEid + ", round " + decisionRound + " and leader " + leader);
+
+        thisLog.addMessageBatch(batch, decisionRound, leader);
+        thisLog.setLastEid(lastEid);
+
+        lockState.unlock();
+
+        Logger.println("(TOMLayer.saveBatch) Finished saving batch of EID " + lastEid + ", round " + decisionRound + " and leader " + leader);
     }
 
     public void analyzeState(int sender, int eid) {
@@ -387,10 +406,6 @@ public class StateManager {
         //setWaiting(-1);
         changeReplica();
         emptyStates();
-        emptyEIDs();
-        emptyLeaders();
-        emptyRegencies();
-        emptyViews();
         setReplicaState(null);
         
         requestState();
@@ -400,29 +415,27 @@ public class StateManager {
     
     public void SMRequestDeliver(SMMessage msg) {
 
-        System.out.println("(TOMLayer.SMRequestDeliver) invoked method");
         //******* EDUARDO BEGIN **************//
-        if (SVManager.getStaticConf().isStateTransferEnabled() && dt.getRecoverer() != null) {
+        if (SVManager.getStaticConf().isStateTransferEnabled()) {
         //******* EDUARDO END **************//
 
-            System.out.println("(TOMLayer.SMRequestDeliver) The state transfer protocol is enabled");
+            Logger.println("(TOMLayer.SMRequestDeliver) The state transfer protocol is enabled");
 
-            //lockState.lock();
+            lockState.lock();
 
-            System.out.println("(TOMLayer.SMRequestDeliver) I received a state request for EID " + msg.getEid() + " from replica " + msg.getSender());
+            Logger.println("(TOMLayer.SMRequestDeliver) I received a state request for EID " + msg.getEid() + " from replica " + msg.getSender());
 
             boolean sendState = msg.getReplica() == SVManager.getStaticConf().getProcessId();
-            if (sendState) System.out.println("(TOMLayer.SMRequestDeliver) I should be the one sending the state");
+            if (sendState) Logger.println("(TOMLayer.SMRequestDeliver) I should be the one sending the state");
 
-            //TransferableState thisState = getLog().getTransferableState(msg.getEid(), sendState);
-            ApplicationState thisState = dt.getRecoverer().getState(msg.getEid(), sendState);
-                    
-            //lockState.unlock();
+            TransferableState thisState = getLog().getTransferableState(msg.getEid(), sendState);
+
+            lockState.unlock();
 
             if (thisState == null) {
-                System.out.println("(TOMLayer.SMRequestDeliver) I don't have the state requested :-(");
+                Logger.println("(TOMLayer.SMRequestDeliver) I don't have the state requested :-(");
 
-              thisState = dt.getRecoverer().getState(-1, sendState);
+              thisState = new TransferableState();
             }
 
             int[] targets = { msg.getSender() };
@@ -433,58 +446,8 @@ public class StateManager {
             //if (reconfManager.getStaticConf().getProcessId() != 0 || !sendState)
             tomLayer.getCommunication().send(targets, smsg);
 
-            System.out.println("(TOMLayer.SMRequestDeliver) I sent the state until EID " + thisState.getLastEid());
+            Logger.println("(TOMLayer.SMRequestDeliver) I sent the state for checkpoint " + thisState.getLastCheckpointEid() + " with batches until EID " + thisState.getLastEid());
 
-        }
-    }
-    
-    public void temp(byte[] state) {
-        try {
-
-            // serialize to byte array and return
-            ByteArrayInputStream bis = new ByteArrayInputStream(state);
-            ObjectInput in = new ObjectInputStream(bis);
-            BFTTableMap tableMap = (BFTTableMap) in.readObject();
-            in.close();
-            bis.close();
-            showTables(tableMap);
-
-        } catch (ClassNotFoundException ex) {
-            ex.printStackTrace();
-        } catch (IOException ex) {
-            ex.printStackTrace();
-        }
-    }
-    
-    public void showTables(BFTTableMap tableMap) {
-        try {
-            Map<String, Map<String, byte[]>> tables = tableMap.getTables();
-            Collection<String> tableNames = tables.keySet();
-            ByteArrayOutputStream baos = new ByteArrayOutputStream(10000);
-            DataOutputStream dos = new DataOutputStream(baos);
-            for(String tableName : tableNames) {
-                System.out.println("[StateManager][showTables] Table name: " + tableName);
-                dos.writeUTF(tableName);
-                Map<String, byte[]> tableTmp = tables.get(tableName);
-                dos.writeInt(tableTmp.size());
-                for(String key : tableTmp.keySet()) {
-                    dos.writeUTF(key);
-                    dos.flush();
-                    byte[] value = tableTmp.get(key);
-                    dos.writeInt(value.length);
-                    dos.write(value);
-                    dos.flush();
-                    System.out.println("[StateManager][showTables] ---- Size of  key '" + key + "': " + value.length);
-                }
-                System.out.println("[StateManager][showTables] ---- Count of rows for table '" + tableName + "': " + tableTmp.size());
-                dos.flush();
-            }
-            byte[] state = baos.toByteArray();
-            System.out.println("[StateManager][showTables] Current byte array size: " + state.length);
-            //return state;
-        } catch (IOException ex) {
-            ex.printStackTrace();
-            //return new byte[0];
         }
     }
 
@@ -496,8 +459,8 @@ public class StateManager {
         if (SVManager.getStaticConf().isStateTransferEnabled()) {
         //******* EDUARDO END **************//
 
-            System.out.println("(TOMLayer.SMReplyDeliver) The state transfer protocol is enabled");
-            System.out.println("(TOMLayer.SMReplyDeliver) I received a state reply for EID " + msg.getEid() + " from replica " + msg.getSender());
+            Logger.println("(TOMLayer.SMReplyDeliver) The state transfer protocol is enabled");
+            Logger.println("(TOMLayer.SMReplyDeliver) I received a state reply for EID " + msg.getEid() + " from replica " + msg.getSender());
 
             if (getWaiting() != -1 && msg.getEid() == getWaiting()) {
 
@@ -512,21 +475,15 @@ public class StateManager {
                 if (moreThan2F_Views(msg.getView())) {
                     currentView = msg.getView();
                     if (currentView.isMember(SVManager.getStaticConf().getProcessId())) {
-                        System.out.println("Not a member!");
+                        System.out.println("Not a member anymore!");
                     }
                 }
                 
-                /*if (msg.getState().hasState()) {
-                    System.out.println("(TOMLayer.SMReplyDeliver) Snapshot da replica " + msg.getSender() + " para o estado " + ((DefaultApplicationState) msg.getState()).getLastCheckpointEid());
-                    temp(msg.getState().getSerializedState());
-                    
-                }*/
-                
-                System.out.println("(TOMLayer.SMReplyDeliver) The reply is for the EID that I want!");
+                Logger.println("(TOMLayer.SMReplyDeliver) The reply is for the EID that I want!");
 
-                if (msg.getSender() == getReplica() && msg.getState().getSerializedState() != null) {
-                    System.out.println("(TOMLayer.SMReplyDeliver) I received the state, from the replica that I was expecting");
-                    setReplicaState(msg.getState());
+                if (msg.getSender() == getReplica() && msg.getState().getState() != null) {
+                    Logger.println("(TOMLayer.SMReplyDeliver) I received the state, from the replica that I was expecting");
+                    setReplicaState(msg.getState().getState());
                     if (stateTimer != null) stateTimer.cancel();
                 }
 
@@ -534,16 +491,14 @@ public class StateManager {
 
                 if (moreThanF_Replies()) {
 
-                    System.out.println("(TOMLayer.SMReplyDeliver) I have more than " + SVManager.getCurrentViewF() + " replies!");
+                    Logger.println("(TOMLayer.SMReplyDeliver) I have at least " + SVManager.getCurrentViewF() + " replies!");
 
-                    System.out.println("[StateManager.getValidHash]");
-                    ApplicationState recvState = getValidHash();
-                    System.out.println("[/StateManager.getValidHash]");
+                    TransferableState recvState = getValidHash();
 
                     int haveState = 0;
                     if (getReplicaState() != null) {
                         byte[] hash = null;
-                        hash = tomLayer.computeHash(getReplicaState().getSerializedState());
+                        hash = tomLayer.computeHash(getReplicaState());
                         if (recvState != null) {
                             if (Arrays.equals(hash, recvState.getStateHash())) haveState = 1;
                             else if (getNumValidHashes() > SVManager.getCurrentViewF()) haveState = -1;
@@ -554,23 +509,20 @@ public class StateManager {
                     if (recvState != null && haveState == 1 && currentRegency > -1 &&
                             currentLeader > -1 && currentView != null) {
                         
-                        System.out.println("(TOMLayer.SMReplyDeliver) The state of those replies is good!");
+                        Logger.println("(TOMLayer.SMReplyDeliver) The state of those replies is good!");
                         
                         lcManager.setLastReg(currentRegency);
                         lcManager.setNextReg(currentRegency);
-                        lcManager.setNewLeader(currentLeader);
-                                                
                         tomLayer.lm.setNewReg(currentRegency);
                         tomLayer.lm.setNewLeader(currentLeader);
                         
-                        recvState.setSerializedState(getReplicaState().getSerializedState());
+                        recvState.setState(getReplicaState());
 
-                        // ISTO E PRECISO METER NA APLICACAO!!!!!!
-                        /*lockState.lock();
+                        lockState.lock();
 
                         getLog().update(recvState);
 
-                        lockState.unlock();*/
+                        lockState.unlock();
 
                         dt.deliverLock();
 
@@ -578,9 +530,6 @@ public class StateManager {
 
                         setWaiting(-1);
 
-                        //Logger.debug = true;
-                        
-                        System.out.println("EID requested " + msg.getEid());
                         dt.update(recvState);
                         
                         //Deal with stopped messages that may come from synchronization phase
@@ -590,7 +539,7 @@ public class StateManager {
                         
                             for (PaxosMessage stopped : stoppedMsgs) {
                                 
-                                if (stopped.getNumber() > recvState.getLastEid() /*msg.getEid()*/)
+                                if (stopped.getNumber() > msg.getEid())
                                     execManager.addOutOfContextMessage(stopped);
                             }
                             
@@ -598,7 +547,6 @@ public class StateManager {
                             execManager.restart();
                         }
                         
-                        Logger.println("Processing out of context messages");
                         tomLayer.processOutOfContext();
                         
                         if (SVManager.getCurrentViewId() != currentView.getId()) {
@@ -612,10 +560,6 @@ public class StateManager {
                         dt.deliverUnlock();
 
                         emptyStates();
-                        emptyEIDs();
-                        emptyLeaders();
-                        emptyRegencies();
-                        emptyViews();
                         setReplicaState(null);
 
                         System.out.println("I updated the state!");
@@ -627,30 +571,22 @@ public class StateManager {
                     } else if (recvState == null && (SVManager.getCurrentViewN() / 2) < getReplies()) {
                     //******* EDUARDO END **************//
 
-                        System.out.println("(TOMLayer.SMReplyDeliver) I have more than " +
+                        Logger.println("(TOMLayer.SMReplyDeliver) I have more than " +
                                 (SVManager.getCurrentViewN() / 2) + " messages that are no good!");
 
                         setWaiting(-1);
                         emptyStates();
-                        emptyEIDs();
-                        emptyLeaders();
-                        emptyRegencies();
-                        emptyViews();
                         setReplicaState(null);
                         //requestState();
 
                         if (stateTimer != null) stateTimer.cancel();
                     } else if (haveState == -1) {
 
-                        System.out.println("(TOMLayer.SMReplyDeliver) The replica from which I expected the state, sent one which doesn't match the hash of the others, or it never sent it at all");
+                        Logger.println("(TOMLayer.SMReplyDeliver) The replica from which I expected the state, sent one which doesn't match the hash of the others, or it never sent it at all");
 
                         //setWaiting(-1);
                         changeReplica();
                         emptyStates();
-                        emptyEIDs();
-                        emptyLeaders();
-                        emptyRegencies();
-                        emptyViews();
                         setReplicaState(null);
                         requestState();
 
@@ -749,9 +685,9 @@ public class StateManager {
     private class SenderState {
 
         private int sender;
-        private ApplicationState state;
+        private TransferableState state;
 
-        SenderState(int sender, ApplicationState state) {
+        SenderState(int sender, TransferableState state) {
             this.sender = sender;
             this.state = state;
         }
@@ -769,10 +705,7 @@ public class StateManager {
         public int hashCode() {
             int hash = 1;
             hash = hash * 31 + this.sender;
-            if (this.state != null) {
-                    hash = hash * 31 + this.state.hashCode();
-            }
-            else hash = hash * 31 + 0;
+            hash = hash * 31 + this.state.hashCode();
             return hash;
         }
     }

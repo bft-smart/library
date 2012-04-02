@@ -16,11 +16,10 @@
  * You should have received a copy of the GNU General Public License along with SMaRt.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package navigators.smart.tom.server;
+package navigators.smart.statemanagment;
 
 import java.io.Serializable;
 import java.util.Arrays;
-import navigators.smart.statemanagment.ApplicationState;
 
 /**
  * This classe represents a state tranfered from a replica to another. The state associated with the last
@@ -29,17 +28,16 @@ import navigators.smart.statemanagment.ApplicationState;
  * 
  * @author Jo�o Sousa
  */
-public class DefaultApplicationState implements ApplicationState {
+public class TransferableState implements Serializable {
 
-    protected byte[] state; // State associated with the last checkpoint
-    protected byte[] stateHash; // Hash of the state associated with the last checkpoint
-    protected int lastEid = -1; // Execution ID for the last messages batch delivered to the application
-    protected boolean hasState; // indicates if the replica really had the requested state
-
-    private CommandsInfo[] messageBatches; // batches received since the last checkpoint.
+    private BatchInfo[] messageBatches; // batches received since the last checkpoint.
     private int lastCheckpointEid; // Execution ID for the last checkpoint
     private int lastCheckpointRound; // Round for the last checkpoint
     private int lastCheckpointLeader; // Leader for the last checkpoint
+    private byte[] state; // State associated with the last checkpoint
+    private byte[] stateHash; // Hash of the state associated with the last checkpoint
+    private int lastEid = -1; // Execution ID for the last messages batch delivered to the application
+    private boolean hasState; // indicates if the replica really had the requested state
 
     /**
      * Constructs a TansferableState
@@ -48,8 +46,8 @@ public class DefaultApplicationState implements ApplicationState {
      * @param state State associated with the last checkpoint
      * @param stateHash Hash of the state associated with the last checkpoint
      */
-    public DefaultApplicationState(CommandsInfo[] messageBatches, int lastCheckpointEid, int lastCheckpointRound, int lastCheckpointLeader, int lastEid, byte[] state, byte[] stateHash) {
-       
+    public TransferableState(BatchInfo[] messageBatches, int lastCheckpointEid, int lastCheckpointRound, int lastCheckpointLeader, int lastEid, byte[] state, byte[] stateHash) {
+
         this.messageBatches = messageBatches; // batches received since the last checkpoint.
         this.lastCheckpointEid = lastCheckpointEid; // Execution ID for the last checkpoint
         this.lastCheckpointRound = lastCheckpointRound; // Round for the last checkpoint
@@ -64,9 +62,7 @@ public class DefaultApplicationState implements ApplicationState {
      * Constructs a TansferableState
      * This constructor should be used when there isn't a valid state to construct the object with
      */
-    public DefaultApplicationState() {
-
-        
+    public TransferableState() {
         this.messageBatches = null; // batches received since the last checkpoint.
         this.lastCheckpointEid = -1; // Execution ID for the last checkpoint
         this.lastCheckpointRound = -1; // Round for the last checkpoint
@@ -76,16 +72,7 @@ public class DefaultApplicationState implements ApplicationState {
         this.stateHash = null;
         this.hasState = false;
     }
-    
-    
-    public void setSerializedState(byte[] state) {
-        this.state = state;
-    }
 
-    public byte[] getSerializedState() {
-        return state;
-    }
-      
     /**
      * Indicates if the TransferableState object has a valid state
      * @return true if it has a valid state, false otherwise
@@ -94,45 +81,11 @@ public class DefaultApplicationState implements ApplicationState {
         return hasState;
     }
 
-
-    /**
-     * Retrieves the execution ID for the last messages batch delivered to the application
-     * @return Execution ID for the last messages batch delivered to the application
-     */
-    public int getLastEid() {
-
-        return lastEid;
-    }
-    
-    /**
-     * Retrieves the state associated with the last checkpoint
-     * @return State associated with the last checkpoint
-     */
-    public byte[] getState() {
-        return state;
-    }
-
-    /**
-     * Retrieves the hash of the state associated with the last checkpoint
-     * @return Hash of the state associated with the last checkpoint
-     */
-    public byte[] getStateHash() {
-        return stateHash;
-    }
-
-    /**
-     * Sets the state associated with the last checkpoint
-     * @param state State associated with the last checkpoint
-     */
-    public void setState(byte[] state) {
-        this.state = state;
-    }
-    
     /**
      * Retrieves all batches of messages
      * @return Batch of messages
      */
-    public CommandsInfo[] getMessageBatches() {
+    public BatchInfo[] getMessageBatches() {
         return messageBatches;
     }
 
@@ -141,7 +94,7 @@ public class DefaultApplicationState implements ApplicationState {
      * @param eid Execution ID associated with the batch to be fetched
      * @return The batch of messages associated with the batch correspondent execution ID
      */
-    public CommandsInfo getMessageBatch(int eid) {
+    public BatchInfo getMessageBatch(int eid) {
         if (eid >= lastCheckpointEid && eid <= lastEid) {
             return messageBatches[eid - lastCheckpointEid - 1];
         }
@@ -175,56 +128,68 @@ public class DefaultApplicationState implements ApplicationState {
         return lastCheckpointLeader;
     }
 
+    /**
+     * Retrieves the execution ID for the last messages batch delivered to the application
+     * @return Execution ID for the last messages batch delivered to the application
+     */
+    public int getLastEid() {
+
+        return lastEid;
+    }
+    
+    /**
+     * Retrieves the state associated with the last checkpoint
+     * @return State associated with the last checkpoint
+     */
+    public byte[] getState() {
+        return state;
+    }
+
+    /**
+     * Retrieves the hash of the state associated with the last checkpoint
+     * @return Hash of the state associated with the last checkpoint
+     */
+    public byte[] getStateHash() {
+        return stateHash;
+    }
+
+    /**
+     * Sets the state associated with the last checkpoint
+     * @param state State associated with the last checkpoint
+     */
+    public void setState(byte[] state) {
+        this.state = state;
+    }
+
     @Override
     public boolean equals(Object obj) {
-        if (obj instanceof DefaultApplicationState) {
-            DefaultApplicationState tState = (DefaultApplicationState) obj;
+        if (obj instanceof TransferableState) {
+            TransferableState tState = (TransferableState) obj;
 
             if ((this.messageBatches != null && tState.messageBatches == null) ||
-                    (this.messageBatches == null && tState.messageBatches != null)) {
-                //System.out.println("[DefaultApplicationState] returing FALSE1!");
-                return false;
-            }
+                    (this.messageBatches == null && tState.messageBatches != null)) return false;
 
             if (this.messageBatches != null && tState.messageBatches != null) {
 
-                if (this.messageBatches.length != tState.messageBatches.length) {
-                    //System.out.println("[DefaultApplicationState] returing FALSE2!");
-                    return false;
-                }
+                if (this.messageBatches.length != tState.messageBatches.length) return false;
                 
                 for (int i = 0; i < this.messageBatches.length; i++) {
                     
-                    if (this.messageBatches[i] == null && tState.messageBatches[i] != null) {
-                        //System.out.println("[DefaultApplicationState] returing FALSE3!");
-                        return false;
-                    }
+                    if (this.messageBatches[i] == null && tState.messageBatches[i] != null) return false;
 
-                    if (this.messageBatches[i] != null && tState.messageBatches[i] == null) {
-                        //System.out.println("[DefaultApplicationState] returing FALSE4!");
-                        return false;
-                    }
+                    if (this.messageBatches[i] != null && tState.messageBatches[i] == null) return false;
                     
                     if (!(this.messageBatches[i] == null && tState.messageBatches[i] == null) &&
-                        (!this.messageBatches[i].equals(tState.messageBatches[i]))) {
-                        //System.out.println("[DefaultApplicationState] returing FALSE5!" + (this.messageBatches[i] == null) + " " + (tState.messageBatches[i] == null));
-                        return false;
-                    }
+                        (!this.messageBatches[i].equals(tState.messageBatches[i]))) return false;
                 }
             }
-            //System.out.print("[DefaultApplicationState] returing.........");
-            //System.out.println(Arrays.equals(this.stateHash, tState.stateHash) + " && " +
-            //        (tState.lastCheckpointEid == this.lastCheckpointEid) + " && " +
-            //        (tState.lastCheckpointRound == this.lastCheckpointRound) + " && " +
-            //        (tState.lastCheckpointLeader == this.lastCheckpointLeader) + " && " +
-            //        (tState.lastEid == this.lastEid) + " && " + (tState.hasState == this.hasState));
             return (Arrays.equals(this.stateHash, tState.stateHash) &&
                     tState.lastCheckpointEid == this.lastCheckpointEid &&
                     tState.lastCheckpointRound == this.lastCheckpointRound &&
                     tState.lastCheckpointLeader == this.lastCheckpointLeader &&
                     tState.lastEid == this.lastEid && tState.hasState == this.hasState);
         }
-        //System.out.println("[DefaultApplicationState] returing FALSE!");
+        System.out.println("returing FALSE!");
         return false;
     }
 
@@ -254,5 +219,4 @@ public class DefaultApplicationState implements ApplicationState {
         }
         return hash;
     }
-
 }

@@ -35,7 +35,7 @@ import navigators.smart.tom.util.TOMUtil;
  */
 public class SMMessage extends SystemMessage implements Externalizable {
 
-    private ApplicationState state; // State log
+    private TransferableState state; // State log
     private View view;
     private int eid; // Execution ID up to which the sender needs to be updated
     private int type; // Message type
@@ -53,7 +53,7 @@ public class SMMessage extends SystemMessage implements Externalizable {
      * @param replica Replica that should send the state
      * @param state State log
      */
-    public SMMessage(int sender, int eid, int type, int replica, ApplicationState state, View view, int regency, int leader) {
+    public SMMessage(int sender, int eid, int type, int replica, TransferableState state, View view, int regency, int leader) {
 
         super(sender);
         this.state = state;
@@ -77,7 +77,7 @@ public class SMMessage extends SystemMessage implements Externalizable {
      * Retrieves the state log
      * @return The state Log
      */
-    public ApplicationState getState() {
+    public TransferableState getState() {
         return state;
     }
     
@@ -153,7 +153,7 @@ public class SMMessage extends SystemMessage implements Externalizable {
         replica = in.readInt();
         regency = in.readInt();
         leader = in.readInt();
-        state = (ApplicationState) in.readObject();
+        state = (TransferableState) in.readObject();
         view = (View) in.readObject();
     }
 }

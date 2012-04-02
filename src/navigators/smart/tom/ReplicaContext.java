@@ -44,12 +44,4 @@ public class ReplicaContext {
     public View getCurrentView() {
         return SVManager.getCurrentView();
     }
-
-	public ServerCommunicationSystem getServerCommunicationSystem() {
-		return cs;
-	}
-
-	public void setServerCommunicationSystem(ServerCommunicationSystem cs) {
-		this.cs = cs;
-	}
 }

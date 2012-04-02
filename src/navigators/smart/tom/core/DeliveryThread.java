@@ -25,11 +25,10 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 import navigators.smart.paxosatwar.Consensus;
 import navigators.smart.reconfiguration.ServerViewManager;
-import navigators.smart.statemanagment.ApplicationState;
+import navigators.smart.statemanagment.TransferableState;
 import navigators.smart.tom.TOMReceiver;
 import navigators.smart.tom.core.messages.TOMMessage;
 import navigators.smart.tom.core.messages.TOMMessageType;
-import navigators.smart.tom.server.Recoverable;
 import navigators.smart.tom.util.BatchReader;
 import navigators.smart.tom.util.Logger;
 
@@ -42,7 +41,6 @@ public final class DeliveryThread extends Thread {
     private LinkedBlockingQueue<Consensus> decided = new LinkedBlockingQueue<Consensus>(); // decided consensus
     private TOMLayer tomLayer; // TOM layer
     private TOMReceiver receiver; // Object that receives requests from clients
-    private Recoverable recoverer; // Object that uses state transfer
     private ServerViewManager manager;
 
     /**
@@ -51,26 +49,16 @@ public final class DeliveryThread extends Thread {
      * @param receiver Object that receives requests from clients
      * @param conf TOM configuration
      */
-    public DeliveryThread(TOMLayer tomLayer, TOMReceiver receiver, Recoverable recoverer, ServerViewManager manager) {
+    public DeliveryThread(TOMLayer tomLayer, TOMReceiver receiver, ServerViewManager manager) {
         super("Delivery Thread");
 
         this.tomLayer = tomLayer;
         this.receiver = receiver;
-        this.recoverer = recoverer;
         //******* EDUARDO BEGIN **************//
         this.manager = manager;
         //******* EDUARDO END **************//
     }
 
-    
-    public TOMReceiver getReceiver() {
-        return receiver;
-    }
-    
-   public Recoverable getRecoverer() {
-        return recoverer;
-    }
-   
     /**
      * Invoked by the TOM layer, to deliver a decide consensus
      * @param cons Consensus established as being decided
@@ -123,12 +111,57 @@ public final class DeliveryThread extends Thread {
         canDeliver.signalAll();
     }
 
-    public void update(ApplicationState state) {
-       
-        int lastEid =  recoverer.setState(state);
+    public void update(TransferableState state) {
+
+        int lastCheckpointEid = state.getLastCheckpointEid();
+        //int lastEid = state.getLastEid();
+        int lastEid = lastCheckpointEid + (state.getMessageBatches() != null ? state.getMessageBatches().length : 0);
+
+        Logger.println("(DeliveryThread.update) I'm going to update myself from EID "
+                + lastCheckpointEid + " to EID " + lastEid);
+
+        receiver.setState(state.getState());
+
+        tomLayer.lm.addLeaderInfo(lastCheckpointEid, state.getLastCheckpointRound(),
+                state.getLastCheckpointLeader());
+
+        for (int eid = lastCheckpointEid + 1; eid <= lastEid; eid++) {
+            try {
+                byte[] batch = state.getMessageBatch(eid).batch; // take a batch
+
+                tomLayer.lm.addLeaderInfo(eid, state.getMessageBatch(eid).round,
+                        state.getMessageBatch(eid).leader);
+
+                Logger.println("(DeliveryThread.update) interpreting and verifying batched requests.");
+
+                TOMMessage[] requests = new BatchReader(batch,
+                        manager.getStaticConf().getUseSignatures() == 1).deserialiseRequests(manager);
+
+                tomLayer.clientsManager.requestsOrdered(requests);
+
+                deliverMessages(eid, tomLayer.getLCManager().getLastReg(), false, requests);
+
+                //******* EDUARDO BEGIN **************//
+                if (manager.hasUpdates()) {
+                    processReconfigMessages(lastCheckpointEid, state.getLastCheckpointRound());
+                }
+                //******* EDUARDO END **************//
+            } catch (Exception e) {
+                e.printStackTrace(System.err);
+                if (e instanceof ArrayIndexOutOfBoundsException) {
+
+                    
+                            
+                    System.out.println("Eid do ultimo checkpoint: " + state.getLastCheckpointEid());
+                    System.out.println("Eid do ultimo consenso: " + state.getLastEid());
+                    System.out.println("numero de mensagens supostamente no batch: " + (state.getLastEid() - state.getLastCheckpointEid() + 1));
+                    System.out.println("numero de mensagens realmente no batch: " + state.getMessageBatches().length);
+                }
+            }
+
+        }
 
         //set this consensus as the last executed
-        System.out.println("Setting last EID to " + lastEid);
         tomLayer.setLastExec(lastEid);
 
         //define the last stable consensus... the stable consensus can
@@ -146,7 +179,7 @@ public final class DeliveryThread extends Thread {
 
         decided.clear();
 
-        Logger.println("(DeliveryThread.update) All finished from up to " + lastEid);
+        Logger.println("(DeliveryThread.update) All finished from " + lastCheckpointEid + " to " + lastEid);
     }
 
     /**
@@ -182,7 +215,7 @@ public final class DeliveryThread extends Thread {
                 //clean the ordered messages from the pending buffer
                 tomLayer.clientsManager.requestsOrdered(requests);
 
-                deliverMessages(cons.getId(), tomLayer.getLCManager().getLastReg(), true, requests, cons.getDecision());
+                deliverMessages(cons.getId(), tomLayer.getLCManager().getLastReg(), true, requests);
 
                 //******* EDUARDO BEGIN **************//
                 if (manager.hasUpdates()) {
@@ -195,7 +228,7 @@ public final class DeliveryThread extends Thread {
                 //******* EDUARDO END **************//
 
                 /** THIS IS JOAO'S CODE, TO HANDLE CHECKPOINTS */
-                //logDecision(cons);
+                logDecision(cons);
                 /********************************************************/
                 //define the last stable consensus... the stable consensus can
                 //be removed from the leaderManager and the executionManager
@@ -244,8 +277,8 @@ public final class DeliveryThread extends Thread {
         receiver.receiveReadonlyMessage(request, msgCtx);
     }
 
-    private void deliverMessages(int consId, int regency, boolean fromConsensus, TOMMessage[] requests, byte[] decision) {
-        receiver.receiveMessages(consId, regency, fromConsensus, requests, decision);
+    private void deliverMessages(int consId, int regency, boolean fromConsensus, TOMMessage[] requests) {
+        receiver.receiveMessages(consId, regency, fromConsensus, requests);
     }
 
     private void processReconfigMessages(int consId, int decisionRoundNumber) {
@@ -266,11 +299,13 @@ public final class DeliveryThread extends Thread {
         if (manager.getStaticConf().getCheckpointPeriod() > 0) {
             if ((cons.getId() > 0) && ((cons.getId() % manager.getStaticConf().getCheckpointPeriod()) == 0)) {
                 Logger.println("(DeliveryThread.run) Performing checkpoint for consensus " + cons.getId());
-                //byte[] state = receiver.getState();
-                //tomLayer.getStateManager().saveState(state, cons.getId(), cons.getDecisionRound().getNumber(), tomLayer.lm.getCurrentLeader()/*tomLayer.lm.getLeader(cons.getId(), cons.getDecisionRound().getNumber())*/);
+                byte[] state = receiver.getState();
+                tomLayer.getStateManager().saveState(state, cons.getId(), cons.getDecisionRound().getNumber(), tomLayer.lm.getCurrentLeader()/*tomLayer.lm.getLeader(cons.getId(), cons.getDecisionRound().getNumber())*/);
+                //TODO: possivelmente fazer mais alguma coisa
             } else {
                 Logger.println("(DeliveryThread.run) Storing message batch in the state log for consensus " + cons.getId());
-                //tomLayer.getStateManager().saveBatch(cons.getDecision(), cons.getId(), cons.getDecisionRound().getNumber(), tomLayer.lm.getCurrentLeader()/*tomLayer.lm.getLeader(cons.getId(), cons.getDecisionRound().getNumber())*/);
+                tomLayer.getStateManager().saveBatch(cons.getDecision(), cons.getId(), cons.getDecisionRound().getNumber(), tomLayer.lm.getCurrentLeader()/*tomLayer.lm.getLeader(cons.getId(), cons.getDecisionRound().getNumber())*/);
+                //TODO: possivelmente fazer mais alguma coisa
             }
         }
     }

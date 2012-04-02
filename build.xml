@@ -26,7 +26,7 @@
 		</javac>
 	</target>
 	<target name="jar" description="Compression target">
-		<jar jarfile="${dist.dir}/bft-smart.jar">
+		<jar jarfile="${dist.dir}/BFT-SMaRt.jar">
 			<fileset dir="${build.dir}">
 				<include name="**/*.class" />
 			</fileset>
