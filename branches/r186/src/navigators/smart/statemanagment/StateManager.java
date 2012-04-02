@@ -371,7 +371,14 @@ public class StateManager {
 
         SMMessage smsg = new SMMessage(SVManager.getStaticConf().getProcessId(),
                 getWaiting(), TOMUtil.SM_REQUEST, getReplica(), null, null, -1, -1);
-        tomLayer.getCommunication().send(SVManager.getCurrentViewOtherAcceptors(), smsg);
+        
+        System.out.println("Requesting state:" + SVManager.getStaticConf().getProcessId() + ", " + getWaiting() + ", " + getReplica());
+        int[] otherAcceptors = SVManager.getCurrentViewOtherAcceptors();
+        System.out.print("CurrentViewOtherAcceptors(): ");
+        for(int i = 0; i < otherAcceptors.length; i++)
+        	System.out.print(otherAcceptors[i]);
+        tomLayer.getCommunication().send(otherAcceptors, smsg);
+        
 
         Logger.println("(TOMLayer.requestState) I just sent a request to the other replicas for the state up to EID " + getWaiting());
 
@@ -390,7 +397,7 @@ public class StateManager {
         };
 
         stateTimer = new Timer("state timer");
-        stateTimer.schedule(stateTask,1500);
+        stateTimer.schedule(stateTask, 4500);
 
     }
     
@@ -513,6 +520,8 @@ public class StateManager {
                         
                         lcManager.setLastReg(currentRegency);
                         lcManager.setNextReg(currentRegency);
+                        lcManager.setNewLeader(currentLeader);
+                        
                         tomLayer.lm.setNewReg(currentRegency);
                         tomLayer.lm.setNewLeader(currentLeader);
                         
