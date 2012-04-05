@@ -12,7 +12,7 @@ public class ConsoleLogger extends Thread {
 
 	private InputStream in = null;
 	private PrintStream out = null;
-	private String index;
+	private int index;
 
 	public InputStream getIn() {
 		return in;
@@ -26,10 +26,10 @@ public class ConsoleLogger extends Thread {
 	public void setOut(PrintStream out) {
 		this.out = out;
 	}
-	public String getIndex() {
+	public int getIndex() {
 		return index;
 	}
-	public void setIndex(String index) {
+	public void setIndex(int index) {
 		this.index = index;
 	}
 	
