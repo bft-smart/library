@@ -65,8 +65,6 @@ public class DefaultApplicationState implements ApplicationState {
      * This constructor should be used when there isn't a valid state to construct the object with
      */
     public DefaultApplicationState() {
-
-        
         this.messageBatches = null; // batches received since the last checkpoint.
         this.lastCheckpointEid = -1; // Execution ID for the last checkpoint
         this.lastCheckpointRound = -1; // Round for the last checkpoint

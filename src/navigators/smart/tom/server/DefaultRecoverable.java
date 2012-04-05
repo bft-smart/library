@@ -114,6 +114,7 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
     @Override
     public ApplicationState getState(int eid, boolean sendState) {
         logLock.lock();
+        System.out.println(" EID: " + eid + "sendstate: " + sendState);
         ApplicationState ret = (eid > -1 ? getLog().getApplicationState(eid, sendState) : new DefaultApplicationState());
         logLock.unlock();
         return ret;

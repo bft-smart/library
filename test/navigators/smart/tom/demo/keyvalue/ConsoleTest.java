@@ -11,6 +11,7 @@ import org.junit.Test;
 
 public class ConsoleTest {
 
+	// Comment to test SVN branch creation left by Marcel
 	private static Process replica0;
 	private static Process replica1;
 	private static Process replica2;

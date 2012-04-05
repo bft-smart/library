@@ -206,6 +206,7 @@ public class StateLog {
      * @return TransferableState Object containing this log information
      */
     public DefaultApplicationState getApplicationState(int eid, boolean setState) {
+        System.out.println("lastCheckpointEid: " + lastCheckpointEid + "eid: " + eid);
 
         if (lastCheckpointEid > -1 && eid >= lastCheckpointEid) {
 

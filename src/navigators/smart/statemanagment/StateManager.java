@@ -18,16 +18,8 @@
 
 package navigators.smart.statemanagment;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.io.ObjectInput;
-import java.io.ObjectInputStream;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Queue;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -38,10 +30,7 @@ import navigators.smart.reconfiguration.ServerViewManager;
 import navigators.smart.reconfiguration.views.View;
 import navigators.smart.tom.core.DeliveryThread;
 import navigators.smart.tom.core.TOMLayer;
-import navigators.smart.tom.demo.keyvalue.BFTTableMap;
 import navigators.smart.tom.leaderchange.LCManager;
-import navigators.smart.tom.server.DefaultApplicationState;
-import navigators.smart.tom.server.Recoverable;
 import navigators.smart.tom.util.Logger;
 import navigators.smart.tom.util.TOMUtil;
 
@@ -96,6 +85,10 @@ public class StateManager {
         this.replica = 0;
 
         if (replica == manager.getStaticConf().getProcessId()) changeReplica();
+        if (manager.getStaticConf().getProcessId() == 1) this.replica=2;
+        
+        System.out.println("getProcessId(): " + manager.getStaticConf().getProcessId());
+        System.out.println("replica: " + replica);
         this.state = null;
         this.lastEid = -1;
         this.waitingEid = -1;
@@ -120,6 +113,7 @@ public class StateManager {
 
     public void setReplicaState(ApplicationState state) {
         this.state = state;
+        dt.getRecoverer().setState(state);
     }
 
     public ApplicationState getReplicaState() {
@@ -352,7 +346,12 @@ public class StateManager {
 
         SMMessage smsg = new SMMessage(SVManager.getStaticConf().getProcessId(),
                 getWaiting(), TOMUtil.SM_REQUEST, getReplica(), null, null, -1, -1);
-        tomLayer.getCommunication().send(SVManager.getCurrentViewOtherAcceptors(), smsg);
+        int[] otherAcceptors = SVManager.getCurrentViewOtherAcceptors();
+        tomLayer.getCommunication().send(otherAcceptors, smsg);
+        System.out.print("Sent SM_MESSAGE to ");
+        for(int i = 0; i < otherAcceptors.length; i++)
+        	System.out.print(otherAcceptors[i]);
+        	
 
         Logger.println("(TOMLayer.requestState) I just sent a request to the other replicas for the state up to EID " + getWaiting());
 
@@ -410,7 +409,8 @@ public class StateManager {
             //lockState.lock();
 
             System.out.println("(TOMLayer.SMRequestDeliver) I received a state request for EID " + msg.getEid() + " from replica " + msg.getSender());
-
+            System.out.println("msg.getReplica()" + msg.getReplica());
+            System.out.println("SVManager.getStaticConf()" + SVManager.getStaticConf().getProcessId());
             boolean sendState = msg.getReplica() == SVManager.getStaticConf().getProcessId();
             if (sendState) System.out.println("(TOMLayer.SMRequestDeliver) I should be the one sending the state");
 
@@ -434,57 +434,8 @@ public class StateManager {
             tomLayer.getCommunication().send(targets, smsg);
 
             System.out.println("(TOMLayer.SMRequestDeliver) I sent the state until EID " + thisState.getLastEid());
+            System.out.println("Send - getSerializedState() 2" + thisState.getSerializedState());
 
-        }
-    }
-    
-    public void temp(byte[] state) {
-        try {
-
-            // serialize to byte array and return
-            ByteArrayInputStream bis = new ByteArrayInputStream(state);
-            ObjectInput in = new ObjectInputStream(bis);
-            BFTTableMap tableMap = (BFTTableMap) in.readObject();
-            in.close();
-            bis.close();
-            showTables(tableMap);
-
-        } catch (ClassNotFoundException ex) {
-            ex.printStackTrace();
-        } catch (IOException ex) {
-            ex.printStackTrace();
-        }
-    }
-    
-    public void showTables(BFTTableMap tableMap) {
-        try {
-            Map<String, Map<String, byte[]>> tables = tableMap.getTables();
-            Collection<String> tableNames = tables.keySet();
-            ByteArrayOutputStream baos = new ByteArrayOutputStream(10000);
-            DataOutputStream dos = new DataOutputStream(baos);
-            for(String tableName : tableNames) {
-                System.out.println("[StateManager][showTables] Table name: " + tableName);
-                dos.writeUTF(tableName);
-                Map<String, byte[]> tableTmp = tables.get(tableName);
-                dos.writeInt(tableTmp.size());
-                for(String key : tableTmp.keySet()) {
-                    dos.writeUTF(key);
-                    dos.flush();
-                    byte[] value = tableTmp.get(key);
-                    dos.writeInt(value.length);
-                    dos.write(value);
-                    dos.flush();
-                    System.out.println("[StateManager][showTables] ---- Size of  key '" + key + "': " + value.length);
-                }
-                System.out.println("[StateManager][showTables] ---- Count of rows for table '" + tableName + "': " + tableTmp.size());
-                dos.flush();
-            }
-            byte[] state = baos.toByteArray();
-            System.out.println("[StateManager][showTables] Current byte array size: " + state.length);
-            //return state;
-        } catch (IOException ex) {
-            ex.printStackTrace();
-            //return new byte[0];
         }
     }
 
@@ -516,14 +467,11 @@ public class StateManager {
                     }
                 }
                 
-                /*if (msg.getState().hasState()) {
-                    System.out.println("(TOMLayer.SMReplyDeliver) Snapshot da replica " + msg.getSender() + " para o estado " + ((DefaultApplicationState) msg.getState()).getLastCheckpointEid());
-                    temp(msg.getState().getSerializedState());
-                    
-                }*/
-                
                 System.out.println("(TOMLayer.SMReplyDeliver) The reply is for the EID that I want!");
-
+                System.out.println(" msg.getSender()" + msg.getSender());
+                System.out.println(" getReplica()" + getReplica());
+                System.out.println(" getSerializedState()" + msg.getState().getSerializedState());
+                
                 if (msg.getSender() == getReplica() && msg.getState().getSerializedState() != null) {
                     System.out.println("(TOMLayer.SMReplyDeliver) I received the state, from the replica that I was expecting");
                     setReplicaState(msg.getState());
@@ -558,8 +506,6 @@ public class StateManager {
                         
                         lcManager.setLastReg(currentRegency);
                         lcManager.setNextReg(currentRegency);
-                        lcManager.setNewLeader(currentLeader);
-                                                
                         tomLayer.lm.setNewReg(currentRegency);
                         tomLayer.lm.setNewLeader(currentLeader);
                         
