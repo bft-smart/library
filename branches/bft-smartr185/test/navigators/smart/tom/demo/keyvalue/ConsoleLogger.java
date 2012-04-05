@@ -10,6 +10,7 @@ import java.io.PrintStream;
 
 public class ConsoleLogger extends Thread {
 
+	// Testing commit on branch
 	private InputStream in = null;
 	private PrintStream out = null;
 	private int index;
