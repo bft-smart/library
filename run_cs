@@ -1,0 +1,4 @@
+#!/bin/sh
+
+java -cp lib/commons-codec-1.5.jar:lib/netty-3.1.1.GA.jar:lib/slf4j-api-1.5.8.jar:lib/slf4j-jdk14-1.5.8.jar:/home/snake/SMART-CLOUDFIT/SMART-CLOUDFIT/dist/SMART-CLOUDFIT.jar navigators.smart.tom.demo.keyvalue.BFTMapImpl "$@"
+
