@@ -24,7 +24,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
 import navigators.smart.communication.client.ReplyListener;
-import navigators.smart.communication.client.ReplyReceiver;
 import navigators.smart.reconfiguration.ReconfigureReply;
 import navigators.smart.reconfiguration.views.View;
 import navigators.smart.tom.core.messages.TOMMessage;
@@ -141,14 +140,12 @@ public class ServiceProxy extends TOMSender {
      * @param request Request to be sent
      * @return The reply from the replicas related to request
      */
-    public byte[] invoke(byte[] request) {
+    public byte[] invokeOrdered(byte[] request) {
         return invoke(request, TOMMessageType.ORDERED_REQUEST);
     }
 
-    public byte[] invoke(byte[] request, boolean readOnly) {
-        TOMMessageType type = (readOnly) ? TOMMessageType.UNORDERED_REQUEST
-                : TOMMessageType.ORDERED_REQUEST;
-        return invoke(request, type);
+    public byte[] invokeUnordered(byte[] request) {
+        return invoke(request, TOMMessageType.UNORDERED_REQUEST);
     }
 
     /**
@@ -204,17 +201,17 @@ public class ServiceProxy extends TOMSender {
             Logger.println("Received n-f replies and no response could be extracted.");
 
             canSendLock.unlock();
-            if (reqType == TOMMessageType.ORDERED_REQUEST) {
+            if (reqType == TOMMessageType.UNORDERED_REQUEST) {
                 //invoke the operation again, whitout the read-only flag
                 Logger.println("###################RETRY#######################");
-                return invoke(request);
+                return invokeOrdered(request);
             } else {
                 throw new RuntimeException("Received n-f replies without f+1 of them matching.");
             }
         } else {
             //normal operation
             //******* EDUARDO BEGIN **************//
-            if (reqType == TOMMessageType.UNORDERED_REQUEST) {
+            if (reqType == TOMMessageType.ORDERED_REQUEST) {
                 //Reply to a normal request!
                 if (response.getViewID() == getViewManager().getCurrentViewId()) {
                     ret = response.getContent(); // return the response

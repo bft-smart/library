@@ -34,7 +34,6 @@ import navigators.smart.tom.util.Logger;
  */
 public class CounterClient {
 
-    @SuppressWarnings("static-access")
     public static void main(String[] args) throws IOException {
         if (args.length < 2) {
             System.out.println("Usage: java ...CounterClient <process id> <increment> [<number of operations>]");
@@ -84,7 +83,11 @@ public class CounterClient {
                 new DataOutputStream(out).writeInt(inc);
 
                 System.out.println("Counter sending: " + i);
-                byte[] reply = counterProxy.invoke(out.toByteArray(), (inc == 0));
+                byte[] reply;
+                if(inc == 0)
+                	reply = counterProxy.invokeUnordered(out.toByteArray());
+                else
+                	reply = counterProxy.invokeOrdered(out.toByteArray());
                 if(reply != null) {
                     int newValue = new DataInputStream(new ByteArrayInputStream(reply)).readInt();
                     System.out.println("Counter value: " + newValue);

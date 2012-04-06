@@ -58,7 +58,7 @@ public class RandomClient {
             new DataOutputStream(out).writeInt(argument);
             new DataOutputStream(out).writeInt(operator);
 
-            byte[] reply = randomProxy.invoke(out.toByteArray(),false);
+            byte[] reply = randomProxy.invokeOrdered(out.toByteArray());
             
             int newValue = new DataInputStream(new ByteArrayInputStream(reply)).readInt();
             System.out.println("(" + id + ") Current value: "+newValue);
