@@ -195,13 +195,13 @@ public class BFTMapImpl implements SingleExecutable, Recoverable {
             if(msgCtx != null) {
 	            int eid = msgCtx.getConsensusId();
 	            if(eid > 0 && eid % checkpointPeriod == 0) {
-	                Logger.println("(DefaultRecoverable.executeBatch) Performing checkpoint for consensus " + eid);
+	                Logger.println("(BFTMapImpl.executeOrdered) Performing checkpoint for consensus " + eid);
 	                stateLock.lock();
 	                byte[] snapshot = getSnapshot();
 	                stateLock.unlock();
 	                saveState(snapshot, eid, 0, 0/*tomLayer.lm.getLeader(cons.getId(), cons.getDecisionRound().getNumber())*/);
 	            } else {
-	                Logger.println("(DefaultRecoverable.executeBatch) Storing message batch in the state log for consensus " + eid);
+	                Logger.println("(BFTMapImpl.executeOrdered) Storing message batch in the state log for consensus " + eid);
 	                saveCommand(command, eid, 0, 0/*tomLayer.lm.getLeader(cons.getId(), cons.getDecisionRound().getNumber())*/);
 	            }
             }

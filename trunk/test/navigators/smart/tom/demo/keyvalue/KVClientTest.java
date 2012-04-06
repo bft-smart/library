@@ -23,43 +23,39 @@ public class KVClientTest {
 			System.out.println("Starting the servers");
 			command[0] = "java";
 			command[1] = "-cp";
-			command[2] = "bin/BFT-SMaRt.jar:lib/slf4j-api-1.5.8.jar:lib/slf4j-jdk14-1.5.8.jar:lib/netty-3.1.1.GA.jar:lib/commons-codec-1.5.jar";
+			command[2] = "bin/bft-smart.jar:lib/slf4j-api-1.5.8.jar:lib/slf4j-jdk14-1.5.8.jar:lib/netty-3.1.1.GA.jar:lib/commons-codec-1.5.jar";
 			command[3] = "navigators.smart.tom.demo.keyvalue.BFTMapImpl";
 			command[4] = "0";
 			
 			replica0 = new ProcessBuilder(command).redirectErrorStream(true).start();
-			command[4] = "1";
-			replica1 = new ProcessBuilder(command).redirectErrorStream(true).start();
-			command[4] = "2";
-			replica2 = new ProcessBuilder(command).redirectErrorStream(true).start();
-			command[4] = "3";
-			replica3 = new ProcessBuilder(command).redirectErrorStream(true).start();
-
-			ConsoleLogger log0 = new ConsoleLogger();;
+			ConsoleLogger log0 = new ConsoleLogger();
 			log0.setIn(replica0.getInputStream());
 			log0.setOut(System.out);
-			log0.setIndex(0);
+			log0.setIndex("0");
 			log0.start();
 			Thread.sleep(2000);
-
-			ConsoleLogger log1 = new ConsoleLogger();;
+			command[4] = "1";
+			replica1 = new ProcessBuilder(command).redirectErrorStream(true).start();
+			ConsoleLogger log1 = new ConsoleLogger();
 			log1.setIn(replica1.getInputStream());
 			log1.setOut(System.out);
-			log1.setIndex(1);
+			log1.setIndex("1");
 			log1.start();
 			Thread.sleep(2000);
-
-			ConsoleLogger log2 = new ConsoleLogger();;
+			command[4] = "2";
+			replica2 = new ProcessBuilder(command).redirectErrorStream(true).start();
+			ConsoleLogger log2 = new ConsoleLogger();
 			log2.setIn(replica2.getInputStream());
 			log2.setOut(System.out);
-			log2.setIndex(2);
+			log2.setIndex("2");
 			log2.start();
 			Thread.sleep(2000);
-
-			ConsoleLogger log3 = new ConsoleLogger();;
+			command[4] = "3";
+			replica3 = new ProcessBuilder(command).redirectErrorStream(true).start();
+			ConsoleLogger log3 = new ConsoleLogger();
 			log3.setIn(replica3.getInputStream());
 			log3.setOut(System.out);
-			log3.setIndex(3);
+			log3.setIndex("3");
 			log3.start();
 
 		    System.out.println("Servers started");
@@ -165,24 +161,24 @@ public class KVClientTest {
 			for(int i = 0; i < 65; i++) {
 				String key = "key" + (1+i);
 				String value = "value" + (1+i);
-				System.out.println(bftMap.putEntry("TestTable3", key, value.getBytes()));
+				bftMap.putEntry("TestTable3", key, value.getBytes());
 			}
 			assertEquals("Main table size should be 65", 65, bftMap.size1("TestTable3"));
 
 			replica1.destroy(); // Killing a non-leader replica, replica2
-			for(int i = 0; i < 35; i++) {
+			for(int i = 0; i < 45; i++) {
 				String key = "key" + (66+i);
 				String value = "value" + (66+i);
-				System.out.println(bftMap.putEntry("TestTable3", key, value.getBytes()));
+				bftMap.putEntry("TestTable3", key, value.getBytes());
 			}
-			assertEquals("Main table size should be 100", 100, bftMap.size1("TestTable3"));
+			assertEquals("Main table size should be 110", 110, bftMap.size1("TestTable3"));
 
 			command[4] = "1";
 			replica1 = new ProcessBuilder(command).redirectErrorStream(true).start(); // Starting replica2 back
 			ConsoleLogger log1 = new ConsoleLogger();;
 			log1.setIn(replica1.getInputStream());
 			log1.setOut(System.out);
-			log1.setIndex(11);
+			log1.setIndex("11");
 			log1.start();
 			
 			System.out.println("---------Sleep1: " + new java.util.Date());
@@ -190,11 +186,11 @@ public class KVClientTest {
 			System.out.println("---------Wakeup1: " + new java.util.Date());
 
 			for(int i = 0; i < 35; i++) {
-				String key = "key" + (101+i);
-				String value = "value" + (101+i);
-				System.out.println(bftMap.putEntry("TestTable3", key, value.getBytes()));
+				String key = "key" + (111+i);
+				String value = "value" + (111+i);
+				bftMap.putEntry("TestTable3", key, value.getBytes());
 			}
-			assertEquals("Main table size should be 135", 135, bftMap.size1("TestTable3"));
+			assertEquals("Main table size should be 145", 145, bftMap.size1("TestTable3"));
 
 			System.out.println("---------Sleep2: " + new java.util.Date());
 			Thread.sleep(10000);
@@ -203,11 +199,11 @@ public class KVClientTest {
 			replica2.destroy(); // Killing another non-leader replica, replica3
 
 			for(int i = 0; i < 35; i++) {
-				String key = "key" + (136+i);
-				String value = "value" + (136+i);
-				System.out.println(bftMap.putEntry("TestTable3", key, value.getBytes()));
+				String key = "key" + (146+i);
+				String value = "value" + (146+i);
+				bftMap.putEntry("TestTable3", key, value.getBytes());
 			}
-			assertEquals("Main table size should be 170", 170, bftMap.size1("TestTable3"));
+			assertEquals("Main table size should be 180", 180, bftMap.size1("TestTable3"));
 			
 		} catch(InterruptedException ie) {
 			System.out.println("Exception during Thread sleep: " + ie.getMessage());
@@ -293,12 +289,12 @@ public class KVClientTest {
 			assertEquals("Main table size should be 190", 190, bftMap.size1("TestTable5"));
 
 			command[4] = "0";
-			replica1 = new ProcessBuilder(command).redirectErrorStream(true).start(); // Starting replica0 back
-			ConsoleLogger log1 = new ConsoleLogger();;
-			log1.setIn(replica1.getInputStream());
-			log1.setOut(System.out);
-			log1.setIndex(11);
-			log1.start();
+			replica0 = new ProcessBuilder(command).redirectErrorStream(true).start(); // Starting replica0 back
+			ConsoleLogger log0 = new ConsoleLogger();;
+			log0.setIn(replica0.getInputStream());
+			log0.setOut(System.out);
+			log0.setIndex("01");
+			log0.start();
 			System.out.println("---------Sleep1: " + new java.util.Date());
 			Thread.sleep(20000);
 			System.out.println("---------Wakeup1: " + new java.util.Date());

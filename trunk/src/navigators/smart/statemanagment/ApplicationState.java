@@ -19,7 +19,6 @@
 package navigators.smart.statemanagment;
 
 import java.io.Serializable;
-import java.util.Arrays;
 
 /**
  * This classe represents a state tranfered from a replica to another. The state associated with the last
