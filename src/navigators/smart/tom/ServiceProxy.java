@@ -92,7 +92,6 @@ public class ServiceProxy extends TOMSender {
 
         replyQuorum = (int) Math.ceil((getViewManager().getCurrentViewN()
                 + getViewManager().getCurrentViewF()) / 2) + 1;
-//        replyQuorum = getViewManager().getCurrentViewF() + 1;
 
         replies = new TOMMessage[getViewManager().getCurrentViewN()];
 
@@ -200,7 +199,7 @@ public class ServiceProxy extends TOMSender {
             Logger.println("Received n-f replies and no response could be extracted.");
 
             canSendLock.unlock();
-            if (reqType == TOMMessageType.ORDERED_REQUEST) {
+            if (reqType == TOMMessageType.UNORDERED_REQUEST) {
                 //invoke the operation again, whitout the read-only flag
                 Logger.println("###################RETRY#######################");
                 return invokeOrdered(request);
@@ -210,7 +209,7 @@ public class ServiceProxy extends TOMSender {
         } else {
             //normal operation
             //******* EDUARDO BEGIN **************//
-            if (reqType == TOMMessageType.UNORDERED_REQUEST) {
+            if (reqType == TOMMessageType.ORDERED_REQUEST) {
                 //Reply to a normal request!
                 if (response.getViewID() == getViewManager().getCurrentViewId()) {
                     ret = response.getContent(); // return the response

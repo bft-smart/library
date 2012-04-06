@@ -21,7 +21,6 @@ package navigators.smart.paxosatwar.messages;
 import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
-import java.util.Arrays;
 
 import navigators.smart.communication.SystemMessage;
 
