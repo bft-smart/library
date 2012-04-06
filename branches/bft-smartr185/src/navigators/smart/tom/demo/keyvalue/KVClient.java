@@ -206,16 +206,17 @@ public class KVClient
 					System.exit(1);	
 				}
 
-				int sizeTable = getSizeTable(bftMap);
+				int sizeTable = getSizeTable(bftMap, tableName);
 				
 				System.out.println("Size of the table("+tableName+"): "+sizeTable);
 			} catch (Exception e) {
-				bftMap = new BFTMap(idProcess, Boolean.parseBoolean(args[1]));
-				try {
-					createTable(bftMap,tableName);
-				} catch (Exception e1) {
-					System.out.println("problems :-(");
-				}
+				e.printStackTrace();
+//				bftMap = new BFTMap(idProcess, Boolean.parseBoolean(args[1]));
+//				try {
+//					createTable(bftMap,tableName);
+//				} catch (Exception e1) {
+//					System.out.println("problems :-(");
+//				}
 			}
 		}
 	}
@@ -246,9 +247,9 @@ public class KVClient
 		return true;
 	}
 
-	private static int getSizeTable(BFTMap bftMap) throws Exception
+	private static int getSizeTable(BFTMap bftMap, String tableName) throws Exception
 	{
-		int res = bftMap.size();
+		int res = bftMap.size1(tableName);
 		if(res == -1)
 			throw new Exception();
 		return  res;

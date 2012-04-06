@@ -28,7 +28,6 @@ import navigators.smart.tom.util.Storage;
  */
 public class LatencyClient {
 
-    @SuppressWarnings("static-access")
     public static void main(String[] args) throws IOException {
         if (args.length < 5) {
             System.out.println("Usage: java ...LatencyClient <process id> <number of operations> <request size> <interval> <read only?>");
@@ -50,7 +49,10 @@ public class LatencyClient {
             System.out.println("Warm up...");
 
             for (int i = 0; i < numberOfOps/2; i++) {
-                reply = counterProxy.invoke(request, readOnly);
+            	if(readOnly)
+            		reply = counterProxy.invokeUnordered(request);
+            	else
+            		reply = counterProxy.invokeOrdered(request);
             }
 
             Storage st = new Storage(numberOfOps/2);
@@ -59,7 +61,10 @@ public class LatencyClient {
 
             for (int i = 0; i < numberOfOps/2; i++) {
                 long last_send_instant = System.nanoTime();
-                reply = counterProxy.invoke(request, readOnly);
+            	if(readOnly)
+            		reply = counterProxy.invokeUnordered(request);
+            	else
+            		reply = counterProxy.invokeOrdered(request);
                 st.store(System.nanoTime() - last_send_instant);
 
                     if (interval > 0) {
