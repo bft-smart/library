@@ -65,7 +65,7 @@ public class StateManager {
     private LCManager lcManager;
     private ExecutionManager execManager;
     
-    public StateManager(ServerViewManager manager, TOMLayer tomLayer, DeliveryThread dt, LCManager lcManager, ExecutionManager execManager) {
+    public StateManager(ServerViewManager manager, TOMLayer tomLayer, DeliveryThread dt, LCManager lcManager, ExecutionManager execManager, byte[] initialState) {
 
         //******* EDUARDO BEGIN **************//
         this.SVManager = manager;
@@ -77,7 +77,7 @@ public class StateManager {
         this.lcManager = lcManager;
         this.execManager = execManager;
 
-        this.log = new StateLog(k);
+        this.log = new StateLog(k, initialState, tomLayer.computeHash(initialState));
         senderEids = new HashSet<SenderEid>();
         senderStates = new HashSet<SenderState>();
         senderViews = new HashSet<SenderView>();

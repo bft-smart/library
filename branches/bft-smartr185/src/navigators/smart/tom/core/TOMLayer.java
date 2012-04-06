@@ -167,7 +167,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         this.dt.start();
 
         /** THIS IS JOAO'S CODE, TO HANDLE CHECKPOINTS AND STATE TRANSFER */
-        this.stateManager = new StateManager(this.reconfManager, this, dt, lcManager, execManager);
+        this.stateManager = new StateManager(this.reconfManager, this, dt, lcManager, execManager, receiver.getState());
         /*******************************************************/
     }
 

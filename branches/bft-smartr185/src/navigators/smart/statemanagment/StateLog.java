@@ -41,14 +41,14 @@ public class StateLog {
      * Constructs a State log
      * @param k The chekpoint period
      */
-    public StateLog(int k) {
+    public StateLog(int k, byte[] initialState, byte[] initialHash) {
 
         this.messageBatches = new BatchInfo[k - 1];
         this.lastCheckpointEid = -1;
         this.lastCheckpointRound = -1;
         this.lastCheckpointLeader = -1;
-        this.state = null;
-        this.stateHash = null;
+        this.state = initialState;
+        this.stateHash = initialHash;
         this.position = 0;
         this.lastEid = -1;
     }
@@ -205,7 +205,7 @@ public class StateLog {
      */
     public TransferableState getTransferableState(int eid, boolean setState) {
 
-        if (lastCheckpointEid > -1 && eid >= lastCheckpointEid) {
+        if (/*lastCheckpointEid > -1 && */eid >= lastCheckpointEid) {
 
             BatchInfo[] batches = null;
 
