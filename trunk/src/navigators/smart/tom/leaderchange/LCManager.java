@@ -182,7 +182,7 @@ public class LCManager {
     public void removeStops(int regency) {
         Set<Integer> regencies = stops.keySet();
         for (int t : regencies) {
-            if (t <= regency) stops.remove(t);
+            if (t <= regency) regencies.remove(t);
         }
     }
 
@@ -216,7 +216,7 @@ public class LCManager {
     public void removeLastEids(int regency) {
         Set<Integer> regencies = lastEids.keySet();
         for (int t : regencies) {
-            if (t <= regency) lastEids.remove(t);
+            if (t <= regency) regencies.remove(t);
         }
     }
 
@@ -270,7 +270,7 @@ public class LCManager {
 
         Set<Integer> regencies = collects.keySet();
         for (int t : regencies) {
-            if (t <= regency) collects.remove(t);
+            if (t <= regency) regencies.remove(t);
         }
 
     }
