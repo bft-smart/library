@@ -265,11 +265,15 @@ public class ServerConnection {
                 } else {
                     socket = newSocket;
                 }
+                
+                if(socket!= null)
+                    System.out.println("Reconnected with replica " + remoteId);
+                
             } catch (UnknownHostException ex) {
                 ex.printStackTrace();
             } catch (IOException ex) {
                 
-                System.out.println("Impossible to reconnect to replica " + remoteId);
+                Logger.println("Impossible to reconnect to replica " + remoteId);
                 //ex.printStackTrace();
             }
 
