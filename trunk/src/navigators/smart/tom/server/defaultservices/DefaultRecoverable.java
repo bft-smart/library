@@ -11,9 +11,7 @@ import java.util.logging.Level;
 import navigators.smart.statemanagment.ApplicationState;
 import navigators.smart.tom.MessageContext;
 import navigators.smart.tom.server.BatchExecutable;
-import navigators.smart.tom.server.DefaultApplicationState;
 import navigators.smart.tom.server.Recoverable;
-import navigators.smart.tom.server.StateLog;
 import navigators.smart.tom.util.Logger;
 
 /**
@@ -33,12 +31,14 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
     private StateLog log;
     
     public DefaultRecoverable() {
-        log = new StateLog(CHECKPOINT_PERIOD);
+
         try {
             md = MessageDigest.getInstance("MD5"); // TODO: shouldn't it be SHA?
         } catch (NoSuchAlgorithmException ex) {
             java.util.logging.Logger.getLogger(DefaultRecoverable.class.getName()).log(Level.SEVERE, null, ex);
         }
+        byte[] state = getSnapshot();
+        log = new StateLog(CHECKPOINT_PERIOD, state, computeHash(state));
     }
     
     public byte[][] executeBatch(byte[][] commands, MessageContext[] msgCtxs) {

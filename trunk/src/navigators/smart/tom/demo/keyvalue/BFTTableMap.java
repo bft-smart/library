@@ -4,10 +4,11 @@
  */
 
 package navigators.smart.tom.demo.keyvalue;
-import java.util.HashMap;
+//import java.util.HashMap;
 import java.util.Map;
 
 import java.io.Serializable;
+import java.util.TreeMap;
 
 /**
  *
@@ -20,9 +21,13 @@ public class BFTTableMap implements Serializable {
 	private Map<String, Map<String,byte[]>> tableMap = null;
 
 	public BFTTableMap() {
-		tableMap=new HashMap<String, Map<String,byte[]>>();
+		tableMap=new TreeMap<String, Map<String,byte[]>>();
 	}
 
+        public Map<String, Map<String,byte[]>> getTables() {
+            return tableMap;
+        }
+        
 	public Map<String,byte[]> addTable(String key, Map<String, byte[]> table) {
 		return tableMap.put(key, table);
 	}
@@ -48,10 +53,6 @@ public class BFTTableMap implements Serializable {
 
 	public int getSizeofTable() {
 		return tableMap.size();
-	}
-
-	public Map<String, Map<String,byte[]>> getTables() {
-		return tableMap;
 	}
 
 	public int getSize(String tableName) {

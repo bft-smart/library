@@ -16,8 +16,10 @@
  * You should have received a copy of the GNU General Public License along with SMaRt.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package navigators.smart.tom.server;
+package navigators.smart.tom.server.defaultservices;
 
+import navigators.smart.tom.server.defaultservices.CommandsInfo;
+import navigators.smart.tom.server.defaultservices.DefaultApplicationState;
 import org.apache.commons.codec.binary.Base64;
 
 /**
@@ -43,14 +45,14 @@ public class StateLog {
      * Constructs a State log
      * @param k The chekpoint period
      */
-    public StateLog(int k) {
+    public StateLog(int k, byte[] initialState, byte[] initialHash) {
 
         this.messageBatches = new CommandsInfo[k - 1];
         this.lastCheckpointEid = -1;
         this.lastCheckpointRound = -1;
         this.lastCheckpointLeader = -1;
-        this.state = null;
-        this.stateHash = null;
+        this.state = initialState;
+        this.stateHash = initialHash;
         this.position = 0;
         this.lastEid = -1;
     }
@@ -208,7 +210,7 @@ public class StateLog {
     public DefaultApplicationState getApplicationState(int eid, boolean setState) {
         System.out.println("lastCheckpointEid: " + lastCheckpointEid + "eid: " + eid);
 
-        if (lastCheckpointEid > -1 && eid >= lastCheckpointEid) {
+        if (/*lastCheckpointEid > -1 && */eid >= lastCheckpointEid) {
 
             CommandsInfo[] batches = null;
 

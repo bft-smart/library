@@ -9,7 +9,7 @@ import java.util.Random;
 import java.util.Scanner;
 
 import java.io.Console;
-import java.util.HashMap;
+import java.util.TreeMap;
 
 /**
  *
@@ -53,7 +53,7 @@ public class KVClient {
 					tableExists = bftMap.containsKey(tableName);
 					if (!tableExists) {
 						//if the table name does not exist then create the table
-						bftMap.put(tableName, new HashMap<String,byte[]>());
+						bftMap.put(tableName, new TreeMap<String,byte[]>());
 					}
 				} while(tableExists);
 				break;

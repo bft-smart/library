@@ -18,8 +18,8 @@ import navigators.smart.tom.ServiceProxy;
 
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.util.HashMap;
 import java.util.Map;
+import java.util.TreeMap;
 
 /**
  *
@@ -77,7 +77,13 @@ public class BFTMap implements Map<String, Map<String,byte[]>> {
 			dos.writeInt(KVRequestType.TAB_CREATE);
 			dos.writeUTF(key);
 			ObjectOutputStream  out1 = new ObjectOutputStream(out) ;
-			out1.writeObject(value);
+			if (value != null) {
+                            out1.writeBoolean(true);
+                            out1.writeObject(value);
+                        }
+                        else {
+                            out1.writeBoolean(false);
+                        }
 			out1.close();
 			byte[] rep = KVProxy.invokeOrdered(out.toByteArray());
 			ByteArrayInputStream bis = new ByteArrayInputStream(rep) ;
@@ -240,7 +246,7 @@ public class BFTMap implements Map<String, Map<String,byte[]>> {
 		throw new UnsupportedOperationException("Not supported yet.");
 	}
 
-	public HashMap<String, byte[]> get(Object key) {
+	public TreeMap<String, byte[]> get(Object key) {
 		throw new UnsupportedOperationException("Not supported yet.");
 	}
 

@@ -4,6 +4,7 @@
  */
 package navigators.smart.tom.demo.keyvalue;
 
+import navigators.smart.tom.server.defaultservices.DefaultApplicationState;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
@@ -14,7 +15,7 @@ import java.io.ObjectOutputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Collection;
-import java.util.HashMap;
+import java.util.TreeMap;
 import java.util.Map;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Level;
@@ -23,10 +24,9 @@ import navigators.smart.statemanagment.ApplicationState;
 import navigators.smart.tom.MessageContext;
 import navigators.smart.tom.ReplicaContext;
 import navigators.smart.tom.ServiceReplica;
-import navigators.smart.tom.server.DefaultApplicationState;
 import navigators.smart.tom.server.Recoverable;
 import navigators.smart.tom.server.SingleExecutable;
-import navigators.smart.tom.server.StateLog;
+import navigators.smart.tom.server.defaultservices.StateLog;
 import navigators.smart.tom.server.defaultservices.DefaultRecoverable;
 import navigators.smart.tom.util.Logger;
 
@@ -54,12 +54,15 @@ public class BFTMapImpl implements SingleExecutable, Recoverable {
         super();
     	replica = new ServiceReplica(id, this, this);
     	checkpointPeriod = replicaContext.getStaticConfiguration().getCheckpointPeriod();
-        log = new StateLog(checkpointPeriod);
+
         try {
             md = MessageDigest.getInstance("MD5"); // TODO: shouldn't it be SHA?
         } catch (NoSuchAlgorithmException ex) {
             java.util.logging.Logger.getLogger(DefaultRecoverable.class.getName()).log(Level.SEVERE, null, ex);
         }
+        
+        byte[] initialState = getSnapshot();
+        log = new StateLog(checkpointPeriod, initialState, computeHash(initialState));
     }
 
     public static void main(String[] args){
@@ -270,7 +273,7 @@ public class BFTMapImpl implements SingleExecutable, Recoverable {
 	    	DataInputStream dis = new DataInputStream(bais);
 	    	
 	    	while(dis.available() > 0) {
-	    		Map<String, byte[]> table = new HashMap<String, byte[]>();
+	    		Map<String, byte[]> table = new TreeMap<String, byte[]>();
 	    		String tableName = dis.readUTF();
 	    		tableMap.addTable(tableName, table);
 	    		int tableSize = dis.readInt();

@@ -1,3 +1,5 @@
+package navigators.smart.tom.server.defaultservices;
+
 /**
  * Copyright (c) 2007-2009 Alysson Bessani, Eduardo Alchieri, Paulo Sousa, and the authors indicated in the @author tags
  * 
@@ -16,11 +18,23 @@
  * You should have received a copy of the GNU General Public License along with SMaRt.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package navigators.smart.tom.server;
 
+
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectInputStream;
 import java.io.Serializable;
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.logging.Level;
 import navigators.smart.statemanagment.ApplicationState;
+import navigators.smart.tom.demo.keyvalue.BFTTableMap;
 
 /**
  * This classe represents a state tranfered from a replica to another. The state associated with the last
@@ -210,12 +224,6 @@ public class DefaultApplicationState implements ApplicationState {
                     }
                 }
             }
-            //System.out.print("[DefaultApplicationState] returing.........");
-            //System.out.println(Arrays.equals(this.stateHash, tState.stateHash) + " && " +
-            //        (tState.lastCheckpointEid == this.lastCheckpointEid) + " && " +
-            //        (tState.lastCheckpointRound == this.lastCheckpointRound) + " && " +
-            //        (tState.lastCheckpointLeader == this.lastCheckpointLeader) + " && " +
-            //        (tState.lastEid == this.lastEid) + " && " + (tState.hasState == this.hasState));
             return (Arrays.equals(this.stateHash, tState.stateHash) &&
                     tState.lastCheckpointEid == this.lastCheckpointEid &&
                     tState.lastCheckpointRound == this.lastCheckpointRound &&
