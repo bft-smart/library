@@ -177,7 +177,7 @@ public class LCManager {
     public void removeStops(int regency) {
         Set<Integer> regencies = stops.keySet();
         for (int t : regencies) {
-            if (t <= regency) stops.remove(t);
+            if (t <= regency) regencies.remove(t);
         }
     }
 
