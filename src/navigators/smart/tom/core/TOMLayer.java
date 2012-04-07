@@ -61,6 +61,7 @@ import navigators.smart.tom.leaderchange.LCMessage;
 import navigators.smart.tom.leaderchange.CollectData;
 import navigators.smart.tom.leaderchange.LCManager;
 import navigators.smart.tom.leaderchange.LastEidData;
+import org.apache.commons.codec.binary.Base64;
 
 
 /**
@@ -1014,6 +1015,21 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         }
     }
 
+    // temporary info to resume LC protocol
+    private int tempRegency = -1;
+    private LastEidData tempLastHighestEid = null;
+    private int tempCurrentEid = -1;
+    private HashSet<SignedObject> tempSignedCollects = null;
+    private byte[] tempPropose = null;
+    private int tempBatchSize = -1;
+    private boolean tempIAmLeader = false;
+                    
+    public void resumeLC() {
+        
+        finalise(tempRegency, tempLastHighestEid, tempCurrentEid,
+                tempSignedCollects, tempPropose, tempBatchSize, tempIAmLeader);
+        
+    }
     // this method is called on all replicas, and serves to verify and apply the
     // information sent in the catch-up message
     private void finalise(int regency, LastEidData lastHighestEid,
@@ -1030,12 +1046,25 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
             System.out.println("NEEDING TO USE STATE TRANSFER!!");
 
+            tempRegency = regency;
+            tempLastHighestEid = lastHighestEid;
+            tempCurrentEid = currentEid;
+            tempSignedCollects = signedCollects;
+            tempPropose = propose;
+            tempBatchSize = batchSize;
+            tempIAmLeader = iAmLeader;
+            
+            execManager.getStoppedMsgs().add(acceptor.getFactory().createPropose(currentEid, 0, propose, null));
+            stateManager.requestAppState(lastHighestEid.getEid());
+            
+            return;
+    
         } else if (getLastExec() + 1 == lastHighestEid.getEid()) {
         // Is this replica still executing the last decided consensus?
             
             //TODO: it is necessary to verify the proof
             
-            System.out.println("I'm still at the eid before the most recent onedl!");
+            System.out.println("I'm still at the eid before the most recent one!");
             
             exec = execManager.getExecution(lastHighestEid.getEid());
             r = exec.getLastRound();
@@ -1047,10 +1076,10 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                 r.clear();
             }
             
-            byte[] hash = computeHash(propose);
+            byte[] hash = computeHash(lastHighestEid.getEidDecision());
             r.propValueHash = hash;
-            r.propValue = propose;
-            r.deserializedPropValue = checkProposedValue(propose);
+            r.propValue = lastHighestEid.getEidDecision();
+            r.deserializedPropValue = checkProposedValue(lastHighestEid.getEidDecision());
             exec.decided(r, hash); // pass the decision to the delivery thread
         }
         byte[] tmpval = null;
@@ -1092,9 +1121,12 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             r.propValue = tmpval;
             r.deserializedPropValue = checkProposedValue(tmpval);
 
-            if(exec.getLearner().firstMessageProposed == null)
-                exec.getLearner().firstMessageProposed = r.deserializedPropValue[0];
-                        
+            if(exec.getLearner().firstMessageProposed == null) {
+                   if (r.deserializedPropValue != null &&
+                            r.deserializedPropValue.length > 0)
+                        exec.getLearner().firstMessageProposed = r.deserializedPropValue[0];
+                   else exec.getLearner().firstMessageProposed = new TOMMessage(); // to avoid null pointer
+            }
             r.setWeak(me, hash);
 
             lm.setNewReg(regency);
@@ -1109,6 +1141,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             } // waik up the thread that propose values in normal operation
             Logger.println("(TOMLayer.finalise) sending WEAK message");
             
+            System.out.println("(TOMLayer.finalise) sending WEAK message for eid " + currentEid + " with hash " + Base64.encodeBase64String(r.propValueHash));
             //System.out.println(regency + " // WEAK (R: " + r.getNumber() + "): " + Base64.encodeBase64String(r.propValueHash));
             // send a WEAK message to the other replicas
             communication.send(this.reconfManager.getCurrentViewOtherAcceptors(),

@@ -208,8 +208,10 @@ public class StateLog {
         if (/*lastCheckpointEid > -1 && */eid >= lastCheckpointEid) {
 
             BatchInfo[] batches = null;
+            
+            int lastEid = -1;
 
-             if  (eid <= lastEid) {
+             if  (eid <= this.lastEid) {
                 int size = eid - lastCheckpointEid ;
             
                 if (size > 0) {
@@ -218,11 +220,13 @@ public class StateLog {
                     for (int i = 0; i < size; i++)
                         batches[i] = messageBatches[i];
                 }
-             } else if (lastEid > -1) {
+                lastEid = eid;
+             } else if (this.lastEid > -1) {
 
                     batches = messageBatches;
+                    lastEid = this.lastEid;
              }
-            return new TransferableState(batches, lastCheckpointEid, lastCheckpointRound, lastCheckpointLeader, eid, (setState ? state : null), stateHash);
+            return new TransferableState(batches, lastCheckpointEid, lastCheckpointRound, lastCheckpointLeader, lastEid, (setState ? state : null), stateHash);
 
         }
         else return null;
