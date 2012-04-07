@@ -653,7 +653,9 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                         out.writeBoolean(true);
                         out.writeInt(last);
                         Execution exec = execManager.getExecution(last);
-                        byte[] decision = exec.getLearner().getDecision();
+                        //byte[] decision = exec.getLearner().getDecision();
+                        
+                        byte[] decision = exec.getDecisionRound().propValue;
 
                         out.writeObject(decision);
 
@@ -726,7 +728,9 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
                 if (last > -1) {  // content of the last decided eid 
                     Execution exec = execManager.getExecution(last);
-                    byte[] decision = exec.getLearner().getDecision();
+                    //byte[] decision = exec.getLearner().getDecision();
+                    
+                    byte[] decision = exec.getDecisionRound().propValue;
 
                     lastData = new LastEidData(this.reconfManager.getStaticConf().getProcessId(), last, decision, null);
                     // TODO: WILL BE NECESSARY TO ADD A PROOF!!!
