@@ -26,7 +26,7 @@ import java.util.logging.Logger;
 import navigators.smart.tom.MessageContext;
 import navigators.smart.tom.ReplicaContext;
 import navigators.smart.tom.ServiceReplica;
-import navigators.smart.tom.server.DefaultRecoverable;
+import navigators.smart.tom.server.defaultservices.DefaultRecoverable;
 
 /**
  *

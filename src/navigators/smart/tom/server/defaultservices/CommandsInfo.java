@@ -21,7 +21,7 @@
  * and open the template in the editor.
  */
 
-package navigators.smart.tom.server;
+package navigators.smart.tom.server.defaultservices;
 
 import java.io.Serializable;
 import java.util.Arrays;

@@ -154,7 +154,7 @@ public class RequestsTimer {
      
         long t = (shortTimeout > -1 ? shortTimeout : timeout);
         
-        System.out.println("(RequestTimerTask.run) I SOULD NEVER RUN WHEN THERE IS NO TIMEOUT");
+        //System.out.println("(RequestTimerTask.run) I SOULD NEVER RUN WHEN THERE IS NO TIMEOUT");
         rwLock.readLock().lock();
 
         LinkedList<TOMMessage> pendingRequests = new LinkedList<TOMMessage>();

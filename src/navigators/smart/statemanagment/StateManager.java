@@ -40,7 +40,6 @@ import navigators.smart.tom.core.DeliveryThread;
 import navigators.smart.tom.core.TOMLayer;
 import navigators.smart.tom.demo.keyvalue.BFTTableMap;
 import navigators.smart.tom.leaderchange.LCManager;
-import navigators.smart.tom.server.DefaultApplicationState;
 import navigators.smart.tom.server.Recoverable;
 import navigators.smart.tom.util.Logger;
 import navigators.smart.tom.util.TOMUtil;
@@ -306,7 +305,7 @@ public class StateManager {
 
         for (int i = 0; i < st.length; i++) {
 
-            for (int j = i; j < st.length; j++) {
+            for (int j = 0; j < st.length; j++) {
 
                 if (st[i].state.equals(st[j].state) && st[j].state.hasState()) count++;
  
