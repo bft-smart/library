@@ -47,14 +47,12 @@ public class BFTTableMap implements Serializable {
 	}
 
 	public int getSizeofTable() {
-
 		return tableMap.size();
-
 	}
 
 	public int getSize(String tableName) {
 		Map<String,byte[]> table = tableMap.get(tableName);
-		return table.size();
+		return (table == null)?0:table.size();
 	}
 
 	public Map<String,byte[]> removeTable(String tableName) {
