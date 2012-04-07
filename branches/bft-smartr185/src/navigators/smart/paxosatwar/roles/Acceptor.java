@@ -237,11 +237,10 @@ public final class Acceptor {
                 if(round.getExecution().getLearner()==null)
                 	Logger.println("(round.getLearner()==null");
                 
-                if(round.getExecution().getLearner().firstMessageProposed==null)
+                if(round.getExecution().getLearner().firstMessageProposed==null) {
                 	Logger.println("round.getExecution().getLearner().firstMessageProposed");
-                
-                round.getExecution().getLearner().firstMessageProposed.strongSentTime = System.nanoTime();
-                
+                        round.getExecution().getLearner().firstMessageProposed.strongSentTime = System.nanoTime();
+                }
                 communication.send(this.reconfManager.getCurrentViewOtherAcceptors(),
                         factory.createStrong(eid, round.getNumber(), value));
                 computeStrong(eid, round, value);

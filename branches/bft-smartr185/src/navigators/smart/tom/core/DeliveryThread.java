@@ -114,8 +114,8 @@ public final class DeliveryThread extends Thread {
     public void update(TransferableState state) {
 
         int lastCheckpointEid = state.getLastCheckpointEid();
-        //int lastEid = state.getLastEid();
-        int lastEid = lastCheckpointEid + (state.getMessageBatches() != null ? state.getMessageBatches().length : 0);
+        int lastEid = state.getLastEid();
+        //int lastEid = lastCheckpointEid + (state.getMessageBatches() != null ? state.getMessageBatches().length : 0);
 
         Logger.println("(DeliveryThread.update) I'm going to update myself from EID "
                 + lastCheckpointEid + " to EID " + lastEid);
