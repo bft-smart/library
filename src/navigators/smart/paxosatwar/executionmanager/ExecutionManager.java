@@ -164,7 +164,8 @@ public final class ExecutionManager {
 
         //process stopped messages
         while (!stoppedMsgs.isEmpty()) {
-            acceptor.processMessage(stoppedMsgs.remove());
+            PaxosMessage pm = stoppedMsgs.remove();
+            if (pm.getNumber() > tomLayer.getLastExec()) acceptor.processMessage(pm);
         }
         stoppedMsgsLock.unlock();
         Logger.println("(ExecutionManager.restart) Finished stopped messages processing");
