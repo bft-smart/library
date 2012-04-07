@@ -235,7 +235,10 @@ public final class Acceptor {
                 
                 round.setStrong(me, value);
 
-                round.getExecution().getLearner().firstMessageProposed.strongSentTime = System.nanoTime();
+                if(round.getExecution().getLearner().firstMessageProposed==null) {
+
+                        round.getExecution().getLearner().firstMessageProposed.strongSentTime = System.nanoTime();
+                }
                 
                 communication.send(this.reconfManager.getCurrentViewOtherAcceptors(),
                         factory.createStrong(eid, round.getNumber(), value));
