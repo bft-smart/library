@@ -31,13 +31,13 @@ import navigators.smart.tom.server.Recoverable;
  * This class will create a ServiceReplica and will initialize
  * it with a implementation of Executable and Recoverable interfaces. 
  */
-public class BFTMapImpl implements SingleExecutable, Recoverable {
+public class BFTMapServer implements SingleExecutable, Recoverable {
 
     BFTTableMap tableMap = new BFTTableMap();
     ServiceReplica replica = null;
     
     //The constructor passes the id of the server to the super class
-    public BFTMapImpl(int id) {
+    public BFTMapServer(int id) {
     	replica = new ServiceReplica(id, this, this);
     }
 
@@ -46,7 +46,7 @@ public class BFTMapImpl implements SingleExecutable, Recoverable {
             System.out.println("Use: java BFTMapImpl <processId>");
             System.exit(-1);
         }
-        new BFTMapImpl(Integer.parseInt(args[0]));
+        new BFTMapServer(Integer.parseInt(args[0]));
     }
     
     @Override
@@ -64,7 +64,7 @@ public class BFTMapImpl implements SingleExecutable, Recoverable {
             bos.close();
             return bos.toByteArray();
         } catch (IOException ex) {
-            Logger.getLogger(BFTMapImpl.class.getName()).log(Level.SEVERE, null, ex);
+            Logger.getLogger(BFTMapServer.class.getName()).log(Level.SEVERE, null, ex);
             return new byte[0];
         }
     }
@@ -81,9 +81,9 @@ public class BFTMapImpl implements SingleExecutable, Recoverable {
             bis.close();
 
         } catch (ClassNotFoundException ex) {
-            Logger.getLogger(BFTMapImpl.class.getName()).log(Level.SEVERE, null, ex);
+            Logger.getLogger(BFTMapServer.class.getName()).log(Level.SEVERE, null, ex);
         } catch (IOException ex) {
-            Logger.getLogger(BFTMapImpl.class.getName()).log(Level.SEVERE, null, ex);
+            Logger.getLogger(BFTMapServer.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
 
@@ -129,7 +129,7 @@ public class BFTMapImpl implements SingleExecutable, Recoverable {
                     try {
                         table = (Map<String, byte[]>) objIn.readObject();
                     } catch (ClassNotFoundException ex) {
-                        Logger.getLogger(BFTMapImpl.class.getName()).log(Level.SEVERE, null, ex);
+                        Logger.getLogger(BFTMapServer.class.getName()).log(Level.SEVERE, null, ex);
                     }
                     Map<String, byte[]> tableCreated = tableMap.addTable(tableName, table);
                     ByteArrayOutputStream bos = new ByteArrayOutputStream();
@@ -200,7 +200,7 @@ public class BFTMapImpl implements SingleExecutable, Recoverable {
             }
             return reply;
         } catch (IOException ex) {
-            Logger.getLogger(BFTMapImpl.class.getName()).log(Level.SEVERE, null, ex);
+            Logger.getLogger(BFTMapServer.class.getName()).log(Level.SEVERE, null, ex);
             return null;
         }
     }
@@ -263,7 +263,7 @@ public class BFTMapImpl implements SingleExecutable, Recoverable {
 	        }
 	        return reply;
 	    } catch (IOException ex) {
-	        Logger.getLogger(BFTMapImpl.class.getName()).log(Level.SEVERE, null, ex);
+	        Logger.getLogger(BFTMapServer.class.getName()).log(Level.SEVERE, null, ex);
 	        return null;
 	    }
     }

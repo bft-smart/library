@@ -23,20 +23,25 @@ public class KVClient {
                     new InputStreamReader(System.in));
             System.out.print("Print a command:");
             cmds = reader.readLine().split(" ");
-
-            if(cmds.length > 0) {
+            
+            if(!cmds[0].isEmpty()) {
                 String type = cmds[0].toUpperCase();
                 String key = (cmds.length > 1)? cmds[1]: "NOTHING";
                 String value = (cmds.length > 2)? cmds[2]: "NOTHING";
 
-                KVMessage request = new KVMessage(KVMessage.Type.valueOf(type),key,value);
-
-                byte[] rep = service.invoke(request.getBytes(), 
-                        TOMMessageType.ORDERED_REQUEST);
-
-                KVMessage reply = KVMessage.createFromBytes(rep);
-                System.out.println(type+" operation result: "+reply.key+","+reply.value);
+                try {
+                    KVMessage request = new KVMessage(KVMessage.Type.valueOf(type), key, value);
+                    
+                    byte[] rep = service.invokeOrdered(request.getBytes());
+                    if (rep != null) {
+                        KVMessage reply = KVMessage.createFromBytes(rep);
+                        System.out.println(type + " operation result: " + reply.key + "," + reply.value);
+                    }
+                } catch (Exception e) {
+                    continue;
+                }
             }
-        } while(cmds.length != 0);
+        } while(!cmds[0].isEmpty());
+        System.exit(0);
     } 
 }

@@ -18,7 +18,8 @@ import java.util.TreeMap;
 import java.util.Map;
 
 /**
- *
+ * Map implementation backed by a BFT replicated table.
+ * 
  * @author sweta
  */
 public class BFTMap implements Map<String, Map<String,byte[]>> {

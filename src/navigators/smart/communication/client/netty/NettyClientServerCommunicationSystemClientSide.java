@@ -129,13 +129,13 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
                             macReceive, currV[i], manager.getStaticConf().getRSAPublicKey(currV[i]), new ReentrantLock());
                     sessionTable.put(currV[i], cs);
 
-                    System.out.println("Connecting to replica " + currV[i] + " at " + manager.getRemoteAddress(currV[i]));
+                    System.out.println("Connecting with replica " + currV[i] + " at " + manager.getRemoteAddress(currV[i]));
                     //******* EDUARDO END **************//
 
                     future.awaitUninterruptibly();
 
                     if (!future.isSuccess()) {
-                        System.err.println("Impossible to connect to " + currV[i]);
+                        System.err.println("Impossible to connect with " + currV[i]);
                     }
 
                 } catch (java.lang.NullPointerException ex) {
@@ -198,7 +198,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
                         NettyClientServerSession cs = new NettyClientServerSession(future.getChannel(), macSend, macReceive, currV[i], manager.getStaticConf().getRSAPublicKey(currV[i]), new ReentrantLock());
                         sessionTable.put(currV[i], cs);
 
-                        System.out.println("Connecting to replica " + currV[i] + " at " + manager.getRemoteAddress(currV[i]));
+                        System.out.println("Connecting with replica " + currV[i] + " at " + manager.getRemoteAddress(currV[i]));
                         //******* EDUARDO END **************//
 
                         future.awaitUninterruptibly();
@@ -250,7 +250,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
         if (!(e.getCause() instanceof ClosedChannelException) && !(e.getCause() instanceof ConnectException)) {
             System.out.println("Connection with server closed.");
         } else {
-            e.getCause().printStackTrace(System.err);
+            Logger.println("Netty exception: "+ e.getCause().getMessage());
         }
     }
 
