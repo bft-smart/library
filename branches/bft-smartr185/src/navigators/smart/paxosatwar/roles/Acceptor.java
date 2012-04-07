@@ -19,6 +19,7 @@
 package navigators.smart.paxosatwar.roles;
 
 
+import java.util.Arrays;
 import java.util.logging.Level;
 import navigators.smart.communication.ServerCommunicationSystem;
 import navigators.smart.paxosatwar.executionmanager.Execution;
@@ -223,7 +224,7 @@ public final class Acceptor {
         Logger.println("(Acceptor.computeWeak) I have " + weakAccepted +
                 " weaks for " + eid + "," + round.getNumber());
 
-        if (weakAccepted > reconfManager.getQuorumStrong()) { // Can a send a STRONG message?
+        if (weakAccepted > reconfManager.getQuorumStrong() && Arrays.equals(value, round.propValueHash)) { // Can a send a STRONG message?
             if (!round.isStrongSetted(me)) {
                 Logger.println("(Acceptor.computeWeak) sending STRONG for " + eid);
 
