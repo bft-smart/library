@@ -147,7 +147,7 @@ public final class ExecutionManager {
         if (tomLayer.getInExec() != -1) {
             stoppedRound = getExecution(tomLayer.getInExec()).getLastRound();
             //stoppedRound.getTimeoutTask().cancel();
-            Logger.println("(ExecutionManager.stop) Stoping round " + stoppedRound.getNumber() + " of consensus " + stoppedRound.getExecution().getId());
+            if (stoppedRound != null) Logger.println("(ExecutionManager.stop) Stoping round " + stoppedRound.getNumber() + " of consensus " + tomLayer.getInExec());
         }
         stoppedMsgsLock.unlock();
     }
@@ -412,6 +412,7 @@ public final class ExecutionManager {
         outOfContextLock.lock();
         /******* BEGIN OUTOFCONTEXT CRITICAL SECTION *******/
         if (m.getPaxosType() == MessageFactory.PROPOSE) {
+            Logger.println("(ExecutionManager.addOutOfContextMessage) adding " + m);
             outOfContextProposes.put(m.getNumber(), m);
         } else {
             List<PaxosMessage> messages = outOfContext.get(m.getNumber());
@@ -419,11 +420,9 @@ public final class ExecutionManager {
                 messages = new LinkedList<PaxosMessage>();
                 outOfContext.put(m.getNumber(), messages);
             }
+            Logger.println("(ExecutionManager.addOutOfContextMessage) adding " + m);
             messages.add(m);
 
-            if (outOfContext.size() % 1000 == 0) {
-                Logger.println("(ExecutionManager.addOutOfContextMessage) out-of-context size: " + outOfContext.size());
-            }
         }
 
         /******* END OUTOFCONTEXT CRITICAL SECTION *******/

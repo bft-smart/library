@@ -74,6 +74,8 @@ public class StateManager {
     private LCManager lcManager;
     private ExecutionManager execManager;
     
+    private boolean appStateOnly;
+    
     public StateManager(ServerViewManager manager, TOMLayer tomLayer, DeliveryThread dt, LCManager lcManager, ExecutionManager execManager) {
 
         //******* EDUARDO BEGIN **************//
@@ -98,6 +100,8 @@ public class StateManager {
         this.state = null;
         this.lastEid = -1;
         this.waitingEid = -1;
+
+        appStateOnly = false;
     }
     
     public int getReplica() {
@@ -319,6 +323,14 @@ public class StateManager {
         return senderStates.size();
     }
 
+    public void requestAppState(int eid) {
+        setLastEID(eid + 1);
+        setWaiting(eid);
+        appStateOnly = true;
+        
+        requestState();
+    }
+    
     public void analyzeState(int sender, int eid) {
 
             Logger.println("(TOMLayer.analyzeState) The state transfer protocol is enabled");
@@ -436,56 +448,6 @@ public class StateManager {
 
         }
     }
-    
-    public void temp(byte[] state) {
-        try {
-
-            // serialize to byte array and return
-            ByteArrayInputStream bis = new ByteArrayInputStream(state);
-            ObjectInput in = new ObjectInputStream(bis);
-            BFTTableMap tableMap = (BFTTableMap) in.readObject();
-            in.close();
-            bis.close();
-            showTables(tableMap);
-
-        } catch (ClassNotFoundException ex) {
-            ex.printStackTrace();
-        } catch (IOException ex) {
-            ex.printStackTrace();
-        }
-    }
-    
-    public void showTables(BFTTableMap tableMap) {
-        try {
-            Map<String, Map<String, byte[]>> tables = tableMap.getTables();
-            Collection<String> tableNames = tables.keySet();
-            ByteArrayOutputStream baos = new ByteArrayOutputStream(10000);
-            DataOutputStream dos = new DataOutputStream(baos);
-            for(String tableName : tableNames) {
-                System.out.println("[StateManager][showTables] Table name: " + tableName);
-                dos.writeUTF(tableName);
-                Map<String, byte[]> tableTmp = tables.get(tableName);
-                dos.writeInt(tableTmp.size());
-                for(String key : tableTmp.keySet()) {
-                    dos.writeUTF(key);
-                    dos.flush();
-                    byte[] value = tableTmp.get(key);
-                    dos.writeInt(value.length);
-                    dos.write(value);
-                    dos.flush();
-                    System.out.println("[StateManager][showTables] ---- Size of  key '" + key + "': " + value.length);
-                }
-                System.out.println("[StateManager][showTables] ---- Count of rows for table '" + tableName + "': " + tableTmp.size());
-                dos.flush();
-            }
-            byte[] state = baos.toByteArray();
-            System.out.println("[StateManager][showTables] Current byte array size: " + state.length);
-            //return state;
-        } catch (IOException ex) {
-            ex.printStackTrace();
-            //return new byte[0];
-        }
-    }
 
     public void SMReplyDeliver(SMMessage msg) {
 
@@ -503,23 +465,24 @@ public class StateManager {
                 int currentRegency = -1;
                 int currentLeader = -1;
                 View currentView = null;
-                addRegency(msg.getSender(), msg.getRegency());
-                addLeader(msg.getSender(), msg.getLeader());
-                addView(msg.getSender(), msg.getView());
-                if (moreThan2F_Regencies(msg.getRegency())) currentRegency = msg.getRegency();
-                if (moreThan2F_Leaders(msg.getLeader())) currentLeader = msg.getLeader();
-                if (moreThan2F_Views(msg.getView())) {
-                    currentView = msg.getView();
-                    if (currentView.isMember(SVManager.getStaticConf().getProcessId())) {
-                        System.out.println("Not a member!");
-                    }
-                }
                 
-                /*if (msg.getState().hasState()) {
-                    System.out.println("(TOMLayer.SMReplyDeliver) Snapshot da replica " + msg.getSender() + " para o estado " + ((DefaultApplicationState) msg.getState()).getLastCheckpointEid());
-                    temp(msg.getState().getSerializedState());
-                    
-                }*/
+                if (!appStateOnly) {
+                    addRegency(msg.getSender(), msg.getRegency());
+                    addLeader(msg.getSender(), msg.getLeader());
+                    addView(msg.getSender(), msg.getView());
+                    if (moreThan2F_Regencies(msg.getRegency())) currentRegency = msg.getRegency();
+                    if (moreThan2F_Leaders(msg.getLeader())) currentLeader = msg.getLeader();
+                    if (moreThan2F_Views(msg.getView())) {
+                        currentView = msg.getView();
+                        if (!currentView.isMember(SVManager.getStaticConf().getProcessId())) {
+                            System.out.println("Not a member!");
+                        }
+                    }
+                } else {
+                    currentLeader = tomLayer.lm.getCurrentLeader();
+                    currentRegency = lcManager.getLastReg();
+                    currentView = SVManager.getCurrentView();
+                }
                 
                 System.out.println("(TOMLayer.SMReplyDeliver) The reply is for the EID that I want!");
 
@@ -583,7 +546,7 @@ public class StateManager {
                         dt.update(recvState);
                         
                         //Deal with stopped messages that may come from synchronization phase
-                        if (execManager.stopped()) {
+                        if (!appStateOnly && execManager.stopped()) {
                         
                             Queue<PaxosMessage> stoppedMsgs = execManager.getStoppedMsgs();
                         
@@ -622,6 +585,10 @@ public class StateManager {
                         tomLayer.requestsTimer.Enabled(true);
                         tomLayer.requestsTimer.startTimer();
                         
+                        if (appStateOnly) {
+                            appStateOnly = false;
+                            tomLayer.resumeLC();
+                        }
                     //******* EDUARDO BEGIN **************//
                     } else if (recvState == null && (SVManager.getCurrentViewN() / 2) < getReplies()) {
                     //******* EDUARDO END **************//
@@ -639,6 +606,10 @@ public class StateManager {
                         //requestState();
 
                         if (stateTimer != null) stateTimer.cancel();
+                        
+                        if (appStateOnly) {
+                            requestState();
+                        }
                     } else if (haveState == -1) {
 
                         System.out.println("(TOMLayer.SMReplyDeliver) The replica from which I expected the state, sent one which doesn't match the hash of the others, or it never sent it at all");
