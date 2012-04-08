@@ -159,6 +159,7 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
                     
                     byte[][] commands = state.getMessageBatch(eid).commands; // take a batch
 
+                    if (commands == null || commands.length <= 0) continue;
                     // INUTIL??????
                     //tomLayer.lm.addLeaderInfo(eid, state.getMessageBatch(eid).round,
                     //        state.getMessageBatch(eid).leader);
