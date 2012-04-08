@@ -173,27 +173,29 @@ public final class DeliveryThread extends Thread {
                 Logger.println("(DeliveryThread.run) Consensus " + cons.getId() + " was delivered.");
 
                 TOMMessage[] requests = extractMessagesFromDecision(cons);
+                
+                if (requests != null && requests.length > 0) {
+                    //cons.firstMessageProposed contains the performance counters
+                    if (requests[0].equals(cons.firstMessageProposed)) {
+                        requests[0] = cons.firstMessageProposed;
+                    }
 
-                //cons.firstMessageProposed contains the performance counters
-                if (requests[0].equals(cons.firstMessageProposed)) {
-                    requests[0] = cons.firstMessageProposed;
+                    //clean the ordered messages from the pending buffer
+                    tomLayer.clientsManager.requestsOrdered(requests);
+
+                    deliverMessages(cons.getId(), tomLayer.getLCManager().getLastReg(), true, requests, cons.getDecision());
+
+                    //******* EDUARDO BEGIN **************//
+                    if (manager.hasUpdates()) {
+                        processReconfigMessages(cons.getId(), cons.getDecisionRound().getNumber());
+                        //set this consensus as the last executed
+                        tomLayer.setLastExec(cons.getId());
+                        //define that end of this execution
+                        tomLayer.setInExec(-1);
+                    }
+                    //******* EDUARDO END **************//
                 }
-
-                //clean the ordered messages from the pending buffer
-                tomLayer.clientsManager.requestsOrdered(requests);
-
-                deliverMessages(cons.getId(), tomLayer.getLCManager().getLastReg(), true, requests, cons.getDecision());
-
-                //******* EDUARDO BEGIN **************//
-                if (manager.hasUpdates()) {
-                    processReconfigMessages(cons.getId(), cons.getDecisionRound().getNumber());
-                    //set this consensus as the last executed
-                    tomLayer.setLastExec(cons.getId());
-                    //define that end of this execution
-                    tomLayer.setInExec(-1);
-                }
-                //******* EDUARDO END **************//
-
+                
                 /** THIS IS JOAO'S CODE, TO HANDLE CHECKPOINTS */
                 //logDecision(cons);
                 /********************************************************/

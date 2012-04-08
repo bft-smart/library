@@ -290,7 +290,8 @@ public final class Acceptor {
      * @param value The decided value (got from WEAK or STRONG messages)
      */
     private void decide(Round round, byte[] value) {        
-        round.getExecution().getLearner().firstMessageProposed.decisionTime = System.nanoTime();
+        if (round.getExecution().getLearner().firstMessageProposed != null)
+            round.getExecution().getLearner().firstMessageProposed.decisionTime = System.nanoTime();
 
         leaderModule.decided(round.getExecution().getId(),
                 tomLayer.lm.getCurrentLeader()/*leaderModule.getLeader(round.getExecution().getId(),
