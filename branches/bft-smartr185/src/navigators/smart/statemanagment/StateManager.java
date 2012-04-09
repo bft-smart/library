@@ -540,6 +540,8 @@ public class StateManager {
                             currentLeader > -1 && currentView != null) {
                         
                         Logger.println("(TOMLayer.SMReplyDeliver) The state of those replies is good!");
+                        Logger.println("(TOMLayer.SMReplyDeliver) EID State requested: " + msg.getEid());
+                        Logger.println("(TOMLayer.SMReplyDeliver) EID State received: " + recvState.getLastEid());
                         
                         lcManager.setLastReg(currentRegency);
                         lcManager.setNextReg(currentRegency);
