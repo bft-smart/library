@@ -10,6 +10,7 @@ Projects in which components use BFT-SMaRt:
  * [http://massif-project.eu/ MASSIF]
  * [http://www.secfunet.eu/ SecFuNet]
  * [http://trone.di.fc.ul.pt/ TRONE]
+ * [http://cloudfit.di.fc.ul.pt/ CloudFit]
 
 = Papers =
 
