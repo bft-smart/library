@@ -19,19 +19,19 @@ You can run the counter demonstration by executing the following commands, from 
 
 ==Start the servers (4 replicas, to tolerate 1 fault)==
 
-{{{runscripts\smartrun.bat navigators.smart.tom.demo.counter.CounterServer 0}}}<br />
-{{{runscripts\smartrun.bat navigators.smart.tom.demo.counter.CounterServer 1}}}<br />
-{{{runscripts\smartrun.bat navigators.smart.tom.demo.counter.CounterServer 2}}}<br />
-{{{runscripts\smartrun.bat navigators.smart.tom.demo.counter.CounterServer 3}}}<br />
+{{{smartrun.sh navigators.smart.tom.demo.counter.CounterServer 0}}}<br/>
+{{{smartrun.sh navigators.smart.tom.demo.counter.CounterServer 1}}}<br/>
+{{{smartrun.sh navigators.smart.tom.demo.counter.CounterServer 2}}}<br/>
+{{{smartrun.sh navigators.smart.tom.demo.counter.CounterServer 3}}}<br/>
 
 ==Start a client==
 
 #if {{{<increment>}}} equals 0 the request will be read-only
 #default {{{<number of operations>}}} equals 1000
 
-{{{runscripts\smartrun.bat navigators.smart.tom.demo.counter.CounterClient 1001 <increment> [<number of operations>]}}}
+{{{runscripts\smartrun.sh navigators.smart.tom.demo.counter.CounterClient 1001 <increment> [<number of operations>]}}}
 
-You can use the "runsmart.bat" script in Windows, and the "runsmart.sh" script em Linux. These scripts can be easely be adapted to run other demos, and you can derived other scripts from these ones to run BFT-SMaRt in other operating systems.
+You can use the "runsmart.bat" script in Windows, and the "runsmart.sh" script em UNIX-like systems (Linux, MacOS, etc.). These scripts can be easely be adapted to run other demos, and you can derived other scripts from these ones to run BFT-SMaRt in other operating systems.
 
 Additionally to the counter demo, there is also the random demo. You can run it by using the RandomServer and RandomClient classes located in the package navigators.smart.tom.demo.random.
 
