@@ -17,6 +17,7 @@
  */
 package navigators.smart.paxosatwar.executionmanager;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -248,7 +249,7 @@ public final class ExecutionManager {
 
             if (reconfManager.getStaticConf().isStateTransferEnabled()) {
                 //Logger.debug = true;
-                tomLayer.getStateManager().analyzeState(msg.getSender(),  msg.getNumber());
+                tomLayer.getStateManager().analyzeState(msg.getNumber());
             }
             else {
                 System.out.println("##################################################################################");
@@ -360,7 +361,33 @@ public final class ExecutionManager {
 
         return execution;
     }
-
+    
+    public boolean isDecidable(int eid) {
+        if (receivedOutOfContextPropose(eid)) {
+            Execution exec = getExecution(eid);
+            PaxosMessage prop = outOfContextProposes.get(exec.getId());
+            Round round = exec.getRound(prop.getRound(), reconfManager);
+            byte[] propHash = tomLayer.computeHash(prop.getValue());
+            List<PaxosMessage> msgs = outOfContext.get(eid);
+            int countWeaks = 0;
+            int countStrongs = 0;
+            if (msgs != null) {
+                for (PaxosMessage msg : msgs) {
+                    
+                    if (msg.getRound() == round.getNumber() &&
+                            Arrays.equals(propHash, msg.getValue())) {
+                        
+                        if (msg.getPaxosType() == MessageFactory.WEAK) countWeaks++;
+                        else if (msg.getPaxosType() == MessageFactory.STRONG) countStrongs++;
+                    }
+                }
+            }
+            
+            return ((countWeaks > (2*reconfManager.getCurrentViewF())) &&
+                    (countStrongs > (2*reconfManager.getCurrentViewF())));
+        }
+        return false;
+    }
     public void processOutOfContextPropose(Execution execution) {
         outOfContextLock.lock();
         /******* BEGIN OUTOFCONTEXT CRITICAL SECTION *******/
