@@ -11,6 +11,7 @@ Projects in which components use BFT-SMaRt:
  * [http://www.secfunet.eu/ SecFuNet]
  * [http://trone.di.fc.ul.pt/ TRONE]
  * [http://cloudfit.di.fc.ul.pt/ CloudFit]
+ * [http://red.lsd.di.uminho.pt/ ReD]
 
 = Papers =
 
