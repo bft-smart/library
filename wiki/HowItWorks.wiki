@@ -31,9 +31,8 @@ Given all aforementioned assumptions, for BFT-SMaRt to execute correctly, less t
 
 = State Transfer =
 
+It is expected that in real systems replicas will fail. But it is also convenient that they will be fixed and put back in the system. The problem is, the recovered replicas might lose their state, and therefore not be able to participate in the replication. The state transfer protocol enables addresses this issue by enabling the recovered replica to ask the other ones the latest state.
+
 = Reconfiguration =
 
-Add your content here.  Format your content with:
-  * Text in *bold* or _italic_
-  * Headings, paragraphs, and lists
-  * Automatic links to other wiki pages
+Systems can either be static or dynamic. In a static system, the same set of processes remains unchanged through its entire lifespan. On the other hand, a dynamic system enables other processes to enter the system, and also leave it. BFT-SMaRt implements an experimental protocol that enables replicas to either join or leave the system during execution. Such protocol is possible with a special client dubbed "Trusted Third Party" (TTP) that commands the insertion and removal of replicas.
