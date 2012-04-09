@@ -100,7 +100,7 @@ public final class Acceptor {
             tomLayer.processOutOfContext();
         }
     }
-
+    
     /**
      * Called when a Paxos message is received or when a out of context message must be processed.
      * It processes the received message according to its type
