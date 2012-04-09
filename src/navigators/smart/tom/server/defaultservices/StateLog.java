@@ -208,28 +208,28 @@ public class StateLog {
      * @return TransferableState Object containing this log information
      */
     public DefaultApplicationState getApplicationState(int eid, boolean setState) {
-        System.out.println("lastCheckpointEid: " + lastCheckpointEid + "eid: " + eid);
 
-        if (/*lastCheckpointEid > -1 && */eid >= lastCheckpointEid) {
+        CommandsInfo[] batches = null;
 
-            CommandsInfo[] batches = null;
+        int lastEid = -1;
 
-            int lastEid = -1;
-             if  (eid <= this.lastEid) {
-                int size = eid - lastCheckpointEid ;
-            
-                if (size > 0) {
-                    batches = new CommandsInfo[size];
+        if (/*lastCheckpointEid > -1 && */eid >= lastCheckpointEid && eid <= this.lastEid) {
 
-                    for (int i = 0; i < size; i++)
-                        batches[i] = messageBatches[i];
-                }
-                lastEid = eid;
-             } else if (this.lastEid > -1) {
+             //if  (eid <= this.lastEid) {
+            int size = eid - lastCheckpointEid ;
 
-                    batches = messageBatches;
-                    lastEid = this.lastEid;
-             }
+            if (size > 0) {
+                batches = new CommandsInfo[size];
+
+                for (int i = 0; i < size; i++)
+                    batches[i] = messageBatches[i];
+            }
+            lastEid = eid;
+             //} else if (this.lastEid > -1) {
+
+             //       batches = messageBatches;
+             //       lastEid = this.lastEid;
+             //}
             return new DefaultApplicationState(batches, lastCheckpointEid, lastCheckpointRound, lastCheckpointLeader, lastEid, (setState ? state : null), stateHash);
 
         }

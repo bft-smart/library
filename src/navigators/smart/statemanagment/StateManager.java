@@ -411,19 +411,19 @@ public class StateManager {
     
     public void SMRequestDeliver(SMMessage msg) {
 
-        System.out.println("(TOMLayer.SMRequestDeliver) invoked method");
+        Logger.println("(TOMLayer.SMRequestDeliver) invoked method");
         //******* EDUARDO BEGIN **************//
         if (SVManager.getStaticConf().isStateTransferEnabled() && dt.getRecoverer() != null) {
         //******* EDUARDO END **************//
 
-            System.out.println("(TOMLayer.SMRequestDeliver) The state transfer protocol is enabled");
+            Logger.println("(TOMLayer.SMRequestDeliver) The state transfer protocol is enabled");
 
             //lockState.lock();
 
-            System.out.println("(TOMLayer.SMRequestDeliver) I received a state request for EID " + msg.getEid() + " from replica " + msg.getSender());
+            Logger.println("(TOMLayer.SMRequestDeliver) I received a state request for EID " + msg.getEid() + " from replica " + msg.getSender());
 
             boolean sendState = msg.getReplica() == SVManager.getStaticConf().getProcessId();
-            if (sendState) System.out.println("(TOMLayer.SMRequestDeliver) I should be the one sending the state");
+            if (sendState) Logger.println("(TOMLayer.SMRequestDeliver) I should be the one sending the state");
 
             //TransferableState thisState = getLog().getTransferableState(msg.getEid(), sendState);
             ApplicationState thisState = dt.getRecoverer().getState(msg.getEid(), sendState);
@@ -431,7 +431,7 @@ public class StateManager {
             //lockState.unlock();
 
             if (thisState == null) {
-                System.out.println("(TOMLayer.SMRequestDeliver) I don't have the state requested :-(");
+                Logger.println("(TOMLayer.SMRequestDeliver) I don't have the state requested :-(");
 
               thisState = dt.getRecoverer().getState(-1, sendState);
             }
@@ -444,7 +444,7 @@ public class StateManager {
             //if (reconfManager.getStaticConf().getProcessId() != 0 || !sendState)
             tomLayer.getCommunication().send(targets, smsg);
 
-            System.out.println("(TOMLayer.SMRequestDeliver) I sent the state until EID " + thisState.getLastEid());
+            Logger.println("(TOMLayer.SMRequestDeliver) I sent the state until EID " + thisState.getLastEid());
 
         }
     }
@@ -457,8 +457,8 @@ public class StateManager {
         if (SVManager.getStaticConf().isStateTransferEnabled()) {
         //******* EDUARDO END **************//
 
-            System.out.println("(TOMLayer.SMReplyDeliver) The state transfer protocol is enabled");
-            System.out.println("(TOMLayer.SMReplyDeliver) I received a state reply for EID " + msg.getEid() + " from replica " + msg.getSender());
+            Logger.println("(TOMLayer.SMReplyDeliver) The state transfer protocol is enabled");
+            Logger.println("(TOMLayer.SMReplyDeliver) I received a state reply for EID " + msg.getEid() + " from replica " + msg.getSender());
 
             if (getWaiting() != -1 && msg.getEid() == getWaiting()) {
 
@@ -484,10 +484,10 @@ public class StateManager {
                     currentView = SVManager.getCurrentView();
                 }
                 
-                System.out.println("(TOMLayer.SMReplyDeliver) The reply is for the EID that I want!");
+                Logger.println("(TOMLayer.SMReplyDeliver) The reply is for the EID that I want!");
 
                 if (msg.getSender() == getReplica() && msg.getState().getSerializedState() != null) {
-                    System.out.println("(TOMLayer.SMReplyDeliver) I received the state, from the replica that I was expecting");
+                    Logger.println("(TOMLayer.SMReplyDeliver) I received the state, from the replica that I was expecting");
                     setReplicaState(msg.getState());
                     if (stateTimer != null) stateTimer.cancel();
                 }
@@ -496,11 +496,11 @@ public class StateManager {
 
                 if (moreThanF_Replies()) {
 
-                    System.out.println("(TOMLayer.SMReplyDeliver) I have more than " + SVManager.getCurrentViewF() + " replies!");
+                    Logger.println("(TOMLayer.SMReplyDeliver) I have more than " + SVManager.getCurrentViewF() + " replies!");
 
-                    System.out.println("[StateManager.getValidHash]");
+                    Logger.println("[StateManager.getValidHash]");
                     ApplicationState recvState = getValidHash();
-                    System.out.println("[/StateManager.getValidHash]");
+                    Logger.println("[/StateManager.getValidHash]");
 
                     int haveState = 0;
                     if (getReplicaState() != null) {
@@ -516,7 +516,9 @@ public class StateManager {
                     if (recvState != null && haveState == 1 && currentRegency > -1 &&
                             currentLeader > -1 && currentView != null) {
                         
-                        System.out.println("(TOMLayer.SMReplyDeliver) The state of those replies is good!");
+                        Logger.println("(TOMLayer.SMReplyDeliver) The state of those replies is good!");
+                        Logger.println("(TOMLayer.SMReplyDeliver) EID State requested: " + msg.getEid());
+                        Logger.println("(TOMLayer.SMReplyDeliver) EID State received: " + recvState.getLastEid());
                         
                         lcManager.setLastReg(currentRegency);
                         lcManager.setNextReg(currentRegency);
@@ -542,7 +544,6 @@ public class StateManager {
 
                         //Logger.debug = true;
                         
-                        System.out.println("EID requested " + msg.getEid());
                         dt.update(recvState);
                         
                         //Deal with stopped messages that may come from synchronization phase
@@ -594,7 +595,7 @@ public class StateManager {
                     } else if (recvState == null && (SVManager.getCurrentViewN() / 2) < getReplies()) {
                     //******* EDUARDO END **************//
 
-                        System.out.println("(TOMLayer.SMReplyDeliver) I have more than " +
+                        Logger.println("(TOMLayer.SMReplyDeliver) I have more than " +
                                 (SVManager.getCurrentViewN() / 2) + " messages that are no good!");
 
                         setWaiting(-1);
@@ -613,7 +614,7 @@ public class StateManager {
                         }
                     } else if (haveState == -1) {
 
-                        System.out.println("(TOMLayer.SMReplyDeliver) The replica from which I expected the state, sent one which doesn't match the hash of the others, or it never sent it at all");
+                        Logger.println("(TOMLayer.SMReplyDeliver) The replica from which I expected the state, sent one which doesn't match the hash of the others, or it never sent it at all");
 
                         //setWaiting(-1);
                         changeReplica();
