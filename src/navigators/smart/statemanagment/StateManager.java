@@ -358,16 +358,16 @@ public class StateManager {
         requestState();
     }
     
-    public void analyzeState(int sender, int eid) {
+    public void analyzeState(int eid) {
 
             Logger.println("(TOMLayer.analyzeState) The state transfer protocol is enabled");
 
             if (getWaiting() == -1) {
 
                 Logger.println("(TOMLayer.analyzeState) I'm not waiting for any state, so I will keep record of this message");
-                addEID(sender, eid);
-
-                if (getLastEID() < eid && moreThanF_EIDs(eid)) {
+                //addEID(sender, eid);
+                    
+                if (tomLayer.execManager.isDecidable(eid)) {
 
                     Logger.println("(TOMLayer.analyzeState) I have now more than " + SVManager.getCurrentViewF() + " messages for EID " + eid + " which are beyond EID " + getLastEID());
                     
@@ -563,7 +563,7 @@ public class StateManager {
                         setWaiting(-1);
 
                         dt.update(recvState);
-                        
+                                                
                         //Deal with stopped messages that may come from synchronization phase
                         if (!appStateOnly && execManager.stopped()) {
                         
@@ -602,12 +602,13 @@ public class StateManager {
 
                         tomLayer.requestsTimer.Enabled(true);
                         tomLayer.requestsTimer.startTimer();
+                        if (stateTimer != null) stateTimer.cancel();
                         
                         if (appStateOnly) {
                             appStateOnly = false;
                             tomLayer.resumeLC();
                         }
-                        
+                                                
                     //******* EDUARDO BEGIN **************//
                     } else if (recvState == null && (SVManager.getCurrentViewN() / 2) < getReplies()) {
                     //******* EDUARDO END **************//
