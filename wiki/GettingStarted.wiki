@@ -39,7 +39,7 @@ BFT-SMaRt implements a state transfer protocol, which is already pretty robust. 
 
 
 
-= Creating your oun application =
+= Creating your own application =
 
 
 BFT-SMaRt provides the middleware protocol to order and deliver client requests to applications. In order to use BFT-SMaRt, it is needed to implement the client code which will call the message send interface and the server application which will receive the ordered client messages.
