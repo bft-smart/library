@@ -205,27 +205,27 @@ public class StateLog {
      */
     public TransferableState getTransferableState(int eid, boolean setState) {
 
-        if (/*lastCheckpointEid > -1 && */eid >= lastCheckpointEid) {
-
-            BatchInfo[] batches = null;
+        BatchInfo[] batches = null;
             
-            int lastEid = -1;
-
-             if  (eid <= this.lastEid) {
-                int size = eid - lastCheckpointEid ;
+        int lastEid = -1;
             
-                if (size > 0) {
-                    batches = new BatchInfo[size];
+        if (/*lastCheckpointEid > -1 && */eid >= lastCheckpointEid && eid <= this.lastEid) {
 
-                    for (int i = 0; i < size; i++)
-                        batches[i] = messageBatches[i];
-                }
-                lastEid = eid;
-             } else if (this.lastEid > -1) {
+             //if  (eid <= this.lastEid) {
+            int size = eid - lastCheckpointEid ;
 
-                    batches = messageBatches;
-                    lastEid = this.lastEid;
-             }
+            if (size > 0) {
+                batches = new BatchInfo[size];
+
+                for (int i = 0; i < size; i++)
+                    batches[i] = messageBatches[i];
+            }
+            lastEid = eid;
+             //} else if (this.lastEid > -1) {
+
+             //       batches = messageBatches;
+             //       lastEid = this.lastEid;
+             //}
             return new TransferableState(batches, lastCheckpointEid, lastCheckpointRound, lastCheckpointLeader, lastEid, (setState ? state : null), stateHash);
 
         }
