@@ -83,6 +83,8 @@ public class ServiceReplica implements TOMReceiver {
     /**
      * Constructor
      * @param id Replica ID
+     * @param executor Object that will execute the received requests
+     * @param recoverer Object that will implement the state's serialization/deserialization
      */
     public ServiceReplica(int id, Executable executor, Recoverable recoverer) {
         this(id, "", executor, recoverer);
@@ -92,7 +94,9 @@ public class ServiceReplica implements TOMReceiver {
      * Constructor
      * 
      * @param id Process ID
-     * @param configHome Configuration directory for JBP
+     * @param configHome Configuration directory for BFT-SMaRt
+     * @param executor Object that will execute the received requests
+     * @param recoverer Object that will implement the state's serialization/deserialization
      */
     public ServiceReplica(int id, String configHome, Executable executor, Recoverable recoverer) {
         this.id = id;
@@ -102,17 +106,26 @@ public class ServiceReplica implements TOMReceiver {
         this.init();
     }
 
-    //******* EDUARDO BEGIN **************//
     /**
      * Constructor
      * @param id Replica ID
      * @param isToJoin: if true, the replica tries to join the system, otherwise it waits for TTP message
      * informing its join
+     * @param executor Object that will execute the received requests
+     * @param recoverer Object that will implement the state's serialization/deserialization
      */
     public ServiceReplica(int id, boolean isToJoin, Executable executor, Recoverable recoverer) {
         this(id, "", isToJoin, executor, recoverer);
     }
-
+    /**
+     * Constructor
+     * @param id Replica ID
+     * @param configHome Configuration directory for BFT-SMaRt
+     * @param isToJoin: if true, the replica tries to join the system, otherwise it waits for TTP message
+     * informing its join
+     * @param executor Object that will execute the received requests
+     * @param recoverer Object that will implement the state's serialization/deserialization
+     */
     public ServiceReplica(int id, String configHome, boolean isToJoin, Executable executor, Recoverable recoverer) {
         this.isToJoin = isToJoin;
         this.id = id;
@@ -121,10 +134,6 @@ public class ServiceReplica implements TOMReceiver {
         this.recoverer = recoverer;
         this.init();
     }
-    
-    
-
-    //******* EDUARDO END **************//
     // this method initializes the object
     private void init() {
         try {
@@ -370,8 +379,6 @@ public class ServiceReplica implements TOMReceiver {
         rec.close();
         this.cs.updateServersConnections();
     }
-
-    /** THIS IS JOAO'S CODE, TO HANDLE CHECKPOINTS */
 
     @Override
     public byte[] getState() { //TODO: Here is race condition!

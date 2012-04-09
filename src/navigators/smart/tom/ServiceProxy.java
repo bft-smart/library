@@ -134,7 +134,7 @@ public class ServiceProxy extends TOMSender {
     }
 
     /**
-     * This method sends a request to the replicas, and returns the related reply. This method is
+     * This method sends an ordered request to the replicas, and returns the related reply. This method is
      * thread-safe.
      *
      * @param request Request to be sent
@@ -144,6 +144,14 @@ public class ServiceProxy extends TOMSender {
         return invoke(request, TOMMessageType.ORDERED_REQUEST);
     }
 
+    /**
+     * This method sends an unordered request to the replicas, and returns the related reply.
+     * It can ONLY be invoked for operations that do not change the application state
+     * This method is thread-safe.
+     *
+     * @param request Request to be sent
+     * @return The reply from the replicas related to request
+     */
     public byte[] invokeUnordered(byte[] request) {
         return invoke(request, TOMMessageType.UNORDERED_REQUEST);
     }
@@ -250,6 +258,14 @@ public class ServiceProxy extends TOMSender {
         return ret;
     }
 
+    /**
+     * This method sends a request to the replicas. This method is
+     * thread-safe.
+     *
+     * @param request Request to be sent
+     * @param listener Callback to handle replies
+     * @param targets Replicas to which to send this request
+     */
     public void invokeAsynchronous(byte[] request, ReplyListener listener, int[] targets) {
         reqId = generateRequestId();
     	sendMessageToTargets(request, reqId, targets);
@@ -265,9 +281,9 @@ public class ServiceProxy extends TOMSender {
     //******* EDUARDO END **************//
 
     /**
-     * This is the method invoked by the client side comunication system.
+     * This is the method invoked by the client side communication system.
      *
-     * @param reply The reply delivered by the client side comunication system
+     * @param reply The reply delivered by the client side communication system
      */
     @Override
     public void replyReceived(TOMMessage reply) {

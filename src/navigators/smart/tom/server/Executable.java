@@ -3,7 +3,7 @@ package navigators.smart.tom.server;
 import navigators.smart.tom.MessageContext;
 
 /**
- * 
+ * Interface to implement an object that executes a single command
  * @author mhsantos
  *
  */

@@ -2,6 +2,10 @@ package navigators.smart.tom.server;
 
 import navigators.smart.tom.MessageContext;
 
+/**
+ * Interface to implement an object that executes ordered requests
+ * @author mhsantos
+ */
 public interface SingleExecutable extends Executable {
 
     /**

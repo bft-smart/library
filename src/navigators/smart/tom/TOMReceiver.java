@@ -31,6 +31,7 @@ public interface TOMReceiver {
      * soon as they are received by TomLayer 
      *
      * @param msg The request delivered by the TOM layer
+     * @param msgCtx The context for the message being delivered to the application
      */
     public void receiveReadonlyMessage(TOMMessage msg, MessageContext msgCtx);
 
@@ -41,7 +42,9 @@ public interface TOMReceiver {
      * as a bath. Otherwise, messages are delivered one by one. 
      *
 	 * @param consId The id of the consensus in which the messages were ordered.
-	 * @param regency
+	 * @param regency Regency in which the message was delivered
+     *   * @param fromConsensus Set to true if this message was delivered through consensus,
+     *   *  false if through the state transfer protocol
 	 * @param requests The batch with TOMMessage objects.
 	 */
     public void receiveMessages(int consId, int regency, boolean fromConsensus, TOMMessage[] requests);
@@ -51,13 +54,15 @@ public interface TOMReceiver {
      * This method is used by the TOM Layer to retrieve the state of the application. This must be
      * implemented by the programmer, and it should retrieve an array of bytes that contains the application
      * state.
-     * @return An rray of bytes that can be diserialized into the application state
+     * @return An array of bytes that can be diserialized into the application state
      */
     public byte[] getState();
 
     /**
      * This method is invoked by the TOM Layer in order to ser a state upon the aplication. This is done when
      * a replica is delayed compared to the rest of the group, and when it recovers after a failure.
+     * 
+     * @param state a byte array that is the serialization of the application's state
      */
     public void setState(byte[] state);
 
