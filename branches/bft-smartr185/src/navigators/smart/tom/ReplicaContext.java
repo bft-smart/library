@@ -10,7 +10,7 @@ import navigators.smart.reconfiguration.views.View;
 import navigators.smart.reconfiguration.util.TOMConfiguration;
 
 /**
- *
+ * This class contains information about the replica
  * @author alysson
  */
 public class ReplicaContext {
