@@ -204,7 +204,7 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 
 	@Override
 	public String toString() {
-		return "(" + sender + "," + sequence + ")";
+		return "(" + sender + "," + sequence + "," + session + ")";
 	}
 
 	public void wExternal(DataOutput out) throws IOException {
