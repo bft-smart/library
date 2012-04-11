@@ -1,5 +1,6 @@
-package navigators.smart.tom.demo.keyvalue;
+package navigators.smart.tom.demo.bftmap;
 
+import navigators.smart.tom.demo.bftmap.BFTMap;
 import static org.junit.Assert.*;
 
 import java.io.IOException;

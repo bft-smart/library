@@ -3,7 +3,7 @@
  * and open the template in the editor.
  */
 
-package navigators.smart.tom.demo.keyvalue;
+package navigators.smart.tom.demo.bftmap;
 
 import java.io.IOException;
 import java.util.TreeMap;
@@ -15,7 +15,7 @@ import java.util.logging.SimpleFormatter;
 
 
 
-public class KVClientCloudfit
+public class BFTMapClientCloudFIT
 {
 
 	public static Logger logger;
@@ -73,10 +73,10 @@ public class KVClientCloudfit
 	{
 	    try {
 	      boolean append = true;
-	      FileHandler fh = new FileHandler(KVClientCloudfit.class.getName()+".log", append);
+	      FileHandler fh = new FileHandler(BFTMapClientCloudFIT.class.getName()+".log", append);
 	      fh.setFormatter(new SimpleFormatter());
 	      
-	      logger = Logger.getLogger(KVClientCloudfit.class.getName());
+	      logger = Logger.getLogger(BFTMapClientCloudFIT.class.getName());
 	      logger.addHandler(fh);
 	    }
 	    catch (IOException e) {
@@ -140,7 +140,7 @@ class KVClientInstance extends Thread{
 			}
 		}
 		
-		KVClientCloudfit.logger.info("Client id["+id+"] operations: "+inc);
+		BFTMapClientCloudFIT.logger.info("Client id["+id+"] operations: "+inc);
 		return;
 	}
 	

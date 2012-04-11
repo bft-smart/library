@@ -1,15 +1,16 @@
-package navigators.smart.tom.demo.keyvalue;
+package navigators.smart.tom.demo.bftmap;
 
 import java.io.BufferedReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.io.PrintStream;
-import java.io.PrintWriter;
 
-public class LogWriter extends Thread {
+public class ConsoleLogger extends Thread {
 
+	// Testing commit on branch
 	private InputStream in = null;
 	private PrintStream out = null;
 	private int index;
@@ -37,12 +38,9 @@ public class LogWriter extends Thread {
 		BufferedReader stdInput = new BufferedReader(new InputStreamReader(in));
 		String s;
 		try {
-			PrintWriter pw = new PrintWriter(new FileWriter("ServerLog-" + index + ".debug"));
 			while ((s = stdInput.readLine()) != null) {
-//				out.println(s);
-				pw.println(s);
+				out.println("Replica " + index + ")" +s);
 			}
-			pw.close();
 		} catch(IOException ioe) {
 			System.out.println("----------- Exception writing replica log: " + ioe.getMessage());
 		}

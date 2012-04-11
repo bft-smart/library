@@ -1,6 +1,6 @@
-package navigators.smart.tom.demo.keyvalue;
+package navigators.smart.tom.demo.bftmap;
 
-public class KVRequestType {
+public class BFTMapRequestType {
 
 	static final int TAB_CREATE = 1;
 	static final int TAB_REMOVE = 2;

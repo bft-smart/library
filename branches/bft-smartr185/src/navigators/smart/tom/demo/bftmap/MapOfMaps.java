@@ -1,9 +1,5 @@
-/*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
- */
+package navigators.smart.tom.demo.bftmap;
 
-package navigators.smart.tom.demo.keyvalue;
 import java.util.TreeMap;
 import java.util.Map;
 
@@ -11,15 +7,16 @@ import java.io.Serializable;
 
 /**
  *
+ * 
  * @author sweta
  */
-public class BFTTableMap implements Serializable {
+public class MapOfMaps implements Serializable {
 	
 	private static final long serialVersionUID = -8898539992606449057L;
 	
 	private Map<String, Map<String,byte[]>> tableMap = null;
 
-	public BFTTableMap() {
+	public MapOfMaps() {
 		tableMap=new TreeMap<String, Map<String,byte[]>>();
 	}
 
@@ -29,12 +26,15 @@ public class BFTTableMap implements Serializable {
 
 	public byte[] addData(String tableName, String key, byte[] value) {
 		Map<String,byte[]> table = tableMap.get(tableName);
-		if (table == null) System.out.println("This is null");
+		if (table == null) { 
+                    System.out.println("Non-existant table: "+tableName);
+                    return null;
+                }
 		byte[] ret = table.put(key,value);
 		return ret;
 	}
 
-	public Map<String,byte[]> getName(String tableName) {
+	public Map<String,byte[]> getTable(String tableName) {
 		return tableMap.get(tableName);
 	}
 
@@ -42,11 +42,14 @@ public class BFTTableMap implements Serializable {
 		System.out.println("Table name: "+tableName);
 		System.out.println("Entry key: "+ key);
 		Map<String,byte[]> info= tableMap.get(tableName);
-		System.out.println("Table: "+info);
+		if (info == null) { 
+                    System.out.println("Non-existant table: "+tableName);
+                    return null;
+                }
 		return info.get(key);
 	}
 
-	public int getSizeofTable() {
+	public int getNumOfTables() {
 		return tableMap.size();
 	}
 
