@@ -1,4 +1,4 @@
-package navigators.smart.tom.demo.keyvalue;
+package navigators.smart.tom.demo.bftmap;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -37,7 +37,7 @@ public class BFTMap implements Map<String, Map<String,byte[]>> {
 	public Map<String,byte[]> get(String tableName) {
 		try {
 			out = new ByteArrayOutputStream();
-			new DataOutputStream(out).writeInt(KVRequestType.GET);
+			new DataOutputStream(out).writeInt(BFTMapRequestType.GET);
 			new DataOutputStream(out).writeUTF(tableName);
 
 			byte[] rep = KVProxy.invokeUnordered(out.toByteArray());
@@ -59,7 +59,7 @@ public class BFTMap implements Map<String, Map<String,byte[]>> {
 	public byte[] getEntry(String tableName,String key) {
 		try {
 			out = new ByteArrayOutputStream();
-			new DataOutputStream(out).writeInt(KVRequestType.GET);
+			new DataOutputStream(out).writeInt(BFTMapRequestType.GET);
 			new DataOutputStream(out).writeUTF(tableName);
 			new DataOutputStream(out).writeUTF(key);
 			byte[] rep = KVProxy.invokeUnordered(out.toByteArray());
@@ -74,7 +74,7 @@ public class BFTMap implements Map<String, Map<String,byte[]>> {
 	public Map<String,byte[]> put(String key, Map<String,byte[]> value) {
 		try {
 			out = new ByteArrayOutputStream();
-			new DataOutputStream(out).writeInt(KVRequestType.TAB_CREATE);
+			new DataOutputStream(out).writeInt(BFTMapRequestType.TAB_CREATE);
 			new DataOutputStream(out).writeUTF(key);
 			//ByteArrayOutputStream bos = new ByteArrayOutputStream() ;
 			ObjectOutputStream  out1 = new ObjectOutputStream(out) ;
@@ -99,7 +99,7 @@ public class BFTMap implements Map<String, Map<String,byte[]>> {
 	public byte[] putEntry(String tableName, String key, byte[] value) {
 		try {
 			out = new ByteArrayOutputStream();
-			new DataOutputStream(out).writeInt(KVRequestType.PUT);
+			new DataOutputStream(out).writeInt(BFTMapRequestType.PUT);
 			new DataOutputStream(out).writeUTF(tableName);
 			new DataOutputStream(out).writeUTF(key);
 			new DataOutputStream(out).writeUTF(new String(value));
@@ -116,7 +116,7 @@ public class BFTMap implements Map<String, Map<String,byte[]>> {
 	public Map<String,byte[]> remove(Object key) {
 		try {
 			out = new ByteArrayOutputStream();
-			new DataOutputStream(out).writeInt(KVRequestType.TAB_REMOVE);
+			new DataOutputStream(out).writeInt(BFTMapRequestType.TAB_REMOVE);
 			new DataOutputStream(out).writeUTF((String) key);
 			byte[] rep = KVProxy.invokeOrdered(out.toByteArray());
 
@@ -138,7 +138,7 @@ public class BFTMap implements Map<String, Map<String,byte[]>> {
 	public byte[] removeEntry(String tableName,String key)  {
 		try {
 			out = new ByteArrayOutputStream();
-			new DataOutputStream(out).writeInt(KVRequestType.REMOVE);
+			new DataOutputStream(out).writeInt(BFTMapRequestType.REMOVE);
 			new DataOutputStream(out).writeUTF((String) tableName);
 			new DataOutputStream(out).writeUTF((String) key);
 			byte[] rep = KVProxy.invokeOrdered(out.toByteArray());
@@ -152,7 +152,7 @@ public class BFTMap implements Map<String, Map<String,byte[]>> {
 	public int size() {
 		try {
 			out = new ByteArrayOutputStream();
-			new DataOutputStream(out).writeInt(KVRequestType.SIZE_TABLE);
+			new DataOutputStream(out).writeInt(BFTMapRequestType.SIZE_TABLE);
 			byte[] rep;
 			if(useReadOnly)
 				rep = KVProxy.invokeUnordered(out.toByteArray());
@@ -170,7 +170,7 @@ public class BFTMap implements Map<String, Map<String,byte[]>> {
 	public int size1(String tableName) {
 		try {
 			out = new ByteArrayOutputStream();
-			new DataOutputStream(out).writeInt(KVRequestType.SIZE);
+			new DataOutputStream(out).writeInt(BFTMapRequestType.SIZE);
 			new DataOutputStream(out).writeUTF(tableName);
 			byte[] rep;
 			if(useReadOnly)
@@ -189,7 +189,7 @@ public class BFTMap implements Map<String, Map<String,byte[]>> {
 	public boolean containsKey(String key) {
 		try {
 			out = new ByteArrayOutputStream();
-			new DataOutputStream(out).writeInt(KVRequestType.TAB_CREATE_CHECK);
+			new DataOutputStream(out).writeInt(BFTMapRequestType.TAB_CREATE_CHECK);
 			new DataOutputStream(out).writeUTF((String) key);
 			byte[] rep;
 			if(useReadOnly)
@@ -210,7 +210,7 @@ public class BFTMap implements Map<String, Map<String,byte[]>> {
 	public boolean containsKey1(String tableName, String key) {
 		try {
 			out = new ByteArrayOutputStream();
-			new DataOutputStream(out).writeInt(KVRequestType.CHECK);
+			new DataOutputStream(out).writeInt(BFTMapRequestType.CHECK);
 			new DataOutputStream(out).writeUTF((String) tableName);
 			new DataOutputStream(out).writeUTF((String) key);
 			byte[] rep;

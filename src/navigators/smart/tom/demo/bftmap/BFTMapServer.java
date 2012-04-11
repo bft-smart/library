@@ -2,7 +2,7 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-package navigators.smart.tom.demo.keyvalue;
+package navigators.smart.tom.demo.bftmap;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -33,7 +33,7 @@ import navigators.smart.tom.server.Recoverable;
  */
 public class BFTMapServer implements SingleExecutable, Recoverable {
 
-    BFTTableMap tableMap = new BFTTableMap();
+    MapOfMaps tableMap = new MapOfMaps();
     ServiceReplica replica = null;
     
     //The constructor passes the id of the server to the super class
@@ -76,7 +76,7 @@ public class BFTMapServer implements SingleExecutable, Recoverable {
             // serialize to byte array and return
             ByteArrayInputStream bis = new ByteArrayInputStream(state);
             ObjectInput in = new ObjectInputStream(bis);
-            tableMap = (BFTTableMap) in.readObject();
+            tableMap = (MapOfMaps) in.readObject();
             in.close();
             bis.close();
 
@@ -97,7 +97,7 @@ public class BFTMapServer implements SingleExecutable, Recoverable {
             int cmd = new DataInputStream(in).readInt();
             switch (cmd) {
                 //operations on the hashmap
-                case KVRequestType.PUT:
+                case BFTMapRequestType.PUT:
                     String tableName = new DataInputStream(in).readUTF();
                     String key = new DataInputStream(in).readUTF();
                     String value = new DataInputStream(in).readUTF();
@@ -110,7 +110,7 @@ public class BFTMapServer implements SingleExecutable, Recoverable {
                     }
                     reply = valueBytes;
                     break;
-                case KVRequestType.REMOVE:
+                case BFTMapRequestType.REMOVE:
                     tableName = new DataInputStream(in).readUTF();
                     key = new DataInputStream(in).readUTF();
                     System.out.println("Key received: " + key);
@@ -121,7 +121,7 @@ public class BFTMapServer implements SingleExecutable, Recoverable {
                     new DataOutputStream(out).writeBytes(value);
                     reply = out.toByteArray();
                     break;
-                case KVRequestType.TAB_CREATE:
+                case BFTMapRequestType.TAB_CREATE:
                     tableName = new DataInputStream(in).readUTF();
                     //ByteArrayInputStream in1 = new ByteArrayInputStream(command);
                     ObjectInputStream objIn = new ObjectInputStream(in);
@@ -139,7 +139,7 @@ public class BFTMapServer implements SingleExecutable, Recoverable {
                     in.close();
                     reply = bos.toByteArray();
                     break;
-                case KVRequestType.TAB_REMOVE:
+                case BFTMapRequestType.TAB_REMOVE:
                     tableName = new DataInputStream(in).readUTF();
                     table = tableMap.removeTable(tableName);
                     bos = new ByteArrayOutputStream();
@@ -151,14 +151,14 @@ public class BFTMapServer implements SingleExecutable, Recoverable {
                     break;
 
             
-                case KVRequestType.SIZE_TABLE:
-                    int size1 = tableMap.getSizeofTable();
+                case BFTMapRequestType.SIZE_TABLE:
+                    int size1 = tableMap.getNumOfTables();
                     System.out.println("Size " + size1);
                     out = new ByteArrayOutputStream();
                     new DataOutputStream(out).writeInt(size1);
                     reply = out.toByteArray();
                     break;
-                case KVRequestType.GET:
+                case BFTMapRequestType.GET:
                     tableName = new DataInputStream(in).readUTF();
                     System.out.println("tablename: " + tableName);
                     key = new DataInputStream(in).readUTF();
@@ -170,14 +170,14 @@ public class BFTMapServer implements SingleExecutable, Recoverable {
                     new DataOutputStream(out).writeBytes(value);
                     reply = out.toByteArray();
                     break;
-                case KVRequestType.SIZE:
+                case BFTMapRequestType.SIZE:
                     String tableName2 = new DataInputStream(in).readUTF();
                     int size = tableMap.getSize(tableName2);
                     out = new ByteArrayOutputStream();
                     new DataOutputStream(out).writeInt(size);
                     reply = out.toByteArray();
                     break;
-	            case KVRequestType.CHECK:
+	            case BFTMapRequestType.CHECK:
 	                tableName = new DataInputStream(in).readUTF();
 	                key = new DataInputStream(in).readUTF();
 	                System.out.println("Table Key received: " + key);
@@ -187,10 +187,10 @@ public class BFTMapServer implements SingleExecutable, Recoverable {
 	                new DataOutputStream(out).writeBoolean(entryExists);
 	                reply = out.toByteArray();
 	                break;
-			    case KVRequestType.TAB_CREATE_CHECK:
+			    case BFTMapRequestType.TAB_CREATE_CHECK:
 			        tableName = new DataInputStream(in).readUTF();
 			        System.out.println("Table of Table Key received: " + tableName);
-			        table = tableMap.getName(tableName);
+			        table = tableMap.getTable(tableName);
 			        boolean tableExists = (table != null);
 			        System.out.println("Table exists: " + tableExists);
 			        out = new ByteArrayOutputStream();
@@ -213,14 +213,14 @@ public class BFTMapServer implements SingleExecutable, Recoverable {
 	        byte[] reply = null;
 	        int cmd = new DataInputStream(in).readInt();
 	        switch (cmd) {
-                case KVRequestType.SIZE_TABLE:
-                    int size1 = tableMap.getSizeofTable();
+                case BFTMapRequestType.SIZE_TABLE:
+                    int size1 = tableMap.getNumOfTables();
                     System.out.println("Size " + size1);
                     out = new ByteArrayOutputStream();
                     new DataOutputStream(out).writeInt(size1);
                     reply = out.toByteArray();
                     break;
-                case KVRequestType.GET:
+                case BFTMapRequestType.GET:
                     String tableName = new DataInputStream(in).readUTF();
                     System.out.println("tablename: " + tableName);
                     String key = new DataInputStream(in).readUTF();
@@ -232,7 +232,7 @@ public class BFTMapServer implements SingleExecutable, Recoverable {
                     new DataOutputStream(out).writeBytes(value);
                     reply = out.toByteArray();
                     break;
-                case KVRequestType.SIZE:
+                case BFTMapRequestType.SIZE:
                     String tableName2 = new DataInputStream(in).readUTF();
                     int size = tableMap.getSize(tableName2);
                     System.out.println("Size " + size);
@@ -240,7 +240,7 @@ public class BFTMapServer implements SingleExecutable, Recoverable {
                     new DataOutputStream(out).writeInt(size);
                     reply = out.toByteArray();
                     break;
-	            case KVRequestType.CHECK:
+	            case BFTMapRequestType.CHECK:
 	                tableName = new DataInputStream(in).readUTF();
 	                key = new DataInputStream(in).readUTF();
 	                System.out.println("Table Key received: " + key);
@@ -250,10 +250,10 @@ public class BFTMapServer implements SingleExecutable, Recoverable {
 	                new DataOutputStream(out).writeBoolean(entryExists);
 	                reply = out.toByteArray();
 	                break;
-			    case KVRequestType.TAB_CREATE_CHECK:
+			    case BFTMapRequestType.TAB_CREATE_CHECK:
 			        tableName = new DataInputStream(in).readUTF();
 			        System.out.println("Table of Table Key received: " + tableName);
-			        Map<String, byte[]> table = tableMap.getName(tableName);
+			        Map<String, byte[]> table = tableMap.getTable(tableName);
 			        boolean tableExists = (table != null);
 			        System.out.println("Table exists: " + tableExists);
 			        out = new ByteArrayOutputStream();
