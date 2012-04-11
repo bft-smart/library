@@ -61,6 +61,7 @@ import navigators.smart.tom.leaderchange.CollectData;
 import navigators.smart.tom.leaderchange.LCManager;
 import navigators.smart.tom.leaderchange.LastEidData;
 import navigators.smart.tom.server.Recoverable;
+import org.apache.commons.codec.binary.Base64;
 
 
 /**
@@ -395,7 +396,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
      * @param proposedValue the value being proposed
      * @return Valid messages contained in the proposed value
      */
-    public TOMMessage[] checkProposedValue(byte[] proposedValue) {
+    public TOMMessage[] checkProposedValue(byte[] proposedValue, boolean addToClientManager) {
         Logger.println("(TOMLayer.isProposedValueValid) starting");
 
         BatchReader batchReader = new BatchReader(proposedValue, 
@@ -408,16 +409,19 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             //TODO: verify Timestamps and Nonces
             requests = batchReader.deserialiseRequests(this.reconfManager);
 
-            for (int i = 0; i < requests.length; i++) {
-                //notifies the client manager that this request was received and get
-                //the result of its validation
-                if (!clientsManager.requestReceived(requests[i], false)) {
-                    clientsManager.getClientsLock().unlock();
-                    Logger.println("(TOMLayer.isProposedValueValid) finished, return=false");
-                    System.out.println("failure in deserialize batch");
-                    return null;
+            if (addToClientManager) {
+                for (int i = 0; i < requests.length; i++) {
+                    //notifies the client manager that this request was received and get
+                    //the result of its validation
+                    if (!clientsManager.requestReceived(requests[i], false)) {
+                        clientsManager.getClientsLock().unlock();
+                        Logger.println("(TOMLayer.isProposedValueValid) finished, return=false");
+                        System.out.println("failure in deserialize batch");
+                        return null;
+                    }
                 }
             }
+            
         } catch (Exception e) {
             e.printStackTrace();
             clientsManager.getClientsLock().unlock();
@@ -655,6 +659,24 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                         Execution exec = execManager.getExecution(last);
                         //byte[] decision = exec.getLearner().getDecision();
                         
+                        ////// ISTO E PARA APANHAR UM BUG!!!!!
+                        if (exec.getDecisionRound() == null || exec.getDecisionRound().propValue == null) {
+                            
+                            System.out.println("[DEBUG INFO FOR LAST EID #1]");
+                            
+                            if (exec.getDecisionRound() == null) 
+                                System.out.println("No decision round for eid " + last);
+                            else System.out.println("round for eid: " + last + ": " + exec.getDecisionRound().toString());
+                            if (exec.getDecisionRound().propValue == null) 
+                                System.out.println("No propose for eid " + last);
+                            else {
+                                System.out.println("Propose hash for eid " + last + ": " + Base64.encodeBase64String(computeHash(exec.getDecisionRound().propValue)));
+                            }
+
+                            return;
+                        }
+                        
+
                         byte[] decision = exec.getDecisionRound().propValue;
 
                         out.writeObject(decision);
@@ -729,7 +751,24 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                 if (last > -1) {  // content of the last decided eid 
                     Execution exec = execManager.getExecution(last);
                     //byte[] decision = exec.getLearner().getDecision();
-                    
+
+                    ////// ISTO E PARA APANHAR UM BUG!!!!!
+                    if (exec.getDecisionRound() == null || exec.getDecisionRound().propValue == null) {
+
+                        System.out.println("[DEBUG INFO FOR LAST EID #2]");
+
+                        if (exec.getDecisionRound() == null) 
+                            System.out.println("No decision round for eid " + last);
+                        else System.out.println("round for eid: " + last + ": " + exec.getDecisionRound().toString());
+                        if (exec.getDecisionRound().propValue == null) 
+                            System.out.println("No propose for eid " + last);
+                        else {
+                            System.out.println("Propose hash for eid " + last + ": " + Base64.encodeBase64String(computeHash(exec.getDecisionRound().propValue)));
+                        }
+
+                        return;
+                    }
+
                     byte[] decision = exec.getDecisionRound().propValue;
 
                     lastData = new LastEidData(this.reconfManager.getStaticConf().getProcessId(), last, decision, null);
@@ -1029,6 +1068,22 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                     
     public void resumeLC() {
         
+        Execution exec = execManager.getExecution(tempLastHighestEid.getEid());
+        Round r = exec.getLastRound();
+
+        if (r == null) {
+            r = exec.createRound(reconfManager);
+        }
+        else {
+            r.clear();
+        }
+            
+        byte[] hash = computeHash(tempLastHighestEid.getEidDecision());
+        r.propValueHash = hash;
+        r.propValue = tempLastHighestEid.getEidDecision();
+            
+        r.deserializedPropValue = checkProposedValue(tempLastHighestEid.getEidDecision(), false);
+        
         finalise(tempRegency, tempLastHighestEid, tempCurrentEid,
                 tempSignedCollects, tempPropose, tempBatchSize, tempIAmLeader);
         
@@ -1073,7 +1128,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             r = exec.getLastRound();
 
             if (r == null) {
-                exec.createRound(reconfManager);
+                r = exec.createRound(reconfManager);
             }
             else {
                 r.clear();
@@ -1082,7 +1137,8 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             byte[] hash = computeHash(lastHighestEid.getEidDecision());
             r.propValueHash = hash;
             r.propValue = lastHighestEid.getEidDecision();
-            r.deserializedPropValue = checkProposedValue(lastHighestEid.getEidDecision());
+            
+            r.deserializedPropValue = checkProposedValue(lastHighestEid.getEidDecision(), false);
             exec.decided(r, hash); // pass the decision to the delivery thread
         }
         byte[] tmpval = null;
@@ -1122,7 +1178,8 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             byte[] hash = computeHash(tmpval);
             r.propValueHash = hash;
             r.propValue = tmpval;
-            r.deserializedPropValue = checkProposedValue(tmpval);
+            
+            r.deserializedPropValue = checkProposedValue(tmpval, false);
 
             if(exec.getLearner().firstMessageProposed == null) {
                    if (r.deserializedPropValue != null &&

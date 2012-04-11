@@ -169,7 +169,7 @@ public final class Acceptor {
             if (eid == tomLayer.getLastExec() + 1) {
                 tomLayer.setInExec(eid);
             }
-            round.deserializedPropValue = tomLayer.checkProposedValue(value);
+            round.deserializedPropValue = tomLayer.checkProposedValue(value, true);
 
             if (round.deserializedPropValue != null && !round.isWeakSetted(me)) {
                 if(round.getExecution().getLearner().firstMessageProposed == null) {

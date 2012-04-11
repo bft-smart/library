@@ -180,9 +180,11 @@ public class LCManager {
      * @param ts timestamp up to which to discard messages
      */
     public void removeStops(int regency) {
-        Set<Integer> regencies = stops.keySet();
-        for (int t : regencies) {
-            if (t <= regency) regencies.remove(t);
+        Integer[] keys = new Integer[stops.keySet().size()];
+        stops.keySet().toArray(keys);
+
+        for (int i = 0 ; i < keys.length; i++) {
+            if (keys[i] <= regency) stops.remove(keys[i]);
         }
     }
 
@@ -214,9 +216,11 @@ public class LCManager {
      * @param regency Regency up to which to discard information
      */
     public void removeLastEids(int regency) {
-        Set<Integer> regencies = lastEids.keySet();
-        for (int t : regencies) {
-            if (t <= regency) regencies.remove(t);
+        Integer[] keys = new Integer[lastEids.keySet().size()];
+        lastEids.keySet().toArray(keys);
+
+        for (int i = 0; i < keys.length; i++) {
+            if (keys[i] <= regency) lastEids.remove(keys[i]);
         }
     }
 
@@ -268,11 +272,12 @@ public class LCManager {
      */
     public void removeCollects(int regency) {
 
-        Set<Integer> regencies = collects.keySet();
-        for (int t : regencies) {
-            if (t <= regency) regencies.remove(t);
-        }
+        Integer[] keys = new Integer[collects.keySet().size()];
+        collects.keySet().toArray(keys);
 
+        for (int i = 0; i < keys.length; i++) {
+            if (keys[i] <= regency) collects.remove(keys[i]);
+        }
     }
     
     /**
