@@ -287,16 +287,16 @@ public final class TOMLayer extends Thread implements RequestReceiver {
     public void requestReceived(TOMMessage msg) {
         // check if this request is valid and add it to the client' pending requests list
         boolean readOnly = (msg.getReqType() == TOMMessageType.UNORDERED_REQUEST);
-        if (clientsManager.requestReceived(msg, true, !readOnly, communication)) {
-            if (readOnly) {
-                dt.deliverUnordered(msg, lcManager.getLastReg());
-            } else {
+        if (readOnly) {
+            dt.deliverUnordered(msg, lcManager.getLastReg());
+        } else {
+            if (clientsManager.requestReceived(msg, true, communication)) {
                 messagesLock.lock();
                 haveMessages.signal();
                 messagesLock.unlock();
+            } else {
+                Logger.println("(TOMLayer.requestReceive) the received TOMMessage " + msg + " was discarded.");
             }
-        } else {
-            Logger.println("(TOMLayer.requestReceive) the received TOMMessage " + msg + " was discarded.");
         }
     }
 

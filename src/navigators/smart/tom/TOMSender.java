@@ -45,6 +45,7 @@ public abstract class TOMSender implements ReplyReceiver {
     
     private int session = 0; // session id
     private int sequence = 0; // sequence number
+    private int unorderedMessageSequence = 0; // sequence number for readonly messages 
     private CommunicationSystemClientSide cs; // Client side comunication system
     private Lock lock = new ReentrantLock(); // lock to manage concurrent access to this object by other threads
     private boolean useSignatures = false;
@@ -101,9 +102,13 @@ public abstract class TOMSender implements ReplyReceiver {
         return me;
     }
 
-    public int generateRequestId() {
+    public int generateRequestId(TOMMessageType type) {
         lock.lock();
-        int id = sequence++;
+        int id;
+        if(type == TOMMessageType.ORDERED_REQUEST)
+            id = sequence++;
+        else
+            id = unorderedMessageSequence++; 
         lock.unlock();
 
         return id;
@@ -115,10 +120,10 @@ public abstract class TOMSender implements ReplyReceiver {
      *
      * @param m Data to be multicast
      */
-    public void TOMulticast(byte[] m) {
-        TOMulticast(new TOMMessage(me, session, generateRequestId(), m,
-                this.viewManager.getCurrentViewId()));
-    }
+    //public void TOMulticast(byte[] m) {
+    //    TOMulticast(new TOMMessage(me, session, generateRequestId(), m,
+    //            this.viewManager.getCurrentViewId()));
+    //}
 
     /**
      * Multicast a TOMMessage to the group of replicas
@@ -137,7 +142,10 @@ public abstract class TOMSender implements ReplyReceiver {
      * @param reqType TOM_NORMAL, TOM_READONLY or TOM_RECONFIGURATION
      */
     public void TOMulticast(byte[] m, int reqId, TOMMessageType reqType) {
-        cs.send(useSignatures, viewManager.getCurrentViewProcesses(),
+//        cs.send(useSignatures, viewManager.getCurrentViewProcesses(),
+//                new TOMMessage(me, session, reqId, m, viewManager.getCurrentViewId(),
+//                reqType));
+        cs.send(useSignatures, new int[]{0, 1}, 
                 new TOMMessage(me, session, reqId, m, viewManager.getCurrentViewId(),
                 reqType));
     }
@@ -154,12 +162,12 @@ public abstract class TOMSender implements ReplyReceiver {
      *
      * @return TOMMessage with serializedMsg and serializedMsgSignature fields filled
      */
-    public TOMMessage sign(byte[] m) {
-        TOMMessage tm = new TOMMessage(me, session, generateRequestId(), m,
-                this.viewManager.getCurrentViewId());
-        cs.sign(tm);
-        return tm;
-    }
+    //public TOMMessage sign(byte[] m) {
+    //    TOMMessage tm = new TOMMessage(me, session, generateRequestId(), m,
+    //           this.viewManager.getCurrentViewId());
+    //    cs.sign(tm);
+    //    return tm;
+    //}
     
     //******* EDUARDO END **************//
 }
