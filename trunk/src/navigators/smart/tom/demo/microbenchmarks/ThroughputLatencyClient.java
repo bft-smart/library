@@ -124,8 +124,7 @@ public class ThroughputLatencyClient {
             for (int i = 0; i < numberOfOps / 2; i++, req++) {
                 if (verbose) System.out.print("Sending req " + req + "...");
                 if (dos) {
-                    //proxy.asycInvoke(request);
-                    reqId = proxy.generateRequestId();
+                    reqId = proxy.generateRequestId((readOnly) ? TOMMessageType.UNORDERED_REQUEST : TOMMessageType.ORDERED_REQUEST); 
                     proxy.TOMulticast(request, reqId, (readOnly) ? TOMMessageType.UNORDERED_REQUEST : TOMMessageType.ORDERED_REQUEST); 
                 }
                 else
@@ -146,8 +145,7 @@ public class ThroughputLatencyClient {
                 long last_send_instant = System.nanoTime();
                 if (verbose) System.out.print(this.id + " // Sending req " + req + "...");
                 if (dos) {
-                    //proxy.asycInvoke(request);
-                    reqId = proxy.generateRequestId();
+                    reqId = proxy.generateRequestId((readOnly) ? TOMMessageType.UNORDERED_REQUEST : TOMMessageType.ORDERED_REQUEST); 
                     proxy.TOMulticast(request, reqId, (readOnly) ? TOMMessageType.UNORDERED_REQUEST : TOMMessageType.ORDERED_REQUEST); 
 
                 }

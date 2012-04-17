@@ -45,6 +45,7 @@ public class ServiceProxy extends TOMSender {
     private ReentrantLock canSendLock = new ReentrantLock();
     private Semaphore sm = new Semaphore(0);
     private int reqId = -1; // request id
+    private TOMMessageType requestType; 
     private int replyQuorum = 0; // size of the reply quorum
     private TOMMessage replies[] = null; // Replies from replicas are stored here
     private int receivedReplies = 0; // Number of received replies
@@ -141,7 +142,7 @@ public class ServiceProxy extends TOMSender {
     }
 
     public void invokeAsynchronous(byte[] request, ReplyListener listener, int[] targets) {
-        reqId = generateRequestId();
+        reqId = generateRequestId(TOMMessageType.UNORDERED_REQUEST); 
         this.replyListener = listener;
     	sendMessageToTargets(request, reqId, targets);
     }
@@ -166,7 +167,8 @@ public class ServiceProxy extends TOMSender {
         replyListener = null;
 
         // Send the request to the replicas, and get its ID
-        reqId = generateRequestId();
+        reqId = generateRequestId(reqType);
+        requestType = reqType; 
         TOMulticast(request, reqId, reqType);
 
         Logger.println("Sending request (" + reqType + ") with reqId=" + reqId);
@@ -277,7 +279,7 @@ public class ServiceProxy extends TOMSender {
             return;
         }
 
-        if (reply.getSequence() == reqId) {
+        if (reply.getSequence() == reqId && reply.getReqType() == requestType) {
         	if(replyListener != null) {
         		replyListener.replyReceived(reply);
                 canReceiveLock.unlock();

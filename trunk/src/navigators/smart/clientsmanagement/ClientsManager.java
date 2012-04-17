@@ -197,7 +197,7 @@ public class ClientsManager {
     }
 
     public boolean requestReceived(TOMMessage request, boolean fromClient) {
-        return requestReceived(request, fromClient, true, null);
+        return requestReceived(request, fromClient, null);
     }
 
     /**
@@ -213,8 +213,7 @@ public class ClientsManager {
      * for this client, false if there is some problem and the message was not
      * accounted
      */
-    public boolean requestReceived(TOMMessage request, boolean fromClient,
-            boolean storeMessage, ServerCommunicationSystem cs) {
+    public boolean requestReceived(TOMMessage request, boolean fromClient, ServerCommunicationSystem cs) {
         
         request.receptionTime = System.nanoTime();
 
@@ -262,15 +261,13 @@ public class ClientsManager {
 
                 //I don't have the message but it is valid, I will
                 //insert it in the pending requests of this client
-                if (storeMessage) {
-                    clientData.getPendingRequests().add(request);
-                }
 
+                clientData.getPendingRequests().add(request); 
                 clientData.setLastMessageReceived(request.getSequence());
                 clientData.setLastMessageReceivedTime(request.receptionTime);
 
                 //create a timer for this message
-                if (timer != null && storeMessage) {
+                if (timer != null) {
                     timer.watch(request);
                 }
 
