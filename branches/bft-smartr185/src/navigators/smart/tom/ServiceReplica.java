@@ -218,9 +218,9 @@ public class ServiceReplica implements TOMReceiver {
 		response = executor.executeUnordered(tomMsg.getContent(), msgCtx);
 
 		// build the reply and send it to the client
-		tomMsg.reply = new TOMMessage(id, tomMsg.getSession(),
-				tomMsg.getSequence(), response, SVManager.getCurrentViewId());            
-                cs.send(new int[]{tomMsg.getSender()}, tomMsg.reply);
+		tomMsg.reply = new TOMMessage(id, tomMsg.getSession(), tomMsg.getSequence(),
+				response, SVManager.getCurrentViewId(), TOMMessageType.UNORDERED_REQUEST);
+		cs.send(new int[]{tomMsg.getSender()}, tomMsg.reply);
 	}
 
     public void receiveMessages(int consId, int regency, boolean fromConsensus, TOMMessage[] requests) {

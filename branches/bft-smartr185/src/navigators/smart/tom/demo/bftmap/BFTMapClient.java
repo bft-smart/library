@@ -1,13 +1,4 @@
-/*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
- */
-
 package navigators.smart.tom.demo.bftmap;
-import java.io.IOException;
-import java.util.Scanner;
-
-import java.io.Console;
 import java.util.TreeMap;
 import java.util.Random;
 
@@ -33,8 +24,10 @@ public class BFTMapClient
 			System.out.println("Problems: Inserting a new value into the table("+tableName+"): "+e1.getLocalizedMessage());
 			System.exit(1);	
 		}
+		
+		int counter = 0;
 
-		while(true)
+		while(counter < 5)
 		{
 			try {
 				boolean result = insertValue(bftMap,tableName);
@@ -49,19 +42,20 @@ public class BFTMapClient
 				System.out.println("Size of the table("+tableName+"): "+sizeTable);
 			} catch (Exception e) {
 				e.printStackTrace();
-//				bftMap = new BFTMap(idProcess, Boolean.parseBoolean(args[1]));
-//				try {
-//					createTable(bftMap,tableName);
-//				} catch (Exception e1) {
-//					System.out.println("problems :-(");
-//				}
+				bftMap = new BFTMap(idProcess, Boolean.parseBoolean(args[1]));
+				try {
+					createTable(bftMap,tableName);
+				} catch (Exception e1) {
+					System.out.println("problems :-(");
+				}
 			}
+			counter++;
 		}
 	}
 
 	private static boolean createTable(BFTMap bftMap, String nameTable) throws Exception
 	{
-		boolean tableExists;
+		boolean tableExists = false;
 
 		tableExists = bftMap.containsKey(nameTable);
 		if (tableExists == false)
