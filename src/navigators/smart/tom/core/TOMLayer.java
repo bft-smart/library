@@ -24,7 +24,6 @@ import java.io.ObjectOutputStream;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.Serializable;
-import java.math.BigInteger;
 import java.security.MessageDigest;
 import java.security.PrivateKey;
 import java.security.Signature;
@@ -286,16 +285,16 @@ public final class TOMLayer extends Thread implements RequestReceiver {
     public void requestReceived(TOMMessage msg) {
         // check if this request is valid and add it to the client' pending requests list
         boolean readOnly = (msg.getReqType() == TOMMessageType.UNORDERED_REQUEST);
-        if (clientsManager.requestReceived(msg, true, !readOnly, communication)) {
-            if (readOnly) {
-                dt.deliverUnordered(msg, lcManager.getLastReg());
-            } else {
+        if (readOnly) {
+            dt.deliverUnordered(msg, lcManager.getLastReg());
+        } else {
+            if (clientsManager.requestReceived(msg, true, communication)) {
                 messagesLock.lock();
                 haveMessages.signal();
                 messagesLock.unlock();
+            } else {
+                Logger.println("(TOMLayer.requestReceive) the received TOMMessage " + msg + " was discarded.");
             }
-        } else {
-            Logger.println("(TOMLayer.requestReceive) the received TOMMessage " + msg + " was discarded.");
         }
     }
 

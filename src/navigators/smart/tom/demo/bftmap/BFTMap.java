@@ -27,7 +27,7 @@ public class BFTMap implements Map<String, Map<String,byte[]>> {
 	ServiceProxy KVProxy = null;
         private boolean useReadOnly;
         
-	BFTMap(int id, boolean useReadOnly) {
+	public BFTMap(int id, boolean useReadOnly) {
 		KVProxy = new ServiceProxy(id, "config");
                 this.useReadOnly = useReadOnly;
 	}
