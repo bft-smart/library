@@ -1,11 +1,9 @@
 package navigators.smart.tom.demo.bftmap;
 
 import java.io.BufferedReader;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.OutputStream;
 import java.io.PrintStream;
 
 public class ConsoleLogger extends Thread {
@@ -13,7 +11,7 @@ public class ConsoleLogger extends Thread {
 	// Testing commit on branch
 	private InputStream in = null;
 	private PrintStream out = null;
-	private int index;
+	private String index;
 
 	public InputStream getIn() {
 		return in;
@@ -27,10 +25,10 @@ public class ConsoleLogger extends Thread {
 	public void setOut(PrintStream out) {
 		this.out = out;
 	}
-	public int getIndex() {
+	public String getIndex() {
 		return index;
 	}
-	public void setIndex(int index) {
+	public void setIndex(String index) {
 		this.index = index;
 	}
 	
