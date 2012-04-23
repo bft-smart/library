@@ -142,13 +142,10 @@ public abstract class TOMSender implements ReplyReceiver {
      * @param reqType TOM_NORMAL, TOM_READONLY or TOM_RECONFIGURATION
      */
     public void TOMulticast(byte[] m, int reqId, TOMMessageType reqType) {
-//        cs.send(useSignatures, viewManager.getCurrentViewProcesses(),
-//                new TOMMessage(me, session, reqId, m, viewManager.getCurrentViewId(),
-//                reqType));
-        cs.send(useSignatures, new int[]{0, 1}, 
+        cs.send(useSignatures, viewManager.getCurrentViewProcesses(),
                 new TOMMessage(me, session, reqId, m, viewManager.getCurrentViewId(),
                 reqType));
-    }
+   }
     
     public void sendMessageToTargets(byte[] m, int reqId, int[] targets) {
         cs.send(useSignatures, targets,
