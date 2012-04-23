@@ -25,10 +25,7 @@ public class BFTMapClient
 			System.exit(1);	
 		}
 		
-		int counter = 0;
-
-		while(counter < 5)
-		{
+		while(true)	{
 			try {
 				boolean result = insertValue(bftMap,tableName);
 				if(!result)
@@ -42,20 +39,18 @@ public class BFTMapClient
 				System.out.println("Size of the table("+tableName+"): "+sizeTable);
 			} catch (Exception e) {
 				e.printStackTrace();
-				bftMap = new BFTMap(idProcess, Boolean.parseBoolean(args[1]));
-				try {
-					createTable(bftMap,tableName);
-				} catch (Exception e1) {
-					System.out.println("problems :-(");
-				}
+//				bftMap = new BFTMap(idProcess, Boolean.parseBoolean(args[1]));
+//				try {
+//					createTable(bftMap,tableName);
+//				} catch (Exception e1) {
+//					System.out.println("problems :-(");
+//				}
 			}
-			counter++;
 		}
 	}
 
-	private static boolean createTable(BFTMap bftMap, String nameTable) throws Exception
-	{
-		boolean tableExists = false;
+	private static boolean createTable(BFTMap bftMap, String nameTable) throws Exception {
+		boolean tableExists;
 
 		tableExists = bftMap.containsKey(nameTable);
 		if (tableExists == false)
