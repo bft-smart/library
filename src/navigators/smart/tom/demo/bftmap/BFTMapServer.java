@@ -8,8 +8,6 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectInputStream;
@@ -37,7 +35,8 @@ public class BFTMapServer implements SingleExecutable, Recoverable {
 
     MapOfMaps tableMap = new MapOfMaps();
     ServiceReplica replica = null;
-    
+    private ReplicaContext replicaContext;
+
     //The constructor passes the id of the server to the super class
     public BFTMapServer(int id) {
     	replica = new ServiceReplica(id, this, this);
@@ -88,7 +87,6 @@ public class BFTMapServer implements SingleExecutable, Recoverable {
     }
 
     @Override
-    @SuppressWarnings("static-access")
     public byte[] executeOrdered(byte[] command, MessageContext msgCtx) {
         try {
             ByteArrayInputStream in = new ByteArrayInputStream(command);
@@ -205,7 +203,6 @@ public class BFTMapServer implements SingleExecutable, Recoverable {
         }
     }
 
-    @SuppressWarnings("static-access")
     public byte[] executeUnordered(byte[] command, MessageContext msgCtx) {
     	try {
 	        ByteArrayInputStream in = new ByteArrayInputStream(command);
@@ -270,7 +267,7 @@ public class BFTMapServer implements SingleExecutable, Recoverable {
 
     @Override
     public void setReplicaContext(ReplicaContext replicaContext) {
-        throw new UnsupportedOperationException("Not supported yet.");
+    	this.replicaContext = replicaContext;
     }
 
     @Override
