@@ -10,6 +10,8 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Level;
 import navigators.smart.statemanagment.ApplicationState;
 import navigators.smart.tom.MessageContext;
+import navigators.smart.tom.server.defaultservices.DefaultApplicationState;
+import navigators.smart.tom.server.defaultservices.StateLog;
 import navigators.smart.tom.util.Logger;
 
 /**
