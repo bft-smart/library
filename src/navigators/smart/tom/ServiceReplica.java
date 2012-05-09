@@ -323,6 +323,7 @@ public class ServiceReplica implements TOMReceiver {
 						//create a context for the batch of messages to be delivered
 						MessageContext msgCtx = new MessageContext(firstRequest.timestamp, 
 								firstRequest.nonces, regency, consId, request.getSender(), firstRequest);
+						msgCtx.setBatchSize(requests.length);
 						request.deliveryTime = System.nanoTime();
 
 						navigators.smart.tom.util.Logger.println("(ServiceReplica.receiveMessages) executing message " + request.getSequence() + " from " + request.getSender() + " decided in consensus " + consId);

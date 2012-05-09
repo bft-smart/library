@@ -18,23 +18,8 @@ package navigators.smart.tom.server.defaultservices;
  * You should have received a copy of the GNU General Public License along with SMaRt.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-
-
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.io.ObjectInput;
-import java.io.ObjectInputStream;
-import java.io.Serializable;
 import java.util.Arrays;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.logging.Level;
 import navigators.smart.statemanagment.ApplicationState;
-import navigators.smart.tom.demo.keyvalue.BFTTableMap;
 
 /**
  * This classe represents a state tranfered from a replica to another. The state associated with the last
@@ -45,7 +30,9 @@ import navigators.smart.tom.demo.keyvalue.BFTTableMap;
  */
 public class DefaultApplicationState implements ApplicationState {
 
-    protected byte[] state; // State associated with the last checkpoint
+	private static final long serialVersionUID = 6771081456095596363L;
+
+	protected byte[] state; // State associated with the last checkpoint
     protected byte[] stateHash; // Hash of the state associated with the last checkpoint
     protected int lastEid = -1; // Execution ID for the last messages batch delivered to the application
     protected boolean hasState; // indicates if the replica really had the requested state
