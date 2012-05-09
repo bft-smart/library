@@ -17,12 +17,10 @@ import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import navigators.smart.statemanagment.ApplicationState;
 import navigators.smart.tom.MessageContext;
 import navigators.smart.tom.ReplicaContext;
 import navigators.smart.tom.ServiceReplica;
-import navigators.smart.tom.server.SingleExecutable;
-import navigators.smart.tom.server.Recoverable;
+import navigators.smart.tom.server.defaultservices.DefaultSingleRecoverable;
 
 /**
  *
@@ -31,7 +29,7 @@ import navigators.smart.tom.server.Recoverable;
  * This class will create a ServiceReplica and will initialize
  * it with a implementation of Executable and Recoverable interfaces. 
  */
-public class BFTMapServer implements SingleExecutable, Recoverable {
+public class BFTMapServer extends DefaultSingleRecoverable {
 
     MapOfMaps tableMap = new MapOfMaps();
     ServiceReplica replica = null;
@@ -50,44 +48,9 @@ public class BFTMapServer implements SingleExecutable, Recoverable {
         new BFTMapServer(Integer.parseInt(args[0]));
     }
     
-    public byte[] getState() {
-        try {
-
-            // serialize to byte array and return
-            ByteArrayOutputStream bos = new ByteArrayOutputStream();
-            ObjectOutput out = new ObjectOutputStream(bos);
-            out.writeObject(tableMap);
-            
-            out.flush();
-            bos.flush();
-            out.close();
-            bos.close();
-            return bos.toByteArray();
-        } catch (IOException ex) {
-            Logger.getLogger(BFTMapServer.class.getName()).log(Level.SEVERE, null, ex);
-            return new byte[0];
-        }
-    }
-
-    public void setState(byte[] state) {
-        try {
-
-            // serialize to byte array and return
-            ByteArrayInputStream bis = new ByteArrayInputStream(state);
-            ObjectInput in = new ObjectInputStream(bis);
-            tableMap = (MapOfMaps) in.readObject();
-            in.close();
-            bis.close();
-
-        } catch (ClassNotFoundException ex) {
-            Logger.getLogger(BFTMapServer.class.getName()).log(Level.SEVERE, null, ex);
-        } catch (IOException ex) {
-            Logger.getLogger(BFTMapServer.class.getName()).log(Level.SEVERE, null, ex);
-        }
-    }
 
     @Override
-    public byte[] executeOrdered(byte[] command, MessageContext msgCtx) {
+    public byte[] appExecuteOrdered(byte[] command, MessageContext msgCtx) {
         try {
             ByteArrayInputStream in = new ByteArrayInputStream(command);
             ByteArrayOutputStream out = null;
@@ -266,18 +229,44 @@ public class BFTMapServer implements SingleExecutable, Recoverable {
     }
 
     @Override
+    public byte[] getSnapshot() {
+        try {
+            ByteArrayOutputStream bos = new ByteArrayOutputStream();
+            ObjectOutput out = new ObjectOutputStream(bos);
+            out.writeObject(tableMap);
+            out.flush();
+            bos.flush();
+            out.close();
+            bos.close();
+            return bos.toByteArray();
+        } catch (IOException ex) {
+            Logger.getLogger(BFTMapServer.class.getName()).log(Level.SEVERE, null, ex);
+            return new byte[0];
+        }   
+    }
+
+    @Override
+    public void installSnapshot(byte[] state) {
+        try {
+
+            // serialize to byte array and return
+            ByteArrayInputStream bis = new ByteArrayInputStream(state);
+            ObjectInput in = new ObjectInputStream(bis);
+            tableMap = (MapOfMaps) in.readObject();
+            in.close();
+            bis.close();
+
+        } catch (ClassNotFoundException ex) {
+            Logger.getLogger(BFTMapServer.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (IOException ex) {
+            Logger.getLogger(BFTMapServer.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+
+    
+    @Override
     public void setReplicaContext(ReplicaContext replicaContext) {
     	this.replicaContext = replicaContext;
-    }
-
-    @Override
-    public ApplicationState getState(int eid, boolean sendState) {
-        throw new UnsupportedOperationException("Not supported yet.");
-    }
-
-    @Override
-    public int setState(ApplicationState state) {
-        throw new UnsupportedOperationException("Not supported yet.");
     }
 
 }

@@ -18,16 +18,8 @@
 
 package navigators.smart.statemanagment;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.io.ObjectInput;
-import java.io.ObjectInputStream;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Queue;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -38,9 +30,7 @@ import navigators.smart.reconfiguration.ServerViewManager;
 import navigators.smart.reconfiguration.views.View;
 import navigators.smart.tom.core.DeliveryThread;
 import navigators.smart.tom.core.TOMLayer;
-import navigators.smart.tom.demo.keyvalue.BFTTableMap;
 import navigators.smart.tom.leaderchange.LCManager;
-import navigators.smart.tom.server.Recoverable;
 import navigators.smart.tom.util.Logger;
 import navigators.smart.tom.util.TOMUtil;
 
@@ -80,7 +70,6 @@ public class StateManager {
 
         //******* EDUARDO BEGIN **************//
         this.SVManager = manager;
-        int k = this.SVManager.getStaticConf().getCheckpointPeriod();
         //******* EDUARDO END **************//
 
         this.tomLayer = tomLayer;

@@ -31,8 +31,10 @@ import java.util.Arrays;
  * @author Joao Sousa
  */
 public class CommandsInfo implements Serializable {
-
-    public final byte[][] commands;
+	
+	private static final long serialVersionUID = 342711292879899682L;
+	
+	public final byte[][] commands;
     public final int round;
     public final int leader;
 

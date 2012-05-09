@@ -1,7 +1,3 @@
-/*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
- */
 package navigators.smart.tom.server.defaultservices;
 
 import java.security.MessageDigest;
@@ -10,15 +6,15 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Level;
 import navigators.smart.statemanagment.ApplicationState;
 import navigators.smart.tom.MessageContext;
-import navigators.smart.tom.server.BatchExecutable;
 import navigators.smart.tom.server.Recoverable;
+import navigators.smart.tom.server.SingleExecutable;
 import navigators.smart.tom.util.Logger;
 
 /**
  *
- * @author Joao Sousa
+ * @author mhsantos
  */
-public abstract class DefaultRecoverable implements Recoverable, BatchExecutable {
+public abstract class DefaultSingleRecoverable implements Recoverable, SingleExecutable {
     
     public static final int CHECKPOINT_PERIOD = 50;
 
@@ -29,38 +25,48 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
     private MessageDigest md;
         
     private StateLog log;
+    private int messageCounter;
+    private byte[][] commands;
     
-    public DefaultRecoverable() {
+    public DefaultSingleRecoverable() {
 
         try {
             md = MessageDigest.getInstance("MD5"); // TODO: shouldn't it be SHA?
         } catch (NoSuchAlgorithmException ex) {
-            java.util.logging.Logger.getLogger(DefaultRecoverable.class.getName()).log(Level.SEVERE, null, ex);
+            java.util.logging.Logger.getLogger(DefaultSingleRecoverable.class.getName()).log(Level.SEVERE, null, ex);
         }
         byte[] state = getSnapshot();
         log = new StateLog(CHECKPOINT_PERIOD, state, computeHash(state));
     }
     
-    public byte[][] executeBatch(byte[][] commands, MessageContext[] msgCtxs) {
+    public byte[] executeOrdered(byte[] command, MessageContext msgCtx) {
         
-        int eid = msgCtxs[0].getConsensusId();
+        int eid = msgCtx.getConsensusId();
             
         stateLock.lock();
-        byte[][] replies = executeBatch2(commands, msgCtxs);
+        byte[] reply = appExecuteOrdered(command, msgCtx);
         stateLock.unlock();
-        
-        if ((eid > 0) && ((eid % CHECKPOINT_PERIOD) == 0)) {
-            Logger.println("(DefaultRecoverable.executeBatch) Performing checkpoint for consensus " + eid);
-            stateLock.lock();
-            byte[] snapshot = getSnapshot();
-            stateLock.unlock();
-            saveState(snapshot, eid, 0, 0/*tomLayer.lm.getLeader(cons.getId(), cons.getDecisionRound().getNumber())*/);
-        } else {
-            Logger.println("(DefaultRecoverable.executeBatch) Storing message batch in the state log for consensus " + eid);
-            saveCommands(commands, eid, 0, 0/*tomLayer.lm.getLeader(cons.getId(), cons.getDecisionRound().getNumber())*/);
-        }
 
-        return replies;
+        if(messageCounter == 0) { //first message of the batch
+        	commands = new byte[msgCtx.getBatchSize()][];
+        }
+        commands[messageCounter] = command;
+        messageCounter++;
+        
+        if(messageCounter == msgCtx.getBatchSize()) {
+	        if ((eid > 0) && ((eid % CHECKPOINT_PERIOD) == 0)) {
+	            Logger.println("(DefaultRecoverable.executeBatch) Performing checkpoint for consensus " + eid);
+	            stateLock.lock();
+	            byte[] snapshot = getSnapshot();
+	            stateLock.unlock();
+	            saveState(snapshot, eid, 0, 0/*tomLayer.lm.getLeader(cons.getId(), cons.getDecisionRound().getNumber())*/);
+	        } else {
+	            Logger.println("(DefaultRecoverable.executeBatch) Storing message batch in the state log for consensus " + eid);
+	            saveCommands(commands, eid, 0, 0/*tomLayer.lm.getLeader(cons.getId(), cons.getDecisionRound().getNumber())*/);
+	        }
+	        messageCounter = 0;
+        }
+        return reply;
     }
 
     
@@ -166,7 +172,8 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
                     //TROCAR POR EXECUTE E ARRAY DE MENSAGENS!!!!!!
                     //TOMMessage[] requests = new BatchReader(batch,
                     //        manager.getStaticConf().getUseSignatures() == 1).deserialiseRequests(manager);
-                    executeBatch2(commands, null);
+                    for(byte[] command : commands)
+                    	appExecuteOrdered(command, null);
                     
                     // ISTO E UM PROB A RESOLVER!!!!!!!!!!!!
                     //tomLayer.clientsManager.requestsOrdered(requests);
@@ -203,5 +210,5 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
         
     public abstract void installSnapshot(byte[] state);
     public abstract byte[] getSnapshot();
-    public abstract byte[][] executeBatch2(byte[][] commands, MessageContext[] msgCtxs);
+    public abstract byte[] appExecuteOrdered(byte[] command, MessageContext msgCtx);
 }
