@@ -1,4 +1,4 @@
-package navigators.smart.tom.demo.keyvalue;
+package navigators.smart.tom.demo.bftmap;
 
 import java.io.BufferedReader;
 import java.io.FileWriter;
