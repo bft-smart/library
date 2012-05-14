@@ -1,5 +1,6 @@
-package navigators.smart.tom.demo.keyvalue;
+package navigators.smart.tom.demo.bftmap;
 
+import navigators.smart.tom.demo.bftmap.BFTMap;
 import static org.junit.Assert.*;
 
 import java.io.IOException;
@@ -9,7 +10,7 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-public class KVClientTest {
+public class BFTMapClientTest {
 
 	private static Process replica0;
 	private static Process replica1;
@@ -23,12 +24,12 @@ public class KVClientTest {
 			System.out.println("Starting the servers");
 			command[0] = "java";
 			command[1] = "-cp";
-			command[2] = "bin/bft-smart.jar:lib/slf4j-api-1.5.8.jar:lib/slf4j-jdk14-1.5.8.jar:lib/netty-3.1.1.GA.jar:lib/commons-codec-1.5.jar";
-			command[3] = "navigators.smart.tom.demo.keyvalue.BFTMapImpl";
+			command[2] = "bin/BFT-SMaRt.jar:lib/slf4j-api-1.5.8.jar:lib/slf4j-jdk14-1.5.8.jar:lib/netty-3.1.1.GA.jar:lib/commons-codec-1.5.jar";
+			command[3] = "navigators.smart.tom.demo.bftmap.BFTMapServer";
 			command[4] = "0";
 			
 			replica0 = new ProcessBuilder(command).redirectErrorStream(true).start();
-			ConsoleLogger log0 = new ConsoleLogger();
+			ConsoleLogger log0 = new ConsoleLogger();;
 			log0.setIn(replica0.getInputStream());
 			log0.setOut(System.out);
 			log0.setIndex("0");
@@ -36,7 +37,7 @@ public class KVClientTest {
 			Thread.sleep(2000);
 			command[4] = "1";
 			replica1 = new ProcessBuilder(command).redirectErrorStream(true).start();
-			ConsoleLogger log1 = new ConsoleLogger();
+			ConsoleLogger log1 = new ConsoleLogger();;
 			log1.setIn(replica1.getInputStream());
 			log1.setOut(System.out);
 			log1.setIndex("1");
@@ -44,7 +45,7 @@ public class KVClientTest {
 			Thread.sleep(2000);
 			command[4] = "2";
 			replica2 = new ProcessBuilder(command).redirectErrorStream(true).start();
-			ConsoleLogger log2 = new ConsoleLogger();
+			ConsoleLogger log2 = new ConsoleLogger();;
 			log2.setIn(replica2.getInputStream());
 			log2.setOut(System.out);
 			log2.setIndex("2");
@@ -52,12 +53,11 @@ public class KVClientTest {
 			Thread.sleep(2000);
 			command[4] = "3";
 			replica3 = new ProcessBuilder(command).redirectErrorStream(true).start();
-			ConsoleLogger log3 = new ConsoleLogger();
+			ConsoleLogger log3 = new ConsoleLogger();;
 			log3.setIn(replica3.getInputStream());
 			log3.setOut(System.out);
 			log3.setIndex("3");
 			log3.start();
-
 		    System.out.println("Servers started");
 
 		} catch(IOException ioe) {
@@ -87,7 +87,7 @@ public class KVClientTest {
 	public void testRegularCase() {
 		try{
 			Thread.sleep(1000);
-			BFTMap bftMap = new BFTMap(1001);
+			BFTMap bftMap = new BFTMap(1001, true);
 			bftMap.put("TestTable1", new HashMap<String,byte[]>());
 			bftMap.putEntry("TestTable1", "key1", "value1".getBytes());
 			assertEquals("Main table size should be 1", 1, bftMap.size1("TestTable1"));
@@ -118,7 +118,7 @@ public class KVClientTest {
 	public void testStopNonLeader() {
 		try{
 			Thread.sleep(1000);
-			BFTMap bftMap = new BFTMap(1001);
+			BFTMap bftMap = new BFTMap(1001, true);
 			bftMap.put("TestTable2", new HashMap<String,byte[]>());
 			bftMap.putEntry("TestTable2", "key1", "value1".getBytes());
 			assertEquals("Main table size should be 1", 1, bftMap.size1("TestTable2"));
@@ -154,24 +154,24 @@ public class KVClientTest {
 	public void testStopAndStartNonLeader() {
 		try{
 			Thread.sleep(5000);
-			BFTMap bftMap = new BFTMap(1001);
+			BFTMap bftMap = new BFTMap(1001, true);
 			Thread.sleep(1000);
 			bftMap.put("TestTable3", new HashMap<String,byte[]>());
 			
 			for(int i = 0; i < 65; i++) {
 				String key = "key" + (1+i);
 				String value = "value" + (1+i);
-				bftMap.putEntry("TestTable3", key, value.getBytes());
+				System.out.println(bftMap.putEntry("TestTable3", key, value.getBytes()));
 			}
 			assertEquals("Main table size should be 65", 65, bftMap.size1("TestTable3"));
 
 			replica1.destroy(); // Killing a non-leader replica, replica2
-			for(int i = 0; i < 45; i++) {
+			for(int i = 0; i < 35; i++) {
 				String key = "key" + (66+i);
 				String value = "value" + (66+i);
-				bftMap.putEntry("TestTable3", key, value.getBytes());
+				System.out.println(bftMap.putEntry("TestTable3", key, value.getBytes()));
 			}
-			assertEquals("Main table size should be 110", 110, bftMap.size1("TestTable3"));
+			assertEquals("Main table size should be 100", 100, bftMap.size1("TestTable3"));
 
 			command[4] = "1";
 			replica1 = new ProcessBuilder(command).redirectErrorStream(true).start(); // Starting replica2 back
@@ -186,11 +186,11 @@ public class KVClientTest {
 			System.out.println("---------Wakeup1: " + new java.util.Date());
 
 			for(int i = 0; i < 35; i++) {
-				String key = "key" + (111+i);
-				String value = "value" + (111+i);
-				bftMap.putEntry("TestTable3", key, value.getBytes());
+				String key = "key" + (101+i);
+				String value = "value" + (101+i);
+				System.out.println(bftMap.putEntry("TestTable3", key, value.getBytes()));
 			}
-			assertEquals("Main table size should be 145", 145, bftMap.size1("TestTable3"));
+			assertEquals("Main table size should be 135", 135, bftMap.size1("TestTable3"));
 
 			System.out.println("---------Sleep2: " + new java.util.Date());
 			Thread.sleep(10000);
@@ -199,11 +199,11 @@ public class KVClientTest {
 			replica2.destroy(); // Killing another non-leader replica, replica3
 
 			for(int i = 0; i < 35; i++) {
-				String key = "key" + (146+i);
-				String value = "value" + (146+i);
-				bftMap.putEntry("TestTable3", key, value.getBytes());
+				String key = "key" + (136+i);
+				String value = "value" + (136+i);
+				System.out.println(bftMap.putEntry("TestTable3", key, value.getBytes()));
 			}
-			assertEquals("Main table size should be 180", 180, bftMap.size1("TestTable3"));
+			assertEquals("Main table size should be 170", 170, bftMap.size1("TestTable3"));
 			
 		} catch(InterruptedException ie) {
 			System.out.println("Exception during Thread sleep: " + ie.getMessage());
@@ -223,7 +223,7 @@ public class KVClientTest {
 	public void testStopLeader() {
 		try{
 			Thread.sleep(1000);
-			BFTMap bftMap = new BFTMap(1001);
+			BFTMap bftMap = new BFTMap(1001, true);
 			Thread.sleep(1000);
 			bftMap.put("TestTable4", new HashMap<String,byte[]>());
 			bftMap.putEntry("TestTable4", "key1", "value1".getBytes());
@@ -268,7 +268,7 @@ public class KVClientTest {
 	public void testStopLeaders() {
 		try{
 			Thread.sleep(1000);
-			BFTMap bftMap = new BFTMap(1001);
+			BFTMap bftMap = new BFTMap(1001, true);
 			Thread.sleep(1000);
 			bftMap.put("TestTable5", new HashMap<String,byte[]>());
 			
@@ -318,7 +318,100 @@ public class KVClientTest {
 				System.out.println(bftMap.putEntry("TestTable5", key, value.getBytes()));
 			}
 			assertEquals("Main table size should be 270", 270, bftMap.size1("TestTable5"));
+			
+			command[4] = "1";
+			replica1 = new ProcessBuilder(command).redirectErrorStream(true).start(); // Starting replica0 back
+			ConsoleLogger log1 = new ConsoleLogger();;
+			log1.setIn(replica1.getInputStream());
+			log1.setOut(System.out);
+			log1.setIndex("11");
+			log1.start();
+			System.out.println("---------Sleep3: " + new java.util.Date());
+			Thread.sleep(20000);
+			System.out.println("---------Wakeup3: " + new java.util.Date());
+			
+			for(int i = 0; i < 20; i++) {
+				String key = "key" + (271+i);
+				String value = "value" + (271+i);
+				System.out.println(bftMap.putEntry("TestTable5", key, value.getBytes()));
+			}
+			assertEquals("Main table size should be 290", 290, bftMap.size1("TestTable5"));
 
+			System.out.println("---------Sleep4: " + new java.util.Date());
+			Thread.sleep(10000);
+			System.out.println("---------Wakeup4: " + new java.util.Date());
+			
+			replica2.destroy(); // Killing another leader replica, replica1
+
+			for(int i = 0; i < 40; i++) {
+				String key = "key" + (291+i);
+				String value = "value" + (291+i);
+				System.out.println(bftMap.putEntry("TestTable5", key, value.getBytes()));
+			}
+			assertEquals("Main table size should be 330", 330, bftMap.size1("TestTable5"));
+
+			command[4] = "2";
+			replica2 = new ProcessBuilder(command).redirectErrorStream(true).start(); // Starting replica0 back
+			ConsoleLogger log2 = new ConsoleLogger();;
+			log2.setIn(replica2.getInputStream());
+			log2.setOut(System.out);
+			log2.setIndex("21");
+			log2.start();
+			System.out.println("---------Sleep5: " + new java.util.Date());
+			Thread.sleep(20000);
+			System.out.println("---------Wakeup5: " + new java.util.Date());
+			
+			for(int i = 0; i < 40; i++) {
+				String key = "key" + (331+i);
+				String value = "value" + (331+i);
+				System.out.println(bftMap.putEntry("TestTable5", key, value.getBytes()));
+			}
+			assertEquals("Main table size should be 370", 370, bftMap.size1("TestTable5"));
+
+			System.out.println("---------Sleep6: " + new java.util.Date());
+			Thread.sleep(10000);
+			System.out.println("---------Wakeup6: " + new java.util.Date());
+			
+			replica3.destroy(); // Killing another leader replica, replica1
+
+			for(int i = 0; i < 40; i++) {
+				String key = "key" + (371+i);
+				String value = "value" + (371+i);
+				System.out.println(bftMap.putEntry("TestTable5", key, value.getBytes()));
+			}
+			assertEquals("Main table size should be 410", 410, bftMap.size1("TestTable5"));
+
+			command[4] = "3";
+			replica3 = new ProcessBuilder(command).redirectErrorStream(true).start(); // Starting replica0 back
+			ConsoleLogger log3 = new ConsoleLogger();;
+			log3.setIn(replica3.getInputStream());
+			log3.setOut(System.out);
+			log3.setIndex("31");
+			log3.start();
+			System.out.println("---------Sleep7: " + new java.util.Date());
+			Thread.sleep(20000);
+			System.out.println("---------Wakeup7: " + new java.util.Date());
+			
+			for(int i = 0; i < 20; i++) {
+				String key = "key" + (411+i);
+				String value = "value" + (411+i);
+				System.out.println(bftMap.putEntry("TestTable5", key, value.getBytes()));
+			}
+			assertEquals("Main table size should be 430", 430, bftMap.size1("TestTable5"));
+
+			System.out.println("---------Sleep8: " + new java.util.Date());
+			Thread.sleep(10000);
+			System.out.println("---------Wakeup8: " + new java.util.Date());
+			
+			replica0.destroy(); // Killing another leader replica, replica1
+
+			for(int i = 0; i < 40; i++) {
+				String key = "key" + (431+i);
+				String value = "value" + (431+i);
+				System.out.println(bftMap.putEntry("TestTable5", key, value.getBytes()));
+			}
+			assertEquals("Main table size should be 470", 470, bftMap.size1("TestTable5"));
+			
 		} catch(InterruptedException ie) {
 			System.out.println("Exception during Thread sleep: " + ie.getMessage());
 		} catch(IOException ioe) {
