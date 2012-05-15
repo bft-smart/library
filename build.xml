@@ -39,7 +39,7 @@
 	    <junit>
 	      <classpath refid="classpath.test" />
 	      <formatter type="brief" usefile="false" />
-	      <test name="bftsmart.tom.demo.keyvalue.KVClientTest" />
+	      <test name="bftsmart.demo.keyvalue.KVClientTest" />
 	    </junit>
 	  </target>
 </project>

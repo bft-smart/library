@@ -9,7 +9,7 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import bftsmart.tom.demo.bftmap.BFTMap;
+import bftsmart.demo.bftmap.BFTMap;
 
 public class KVClientTest {
 
@@ -26,7 +26,7 @@ public class KVClientTest {
 			command[0] = "java";
 			command[1] = "-cp";
 			command[2] = "bin/BFT-SMaRt.jar:lib/slf4j-api-1.5.8.jar:lib/slf4j-jdk14-1.5.8.jar:lib/netty-3.1.1.GA.jar:lib/commons-codec-1.5.jar";
-			command[3] = "bftsmart.tom.demo.bftmap.BFTMapServer";
+			command[3] = "bftsmart.demo.bftmap.BFTMapServer";
 			command[4] = "0";
 			
 			replica0 = new ProcessBuilder(command).redirectErrorStream(true).start();
