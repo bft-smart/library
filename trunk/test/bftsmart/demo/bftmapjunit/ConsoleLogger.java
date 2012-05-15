@@ -1,4 +1,4 @@
-package bftsmart.tom.demo.bftmap;
+package bftsmart.demo.bftmapjunit;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -8,6 +8,7 @@ import java.io.PrintStream;
 
 public class ConsoleLogger extends Thread {
 
+	// Testing commit on branch
 	private InputStream in = null;
 	private PrintStream out = null;
 	private String index;
