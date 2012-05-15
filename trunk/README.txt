@@ -20,21 +20,21 @@ each replica.
 You can run the counter demonstration by executing the following commands, from within the main folder:
 
 #Start the servers (4 replicas, to tolerate 1 fault)
-runscripts\smartrun.bat navigators.smart.tom.demo.counter.CounterServer 0
-runscripts\smartrun.bat navigators.smart.tom.demo.counter.CounterServer 1
-runscripts\smartrun.bat navigators.smart.tom.demo.counter.CounterServer 2
-runscripts\smartrun.bat navigators.smart.tom.demo.counter.CounterServer 3
+runscripts\smartrun.bat bftsmart.tom.demo.counter.CounterServer 0
+runscripts\smartrun.bat bftsmart.tom.demo.counter.CounterServer 1
+runscripts\smartrun.bat bftsmart.tom.demo.counter.CounterServer 2
+runscripts\smartrun.bat bftsmart.tom.demo.counter.CounterServer 3
 
 #Start a client
 
 #if <increment> equals 0 the request will be read-only
 #default <number of operations> equals 1000
 
-runscripts\smartrun.bat navigators.smart.tom.demo.counter.CounterClient 1001 <increment> [<number of operations>]
+runscripts\smartrun.bat bftsmart.tom.demo.counter.CounterClient 1001 <increment> [<number of operations>]
 
 You ca use the "runsmart.bat" script in Windows, and the "runsmart.sh" script em linux. These scripts can be easly be adaptated to run other demos, and you can derived other scripts from these ones to run SMaRt in other operating systems.
 
-Additionally to the counter demo, there is also the random demo. You can run it by using the RandomServer and RandomClient classes located in the package navigators.smart.tom.demo.random.
+Additionally to the counter demo, there is also the random demo. You can run it by using the RandomServer and RandomClient classes located in the package bftsmart.tom.demo.random.
 
 This version of SMaRt implements a state transfer protocol, which is already pretty robust. You can activate/de-activate it by editing the "config/system.config" file, and setting the parameter "system.totalordermulticast.state_transfer" to "false".
 
