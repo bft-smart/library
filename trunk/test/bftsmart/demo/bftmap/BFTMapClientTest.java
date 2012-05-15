@@ -25,7 +25,7 @@ public class BFTMapClientTest {
 			System.out.println("Starting the servers");
 			command[0] = "java";
 			command[1] = "-cp";
-			command[2] = "bin/bft-smart.jar:lib/slf4j-api-1.5.8.jar:lib/slf4j-jdk14-1.5.8.jar:lib/netty-3.1.1.GA.jar:lib/commons-codec-1.5.jar";
+			command[2] = "bin/BFT-SMaRt.jar:lib/slf4j-api-1.5.8.jar:lib/slf4j-jdk14-1.5.8.jar:lib/netty-3.1.1.GA.jar:lib/commons-codec-1.5.jar";
 			command[3] = "bftsmart.demo.bftmap.BFTMapServer";
 			command[4] = "0";
 			
