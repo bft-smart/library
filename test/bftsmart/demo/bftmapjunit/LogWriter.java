@@ -1,4 +1,4 @@
-package bftsmart.tom.demo.bftmapjunit;
+package bftsmart.demo.bftmapjunit;
 
 import java.io.BufferedReader;
 import java.io.FileWriter;

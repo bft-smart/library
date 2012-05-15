@@ -1,10 +1,9 @@
-package bftsmart.tom.demo.bftmap;
+package bftsmart.demo.bftmapjunit;
 
 import static org.junit.Assert.*;
 
 import java.io.IOException;
 import java.util.HashMap;
-
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -14,7 +13,6 @@ import bftsmart.demo.bftmap.BFTMap;
 
 public class ConsoleTest {
 
-	// Comment to test SVN branch creation left by Marcel
 	private static Process replica0;
 	private static Process replica1;
 	private static Process replica2;
@@ -27,8 +25,8 @@ public class ConsoleTest {
 			System.out.println("Starting the servers");
 			command[0] = "java";
 			command[1] = "-cp";
-			command[2] = "bin/SMaRt.jar:lib/slf4j-api-1.5.8.jar:lib/slf4j-jdk14-1.5.8.jar:lib/netty-3.1.1.GA.jar:lib/commons-codec-1.5.jar";
-			command[3] = "bftsmart.demo.keyvalue.BFTMapImpl";
+			command[2] = "bin/BFT-SMaRt.jar:lib/slf4j-api-1.5.8.jar:lib/slf4j-jdk14-1.5.8.jar:lib/netty-3.1.1.GA.jar:lib/commons-codec-1.5.jar";
+			command[3] = "bftsmart.demo.bftmap.BFTMapServer";
 			command[4] = "0";
 			replica0 = new ProcessBuilder(command).redirectErrorStream(true).start();
 			ConsoleLogger log0 = new ConsoleLogger();
@@ -36,7 +34,7 @@ public class ConsoleTest {
 			log0.setIn(replica0.getInputStream());
 			log0.setOut(System.out);
 			log0.start();
-
+			
 			command[4] = "1";
 			replica1 = new ProcessBuilder(command).redirectErrorStream(true).start();
 			ConsoleLogger log1 = new ConsoleLogger();
@@ -44,7 +42,7 @@ public class ConsoleTest {
 			log1.setIn(replica1.getInputStream());
 			log1.setOut(System.out);
 			log1.start();
-
+			
 			command[4] = "2";
 			replica2 = new ProcessBuilder(command).redirectErrorStream(true).start();
 			ConsoleLogger log2 = new ConsoleLogger();
@@ -52,7 +50,7 @@ public class ConsoleTest {
 			log2.setIn(replica2.getInputStream());
 			log2.setOut(System.out);
 			log2.start();
-
+			
 			command[4] = "3";
 			replica3 = new ProcessBuilder(command).redirectErrorStream(true).start();
 			ConsoleLogger log3 = new ConsoleLogger();
