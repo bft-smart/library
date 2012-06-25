@@ -41,6 +41,8 @@ import bftsmart.reconfiguration.ServerViewManager;
 import bftsmart.reconfiguration.TTPMessage;
 import bftsmart.tom.ServiceReplica;
 import bftsmart.tom.util.Logger;
+import java.util.HashSet;
+import java.util.TreeSet;
 
 
 /**
@@ -52,7 +54,7 @@ import bftsmart.tom.util.Logger;
  */
 public class ServerConnection {
 
-    private static final String PASSWORD = "newcs";
+    private static final String PASSWORD = "commsyst";
     private static final String MAC_ALGORITHM = "HmacMD5";
     private static final long POOL_TIME = 5000;
     //private static final int SEND_QUEUE_SIZE = 50;
@@ -63,6 +65,8 @@ public class ServerConnection {
     private int remoteId;
     private boolean useSenderThread;
     protected LinkedBlockingQueue<byte[]> outQueue;// = new LinkedBlockingQueue<byte[]>(SEND_QUEUE_SIZE);
+    private HashSet<Integer> noMACs = null; // this is used to keep track of data to be sent without a MAC.
+                                            // It uses the reference id for that same data
     private LinkedBlockingQueue<SystemMessage> inQueue;
     private SecretKey authKey;
     private Mac macSend;
@@ -86,6 +90,7 @@ public class ServerConnection {
 
         this.outQueue = new LinkedBlockingQueue<byte[]>(this.manager.getStaticConf().getOutQueueSize());
 
+        this.noMACs = new HashSet<Integer>();
         //******* EDUARDO BEGIN **************//
         // Connect to the remote process or just wait for the connection?
         if (isToConnect()) {
@@ -140,6 +145,10 @@ public class ServerConnection {
         //******* EDUARDO END **************//
     }
 
+    public SecretKey getSecretKey() {
+        return authKey;
+    }
+    
     /**
      * Stop message sending and reception.
      */
@@ -153,15 +162,20 @@ public class ServerConnection {
     /**
      * Used to send packets to the remote server.
      */
-    public final void send(byte[] data) throws InterruptedException {
+    public final void send(byte[] data, boolean useMAC) throws InterruptedException {
         if (useSenderThread) {
             //only enqueue messages if there queue is not full
+            if (!useMAC) {
+                Logger.println("(ServerConnection.send) Not sending defaultMAC " + System.identityHashCode(data));
+                noMACs.add(System.identityHashCode(data));
+            }
+
             if (!outQueue.offer(data)) {
                 Logger.println("(ServerConnection.send) out queue for " + remoteId + " full (message discarded).");
             }
         } else {
             sendLock.lock();
-            sendBytes(data);
+            sendBytes(data, useMAC);
             sendLock.unlock();
         }
     }
@@ -170,7 +184,7 @@ public class ServerConnection {
      * try to send a message through the socket
      * if some problem is detected, a reconnection is done
      */
-    private final void sendBytes(byte[] messageData) {
+    private final void sendBytes(byte[] messageData, boolean useMAC) {       
         int i = 0;
         boolean abort = false;
         do {
@@ -178,14 +192,18 @@ public class ServerConnection {
             if (socket != null && socketOutStream != null) {
                 try {
                     //do an extra copy of the data to be sent, but on a single out stream write
-                    byte[] mac = (this.manager.getStaticConf().getUseMACs() == 1)?macSend.doFinal(messageData):null;
-                    byte[] data = new byte[4+messageData.length+((mac!=null)?mac.length:0)];
+                    byte[] mac = (useMAC && this.manager.getStaticConf().getUseMACs() == 1)?macSend.doFinal(messageData):null;
+                    byte[] data = new byte[5 +messageData.length+((mac!=null)?mac.length:0)];
                     int value = messageData.length;
 
                     System.arraycopy(new byte[]{(byte)(value >>> 24),(byte)(value >>> 16),(byte)(value >>> 8),(byte)value},0,data,0,4);
                     System.arraycopy(messageData,0,data,4,messageData.length);
                     if(mac != null) {
-                        System.arraycopy(mac,0,data,4+messageData.length,mac.length);
+                        //System.arraycopy(mac,0,data,4+messageData.length,mac.length);
+                        System.arraycopy(new byte[]{ (byte) 1},0,data,4+messageData.length,1);
+                        System.arraycopy(mac,0,data,5+messageData.length,mac.length);
+                    } else {
+                        System.arraycopy(new byte[]{(byte) 0},0,data,4+messageData.length,1);                        
                     }
 
                     socketOutStream.write(data);
@@ -366,7 +384,11 @@ public class ServerConnection {
                 }
 
                 if (data != null) {
-                    sendBytes(data);
+                    //sendBytes(data, noMACs.contains(System.identityHashCode(data)));
+                    int ref = System.identityHashCode(data);
+                    boolean sendMAC = !noMACs.remove(ref);
+                    Logger.println("(ServerConnection.run) " + (sendMAC ? "Sending" : "Not sending") + " MAC for data " + ref);
+                    sendBytes(data, sendMAC);
                 }
             }
 
@@ -397,7 +419,6 @@ public class ServerConnection {
                     try {
                         //read data length
                         int dataLength = socketInStream.readInt();
-
                         byte[] data = new byte[dataLength];
 
                         //read data
@@ -408,7 +429,9 @@ public class ServerConnection {
 
                         //read mac
                         boolean result = true;
-                        if (manager.getStaticConf().getUseMACs() == 1) {
+                        
+                        byte hasMAC = socketInStream.readByte();
+                        if (manager.getStaticConf().getUseMACs() == 1 && hasMAC == 1) {
                             read = 0;
                             do {
                                 read += socketInStream.read(receivedMac, read, macSize - read);
@@ -419,7 +442,8 @@ public class ServerConnection {
 
                         if (result) {
                             SystemMessage sm = (SystemMessage) (new ObjectInputStream(new ByteArrayInputStream(data)).readObject());
-
+                            sm.authenticated = (manager.getStaticConf().getUseMACs() == 1 && hasMAC == 1);
+                            
                             if (sm.getSender() == remoteId) {
                                 if (!inQueue.offer(sm)) {
                                     Logger.println("(ReceiverThread.run) in queue full (message from " + remoteId + " discarded).");

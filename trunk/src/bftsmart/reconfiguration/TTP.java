@@ -129,7 +129,7 @@ public class TTP {
             //br.ufsc.das.tom.util.Logger.println("(ServersCommunicationLayer.send) Sending msg to replica "+i);
             try {
                 if (i.intValue() != id) {
-                    getConnection(i.intValue()).send(data);
+                    getConnection(i.intValue()).send(data, true);
                 }
             } catch (InterruptedException ex) {
                // ex.printStackTrace();

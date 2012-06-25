@@ -18,10 +18,12 @@
 
 package bftsmart.tom.leaderchange;
 
+import bftsmart.paxosatwar.messages.PaxosMessage;
 import java.io.Externalizable;
 import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
+import java.util.Set;
 
 /**
  * Data about the last consensus decision
@@ -33,7 +35,7 @@ public class LastEidData implements Externalizable {
     private int pid; // process id
     private int eid; // execution id
     private byte[] eidDecision; // decision value
-    private byte[] eidProof; // proof of the decision
+    private Set<PaxosMessage>  eidProof; // proof of the decision
     
     /**
      * Empty constructor
@@ -53,7 +55,7 @@ public class LastEidData implements Externalizable {
      * @param eidDecision decision value
      * @param eidProof proof of the decision
      */
-    public LastEidData(int pid, int eid, byte[] eidDecision, byte[] eidProof) {
+    public LastEidData(int pid, int eid, byte[] eidDecision, Set<PaxosMessage> eidProof) {
 
         this.pid = pid;
         this.eid = eid;
@@ -81,7 +83,7 @@ public class LastEidData implements Externalizable {
      * Get proof of the decision
      * @return proof of the decision
      */
-    public byte[] getEidProof() {
+    public Set<PaxosMessage>  getEidProof() {
         return eidProof;
     }
 
@@ -121,6 +123,6 @@ public class LastEidData implements Externalizable {
         pid = in.readInt();
         eid = in.readInt();
         eidDecision = (byte[]) in.readObject();
-        eidProof = (byte[]) in.readObject();
+        eidProof = (Set<PaxosMessage>) in.readObject();
     }
 }

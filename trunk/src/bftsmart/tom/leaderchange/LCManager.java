@@ -31,9 +31,20 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import bftsmart.paxosatwar.executionmanager.TimestampValuePair;
+import bftsmart.paxosatwar.messages.MessageFactory;
+import bftsmart.paxosatwar.messages.PaxosMessage;
 import bftsmart.reconfiguration.ServerViewManager;
 import bftsmart.tom.core.TOMLayer;
 import bftsmart.tom.core.messages.TOMMessage;
+import java.io.ByteArrayOutputStream;
+import java.io.ObjectOutputStream;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
+import javax.crypto.BadPaddingException;
+import javax.crypto.Cipher;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.NoSuchPaddingException;
+import javax.crypto.spec.SecretKeySpec;
 
 /**
  *
@@ -62,7 +73,8 @@ public class LCManager {
     private TOMLayer tomLayer;
     
     private int currentLeader;
-
+    private Cipher cipher;
+    
     /**
      * Constructor
      *
@@ -81,18 +93,20 @@ public class LCManager {
 
         this.SVManager = reconfManager;
         this.md = md;
+
+        try {
+            this.cipher = Cipher.getInstance("DES/ECB/PKCS5Padding");
+        } catch (NoSuchAlgorithmException | NoSuchPaddingException ex) {
+            ex.printStackTrace();
+        }
+
     }
     public int getNewLeader() {
 
         int[] proc = SVManager.getCurrentViewProcesses();
         int minProc = proc[0];
         int maxProc = proc[0];
-        
-        
-        System.out.println("PROCESSOS: ");
-        for (int i = 0; i < proc.length; i++)
-            System.out.println(proc[i]);
-            
+                    
         for (int p : proc) {
             if (p < minProc) minProc = p;
             if (p > maxProc) maxProc = p;
@@ -661,10 +675,59 @@ public class LCManager {
         for (LastEidData l : lasts) {
 
             //TODO: CHECK OF THE PROOF IS MISSING!!!!
-            if (l.getEid() > highest.getEid()) highest = l;
+            if (hasValidProof(l) && l.getEid() > highest.getEid()) highest = l;
         }
 
         return highest;
+    }
+    
+    // verifies is a proof associated with a decided value is valid
+    private boolean hasValidProof(LastEidData led) {
+
+        byte[] hashedValue = md.digest(led.getEidDecision());
+        Set<PaxosMessage> PaxosMessages = led.getEidProof();
+        int myId = tomLayer.reconfManager.getStaticConf().getProcessId();
+        int certificate = (2*tomLayer.reconfManager.getCurrentViewF()) + 1;
+        int countValid = 0;
+            
+        for (PaxosMessage paxosMsg : PaxosMessages) {
+            
+            HashMap<Integer, byte[]> macVector = (HashMap<Integer, byte[]>) paxosMsg.getMACVector();
+                               
+            byte[] recvMAC = macVector.get(myId);
+
+            PaxosMessage pm = new PaxosMessage(MessageFactory.STRONG,paxosMsg.getNumber(),
+                    paxosMsg.getRound(), paxosMsg.getSender(), paxosMsg.getValue());
+
+            ByteArrayOutputStream bOut = new ByteArrayOutputStream(248);
+            try {
+                new ObjectOutputStream(bOut).writeObject(pm);
+            } catch (IOException ex) {
+                ex.printStackTrace();
+            }
+
+            byte[] data = bOut.toByteArray();
+            byte[] hash = tomLayer.computeHash(data);
+            byte[] myMAC = null;
+                
+            SecretKeySpec key = new SecretKeySpec(tomLayer.getCommunication().getServersConn().getSecretKey(paxosMsg.getSender()).getEncoded(), "DES");
+                
+            try {
+                this.cipher.init(Cipher.ENCRYPT_MODE, key);                   
+                myMAC = this.cipher.doFinal(hash);
+            } catch (IllegalBlockSizeException | BadPaddingException | InvalidKeyException ex) {
+                ex.printStackTrace();
+            }
+            
+            if (recvMAC != null && myMAC != null && Arrays.equals(recvMAC, myMAC) &&
+                    Arrays.equals(paxosMsg.getValue(), hashedValue) &&
+                    paxosMsg.getNumber() == led.getEid()) {
+                
+                countValid++;
+            }
+        }
+        
+        return countValid >= certificate;
     }
 
     /**

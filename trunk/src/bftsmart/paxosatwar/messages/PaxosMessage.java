@@ -35,7 +35,7 @@ public class PaxosMessage extends SystemMessage {
     private int round; // Round number to which this message belongs to
     private int paxosType; // Message type
     private byte[] value = null; // Value used when message type is PROPOSE
-    private Object proof; // Proof used when message type is COLLECT
+    private Object macVector; // Proof used when message type is COLLECT
 
     /**
      * Creates a paxos message. Not used. TODO: How about making it private?
@@ -60,7 +60,7 @@ public class PaxosMessage extends SystemMessage {
         this.number = id;
         this.round = round;
         this.value = value;
-        this.proof = proof;
+        this.macVector = proof;
 
     }
 
@@ -114,10 +114,9 @@ public class PaxosMessage extends SystemMessage {
 
         }
 
-        //WEAK, STRONG, DECIDE and FREEZE does not have associated proofs
-        if(paxosType == MessageFactory.PROPOSE || paxosType == MessageFactory.COLLECT) {
+        if(paxosType == MessageFactory.STRONG || paxosType == MessageFactory.COLLECT) {
 
-            out.writeObject(proof);
+            out.writeObject(macVector);
 
         }
 
@@ -148,9 +147,9 @@ public class PaxosMessage extends SystemMessage {
         }
 
         //WEAK, STRONG, DECIDE and FREEZE does not have associated proofs
-        if(paxosType == MessageFactory.PROPOSE) {
+        if(paxosType == MessageFactory.STRONG) {
 
-            proof = in.readObject();
+            macVector = in.readObject();
 
         }
 
@@ -176,13 +175,18 @@ public class PaxosMessage extends SystemMessage {
 
     }
 
+    public void setMACVector(Object proof) {
+        
+        this.macVector = proof;
+    }
+    
     /**
      * Returns the proof associated with a PROPOSE or COLLECT message
      * @return The proof
      */
-    public Object getProof() {
+    public Object getMACVector() {
 
-        return proof;
+        return macVector;
 
     }
 

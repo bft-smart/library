@@ -46,6 +46,7 @@ import bftsmart.paxosatwar.executionmanager.ExecutionManager;
 import bftsmart.paxosatwar.executionmanager.LeaderModule;
 import bftsmart.paxosatwar.executionmanager.Round;
 import bftsmart.paxosatwar.executionmanager.TimestampValuePair;
+import bftsmart.paxosatwar.messages.PaxosMessage;
 import bftsmart.paxosatwar.roles.Acceptor;
 import bftsmart.reconfiguration.ServerViewManager;
 import bftsmart.statemanagment.StateManager;
@@ -63,6 +64,7 @@ import bftsmart.tom.util.BatchBuilder;
 import bftsmart.tom.util.BatchReader;
 import bftsmart.tom.util.Logger;
 import bftsmart.tom.util.TOMUtil;
+import java.util.Set;
 
 
 /**
@@ -113,7 +115,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
     private PrivateKey prk;
     
-    private ServerViewManager reconfManager;
+    public ServerViewManager reconfManager;
     
     /**
      * Creates a new instance of TOMulticastLayer
@@ -679,9 +681,10 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                         
 
                         byte[] decision = exec.getDecisionRound().propValue;
+                        Set<PaxosMessage> proof = exec.getDecisionRound().getProof();
 
                         out.writeObject(decision);
-
+                        out.writeObject(proof);
                         // TODO: WILL BE NECESSARY TO ADD A PROOF!!!
 
                     }
@@ -771,13 +774,14 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                     }
 
                     byte[] decision = exec.getDecisionRound().propValue;
-
-                    lastData = new LastEidData(this.reconfManager.getStaticConf().getProcessId(), last, decision, null);
+                    Set<PaxosMessage> proof = exec.getDecisionRound().getProof();
+                        
+                    lastData = new LastEidData(this.reconfManager.getStaticConf().getProcessId(), last, decision, proof);
                     // TODO: WILL BE NECESSARY TO ADD A PROOF!!!
 
+                } else {
+                    lastData = new LastEidData(this.reconfManager.getStaticConf().getProcessId(), last, null, null);
                 }
-                else lastData = new LastEidData(this.reconfManager.getStaticConf().getProcessId(), last, null, null);
-
                 lcManager.addLastEid(regency, lastData);
 
 
@@ -789,8 +793,9 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
                     collect = new CollectData(this.reconfManager.getStaticConf().getProcessId(), in, quorumWeaks, writeSet);
 
+                } else {
+                    collect = new CollectData(this.reconfManager.getStaticConf().getProcessId(), -1, new TimestampValuePair(-1, new byte[0]), new HashSet<TimestampValuePair>());
                 }
-                else collect = new CollectData(this.reconfManager.getStaticConf().getProcessId(), -1, new TimestampValuePair(-1, new byte[0]), new HashSet<TimestampValuePair>());
 
                 SignedObject signedCollect = sign(collect);
 
@@ -874,6 +879,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
                         int last = -1;
                         byte[] lastValue = null;
+                        Set<PaxosMessage> proof = null;
 
                         int in = -1;
 
@@ -891,11 +897,12 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                                 last = ois.readInt();
 
                                 lastValue = (byte[]) ois.readObject();
+                                proof = (Set<PaxosMessage>) ois.readObject();
 
                                 //TODO: Proof is missing!
                             }
 
-                            lastData = new LastEidData(msg.getSender(), last, lastValue, null);
+                            lastData = new LastEidData(msg.getSender(), last, lastValue, proof);
 
                             lcManager.addLastEid(regency, lastData);
 

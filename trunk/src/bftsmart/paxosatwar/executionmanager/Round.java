@@ -18,6 +18,7 @@
 
 package bftsmart.paxosatwar.executionmanager;
 
+import bftsmart.paxosatwar.messages.PaxosMessage;
 import java.io.Serializable;
 import java.security.SignedObject;
 import java.util.Arrays;
@@ -28,6 +29,8 @@ import org.apache.commons.codec.binary.Base64;
 import bftsmart.reconfiguration.ServerViewManager;
 import bftsmart.reconfiguration.views.View;
 import bftsmart.tom.core.messages.TOMMessage;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * This class stands for a round of an execution of a consensus
@@ -51,7 +54,7 @@ public class Round implements Serializable {
     public byte[] propValue = null; // proposed value
     public TOMMessage[] deserializedPropValue = null; //utility var
     public byte[] propValueHash = null; // proposed value hash
-    public SignedObject[] proofs; // proof from other processes
+    public HashSet<PaxosMessage> proof; // proof from other processes
 
     private View lastView = null;
 
@@ -67,6 +70,7 @@ public class Round implements Serializable {
         this.execution = parent;
         this.number = number;
         this.manager = manager;
+        this.proof = new HashSet();
         //ExecutionManager manager = execution.getManager();
 
         this.lastView = manager.getCurrentView();
@@ -154,29 +158,14 @@ public class Round implements Serializable {
         return this.alreadyRemoved;
     }
 
-    /**
-     * Adds a collect proof from another replica
-     *
-     * @param acceptor replica which sent the proof
-     * @param proof proof received
-     */
-    public void setCollectProof(int acceptor, SignedObject proof) {
-        
-        updateArrays();
-                
-        if (proofs == null) {
-            proofs = new SignedObject[weak.length];
-            Arrays.fill((SignedObject[]) proofs, null);
-        }
-        //******* EDUARDO BEGIN **************//
-        
-        int p = this.manager.getCurrentViewPos(acceptor);
-        if(p >= 0){
-            proofs[p] = proof;
-        }
-        //******* EDUARDO END **************//
-    }
 
+    public void addToProof(PaxosMessage pm) {
+        proof.add(pm);
+    }
+    
+    public Set<PaxosMessage> getProof() {
+        return proof;
+    }
     /**
      * Retrieves the duration for the timeout
      * @return Duration for the timeout
@@ -474,5 +463,7 @@ public class Round implements Serializable {
 
         Arrays.fill((Object[]) weak, null);
         Arrays.fill((Object[]) strong, null);
+        
+        this.proof = new HashSet();
     }
 }

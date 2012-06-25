@@ -19,6 +19,8 @@
 package bftsmart.paxosatwar.roles;
 
 
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 
 import bftsmart.communication.ServerCommunicationSystem;
@@ -31,6 +33,16 @@ import bftsmart.paxosatwar.messages.PaxosMessage;
 import bftsmart.reconfiguration.ServerViewManager;
 import bftsmart.tom.core.TOMLayer;
 import bftsmart.tom.util.Logger;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.ObjectOutputStream;
+import java.util.HashMap;
+import java.util.Hashtable;
+import javax.crypto.BadPaddingException;
+import javax.crypto.Cipher;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.NoSuchPaddingException;
+import javax.crypto.spec.SecretKeySpec;
 
 
 /**
@@ -49,6 +61,7 @@ public final class Acceptor {
     private LeaderModule leaderModule; // Manager for information about leaders
     private TOMLayer tomLayer; // TOM layer
     private ServerViewManager reconfManager;
+    private Cipher cipher;
 
     /**
      * Creates a new instance of Acceptor.
@@ -64,6 +77,11 @@ public final class Acceptor {
         this.factory = factory;
         this.leaderModule = lm;
         this.reconfManager = manager;
+        try {
+            this.cipher = Cipher.getInstance("DES/ECB/PKCS5Padding");
+        } catch (NoSuchAlgorithmException | NoSuchPaddingException ex) {
+            ex.printStackTrace();
+        }
     }
 
     public MessageFactory getFactory() {
@@ -123,7 +141,7 @@ public final class Acceptor {
                     weakAcceptReceived(round, msg.getSender(), msg.getValue());
             }break;
             case MessageFactory.STRONG:{
-                    strongAcceptReceived(round, msg.getSender(), msg.getValue());
+                    strongAcceptReceived(round, msg);
             }
         }
         execution.lock.unlock();
@@ -242,15 +260,54 @@ public final class Acceptor {
                         round.getExecution().getLearner().firstMessageProposed.strongSentTime = System.nanoTime();
                 }
                 
-                communication.send(this.reconfManager.getCurrentViewOtherAcceptors(),
-                        factory.createStrong(eid, round.getNumber(), value));
+                PaxosMessage pm = factory.createStrong(eid, round.getNumber(), value);
+
+                // override default authentication and create a vector of MACs
+                ByteArrayOutputStream bOut = new ByteArrayOutputStream(248);
+                try {
+                    new ObjectOutputStream(bOut).writeObject(pm);
+                } catch (IOException ex) {
+                    ex.printStackTrace();
+                }
+
+                byte[] data = bOut.toByteArray();
+        
+                byte[] hash = tomLayer.computeHash(data);
+                
+                int[] processes = this.reconfManager.getCurrentViewAcceptors();
+                
+                HashMap<Integer, byte[]> macVector = new HashMap();
+                
+                for (int id : processes) {
+                    try {
+                        SecretKeySpec key = new SecretKeySpec(communication.getServersConn().getSecretKey(id).getEncoded(), "DES");
+                        this.cipher.init(Cipher.ENCRYPT_MODE, key);
+                        macVector.put(id, this.cipher.doFinal(hash));
+                    } catch (IllegalBlockSizeException | BadPaddingException | InvalidKeyException ex) {
+                        ex.printStackTrace();
+                    }
+                }
+                
+                pm.setMACVector(macVector);
+                
+                int[] targets = this.reconfManager.getCurrentViewOtherAcceptors();
+                communication.getServersConn().send(targets, pm, false);
+                
+                //communication.send(this.reconfManager.getCurrentViewOtherAcceptors(),
+                        //factory.createStrong(eid, round.getNumber(), value));
+                round.addToProof(pm);
                 computeStrong(eid, round, value);
             }
 
-            if (weakAccepted > reconfManager.getQuorumFastDecide() && !round.getExecution().isDecided()) {
+            // Esta optimização teve que ser desabilitada... como usamos os STRONGs com provas,
+            // temos sempre que esperar por 2f + 1 STRONGs para termos essas provas. Esta
+            // optimização pode causar que uma decisao seja tomada antes de cada processo conseguir
+            // construir as provas de que precisa
+            
+            /*if (weakAccepted > reconfManager.getQuorumFastDecide() && !round.getExecution().isDecided()) {
                 Logger.println("(Acceptor.computeWeak) Deciding " + eid);
                 decide(round, value);
-            }
+            }*/
         }
     }
 
@@ -261,12 +318,13 @@ public final class Acceptor {
      * @param a Replica that sent the message
      * @param value Value sent in the message
      */
-    private void strongAcceptReceived(Round round, int a, byte[] value) {
+    private void strongAcceptReceived(Round round, PaxosMessage msg) {
         int eid = round.getExecution().getId();
-        Logger.println("(Acceptor.strongAcceptReceived) STRONG from " + a + " for consensus " + eid);
-        round.setStrong(a, value);
+        Logger.println("(Acceptor.strongAcceptReceived) STRONG from " + msg.getSender() + " for consensus " + eid);
+        round.setStrong(msg.getSender(), msg.getValue());
+        round.addToProof(msg);
 
-        computeStrong(eid, round, value);
+        computeStrong(eid, round, msg.getValue());
     }
 
     /**
