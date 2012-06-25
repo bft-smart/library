@@ -38,6 +38,9 @@ import java.util.logging.Logger;
 import bftsmart.communication.SystemMessage;
 import bftsmart.reconfiguration.ServerViewManager;
 import bftsmart.tom.ServiceReplica;
+import javax.crypto.SecretKey;
+import javax.crypto.SecretKeyFactory;
+import javax.crypto.spec.PBEKeySpec;
 
 
 /**
@@ -57,7 +60,8 @@ public class ServersCommunicationLayer extends Thread {
     //private Condition canConnect = waitViewLock.newCondition();
     private List<PendingConnection> pendingConn = new LinkedList<PendingConnection>();
     private ServiceReplica replica;
-
+    private SecretKey selfPwd;
+    private static final String PASSWORD = "commsyst";
 
     public ServersCommunicationLayer(ServerViewManager manager,
             LinkedBlockingQueue<SystemMessage> inQueue, ServiceReplica replica) throws Exception {
@@ -83,12 +87,20 @@ public class ServersCommunicationLayer extends Thread {
                 manager.getStaticConf().getProcessId()));
         //******* EDUARDO END **************//
 
+        SecretKeyFactory fac = SecretKeyFactory.getInstance("PBEWithMD5AndDES");
+        PBEKeySpec spec = new PBEKeySpec(PASSWORD.toCharArray());
+        selfPwd = fac.generateSecret(spec);
+
         serverSocket.setSoTimeout(10000);
         serverSocket.setReuseAddress(true);
 
         start();
     }
 
+    public SecretKey getSecretKey(int id) {
+        if (id == manager.getStaticConf().getProcessId()) return selfPwd;
+        else return connections.get(id).getSecretKey();
+    }
 
     //******* EDUARDO BEGIN **************//
     public void updateConnections() {
@@ -138,7 +150,7 @@ public class ServersCommunicationLayer extends Thread {
     //******* EDUARDO END **************//
 
 
-    public final void send(int[] targets, SystemMessage sm) {
+    public final void send(int[] targets, SystemMessage sm, boolean useMAC) {
         ByteArrayOutputStream bOut = new ByteArrayOutputStream(248);
         try {
             new ObjectOutputStream(bOut).writeObject(sm);
@@ -151,12 +163,13 @@ public class ServersCommunicationLayer extends Thread {
         for (int i : targets) {
             try {
                 if (i == me) {
+                    sm.authenticated = true;
                     inQueue.put(sm);
                 } else {
                     //System.out.println("Going to send message to: "+i);
                     //******* EDUARDO BEGIN **************//
                     //connections[i].send(data);
-                    getConnection(i).send(data);
+                    getConnection(i).send(data, useMAC);
                     //******* EDUARDO END **************//
                 }
             } catch (InterruptedException ex) {

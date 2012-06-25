@@ -142,10 +142,18 @@ public class ServerCommunicationSystem extends Thread {
             clientsConn.send(targets, (TOMMessage) sm, false);
         } else {
             Logger.println("--------sending----------> " + sm);
-            serversConn.send(targets, sm);
+            serversConn.send(targets, sm, true);
         }
     }
 
+    public ServersCommunicationLayer getServersConn() {
+        return serversConn;
+    }
+    
+    public CommunicationSystemServerSide getClientsConn() {
+        return clientsConn;
+    }
+    
     @Override
     public String toString() {
         return serversConn.toString();

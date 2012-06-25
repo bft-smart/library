@@ -31,6 +31,10 @@ import java.io.ObjectOutput;
 public abstract class SystemMessage implements Externalizable {
 
     protected int sender; // ID of the process which sent the message
+    public transient boolean authenticated; // set to TRUE if the message was received
+                                            // with a (valid) mac, FALSE if no mac was given
+                                            // note that if the message arrives with an
+                                            // invalid MAC, it won't be delivered
 
     /**
      * Creates a new instance of SystemMessage
