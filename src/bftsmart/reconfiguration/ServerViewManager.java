@@ -76,13 +76,6 @@ public class ServerViewManager extends ViewManager {
         return this.currentView.isMember(getStaticConf().getProcessId());
     }
 
-    /*public boolean isInCurrentView() {
-        if (this.currentView != null) {
-            return this.currentView.isMember(getStaticConf().getProcessId());
-        }
-        return false;
-    }*/
-
     public int[] getCurrentViewOtherAcceptors() {
         return this.otherProcesses;
     }
@@ -139,11 +132,11 @@ public class ServerViewManager extends ViewManager {
     public byte[] executeUpdates(int eid, int decisionRound) {
 
 
-        List jSet = new LinkedList();
-        List rSet = new LinkedList();
+        List<Integer> jSet = new LinkedList<Integer>();
+        List<Integer> rSet = new LinkedList<Integer>();
         int f = -1;
         
-        List jSetInfo = new LinkedList();
+        List<String> jSetInfo = new LinkedList<String>();
         
         
         for (int i = 0; i < updates.size(); i++) {
@@ -176,10 +169,6 @@ public class ServerViewManager extends ViewManager {
             }
 
         }
-
-
-
-
         //ret = reconfigure(updates.get(i).getContent());
         return reconfigure(jSetInfo, jSet, rSet, f, eid, decisionRound);
     }

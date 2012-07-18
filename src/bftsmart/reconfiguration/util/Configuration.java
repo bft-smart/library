@@ -54,18 +54,6 @@ public class Configuration {
     protected static String hostsFileName = "";
 
 
-    /*public Configuration(Configuration conf, int processId){
-        this.processId = processId;
-        this.authentication = conf.authentication;
-        this.channelsBlocking = conf.channelsBlocking;
-        this.DH_P = conf.DH_P;
-        this.DH_G = conf.DH_G;
-        this.autoConnectLimit = conf.autoConnectLimit;
-        this.configs = conf.configs;
-        this.hosts = conf.hosts;
-    }*/
-
-    
     public Configuration(int procId){
         processId = procId;
         init();

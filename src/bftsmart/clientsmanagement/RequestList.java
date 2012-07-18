@@ -24,17 +24,16 @@ import java.util.ListIterator;
 
 import bftsmart.tom.core.messages.TOMMessage;
 
-
-
-
 /**
  * Extended LinkedList used to store pending requests issued by a client.
  *
  * @author alysson
  */
 public class RequestList extends LinkedList<TOMMessage> {
-
-    private int maxSize = Integer.MAX_VALUE;
+	
+	private static final long serialVersionUID = -3639222602426147629L;
+	
+	private int maxSize = Integer.MAX_VALUE;
 
     public RequestList() {
     }

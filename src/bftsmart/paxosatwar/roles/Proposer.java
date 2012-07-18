@@ -18,7 +18,6 @@
 package bftsmart.paxosatwar.roles;
 
 import bftsmart.communication.ServerCommunicationSystem;
-import bftsmart.paxosatwar.executionmanager.ExecutionManager;
 import bftsmart.paxosatwar.messages.MessageFactory;
 import bftsmart.reconfiguration.ServerViewManager;
 
@@ -27,7 +26,6 @@ import bftsmart.reconfiguration.ServerViewManager;
  **/
 public class Proposer {
 
-    private ExecutionManager manager = null; // Execution manager of consensus's executions
     private MessageFactory factory; // Factory for PaW messages
     private ServerCommunicationSystem communication; // Replicas comunication system
     private ServerViewManager reconfManager;
@@ -45,14 +43,6 @@ public class Proposer {
         this.communication = communication;
         this.factory = factory;
         this.reconfManager = manager;
-    }
-
-    /**
-     * Sets the execution manager associated with this proposer
-     * @param manager Execution manager
-     */
-    public void setManager(ExecutionManager manager) {
-        this.manager = manager;
     }
 
     /**

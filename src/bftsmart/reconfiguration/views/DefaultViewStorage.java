@@ -57,6 +57,7 @@ public class DefaultViewStorage implements ViewStorage {
             ObjectInputStream ois = new ObjectInputStream(new FileInputStream(f));
             View ret = (View) ois.readObject();
             ois.close();
+            
             return ret;
         } catch (Exception e) {
             return null;

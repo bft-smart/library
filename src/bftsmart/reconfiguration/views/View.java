@@ -16,7 +16,9 @@ import java.util.Map;
  * @author eduardo
  */
 public class View implements Serializable {
-
+	
+	private static final long serialVersionUID = 4052550874674512359L;
+	
 	private int id;
  	private int f;
  	private int[] processes;

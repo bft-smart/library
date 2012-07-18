@@ -111,7 +111,6 @@ public class TTP {
 
     private ServerConnection getConnection(int remoteId) {
          return new ServerConnection(manager, null, remoteId, null, null);
-            
     }
 
     public void sendResponse(Integer[] targets, TTPMessage sm) {
@@ -180,33 +179,14 @@ public class TTP {
             }
 
         } while (!str.equals("exit"));
-
-        System.out.println("TCHAU!");
-
         ttp.close();
         System.exit(0);
-        /*ttp.addServer(4, "127.0.0.1", 11040);
-        
-        ttp.executeUpdates();
-        ttp.close();
-        
-        try {
-        Thread.sleep(10000);
-        } catch (InterruptedException ex) {
-        Logger.getLogger(TTP.class.getName()).log(Level.SEVERE, null, ex);
-        }
-        
-        if(args.length > 0){
-        ttp = new TTP(args[0]);
-        }else{
-        ttp = new TTP("");
-        }
-        
-        ttp.removeServer(4);
-        
-        ttp.executeUpdates();
-        ttp.close();
-        
-        System.exit(0);*/
+    }
+    
+    public StatusReply askStatus(int id) {
+    	connect();
+    	StatusReply reply = rec.askStatus(id);
+    	close();
+    	return reply;
     }
 }

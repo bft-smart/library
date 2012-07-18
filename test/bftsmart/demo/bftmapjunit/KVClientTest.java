@@ -62,7 +62,7 @@ public class KVClientTest {
 		    System.out.println("Servers started");
 
 		} catch(IOException ioe) {
-			System.out.println("Exception during KVClient test: ");
+			System.out.println("Exception during BFTMapInteractiveClient test: ");
 			System.out.println(ioe.getMessage());
 		} catch(InterruptedException ie) {
 			System.out.println("Exception during Thread sleep: " + ie.getMessage());

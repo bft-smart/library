@@ -37,7 +37,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.util.HashMap;
-import java.util.Hashtable;
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
@@ -55,7 +54,7 @@ import javax.crypto.spec.SecretKeySpec;
 public final class Acceptor {
 
     private int me; // This replica ID
-    private ExecutionManager manager; // Execution manager of consensus's executions
+    private ExecutionManager executionManager; // Execution manager of consensus's executions
     private MessageFactory factory; // Factory for PaW messages
     private ServerCommunicationSystem communication; // Replicas comunication system
     private LeaderModule leaderModule; // Manager for information about leaders
@@ -92,8 +91,8 @@ public final class Acceptor {
      * Sets the execution manager for this acceptor
      * @param manager Execution manager for this acceptor
      */
-    public void setManager(ExecutionManager manager) {
-        this.manager = manager;
+    public void setExecutionManager(ExecutionManager manager) {
+        this.executionManager = manager;
     }
 
     /**
@@ -112,9 +111,8 @@ public final class Acceptor {
      * @param msg Paxos messages delivered by the communication layer
      */
     public final void deliver(PaxosMessage msg) {
-        if (manager.checkLimits(msg)) {
+        if (executionManager.checkLimits(msg)) {
             Logger.println("processing paxos msg with id " + msg.getNumber());
-            //Logger.debug = false;
             processMessage(msg);
         } else {
             Logger.println("out of context msg with id " + msg.getNumber());
@@ -129,7 +127,7 @@ public final class Acceptor {
      * @param msg The message to be processed
      */
     public final void processMessage(PaxosMessage msg) {
-        Execution execution = manager.getExecution(msg.getNumber());
+        Execution execution = executionManager.getExecution(msg.getNumber());
 
         execution.lock.lock();
         Round round = execution.getRound(msg.getRound(), reconfManager);
@@ -210,7 +208,7 @@ public final class Acceptor {
                 
                 Logger.println("(Acceptor.executePropose) weak computed for " + eid);
 
-                manager.processOutOfContext(round.getExecution());
+                executionManager.processOutOfContext(round.getExecution());
             }
         }
     }
@@ -276,7 +274,7 @@ public final class Acceptor {
                 
                 int[] processes = this.reconfManager.getCurrentViewAcceptors();
                 
-                HashMap<Integer, byte[]> macVector = new HashMap();
+                HashMap<Integer, byte[]> macVector = new HashMap<Integer, byte[]>();
                 
                 for (int id : processes) {
                     try {
@@ -298,16 +296,6 @@ public final class Acceptor {
                 round.addToProof(pm);
                 computeStrong(eid, round, value);
             }
-
-            // Esta optimização teve que ser desabilitada... como usamos os STRONGs com provas,
-            // temos sempre que esperar por 2f + 1 STRONGs para termos essas provas. Esta
-            // optimização pode causar que uma decisao seja tomada antes de cada processo conseguir
-            // construir as provas de que precisa
-            
-            /*if (weakAccepted > reconfManager.getQuorumFastDecide() && !round.getExecution().isDecided()) {
-                Logger.println("(Acceptor.computeWeak) Deciding " + eid);
-                decide(round, value);
-            }*/
         }
     }
 

@@ -30,8 +30,6 @@ import java.security.spec.InvalidKeySpecException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.LinkedList;
-import java.util.ListIterator;
 import java.util.concurrent.Executors;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -214,36 +212,6 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
             }
         } catch (NoSuchAlgorithmException ex) {
         }
-        //close connections with removed servers
-        //ANB: This code need to be tested!!!
-        
-        //EDUARDO: The client takes a lot of time to close the channel, I suggest
-        //a different approac (close later by a different thread or something like that),
-        //maybe by the server!
-        
-        /*ListIterator ids = new LinkedList(sessionTable.keySet()).listIterator();
-        while (ids.hasNext()) {
-            int id = (Integer) ids.next();
-
-            boolean found = false;
-            for (int v : currV) {
-                if (v == id) {
-                    found = true;
-                    break;
-                }
-            }
-
-            if (!found) {
-                //System.out.println("Going to close channel to " + id);
-                
-                NettyClientServerSession cs =
-                        (NettyClientServerSession) sessionTable.remove(id);
-                cs.getChannel().close();
-                //System.out.println("Channel closed " + id);
-            }
-        }*/
-
-
     }
 
     @Override
@@ -377,16 +345,17 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
                 channel.write(sm);
                 sent++;
             } else {
-                //System.out.println("Channel to " + targets[i] + " is not connected");
                 Logger.println("Channel to " + targets[i] + " is not connected");
             }
 
         }
 
-        if (sent < manager.getCurrentViewF() + 1) {
+        if (targets.length > manager.getCurrentViewF() && sent < manager.getCurrentViewF() + 1) {
             //if less than f+1 servers are connected send an exception to the client
             throw new RuntimeException("Impossible to connect to servers!");
         }
+        if(targets.length == 1 && sent == 0)
+            throw new RuntimeException("Server not connected");
     }
 
     public void sign(TOMMessage sm) {

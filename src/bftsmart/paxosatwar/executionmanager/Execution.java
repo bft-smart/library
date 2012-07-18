@@ -41,7 +41,6 @@ public class Execution {
     private ReentrantLock roundsLock = new ReentrantLock(); // Lock for concurrency control
 
     private boolean decided; // Is this execution decided?
-    private long initialTimeout; // Initial timeout for rounds
     private int decisionRound = -1; // round at which a desision was made
 
     //NEW ATTRIBUTES FOR THE LEADER CHANGE
@@ -56,7 +55,6 @@ public class Execution {
      *
      * @param manager Execution manager for this execution
      * @param consensus Consensus instance to which this execution works for
-     * @param initialTimeout Initial timeout for rounds
      */
     protected Execution(ExecutionManager manager, Consensus consensus) {
         this.manager = manager;

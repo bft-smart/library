@@ -149,8 +149,12 @@ public abstract class TOMSender implements ReplyReceiver {
    }
     
     public void sendMessageToTargets(byte[] m, int reqId, int[] targets) {
+    	TOMMessageType type = TOMMessageType.UNORDERED_REQUEST;
+    	if(this.getViewManager().getStaticConf().isTheTTP()) {
+        	type = TOMMessageType.ASK_STATUS;
+    	}
         cs.send(useSignatures, targets,
-                new TOMMessage(me, session, reqId, m, viewManager.getCurrentViewId(), TOMMessageType.UNORDERED_REQUEST));
+                new TOMMessage(me, session, reqId, m, viewManager.getCurrentViewId(), type));
     }
     
     /**

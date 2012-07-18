@@ -49,6 +49,7 @@ import bftsmart.paxosatwar.executionmanager.TimestampValuePair;
 import bftsmart.paxosatwar.messages.PaxosMessage;
 import bftsmart.paxosatwar.roles.Acceptor;
 import bftsmart.reconfiguration.ServerViewManager;
+import bftsmart.reconfiguration.StatusReply;
 import bftsmart.statemanagment.StateManager;
 import bftsmart.tom.TOMReceiver;
 import bftsmart.tom.core.messages.TOMMessage;
@@ -107,11 +108,6 @@ public final class TOMLayer extends Thread implements RequestReceiver {
     /** THIS IS JOAO'S CODE, RELATED TO LEADER CHANGE */
     private LCManager lcManager;
     /*************************************************************/
-
-    /* flag that indicates that the lader changed between the last propose and
-    this propose. This flag is changed on updateLeader (to true) and decided
-    (to false) and used in run.*/
-    private boolean leaderChanged = true;
 
     private PrivateKey prk;
     
@@ -280,7 +276,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
     }
 
     /**
-     * This method is invoked by the comunication system to deliver a request.
+     * This method is invoked by the communication system to deliver a request.
      * It assumes that the communication system delivers the message in FIFO
      * order.
      *
@@ -293,13 +289,31 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         if (readOnly) {
             dt.deliverUnordered(msg, lcManager.getLastReg());
         } else {
-            if (clientsManager.requestReceived(msg, true, communication)) {
-                messagesLock.lock();
-                haveMessages.signal();
-                messagesLock.unlock();
-            } else {
-                Logger.println("(TOMLayer.requestReceive) the received TOMMessage " + msg + " was discarded.");
-            }
+        	if(msg.getReqType() == TOMMessageType.ASK_STATUS) {
+        		msg.reply = null;
+        		if(isRetrievingState()) {
+            		msg.reply = new TOMMessage(this.reconfManager.getStaticConf().getProcessId(),
+    						msg.getSession(), msg.getSequence(),
+    						TOMUtil.getBytes(StatusReply.UPDATING_STATE.toString()), reconfManager.getCurrentViewId());
+        		} else if(execManager.stopped()) {
+            		msg.reply = new TOMMessage(this.reconfManager.getStaticConf().getProcessId(),
+    						msg.getSession(), msg.getSequence(),
+    						TOMUtil.getBytes(StatusReply.LEADER_CHANGE.toString()), reconfManager.getCurrentViewId());
+        		} else {
+            		msg.reply = new TOMMessage(this.reconfManager.getStaticConf().getProcessId(),
+    						msg.getSession(), msg.getSequence(),
+    						TOMUtil.getBytes(StatusReply.READY.toString()), reconfManager.getCurrentViewId(), TOMMessageType.STATUS_REPLY);
+        		}
+				communication.send(new int[] { msg.getSender() }, msg.reply);
+        	} else {
+                if (clientsManager.requestReceived(msg, true, communication)) {
+                    messagesLock.lock();
+                    haveMessages.signal();
+                    messagesLock.unlock();
+                } else {
+                    Logger.println("(TOMLayer.requestReceive) the received TOMMessage " + msg + " was discarded.");
+                }
+        	}
         }
     }
 
@@ -521,11 +535,9 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
                         //TODO: If this is null, then there was no timeout. What to do?
                         byte[] msgs = bb.makeBatch(lcManager.getCurrentRequestTimedOut(), 0, 0, reconfManager);
-                        List<TOMMessage> temp = lcManager.getCurrentRequestTimedOut();
                         out.writeBoolean(true);
                         out.writeObject(msgs);
-                    }
-                    else {
+                    } else {
                         out.writeBoolean(false);
                     }
 
@@ -644,7 +656,6 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             int in = getInExec(); // eid to execute
             int last = getLastExec(); // last eid decided
             
-            lm.setNewReg(regency);
             lm.setNewLeader(leader);
                     
             // If I am not the leader, I have to send a STOPDATE message to it
@@ -808,7 +819,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
     /**
      * This method is called by the MessageHandler each time it received messages related
      * to the leader change
-     * @param msg Message recevied from the other replica
+     * @param msg Message received from the other replica
      */
     public void deliverTimeoutRequest(LCMessage msg) {
 
@@ -881,12 +892,6 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                         byte[] lastValue = null;
                         Set<PaxosMessage> proof = null;
 
-                        int in = -1;
-
-                        TimestampValuePair quorumWeaks = null;
-                        HashSet<TimestampValuePair> writeSet = null;
-
-
                         try { // deserialize the content of the message
                             
                             bis = new ByteArrayInputStream(msg.getPayload());
@@ -909,15 +914,6 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                             // conteudo do eid a executar
 
                             signedCollect = (SignedObject) ois.readObject();
-
-                            /*in = ois.readInt();
-                            quorumWeaks = (RoundValuePair) ois.readObject();
-                            writeSet = (HashSet<RoundValuePair>) ois.readObject();*/
-
-
-
-                            /*collect = new CollectData(msg.getSender(), in,
-                                    quorumWeaks, writeSet);*/
 
                             ois.close();
                             bis.close();
@@ -1065,6 +1061,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             }
         }
     }
+    
     // temporary info to resume LC protocol
     private int tempRegency = -1;
     private LastEidData tempLastHighestEid = null;
@@ -1096,6 +1093,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                 tempSignedCollects, tempPropose, tempBatchSize, tempIAmLeader);
         
     }
+    
     // this method is called on all replicas, and serves to verify and apply the
     // information sent in the catch-up message
     private void finalise(int regency, LastEidData lastHighestEid,
@@ -1196,8 +1194,6 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                    else exec.getLearner().firstMessageProposed = new TOMMessage(); // to avoid null pointer
             }
             r.setWeak(me, hash);
-
-            lm.setNewReg(regency);
 
             // resume normal operation
             execManager.restart();

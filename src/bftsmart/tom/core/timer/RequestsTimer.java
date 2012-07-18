@@ -31,10 +31,7 @@ import bftsmart.reconfiguration.ServerViewManager;
 import bftsmart.tom.core.TOMLayer;
 import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.leaderchange.LCMessage;
-import bftsmart.tom.util.Logger;
 import bftsmart.tom.util.TOMUtil;
-
-
 
 /**
  * This thread serves as a manager for all timers of pending requests.
@@ -95,6 +92,11 @@ public class RequestsTimer {
         
         enabled = phase;
     }
+    
+    public boolean isEnabled() {
+    	return enabled;
+    }
+    
     /**
      * Creates a timer for the given request
      * @param request Request to which the timer is being createf for
@@ -105,14 +107,6 @@ public class RequestsTimer {
         watched.add(request);
         if (watched.size() >= 1 && enabled) startTimer();
         rwLock.writeLock().unlock();
-        /*
-        st1.store(System.nanoTime() - startInstant);
-        if (st1.getCount()==100000){
-            System.out.println("Tamanho da lista watched: "+ watched.size());
-            System.out.println("Media do RequestsTimer.watch(): "+st1.getAverage(false)/1000 + " us");
-            st1.reset();
-        }
-         * */
     }
 
     /**
@@ -124,13 +118,6 @@ public class RequestsTimer {
         rwLock.writeLock().lock();
         if (watched.remove(request) && watched.isEmpty()) stopTimer();
         rwLock.writeLock().unlock();
-        /*
-        st2.store(System.nanoTime() - startInstant);
-        if (st2.getCount()==10000){
-            System.out.println("Average of RequestsTimer.unwatch(): "+st2.getAverage(false)/1000 + " us");
-            st2.reset();
-        }
-        */
     }
 
     /**

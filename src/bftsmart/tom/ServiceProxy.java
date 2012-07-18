@@ -25,6 +25,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import bftsmart.communication.client.ReplyListener;
 import bftsmart.reconfiguration.ReconfigureReply;
+import bftsmart.reconfiguration.StatusReply;
 import bftsmart.reconfiguration.views.View;
 import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.core.messages.TOMMessageType;
@@ -143,9 +144,20 @@ public class ServiceProxy extends TOMSender {
     }
 
     public void invokeAsynchronous(byte[] request, ReplyListener listener, int[] targets) {
-        reqId = generateRequestId(TOMMessageType.UNORDERED_REQUEST); 
+        reqId = generateRequestId(TOMMessageType.UNORDERED_REQUEST);
         this.replyListener = listener;
-    	sendMessageToTargets(request, reqId, targets);
+    	if(this.getViewManager().getStaticConf().isTheTTP()) {
+    		requestType = TOMMessageType.STATUS_REPLY;
+	        try {
+	        	sendMessageToTargets(request, reqId, targets);
+	        } catch(RuntimeException re) {
+	        	if(re.getMessage().equals("Server not connected")) {
+	        		TOMMessage tm = new TOMMessage(targets[0], 0, reqId, TOMUtil.getBytes(StatusReply.OFFLINE.toString()), 0, requestType);
+	        		listener.replyReceived(tm);
+	        	}
+	        }
+    	} else
+        	sendMessageToTargets(request, reqId, targets);
     }
 
     /**
@@ -224,10 +236,9 @@ public class ServiceProxy extends TOMSender {
                     return invoke(request, reqType);
                 }
             } else {
-                //Reply to a reconfigure request!
-                Logger.println("Reconfiguration request' reply received!");
-                //It is impossible to be less than...
                 if (response.getViewID() > getViewManager().getCurrentViewId()) {
+                    //Reply to a reconfigure request!
+                    Logger.println("Reconfiguration request' reply received!");
                     Object r = TOMUtil.getObject(response.getContent());
                     if (r instanceof View) { //did not executed the request because it is using an outdated view
                         reconfigureTo((View) r);
@@ -239,8 +250,7 @@ public class ServiceProxy extends TOMSender {
                         ret = response.getContent();
                     }
                 } else {
-                    //If the reconfiguration has not been execute because some paramter
-                    // of the request was wrong: process wanted to to something that is not allowed
+                	// Reply to readonly request
                     ret = response.getContent();
                 }
             }

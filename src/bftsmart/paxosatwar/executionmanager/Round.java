@@ -20,7 +20,6 @@ package bftsmart.paxosatwar.executionmanager;
 
 import bftsmart.paxosatwar.messages.PaxosMessage;
 import java.io.Serializable;
-import java.security.SignedObject;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.TreeSet;
@@ -37,7 +36,8 @@ import java.util.Set;
  */
 public class Round implements Serializable {
 
-    private transient Execution execution; // Execution where the round belongs to
+	private static final long serialVersionUID = -2891450035863688295L;
+	private transient Execution execution; // Execution where the round belongs to
     
     private int number; // Round's number
     private int me; // Process ID
@@ -70,7 +70,7 @@ public class Round implements Serializable {
         this.execution = parent;
         this.number = number;
         this.manager = manager;
-        this.proof = new HashSet();
+        this.proof = new HashSet<PaxosMessage>();
         //ExecutionManager manager = execution.getManager();
 
         this.lastView = manager.getCurrentView();
@@ -464,6 +464,6 @@ public class Round implements Serializable {
         Arrays.fill((Object[]) weak, null);
         Arrays.fill((Object[]) strong, null);
         
-        this.proof = new HashSet();
+        this.proof = new HashSet<PaxosMessage>();
     }
 }
