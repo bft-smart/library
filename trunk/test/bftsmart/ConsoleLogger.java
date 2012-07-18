@@ -1,4 +1,4 @@
-package bftsmart.demo.bftmap;
+package bftsmart;
 
 import java.io.BufferedReader;
 import java.io.IOException;

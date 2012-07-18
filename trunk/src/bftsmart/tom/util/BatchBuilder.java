@@ -35,66 +35,67 @@ import bftsmart.tom.core.messages.TOMMessage;
  */
 public final class BatchBuilder {
 
-    private Random rnd = new Random();
+	private Random rnd = new Random();
 
-    /** build buffer */
-    private byte[] createBatch(long timestamp, int numberOfNonces, int numberOfMessages, int totalMessagesSize, boolean useSignatures, byte[][] messages, byte[][] signatures, ServerViewManager manager) {
-        int size = 20 + //timestamp 8, nonces 4, nummessages 4
-                (numberOfNonces > 0 ? 8 : 0) + //seed if needed
-                (numberOfMessages*(4+(useSignatures?TOMUtil.getSignatureSize(manager):0)))+ // msglength + signature for each msg
-                totalMessagesSize; //size of all msges
+	/** build buffer */
+	private byte[] createBatch(long timestamp, int numberOfNonces, int numberOfMessages, int totalMessagesSize,
+			boolean useSignatures, byte[][] messages, byte[][] signatures, ServerViewManager manager) {
+		int size = 20 + //timestamp 8, nonces 4, nummessages 4
+				(numberOfNonces > 0 ? 8 : 0) + //seed if needed
+				(numberOfMessages*(4+(useSignatures?TOMUtil.getSignatureSize(manager):0)))+ // msglength + signature for each msg
+				totalMessagesSize; //size of all msges
 
-        ByteBuffer  proposalBuffer = ByteBuffer.allocate(size);
+		ByteBuffer  proposalBuffer = ByteBuffer.allocate(size);
 
-        proposalBuffer.putLong(timestamp);
+		proposalBuffer.putLong(timestamp);
 
-        proposalBuffer.putInt(numberOfNonces);
+		proposalBuffer.putInt(numberOfNonces);
 
-        if(numberOfNonces>0){
-            proposalBuffer.putLong(rnd.nextLong());
-        }
+		if(numberOfNonces>0){
+			proposalBuffer.putLong(rnd.nextLong());
+		}
 
-        proposalBuffer.putInt(numberOfMessages);
+		proposalBuffer.putInt(numberOfMessages);
 
-        for (int i = 0; i < numberOfMessages; i++) {
-            putMessage(proposalBuffer,messages[i], false, signatures[i]);
-        }
+		for (int i = 0; i < numberOfMessages; i++) {
+			putMessage(proposalBuffer,messages[i], false, signatures[i]);
+		}
 
-        return proposalBuffer.array();
-    }
+		return proposalBuffer.array();
+	}
 
-    private void putMessage(ByteBuffer proposalBuffer, byte[] message, boolean isHash, byte[] signature) {
-        proposalBuffer.putInt(isHash?0:message.length);
-        proposalBuffer.put(message);
+	private void putMessage(ByteBuffer proposalBuffer, byte[] message, boolean isHash, byte[] signature) {
+		proposalBuffer.putInt(isHash?0:message.length);
+		proposalBuffer.put(message);
 
-        if(signature != null) {
-            proposalBuffer.put(signature);
-        }
-    }
+		if(signature != null) {
+			proposalBuffer.put(signature);
+		}
+	}
 
-        public byte[] makeBatch(Collection<TOMMessage> msgs, int numNounces, long timestamp, ServerViewManager reconfManager) {
+	public byte[] makeBatch(Collection<TOMMessage> msgs, int numNounces, long timestamp, ServerViewManager reconfManager) {
 
-        int numMsgs = msgs.size();
-        int totalMessageSize = 0; //total size of the messages being batched
+		int numMsgs = msgs.size();
+		int totalMessageSize = 0; //total size of the messages being batched
 
-        byte[][] messages = new byte[numMsgs][]; //bytes of the message (or its hash)
-        byte[][] signatures = new byte[numMsgs][]; //bytes of the message (or its hash)
+		byte[][] messages = new byte[numMsgs][]; //bytes of the message (or its hash)
+		byte[][] signatures = new byte[numMsgs][]; //bytes of the message (or its hash)
 
-        // Fill the array of bytes for the messages/signatures being batched
-        int i = 0;
-        for (TOMMessage msg : msgs) {
-            //TOMMessage msg = msgs.next();
-            //Logger.println("(TOMLayer.run) adding req " + msg + " to PROPOSE");
-            messages[i] = msg.serializedMessage;
-            signatures[i] = msg.serializedMessageSignature;
+		// Fill the array of bytes for the messages/signatures being batched
+		int i = 0;
+		for (TOMMessage msg : msgs) {
+			//TOMMessage msg = msgs.next();
+			//Logger.println("(TOMLayer.run) adding req " + msg + " to PROPOSE");
+			messages[i] = msg.serializedMessage;
+			signatures[i] = msg.serializedMessageSignature;
 
-            totalMessageSize += messages[i].length;
-            i++;
-        }
+			totalMessageSize += messages[i].length;
+			i++;
+		}
 
-        // return the batch
-        return createBatch(timestamp, numNounces, numMsgs, totalMessageSize,
-                reconfManager.getStaticConf().getUseSignatures() == 1, messages, signatures,reconfManager);
+		// return the batch
+		return createBatch(timestamp, numNounces, numMsgs, totalMessageSize,
+				reconfManager.getStaticConf().getUseSignatures() == 1, messages, signatures, reconfManager);
 
-    }
+	}
 }

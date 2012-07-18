@@ -54,7 +54,7 @@ public class MessageFactory{
     public PaxosMessage createPropose(int id, int round, byte[] value,
             Object proof) {
 
-        return new PaxosMessage(PROPOSE,id,round, from, value, proof);
+        return new PaxosMessage(PROPOSE, id, round, from, value, proof);
 
     }
 

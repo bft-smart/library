@@ -145,6 +145,7 @@ public class ServiceReplica implements TOMReceiver {
 			System.out.println("In current view: " + this.SVManager.getCurrentView());
 			initTOMLayer(-1, -1); // initiaze the TOM layer
 		} else {
+			System.out.println("Not in current view: " + this.SVManager.getCurrentView());
 			if (this.isToJoin) {
 				System.out.println("Sending join: " + this.SVManager.getCurrentView());
 				//Não está na visão inicial e é para executar um join;
@@ -390,35 +391,30 @@ public class ServiceReplica implements TOMReceiver {
 		}
 
 		//******* EDUARDO BEGIN **************//
-		int me = SVManager.getStaticConf().getProcessId(); // this process ID
-
 		if (!SVManager.isInCurrentView()) {
 			throw new RuntimeException("I'm not an acceptor!");
 		}
 		//******* EDUARDO END **************//
 
 		// Assemble the total order messaging layer
-		MessageFactory messageFactory = new MessageFactory(me);
+		MessageFactory messageFactory = new MessageFactory(id);
 
-		LeaderModule lm = new LeaderModule(SVManager);
+		LeaderModule lm = new LeaderModule();
 
 		Acceptor acceptor = new Acceptor(cs, messageFactory, lm, SVManager);
 		cs.setAcceptor(acceptor);
 
 		Proposer proposer = new Proposer(cs, messageFactory, SVManager);
 
-		ExecutionManager manager = new ExecutionManager(SVManager, acceptor, proposer, me);
+		ExecutionManager executionManager = new ExecutionManager(SVManager, acceptor, proposer, id);
 
-		acceptor.setManager(manager);
-		proposer.setManager(manager);
+		acceptor.setExecutionManager(executionManager);
 
-		tomLayer = new TOMLayer(manager, this, recoverer, lm, acceptor, cs, SVManager);
+		tomLayer = new TOMLayer(executionManager, this, recoverer, lm, acceptor, cs, SVManager);
 
-		manager.setTOMLayer(tomLayer);
+		executionManager.setTOMLayer(tomLayer);
 
-		//******* EDUARDO BEGIN **************//
 		SVManager.setTomLayer(tomLayer);
-		//******* EDUARDO END **************//
 
 		cs.setTOMLayer(tomLayer);
 		cs.setRequestReceiver(tomLayer);
@@ -426,7 +422,7 @@ public class ServiceReplica implements TOMReceiver {
 		acceptor.setTOMLayer(tomLayer);
 
 		if(SVManager.getStaticConf().isShutdownHookEnabled()){
-			Runtime.getRuntime().addShutdownHook(new ShutdownHookThread(cs,lm,acceptor,manager,tomLayer));
+			Runtime.getRuntime().addShutdownHook(new ShutdownHookThread(cs, lm, acceptor, executionManager, tomLayer));
 		}
 		tomLayer.start(); // start the layer execution
 		tomStackCreated = true;

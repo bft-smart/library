@@ -25,12 +25,8 @@ import java.net.InetSocketAddress;
 import java.nio.channels.ClosedChannelException;
 import java.security.NoSuchAlgorithmException;
 import java.security.spec.InvalidKeySpecException;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.Executors;
@@ -139,7 +135,6 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
     @Override
     public void messageReceived(ChannelHandlerContext ctx, MessageEvent e) {
         //delivers message to TOMLayer
-        
         if (requestReceiver == null) System.out.println("RECEIVER NULO!!!!!!!!!!!!");
         else requestReceiver.requestReceived((TOMMessage) e.getMessage());
     }

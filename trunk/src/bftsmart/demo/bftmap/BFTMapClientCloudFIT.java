@@ -38,7 +38,7 @@ public class BFTMapClientCloudFIT
 		//init log
 		initLog();
 		
-		//create the KVClient threads
+		//create the BFTMapInteractiveClient threads
 		KVClientInstance [] list = new KVClientInstance[numberClients]; 
 		
 		for(int i = 0 ; i < list.length ; i ++)

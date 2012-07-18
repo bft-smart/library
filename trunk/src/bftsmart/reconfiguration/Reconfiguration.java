@@ -5,6 +5,8 @@
 
 package bftsmart.reconfiguration;
 
+import java.security.PrivateKey;
+
 import bftsmart.tom.ServiceProxy;
 import bftsmart.tom.core.messages.TOMMessageType;
 import bftsmart.tom.util.TOMUtil;
@@ -60,7 +62,20 @@ public class Reconfiguration {
         byte[] reply = proxy.invoke(TOMUtil.getBytes(request), TOMMessageType.RECONFIG);
         request = null;
         return (ReconfigureReply)TOMUtil.getObject(reply);
-   }
+    }
+    
+    
+    protected StatusReply askStatus(int id) {
+        request = new ReconfigureRequest(id);
+        PrivateKey key = proxy.getViewManager().getStaticConf().getRSAPrivateKey();
+        byte[] reqBytes = request.toString().getBytes(); 
+        byte[] signature = TOMUtil.signMessage(key, reqBytes);
+		request.setSignature(signature);
+		StatusReplyListener listener = new StatusReplyListener();
+		proxy.invokeAsynchronous(TOMUtil.getBytes(request), listener, new int[] {id});
+		StatusReply status = listener.getResponse();
+		return status;
+    }
     
     public void close(){
         proxy.close();

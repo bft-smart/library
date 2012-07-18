@@ -514,7 +514,6 @@ public class StateManager {
                         lcManager.setNextReg(currentRegency);
                         lcManager.setNewLeader(currentLeader);
                                                 
-                        tomLayer.lm.setNewReg(currentRegency);
                         tomLayer.lm.setNewLeader(currentLeader);
                         
                         recvState.setSerializedState(getReplicaState().getSerializedState());

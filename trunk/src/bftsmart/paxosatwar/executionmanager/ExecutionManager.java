@@ -268,8 +268,6 @@ public final class ExecutionManager {
         return canProcessTheMessage;
     }
 
-    
-    
     /**
      * Informs if there are messages till to be processed associated the specified consensus's execution
      * @param eid The ID for the consensus execution in question

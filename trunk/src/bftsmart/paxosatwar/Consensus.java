@@ -19,7 +19,6 @@ package bftsmart.paxosatwar;
 
 import bftsmart.paxosatwar.executionmanager.Round;
 import bftsmart.tom.core.messages.TOMMessage;
-import bftsmart.tom.util.Logger;
 
 /**
  *
