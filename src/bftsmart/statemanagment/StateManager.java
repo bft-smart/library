@@ -66,6 +66,8 @@ public class StateManager {
     private ExecutionManager execManager;
     
     private boolean appStateOnly;
+    private final static long INIT_TIMEOUT = 5000;
+    private long timeout = INIT_TIMEOUT;
     
     public StateManager(ServerViewManager manager, TOMLayer tomLayer, DeliveryThread dt, LCManager lcManager, ExecutionManager execManager) {
 
@@ -372,7 +374,8 @@ public class StateManager {
         };
 
         stateTimer = new Timer("state timer");
-        stateTimer.schedule(stateTask,1500);
+        timeout = timeout * 2;
+        stateTimer.schedule(stateTask,timeout);
 
     }
     
