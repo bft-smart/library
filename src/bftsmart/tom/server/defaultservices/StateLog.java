@@ -224,6 +224,7 @@ public class StateLog {
      */
     public DefaultApplicationState getApplicationState(int eid, boolean setState) {
 
+    	System.out.println("--- Eid requested: " + eid + ". Last checkpoint: " + lastCheckpointEid);
         CommandsInfo[] batches = null;
 
         int lastEid = -1;

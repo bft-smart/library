@@ -9,13 +9,13 @@ public class BFTMapClient
 	public static void main(String[] args){
 		if(args.length < 2)
 		{
-			System.out.println("Usage: java BFTMapClient <process id> <use readonly?>");
+			System.out.println("Usage: java BFTMapClient <process id>");
 			System.exit(-1);
 		}
 
 		int idProcess = Integer.parseInt(args[0]);//get process id
 
-		BFTMap bftMap = new BFTMap(idProcess, Boolean.parseBoolean(args[1]));
+		BFTMap bftMap = new BFTMap(idProcess);
 		String tableName = "table-"+idProcess;
 
 		try {
@@ -39,12 +39,6 @@ public class BFTMapClient
 				System.out.println("Size of the table("+tableName+"): "+sizeTable);
 			} catch (Exception e) {
 				e.printStackTrace();
-//				bftMap = new BFTMap(idProcess, Boolean.parseBoolean(args[1]));
-//				try {
-//					createTable(bftMap,tableName);
-//				} catch (Exception e1) {
-//					System.out.println("problems :-(");
-//				}
 			}
 		}
 	}
@@ -69,7 +63,7 @@ public class BFTMapClient
 		byte[] resultBytes = bftMap.putEntry(nameTable, key, valueBytes);
 		if(resultBytes== null)
 			throw new Exception();
-		System.out.println("Result : "+new String(resultBytes));
+//		System.out.println("Result : "+new String(resultBytes));
 
 		return true;
 	}

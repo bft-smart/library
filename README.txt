@@ -34,13 +34,14 @@ runscripts\smartrun.bat bftsmart.demo.counter.CounterClient 1001 <increment> [<n
 
 You ca use the "runsmart.bat" script in Windows, and the "runsmart.sh" script em linux. These scripts can be easly be adaptated to run other demos, and you can derived other scripts from these ones to run SMaRt in other operating systems.
 
-Additionally to the counter demo, there is also the random demo. You can run it by using the RandomServer and RandomClient classes located in the package bftsmart.demo.random.
+Other demo options are:
+- Random demo. You can run it by using the RandomServer and RandomClient classes located in the package bftsmart.demo.random.
+- BFTMap. A Table of hash maps where tables can be created and key value pair added to it. The server is bftmap.demo.bftmap.BFTMapServer and the clients are BFTMapClient for incremental inserts or BFTMapInteractiveClient for a command line client. 
 
 This version of SMaRt implements a state transfer protocol, which is already pretty robust. You can activate/de-activate it by editing the "config/system.config" file, and setting the parameter "system.totalordermulticast.state_transfer" to "false".
 
-This version also implements a recofiguration protocol, that you can use to had/remove replicas from the initial group. This protocol is still experimental.
+This version also implements a recofiguration protocol, that you can use to add/remove replicas from the initial group. This protocol is still experimental.
 
 Finally, we have also implemented a new version of the leader change protocol, which is also experimental.
  
 Feel free to contact us if you have any questions.
-

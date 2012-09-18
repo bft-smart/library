@@ -158,9 +158,7 @@ public abstract class DefaultSingleRecoverable implements Recoverable, SingleExe
 
             for (int eid = lastCheckpointEid + 1; eid <= lastEid; eid++) {
                 try {
-                    
                     bftsmart.tom.util.Logger.println("(DefaultRecoverable.setState) interpreting and verifying batched requests for eid " + eid);
-                    System.out.println("(DefaultRecoverable.setState) interpreting and verifying batched requests for eid " + eid);
                     if (state.getMessageBatch(eid) == null) System.out.println("(DefaultRecoverable.setState) " + eid + " NULO!!!");
                     
                     byte[][] commands = state.getMessageBatch(eid).commands; // take a batch

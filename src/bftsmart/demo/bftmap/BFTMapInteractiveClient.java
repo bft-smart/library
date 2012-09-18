@@ -20,11 +20,11 @@ public class BFTMapInteractiveClient {
 
 	public static void main(String[] args) throws IOException {
 		if(args.length < 1) {
-			System.out.println("Usage: java BFTMapInteractiveClient <process id> <boolean useReadOnly>");
+			System.out.println("Usage: java BFTMapInteractiveClient <process id>");
 			System.exit(-1);
 		}
 
-		BFTMap bftMap = new BFTMap(Integer.parseInt(args[0]), Boolean.parseBoolean(args[1]));
+		BFTMap bftMap = new BFTMap(Integer.parseInt(args[0]));
 
 		Console console = System.console();
 		Scanner sc = new Scanner(System.in);
