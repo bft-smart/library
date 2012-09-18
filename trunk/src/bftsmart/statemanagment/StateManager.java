@@ -580,13 +580,12 @@ public class StateManager {
                         if (stateTimer != null) stateTimer.cancel();
                         
                         if (appStateOnly) {
-                            appStateOnly = false;
+                        	appStateOnly = false;
                             tomLayer.resumeLC();
                         }
                     //******* EDUARDO BEGIN **************//
                     } else if (recvState == null && (SVManager.getCurrentViewN() / 2) < getReplies()) {
                     //******* EDUARDO END **************//
-
                         Logger.println("(TOMLayer.SMReplyDeliver) I have more than " +
                                 (SVManager.getCurrentViewN() / 2) + " messages that are no good!");
 
@@ -605,7 +604,6 @@ public class StateManager {
                             requestState();
                         }
                     } else if (haveState == -1) {
-
                         Logger.println("(TOMLayer.SMReplyDeliver) The replica from which I expected the state, sent one which doesn't match the hash of the others, or it never sent it at all");
 
                         //setWaiting(-1);

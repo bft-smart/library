@@ -151,8 +151,7 @@ public class TTP {
         } else {
             ttp = new TTP("");
         }
-
-        System.out.println("ola");
+        
         Scanner scan = new Scanner(System.in);
         String str = null;
         do {

@@ -26,11 +26,9 @@ import bftsmart.tom.ServiceProxy;
 public class BFTMap implements Map<String, Map<String,byte[]>> {
 
 	ServiceProxy KVProxy = null;
-        private boolean useReadOnly;
         
-	public BFTMap(int id, boolean useReadOnly) {
+	public BFTMap(int id) {
 		KVProxy = new ServiceProxy(id, "config");
-                this.useReadOnly = useReadOnly;
 	}
 	ByteArrayOutputStream out = null;
 
@@ -155,10 +153,7 @@ public class BFTMap implements Map<String, Map<String,byte[]>> {
 			out = new ByteArrayOutputStream();
 			new DataOutputStream(out).writeInt(BFTMapRequestType.SIZE_TABLE);
 			byte[] rep;
-			if(useReadOnly)
-				rep = KVProxy.invokeUnordered(out.toByteArray());
-			else
-				rep = KVProxy.invokeOrdered(out.toByteArray());
+			rep = KVProxy.invokeUnordered(out.toByteArray());
 			ByteArrayInputStream in = new ByteArrayInputStream(rep);
 			int size = new DataInputStream(in).readInt();
 			return size;
@@ -174,10 +169,7 @@ public class BFTMap implements Map<String, Map<String,byte[]>> {
 			new DataOutputStream(out).writeInt(BFTMapRequestType.SIZE);
 			new DataOutputStream(out).writeUTF(tableName);
 			byte[] rep;
-			if(useReadOnly)
-				rep = KVProxy.invokeUnordered(out.toByteArray());
-			else
-				rep = KVProxy.invokeOrdered(out.toByteArray());
+			rep = KVProxy.invokeUnordered(out.toByteArray());
 			ByteArrayInputStream in = new ByteArrayInputStream(rep);
 			int size = new DataInputStream(in).readInt();
 			return size;
@@ -193,10 +185,7 @@ public class BFTMap implements Map<String, Map<String,byte[]>> {
 			new DataOutputStream(out).writeInt(BFTMapRequestType.TAB_CREATE_CHECK);
 			new DataOutputStream(out).writeUTF((String) key);
 			byte[] rep;
-			if(useReadOnly)
-				rep = KVProxy.invokeUnordered(out.toByteArray());
-			else
-				rep = KVProxy.invokeOrdered(out.toByteArray());
+			rep = KVProxy.invokeUnordered(out.toByteArray());
 			ByteArrayInputStream in = new ByteArrayInputStream(rep);
 			boolean res = new DataInputStream(in).readBoolean();
 			return res;
@@ -215,10 +204,7 @@ public class BFTMap implements Map<String, Map<String,byte[]>> {
 			new DataOutputStream(out).writeUTF((String) tableName);
 			new DataOutputStream(out).writeUTF((String) key);
 			byte[] rep;
-			if(useReadOnly)
-				rep = KVProxy.invokeUnordered(out.toByteArray());
-			else
-				rep = KVProxy.invokeOrdered(out.toByteArray());
+			rep = KVProxy.invokeUnordered(out.toByteArray());
 			ByteArrayInputStream in = new ByteArrayInputStream(rep);
 			boolean res = new DataInputStream(in).readBoolean();
 			return res;
