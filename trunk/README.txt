@@ -1,4 +1,4 @@
-BFT-SMaRt v0.6
+BFT-SMaRt v0.8
 ----------
 
 This package contains the BFT-SMaRt source code (src/), binary file (bin/), libraries needed (lib/), documentation (doc/), and configuration files (config/).
