@@ -2,11 +2,8 @@ package bftsmart.demo.bftmap;
 
 import static org.junit.Assert.*;
 
-import java.io.IOException;
 import java.util.HashMap;
 
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
 import org.junit.Test;
 
 import bftsmart.demo.bftmap.BFTMap;
@@ -36,7 +33,7 @@ public class BFTMapClientTest extends TestFixture {
 	public void testRegularCase() {
 		try{
 			Thread.sleep(1000);
-			bftMap = new BFTMap(1001, true);
+			bftMap = new BFTMap(1001);
 			bftMap.put("TestTable1", new HashMap<String,byte[]>());
 			bftMap.putEntry("TestTable1", "key0", "value0".getBytes());
 			assertEquals("Main table size should be 1", 1, bftMap.size1("TestTable1"));
@@ -64,7 +61,7 @@ public class BFTMapClientTest extends TestFixture {
 	public void testStopNonLeader() {
 		try{
 			Thread.sleep(1000);
-			bftMap = new BFTMap(1001, true);
+			bftMap = new BFTMap(1001);
 			bftMap.put("TestTable2", new HashMap<String,byte[]>());
 			insert("TestTable2", 1);
 			assertEquals("Main table size should be 1", 1, bftMap.size1("TestTable2"));
@@ -92,7 +89,7 @@ public class BFTMapClientTest extends TestFixture {
 	public void testStopAndStartNonLeader() {
 		try{
 			Thread.sleep(5000);
-			bftMap = new BFTMap(1001, true);
+			bftMap = new BFTMap(1001);
 			Thread.sleep(1000);
 			bftMap.put("TestTable3", new HashMap<String,byte[]>());
 			
@@ -105,6 +102,8 @@ public class BFTMapClientTest extends TestFixture {
 			
 			startServer(1);
 			
+			Thread.sleep(10000);
+
 			insert("TestTable3", 35);
 			assertEquals("Main table size should be 135", 135, bftMap.size1("TestTable3"));
 
@@ -131,7 +130,7 @@ public class BFTMapClientTest extends TestFixture {
 	public void testStopLeader() {
 		try{
 			Thread.sleep(1000);
-			bftMap = new BFTMap(1001, true);
+			bftMap = new BFTMap(1001);
 			Thread.sleep(1000);
 			bftMap.put("TestTable4", new HashMap<String,byte[]>());
 			insert("TestTable4", 1);
@@ -174,7 +173,7 @@ public class BFTMapClientTest extends TestFixture {
 	public void testStopLeaders() {
 		try{
 			Thread.sleep(1000);
-			bftMap = new BFTMap(1001, true);
+			bftMap = new BFTMap(1001);
 			bftMap.put("TestTable5", new HashMap<String,byte[]>());
 			
 			insert("TestTable5", 130);
