@@ -43,7 +43,7 @@ public class BFTMapServer extends DefaultSingleRecoverable {
 
     public static void main(String[] args){
         if(args.length < 1) {
-            System.out.println("Use: java BFTMapImpl <processId>");
+            System.out.println("Use: java BFTMapServer <processId>");
             System.exit(-1);
         }
         new BFTMapServer(Integer.parseInt(args[0]));
@@ -87,7 +87,7 @@ public class BFTMapServer extends DefaultSingleRecoverable {
                     tableName = new DataInputStream(in).readUTF();
                     //ByteArrayInputStream in1 = new ByteArrayInputStream(command);
                     ObjectInputStream objIn = new ObjectInputStream(in);
-                    Map table = null;
+                    Map<String, byte[]> table = null;
                     try {
                         table = (Map<String, byte[]>) objIn.readObject();
                     } catch (ClassNotFoundException ex) {

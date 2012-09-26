@@ -25,15 +25,14 @@ public class BFTMapClientCloudFIT
 	{
 		if(args.length < 4)
 		{
-			System.out.println("Usage: java KVClients <number clients> <process id base> <use readonly?> <time for running (sec)");
+			System.out.println("Usage: java KVClients <number clients> <process id base> <time for running (sec)");
 			System.exit(-1);
 		}
 		
 		//get arguments 
 		int numberClients = Integer.parseInt(args[0]);
 		int idBase = Integer.parseInt(args[1]);
-		boolean readOnly = Boolean.parseBoolean(args[2]);
-		int timeSec = Integer.parseInt(args[3]);
+		int timeSec = Integer.parseInt(args[2]);
 		
 		//init log
 		initLog();
@@ -43,7 +42,7 @@ public class BFTMapClientCloudFIT
 		
 		for(int i = 0 ; i < list.length ; i ++)
 		{
-				list[i] = new KVClientInstance(idBase + i,readOnly);
+				list[i] = new KVClientInstance(idBase + i);
 				list[i].start();
 		}
 		
@@ -89,14 +88,12 @@ class KVClientInstance extends Thread{
 	
 	private int inc;
 	private int id;
-	private boolean readOnly;
 	private boolean run;
 	private Random rand;
 	
-	public KVClientInstance(int id,boolean readOnly)
+	public KVClientInstance(int id)
 	{
 		this.id = id;
-		this.readOnly = readOnly;
 		this.inc = 0;
 		this.run = true;
 		this.rand = new Random(id);
@@ -106,7 +103,7 @@ class KVClientInstance extends Thread{
 	{
 
 		
-		BFTMap bftMap = new BFTMap(id,readOnly);
+		BFTMap bftMap = new BFTMap(id);
 		String tableName = "table-"+id;
 
 		try {
@@ -131,7 +128,7 @@ class KVClientInstance extends Thread{
 				System.out.println("Client id["+id+"]: it was interrupted");
 				run = false;
 			} catch (Exception e) {
-				bftMap = new BFTMap(id,readOnly);
+				bftMap = new BFTMap(id);
 				try {
 					createTable(bftMap,tableName);
 				} catch (Exception e1) {
