@@ -23,20 +23,51 @@ CounterServer is an application where clients submits messages to replica, messa
 
 ===Start the servers (4 replicas, to tolerate 1 fault)===
 
-{{{smartrun.sh navigators.smart.tom.demo.counter.CounterServer 0}}}<br/>
-{{{smartrun.sh navigators.smart.tom.demo.counter.CounterServer 1}}}<br/>
-{{{smartrun.sh navigators.smart.tom.demo.counter.CounterServer 2}}}<br/>
-{{{smartrun.sh navigators.smart.tom.demo.counter.CounterServer 3}}}<br/>
+{{{smartrun.sh bftsmart.demo.counter.CounterServer 0}}}<br/>
+{{{smartrun.sh bftsmart.demo.counter.CounterServer 1}}}<br/>
+{{{smartrun.sh bftsmart.demo.counter.CounterServer 2}}}<br/>
+{{{smartrun.sh bftsmart.demo.counter.CounterServer 3}}}<br/>
+
+The only parameter is the replica id that must be assigned sequentially starting on 0.
 
 ==Start a client==
 
 #if {{{<increment>}}} equals 0 the request will be read-only
 #default {{{<number of operations>}}} equals 1000
 
-{{{runscripts\smartrun.sh navigators.smart.tom.demo.counter.CounterClient 1001 <increment> [<number of operations>]}}}
+{{{smartrun.sh bftsmart.demo.counter.CounterClient <client_id> <increment> [<number of operations>]}}}
 
-You can use the "runsmart.bat" script in Windows, and the "runsmart.sh" script em UNIX-like systems (Linux, MacOS, etc.). These scripts can be easely be adapted to run other demos, and you can derived other scripts from these ones to run BFT-SMaRt in other operating systems.
+==BFTMap==
 
-Additionally to the counter demo, there is also the random demo. You can run it by using the RandomServer and RandomClient classes located in the package navigators.smart.tom.demo.random.
+BFTMap is a table of tables simulating a database.
+It creates a HashMap in the server and the replicas maintain the state of the table with the operations executed by the clients.
 
-BFT-SMaRt implements a state transfer protocol, which is already pretty robust. You can activate/de-activate it by editing the "config/system.config" file, and setting the parameter "{{{system.totalordermulticast.state_transfer}}}" to "{{{false}}}".
+===Start the servers (4 replicas, to tolerate 1 fault)===
+
+{{{smartrun.sh bftsmart.demo.bftmap.BFTMapServer 0}}}<br/>
+{{{smartrun.sh bftsmart.demo.bftmap.BFTMapServer 1}}}<br/>
+{{{smartrun.sh bftsmart.demo.bftmap.BFTMapServer 2}}}<br/>
+{{{smartrun.sh bftsmart.demo.bftmap.BFTMapServer 3}}}<br/>
+
+The only parameter is the replica id that must be assigned sequentially starting on 0.
+
+==Start a client==
+
+{{{smartrun.sh bftsmart.demo.bftmap.BFTMapClient <client_id>}}}
+
+This client will send repeated keys to the server until the process is killed.
+It is useful when several different clients are created, so it is possible to verify the ordering and concurrent execution of the messages.
+
+Another client for the BFTMap demo is BFTMapInteractiveClient. That client works accepting inputs from the user to create tables and insert values in the server.
+
+The command line to start the client is:
+
+{{{smartrun.sh bftsmart.demo.bftmap.BFTMapInteractiveClient <client_id>}}}
+
+After start the client, instructions will be displayed on how to input values.
+
+
+You can use the "runsmart.bat" script in Windows, and the "runsmart.sh" script em UNIX-like systems (Linux, MacOS, etc.). These scripts can be easily be adapted to run other demos, and you can derived other scripts from these ones to run BFT-SMaRt in other operating systems.
+
+The client_id parameter accepted in BFT-SMaRt clients is used as an unique identifier of the client. It is essential for the protocol to order the messages consistently across the replicas. If the protocol is using client signatures, a key with the clients and servers keys must be provided in the config/keys. For testing purposes, several keys are delivered with the source code.
+The parameter system.communication.useSignatures in system.config defines if signatures will be considered or not.
