@@ -1,11 +1,13 @@
+#summary BFT-SMaRt demo packages
+
 = BFT-SMaRt demos =
 
-There are several demo applications packed together with BFT-SMaRt source code.
-These demos are in the package {{{navigators.smart.tom.demo}}}.
+There are several demo applications deployed together with the BFT-SMaRt source code.
+These demos are in the package {{{bftsmart.demo}}}.
 
-To run any demonstration you first need to configure BFT-SMaRt to define the protocol behavior and the location of each replica.
+BFT-SMaRt has a configuration file with options to run the protocol. The configuration file is in config/system.config. A short description is provided before each parameter, and values are set for the most common operations.
 
-1) The servers must be specified in the configuration file (see config/hosts.config). An example:
+Before running the protocol, the configuration file config/hosts.config must be updated with the information about the servers where the protocol is being executed. The file is in the format:
 
 #server id, address and port (the ids from 0 to n-1 are the service replicas)<br />
 0 localhost 11234<br />
@@ -13,11 +15,13 @@ To run any demonstration you first need to configure BFT-SMaRt to define the pro
 2 localhost 11236<br />
 3 localhost 11237<br /> 
 
-2) The system configurations also have to be specified (see config/system.config). Most of the parameters are self explanatory.
-
 You can run the counter demonstration by executing the following commands, from within the main folder:
 
-==Start the servers (4 replicas, to tolerate 1 fault)==
+==CounterServer==
+
+CounterServer is an application where clients submits messages to replica, messages are ordered and the throughput is displayed to the user. It has no real application but is useful to verify the system functioning and performance.
+
+===Start the servers (4 replicas, to tolerate 1 fault)===
 
 {{{smartrun.sh navigators.smart.tom.demo.counter.CounterServer 0}}}<br/>
 {{{smartrun.sh navigators.smart.tom.demo.counter.CounterServer 1}}}<br/>
