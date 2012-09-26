@@ -15,7 +15,10 @@ Before running the protocol, the configuration file config/hosts.config must be 
 2 localhost 11236<br />
 3 localhost 11237<br /> 
 
-You can run the counter demonstration by executing the following commands, from within the main folder:
+There are a script created to setup the packages and required libraries. This script is "runsmart.bat" in Windows and "runsmart.sh" script em UNIX-like systems (Linux, MacOS, etc.). These scripts can be easily be adapted to run other demos, and you can derived other scripts from these ones to run BFT-SMaRt in other operating systems.
+
+The client_id parameter accepted in BFT-SMaRt clients is used as an unique identifier of the client. It is essential for the protocol to order the messages consistently across the replicas. If the protocol is using client signatures, a key with the clients and servers keys must be provided in the config/keys. For testing purposes, several keys are delivered with the source code.
+The parameter system.communication.useSignatures in system.config defines if signatures will be considered or not.
 
 ==CounterServer==
 
@@ -30,7 +33,7 @@ CounterServer is an application where clients submits messages to replica, messa
 
 The only parameter is the replica id that must be assigned sequentially starting on 0.
 
-==Start a client==
+===Start a client===
 
 #if {{{<increment>}}} equals 0 the request will be read-only
 #default {{{<number of operations>}}} equals 1000
@@ -51,7 +54,7 @@ It creates a HashMap in the server and the replicas maintain the state of the ta
 
 The only parameter is the replica id that must be assigned sequentially starting on 0.
 
-==Start a client==
+===Start a client===
 
 {{{smartrun.sh bftsmart.demo.bftmap.BFTMapClient <client_id>}}}
 
@@ -65,9 +68,3 @@ The command line to start the client is:
 {{{smartrun.sh bftsmart.demo.bftmap.BFTMapInteractiveClient <client_id>}}}
 
 After start the client, instructions will be displayed on how to input values.
-
-
-You can use the "runsmart.bat" script in Windows, and the "runsmart.sh" script em UNIX-like systems (Linux, MacOS, etc.). These scripts can be easily be adapted to run other demos, and you can derived other scripts from these ones to run BFT-SMaRt in other operating systems.
-
-The client_id parameter accepted in BFT-SMaRt clients is used as an unique identifier of the client. It is essential for the protocol to order the messages consistently across the replicas. If the protocol is using client signatures, a key with the clients and servers keys must be provided in the config/keys. For testing purposes, several keys are delivered with the source code.
-The parameter system.communication.useSignatures in system.config defines if signatures will be considered or not.
