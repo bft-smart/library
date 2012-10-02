@@ -1,0 +1,26 @@
+#summary This page lists the sponsors that made BFT-SMaRt possible, as well as the people who contributed in its inception, design and implementation.
+
+= Sponsors =
+
+These are the projects and foundations that made BFT-SMaRt a reality. Many thanks to each one of them!
+
+
+http://imageshack.us/a/img560/1739/logotclouds.jpg http://imageshack.us/a/img515/2529/logomassif.gif
+
+http://imageshack.us/a/img833/2592/logofct.gif http://imageshack.us/a/img62/600/logocnpq.jpg
+
+TODO: Insert description for sponsors
+
+
+= Contributores =
+
+These are the researcher's names whose work made what BFT-SMaRt is today.
+
+  * Alysson Bessani (Manager and Developer)
+  * João Sousa (Lead Developer)
+  * Marcel Santos (Developer and Maintainer)
+
+  * Eduardo Alchieri
+  * Miguel Henriques
+  * Vinicius Cogo
+  * Paulo Sousa
