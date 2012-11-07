@@ -1,0 +1,19 @@
+=How to configure BFT-SMaRt replicas=
+The parameters to configure BFT-SMaRt replicas are stored in two files: hosts.config and system.config.
+To comment out a configuration parameter in those files, the line must start with the character #.
+
+==hosts.config==
+
+The address and port of all replicas must be specified in this file.
+The number or replicas must be the same as defined in the property {{{system.servers.num}}} of system.config.
+
+==system.config==
+
+In this file there are several options to configure the replication protocol, number or replicas, timeouts and others. These parameters are described below:
+
+|| *Parameter* || *Description* || * Values * || *Default value* ||
+|| {{{system.communicatin.useSenderThread}}} || Specify if the communication system should use a thread to send data || true or false || true ||
+|| {{{system.servers.num}}} || Number of servers in the system || integer || 4 ||
+|| {{{system.servers.f}}} || Maximum number of faulty replicas supported || integer || 1 ||
+|| {{{system.totalordermulticast.timeout}}} || Time that a replica waits for the propose of a request. If the request is not proposed by the leader within the interval defined, the replica invokes the leader change protocol || integer (milliseconds) || 10000 ||
+|| {{{system.totalordermulticast.highMark}}} || Maximum ahead-of-time message not discarded. When a replica is delayed it stores the consensus in an out of context queue.\n If the number of consensus to be processed is above the value defined in this parameter, the replicas discard the messages and invoke the state transfer protocol || integer (milliseconds) || 10000 ||
