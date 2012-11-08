@@ -285,6 +285,7 @@ public class ServiceProxy extends TOMSender {
         }
 
         int pos = getViewManager().getCurrentViewPos(reply.getSender());
+
         if (pos < 0) { //ignore messages that don't come from replicas
             canReceiveLock.unlock();
             return;
@@ -319,15 +320,21 @@ public class ServiceProxy extends TOMSender {
                     }
                 }
             }
-
-            if (response == null
-                    && receivedReplies >= getViewManager().getCurrentViewN() - getViewManager().getCurrentViewF()) {
-                //it's not safe to wait for more replies (n-f replies received),
-                //but there is no response available...
-                reqId = -1;
-                this.sm.release(); // resumes the thread that is executing the "invoke" method
+            
+            if (response == null) {
+            	if(requestType.equals(TOMMessageType.ORDERED_REQUEST)) {
+            		if(receivedReplies == getViewManager().getCurrentViewN()) {
+                        reqId = -1;
+                        this.sm.release(); // resumes the thread that is executing the "invoke" method
+            		}
+            	} else {  // UNORDERED
+            		if(receivedReplies != sameContent) {
+                        reqId = -1;
+                        this.sm.release(); // resumes the thread that is executing the "invoke" method
+            		}
+            	}
             }
-        } 
+        }
 
         // Critical section ends here. The semaphore can be released
         canReceiveLock.unlock();

@@ -216,13 +216,14 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, ExceptionEvent e) {
-        if (!(e.getCause() instanceof ClosedChannelException) && !(e.getCause() instanceof ConnectException)) {
-            System.out.println("Connection with server closed.");
+    	if(e.getCause() instanceof ClosedChannelException) {
+            System.out.println("Connection with replica closed.");
+    	} else if(e.getCause() instanceof ConnectException) {
+            System.out.println("Impossible to connect to replica.");
         } else {
-            e.getCause().printStackTrace(System.err);
+        	System.out.println("Replica disconnected.");
         }
     }
-
     @Override
     public void messageReceived(
             ChannelHandlerContext ctx, MessageEvent e) {

@@ -26,25 +26,19 @@ import java.util.Hashtable;
 import java.util.Map;
 import java.util.StringTokenizer;
 
-import javax.crypto.Mac;
-
 /**
  *
  */
 public class Configuration {
     
     protected int processId;
-    protected boolean authentication;
     protected boolean channelsBlocking;
     protected BigInteger DH_P;
     protected BigInteger DH_G;
     protected int autoConnectLimit;
     protected Map<String, String> configs;
     protected HostsConfig hosts;
-    
-    //protected HostsConfig initialHosts;
-    
-       
+           
     private String hmacAlgorithm = "HmacSha1";
     private int hmacSize = 160;
 
@@ -59,38 +53,27 @@ public class Configuration {
         init();
     }
     
-    public Configuration(int processId, String configHome){
+    public Configuration(int processId, String configHomeParam){
         this.processId = processId;
-        this.configHome = configHome;
+        configHome = configHomeParam;
         init();
     }
 
-     public Configuration(int processId, String configHome, String hostsFileName){
+     public Configuration(int processId, String configHomeParam, String hostsFileNameParam){
         this.processId = processId;
-        this.configHome = configHome;
-        this.hostsFileName = hostsFileName;
+        configHome = configHomeParam;
+        hostsFileName = hostsFileNameParam;
         init();
     }
     
-    /*public static String getHomeDir(){
-       return configHome;
-    }*/
-    
     protected void init(){
         try{
-            hosts = new HostsConfig(this.configHome, hostsFileName);
+            hosts = new HostsConfig(configHome, hostsFileName);
             
-            //initialHosts = new HostsConfig(this.configHome, "initial.view");
                     
             loadConfig();
-            String s = (String) configs.remove("system.authentication");
-            if(s == null){
-                authentication = false;
-            }else{
-                authentication = (s.equalsIgnoreCase("true"))?true:false;
-            }
             
-            s = (String) configs.remove("system.autoconnect");
+            String s = (String) configs.remove("system.autoconnect");
             if(s == null){
                 autoConnectLimit = -1;
             }else{
@@ -102,29 +85,6 @@ public class Configuration {
                 channelsBlocking = false;
             }else{
                 channelsBlocking = (s.equalsIgnoreCase("true"))?true:false;
-            }
-            
-            if(authentication){
-                s = (String)configs.remove("system.authentication.P");
-                if( s != null){
-                    DH_P = new BigInteger(s);
-                }else{
-                    DH_P = new BigInteger("129478016482307789701070727760001596884678485002940892793995694535133378243050778971904925896996726571491800793398492219704131882376184211959283528210448520812240713940418353519547784372145685462082731504301858120019028019987990793179218677670588995616299420063624953735894711975124458923725126238553766550329");
-                }
-                s = (String)configs.remove("system.authentication.G");
-                if( s != null){
-                    DH_G = new BigInteger(s);
-                }else{
-                    DH_G = new BigInteger("29217505167932890999066273839253774800755959955896393492873319283005724081034818036319661168969199150862168432106458290476648846807190233226260333801267067522141219524804297599188439023657024980026689467130891580144179061928658054025223844419861789490573746407967714423953237288767209657928504918181773429271");
-                }
-                s = (String)configs.remove("system.authentication.hmacAlgorithm");
-                if( s != null){
-                    hmacAlgorithm = s;
-                }else{
-                    hmacAlgorithm = "HmacMD5";
-                }
-
-                hmacSize = Mac.getInstance(hmacAlgorithm).getMacLength();
             }
         }catch(Exception e){
             System.err.println("Wrong system.config file format.");
@@ -148,10 +108,6 @@ public class Configuration {
         return this.autoConnectLimit;
     }
     
-    public final boolean useAuthentication(){
-        return authentication;
-    }
-
     public final BigInteger getDHP(){
         return DH_P;
     }
@@ -176,7 +132,7 @@ public class Configuration {
         return null;
     }
     
-    public final Map getProperties(){
+    public final Map<String, String> getProperties(){
         return configs;
     }
     
@@ -220,9 +176,8 @@ public class Configuration {
         this.hosts.add(id,host,port);
     }
     
-    
     private void loadConfig(){
-        configs = new Hashtable();
+        configs = new Hashtable<String, String>();
         try{
             if(configHome == null || configHome.equals("")){
                 configHome="config";

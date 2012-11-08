@@ -122,13 +122,12 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 
     @Override
     public void exceptionCaught( ChannelHandlerContext ctx, ExceptionEvent e) {
-        e.getCause().printStackTrace();
-        if (!(e.getCause() instanceof ClosedChannelException) && !(e.getCause() instanceof ConnectException)) {
-            System.out.println("Connection with client closed...");
+    	if(e.getCause() instanceof ClosedChannelException)
+            System.out.println("Connection with client closed.");
+    	else if(e.getCause() instanceof ConnectException) {
+            System.out.println("Impossible to connect to client.");
         } else {
             e.getCause().printStackTrace(System.err);
-            System.out.println("ExceptionCaught "+ctx.getName());
-            
         }
     }
 
