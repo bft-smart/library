@@ -38,7 +38,6 @@ public class TOMConfiguration extends Configuration {
     protected int inQueueSize;
     protected int outQueueSize;
     protected boolean shutdownHookEnabled;
-    protected boolean verifyTimestamps;
     protected boolean useSenderThread;
     protected RSAKeyLoader rsaLoader;
     private int debug;
@@ -159,13 +158,6 @@ public class TOMConfiguration extends Configuration {
                 numberOfNonces = 0;
             } else {
                 numberOfNonces = Integer.parseInt(s);
-            }
-
-            s = (String) configs.remove("system.totalordermulticast.verifyTimestamps");
-            if (s == null) {
-                verifyTimestamps = false;
-            } else {
-                verifyTimestamps = Boolean.parseBoolean(s);
             }
 
             s = (String) configs.remove("system.communication.useSenderThread");
@@ -328,10 +320,6 @@ public class TOMConfiguration extends Configuration {
 
     public boolean isStateTransferEnabled() {
         return stateTransferEnabled;
-    }
-
-    public boolean canVerifyTimestamps() {
-        return verifyTimestamps;
     }
 
     public int getInQueueSize() {
