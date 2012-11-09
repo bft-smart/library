@@ -178,7 +178,9 @@ public final class DeliveryThread extends Thread {
                 if (requests != null && requests.length > 0) {
                     //cons.firstMessageProposed contains the performance counters
                     if (requests[0].equals(cons.firstMessageProposed)) {
+                    	long time = requests[0].timestamp;
                         requests[0] = cons.firstMessageProposed;
+                        requests[0].timestamp = time;
                     }
 
                     //clean the ordered messages from the pending buffer
