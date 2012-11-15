@@ -5,11 +5,12 @@
 These are the projects and foundations that made BFT-SMaRt a reality. Many thanks to each one of them!
 
 
-http://imageshack.us/a/img560/1739/logotclouds.jpg http://imageshack.us/a/img515/2529/logomassif.gif
+http://bft-smart.googlecode.com/svn/images/logotclouds.png
 
-http://imageshack.us/a/img833/2592/logofct.gif http://imageshack.us/a/img62/600/logocnpq.jpg
-
-http://code.google.com/p/bft-smart/images/Trone.jpg
+http://bft-smart.googlecode.com/svn/images/logomassif.gif
+http://bft-smart.googlecode.com/svn/images/logofct.gif
+http://bft-smart.googlecode.com/svn/images/logocnpq.jpg
+http://bft-smart.googlecode.com/svn/images/logotrone.jpg
 
 TODO: Insert description for sponsors
 
