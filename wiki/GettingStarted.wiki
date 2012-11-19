@@ -3,7 +3,28 @@
 BFT-SMaRt provides a middleware to replicate request from multiple clients to multiple servers. In order to use it, first, BFT-SMaRt has to be downloaded and installed.
 
 ==Installation==
-First, go to the Downloads section and download the latest stable version of BFT-SMaRt. After that, 
+First, go to the Downloads page and download the latest stable version of BFT-SMaRt.
+The BFT-SMaRt code has to be installed in each replica and client that will use it.
+To do so, first, extract the archive downloaded. After that, copy the following files and folders to each of the servers and clients:
+
+- bin/BFT-SMaRt.jar
+- config/
+- runscripts/
+- lib/
+
+After copying the files to the servers, the first step is to get the ip addresses from each server and define a port for each one to receive the messages from other servers. After that, edit the file hosts.config in each replica to set the ip address and port for each server. The information must be the same in all replicas.
+Let's use as example this configuration:
+
+0 127.0.0.1 10001
+1 127.0.0.2 10001
+2 127.0.0.3 10001
+3 127.0.0.4 10001
+
+For each line, the first parameter is the replica id, that is the parameter used when starting a replica. We will get to that later. The second parameter is the ip address and the third is the port. Remembering that this information should be the same in all servers.
+
+By now you should be able to start replicas and run demo examples that come together with the BFT-SMaRt distribution. We will continuing with an example on how to extend BFT-SMaRt to build your own application.
+
+We will use as an example a BFTMap application, that is a basic hashmap implementation that can be accessed through multiple clients. The data is replicated in multiple servers to tolerate crashes and byzantine faults.
 
 ==Client code==
 
