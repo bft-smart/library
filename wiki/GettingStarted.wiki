@@ -7,32 +7,184 @@ First, go to the Downloads page and download the latest stable version of BFT-SM
 The BFT-SMaRt code has to be installed in each replica and client that will use it.
 To do so, first, extract the archive downloaded. After that, copy the following files and folders to each of the servers and clients:
 
-- bin/BFT-SMaRt.jar
-- config/
-- runscripts/
+- bin/BFT-SMaRt.jar<br />
+- config/<br />
+- runscripts/<br />
 - lib/
 
 After copying the files to the servers, the first step is to get the ip addresses from each server and define a port for each one to receive the messages from other servers. After that, edit the file hosts.config in each replica to set the ip address and port for each server. The information must be the same in all replicas.
 Let's use as example this configuration:
 
-0 127.0.0.1 10001
-1 127.0.0.2 10001
-2 127.0.0.3 10001
+0 127.0.0.1 10001<br />
+1 127.0.0.2 10001<br />
+2 127.0.0.3 10001<br />
 3 127.0.0.4 10001
 
 For each line, the first parameter is the replica id, that is the parameter used when starting a replica. We will get to that later. The second parameter is the ip address and the third is the port. Remembering that this information should be the same in all servers.
 
 By now you should be able to start replicas and run demo examples that come together with the BFT-SMaRt distribution. We will continuing with an example on how to extend BFT-SMaRt to build your own application.
 
-We will use as an example a BFTMap application, that is a basic hashmap implementation that can be accessed through multiple clients. The data is replicated in multiple servers to tolerate crashes and byzantine faults.
+We will use as an example a implementation of the {{{java.util.Map}}} interface. In this example, multiple clients will be able to perform operations in a HashMap and the data will be replicated in several replicas.
 
 ==Client code==
 
-Clients can send messages to replicas using the class {{{bftsmart.tom.ServiceProxy}}}. To send ordered messages to the replicas the {{{invokeOrdered()}}} method must be called. To send messages that don't need to be ordered, the method to be called is {{{invokeUnordered()}}}.
-A third option to send messages is {{{invokeAsynchronous()}}}. This last method permits specify for which servers the message has to be send. It also permits implement a custom processing of the server replies through the interface {{{bftsmart.communication.client.ReplyListener}}}.
+First, lets start by creating the client implementation of the Map interface:
+
+{{{
+package bftsmart.gettingstarted.client;
+
+import java.util.Collection;
+import java.util.Map;
+import java.util.Set;
+
+public class HashMapClient implements Map<String, String> {
+...
+}}}
+
+The interface {{{java.util.Map}}} defines several methods to be implemented. The objective  of this example is to show how to extend BFT-SMaRt to do your own application, so, we will only implement the methods {{{put(String, String)}}}, {{{get(Object)}}}, {{{remove(Object)}}} and {{{size()}}}.
+
+The client {{{HashMap}}} we are creating will interact with BFT-SMaRt through the class {{{bftsmart.tom.ServiceProxy}}}, so we will declare a {{{ServiceProxy}}} object to be used by the client. We will also create a constructor for the client passing the client id as a parameter, so the requests performed by this client will be identified with this id.
+
+{{{
+	ServiceProxy clientProxy = null;
+
+	
+	public HashMapClient(int clientId) {
+		clientProxy = new ServiceProxy(clientId);
+	}
+}}}
+
+To make the code clear we will create a class to indicate the request type.
+
+{{{
+public class RequestType {
+	static final int PUT = 1;
+	static final int GET = 2;
+	static final int REMOVE = 3;
+	static final int SIZE = 4;
+}
+}}}
+
+After that, we will implement the {{{put}}} method.
+
+We are using {{{ByteArrayOutputStream}}} and {{{DataOutputStream}}} to convert the data we have to send to byte arrays as the {{{ServiceProxy.invokeOrdered}}} method takes a byte array as parameter. Also, we are calling the invoke ordered method because put is a write call, so it has to be synchronized across all clients to guaranty that all replicas will write the same sequence of values and all clients will see the same table.
+
+{{{
+	@Override
+	public String put(String key, String value) {
+		ByteArrayOutputStream out = new ByteArrayOutputStream();
+		DataOutputStream dos = new DataOutputStream(out);
+		try {
+			dos.writeInt(RequestType.PUT);
+			dos.writeUTF(key);
+			dos.writeUTF(value);
+			byte[] reply = clientProxy.invokeOrdered(out.toByteArray());
+			if(reply != null) {
+				String previousValue = new String(reply);
+				return previousValue;
+			}
+			return null;
+		} catch(IOException ioe) {
+			System.out.println("Exception putting value into hashmap: " + ioe.getMessage());
+			return null;
+		}
+	}
+}}}
+
+The {{{get}}} method is close to the {{{put}}} method. The difference is that in this method we will call the method {{{ServiceProxy.invokeUnordered}}} to read the data. The {{{invokeUnordered}}} method will not call the consensus protocol of BFT-SMaRt to order the requests received from the clients because it is a read request that will not change the state of the application.
+
+{{{
+	@Override
+	public String get(Object key) {
+		try {
+			ByteArrayOutputStream out = new ByteArrayOutputStream();
+			DataOutputStream dos = new DataOutputStream(out);
+			dos.writeInt(RequestType.GET);
+			dos.writeUTF(String.valueOf(key));
+			byte[] reply = clientProxy.invokeUnordered(out.toByteArray());
+			ByteArrayInputStream in = new ByteArrayInputStream(reply);
+			DataInputStream dis = new DataInputStream(in);
+			String value = dis.readUTF();
+			return value;
+		} catch(IOException ioe) {
+			System.out.println("Exception getting value from the hashmap: " + ioe.getMessage());
+			return null;
+		}
+	}
+}}}
+
+The {{{remove}}} method will look like the {{{put}}} method as remove a value is also a write operation.
+
+{{{
+	@Override
+	public String remove(Object key) {
+		ByteArrayOutputStream out = new ByteArrayOutputStream();
+		DataOutputStream dos = new DataOutputStream(out);
+		try {
+			dos.writeInt(RequestType.REMOVE);
+			dos.writeUTF(String.valueOf(key));
+			byte[] reply = clientProxy.invokeOrdered(out.toByteArray());
+			if(reply != null) {
+				String removedValue = new String(reply);
+				return removedValue;
+			}
+			return null;
+		} catch(IOException ioe) {
+			System.out.println("Exception removing value from the hashmap: " + ioe.getMessage());
+			return null;
+		}
+	}
+
+}}}
+
+The {{{size}}} method is almost the same as {{{get}}}, with the difference that it will not pass a parameter to be read. It will only indicate the operation and will invoke it unordered.
+
+{{{
+	@Override
+	public int size() {
+		try {
+			ByteArrayOutputStream out = new ByteArrayOutputStream();
+			DataOutputStream dos = new DataOutputStream(out);
+			dos.writeInt(RequestType.SIZE);
+			byte[] reply = clientProxy.invokeUnordered(out.toByteArray());
+			ByteArrayInputStream in = new ByteArrayInputStream(reply);
+			DataInputStream dis = new DataInputStream(in);
+			int size = dis.readInt();
+			return size;
+		} catch(IOException ioe) {
+			System.out.println("Exception getting the size the hashmap: " + ioe.getMessage());
+			return -1;
+		}
+	}
+}}}
 
 ==Server code==
 
-To process the requests on the server side, the application must implement the interfaces suitable to the business needs and use {{{bftsmart.tom.ServiceReplica}}} class to receive the requests.
-The interfaces to be implemented allows the processing of ordered and unordered requests, transfer and store state, process batch of requests batches and forward replies to clients.
-The interfaces to be implemented are in the package {{{bftsmart.tom.server}}}. The package {{{bftsmart.tom.server.defaultservices}}} contains default implementations for state management.
+To perform the application business on the server, a class must be created to receive the requests from the client and interact with BFT-SMaRt.
+
+BFT-SMaRt requires the server to implement an {{{Executable}}} and a 
+{{{Recoverable}}} interface. The {{{Executable}}} interface define methods to process ordered and unordered requests. The application on the server must implement it's business logic inside these methods.
+
+The {{{Recoverable}}} interface defines methods to manage the state of the application in the presence of faults. It is useful to store the state of the application during it's execution and read the state back in the case of a replica need to receive the state from other replicas due to an outage or to a new replica being added to the system.
+
+In the example we show here, we extend the class {{{DefaultSingleRecoverable}}} that will provide basic code to manage the state of the application, so the developer don't have to code it from the scratch. Its use is not required though. Another option is the {{{DefaultBatchRecoverable}}} that will do the same as the single recoverable but will extend BatchExecutable that receives batches of requests from BFT-SMaRt instead of a single request per time.
+
+{{{
+public class HashMapServer extends DefaultSingleRecoverable {
+
+	ServiceReplica replica = null;
+	private ReplicaContext replicaContext;
+	
+	public HashMapServer(int id) {
+		replica = new ServiceReplica(id, this, this);
+	}
+
+	@Override
+	public void setReplicaContext(ReplicaContext replicaContext) {
+		this.replicaContext = replicaContext;
+	}
+}}}
+
+The first point to note here is that a {{{ServiceReplica}}} object is instantiated. This object will communicate with BFT-SMaRt to get requests and return replies.
+
+The {{{ReplicaContext}}} object is used by the application to retrieve information about the BFT-SMaRt protocol like the current view, communication system and others.
