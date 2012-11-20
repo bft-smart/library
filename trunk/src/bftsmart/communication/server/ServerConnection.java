@@ -511,7 +511,11 @@ public class ServerConnection {
 
                         //read mac
                         boolean result = true;
-                        if (manager.getStaticConf().getUseMACs() == 1) {
+                        
+                        byte hasMAC = socketInStream.readByte();
+                        if (manager.getStaticConf().getUseMACs() == 1 && hasMAC == 1) {
+                            
+                            System.out.println("TTP CON USEMAC");
                             read = 0;
                             do {
                                 read += socketInStream.read(receivedMac, read, macSize - read);
