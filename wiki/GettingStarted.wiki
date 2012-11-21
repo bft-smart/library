@@ -403,4 +403,4 @@ After that the text interface will be displayed and it will be possible to test 
 
 ==Code==
 
-The code written for this example can be found [http://code.google.com/p/bft-smart/wiki/GettingStarted here].
+The code written for this example can be found [http://bft-smart.googlecode.com/svn/example/foo.zip here].
