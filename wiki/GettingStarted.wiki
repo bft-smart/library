@@ -102,9 +102,7 @@ The {{{get}}} method is close to the {{{put}}} method. The difference is that in
 			dos.writeInt(RequestType.GET);
 			dos.writeUTF(String.valueOf(key));
 			byte[] reply = clientProxy.invokeUnordered(out.toByteArray());
-			ByteArrayInputStream in = new ByteArrayInputStream(reply);
-			DataInputStream dis = new DataInputStream(in);
-			String value = dis.readUTF();
+			String value = new String(reply);
 			return value;
 		} catch(IOException ioe) {
 			System.out.println("Exception getting value from the hashmap: " + ioe.getMessage());
@@ -168,6 +166,8 @@ BFT-SMaRt requires the server to implement an {{{Executable}}} and a
 The {{{Recoverable}}} interface defines methods to manage the state of the application in the presence of faults. It is useful to store the state of the application during it's execution and read the state back in the case of a replica need to receive the state from other replicas due to an outage or to a new replica being added to the system.
 
 In the example we show here, we extend the class {{{DefaultSingleRecoverable}}} that will provide basic code to manage the state of the application, so the developer don't have to code it from the scratch. Its use is not required though. Another option is the {{{DefaultBatchRecoverable}}} that will do the same as the single recoverable but will extend BatchExecutable that receives batches of requests from BFT-SMaRt instead of a single request per time.
+
+===Request processing===
 
 {{{
 public class HashMapServer extends DefaultSingleRecoverable {
@@ -265,12 +265,60 @@ After writing the method to perform the ordered operations we will write the met
 	}
 }}}
 
-==Testing==
+===State management===
+
+The management of the application state is important to guarantee availability and durability of the application state despite of failures. During the normal processing of requests, replicas take log of the requests processed and from a pre-defined time take a snapshot of the application state to bound the size of the log. {{{DefaultSingleRecoverable}}} provides basic implementation for the Recoverable methods and left for the application developer the task of define a format and a method for how the state is saved and read again.
+
+We implemented {{{getSnapshot()}}} and {{{installSnapshot(byte[])}}} to respectively save and read back the state. These methods are useful to transfer the state to new replicas, replicas that are to late to process requests or replicas that was disconnected or shutdown and started again.
+
+This implementation is very simple and only saves the state of the application in the memory to be transfered when needed. Other options of implementation could store the state and log in disk or other replicas.
+
+{{{
+	@Override
+	public void installSnapshot(byte[] state) {
+		ByteArrayInputStream bis = new ByteArrayInputStream(state);
+		try {
+			ObjectInput in = new ObjectInputStream(bis);
+			table = (Map<String, String>)in.readObject();
+			in.close();
+			bis.close();
+		} catch (ClassNotFoundException e) {
+			System.out.print("Coudn't find Map: " + e.getMessage());
+			e.printStackTrace();
+		} catch (IOException e) {
+			System.out.print("Exception installing the application state: " + e.getMessage());
+			e.printStackTrace();
+		}
+	}
+
+	@Override
+	public byte[] getSnapshot() {
+		try {
+			ByteArrayOutputStream bos = new ByteArrayOutputStream();
+			ObjectOutputStream out = new ObjectOutputStream(bos);
+			out.writeObject(table);
+			out.flush();
+			out.close();
+			bos.close();
+			return bos.toByteArray();
+		} catch (IOException e) {
+			System.out.println("Exception when trying to take a + " +
+					"snapshot of the application state" + e.getMessage());
+			e.printStackTrace();
+			return new byte[0];
+		}
+	}
+}}}
+
+The interface {{{bftsmart.statemanagement.Recoverable}}} define methods to manage the state of the application. The s
+
+
+==Test==
 
 To test what we have done so far, let's write a small console application to perform operations in the classes we created. This example is similar to the demo found in {{{bftsmart.demo.bftmap.BFTMapInteractiveClient}}}.
 
 {{{
-package bftsmart.gettingstarted.client;
+package foo.gettingstarted.client;
 
 import java.io.Console;
 import java.util.Scanner;
@@ -326,3 +374,29 @@ public class ConsoleClient {
 	}
 }
 }}}
+
+==Running the test===
+
+To run BFT-SMaRt and the test we just created it is necessary to copy and reference all the libraries and classes to the java classpath. To demonstrate how to do this, lets assume the creation of a directory called tmp/ as the root of our test.
+
+It is necessary to have in this directory the BFT-SMaRt configuration files, the libraries and the custom application code we developed.
+
+First, lets create a /temp/lib/ directory and copy all libraries from the BFT-SMaRt/lib/ to there. After that, we will create a /tmp/config/ directory and copy system.config and hosts.config from BFT-SMaRt to there.
+
+If you are running the test in multiple machines, please remember to do this process in all replicas and also to set hosts.config up to reflect the correct IPs for the replicas.
+
+Finally, we will copy the classes created for the test. Lets assume we created a library called foo.jar.
+
+Now, assume you are in the root of the test directory, in this case tmp/.
+
+The command to start the replicas will be:
+
+{{{java -cp lib/BFT-SMaRt.jar:lib/slf4j-api-1.5.8.jar:lib/slf4j-jdk14-1.5.8.jar:lib/netty-3.1.1.GA.jar:lib/commons-codec-1.5.jar:lib/foo.jar foo.gettingstarted.server.HashMapServer 0}}}
+
+It is necessary to instantiate 3f+1 or more replicas to perform this test. Assuming that the protocol will tolerate one faulty replica, it is necessary to start four replicas, so, repeat the process above replace the parameter from 0 to 3.
+
+To run the console client we created, the command line code will be:
+
+java -cp lib/BFT-SMaRt.jar:lib/slf4j-api-1.5.8.jar:lib/slf4j-jdk14-1.5.8.jar:lib/netty-3.1.1.GA.jar:lib/commons-codec-1.5.jar:lib/foo.jar foo.gettingstarted.client.ConsoleClient 1001
+
+After that the text interface will be displayed and it will be possible to test hash map operations defined.
