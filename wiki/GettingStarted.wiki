@@ -31,7 +31,7 @@ We will use as an example a implementation of the {{{java.util.Map}}} interface.
 First, lets start by creating the client implementation of the Map interface:
 
 {{{
-package bftsmart.gettingstarted.client;
+package foo.gettingstarted.client;
 
 import java.util.Collection;
 import java.util.Map;
