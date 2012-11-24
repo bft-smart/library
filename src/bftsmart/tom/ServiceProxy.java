@@ -93,9 +93,6 @@ public class ServiceProxy extends TOMSender {
             init(processId, configHome);
         }
 
-        replyQuorum = (int) Math.ceil((getViewManager().getCurrentViewN()
-                + getViewManager().getCurrentViewF()) / 2) + 1;
-
         replies = new TOMMessage[getViewManager().getCurrentViewN()];
 
         comparator = (replyComparator != null) ? replyComparator : new Comparator<byte[]>() {
@@ -145,6 +142,8 @@ public class ServiceProxy extends TOMSender {
 
     public void invokeAsynchronous(byte[] request, ReplyListener listener, int[] targets) {
         reqId = generateRequestId(TOMMessageType.UNORDERED_REQUEST);
+        replyQuorum = (int) Math.ceil((getViewManager().getCurrentViewN()
+                + getViewManager().getCurrentViewF()) / 2) + 1;
         this.replyListener = listener;
     	if(this.getViewManager().getStaticConf().isTheTTP()) {
     		requestType = TOMMessageType.STATUS_REPLY;
@@ -178,6 +177,8 @@ public class ServiceProxy extends TOMSender {
         receivedReplies = 0;
         response = null;
         replyListener = null;
+        replyQuorum = (int) Math.ceil((getViewManager().getCurrentViewN()
+                + getViewManager().getCurrentViewF()) / 2) + 1;
 
         // Send the request to the replicas, and get its ID
         reqId = generateRequestId(reqType);
@@ -317,7 +318,7 @@ public class ServiceProxy extends TOMSender {
                         reqId = -1;
                         this.sm.release(); // resumes the thread that is executing the "invoke" method
                         break;
-                    }
+                    }                
                 }
             }
             
