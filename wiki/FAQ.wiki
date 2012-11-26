@@ -28,4 +28,16 @@ When a replica is started it has no idea that it is delayed in relation to the o
 
 *5. When I kill a replica, recover it and kill another, the protocol stops working. Is it working?*
 
-The state transfer protocol has several steps and takes some time until a replica is considered recovered. In the case above, we consider that the number of faults tolerated is one, so, we can't have any other fault until the replica is recovered. To test it properly, the first replica has to be shut down, started back and the state transfer initiated. The replica will ask the state for the other replicas, receive it, install it and, only after that it will start processing the requests that as added to a queue while the state was being installed. It may take some time to synchronize the processing with the other replicas. Only after the replica is in processing the requests with the others it is considered back, and then, the protocol tolerates fault in another or in the same replica.
+The state transfer protocol has several steps and takes some time until a replica is considered recovered. In the case above, we consider that the number of faults tolerated is one, so, we can't have any other fault until the replica is recovered. To test it properly, the first replica has to be shut down, started back and the state transfer initiated. The replica will ask the state for the other replicas, receive it, install it and, only after that it will start processing the requests that as added to a queue while the state was being installed. It may take some time to synchronize the processing with the other replicas. Only after the replica is in processing the requests with the others it is considered back, and then, the protocol tolerates fault in another or in the same replica.<br />
+
+*6. I found a bug in BFT-SMaRt. Is there a way to open a ticket or submit a patch proposal?
+
+You can post your findings in our [mailto:bft-smart@googlegroups.com forum]. We will reply as soon as possible.<br />
+
+*7. Should I start all replicas before accepting client's requests?
+
+The BFT-SMaRt protocol works with the assumption of 3f-1 replicas, where f is the number of faulty replicas. Considering that, for f equals 1, only three replicas are needed for the protocol to work. For f equals 2, five replicas are needed and so on. Remember that, having only the necessary replicas running, the system won't tolerate any additional fauld, as the replicas not up are considered faulty.
+
+*8. How can I change the leader in BFT-SMaRt?
+
+The leader of the protocol is not chosen by the client or the anyone that administer the system. The protocol votes for new leader in case of the current one not fulfilling the timeout assumptions defined. It the leader stops behaving as expected, timeouts may occur and replicas noticing that propose messages are taking longer than expected to arrive, will start a leader change protocol.<br />
