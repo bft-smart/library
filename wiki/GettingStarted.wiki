@@ -391,13 +391,17 @@ Now, assume you are in the root of the test directory, in this case tmp/.
 
 The command to start the replicas will be:
 
-{{{java -cp lib/BFT-SMaRt.jar:lib/slf4j-api-1.5.8.jar:lib/slf4j-jdk14-1.5.8.jar:lib/netty-3.1.1.GA.jar:lib/commons-codec-1.5.jar:lib/foo.jar foo.gettingstarted.server.HashMapServer 0}}}
+<code language="sh">
+$ java -cp lib/BFT-SMaRt.jar:lib/slf4j-api-1.5.8.jar:lib/slf4j-jdk14-1.5.8.jar:lib/netty-3.1.1.GA.jar:lib/commons-codec-1.5.jar:lib/foo.jar foo.gettingstarted.server.HashMapServer 0
+</code>
 
 It is necessary to instantiate 3f+1 or more replicas to perform this test. Assuming that the protocol will tolerate one faulty replica, it is necessary to start four replicas, so, repeat the process above replace the parameter from 0 to 3.
 
 To run the console client we created, the command line code will be:
 
-java -cp lib/BFT-SMaRt.jar:lib/slf4j-api-1.5.8.jar:lib/slf4j-jdk14-1.5.8.jar:lib/netty-3.1.1.GA.jar:lib/commons-codec-1.5.jar:lib/foo.jar foo.gettingstarted.client.ConsoleClient 1001
+<code language="sh">
+$ java -cp lib/BFT-SMaRt.jar:lib/slf4j-api-1.5.8.jar:lib/slf4j-jdk14-1.5.8.jar:lib/netty-3.1.1.GA.jar:lib/commons-codec-1.5.jar:lib/foo.jar foo.gettingstarted.client.ConsoleClient 1001
+</code>
 
 After that the text interface will be displayed and it will be possible to test hash map operations defined.
 
