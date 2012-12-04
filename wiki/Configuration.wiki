@@ -16,7 +16,7 @@ In this file there are several options to configure the replication protocol, nu
 || {{{system.servers.num}}} || Number of servers in the system || integer || 4 ||
 || {{{system.servers.f}}} || Maximum number of faulty replicas supported || integer || 1 ||
 || {{{system.totalordermulticast.timeout}}} || Time that a replica waits for the propose of a request. If the request is not proposed by the leader within the interval defined, the replica invokes the leader change protocol || integer (milliseconds) || 10000 ||
-|| {{{system.totalordermulticast.highMark}}} || Maximum ahead-of-time message not discarded. When a replica is delayed it stores the consensus in an out of context queue.\n If the number of consensus to be processed is above the value defined in this parameter, the replicas discard the messages and invoke the state transfer protocol || integer (milliseconds) || 10000 ||
+|| {{{system.totalordermulticast.highMark}}} || Maximum ahead-of-time message not discarded. When a replica is delayed it stores the consensus in an out-of-context queue.\n If the number of consensus to be processed is above the value defined in this parameter, the replicas discard the messages and invoke the state transfer protocol || integer || 10000 ||
 || {{{system.totalordermulticast.maxtachsize}}} || Maximun number of messages to be included in a single propose message || integer || 400 ||
 || {{{system.total.ordermulticast.nonces}}} || Number of nonces (for non-determinism actions) generated || integer || 0 ||
 || {{{system.communication.inQueueSize}}} || Number of messages that can be stored in the receive queue of the communication system || integer || 100000 ||
