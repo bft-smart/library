@@ -46,9 +46,17 @@ public class TOMConfiguration extends Configuration {
     private int useSignatures;
     private boolean stateTransferEnabled;
     private int checkpointPeriod;
+    private int globalCheckpointPeriod;
     private int useControlFlow;
     private int[] initialView;
     private int ttpId;
+	private boolean isToLog;
+	private boolean syncLog;
+	private boolean parallelLog;
+	private boolean logToDisk;
+	private boolean isToWriteCkpsToDisk;
+	private boolean syncCkp;
+    
     
     /** Creates a new instance of TOMConfiguration */
     public TOMConfiguration(int processId) {
@@ -252,6 +260,60 @@ public class TOMConfiguration extends Configuration {
                 }
             }
 
+			s = (String) configs.remove("system.totalordermulticast.log");
+			if (s != null) {
+				isToLog = Boolean.parseBoolean(s);
+			} else {
+				isToLog = false;
+			}
+
+			s = (String) configs
+					.remove("system.totalordermulticast.log_parallel");
+			if (s != null) {
+				parallelLog = Boolean.parseBoolean(s);
+			} else {
+				parallelLog = false;
+			}
+
+			s = (String) configs
+					.remove("system.totalordermulticast.log_to_disk");
+			if (s != null) {
+				logToDisk = Boolean.parseBoolean(s);
+			} else {
+				logToDisk = false;
+			}
+			
+			s = (String) configs
+					.remove("system.totalordermulticast.sync_log");
+			if (s != null) {
+				syncLog = Boolean.parseBoolean(s);
+			} else {
+				syncLog = false;
+			}
+
+			s = (String) configs
+					.remove("system.totalordermulticast.checkpoint_to_disk");
+			if (s == null) {
+				isToWriteCkpsToDisk = false;
+			} else {
+				isToWriteCkpsToDisk = Boolean.parseBoolean(s);
+			}
+			
+			s = (String) configs
+					.remove("system.totalordermulticast.sync_ckp");
+			if (s == null) {
+				syncCkp = false;
+			} else {
+				syncCkp = Boolean.parseBoolean(s);
+			}
+
+            s = (String) configs.remove("system.totalordermulticast.global_checkpoint_period");
+            if (s == null) {
+                globalCheckpointPeriod = 1;
+            } else {
+                globalCheckpointPeriod = Integer.parseInt(s);
+            }
+            
             rsaLoader = new RSAKeyLoader(this, TOMConfiguration.configHome);
 
         } catch (Exception e) {
@@ -365,6 +427,38 @@ public class TOMConfiguration extends Configuration {
      */
     public int getCheckpointPeriod() {
         return checkpointPeriod;
+    }
+
+	public boolean isToWriteCkpsToDisk() {
+		return isToWriteCkpsToDisk;
+	}
+	
+	public boolean isToWriteSyncCkp() {
+		return syncCkp;
+	}
+
+	public boolean isToLog() {
+		return isToLog;
+	}
+
+	public boolean isToWriteSyncLog() {
+		return syncLog;
+	}
+
+	public boolean logToDisk() {
+		return logToDisk;
+	}
+
+	public boolean isToLogParallel() {
+		// TODO Auto-generated method stub
+		return parallelLog;
+	}
+
+    /**
+     * Indicates the checkpoint period used when fetching the state from the application
+     */
+    public int getGlobalCheckpointPeriod() {
+        return globalCheckpointPeriod;
     }
 
     /**

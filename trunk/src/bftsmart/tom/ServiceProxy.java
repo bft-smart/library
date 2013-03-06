@@ -142,6 +142,7 @@ public class ServiceProxy extends TOMSender {
 
     public void invokeAsynchronous(byte[] request, ReplyListener listener, int[] targets) {
         reqId = generateRequestId(TOMMessageType.UNORDERED_REQUEST);
+        requestType = TOMMessageType.UNORDERED_REQUEST;
         replyQuorum = (int) Math.ceil((getViewManager().getCurrentViewN()
                 + getViewManager().getCurrentViewF()) / 2) + 1;
         this.replyListener = listener;
@@ -272,9 +273,9 @@ public class ServiceProxy extends TOMSender {
     //******* EDUARDO END **************//
 
     /**
-     * This is the method invoked by the client side comunication system.
+     * This is the method invoked by the client side communication system.
      *
-     * @param reply The reply delivered by the client side comunication system
+     * @param reply The reply delivered by the client side communication system
      */
     @Override
     public void replyReceived(TOMMessage reply) {
