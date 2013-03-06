@@ -87,9 +87,11 @@ public class BFTMap implements Map<String, Map<String,byte[]>> {
 			return table;
 
 		} catch (ClassNotFoundException ex) {
+			ex.printStackTrace();
 			Logger.getLogger(BFTMap.class.getName()).log(Level.SEVERE, null, ex);
 			return null;
 		} catch (IOException ex) {
+			ex.printStackTrace();
 			Logger.getLogger(BFTMap.class.getName()).log(Level.SEVERE, null, ex);
 			return null;
 		}
@@ -105,6 +107,7 @@ public class BFTMap implements Map<String, Map<String,byte[]>> {
 			byte[] rep = KVProxy.invokeOrdered(out.toByteArray());
 			return rep;
 		} catch (IOException ex) {
+			ex.printStackTrace();
 			Logger.getLogger(BFTMap.class.getName()).log(Level.SEVERE, null, ex);
 			return null;
 		}
@@ -189,8 +192,8 @@ public class BFTMap implements Map<String, Map<String,byte[]>> {
 			ByteArrayInputStream in = new ByteArrayInputStream(rep);
 			boolean res = new DataInputStream(in).readBoolean();
 			return res;
-
 		} catch (IOException ex) {
+			ex.printStackTrace();
 			Logger.getLogger(BFTMap.class.getName()).log(Level.SEVERE, null, ex);
 			return false;
 		}

@@ -5,7 +5,6 @@
 package bftsmart.reconfiguration;
 
 import java.net.InetSocketAddress;
-
 import bftsmart.reconfiguration.views.View;
 
 /**
@@ -39,8 +38,8 @@ public class ClientViewManager extends ViewManager{
     public void updateCurrentViewFromRepository(){
          this.currentView = getViewStore().readView();
     }
+    
     private InetSocketAddress[] getInitAdddresses() {
-
         int nextV[] = getStaticConf().getInitialView();
         InetSocketAddress[] addresses = new InetSocketAddress[nextV.length];
         for (int i = 0; i < nextV.length; i++) {

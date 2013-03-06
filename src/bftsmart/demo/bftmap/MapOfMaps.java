@@ -27,10 +27,10 @@ public class MapOfMaps implements Serializable {
 	public byte[] addData(String tableName, String key, byte[] value) {
 		Map<String,byte[]> table = tableMap.get(tableName);
 		if (table == null) { 
-                    System.out.println("Non-existant table: "+tableName);
-                    return null;
-                }
-		byte[] ret = table.put(key,value);
+            System.out.println("Non-existant table: "+tableName);
+            return null;
+        }
+		byte[] ret = table.put(key, value);
 		return ret;
 	}
 

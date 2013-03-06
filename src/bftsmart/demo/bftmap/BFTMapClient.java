@@ -2,13 +2,12 @@ package bftsmart.demo.bftmap;
 import java.util.TreeMap;
 import java.util.Random;
 
-public class BFTMapClient
-{
-	static int inc = 0;
+public class BFTMapClient {
+	
+	private static int VALUE_SIZE = 1024;
 
 	public static void main(String[] args){
-		if(args.length < 2)
-		{
+		if(args.length < 1) {
 			System.out.println("Usage: java BFTMapClient <process id>");
 			System.exit(-1);
 		}
@@ -16,27 +15,29 @@ public class BFTMapClient
 		int idProcess = Integer.parseInt(args[0]);//get process id
 
 		BFTMap bftMap = new BFTMap(idProcess);
-		String tableName = "table-"+idProcess;
+		String tableName = "table";
 
 		try {
 			createTable(bftMap,tableName);
 		} catch (Exception e1) {
+			e1.printStackTrace();
 			System.out.println("Problems: Inserting a new value into the table("+tableName+"): "+e1.getLocalizedMessage());
-			System.exit(1);	
+			System.exit(1);
 		}
 		
+		int ops = 0;
 		while(true)	{
 			try {
-				boolean result = insertValue(bftMap,tableName);
-				if(!result)
-				{
-					System.out.println("Problems: Inserting a new value into the table("+tableName+")");
-					System.exit(1);	
+				boolean result = insertValue(bftMap,tableName,ops);
+				if(!result) {
+//					System.out.println("Problems: Inserting a new value into the table("+tableName+")");
+//					System.exit(1);	
 				}
 
-				int sizeTable = getSizeTable(bftMap, tableName);
-				
-				System.out.println("Size of the table("+tableName+"): "+sizeTable);
+				if(ops % 1000 == 0)
+					System.out.println("ops sent: "+ops);
+				ops++;
+				Thread.sleep(10);
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
@@ -47,29 +48,28 @@ public class BFTMapClient
 		boolean tableExists;
 
 		tableExists = bftMap.containsKey(nameTable);
+		System.out.println("tableExists:" + tableExists);
 		if (tableExists == false)
 			bftMap.put(nameTable, new TreeMap<String,byte[]>());
+		System.out.println("Created the table. Maybe");
 
 		return tableExists;
 	}
 
-	private static boolean insertValue(BFTMap bftMap, String nameTable) throws Exception
-	{
-
-		String key = "Key" + (inc++);
-		String value = Integer.toString(new Random().nextInt());
-		byte[] valueBytes = value.getBytes();
-
+	private static boolean insertValue(BFTMap bftMap, String nameTable, int index) throws Exception {
+		String key = "Key" + index;
+		Random rand = new Random();
+		byte[] valueBytes = new byte[VALUE_SIZE];
+		rand.nextBytes(valueBytes);
 		byte[] resultBytes = bftMap.putEntry(nameTable, key, valueBytes);
-		if(resultBytes== null)
-			throw new Exception();
-//		System.out.println("Result : "+new String(resultBytes));
-
+//		System.out.println("resultBytes" + resultBytes);
+		if(resultBytes == null)
+			return false;
 		return true;
+		
 	}
 
-	private static int getSizeTable(BFTMap bftMap, String tableName) throws Exception
-	{
+	private static int getSizeTable(BFTMap bftMap, String tableName) throws Exception {
 		int res = bftMap.size1(tableName);
 		if(res == -1)
 			throw new Exception();

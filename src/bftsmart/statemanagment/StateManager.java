@@ -1,14 +1,14 @@
 /**
- * Copyright (c) 2007-2009 Alysson Bessani, Eduardo Alchieri, Paulo Sousa, and the authors indicated in the @author tags
+ * Copyright (c) 2007-2013 Alysson Bessani, Eduardo Alchieri, Paulo Sousa, and the authors indicated in the @author tags
  *
- * This file is part of SMaRt.
+ * This file is part of BFT-SMaRt.
  *
- * SMaRt is free software: you can redistribute it and/or modify
+ * BFT-SMaRt is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * SMaRt is distributed in the hope that it will be useful,
+ * BFT-SMaRt is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
@@ -65,8 +65,8 @@ public class StateManager {
     private LCManager lcManager;
     private ExecutionManager execManager;
     
-    private boolean appStateOnly;
-    private final static long INIT_TIMEOUT = 5000;
+    private boolean appStateOnly; // true == leader change
+    private final static long INIT_TIMEOUT = 40000;
     private long timeout = INIT_TIMEOUT;
     
     public StateManager(ServerViewManager manager, TOMLayer tomLayer, DeliveryThread dt, LCManager lcManager, ExecutionManager execManager) {
@@ -241,7 +241,7 @@ public class StateManager {
         return waitingEid;
     }
 
-    public void setWaiting(int wait) {
+    private void setWaiting(int wait) {
         this.waitingEid = wait;
     }
     public void setLastEID(int eid) {
@@ -485,7 +485,7 @@ public class StateManager {
                     if (stateTimer != null) stateTimer.cancel();
                 }
 
-                addState(msg.getSender(),msg.getState());
+                addState(msg.getSender(), msg.getState());
 
                 if (moreThanF_Replies()) {
 

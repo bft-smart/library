@@ -72,6 +72,15 @@ public class StateLog {
         this.lastEid = -1;
     }
 
+    public StateLog(byte[] initialState, byte[] initialHash) {
+        this.lastCheckpointEid = -1;
+        this.lastCheckpointRound = -1;
+        this.lastCheckpointLeader = -1;
+        this.state = initialState;
+        this.stateHash = initialHash;
+        this.lastEid = -1;
+	}
+    
     /**
      * Sets the state associated with the last checkpoint, and updates the execution ID associated with it
      * @param state State associated with the last checkpoint
