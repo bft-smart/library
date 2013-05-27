@@ -20,7 +20,7 @@ There is a script created to setup the packages and required libraries. This scr
 The client_id parameter accepted in BFT-SMaRt clients is used as an unique identifier of the client. It is essential for the protocol to order the messages consistently across the replicas. If the protocol is using client signatures, a key with the clients and servers keys must be provided in the config/keys. For testing purposes, several keys are delivered with the source code.
 The parameter system.communication.useSignatures in system.config defines if signatures will be considered or not.
 
-==CounterServer!==
+==!CounterServer==
 
 CounterServer is an application where clients submits messages to replica, messages are ordered and the throughput is displayed to the user. It has no real application but is useful to verify the system functioning and performance.
 
