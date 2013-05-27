@@ -15,7 +15,7 @@ Before running the protocol, the configuration file config/hosts.config must be 
 2 localhost 11236<br />
 3 localhost 11237<br /> 
 
-There is a script created to setup the packages and required libraries. This script is "runsmart.bat" in Windows and "runsmart.sh" script em UNIX-like systems (Linux, MacOS, etc.). These scripts can easily be adapted to run other demos or use BFT-SMaRt in other operating systems.
+There is a script created to setup the packages and required libraries. This script is "runsmart.bat" in Windows and "runsmart.sh" script em UNIX-like systems (Linux, MacOS, etc.). These scripts can easily be adapted to run other demos or use BFT-SMaRt in other operating systems. It is important to run the scripts from the BFT-SMaRt root folder, as it is considered the base do find the libraries.
 
 The client_id parameter accepted in BFT-SMaRt clients is used as an unique identifier of the client. It is essential for the protocol to order the messages consistently across the replicas. If the protocol is using client signatures, a key with the clients and servers keys must be provided in the config/keys. For testing purposes, several keys are delivered with the source code.
 The parameter system.communication.useSignatures in system.config defines if signatures will be considered or not.
@@ -26,10 +26,10 @@ The parameter system.communication.useSignatures in system.config defines if sig
 
 ===Start the servers (4 replicas, to tolerate 1 fault)===
 
-{{{smartrun.sh bftsmart.demo.counter.CounterServer 0}}}<br/>
-{{{smartrun.sh bftsmart.demo.counter.CounterServer 1}}}<br/>
-{{{smartrun.sh bftsmart.demo.counter.CounterServer 2}}}<br/>
-{{{smartrun.sh bftsmart.demo.counter.CounterServer 3}}}<br/>
+{{{runscripts/smartrun.sh bftsmart.demo.counter.CounterServer 0}}}<br/>
+{{{runscripts/smartrun.sh bftsmart.demo.counter.CounterServer 1}}}<br/>
+{{{runscripts/smartrun.sh bftsmart.demo.counter.CounterServer 2}}}<br/>
+{{{runscripts/smartrun.sh bftsmart.demo.counter.CounterServer 3}}}<br/>
 
 The only parameter is the replica id that must be assigned sequentially starting on 0.
 
@@ -38,7 +38,7 @@ The only parameter is the replica id that must be assigned sequentially starting
 #if {{{<increment>}}} equals 0 the request will be read-only
 #default {{{<number of operations>}}} equals 1000
 
-{{{smartrun.sh bftsmart.demo.counter.CounterClient <client_id> <increment> [<number of operations>]}}}
+{{{runscripts/smartrun.sh bftsmart.demo.counter.CounterClient <client_id> <increment> [<number of operations>]}}}
 
 ==BFTMap==
 
@@ -47,16 +47,16 @@ It creates a !HashMap in the server and the replicas maintain the state of the t
 
 ===Start the servers (4 replicas, to tolerate 1 fault)===
 
-{{{smartrun.sh bftsmart.demo.bftmap.BFTMapServer 0}}}<br/>
-{{{smartrun.sh bftsmart.demo.bftmap.BFTMapServer 1}}}<br/>
-{{{smartrun.sh bftsmart.demo.bftmap.BFTMapServer 2}}}<br/>
-{{{smartrun.sh bftsmart.demo.bftmap.BFTMapServer 3}}}<br/>
+{{{runscripts/smartrun.sh bftsmart.demo.bftmap.BFTMapServer 0}}}<br/>
+{{{runscripts/smartrun.sh bftsmart.demo.bftmap.BFTMapServer 1}}}<br/>
+{{{runscripts/smartrun.sh bftsmart.demo.bftmap.BFTMapServer 2}}}<br/>
+{{{runscripts/smartrun.sh bftsmart.demo.bftmap.BFTMapServer 3}}}<br/>
 
 The only parameter is the replica id that must be assigned sequentially starting on 0.
 
 ===Start a client===
 
-{{{smartrun.sh bftsmart.demo.bftmap.BFTMapClient <client_id>}}}
+{{{runscripts/smartrun.sh bftsmart.demo.bftmap.BFTMapClient <client_id>}}}
 
 This client will send repeated keys to the server until the process is killed.
 It is useful when several different clients are created, so it is possible to verify the ordering and concurrent execution of the messages.
@@ -65,6 +65,6 @@ Another client for the BFTMap demo is BFTMapInteractiveClient. That client works
 
 The command line to start the client is:
 
-{{{smartrun.sh bftsmart.demo.bftmap.BFTMapInteractiveClient <client_id>}}}
+{{{runscripts/smartrun.sh bftsmart.demo.bftmap.BFTMapInteractiveClient <client_id>}}}
 
 After start the client, instructions will be displayed on how to input values.
