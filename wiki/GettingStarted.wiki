@@ -22,7 +22,9 @@ Let's use as example this configuration:
 
 For each line, the first parameter is the replica id, that is the parameter used when starting a replica. We will get to that later. The second parameter is the ip address and the third is the port. This information should be the same in all servers.
 
-By now you should be able to start replicas and run demo examples that come together with the BFT-SMaRt distribution. Now we describe how to extend BFT-SMaRt to build your own application.
+By now you should be able to start replicas and run demo examples that come together with the BFT-SMaRt distribution. Instructions to run the demos deployed with BFT-SMaRt, please see the demos page.
+
+Next, we describe how to extend BFT-SMaRt to build your own application.
 
 We will use as an example a implementation of the {{{java.util.Map}}} interface. In this example, multiple clients will be able to perform operations in a HashMap and the data will be replicated in several replicas.
 
