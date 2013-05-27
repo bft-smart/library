@@ -1,6 +1,6 @@
 = Creating your own application =
 
-BFT-SMaRt provides a middleware to replicate request from multiple clients to multiple servers. In order to use it, first, BFT-SMaRt has to be downloaded and installed.
+BFT-SMaRt provides a middleware to replicate request from multiple clients to multiple servers. This page has the instructions to download and install BFT-SMaRt.
 
 ==Installation==
 First, go to the Downloads page and download the latest stable version of BFT-SMaRt.
