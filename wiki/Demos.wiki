@@ -22,7 +22,7 @@ The parameter system.communication.useSignatures in system.config defines if sig
 
 ==!CounterServer==
 
-CounterServer is an application where clients submits messages to replica, messages are ordered and the throughput is displayed to the user. It has no real application but is useful to verify the system functioning and performance.
+!CounterServer is an application where clients submits messages to replica, messages are ordered and the throughput is displayed to the user. It has no real application but is useful to verify the system functioning and performance.
 
 ===Start the servers (4 replicas, to tolerate 1 fault)===
 
@@ -43,7 +43,7 @@ The only parameter is the replica id that must be assigned sequentially starting
 ==BFTMap==
 
 BFTMap is a table of tables simulating a database.
-It creates a HashMap in the server and the replicas maintain the state of the table with the operations executed by the clients.
+It creates a !HashMap in the server and the replicas maintain the state of the table with the operations executed by the clients.
 
 ===Start the servers (4 replicas, to tolerate 1 fault)===
 
