@@ -20,7 +20,7 @@ Let's use as example this configuration:
 2 127.0.0.3 10001<br />
 3 127.0.0.4 10001
 
-For each line, the first parameter is the replica id, that is the parameter used when starting a replica. We will get to that later. The second parameter is the ip address and the third is the port. Remembering that this information should be the same in all servers.
+For each line, the first parameter is the replica id, that is the parameter used when starting a replica. We will get to that later. The second parameter is the ip address and the third is the port. This information should be the same in all servers.
 
 By now you should be able to start replicas and run demo examples that come together with the BFT-SMaRt distribution. We will continuing with an example on how to extend BFT-SMaRt to build your own application.
 
