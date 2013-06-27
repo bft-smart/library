@@ -47,6 +47,7 @@ public class ServiceProxy extends TOMSender {
     private ReentrantLock canSendLock = new ReentrantLock();
     private Semaphore sm = new Semaphore(0);
     private int reqId = -1; // request id
+    private int operationId = -1; // request id
     private TOMMessageType requestType; 
     private int replyQuorum = 0; // size of the reply quorum
     private TOMMessage replies[] = null; // Replies from replicas are stored here
@@ -140,24 +141,27 @@ public class ServiceProxy extends TOMSender {
         return invoke(request, TOMMessageType.UNORDERED_REQUEST);
     }
 
-    public void invokeAsynchronous(byte[] request, ReplyListener listener, int[] targets) {
-        reqId = generateRequestId(TOMMessageType.UNORDERED_REQUEST);
-        requestType = TOMMessageType.UNORDERED_REQUEST;
+    public void invokeAsynchronous(byte[] request, ReplyListener listener, int[] targets, TOMMessageType type) {
+    	canSendLock.lock();
+        reqId = generateRequestId(type);
+        operationId = generateOperationId();
+        requestType = type;
         replyQuorum = (int) Math.ceil((getViewManager().getCurrentViewN()
                 + getViewManager().getCurrentViewF()) / 2) + 1;
         this.replyListener = listener;
     	if(this.getViewManager().getStaticConf().isTheTTP()) {
-    		requestType = TOMMessageType.STATUS_REPLY;
+    		type = TOMMessageType.STATUS_REPLY;
 	        try {
-	        	sendMessageToTargets(request, reqId, targets);
+	        	sendMessageToTargets(request, reqId, operationId, targets, type);
 	        } catch(RuntimeException re) {
 	        	if(re.getMessage().equals("Server not connected")) {
-	        		TOMMessage tm = new TOMMessage(targets[0], 0, reqId, TOMUtil.getBytes(StatusReply.OFFLINE.toString()), 0, requestType);
+	        		TOMMessage tm = new TOMMessage(targets[0], 0, reqId, TOMUtil.getBytes(StatusReply.OFFLINE.toString()), 0, type);
 	        		listener.replyReceived(tm);
 	        	}
 	        }
     	} else
-        	sendMessageToTargets(request, reqId, targets);
+        	sendMessageToTargets(request, reqId, operationId, targets, type);
+    	canSendLock.unlock();
     }
 
     /**
@@ -183,8 +187,9 @@ public class ServiceProxy extends TOMSender {
 
         // Send the request to the replicas, and get its ID
         reqId = generateRequestId(reqType);
-        requestType = reqType; 
-        TOMulticast(request, reqId, reqType);
+        operationId = generateOperationId();
+        requestType = reqType;
+        TOMulticast(request, reqId, operationId, reqType);
 
         Logger.println("Sending request (" + reqType + ") with reqId=" + reqId);
         Logger.println("Expected number of matching replies: " + replyQuorum);

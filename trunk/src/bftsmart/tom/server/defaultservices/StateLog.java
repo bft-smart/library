@@ -101,7 +101,6 @@ public class StateLog {
      * @param lastCheckpointEid Execution ID for the last checkpoint
      */
     public void setLastCheckpointEid(int lastCheckpointEid) {
-
         this.lastCheckpointEid = lastCheckpointEid;
     }
 
@@ -238,9 +237,7 @@ public class StateLog {
 
         int lastEid = -1;
 
-        if (/*lastCheckpointEid > -1 && */eid >= lastCheckpointEid && eid <= this.lastEid) {
-
-             //if  (eid <= this.lastEid) {
+        if (eid >= lastCheckpointEid && eid <= this.lastEid) {
             int size = eid - lastCheckpointEid ;
 
             if (size > 0) {
@@ -250,11 +247,6 @@ public class StateLog {
                     batches[i] = messageBatches[i];
             }
             lastEid = eid;
-             //} else if (this.lastEid > -1) {
-
-             //       batches = messageBatches;
-             //       lastEid = this.lastEid;
-             //}
             return new DefaultApplicationState(batches, lastCheckpointEid, lastCheckpointRound, lastCheckpointLeader, lastEid, (setState ? state : null), stateHash);
 
         }

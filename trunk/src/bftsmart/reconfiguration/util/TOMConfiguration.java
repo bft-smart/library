@@ -314,7 +314,7 @@ public class TOMConfiguration extends Configuration {
                 globalCheckpointPeriod = Integer.parseInt(s);
             }
             
-            rsaLoader = new RSAKeyLoader(this, TOMConfiguration.configHome);
+            rsaLoader = new RSAKeyLoader(TOMConfiguration.configHome);
 
         } catch (Exception e) {
             e.printStackTrace(System.err);
@@ -359,7 +359,7 @@ public class TOMConfiguration extends Configuration {
     public int getF() {
         return f;
     }
-
+    
     public int getPaxosHighMark() {
         return paxosHighMark;
     }
@@ -468,9 +468,9 @@ public class TOMConfiguration extends Configuration {
         return useControlFlow;
     }
 
-    public PublicKey getRSAPublicKey(int id) {
+    public PublicKey getRSAPublicKey() {
         try {
-            return rsaLoader.loadPublicKey(id);
+            return rsaLoader.loadPublicKey();
         } catch (Exception e) {
             e.printStackTrace(System.err);
             return null;

@@ -6,7 +6,7 @@ package bftsmart.demo.counter;
 
 import java.util.Arrays;
 
-import bftsmart.statemanagment.ApplicationState;
+import bftsmart.statemanagement.ApplicationState;
 
 /**
  *

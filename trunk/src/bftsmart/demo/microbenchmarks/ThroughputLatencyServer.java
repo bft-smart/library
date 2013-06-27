@@ -18,11 +18,12 @@
 
 package bftsmart.demo.microbenchmarks;
 
-import bftsmart.statemanagment.ApplicationState;
+import bftsmart.statemanagement.ApplicationState;
+import bftsmart.statemanagement.StateManager;
+import bftsmart.statemanagement.strategy.StandardStateManager;
 import bftsmart.tom.MessageContext;
 import bftsmart.tom.ReplicaContext;
 import bftsmart.tom.ServiceReplica;
-import bftsmart.tom.server.Executable;
 import bftsmart.tom.server.Recoverable;
 import bftsmart.tom.server.SingleExecutable;
 import bftsmart.tom.util.Storage;
@@ -51,6 +52,8 @@ public final class ThroughputLatencyServer implements SingleExecutable, Recovera
     private Storage strongLatency = null;
     private ServiceReplica replica;
     private ReplicaContext replicaContext;
+
+    private StateManager stateManager;
 
     public ThroughputLatencyServer(int id, int interval, int replySize, int stateSize, boolean context) {
         replica = new ServiceReplica(id, this, this);
@@ -164,4 +167,12 @@ public final class ThroughputLatencyServer implements SingleExecutable, Recovera
     public int setState(ApplicationState state) {
         throw new UnsupportedOperationException("Not supported yet.");
     }
+
+    @Override
+    public StateManager getStateManager() {
+    	if(stateManager == null)
+    		stateManager = new StandardStateManager();
+    	return stateManager;
+    }
+   
 }

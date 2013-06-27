@@ -90,7 +90,7 @@ public class ServerViewManager extends ViewManager {
 
     public void enqueueUpdate(TOMMessage up) {
         ReconfigureRequest request = (ReconfigureRequest) TOMUtil.getObject(up.getContent());
-        if (TOMUtil.verifySignature(getStaticConf().getRSAPublicKey(request.getSender()),
+        if (TOMUtil.verifySignature(getStaticConf().getRSAPublicKey(),
                 request.toString().getBytes(), request.getSignature())) {
             if (request.getSender() == getStaticConf().getTTPId()) {
                 this.updates.add(up);

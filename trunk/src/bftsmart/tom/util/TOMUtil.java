@@ -22,6 +22,8 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.Signature;
@@ -217,4 +219,16 @@ public class TOMUtil {
     public static boolean equalsHash(byte[] h1, byte[] h2) {
         return Arrays.equals(h2, h2);
     }
+
+	public static final byte[] computeHash(byte[] data) {
+		MessageDigest md = null;
+		try {
+			md = MessageDigest.getInstance("MD5");
+		} catch (NoSuchAlgorithmException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} // TODO: shouldn't it be SHA?
+		return md.digest(data);
+	}
+
 }

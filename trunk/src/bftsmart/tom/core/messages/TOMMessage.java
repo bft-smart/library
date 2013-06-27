@@ -41,7 +41,10 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 	//******* EDUARDO END **************//
 
 	private int session; // Sequence number defined by the client
-	private int sequence; // Sequence number defined by the client
+	// Sequence number defined by the client.
+	// There is a sequence number for ordered and anothre for unordered messages
+	private int sequence;
+	private int operationId; // Sequence number defined by the client
 
 	private byte[] content = null; // Content of the message
 
@@ -78,6 +81,7 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 	public TOMMessage() {
 	}
 
+
 	/**
 	 * Creates a new instance of TOMMessage
 	 *
@@ -102,15 +106,30 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 	 * @param type Type of the request
 	 */
 	public TOMMessage(int sender, int session, int sequence, byte[] content, int view, TOMMessageType type) {
+		this(sender, session, sequence, -1, content, view, type);
+	}
+
+	/**
+	 * Creates a new instance of TOMMessage. This one has an operationId parameter
+	 * used for FIFO executions
+	 * @param sender The client id
+	 * @param session The session id of the sender
+	 * @param sequence The sequence number created based on the message type
+	 * @param operationId The operation sequence number disregarding message type
+	 * @param content The command to be executed
+	 * @param view The view in which the message was sent
+	 * @param type Ordered or Unordered request
+	 */
+	public TOMMessage(int sender, int session, int sequence, int operationId, byte[] content, int view, TOMMessageType type) {
 		super(sender);
 		this.session = session;
 		this.sequence = sequence;
+		this.operationId = operationId;
 		this.viewID = view;
 		buildId();
 		this.content = content;
 		this.type = type;
 	}
-
 
 
 	/** THIS IS JOAO'S CODE, FOR DEBUGGING */
@@ -147,6 +166,10 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 	 */
 	public int getSequence() {
 		return sequence;
+	}
+	
+	public int getOperationId() {
+		return operationId;
 	}
 
 	public int getViewID() {
@@ -192,7 +215,7 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 
 		TOMMessage mc = (TOMMessage) o;
 
-		return (mc.getSender() == sender) && (mc.getSequence() == sequence);
+		return (mc.getSender() == sender) && (mc.getSequence() == sequence) && (mc.getOperationId() == operationId);
 	}
 
 	@Override
@@ -200,6 +223,7 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 		int hash = 5;
 		hash = 59 * hash + this.sequence;
 		hash = 59 * hash + this.getSender();
+		hash = 59 * hash + this.getOperationId();
 		return hash;
 	}
 
@@ -214,6 +238,7 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 		out.writeInt(type.toInt());
 		out.writeInt(session);
 		out.writeInt(sequence);
+		out.writeInt(operationId);
 
 		if (content == null) {
 			out.writeInt(-1);
@@ -229,6 +254,7 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 		type = TOMMessageType.fromInt(in.readInt());
 		session = in.readInt();
 		sequence = in.readInt();
+		operationId = in.readInt();
 
 		int toRead = in.readInt();
 		if (toRead != -1) {
@@ -274,7 +300,7 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 		 try{
 			 m.rExternal(dis);
 		 }catch(Exception e) {
-			 System.out.println("deu merda "+e);
+			 System.out.println("error on bytesToMessage " + e);
 			 return null;
 		 }
 
@@ -305,6 +331,11 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 		 if (this.getSequence() < tm.getSequence())
 			 return BEFORE;
 		 if (this.getSequence() > tm.getSequence())
+			 return AFTER;
+
+		 if(this.getOperationId() < tm.getOperationId())
+			 return BEFORE;
+		 if(this.getOperationId() > tm.getOperationId())
 			 return AFTER;
 
 		 return EQUAL;

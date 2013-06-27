@@ -10,7 +10,9 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Level;
 
 import bftsmart.reconfiguration.util.TOMConfiguration;
-import bftsmart.statemanagment.ApplicationState;
+import bftsmart.statemanagement.ApplicationState;
+import bftsmart.statemanagement.StateManager;
+import bftsmart.statemanagement.strategy.StandardStateManager;
 import bftsmart.tom.MessageContext;
 import bftsmart.tom.ReplicaContext;
 import bftsmart.tom.server.BatchExecutable;
@@ -35,6 +37,8 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
         
     private StateLog log;
     
+    private StateManager stateManager;
+    
     public DefaultRecoverable() {
 
         try {
@@ -49,17 +53,17 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
         int eid = msgCtxs[0].getConsensusId();
             
         stateLock.lock();
-        byte[][] replies = executeBatch2(commands, msgCtxs);
+        byte[][] replies = appExecuteBatch(commands, msgCtxs);
         stateLock.unlock();
         
         if ((eid > 0) && ((eid % checkpointPeriod) == 0)) {
-            Logger.println("(DefaultRecoverable.executeBatch) Performing checkpoint for consensus " + eid);
+            Logger.println("(DurabilityCoordinator.executeBatch) Performing checkpoint for consensus " + eid);
             stateLock.lock();
             byte[] snapshot = getSnapshot();
             stateLock.unlock();
             saveState(snapshot, eid, 0, 0/*tomLayer.lm.getLeader(cons.getId(), cons.getDecisionRound().getNumber())*/);
         } else {
-            Logger.println("(DefaultRecoverable.executeBatch) Storing message batch in the state log for consensus " + eid);
+            Logger.println("(DurabilityCoordinator.executeBatch) Storing message batch in the state log for consensus " + eid);
             saveCommands(commands, eid, 0, 0/*tomLayer.lm.getLeader(cons.getId(), cons.getDecisionRound().getNumber())*/);
         }
 
@@ -136,7 +140,7 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
             lastEid = state.getLastEid();
             //lastEid = lastCheckpointEid + (state.getMessageBatches() != null ? state.getMessageBatches().length : 0);
 
-            bftsmart.tom.util.Logger.println("(DefaultRecoverable.setState) I'm going to update myself from EID "
+            bftsmart.tom.util.Logger.println("(DurabilityCoordinator.setState) I'm going to update myself from EID "
                     + lastCheckpointEid + " to EID " + lastEid);
 
             stateLock.lock();
@@ -149,33 +153,13 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
             for (int eid = lastCheckpointEid + 1; eid <= lastEid; eid++) {
                 try {
                     
-                    bftsmart.tom.util.Logger.println("(DefaultRecoverable.setState) interpreting and verifying batched requests for eid " + eid);
-                    if (state.getMessageBatch(eid) == null) System.out.println("(DefaultRecoverable.setState) " + eid + " NULO!!!");
+                    bftsmart.tom.util.Logger.println("(DurabilityCoordinator.setState) interpreting and verifying batched requests for eid " + eid);
+                    if (state.getMessageBatch(eid) == null) System.out.println("(DurabilityCoordinator.setState) " + eid + " NULO!!!");
                     
                     byte[][] commands = state.getMessageBatch(eid).commands; // take a batch
 
                     if (commands == null || commands.length <= 0) continue;
-                    // INUTIL??????
-                    //tomLayer.lm.addLeaderInfo(eid, state.getMessageBatch(eid).round,
-                    //        state.getMessageBatch(eid).leader);
-
-                    //TROCAR POR EXECUTE E ARRAY DE MENSAGENS!!!!!!
-                    //TOMMessage[] requests = new BatchReader(batch,
-                    //        manager.getStaticConf().getUseSignatures() == 1).deserialiseRequests(manager);
-                    executeBatch2(commands, null);
-                    
-                    // ISTO E UM PROB A RESOLVER!!!!!!!!!!!!
-                    //tomLayer.clientsManager.requestsOrdered(requests);
-
-                    // INUTIL??????
-                    //deliverMessages(eid, tomLayer.getLCManager().getLastReg(), false, requests, batch);
-
-                    // IST E UM PROB A RESOLVER!!!!
-                    //******* EDUARDO BEGIN **************//
-                    /*if (manager.hasUpdates()) {
-                        processReconfigMessages(lastCheckpointEid, state.getLastCheckpointRound());
-                    }*/
-                    //******* EDUARDO END **************//
+                    appExecuteBatch(commands, null);
                 } catch (Exception e) {
                     e.printStackTrace(System.err);
                     if (e instanceof ArrayIndexOutOfBoundsException) {
@@ -211,7 +195,14 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
     	}
     }
     
+    @Override
+    public StateManager getStateManager() {
+    	if(stateManager == null)
+    		stateManager = new StandardStateManager();
+    	return stateManager;
+    }
+    
     public abstract void installSnapshot(byte[] state);
     public abstract byte[] getSnapshot();
-    public abstract byte[][] executeBatch2(byte[][] commands, MessageContext[] msgCtxs);
+    public abstract byte[][] appExecuteBatch(byte[][] commands, MessageContext[] msgCtxs);
 }

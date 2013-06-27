@@ -20,7 +20,7 @@
 		    <pathelement location="${dist.dir}" />
   </path>
 	<target name="compile" description="Compilation target">
-		<javac classpathref="libs" source="1.5" target="1.5" destdir="${build.dir}" nowarn="on">
+		<javac classpathref="libs" source="1.7" target="1.7" destdir="${build.dir}" nowarn="on">
 			<src path="${src.dir}" />
 			<src path="${test.dir}" />
 		</javac>

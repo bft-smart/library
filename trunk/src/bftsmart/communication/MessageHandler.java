@@ -22,7 +22,7 @@ package bftsmart.communication;
 import bftsmart.paxosatwar.messages.MessageFactory;
 import bftsmart.paxosatwar.messages.PaxosMessage;
 import bftsmart.paxosatwar.roles.Acceptor;
-import bftsmart.statemanagment.SMMessage;
+import bftsmart.statemanagement.SMMessage;
 import bftsmart.tom.core.TOMLayer;
 import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.core.timer.ForwardedMessage;
@@ -119,68 +119,68 @@ public class MessageHandler {
                 Logger.println("(MessageHandler.processData) Discarding unauthenticated message from " + sm.getSender());
             }
 
-        } else if (sm.authenticated) {
-            
-            /*** This is Joao's code, related to leader change */
-            if (sm instanceof LCMessage) {
-                LCMessage lcMsg = (LCMessage) sm;
-
-                String type = null;
-                switch(lcMsg.getType()) {
-
-                    case TOMUtil.STOP:
-                        type = "STOP";
-                        break;
-                    case TOMUtil.STOPDATA:
-                        type = "STOPDATA";
-                        break;
-                    case TOMUtil.SYNC:
-                        type = "SYNC";
-                        break;
-                    default:
-                        type = "LOCAL";
-                        break;
-                }
-
-                System.out.println("(MessageHandler.processData) LC_MSG received: type " + type + ", regency " + lcMsg.getReg() + ", (replica " + lcMsg.getSender() + ")");
-                if (lcMsg.TRIGGER_LC_LOCALLY) tomLayer.requestsTimer.run_lc_protocol();
-                else tomLayer.deliverTimeoutRequest(lcMsg);
-            /**************************************************************/
-
-            } else if (sm instanceof ForwardedMessage) {
-                TOMMessage request = ((ForwardedMessage) sm).getRequest();
-                tomLayer.requestReceived(request);
-
-            /** This is Joao's code, to handle state transfer */
-            } else if (sm instanceof SMMessage) {
-                SMMessage smsg = (SMMessage) sm;
-
-                String type = null;
-                switch(smsg.getType()) {
-
-                    case TOMUtil.SM_REQUEST:
-                        type = "SM_REQUEST";
-                        break;
-                    case TOMUtil.SM_REPLY:
-                        type = "SM_REPLY";
-                        break;
-                    default:
-                        type = "LOCAL";
-                        break;
-                }
-                System.out.println("(MessageHandler.processData) SM_MSG received: type " + type + ", regency " + smsg.getRegency() + ", (replica " + smsg.getSender() + ")");
-                if (smsg.TRIGGER_SM_LOCALLY) {
-                    tomLayer.getStateManager().stateTimeout();
-                }
-                else if (smsg.getType() == TOMUtil.SM_REQUEST) {
-                    tomLayer.getStateManager().SMRequestDeliver(smsg);
-                } else {
-                    tomLayer.getStateManager().SMReplyDeliver(smsg);
-                }
-            /******************************************************************/
-            }
         } else {
-            Logger.println("(MessageHandler.processData) Discarding unauthenticated message from " + sm.getSender());
+        	if (sm.authenticated) {
+	            /*** This is Joao's code, related to leader change */
+	            if (sm instanceof LCMessage) {
+	                LCMessage lcMsg = (LCMessage) sm;
+	
+	                String type = null;
+	                switch(lcMsg.getType()) {
+	
+	                    case TOMUtil.STOP:
+	                        type = "STOP";
+	                        break;
+	                    case TOMUtil.STOPDATA:
+	                        type = "STOPDATA";
+	                        break;
+	                    case TOMUtil.SYNC:
+	                        type = "SYNC";
+	                        break;
+	                    default:
+	                        type = "LOCAL";
+	                        break;
+	                }
+	
+	                System.out.println("(MessageHandler.processData) LC_MSG received: type " + type + ", regency " + lcMsg.getReg() + ", (replica " + lcMsg.getSender() + ")");
+	                if (lcMsg.TRIGGER_LC_LOCALLY) tomLayer.requestsTimer.run_lc_protocol();
+	                else tomLayer.deliverTimeoutRequest(lcMsg);
+	            /**************************************************************/
+	
+	            } else if (sm instanceof ForwardedMessage) {
+	                TOMMessage request = ((ForwardedMessage) sm).getRequest();
+	                tomLayer.requestReceived(request);
+	
+	            /** This is Joao's code, to handle state transfer */
+	            } else if (sm instanceof SMMessage) {
+	                SMMessage smsg = (SMMessage) sm;
+	                String type = null;
+	                switch(smsg.getType()) {
+	                    case TOMUtil.SM_REQUEST:
+	                        type = "SM_REQUEST";
+	                        break;
+	                    case TOMUtil.SM_REPLY:
+	                        type = "SM_REPLY";
+	                        break;
+	                    default:
+	                        type = "LOCAL";
+	                        break;
+	                }
+	                System.out.println("(MessageHandler.processData) SM_MSG received: type " + type + ", regency " + smsg.getRegency() + ", (replica " + smsg.getSender() + ")");
+	                if (smsg.TRIGGER_SM_LOCALLY) {
+	                    tomLayer.getStateManager().stateTimeout();
+	                } else if (smsg.getType() == TOMUtil.SM_REQUEST) {
+	                    tomLayer.getStateManager().SMRequestDeliver(smsg);
+	                } else {
+	                    tomLayer.getStateManager().SMReplyDeliver(smsg);
+	                }
+	            /******************************************************************/
+	            } else {
+	            	System.out.println("UNKNOWN MESSAGE TYPE: " + sm);
+	            }
+	        } else {
+	            System.out.println("(MessageHandler.processData) Discarding unauthenticated message from " + sm.getSender());
+	        }
         }
     }
     

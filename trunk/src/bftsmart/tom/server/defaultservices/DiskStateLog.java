@@ -8,6 +8,8 @@ import java.io.ObjectOutputStream;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class DiskStateLog extends StateLog {
@@ -25,6 +27,7 @@ public class DiskStateLog extends StateLog {
 	private boolean syncCkp;
 	private boolean isToLog;
 	private ReentrantLock checkpointLock = new ReentrantLock();
+	private Map<Integer, Long> logPointers;
 	
 	public DiskStateLog(int id, byte[] initialState, byte[] initialHash,
 			boolean isToLog, boolean syncLog, boolean syncCkp) {
@@ -33,6 +36,7 @@ public class DiskStateLog extends StateLog {
 		this.isToLog = isToLog;
 		this.syncLog = syncLog;
 		this.syncCkp = syncCkp;
+		this.logPointers = new HashMap<Integer, Long>();
 		if (isToLog)
 			createLogFile();
 	}
@@ -209,6 +213,20 @@ public class DiskStateLog extends StateLog {
 //			int size = eid - lastCheckpointEid;
 //			fr.transferLog(sChannel, size);
 //		}
+	}
+
+	public void setLastEid(int eid, int checkpointPeriod, int checkpointPortion) {
+		super.setLastEid(eid);
+		// save the file pointer to retrieve log information later
+		if((eid % checkpointPeriod) % checkpointPortion == checkpointPortion -1) {
+			int ckpReplicaIndex = (((eid % checkpointPeriod) + 1) / checkpointPortion) -1;
+			try {
+				System.out.println(" --- Replica " + ckpReplicaIndex + " took checkpoint. My current log pointer is " + log.getFilePointer());
+				logPointers.put(ckpReplicaIndex, log.getFilePointer());
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
 	}
 
 	/**

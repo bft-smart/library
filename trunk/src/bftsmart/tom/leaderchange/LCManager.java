@@ -125,7 +125,6 @@ public class LCManager {
     }
     
     public void setNewLeader(int leader) {
-        
         currentLeader = leader;
     }
     

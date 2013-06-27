@@ -125,7 +125,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
                     Mac macReceive = Mac.getInstance(manager.getStaticConf().getHmacAlgorithm());
                     macReceive.init(authKey);
                     NettyClientServerSession cs = new NettyClientServerSession(future.getChannel(), macSend,
-                            macReceive, currV[i], manager.getStaticConf().getRSAPublicKey(currV[i]), new ReentrantLock());
+                            macReceive, currV[i], manager.getStaticConf().getRSAPublicKey(), new ReentrantLock());
                     sessionTable.put(currV[i], cs);
 
                     System.out.println("Connecting to replica " + currV[i] + " at " + manager.getRemoteAddress(currV[i]));
@@ -194,7 +194,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
                         macSend.init(authKey);
                         Mac macReceive = Mac.getInstance(manager.getStaticConf().getHmacAlgorithm());
                         macReceive.init(authKey);
-                        NettyClientServerSession cs = new NettyClientServerSession(future.getChannel(), macSend, macReceive, currV[i], manager.getStaticConf().getRSAPublicKey(currV[i]), new ReentrantLock());
+                        NettyClientServerSession cs = new NettyClientServerSession(future.getChannel(), macSend, macReceive, currV[i], manager.getStaticConf().getRSAPublicKey(), new ReentrantLock());
                         sessionTable.put(currV[i], cs);
 
                         System.out.println("Connecting to replica " + currV[i] + " at " + manager.getRemoteAddress(currV[i]));
@@ -222,6 +222,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
             System.out.println("Impossible to connect to replica.");
         } else {
         	System.out.println("Replica disconnected.");
+        	e.getCause().printStackTrace();
         }
     }
     @Override
@@ -276,7 +277,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
                         //creates MAC stuff
                         Mac macSend = ncss.getMacSend();
                         Mac macReceive = ncss.getMacReceive();
-                        NettyClientServerSession cs = new NettyClientServerSession(future.getChannel(), macSend, macReceive, ncss.getReplicaId(), manager.getStaticConf().getRSAPublicKey(ncss.getReplicaId()), new ReentrantLock());
+                        NettyClientServerSession cs = new NettyClientServerSession(future.getChannel(), macSend, macReceive, ncss.getReplicaId(), manager.getStaticConf().getRSAPublicKey(), new ReentrantLock());
                         sessionTable.remove(ncss.getReplicaId());
                         sessionTable.put(ncss.getReplicaId(), cs);
                         //System.out.println("RE-Connecting to replica "+ncss.getReplicaId()+" at " + conf.getRemoteAddress(ncss.getReplicaId()));
