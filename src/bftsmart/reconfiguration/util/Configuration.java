@@ -70,7 +70,6 @@ public class Configuration {
         try{
             hosts = new HostsConfig(configHome, hostsFileName);
             
-                    
             loadConfig();
             
             String s = (String) configs.remove("system.autoconnect");

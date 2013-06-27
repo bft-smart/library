@@ -50,8 +50,8 @@ import bftsmart.paxosatwar.messages.PaxosMessage;
 import bftsmart.paxosatwar.roles.Acceptor;
 import bftsmart.reconfiguration.ServerViewManager;
 import bftsmart.reconfiguration.StatusReply;
-import bftsmart.statemanagment.StateManager;
-import bftsmart.tom.TOMReceiver;
+import bftsmart.statemanagement.StateManager;
+import bftsmart.tom.ServiceReplica;
 import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.core.messages.TOMMessageType;
 import bftsmart.tom.core.timer.ForwardedMessage;
@@ -110,7 +110,6 @@ public final class TOMLayer extends Thread implements RequestReceiver {
     /*************************************************************/
 
     private PrivateKey prk;
-    
     public ServerViewManager reconfManager;
     
     /**
@@ -123,7 +122,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
      * @param recManager Reconfiguration Manager
      */
     public TOMLayer(ExecutionManager manager,
-            TOMReceiver receiver,
+            ServiceReplica receiver,
             Recoverable recoverer,
             LeaderModule lm,
             Acceptor a,
@@ -137,7 +136,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         this.acceptor = a;
         this.communication = cs;
         this.reconfManager = recManager;
-
+        
         //do not create a timer manager if the timeout is 0
         if (reconfManager.getStaticConf().getRequestTimeout() == 0){
             this.requestsTimer = null;
@@ -159,17 +158,11 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         }
 
         this.prk = reconfManager.getStaticConf().getRSAPrivateKey();
-
-        /** THIS IS JOAO'S CODE, RELATED TO LEADER CHANGE */
         this.lcManager = new LCManager(this,recManager, md);
-        /*************************************************************/
-
         this.dt = new DeliveryThread(this, receiver, recoverer, this.reconfManager); // Create delivery thread
         this.dt.start();
-
-        /** THIS IS JOAO'S CODE, TO HANDLE CHECKPOINTS AND STATE TRANSFER */
-        this.stateManager = new StateManager(this.reconfManager, this, dt, lcManager, execManager);
-        /*******************************************************/
+        this.stateManager = recoverer.getStateManager();
+        stateManager.init(this, dt);
     }
 
     ReentrantLock hashLock = new ReentrantLock();
@@ -200,12 +193,12 @@ public final class TOMLayer extends Thread implements RequestReceiver {
     /**
      * Verifies the signature of a signed object
      * @param so Signed object to be verified
-     * @param sender Replica id that supposably signed this object
+     * @param sender Replica id that supposedly signed this object
      * @return True if the signature is valid, false otherwise
      */
     public boolean verifySignature(SignedObject so, int sender) {
         try {
-            return so.verify(reconfManager.getStaticConf().getRSAPublicKey(sender), engine);
+            return so.verify(reconfManager.getStaticConf().getRSAPublicKey(), engine);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -449,6 +442,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
         return requests;
     }
+    
     public void forwardRequestToLeader(TOMMessage request) {
         int leaderId = lm.getCurrentLeader();
         //******* EDUARDO BEGIN **************//
@@ -462,7 +456,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
     public boolean isRetrievingState() {
         //lockTimer.lock();
-        boolean result =  stateManager != null && stateManager.getWaiting() != -1;
+        boolean result =  stateManager != null && stateManager.isRetrievingState();
         //lockTimer.unlock();
 
         return result;
@@ -482,7 +476,6 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         for (int nextExecution = getLastExec() + 1;
                 execManager.receivedOutOfContextPropose(nextExecution);
                 nextExecution = getLastExec() + 1) {
-
             execManager.processOutOfContextPropose(execManager.getExecution(nextExecution));
         }
     }
@@ -823,7 +816,6 @@ public final class TOMLayer extends Thread implements RequestReceiver {
      * @param msg Message received from the other replica
      */
     public void deliverTimeoutRequest(LCMessage msg) {
-
         ByteArrayInputStream bis = null;
         ObjectInputStream ois = null;
 
@@ -845,7 +837,6 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                             clientsManager.getClientsLock().lock();
 
                             if (hasReqs) {
-
                                 // Store requests that the other replica did not manage to order
                                 //TODO: The requests have to be verified!
                                 byte[] temp = (byte[]) ois.readObject();
@@ -874,9 +865,8 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                     }
                 }
                 break;
-            case TOMUtil.STOPDATA: // STOPDATA messages
-                {
-
+            case TOMUtil.STOPDATA: {
+            	 // STOPDATA messages
                     int regency = msg.getReg();
 
                     // Am I the new leader, and am I expecting this messages?

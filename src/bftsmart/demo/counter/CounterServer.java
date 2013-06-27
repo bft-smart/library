@@ -28,22 +28,22 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.concurrent.locks.ReentrantLock;
 
-import bftsmart.statemanagment.ApplicationState;
+import bftsmart.statemanagement.ApplicationState;
+import bftsmart.statemanagement.StateManager;
+import bftsmart.statemanagement.strategy.StandardStateManager;
 import bftsmart.tom.MessageContext;
 import bftsmart.tom.ReplicaContext;
 import bftsmart.tom.ServiceReplica;
 import bftsmart.tom.server.BatchExecutable;
 import bftsmart.tom.server.Recoverable;
-import bftsmart.tom.server.SingleExecutable;
-
 
 /**
  * Example replica that implements a BFT replicated service (a counter).
  *
  */
+
 public final class CounterServer implements BatchExecutable, Recoverable  {
     
-    private ServiceReplica replica;
     private int counter = 0;
     private int iterations = 0;
     private ReplicaContext replicaContext = null;
@@ -52,8 +52,10 @@ public final class CounterServer implements BatchExecutable, Recoverable  {
     private ReentrantLock stateLock = new ReentrantLock();
     private int lastEid = -1;
     
+    private StateManager stateManager;
+
     public CounterServer(int id) {
-    	replica = new ServiceReplica(id, this, this);
+    	new ServiceReplica(id, this, this);
 
         try {
             md = MessageDigest.getInstance("MD5"); // TODO: shouldn't it be SHA?
@@ -64,7 +66,7 @@ public final class CounterServer implements BatchExecutable, Recoverable  {
     
      //******* EDUARDO BEGIN **************//
     public CounterServer(int id, boolean join) {
-    	replica = new ServiceReplica(id, join, this, this);
+    	new ServiceReplica(id, join, this, this);
     }
      //******* EDUARDO END **************//
     
@@ -171,5 +173,11 @@ public final class CounterServer implements BatchExecutable, Recoverable  {
         return state.getLastEid();
     }
 
-    /********************************************************/
+    @Override
+    public StateManager getStateManager() {
+    	if(stateManager == null)
+    		stateManager = new StandardStateManager();
+    	return stateManager;
+    }
+
 }

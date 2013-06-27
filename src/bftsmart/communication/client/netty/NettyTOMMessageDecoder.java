@@ -189,7 +189,7 @@ public class NettyTOMMessageDecoder extends FrameDecoder {
                     macSend.init(authKey);
                     Mac macReceive = Mac.getInstance(manager.getStaticConf().getHmacAlgorithm());
                     macReceive.init(authKey);
-                    NettyClientServerSession cs = new NettyClientServerSession(channel, macSend, macReceive, sm.getSender(), manager.getStaticConf().getRSAPublicKey(sm.getSender()), new ReentrantLock());
+                    NettyClientServerSession cs = new NettyClientServerSession(channel, macSend, macReceive, sm.getSender(), manager.getStaticConf().getRSAPublicKey(), new ReentrantLock());
                     //******* EDUARDO END **************//
 
                     rl.writeLock().lock();

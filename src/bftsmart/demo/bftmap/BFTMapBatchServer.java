@@ -53,15 +53,15 @@ public class BFTMapBatchServer extends DefaultRecoverable {
     
 
     @Override
-    public byte[][] executeBatch2(byte[][] commands, MessageContext[] msgCtxs) {
+    public byte[][] appExecuteBatch(byte[][] commands, MessageContext[] msgCtxs) {
     	byte[][] replies = new byte[commands.length][];
     	stateLock.lock();
     	ops += commands.length;
     	if(ops % 5000 == 0)
     		System.out.println("OPS: " + ops + ", Eid: " + msgCtxs[0].getConsensusId());
     	try {
+    		int index = 0;
         	for(byte[] command: commands) {
-        		int index = 0;
 	            ByteArrayInputStream in = new ByteArrayInputStream(command);
 	            ByteArrayOutputStream out = null;
 	            byte[] reply = null;

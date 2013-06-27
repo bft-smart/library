@@ -30,12 +30,9 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.Scanner;
 
-import bftsmart.statemanagment.ApplicationState;
 import bftsmart.tom.MessageContext;
 import bftsmart.tom.ReplicaContext;
 import bftsmart.tom.ServiceReplica;
-import bftsmart.tom.server.Executable;
-import bftsmart.tom.server.Recoverable;
 import bftsmart.tom.server.defaultservices.DefaultRecoverable;
 
 /**
@@ -205,7 +202,7 @@ public final class RandomServer extends DefaultRecoverable {
     }
 
     @Override
-    public byte[][] executeBatch2(byte[][] commands, MessageContext[] msgCtxs) {
+    public byte[][] appExecuteBatch(byte[][] commands, MessageContext[] msgCtxs) {
         byte [][] replies = new byte[commands.length][];
         for (int i = 0; i < commands.length; i++) {
             replies[i] = executeOrdered(commands[i], (msgCtxs  != null ? msgCtxs[i] : null));

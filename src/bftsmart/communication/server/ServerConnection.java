@@ -42,8 +42,6 @@ import bftsmart.reconfiguration.TTPMessage;
 import bftsmart.tom.ServiceReplica;
 import bftsmart.tom.util.Logger;
 import java.util.HashSet;
-import java.util.TreeSet;
-
 
 /**
  * This class represents a connection with other server.
@@ -185,7 +183,6 @@ public class ServerConnection {
      * if some problem is detected, a reconnection is done
      */
     private final void sendBytes(byte[] messageData, boolean useMAC) {       
-        int i = 0;
         boolean abort = false;
         do {
             if (abort) return; // if there is a need to reconnect, abort this method
@@ -218,8 +215,6 @@ public class ServerConnection {
                 waitAndConnect();
                 abort = true;
             }
-            //br.ufsc.das.tom.util.Logger.println("(ServerConnection.sendBytes) iteration " + i);
-            i++;
         } while (doWork);
     }
 
@@ -343,6 +338,8 @@ public class ServerConnection {
                 socket.close();
             } catch (IOException ex) {
                 Logger.println("Error closing socket to "+remoteId);
+            } catch (NullPointerException npe) {
+            	Logger.println("Socket already closed");
             }
 
             socket = null;

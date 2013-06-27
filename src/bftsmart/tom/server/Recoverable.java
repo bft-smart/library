@@ -1,6 +1,7 @@
 package bftsmart.tom.server;
 
-import bftsmart.statemanagment.ApplicationState;
+import bftsmart.statemanagement.ApplicationState;
+import bftsmart.statemanagement.StateManager;
 import bftsmart.tom.ReplicaContext;
 
 /**
@@ -29,5 +30,14 @@ public interface Recoverable {
      * @return 
      */
     public int setState(ApplicationState state);
+    
+    /**
+     * Recoverers implementing this interface will have to chose among
+     * different options of state managers like DurableStateManager or
+     * StandardStateManager. The recoverer class can also define a new
+     * strategy to manage the state and return it in this method.
+     * @return the implementation of state manager that suplies the strategy defined
+     */
+    public StateManager getStateManager();
 	
 }

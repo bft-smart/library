@@ -18,7 +18,9 @@
 
 package bftsmart.demo.microbenchmarks;
 
-import bftsmart.statemanagment.ApplicationState;
+import bftsmart.statemanagement.ApplicationState;
+import bftsmart.statemanagement.StateManager;
+import bftsmart.statemanagement.strategy.StandardStateManager;
 import bftsmart.tom.MessageContext;
 import bftsmart.tom.ReplicaContext;
 import bftsmart.tom.ServiceReplica;
@@ -45,6 +47,8 @@ public class LatencyServer implements SingleExecutable, Recoverable {
     private Storage strongLatency = null;
     private ServiceReplica replica;
     private ReplicaContext replicaContext;
+
+    private StateManager stateManager;
 
     public LatencyServer(int id, int interval, int hashs, int replySize) {
     	replica = new ServiceReplica(id, this, this);
@@ -141,4 +145,12 @@ public class LatencyServer implements SingleExecutable, Recoverable {
     public int setState(ApplicationState state) {
         throw new UnsupportedOperationException("Not supported yet.");
     }
+
+    @Override
+    public StateManager getStateManager() {
+    	if(stateManager == null)
+    		stateManager = new StandardStateManager();
+    	return stateManager;
+    }
+   
 }

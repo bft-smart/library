@@ -9,6 +9,7 @@ import java.io.RandomAccessFile;
 import java.nio.channels.FileChannel;
 import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
+import java.util.Arrays;
 
 public class FileRecoverer {
 
@@ -43,6 +44,33 @@ public class FileRecoverer {
 		return null;
 	}
 
+	/**
+	 * Recover portions of the log for collaborative state transfer.
+	 * @param start the index for which the commands start to be collected
+	 * @param number the number of commands retrieved
+	 * @return The commands for the period selected
+	 */
+	public CommandsInfo[] getLogState(long pointer, int startOffset,  int number) {
+		String file = getTSLogsPathes(".log");
+		RandomAccessFile log = null;
+
+		if ((log = openLogFile(file)) != null) {
+			System.out.println("GETTING STATE FROM " + file);
+
+			CommandsInfo[] logState = recoverLogState(log, pointer, startOffset, number);
+
+			try {
+				log.close();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+
+			return logState;
+		}
+
+		return null;
+	}
+
 	public byte[] getCkpState() {
 		String file = getTSLogsPathes(".ckp");
 		RandomAccessFile ckp = null;
@@ -64,6 +92,29 @@ public class FileRecoverer {
 		return null;
 	}
 
+	public void recoverCkpHash() {
+		String file = getTSLogsPathes(".ckp");
+		RandomAccessFile ckp = null;
+
+		if ((ckp = openLogFile(file)) != null) {
+			System.out.println("GETTING HASH FROM " + file);
+			byte[] ckpHash = null;
+			try {
+				int ckpSize = ckp.readInt();
+				ckp.skipBytes(ckpSize);
+				int hashLength = ckp.readInt();
+				ckpHash = new byte[hashLength];
+				ckp.read(ckpHash);
+				System.out.println("--- Last ckp size: " + ckpSize + " Last ckp hash: " + Arrays.toString(ckpHash));
+			} catch (Exception e) {
+				e.printStackTrace();
+				System.err
+				.println("State recover was aborted due to an unexpected exception");
+			}
+			this.ckpHash = ckpHash;
+		}
+	}
+
 	private byte[] recoverCkpState(RandomAccessFile ckp) {
 		byte[] ckpState = null;
 		try {
@@ -75,12 +126,12 @@ public class FileRecoverer {
 					if (ckp.getFilePointer() < logLength) {
 						int size = ckp.readInt();
 
-						if (size > EOF) {
+						if (size > 0) {
 							ckpState = new byte[size];//ckp state
 							int read = ckp.read(ckpState);
 							if (read == size) {
 								int hashSize = ckp.readInt();
-								if (size > EOF) {
+								if (size > 0) {
 									ckpHash = new byte[hashSize];//ckp hash
 									read = ckp.read(ckpHash);
 									if (read == hashSize) {
@@ -108,12 +159,12 @@ public class FileRecoverer {
 		} catch (Exception e) {
 			e.printStackTrace();
 			System.err
-					.println("State recover was aborted due to an unexpected exception");
+			.println("State recover was aborted due to an unexpected exception");
 		}
 
 		return ckpState;
 	}
-	
+
 	public void transferLog(SocketChannel sChannel, int index) {
 		String file = getTSLogsPathes(".log");
 		RandomAccessFile log = null;
@@ -145,10 +196,10 @@ public class FileRecoverer {
 		} catch (Exception e) {
 			e.printStackTrace();
 			System.err
-					.println("State recover was aborted due to an unexpected exception");
+			.println("State recover was aborted due to an unexpected exception");
 		}
 	}
-	
+
 	public void transferCkpState(SocketChannel sChannel) {
 		String file = getTSLogsPathes(".ckp");
 		RandomAccessFile ckp = null;
@@ -190,65 +241,12 @@ public class FileRecoverer {
 		} catch (Exception e) {
 			e.printStackTrace();
 			System.err
-					.println("State recover was aborted due to an unexpected exception");
+			.println("State recover was aborted due to an unexpected exception");
 		}
 	}
 
 	public byte[] getCkpStateHash() {
 		return ckpHash;
-	}
-
-	private CommandsInfo[] recoverLogState(RandomAccessFile log, int endOffset) {
-		try {
-			long logLength = log.length();
-			ArrayList<CommandsInfo> state = new ArrayList<CommandsInfo>();
-			int recoveredBatches = 0;
-			boolean mayRead = true;
-
-			while (mayRead) {
-
-				try {
-					if (log.getFilePointer() < logLength) {
-						int size = log.readInt();
-
-						if (size > EOF) {
-							byte[] bytes = new byte[size];
-							int read = log.read(bytes);
-							if (read == size) {
-								ByteArrayInputStream bis = new ByteArrayInputStream(
-										bytes);
-								ObjectInputStream ois = new ObjectInputStream(
-										bis);
-
-								state.add((CommandsInfo) ois.readObject());
-
-								if (++recoveredBatches == endOffset) {
-									return state.toArray(new CommandsInfo[state
-											.size()]);
-								}
-
-							} else {
-								mayRead = false;
-								state.clear();
-							}
-						} else
-							mayRead = false;
-					} else {
-						mayRead = false;
-					}
-				} catch (Exception e) {
-					e.printStackTrace();
-					state.clear();
-					mayRead = false;
-				}
-			}
-		} catch (Exception e) {
-			e.printStackTrace();
-			System.err
-					.println("State recover was aborted due to an unexpected exception");
-		}
-
-		return null;
 	}
 
 	private String getTSLogsPathes(String extention) {
@@ -303,6 +301,130 @@ public class FileRecoverer {
 
 			return fileOK;
 		}
+	}
+
+	private CommandsInfo[] recoverLogState(RandomAccessFile log, int endOffset) {
+		try {
+			long logLength = log.length();
+			ArrayList<CommandsInfo> state = new ArrayList<CommandsInfo>();
+			int recoveredBatches = 0;
+			boolean mayRead = true;
+			System.out.println("filepointer: " + log.getFilePointer() + " loglength " + logLength + " endoffset " + endOffset);
+			while (mayRead) {
+				try {
+					if (log.getFilePointer() < logLength) {
+						int size = log.readInt();
+						if (size > 0) {
+							byte[] bytes = new byte[size];
+							int read = log.read(bytes);
+							if (read == size) {
+								ByteArrayInputStream bis = new ByteArrayInputStream(
+										bytes);
+								ObjectInputStream ois = new ObjectInputStream(
+										bis);
+								state.add((CommandsInfo) ois.readObject());
+								if (++recoveredBatches == endOffset) {
+									System.out.println("read all " + endOffset + " log messages");
+									return state.toArray(new CommandsInfo[state.size()]);
+								}
+							} else {
+								mayRead = false;
+								System.out.println("STATE CLEAR");
+								state.clear();
+							}
+						} else {
+							System.out.println("ELSE 1");
+							mayRead = false;
+						}
+					} else {
+						System.out.println("ELSE 2 " + recoveredBatches);
+						mayRead = false;
+					}
+				} catch (Exception e) {
+					e.printStackTrace();
+					state.clear();
+					mayRead = false;
+				}
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+			System.err
+			.println("State recover was aborted due to an unexpected exception");
+		}
+
+		return null;
+	}
+
+	/**
+	 * Searches the log file and retrieves the portion selected.
+	 * @param log The log file
+	 * @param start The offset to start retrieving commands
+	 * @param number The number of commands retrieved
+	 * @return The commands for the period selected
+	 */
+	private CommandsInfo[] recoverLogState(RandomAccessFile log, long pointer, int startOffset, int number) {
+		try {
+			long logLength = log.length();
+			ArrayList<CommandsInfo> state = new ArrayList<CommandsInfo>();
+			int recoveredBatches = 0;
+			boolean mayRead = true;
+
+			log.seek(pointer);
+
+			int index = 0;
+			while(index < startOffset) {
+				int size = log.readInt();
+				byte[] bytes = new byte[size];
+				log.read(bytes);
+				index++;
+			}
+
+			while (mayRead) {
+
+				try {
+					if (log.getFilePointer() < logLength) {
+						int size = log.readInt();
+
+						if (size > 0) {
+							byte[] bytes = new byte[size];
+							int read = log.read(bytes);
+							if (read == size) {
+								ByteArrayInputStream bis = new ByteArrayInputStream(
+										bytes);
+								ObjectInputStream ois = new ObjectInputStream(
+										bis);
+
+								state.add((CommandsInfo) ois.readObject());
+
+								if (++recoveredBatches == number) {
+									return state.toArray(new CommandsInfo[state.size()]);
+								}
+							} else {
+								System.out.println("recoverLogState (pointer,offset,number) STATE CLEAR");
+								mayRead = false;
+								state.clear();
+							}
+						} else {
+							System.out.println("recoverLogState (pointer,offset,number) ELSE 1");
+							mayRead = false;
+						}
+					} else {
+						System.out.println("recoverLogState (pointer,offset,number) ELSE 2 " + recoveredBatches);
+						mayRead = false;
+					}
+				} catch (Exception e) {
+					e.printStackTrace();
+					state.clear();
+					mayRead = false;
+				}
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+			System.err
+			.println("State recover was aborted due to an unexpected exception");
+		}
+
+		return null;
 	}
 
 }

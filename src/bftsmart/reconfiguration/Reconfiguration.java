@@ -72,7 +72,7 @@ public class Reconfiguration {
         byte[] signature = TOMUtil.signMessage(key, reqBytes);
 		request.setSignature(signature);
 		StatusReplyListener listener = new StatusReplyListener();
-		proxy.invokeAsynchronous(TOMUtil.getBytes(request), listener, new int[] {id});
+		proxy.invokeAsynchronous(TOMUtil.getBytes(request), listener, new int[] {id}, TOMMessageType.ASK_STATUS);
 		StatusReply status = listener.getResponse();
 		return status;
     }

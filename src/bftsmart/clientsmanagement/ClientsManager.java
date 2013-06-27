@@ -65,7 +65,7 @@ public class ClientsManager {
             //******* EDUARDO BEGIN **************//
             clientData = new ClientData(clientId,
                     (manager.getStaticConf().getUseSignatures() == 1)
-                    ? manager.getStaticConf().getRSAPublicKey(clientId)
+                    ? manager.getStaticConf().getRSAPublicKey()
                     : null);
             //******* EDUARDO END **************//
             clientsData.put(clientId, clientData);

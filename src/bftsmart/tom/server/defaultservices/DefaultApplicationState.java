@@ -20,7 +20,9 @@ package bftsmart.tom.server.defaultservices;
 
 import java.util.Arrays;
 
-import bftsmart.statemanagment.ApplicationState;
+import bftsmart.tom.server.defaultservices.CommandsInfo;
+
+import bftsmart.statemanagement.ApplicationState;
 
 /**
  * This classe represents a state tranfered from a replica to another. The state associated with the last
@@ -42,6 +44,7 @@ public class DefaultApplicationState implements ApplicationState {
     private int lastCheckpointEid; // Execution ID for the last checkpoint
     private int lastCheckpointRound; // Round for the last checkpoint
     private int lastCheckpointLeader; // Leader for the last checkpoint
+    private byte[] logHash;
 
     /**
      * Constructs a TansferableState
@@ -60,6 +63,11 @@ public class DefaultApplicationState implements ApplicationState {
         this.state = state; // State associated with the last checkpoint
         this.stateHash = stateHash;
         this.hasState = true;
+    }
+
+    public DefaultApplicationState(CommandsInfo[] messageBatches, byte[] logHash, int lastCheckpointEid, int lastCheckpointRound, int lastCheckpointLeader, int lastEid, byte[] state, byte[] stateHash) {
+    	this(messageBatches, lastCheckpointEid, lastCheckpointRound, lastCheckpointLeader, lastEid, state, stateHash);
+    	this.logHash = logHash;
     }
 
     /**
@@ -134,6 +142,10 @@ public class DefaultApplicationState implements ApplicationState {
      */
     public CommandsInfo[] getMessageBatches() {
         return messageBatches;
+    }
+
+    public void setMessageBatches(CommandsInfo[] messageBatches) {
+    	this.messageBatches = messageBatches;
     }
 
     /**
