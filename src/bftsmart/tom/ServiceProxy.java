@@ -314,7 +314,8 @@ public class ServiceProxy extends TOMSender {
             // Compare the reply just received, to the others
             int sameContent = 1;
             for (int i = 0; i < replies.length; i++) {
-                if (i != pos && replies[i] != null && 
+
+                if ((i != pos || getViewManager().getCurrentViewN() == 1) && replies[i] != null && 
                         (comparator.compare(replies[i].getContent(), reply.getContent()) == 0)) {
                     sameContent++;
                     if (sameContent >= replyQuorum) {

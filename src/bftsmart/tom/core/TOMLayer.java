@@ -127,19 +127,19 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             ServerViewManager recManager) {
 
         super("TOM Layer");
-
+        
         this.execManager = manager;
         this.lm = lm;
         this.acceptor = a;
         this.communication = cs;
         this.reconfManager = recManager;
-        
+               
         //do not create a timer manager if the timeout is 0
         if (reconfManager.getStaticConf().getRequestTimeout() == 0){
             this.requestsTimer = null;
         }
         else this.requestsTimer = new RequestsTimer(this, communication, reconfManager); // Create requests timers manager (a thread)
-
+       
         this.clientsManager = new ClientsManager(reconfManager, requestsTimer); // Create clients manager
 
         try {
@@ -379,9 +379,31 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                 // Sets the current execution
                 int execId = getLastExec() + 1;
                 setInExec(execId);
+                
+                Consensus cons = execManager.getExecution(execId).getLearner();
 
+                if (reconfManager.getCurrentViewN() == 1) {
+                    
+                    Logger.println("(TOMLayer.run) Only one replica, bypassing consensus.");
+                    
+                    byte[] value = createPropose(cons);
+                    
+                    Execution execution = execManager.getExecution(cons.getId());
+                    Round round = execution.getRound(cons.getId(), reconfManager);
+                    round.propValue = value;
+                    round.propValueHash = computeHash(value);
+                    round.getExecution().addWritten(value);
+                    round.deserializedPropValue = checkProposedValue(value, true);
+                    round.getExecution().getLearner().firstMessageProposed = round.deserializedPropValue[0];
+                    cons.decided(round);
+                    
+                    System.out.println("ESTOU AQUI!");
+                    dt.delivery(cons);
+                    continue;
+                
+                }
                 execManager.getProposer().startExecution(execId,
-                        createPropose(execManager.getExecution(execId).getLearner()));
+                        createPropose(cons));
             }
         }
     }

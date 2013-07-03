@@ -82,7 +82,7 @@ public class RequestsTimer {
             long t = (shortTimeout > -1 ? shortTimeout : timeout);
             //shortTimeout = -1;
             rtTask = new RequestTimerTask();
-            timer.schedule(rtTask, t);
+            if (reconfManager.getCurrentViewN() > 1) timer.schedule(rtTask, t);
         }
     }
     

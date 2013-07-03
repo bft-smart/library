@@ -63,7 +63,7 @@ public class StandardStateManager extends BaseStateManager {
 
         this.replica = 0;
 
-        if (replica == SVManager.getStaticConf().getProcessId())
+        if (SVManager.getCurrentViewN() > 1 && replica == SVManager.getStaticConf().getProcessId())
         	changeReplica();
 
         state = null;
