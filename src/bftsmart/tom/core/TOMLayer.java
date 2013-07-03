@@ -382,6 +382,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                 
                 Consensus cons = execManager.getExecution(execId).getLearner();
 
+                // Bypass protocol if service is not replicated
                 if (reconfManager.getCurrentViewN() == 1) {
                     
                     Logger.println("(TOMLayer.run) Only one replica, bypassing consensus.");
