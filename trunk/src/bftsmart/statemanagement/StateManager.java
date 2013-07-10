@@ -35,9 +35,9 @@ public interface StateManager {
     
     public void init(TOMLayer tomLayer, DeliveryThread dt);
     
-    public void SMRequestDeliver(SMMessage msg);
+    public void SMRequestDeliver(SMMessage msg, boolean isBFT);
     
-    public void SMReplyDeliver(SMMessage msg);
+    public void SMReplyDeliver(SMMessage msg, boolean isBFT);
     
     public boolean isRetrievingState();
 }

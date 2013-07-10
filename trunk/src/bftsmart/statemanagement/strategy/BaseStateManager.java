@@ -63,11 +63,11 @@ public abstract class BaseStateManager implements StateManager {
     }
 
     protected boolean moreThan2F_Regencies(int regency) {
-        return senderRegencies.size() > SVManager.getQuorum2F();
+        return senderRegencies.size() > SVManager.getQuorumStrong();
     }
     
     protected boolean moreThan2F_Leaders(int leader) {
-        return senderLeaders.size() > SVManager.getQuorum2F();
+        return senderLeaders.size() > SVManager.getQuorumStrong();
     }
 
     protected boolean moreThan2F_Views(View view) {
@@ -77,7 +77,7 @@ public abstract class BaseStateManager implements StateManager {
     		if(view.equals(v))
     			counter++;
     	}
-        boolean result = counter > SVManager.getQuorum2F();
+        boolean result = counter > SVManager.getQuorumStrong();
         views = null;
         return result;
     }
@@ -145,9 +145,9 @@ public abstract class BaseStateManager implements StateManager {
 	public abstract void stateTimeout();
 
 	@Override
-	public abstract void SMRequestDeliver(SMMessage msg);
+	public abstract void SMRequestDeliver(SMMessage msg, boolean isBFT);
 
 	@Override
-	public abstract void SMReplyDeliver(SMMessage msg);
+	public abstract void SMReplyDeliver(SMMessage msg, boolean isBFT);
 
 }

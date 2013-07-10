@@ -127,7 +127,7 @@ public class DurableStateManager extends BaseStateManager {
 	}
 
 	@Override
-	public void SMRequestDeliver(SMMessage msg) {
+	public void SMRequestDeliver(SMMessage msg, boolean isBFT) {
 		System.out.println("(TOMLayer.SMRequestDeliver) invoked method");
 		Logger.println("(TOMLayer.SMRequestDeliver) invoked method");
 		if (SVManager.getStaticConf().isStateTransferEnabled()
@@ -168,7 +168,7 @@ public class DurableStateManager extends BaseStateManager {
 	}
 
 	@Override
-	public void SMReplyDeliver(SMMessage msg) {
+	public void SMReplyDeliver(SMMessage msg, boolean isBFT) {
 		lockTimer.lock();
 		CSTSMMessage reply = (CSTSMMessage) msg;
 		if (SVManager.getStaticConf().isStateTransferEnabled()) {

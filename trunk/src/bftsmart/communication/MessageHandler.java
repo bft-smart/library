@@ -165,9 +165,9 @@ public class MessageHandler {
 	                if (smsg.TRIGGER_SM_LOCALLY) {
 	                    tomLayer.getStateManager().stateTimeout();
 	                } else if (smsg.getType() == TOMUtil.SM_REQUEST) {
-	                    tomLayer.getStateManager().SMRequestDeliver(smsg);
+	                    tomLayer.getStateManager().SMRequestDeliver(smsg, tomLayer.reconfManager.getStaticConf().isBFT());
 	                } else {
-	                    tomLayer.getStateManager().SMReplyDeliver(smsg);
+	                    tomLayer.getStateManager().SMReplyDeliver(smsg, tomLayer.reconfManager.getStaticConf().isBFT());
 	                }
 	            /******************************************************************/
 	            } else {

@@ -39,6 +39,7 @@ public class ServerViewManager extends ViewManager {
     private int quorumF; // f replicas
     private int quorum2F; // f * 2 replicas
     private int quorumStrong; // ((n + f) / 2) replicas
+    private int quorumCFT_Strong; // Quorum para caso CFT
     private int quorumFastDecide; // ((n + 3 * f) / 2) replicas
     private int[] otherProcesses;
     private int[] lastJoinStet;
@@ -306,6 +307,7 @@ public class ServerViewManager extends ViewManager {
             this.quorumF = this.currentView.getF();
             this.quorum2F = 2 * this.quorumF;
             this.quorumStrong = (int) Math.ceil((this.currentView.getN() + this.quorumF) / 2);
+            this.quorumCFT_Strong = (int) Math.ceil(this.currentView.getN() / 2);
             this.quorumFastDecide = (int) Math.ceil((this.currentView.getN() + 3 * this.quorumF) / 2);
         } else if (this.currentView != null && this.currentView.isMember(getStaticConf().getProcessId())) {
             //TODO: Left the system in newView -> LEAVE
@@ -316,10 +318,21 @@ public class ServerViewManager extends ViewManager {
         }
     }
 
-    public int getQuorum2F() {
+    /*public int getQuorum2F() {
         return quorum2F;
+    }*/
+    
+    /**
+      * This is the certificate quorum ncessary for some parts of the protocol.
+      * Byzantine case = 2f+1
+      * CFT case = f+1
+      * @return
+      */
+     public int getCertificateQuorum() {
+     	//return quorum2F;
+     	return getStaticConf().isBFT() ? quorum2F : quorumF;
     }
-
+     
     public int getQuorumF() {
         return quorumF;
     }
@@ -329,6 +342,7 @@ public class ServerViewManager extends ViewManager {
     }
 
     public int getQuorumStrong() {
-        return quorumStrong;
+        return getStaticConf().isBFT() ? quorumStrong : quorumCFT_Strong;
+        //return quorumStrong;
     }
 }

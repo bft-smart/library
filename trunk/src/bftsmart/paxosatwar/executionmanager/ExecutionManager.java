@@ -380,8 +380,12 @@ public final class ExecutionManager {
                 }
             }
             
-            return ((countWeaks > (2*reconfManager.getCurrentViewF())) &&
-                    (countStrongs > (2*reconfManager.getCurrentViewF())));
+            if(reconfManager.getStaticConf().isBFT()){
+            	return ((countWeaks > (2*reconfManager.getCurrentViewF())) &&
+            			(countStrongs > (2*reconfManager.getCurrentViewF())));
+            }else{
+            	return (countStrongs > reconfManager.getQuorumStrong());
+            }
         }
         return false;
     }

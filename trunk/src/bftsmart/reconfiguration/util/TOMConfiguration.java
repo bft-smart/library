@@ -54,7 +54,7 @@ public class TOMConfiguration extends Configuration {
 	private boolean logToDisk;
 	private boolean isToWriteCkpsToDisk;
 	private boolean syncCkp;
-    
+    private boolean isBFT;
     
     /** Creates a new instance of TOMConfiguration */
     public TOMConfiguration(int processId) {
@@ -314,6 +314,8 @@ public class TOMConfiguration extends Configuration {
             
             rsaLoader = new RSAKeyLoader(TOMConfiguration.configHome);
 
+            s = (String) configs.remove("system.bft");
+            isBFT = (s != null) ? Boolean.parseBoolean(s) : true;
         } catch (Exception e) {
             e.printStackTrace(System.err);
         }
@@ -483,5 +485,14 @@ public class TOMConfiguration extends Configuration {
             e.printStackTrace(System.err);
             return null;
         }
+    }
+
+    public boolean isBFT(){
+    	if(this.isBFT)
+    		Logger.println("----------------ISBFT--------------");
+    	else
+    		Logger.println("----------------ISCFT---------------");
+    	
+    	return this.isBFT;
     }
 }

@@ -467,7 +467,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         int leaderId = lm.getCurrentLeader();
         //******* EDUARDO BEGIN **************//
         if (this.reconfManager.isCurrentViewMember(leaderId)) {
-            System.out.println("(TOMLayer.forwardRequestToLeader) forwarding " + request + " to " + leaderId);
+            Logger.println("(TOMLayer.forwardRequestToLeader) forwarding " + request + " to " + leaderId);
             communication.send(new int[]{leaderId}, 
                 new ForwardedMessage(this.reconfManager.getStaticConf().getProcessId(), request));
         }
@@ -589,11 +589,13 @@ public final class TOMLayer extends Thread implements RequestReceiver {
     // this method is called when a timeout occurs or when a STOP message is recevied
     private void evaluateStops(int nextReg) {
 
+        boolean enterFirstPhase = this.reconfManager.getStaticConf().isBFT();
+        boolean condition = false;
         ObjectOutputStream out = null;
         ByteArrayOutputStream bos = null;
 
         // pass to the leader change phase if more than f messages have been received already
-        if (lcManager.getStopsSize(nextReg) > this.reconfManager.getQuorumF() && lcManager.getNextReg() == lcManager.getLastReg()) {
+        if (enterFirstPhase && lcManager.getStopsSize(nextReg) > this.reconfManager.getQuorumF() && lcManager.getNextReg() == lcManager.getLastReg()) {
 
            Logger.println("(TOMLayer.evaluateStops) initialize synch phase");
            requestsTimer.Enabled(false);
@@ -648,9 +650,15 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                 }
             }
         }
+        
+        if(this.reconfManager.getStaticConf().isBFT()) {
+        	condition = lcManager.getStopsSize(nextReg) > this.reconfManager.getCertificateQuorum() && lcManager.getNextReg() > lcManager.getLastReg();
+        } else {
+        	condition = (lcManager.getStopsSize(nextReg) > this.reconfManager.getQuorumStrong() && lcManager.getNextReg() > lcManager.getLastReg());
+        }
         // May I proceed to the synchronization phase?
-        if (lcManager.getStopsSize(nextReg) > this.reconfManager.getQuorum2F() && lcManager.getNextReg() > lcManager.getLastReg()) {
-
+        //if (lcManager.getStopsSize(nextReg) > this.reconfManager.getQuorum2F() && lcManager.getNextReg() > lcManager.getLastReg()) {
+        if (condition) {
             
             Logger.println("(TOMLayer.evaluateStops) installing regency " + lcManager.getNextReg());
             lcManager.setLastReg(lcManager.getNextReg()); // define last timestamp
@@ -932,14 +940,18 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                             lcManager.addCollect(regency, signedCollect);
 
                             int bizantineQuorum = (reconfManager.getCurrentViewN() + reconfManager.getCurrentViewF()) / 2;
-
-                            // I already got messages from a Byzantine quorum,
+                            int cftQuorum = (reconfManager.getCurrentViewN()) / 2;
+                            
+                            // I already got messages from a Byzantine/Crash quorum,
                             // related to the last eid as well as for the current?
-                            if (lcManager.getLastEidsSize(regency) > bizantineQuorum &&
-                                    lcManager.getCollectsSize(regency) > bizantineQuorum) {
+                            
+                            boolean conditionBFT = (reconfManager.getStaticConf().isBFT() && lcManager.getLastEidsSize(regency) > bizantineQuorum &&
+                                    lcManager.getCollectsSize(regency) > bizantineQuorum);
+                            
+                            boolean conditionCFT = (lcManager.getLastEidsSize(regency) > cftQuorum && lcManager.getCollectsSize(regency) > cftQuorum);
 
-                                catch_up(regency);
-                            }
+                            if (conditionBFT || conditionCFT) catch_up(regency);
+
                         } catch (IOException ex) {
                             ex.printStackTrace(System.err);
                         } catch (ClassNotFoundException ex) {
