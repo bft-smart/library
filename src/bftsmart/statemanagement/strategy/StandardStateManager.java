@@ -121,7 +121,7 @@ public class StandardStateManager extends BaseStateManager {
     }
     
 	@Override
-    public void SMRequestDeliver(SMMessage msg) {
+    public void SMRequestDeliver(SMMessage msg, boolean isBFT) {
         if (SVManager.getStaticConf().isStateTransferEnabled() && dt.getRecoverer() != null) {
         	StandardSMMessage stdMsg = (StandardSMMessage)msg;
             boolean sendState = stdMsg.getReplica() == SVManager.getStaticConf().getProcessId();
@@ -139,7 +139,7 @@ public class StandardStateManager extends BaseStateManager {
     }
 
 	@Override
-    public void SMReplyDeliver(SMMessage msg) {
+    public void SMReplyDeliver(SMMessage msg, boolean isBFT) {
         lockTimer.lock();
         if (SVManager.getStaticConf().isStateTransferEnabled()) {
             if (waitingEid != -1 && msg.getEid() == waitingEid) {
@@ -176,16 +176,16 @@ public class StandardStateManager extends BaseStateManager {
                     ApplicationState otherReplicaState = getOtherReplicaState();
                     System.out.println("State != null: " + (state != null) + ", recvState != null: " + (otherReplicaState != null));
                     int haveState = 0;
-                    if(state != null) {
-                        byte[] hash = null;
-                        hash = tomLayer.computeHash(state.getSerializedState());
-                        if (otherReplicaState != null) {
-                            if (Arrays.equals(hash, otherReplicaState.getStateHash())) haveState = 1;
-                            else if (getNumEqualStates() > SVManager.getCurrentViewF())
-                            	haveState = -1;
+                        if(state != null) {
+                            byte[] hash = null;
+                            hash = tomLayer.computeHash(state.getSerializedState());
+                            if (otherReplicaState != null) {
+                                if (Arrays.equals(hash, otherReplicaState.getStateHash())) haveState = 1;
+                                else if (getNumEqualStates() > SVManager.getCurrentViewF())
+                                    haveState = -1;
+                            }
                         }
-                    }
-
+                    
                     System.out.println("haveState: " + haveState);
 
                     if (otherReplicaState != null && haveState == 1 && currentRegency > -1 &&

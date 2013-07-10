@@ -189,22 +189,39 @@ public final class Acceptor {
                 if(round.getExecution().getLearner().firstMessageProposed == null) {
                     round.getExecution().getLearner().firstMessageProposed = round.deserializedPropValue[0];
                 }
-                round.getExecution().getLearner().firstMessageProposed.consensusStartTime = consensusStartTime;
+                if (round.getExecution().getLearner().firstMessageProposed.consensusStartTime == 0) {
+                    round.getExecution().getLearner().firstMessageProposed.consensusStartTime = consensusStartTime;
+                    
+                }
                 round.getExecution().getLearner().firstMessageProposed.proposeReceivedTime = System.nanoTime();
                 
-                Logger.println("(Acceptor.executePropose) sending weak for " + eid);
+                if(reconfManager.getStaticConf().isBFT()){
+                    Logger.println("(Acceptor.executePropose) sending weak for " + eid);
 
-                round.setWeak(me, round.propValueHash);
-                round.getExecution().getLearner().firstMessageProposed.weakSentTime = System.nanoTime();
-                communication.send(this.reconfManager.getCurrentViewOtherAcceptors(),
-                        factory.createWeak(eid, round.getNumber(), round.propValueHash));
+                    round.setWeak(me, round.propValueHash);
+                    round.getExecution().getLearner().firstMessageProposed.weakSentTime = System.nanoTime();
+                    communication.send(this.reconfManager.getCurrentViewOtherAcceptors(),
+                            factory.createWeak(eid, round.getNumber(), round.propValueHash));
 
-                Logger.println("(Acceptor.executePropose) weak sent for " + eid);
+                    Logger.println("(Acceptor.executePropose) weak sent for " + eid);
                 
-                computeWeak(eid, round, round.propValueHash);
+                    computeWeak(eid, round, round.propValueHash);
                 
-                Logger.println("(Acceptor.executePropose) weak computed for " + eid);
+                    Logger.println("(Acceptor.executePropose) weak computed for " + eid);
+                
+                } else {
+                 	round.setStrong(me, round.propValueHash);
+                 	round.getExecution().getLearner().firstMessageProposed.weakSentTime = System.nanoTime();
+                        round.getExecution().getLearner().firstMessageProposed.strongSentTime = System.nanoTime();
+                 	/**** LEADER CHANGE CODE! ******/
+ 	                round.getExecution().setQuorumWeaks(round.propValueHash);
+ 	                /*****************************************/
 
+                        communication.send(this.reconfManager.getCurrentViewOtherAcceptors(),
+ 	                    factory.createStrong(eid, round.getNumber(), round.propValueHash));
+
+                        computeStrong(eid, round, round.propValueHash);
+                }
                 executionManager.processOutOfContext(round.getExecution());
             }
         }
@@ -250,7 +267,7 @@ public final class Acceptor {
                 
                 round.setStrong(me, value);
 
-                if(round.getExecution().getLearner().firstMessageProposed==null) {
+                if(round.getExecution().getLearner().firstMessageProposed!=null) {
 
                         round.getExecution().getLearner().firstMessageProposed.strongSentTime = System.nanoTime();
                 }
@@ -286,7 +303,7 @@ public final class Acceptor {
                 pm.setMACVector(macVector);
                 
                 int[] targets = this.reconfManager.getCurrentViewOtherAcceptors();
-                communication.getServersConn().send(targets, pm, false);
+                communication.getServersConn().send(targets, pm, true);
                 
                 //communication.send(this.reconfManager.getCurrentViewOtherAcceptors(),
                         //factory.createStrong(eid, round.getNumber(), value));
@@ -322,7 +339,7 @@ public final class Acceptor {
         Logger.println("(Acceptor.computeStrong) I have " + round.countStrong(value) +
                 " strongs for " + eid + "," + round.getNumber());
 
-        if (round.countStrong(value) > reconfManager.getQuorum2F() && !round.getExecution().isDecided()) {
+        if (round.countStrong(value) > reconfManager.getCertificateQuorum() && !round.getExecution().isDecided()) {
             Logger.println("(Acceptor.computeStrong) Deciding " + eid);
             decide(round, value);
         }

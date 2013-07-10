@@ -144,8 +144,7 @@ public class ServiceProxy extends TOMSender {
         reqId = generateRequestId(type);
         operationId = generateOperationId();
         requestType = type;
-        replyQuorum = (int) Math.ceil((getViewManager().getCurrentViewN()
-                + getViewManager().getCurrentViewF()) / 2) + 1;
+        replyQuorum = getReplyQuorum();
         this.replyListener = listener;
     	if(this.getViewManager().getStaticConf().isTheTTP()) {
     		type = TOMMessageType.STATUS_REPLY;
@@ -180,8 +179,7 @@ public class ServiceProxy extends TOMSender {
         receivedReplies = 0;
         response = null;
         replyListener = null;
-        replyQuorum = (int) Math.ceil((getViewManager().getCurrentViewN()
-                + getViewManager().getCurrentViewF()) / 2) + 1;
+        replyQuorum = getReplyQuorum();
 
         // Send the request to the replicas, and get its ID
         reqId = generateRequestId(reqType);
@@ -344,5 +342,13 @@ public class ServiceProxy extends TOMSender {
 
         // Critical section ends here. The semaphore can be released
         canReceiveLock.unlock();
+    }
+    private int getReplyQuorum() {
+         if(getViewManager().getStaticConf().isBFT()){
+                return (int) Math.ceil((getViewManager().getCurrentViewN()
+                + getViewManager().getCurrentViewF()) / 2) + 1;
+         }else{
+         	return (int) Math.ceil((getViewManager().getCurrentViewN()) / 2) + 1;
+         }
     }
 }

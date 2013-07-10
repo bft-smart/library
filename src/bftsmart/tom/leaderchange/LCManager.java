@@ -490,7 +490,12 @@ public class LCManager {
         }
         else return false;
 
-        unbound = count > ((SVManager.getCurrentViewN() + SVManager.getCurrentViewF()) / 2);
+        if(SVManager.getStaticConf().isBFT()) {
+            unbound = count > ((SVManager.getCurrentViewN() + SVManager.getCurrentViewF()) / 2);
+        }
+        else {
+        	unbound = count > ((SVManager.getCurrentViewN()) / 2);
+        }
         return unbound;
         
     }
@@ -529,8 +534,12 @@ public class LCManager {
 
         }
 
-        quorum = count > ((SVManager.getCurrentViewN() + SVManager.getCurrentViewF()) / 2);
-        
+        if(SVManager.getStaticConf().isBFT()) {
+            quorum = count > ((SVManager.getCurrentViewN() + SVManager.getCurrentViewF()) / 2);
+        }
+        else {
+            quorum = count > ((SVManager.getCurrentViewN())/2);
+        }      
         return appears && quorum;
     }
 
@@ -560,8 +569,11 @@ public class LCManager {
 
         }
 
-        certified = count > SVManager.getCurrentViewF();
-
+        if(SVManager.getStaticConf().isBFT()) {
+            certified = count > SVManager.getCurrentViewF();
+        } else {
+            certified = count > 0;
+        }
         return certified;
     }
 
@@ -671,7 +683,11 @@ public class LCManager {
         for (LastEidData l : lasts) {
 
             //TODO: CHECK OF THE PROOF IS MISSING!!!!
-            if (hasValidProof(l) && l.getEid() > highest.getEid()) highest = l;
+            if (tomLayer.reconfManager.getStaticConf().isBFT() && hasValidProof(l) && l.getEid() > highest.getEid()) 
+                    highest = l;
+            else if(l.getEid() > highest.getEid()){
+                    highest = l;
+             }
         }
 
         return highest;
