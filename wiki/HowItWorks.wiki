@@ -17,7 +17,7 @@ The goal of this technique is to make the state at each replica to evolve in a c
 
 The first two requirements can be fulfilled without any special library, but the last one requires the replicas to communicate among themselfs, which demands the execution of a complex *agreement protocol*, in order to guarantee that the commands are executed in the same order across all replicas.
 
-BFT-SMaRt provides this agreement protocol, assuming that the programmer ensures that the application using BFT-SMaRt fulfills the first 2 requirements.
+BFT-SMaRt provides this agreement protocol, assuming that the programmer ensures that the application using BFT-SMaRt fulfills the first 2 requirements. The state machine replication protocol implemented by BFT-SMaRt is described in [http://www.navigators.di.fc.ul.pt/wiki/Publication:Joaosousa2011 this paper]. The core of such solution makes use of the BFT version of the consensus protocol described in [http://www.zurich.ibm.com/~cca/papers/pax.pdf this paper].
 
 = Byzantine Fault Tolerance (BFT) =
 
@@ -31,7 +31,7 @@ Given all aforementioned assumptions, for BFT-SMaRt to execute correctly, less t
 
 = State Transfer =
 
-It is expected that in real systems replicas will fail. But it is also convenient that they will be fixed and put back in the system. The problem is, the recovered replicas might lose their state, and therefore not be able to participate in the replication. The state transfer protocol enables addresses this issue by enabling the recovered replica to ask the other ones the latest state.
+It is expected that in real systems replicas will fail. But it is also convenient that they will be fixed and put back in the system. The problem is, the recovered replicas might lose their state, and therefore not be able to participate in the replication. The state transfer protocol enables addresses this issue by enabling the recovered replica to ask the other ones the latest state. 
 
 = Reconfiguration =
 
