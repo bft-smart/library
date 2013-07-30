@@ -390,7 +390,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                     byte[] value = createPropose(cons);
                     
                     Execution execution = execManager.getExecution(cons.getId());
-                    Round round = execution.getRound(cons.getId(), reconfManager);
+                    Round round = execution.getRound(0, reconfManager);
                     round.propValue = value;
                     round.propValueHash = computeHash(value);
                     round.getExecution().addWritten(value);
@@ -398,7 +398,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                     round.getExecution().getLearner().firstMessageProposed = round.deserializedPropValue[0];
                     cons.decided(round);
                     
-                    System.out.println("ESTOU AQUI!");
+                    //System.out.println("ESTOU AQUI!");
                     dt.delivery(cons);
                     continue;
                 
