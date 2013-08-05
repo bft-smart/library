@@ -31,7 +31,7 @@ public class MessageContext {
     private int consensusId;
     private int sender;
     private TOMMessage firstInBatch; //to be replaced by a statistics class
-    private int batchSize; // Used to inform the size of the batch in which the request was decided. Used for state logging.
+    private boolean lastInBatch; // indicates that the command is the last in the batch. Used for logging
 
     public MessageContext(long timestamp, byte[] nonces, int regency, int consensusId, int sender, TOMMessage firstInBatch) {
         this.timestamp = timestamp;
@@ -91,12 +91,12 @@ public class MessageContext {
         return firstInBatch;
     }
 
-	public int getBatchSize() {
-		return batchSize;
-	}
-
-	public void setBatchSize(int batchSize) {
-		this.batchSize = batchSize;
-	}
+    public void setLastInBatch() {
+    	lastInBatch = true;
+    }
+    
+    public boolean isLastInBatch() {
+    	return lastInBatch;
+    }
 
 }

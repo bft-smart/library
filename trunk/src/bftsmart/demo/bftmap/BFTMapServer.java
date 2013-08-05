@@ -75,7 +75,7 @@ public class BFTMapServer extends DefaultSingleRecoverable {
                     String key = new DataInputStream(in).readUTF();
                     String value = new DataInputStream(in).readUTF();
                     byte[] valueBytes = value.getBytes();
-//                    System.out.println("Key received: " + key);
+                    System.out.println("Key received: " + key);
                     byte[] ret = tableMap.addData(tableName, key, valueBytes);
                     if (ret == null) {
 //                        System.out.println("Return is null, so there was no data before");

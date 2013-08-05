@@ -238,7 +238,8 @@ public class ServiceReplica {
 					if (request.getReqType() == TOMMessageType.ORDERED_REQUEST) {
 						numRequests++;
 						MessageContext msgCtx = new MessageContext(firstRequest.timestamp, firstRequest.nonces,	regency, consId[consensusCount], request.getSender(), firstRequest);
-						msgCtx.setBatchSize(requestsFromConsensus.length);
+						if(consensusCount + 1 == requestsFromConsensus.length)
+							msgCtx.setLastInBatch();
 						request.deliveryTime = System.nanoTime();
 						if(executor instanceof BatchExecutable) {
 							msgCtxts.add(msgCtx);

@@ -64,7 +64,6 @@ public class ServersCommunicationLayer extends Thread {
     public ServersCommunicationLayer(ServerViewManager manager,
             LinkedBlockingQueue<SystemMessage> inQueue, ServiceReplica replica) throws Exception {
 
-        //******* EDUARDO BEGIN **************//
         this.manager = manager;
         this.inQueue = inQueue;
         this.me = manager.getStaticConf().getProcessId();
@@ -75,7 +74,6 @@ public class ServersCommunicationLayer extends Thread {
             int[] initialV = manager.getCurrentViewAcceptors();
             for (int i = 0; i < initialV.length; i++) {
                 if (initialV[i] != me) {
-                    //connections.put(initialV[i], new ServerConnection(manager, null, initialV[i], inQueue));
                     getConnection(initialV[i]);
                 }
             }
@@ -83,7 +81,6 @@ public class ServersCommunicationLayer extends Thread {
 
         serverSocket = new ServerSocket(manager.getStaticConf().getServerToServerPort(
                 manager.getStaticConf().getProcessId()));
-        //******* EDUARDO END **************//
 
         SecretKeyFactory fac = SecretKeyFactory.getInstance("PBEWithMD5AndDES");
         PBEKeySpec spec = new PBEKeySpec(PASSWORD.toCharArray());

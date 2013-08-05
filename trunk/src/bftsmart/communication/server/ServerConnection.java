@@ -87,15 +87,10 @@ public class ServerConnection {
         this.outQueue = new LinkedBlockingQueue<byte[]>(this.manager.getStaticConf().getOutQueueSize());
 
         this.noMACs = new HashSet<Integer>();
-        //******* EDUARDO BEGIN **************//
         // Connect to the remote process or just wait for the connection?
         if (isToConnect()) {
             //I have to connect to the remote server
             try {
-                //System.out.println("**********");
-                //System.out.println(remoteId);
-                //System.out.println(this.manager.getStaticConf().getServerToServerPort(remoteId));
-                //System.out.println(this.manager.getStaticConf().getHost(remoteId));
                 this.socket = new Socket(this.manager.getStaticConf().getHost(remoteId),
                         this.manager.getStaticConf().getServerToServerPort(remoteId));
                 ServersCommunicationLayer.setSocketOptions(this.socket);
@@ -108,7 +103,6 @@ public class ServerConnection {
             }
         }
         //else I have to wait a connection from the remote server
-        //******* EDUARDO END **************//
 
         if (this.socket != null) {
             try {
