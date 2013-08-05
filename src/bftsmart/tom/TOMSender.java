@@ -34,10 +34,7 @@ public abstract class TOMSender implements ReplyReceiver {
 
 	private int me; // process id
 
-	//******* EDUARDO BEGIN **************//
-	//private int[] group; // group of replicas
 	private ClientViewManager viewManager;
-	//******* EDUARDO END **************//
 
 	private int session = 0; // session id
 	private int sequence = 0; // sequence number

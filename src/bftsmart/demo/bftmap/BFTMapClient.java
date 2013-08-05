@@ -50,10 +50,10 @@ public class BFTMapClient {
 //					System.exit(1);	
 				}
 
-				if(ops % 1000 == 0)
+				if(ops % 100 == 0)
 					System.out.println("ops sent: "+ops);
 				ops++;
-				Thread.sleep(10);
+//				Thread.sleep(10);
 			} catch (Exception e) {
 				e.printStackTrace();
 			}

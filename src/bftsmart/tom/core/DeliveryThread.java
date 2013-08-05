@@ -85,6 +85,11 @@ public final class DeliveryThread extends Thread {
         try {
         	decidedLock.lock();
             decided.put(cons);
+            
+			// clean the ordered messages from the pending buffer
+            TOMMessage[] requests = extractMessagesFromDecision(cons);
+			tomLayer.clientsManager.requestsOrdered(requests);
+            
             notEmptyQueue.signalAll();
             decidedLock.unlock();
             Logger.println("(DeliveryThread.delivery) Consensus " + cons.getId() + " finished. Decided size=" + decided.size());
@@ -138,8 +143,6 @@ public final class DeliveryThread extends Thread {
         //be removed from the leaderManager and the executionManager
         if (lastEid > 2) {
             int stableConsensus = lastEid - 3;
-
-            //tomLayer.lm.removeStableMultipleConsenusInfos(lastCheckpointEid, stableConsensus);
             tomLayer.execManager.removeOutOfContexts(stableConsensus);
         }
 
@@ -195,11 +198,6 @@ public final class DeliveryThread extends Thread {
   					Consensus lastConsensus = consensuses.get(consensuses.size() - 1);
 
   					if (requests != null && requests.length > 0) {
-  						// clean the ordered messages from the pending buffer
-  						for(int i = 0; i < requests.length; i++) {
-  							tomLayer.clientsManager.requestsOrdered(requests[i]);
-  						}
-  						
   						deliverMessages(consensusIds, tomLayer.getLCManager().getLastReg(), requests);
 
   						// ******* EDUARDO BEGIN ***********//
@@ -258,7 +256,7 @@ public final class DeliveryThread extends Thread {
     	return requests;
     }
     
-    public void deliverUnordered(TOMMessage request, int regency) {
+    protected void deliverUnordered(TOMMessage request, int regency) {
         MessageContext msgCtx = new MessageContext(System.currentTimeMillis(),
                 new byte[0], regency, -1, request.getSender(), null);
         receiver.receiveReadonlyMessage(request, msgCtx);
@@ -282,16 +280,4 @@ public final class DeliveryThread extends Thread {
         tomLayer.getCommunication().updateServersConnections();
     }
 
-    private void logDecision(Consensus cons) {
-        if (manager.getStaticConf().getCheckpointPeriod() > 0) {
-            if ((cons.getId() > 0) && ((cons.getId() % manager.getStaticConf().getCheckpointPeriod()) == 0)) {
-                Logger.println("(DeliveryThread.run) Performing checkpoint for consensus " + cons.getId());
-                //byte[] state = receiver.getState();
-                //tomLayer.getStateManager().saveState(state, cons.getId(), cons.getDecisionRound().getNumber(), tomLayer.lm.getCurrentLeader()/*tomLayer.lm.getLeader(cons.getId(), cons.getDecisionRound().getNumber())*/);
-            } else {
-                Logger.println("(DeliveryThread.run) Storing message batch in the state log for consensus " + cons.getId());
-                //tomLayer.getStateManager().saveBatch(cons.getDecision(), cons.getId(), cons.getDecisionRound().getNumber(), tomLayer.lm.getCurrentLeader()/*tomLayer.lm.getLeader(cons.getId(), cons.getDecisionRound().getNumber())*/);
-            }
-        }
-    }
 }

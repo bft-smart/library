@@ -80,14 +80,11 @@ public class TOMUtil {
         ObjectOutputStream obOut = null;
         try {
             obOut = new ObjectOutputStream(bOut);
-
             obOut.writeObject(o);
-            
             obOut.flush();
             bOut.flush();
             obOut.close();
             bOut.close();
-
         } catch (IOException ex) {
             ex.printStackTrace();
             return null;

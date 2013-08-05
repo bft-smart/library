@@ -413,7 +413,6 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
         ArrayList<NettyClientServerSession> sessions = new ArrayList<NettyClientServerSession>(sessionTable.values());
         rl.readLock().unlock();
         for (NettyClientServerSession ncss : sessions) {
-
             ncss.getChannel().close();
         }
     }

@@ -17,6 +17,8 @@ package bftsmart.tom.server.defaultservices;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Level;
 
@@ -43,8 +45,7 @@ public abstract class DefaultSingleRecoverable implements Recoverable, SingleExe
     private MessageDigest md;
         
     private StateLog log;
-    private int messageCounter;
-    private byte[][] commands;
+    private List<byte[]> commands = new ArrayList<byte[]>();
     
     private StateManager stateManager;
     
@@ -66,13 +67,9 @@ public abstract class DefaultSingleRecoverable implements Recoverable, SingleExe
         byte[] reply = appExecuteOrdered(command, msgCtx);
         stateLock.unlock();
 
-        if(messageCounter == 0) { //first message of the batch
-        	commands = new byte[msgCtx.getBatchSize()][];
-        }
-        commands[messageCounter] = command;
-        messageCounter++;
+        commands.add(command);
         
-        if(messageCounter == msgCtx.getBatchSize()) {
+        if(msgCtx.isLastInBatch()) {
 	        if ((eid > 0) && ((eid % CHECKPOINT_PERIOD) == 0)) {
 	            Logger.println("(DurabilityCoordinator.executeBatch) Performing checkpoint for consensus " + eid);
 	            stateLock.lock();
@@ -81,9 +78,9 @@ public abstract class DefaultSingleRecoverable implements Recoverable, SingleExe
 	            saveState(snapshot, eid, 0, 0/*tomLayer.lm.getLeader(cons.getId(), cons.getDecisionRound().getNumber())*/);
 	        } else {
 	            Logger.println("(DurabilityCoordinator.executeBatch) Storing message batch in the state log for consensus " + eid);
-	            saveCommands(commands, eid, 0, 0);
+	            saveCommands(commands.toArray(new byte[0][]), eid, 0, 0);
 	        }
-	        messageCounter = 0;
+	        commands = new ArrayList<byte[]>();
         }
         return reply;
     }

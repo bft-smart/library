@@ -17,6 +17,8 @@ package bftsmart.tom.server.defaultservices;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.locks.Condition;
@@ -38,7 +40,7 @@ import bftsmart.tom.util.Logger;
  */
 public abstract class FIFOExecutableRecoverable implements Recoverable, FIFOExecutable {
     
-    public static final int CHECKPOINT_PERIOD = 10000;
+    public static final int CHECKPOINT_PERIOD = 0;
 
     private ReentrantLock logLock = new ReentrantLock();
     private ReentrantLock hashLock = new ReentrantLock();
@@ -47,25 +49,25 @@ public abstract class FIFOExecutableRecoverable implements Recoverable, FIFOExec
     private MessageDigest md;
         
     private StateLog log;
-    private int messageCounter;
-    private byte[][] commands;
+    private List<byte[]> commands = new ArrayList<byte[]>();
     
     private StateManager stateManager;
     
-    private ConcurrentMap<Integer, Integer> clientOperations;
+    protected ConcurrentMap<Integer, Integer> clientOperations;
     private Lock fifoLock = new ReentrantLock();
     private Condition updatedState = fifoLock.newCondition();
     
     public FIFOExecutableRecoverable() {
-
     	clientOperations = new ConcurrentHashMap<Integer, Integer>();
         try {
             md = MessageDigest.getInstance("MD5");
         } catch (NoSuchAlgorithmException ex) {
             java.util.logging.Logger.getLogger(FIFOExecutableRecoverable.class.getName()).log(Level.SEVERE, null, ex);
         }
-        log = new StateLog(CHECKPOINT_PERIOD);
+        if(CHECKPOINT_PERIOD > 0)
+        	log = new StateLog(CHECKPOINT_PERIOD);
     }
+    
     
     @Override
     public byte[] executeOrderedFIFO(byte[] command, MessageContext msgCtx, int clientId, int operationId) {
@@ -93,14 +95,9 @@ public abstract class FIFOExecutableRecoverable implements Recoverable, FIFOExec
         updatedState.signalAll();
         fifoLock.unlock();
             
-
-        if(messageCounter == 0) { //first message of the batch
-        	commands = new byte[msgCtx.getBatchSize()][];
-        }
-        commands[messageCounter] = command;
-        messageCounter++;
+        commands.add(command);
         
-        if(messageCounter == msgCtx.getBatchSize()) {
+        if(CHECKPOINT_PERIOD > 0 && msgCtx.isLastInBatch()) {
 	        if ((eid > 0) && ((eid % CHECKPOINT_PERIOD) == 0)) {
 	            Logger.println("(DurabilityCoordinator.executeBatch) Performing checkpoint for consensus " + eid);
 	            stateLock.lock();
@@ -109,9 +106,9 @@ public abstract class FIFOExecutableRecoverable implements Recoverable, FIFOExec
 	            saveState(snapshot, eid, 0, 0/*tomLayer.lm.getLeader(cons.getId(), cons.getDecisionRound().getNumber())*/);
 	        } else {
 	            Logger.println("(DurabilityCoordinator.executeBatch) Storing message batch in the state log for consensus " + eid);
-	            saveCommands(commands, eid, 0, 0);
+	            saveCommands(commands.toArray(new byte[0][]), eid, 0, 0);
 	        }
-	        messageCounter = 0;
+	        commands = new ArrayList<byte[]>();
         }
         return reply;
     }
@@ -200,20 +197,13 @@ public abstract class FIFOExecutableRecoverable implements Recoverable, FIFOExec
     
     @Override
     public int setState(ApplicationState recvState) {
-        
         int lastEid = -1;
         if (recvState instanceof DefaultApplicationState) {
-            
             DefaultApplicationState state = (DefaultApplicationState) recvState;
-            
             System.out.println("(DurabilityCoordinator.setState) last eid in state: " + state.getLastEid());
-            
             getLog().update(state);
-            
             int lastCheckpointEid = state.getLastCheckpointEid();
-            
             lastEid = state.getLastEid();
-
             bftsmart.tom.util.Logger.println("(DurabilityCoordinator.setState) I'm going to update myself from EID "
                     + lastCheckpointEid + " to EID " + lastEid);
 
