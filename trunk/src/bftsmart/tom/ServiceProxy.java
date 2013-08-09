@@ -12,7 +12,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
-*/
+ */
 package bftsmart.tom;
 
 import java.util.Arrays;
@@ -31,7 +31,6 @@ import bftsmart.tom.util.Extractor;
 import bftsmart.tom.util.Logger;
 import bftsmart.tom.util.TOMUtil;
 
-
 /**
  * This class implements a TOMSender and represents a proxy to be used on the
  * client side of the replicated system.
@@ -46,7 +45,7 @@ public class ServiceProxy extends TOMSender {
     private Semaphore sm = new Semaphore(0);
     private int reqId = -1; // request id
     private int operationId = -1; // request id
-    private TOMMessageType requestType; 
+    private TOMMessageType requestType;
     private int replyQuorum = 0; // size of the reply quorum
     private TOMMessage replies[] = null; // Replies from replicas are stored here
     private int receivedReplies = 0; // Number of received replies
@@ -95,6 +94,7 @@ public class ServiceProxy extends TOMSender {
         replies = new TOMMessage[getViewManager().getCurrentViewN()];
 
         comparator = (replyComparator != null) ? replyComparator : new Comparator<byte[]>() {
+
             @Override
             public int compare(byte[] o1, byte[] o2) {
                 return Arrays.equals(o1, o2) ? 0 : -1;
@@ -140,25 +140,26 @@ public class ServiceProxy extends TOMSender {
     }
 
     public void invokeAsynchronous(byte[] request, ReplyListener listener, int[] targets, TOMMessageType type) {
-    	canSendLock.lock();
+        canSendLock.lock();
         reqId = generateRequestId(type);
         operationId = generateOperationId();
         requestType = type;
         replyQuorum = getReplyQuorum();
         this.replyListener = listener;
-    	if(this.getViewManager().getStaticConf().isTheTTP()) {
-    		type = TOMMessageType.STATUS_REPLY;
-	        try {
-	        	sendMessageToTargets(request, reqId, operationId, targets, type);
-	        } catch(RuntimeException re) {
-	        	if(re.getMessage().equals("Server not connected")) {
-	        		TOMMessage tm = new TOMMessage(targets[0], 0, reqId, TOMUtil.getBytes(StatusReply.OFFLINE.toString()), 0, type);
-	        		listener.replyReceived(tm);
-	        	}
-	        }
-    	} else
-        	sendMessageToTargets(request, reqId, operationId, targets, type);
-    	canSendLock.unlock();
+        if (this.getViewManager().getStaticConf().isTheTTP()) {
+            type = TOMMessageType.STATUS_REPLY;
+            try {
+                sendMessageToTargets(request, reqId, operationId, targets, type);
+            } catch (RuntimeException re) {
+                if (re.getMessage().equals("Server not connected")) {
+                    TOMMessage tm = new TOMMessage(targets[0], 0, reqId, TOMUtil.getBytes(StatusReply.OFFLINE.toString()), 0, type);
+                    listener.replyReceived(tm);
+                }
+            }
+        } else {
+            sendMessageToTargets(request, reqId, operationId, targets, type);
+        }
+        canSendLock.unlock();
     }
 
     /**
@@ -198,10 +199,10 @@ public class ServiceProxy extends TOMSender {
                 Logger.println("###################TIMEOUT#######################");
                 Logger.println("Reply timeout for reqId=" + reqId);
                 canSendLock.unlock();
-                
+
                 System.out.print(getProcessId() + " // " + reqId + " // TIMEOUT // ");
                 System.out.println("Replies received: " + receivedReplies);
-                
+
                 return null;
             }
         } catch (InterruptedException ex) {
@@ -253,7 +254,7 @@ public class ServiceProxy extends TOMSender {
                         ret = response.getContent();
                     }
                 } else {
-                	// Reply to readonly request
+                    // Reply to readonly request
                     ret = response.getContent();
                 }
             }
@@ -280,75 +281,84 @@ public class ServiceProxy extends TOMSender {
      */
     @Override
     public void replyReceived(TOMMessage reply) {
-        canReceiveLock.lock();
-        if (reqId == -1) {//no message being expected
-            Logger.println("throwing out request: sender=" + reply.getSender() + " reqId=" + reply.getSequence());
-            canReceiveLock.unlock();
-            return;
-        }
 
-        int pos = getViewManager().getCurrentViewPos(reply.getSender());
-
-        if (pos < 0) { //ignore messages that don't come from replicas
-            canReceiveLock.unlock();
-            return;
-        }
-
-        if (reply.getSequence() == reqId && reply.getReqType() == requestType) {
-        	if(replyListener != null) {
-        		replyListener.replyReceived(reply);
+        try {
+            canReceiveLock.lock();
+            if (reqId == -1) {//no message being expected
+                Logger.println("throwing out request: sender=" + reply.getSender() + " reqId=" + reply.getSequence());
                 canReceiveLock.unlock();
                 return;
-        	}
-        	
-            Logger.println("Receiving reply from " + reply.getSender() +
-                    " with reqId:" + reply.getSequence() + ". Putting on pos=" + pos);
-
-            if (replies[pos] == null) {
-                receivedReplies++;
             }
-            replies[pos] = reply;
-            
-            // Compare the reply just received, to the others
-            int sameContent = 1;
-            for (int i = 0; i < replies.length; i++) {
 
-                if ((i != pos || getViewManager().getCurrentViewN() == 1) && replies[i] != null && 
-                        (comparator.compare(replies[i].getContent(), reply.getContent()) == 0)) {
-                    sameContent++;
-                    if (sameContent >= replyQuorum) {
-                        response = extractor.extractResponse(replies, sameContent, pos);
-                        reqId = -1;
-                        this.sm.release(); // resumes the thread that is executing the "invoke" method
-                        break;
-                    }                
+            int pos = getViewManager().getCurrentViewPos(reply.getSender());
+
+            if (pos < 0) { //ignore messages that don't come from replicas
+                canReceiveLock.unlock();
+                return;
+            }
+
+            if (reply.getSequence() == reqId && reply.getReqType() == requestType) {
+                if (replyListener != null) {
+                    replyListener.replyReceived(reply);
+                    canReceiveLock.unlock();
+                    return;
+                }
+
+                Logger.println("Receiving reply from " + reply.getSender()
+                        + " with reqId:" + reply.getSequence() + ". Putting on pos=" + pos);
+
+                if (replies[pos] == null) {
+                    receivedReplies++;
+                }
+                replies[pos] = reply;
+
+                // Compare the reply just received, to the others
+                int sameContent = 1;
+                for (int i = 0; i < replies.length; i++) {
+
+                    if ((i != pos || getViewManager().getCurrentViewN() == 1) && replies[i] != null
+                            && (comparator.compare(replies[i].getContent(), reply.getContent()) == 0)) {
+                        sameContent++;
+                        if (sameContent >= replyQuorum) {
+                            response = extractor.extractResponse(replies, sameContent, pos);
+                            reqId = -1;
+                            this.sm.release(); // resumes the thread that is executing the "invoke" method
+                            canReceiveLock.unlock();
+                            return;
+                        }
+                    }
+                }
+
+                if (response == null) {
+                    if (requestType.equals(TOMMessageType.ORDERED_REQUEST)) {
+                        if (receivedReplies == getViewManager().getCurrentViewN()) {
+                            reqId = -1;
+                            this.sm.release(); // resumes the thread that is executing the "invoke" method
+                        }
+                    } else {  // UNORDERED
+                        if (receivedReplies != sameContent) {
+                            reqId = -1;
+                            this.sm.release(); // resumes the thread that is executing the "invoke" method
+                        }
+                    }
                 }
             }
-            
-            if (response == null) {
-            	if(requestType.equals(TOMMessageType.ORDERED_REQUEST)) {
-            		if(receivedReplies == getViewManager().getCurrentViewN()) {
-                        reqId = -1;
-                        this.sm.release(); // resumes the thread that is executing the "invoke" method
-            		}
-            	} else {  // UNORDERED
-            		if(receivedReplies != sameContent) {
-                        reqId = -1;
-                        this.sm.release(); // resumes the thread that is executing the "invoke" method
-            		}
-            	}
-            }
-        }
 
-        // Critical section ends here. The semaphore can be released
-        canReceiveLock.unlock();
+            // Critical section ends here. The semaphore can be released
+            canReceiveLock.unlock();
+        } catch (Exception ex) {
+            System.out.println("Problem at ServiceProxy.ReplyReceived()");
+            ex.printStackTrace();
+            canReceiveLock.unlock();
+        }
     }
+
     private int getReplyQuorum() {
-         if(getViewManager().getStaticConf().isBFT()){
-                return (int) Math.ceil((getViewManager().getCurrentViewN()
-                + getViewManager().getCurrentViewF()) / 2) + 1;
-         }else{
-         	return (int) Math.ceil((getViewManager().getCurrentViewN()) / 2) + 1;
-         }
+        if (getViewManager().getStaticConf().isBFT()) {
+            return (int) Math.ceil((getViewManager().getCurrentViewN()
+                    + getViewManager().getCurrentViewF()) / 2) + 1;
+        } else {
+            return (int) Math.ceil((getViewManager().getCurrentViewN()) / 2) + 1;
+        }
     }
 }
