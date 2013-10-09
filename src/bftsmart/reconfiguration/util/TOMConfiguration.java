@@ -55,6 +55,7 @@ public class TOMConfiguration extends Configuration {
 	private boolean isToWriteCkpsToDisk;
 	private boolean syncCkp;
     private boolean isBFT;
+    private int numRepliers;
     
     /** Creates a new instance of TOMConfiguration */
     public TOMConfiguration(int processId) {
@@ -316,6 +317,13 @@ public class TOMConfiguration extends Configuration {
 
             s = (String) configs.remove("system.bft");
             isBFT = (s != null) ? Boolean.parseBoolean(s) : true;
+
+            s = (String) configs.remove("system.numrepliers");
+            if (s == null) {
+                numRepliers = 1;
+            } else {
+                numRepliers = Integer.parseInt(s);
+            }
         } catch (Exception e) {
             e.printStackTrace(System.err);
         }
@@ -494,5 +502,9 @@ public class TOMConfiguration extends Configuration {
     		Logger.println("----------------ISCFT---------------");
     	
     	return this.isBFT;
+    }
+
+    public int getNumRepliers() {
+        return numRepliers;
     }
 }

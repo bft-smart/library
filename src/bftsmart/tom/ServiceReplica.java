@@ -32,6 +32,7 @@ import bftsmart.reconfiguration.Reconfiguration;
 import bftsmart.reconfiguration.ReconfigureReply;
 import bftsmart.reconfiguration.ServerViewManager;
 import bftsmart.reconfiguration.TTPMessage;
+import bftsmart.tom.core.ReplyManager;
 import bftsmart.tom.core.TOMLayer;
 import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.core.messages.TOMMessageType;
@@ -71,6 +72,7 @@ public class ServiceReplica {
 	private int id;
 	// Server side comunication system
 	private ServerCommunicationSystem cs = null;
+        private ReplyManager repMan = null;
 	private ServerViewManager SVManager;
 	private boolean isToJoin = false;
 	private ReentrantLock waitTTPJoinMsgLock = new ReentrantLock();
@@ -203,6 +205,7 @@ public class ServiceReplica {
 
 	private void initReplica() {
 		cs.start();
+                repMan = new ReplyManager(SVManager.getStaticConf().getNumRepliers(), cs);
 	}
 	//******* EDUARDO END **************//
 
@@ -222,7 +225,9 @@ public class ServiceReplica {
 		// build the reply and send it to the client
 		message.reply = new TOMMessage(id, message.getSession(), message.getSequence(),
 				response, SVManager.getCurrentViewId(), TOMMessageType.UNORDERED_REQUEST);
-		cs.send(new int[]{message.getSender()}, message.reply); 
+		//cs.send(new int[]{message.getSender()}, message.reply); 
+                                if (SVManager.getStaticConf().getNumRepliers() > 0) repMan.send(message);
+                else cs.send(new int[]{message.getSender()}, message.reply); 
 	}
 
 	public void receiveMessages(int consId[], int regency, TOMMessage[][] requests) {
@@ -295,7 +300,10 @@ public class ServiceReplica {
 				TOMMessage request = toBatch.get(index);
 				request.reply = new TOMMessage(id, request.getSession(), request.getSequence(),
 						replies[index], SVManager.getCurrentViewId());
-				cs.send(new int[] { request.getSender() }, request.reply);
+				//cs.send(new int[] { request.getSender() }, request.reply);
+                                if (SVManager.getStaticConf().getNumRepliers() > 0) repMan.send(request);
+                                else cs.send(new int[] { request.getSender() }, request.reply);
+
 			}
 			//DEBUG
 			bftsmart.tom.util.Logger.println("BATCHEXECUTOR END");
