@@ -32,13 +32,6 @@ public class TTPServices {
 			int smartId = Integer.parseInt(args[0]);
 
 			ttp.removeServer(smartId);
-		}else if(args.length == 2){
-			System.out.println("####Tpp Service[Status]####");
-			String service = args[0];
-			if(service.equals("status")) {
-				int replicaId = Integer.parseInt(args[1]);
-				System.out.println(ttp.askStatus(replicaId));
-			}
 		}else if(args.length == 3){
 			System.out.println("####Tpp Service[Join]####");
 

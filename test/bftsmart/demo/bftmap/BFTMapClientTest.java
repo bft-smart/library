@@ -22,7 +22,6 @@ import java.util.HashMap;
 import org.junit.Test;
 
 import bftsmart.demo.bftmap.BFTMap;
-import bftsmart.reconfiguration.StatusReply;
 import bftsmart.ReplicaStatusLogger;
 import bftsmart.TestFixture;
 
@@ -199,79 +198,65 @@ public class BFTMapClientTest extends TestFixture {
 			insert("TestTable5", 130);
 			assertEquals("Main table size should be 130", 130, bftMap.size1("TestTable5"));
 
+			System.out.println("stopping server 0");
 			stopServer(0);
+			System.out.println("stoped");
 
 			insert("TestTable5", 60);
 			assertEquals("Main table size should be 190", 190, bftMap.size1("TestTable5"));
 
+			System.out.println("starting server 0");
 			startServer(0);
+			System.out.println("started");
 			
-			StatusReply reply = askStatus(0);
-			while(reply != StatusReply.READY) {
-				Thread.sleep(5000);
-				reply = askStatus(0);
-			}
-			
+			Thread.sleep(10000);
+
 			insert("TestTable5", 20);
 			assertEquals("Main table size should be 210", 210, bftMap.size1("TestTable5"));
 
-			Thread.sleep(2000);
+			Thread.sleep(10000);
 			
-			reply = askStatus(0);
-			while(reply != StatusReply.READY) {
-				Thread.sleep(5000);
-				reply = askStatus(0);
-			}
+			insert("TestTable5", 20);
+			assertEquals("Main table size should be 230", 230, bftMap.size1("TestTable5"));
 
-			stopServer(1);
+			System.out.println("stopping server 2");
+			stopServer(2);
+			System.out.println("stopped");
 
-			insert("TestTable5", 60);
+			insert("TestTable5", 40);
 			assertEquals("Main table size should be 270", 270, bftMap.size1("TestTable5"));
 			
-			startServer(1);
-			reply = askStatus(1);
-			while(reply != StatusReply.READY) {
-				Thread.sleep(5000);
-				reply = askStatus(1);
-			}
-			
+			startServer(2);
 			insert("TestTable5", 20);
 			assertEquals("Main table size should be 290", 290, bftMap.size1("TestTable5"));
 			
-			stopServer(2);
+			System.out.println("stopping server 3");
+			stopServer(3);
+			System.out.println("stopped");
 
 			insert("TestTable5", 40);
 			assertEquals("Main table size should be 330", 330, bftMap.size1("TestTable5"));
 
-			startServer(2);
-			reply = askStatus(2);
-			while(reply != StatusReply.READY) {
-				Thread.sleep(5000);
-				reply = askStatus(2);
-			}
+			System.out.println("starting server 0");
+			startServer(3);
+			System.out.println("started");
 			
 			insert("TestTable5", 40);
 			assertEquals("Main table size should be 370", 370, bftMap.size1("TestTable5"));
 
-			stopServer(3);
+			System.out.println("stopping server 1");
+			stopServer(1);
+			System.out.println("stopped");
 			
 			insert("TestTable5", 40);
 			assertEquals("Main table size should be 410", 410, bftMap.size1("TestTable5"));
 
-			startServer(3);
-			reply = askStatus(3);
-			while(reply != StatusReply.READY) {
-				Thread.sleep(5000);
-				reply = askStatus(3);
-			}
-			
+			System.out.println("starting server 1");
+			startServer(1);
+			System.out.println("started");
+
 			insert("TestTable5", 20);
 			assertEquals("Main table size should be 430", 430, bftMap.size1("TestTable5"));
-
-			stopServer(0);
-			
-			insert("TestTable5", 40);
-			assertEquals("Main table size should be 470", 470, bftMap.size1("TestTable5"));
 			
 		} catch(InterruptedException ie) {
 			System.out.println("Exception during Thread sleep: " + ie.getMessage());

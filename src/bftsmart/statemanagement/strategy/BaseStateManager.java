@@ -122,7 +122,7 @@ public abstract class BaseStateManager implements StateManager {
         if (waitingEid == -1) {
             Logger.println("(TOMLayer.analyzeState) I'm not waiting for any state, so I will keep record of this message");
             if (tomLayer.execManager.isDecidable(eid)) {
-                System.out.println("(TOMLayer.analyzeState) I have now more than " + SVManager.getCurrentViewF() + " messages for EID " + eid + " which are beyond EID " + lastEid);
+                System.out.println("BaseStateManager.analyzeState: I have now more than " + SVManager.getCurrentViewF() + " messages for EID " + eid + " which are beyond EID " + lastEid);
                 lastEid = eid;
                 waitingEid = eid - 1;
         		System.out.println("analyzeState " + waitingEid);

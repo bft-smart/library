@@ -67,8 +67,13 @@ public class NettyTOMMessageEncoder extends SimpleChannelHandler {
                 System.out.println("WARNING: message signature has size "+signatureData.length+" and should have "+signatureLength);
         }
         
-        if (useMAC)
-            macData = produceMAC(sm.destination,msgData);
+        if (useMAC) {
+            macData = produceMAC(sm.destination, msgData, sm.getSender());
+            if(macData == null) {
+            	System.out.println("uses MAC and the MAC returned is null. Won't write to channel");
+            	return;
+            }
+        }
 
         int dataLength = 1+msgData.length+(macData==null?0:macData.length)+
                 (signatureData==null?0:signatureData.length);
@@ -89,13 +94,16 @@ public class NettyTOMMessageEncoder extends SimpleChannelHandler {
         if (signatureData != null)
             buf.writeBytes(signatureData);
 
-        Channels.write(ctx, e.getFuture(), buf);        
+        Channels.write(ctx, e.getFuture(), buf);
     }
 
-    byte[] produceMAC(int id, byte[] data){
-        rl.readLock().lock();
-        Mac macSend = ((NettyClientServerSession)sessionTable.get(id)).getMacSend();
-        rl.readLock().unlock();
+    byte[] produceMAC(int id, byte[] data, int me) {
+        NettyClientServerSession session = (NettyClientServerSession)sessionTable.get(id);
+        if(session == null) {
+        	System.out.println("NettyTOMMessageEncoder.produceMAC(). session for client " + id + " is null");
+        	return null;
+        }
+        Mac macSend = session.getMacSend();
         return macSend.doFinal(data);
     }
 

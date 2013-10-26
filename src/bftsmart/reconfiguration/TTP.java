@@ -193,10 +193,4 @@ public class TTP {
         System.exit(0);
     }
     
-    public StatusReply askStatus(int id) {
-    	connect();
-    	StatusReply reply = rec.askStatus(id);
-    	close();
-    	return reply;
-    }
 }

@@ -97,7 +97,8 @@ public class View implements Serializable {
     public boolean equals(Object obj) {
         if (obj instanceof View) {
             View v = (View) obj;
-            return (this.addresses.equals(v.addresses) &&
+//            return (this.addresses.equals(v.addresses) &&
+            return (this.addresses.keySet().equals(v.addresses.keySet()) &&
                     Arrays.equals(this.processes, v.processes)
                     && this.id == v.id && this.f == v.f);
             

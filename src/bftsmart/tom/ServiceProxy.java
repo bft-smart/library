@@ -12,7 +12,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
- */
+*/
 package bftsmart.tom;
 
 import java.util.Arrays;
@@ -23,7 +23,6 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import bftsmart.communication.client.ReplyListener;
 import bftsmart.reconfiguration.ReconfigureReply;
-import bftsmart.reconfiguration.StatusReply;
 import bftsmart.reconfiguration.views.View;
 import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.core.messages.TOMMessageType;
@@ -94,7 +93,6 @@ public class ServiceProxy extends TOMSender {
         replies = new TOMMessage[getViewManager().getCurrentViewN()];
 
         comparator = (replyComparator != null) ? replyComparator : new Comparator<byte[]>() {
-
             @Override
             public int compare(byte[] o1, byte[] o2) {
                 return Arrays.equals(o1, o2) ? 0 : -1;
@@ -140,26 +138,18 @@ public class ServiceProxy extends TOMSender {
     }
 
     public void invokeAsynchronous(byte[] request, ReplyListener listener, int[] targets, TOMMessageType type) {
-        canSendLock.lock();
+    	canSendLock.lock();
+    	receivedReplies = 0;
         reqId = generateRequestId(type);
         operationId = generateOperationId();
         requestType = type;
         replyQuorum = getReplyQuorum();
         this.replyListener = listener;
-        if (this.getViewManager().getStaticConf().isTheTTP()) {
-            type = TOMMessageType.STATUS_REPLY;
-            try {
-                sendMessageToTargets(request, reqId, operationId, targets, type);
-            } catch (RuntimeException re) {
-                if (re.getMessage().equals("Server not connected")) {
-                    TOMMessage tm = new TOMMessage(targets[0], 0, reqId, TOMUtil.getBytes(StatusReply.OFFLINE.toString()), 0, type);
-                    listener.replyReceived(tm);
-                }
-            }
-        } else {
-            sendMessageToTargets(request, reqId, operationId, targets, type);
-        }
-        canSendLock.unlock();
+		try {
+        	sendMessageToTargets(request, reqId, operationId, targets, type);
+		} finally {
+	    	canSendLock.unlock();
+		}
     }
 
     /**
@@ -198,14 +188,14 @@ public class ServiceProxy extends TOMSender {
             if (!this.sm.tryAcquire(invokeTimeout, TimeUnit.SECONDS)) {
                 Logger.println("###################TIMEOUT#######################");
                 Logger.println("Reply timeout for reqId=" + reqId);
-                canSendLock.unlock();
-
                 System.out.print(getProcessId() + " // " + reqId + " // TIMEOUT // ");
                 System.out.println("Replies received: " + receivedReplies);
-
+                canSendLock.unlock();
+                
                 return null;
             }
         } catch (InterruptedException ex) {
+        	ex.printStackTrace();
         }
 
         Logger.println("Response extracted = " + response);
@@ -254,7 +244,7 @@ public class ServiceProxy extends TOMSender {
                         ret = response.getContent();
                     }
                 } else {
-                    // Reply to readonly request
+                	// Reply to readonly request
                     ret = response.getContent();
                 }
             }
@@ -281,7 +271,6 @@ public class ServiceProxy extends TOMSender {
      */
     @Override
     public void replyReceived(TOMMessage reply) {
-
         try {
             canReceiveLock.lock();
             if (reqId == -1) {//no message being expected

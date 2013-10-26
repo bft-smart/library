@@ -27,5 +27,6 @@ public class BFTMapRequestType {
 	static final int CHECK = 8;
 	static final int GET_TABLE = 9;
 	static final int TAB_CREATE_CHECK = 10;
+	static final int EXIT = 11;
 
 }

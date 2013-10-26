@@ -695,7 +695,6 @@ public class LCManager {
     
     // verifies is a proof associated with a decided value is valid
     private boolean hasValidProof(LastEidData led) {
-
         byte[] hashedValue = md.digest(led.getEidDecision());
         Set<PaxosMessage> PaxosMessages = led.getEidProof();
         int myId = tomLayer.reconfManager.getStaticConf().getProcessId();
@@ -738,7 +737,6 @@ public class LCManager {
                 countValid++;
             }
         }
-        
         return countValid >= certificate;
     }
 

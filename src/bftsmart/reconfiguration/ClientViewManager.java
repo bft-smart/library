@@ -22,7 +22,7 @@ import bftsmart.reconfiguration.views.View;
  *
  * @author eduardo
  */
-public class ClientViewManager extends ViewManager{
+public class ClientViewManager extends ViewManager {
 
     public ClientViewManager(int procId) {
         super(procId);

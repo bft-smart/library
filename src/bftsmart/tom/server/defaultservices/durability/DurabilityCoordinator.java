@@ -352,7 +352,6 @@ public abstract class DurabilityCoordinator implements Recoverable, BatchExecuta
     	return ckpIndex;
     }
     
-
     /**
      * Iterates over the message context array and get the consensus id of each command
      * being executed. As several times during the execution of commands and logging the
