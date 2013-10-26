@@ -158,7 +158,7 @@ public class NettyTOMMessageDecoder extends FrameDecoder {
                 //verify MAC
                 if (useMAC) {
                     if (!verifyMAC(sm.getSender(), data, digest)) {
-                        Logger.println("MAC error: message discarded");
+                        System.out.println("MAC error: message discarded");
                         return null;
                     }
                 }
@@ -180,13 +180,11 @@ public class NettyTOMMessageDecoder extends FrameDecoder {
 
                     rl.readLock().unlock();
                     
-                    //******* EDUARDO BEGIN **************//
                     Mac macSend = Mac.getInstance(manager.getStaticConf().getHmacAlgorithm());
                     macSend.init(authKey);
                     Mac macReceive = Mac.getInstance(manager.getStaticConf().getHmacAlgorithm());
                     macReceive.init(authKey);
                     NettyClientServerSession cs = new NettyClientServerSession(channel, macSend, macReceive, sm.getSender(), manager.getStaticConf().getRSAPublicKey(), new ReentrantLock());
-                    //******* EDUARDO END **************//
 
                     rl.writeLock().lock();
                     sessionTable.put(sm.getSender(), cs);
@@ -198,7 +196,6 @@ public class NettyTOMMessageDecoder extends FrameDecoder {
                     }
                 }
             }
-
             return sm;
         } catch (Exception ex) {
             bftsmart.tom.util.Logger.println("Impossible to decode message: "+

@@ -103,7 +103,7 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
             bootstrap.bind(new InetSocketAddress(manager.getStaticConf().getHost(
                     manager.getStaticConf().getProcessId()),
                     manager.getStaticConf().getPort(manager.getStaticConf().getProcessId())));
-
+            
             System.out.println("#Bound to port " + manager.getStaticConf().getPort(manager.getStaticConf().getProcessId()));
             System.out.println("#myId " + manager.getStaticConf().getProcessId());
             System.out.println("#n " + manager.getCurrentViewN());
@@ -153,8 +153,8 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
                 NettyClientServerSession value = (NettyClientServerSession) m.getValue();
                 if (e.getChannel().equals(value.getChannel())) {
                     int key = (Integer) m.getKey();
+                    System.out.println("#Removing client channel with ID= " + key);
                     sessionTable.remove(key);
-                    System.out.println("#Removed client channel with ID= " + key);
                     System.out.println("#active clients=" + sessionTable.size());
                     break;
                 }
@@ -171,6 +171,7 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
     }
 
     private ReentrantLock sendLock = new ReentrantLock();
+    
     @Override
     public void send(int[] targets, TOMMessage sm, boolean serializeClassHeaders) {
         
@@ -191,7 +192,7 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
             try {
                 dos.close();
             } catch (IOException ex) {
-                Logger.println("Exception closing DataOutputStream: " + ex.getMessage());
+                System.out.println("Exception closing DataOutputStream: " + ex.getMessage());
             }
         }
 
@@ -206,18 +207,18 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
         }
 
         for (int i = 0; i < targets.length; i++) {
-            
             rl.readLock().lock();
-            NettyClientServerSession ncss = (NettyClientServerSession) sessionTable.get(targets[i]);
-            if (ncss != null) {
-                Channel session = ncss.getChannel();
-                rl.readLock().unlock();
-                sm.destination = targets[i];
-                //send message
-                sendLock.lock();
-                session.write(sm); // This used to invoke "await". Removed to avoid blockage and race condition.
+            sendLock.lock();
+            try {
+	            NettyClientServerSession ncss = (NettyClientServerSession) sessionTable.get(targets[i]);
+	            if (ncss != null) {
+	                Channel session = ncss.getChannel();
+	                sm.destination = targets[i];
+	                //send message
+	                session.write(sm); // This used to invoke "await". Removed to avoid blockage and race condition.
+	            }
+            } finally {
                 sendLock.unlock();
-            } else {
                 rl.readLock().unlock();
             }
         }

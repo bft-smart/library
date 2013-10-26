@@ -26,19 +26,19 @@ import java.util.TreeMap;
 
 import bftsmart.tom.MessageContext;
 import bftsmart.tom.ServiceReplica;
-import bftsmart.tom.server.defaultservices.durability.DurabilityCoordinator;
+import bftsmart.tom.server.defaultservices.DefaultRecoverable;
 
 /**
  * 
  * @author Marcel Santos
  *
  */
-public class YCSBServer extends DurabilityCoordinator {
+public class YCSBServer extends DefaultRecoverable {
 	private static boolean _debug	= false;
 	private TreeMap<String, YCSBTable>	mTables;
 	
 	private boolean logPrinted = false;
-
+	
 	public static void main(String[] args) throws Exception	{
 		if (args.length == 1) {
 			new YCSBServer(new Integer(args[0]));
@@ -61,7 +61,7 @@ public class YCSBServer extends DurabilityCoordinator {
 		byte[][] replies = new byte[commands.length][];
 		int index = 0;
     	for(byte[] command: commands) {
-    		if(msgCtx != null && msgCtx[index] != null && msgCtx[index].getConsensusId() % 5000 == 0 && !logPrinted) {
+    		if(msgCtx != null && msgCtx[index] != null && msgCtx[index].getConsensusId() % 1000 == 0 && !logPrinted) {
     			System.out.println("YCSBServer executing eid: " + msgCtx[index].getConsensusId());
     			logPrinted = true;
     		} else

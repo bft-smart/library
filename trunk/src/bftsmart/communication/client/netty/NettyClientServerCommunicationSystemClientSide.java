@@ -209,6 +209,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
                 }
             }
         } catch (NoSuchAlgorithmException ex) {
+        	ex.printStackTrace();
         }
     }
 
@@ -248,6 +249,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
             //sleeps 10 seconds before trying to reconnect
             Thread.sleep(10000);
         } catch (InterruptedException ex) {
+        	ex.printStackTrace();
         }
 
         rl.writeLock().lock();
@@ -255,11 +257,8 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 
         ArrayList<NettyClientServerSession> sessions = new ArrayList<NettyClientServerSession>(sessionTable.values());
         for (NettyClientServerSession ncss : sessions) {
-
             if (ncss.getChannel() == ctx.getChannel()) {
                 try {
-
-                    //******* EDUARDO BEGIN **************//
                     Mac macDummy = Mac.getInstance(manager.getStaticConf().getHmacAlgorithm());
                     // Configure the client.
                     ClientBootstrap bootstrap = new ClientBootstrap(new NioClientSocketChannelFactory(Executors.newCachedThreadPool(), Executors.newCachedThreadPool()));
@@ -267,11 +266,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
                     bootstrap.setPipelineFactory(new NettyClientPipelineFactory(this, true, sessionTable, authKey, macDummy.getMacLength(), manager, rl, TOMUtil.getSignatureSize(manager), new ReentrantLock()));
                     // Start the connection attempt.
                     if (manager.getRemoteAddress(ncss.getReplicaId()) != null) {
-
                         ChannelFuture future = bootstrap.connect(manager.getRemoteAddress(ncss.getReplicaId()));
-                        //******* EDUARDO END **************//
-
-
                         //creates MAC stuff
                         Mac macSend = ncss.getMacSend();
                         Mac macReceive = ncss.getMacReceive();
@@ -279,15 +274,14 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
                         sessionTable.remove(ncss.getReplicaId());
                         sessionTable.put(ncss.getReplicaId(), cs);
                         //System.out.println("RE-Connecting to replica "+ncss.getReplicaId()+" at " + conf.getRemoteAddress(ncss.getReplicaId()));
-
                     } else {
                         // This cleans an olde server from the session table
                         sessionTable.remove(ncss.getReplicaId());
                     }
                 } catch (NoSuchAlgorithmException ex) {
+                	ex.printStackTrace();
                 }
             }
-
         }
 
         //closes all other channels to avoid messages being sent to only a subset of the replicas
@@ -374,6 +368,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
             try {
                 dos.close();
             } catch (IOException ex) {
+            	ex.printStackTrace();
             }
         }
 

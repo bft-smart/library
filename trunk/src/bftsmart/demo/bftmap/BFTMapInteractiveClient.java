@@ -16,7 +16,6 @@ limitations under the License.
 package bftsmart.demo.bftmap;
 
 import java.io.IOException;
-import java.util.Random;
 import java.util.Scanner;
 
 import java.io.Console;
@@ -39,6 +38,7 @@ public class BFTMapInteractiveClient {
 
 		Console console = System.console();
 		Scanner sc = new Scanner(System.in);
+		
 
 		while(true) {
 
@@ -49,6 +49,7 @@ public class BFTMapInteractiveClient {
 			System.out.println("select a command : 5. GET VALUES FROM A TABLE");
 			System.out.println("select a command : 6. GET THE SIZE OF A TABLE");
 			System.out.println("select a command : 7. REMOVE AN EXISTING TABLE");
+			System.out.println("select a command : 11. EXIT");
 
 			int cmd = sc.nextInt();
 
@@ -93,26 +94,18 @@ public class BFTMapInteractiveClient {
 				System.out.println("Execute put function");
 				tableExists = false;
 				tableName = null;
-				String times = null;
 				size = -1;
-				tableName = console.readLine("Enter the valid table name in which you want to enter the data: ");
-				times = console.readLine("Enter how many inserts: ");
-				String byteSize = console.readLine("Enter the size of the value in bytes: ");
+				tableName = console.readLine("Enter the valid table name in which you want to insert data: ");
+				String key = console.readLine("Enter a numeric key for the new record in the range 0 to 9999: ");
+				String value = console.readLine("Enter the value for the new record: ");
 
 				byte[] resultBytes;
-				int total = Integer.parseInt(times);
 				tableExists = bftMap.containsKey(tableName);
 				if(tableExists) {
-					size = bftMap.size1(tableName);
-					for(int i=0; i< total; i++) {
-						String key = String.valueOf(i + size);
-						while(key.length() < 4)
-							key = "0" + key;
-						Random rand = new Random();
-						byte[] byteArray = new byte[Integer.parseInt(byteSize)];
-						rand.nextBytes(byteArray);
-						resultBytes = bftMap.putEntry(tableName, key, byteArray);
-					}
+					while(key.length() < 4)
+						key = "0" + key;
+					byte[] byteArray = value.getBytes();
+					resultBytes = bftMap.putEntry(tableName, key, byteArray);
 				} else
 					System.out.println("Table not found");
 				break;
@@ -122,11 +115,13 @@ public class BFTMapInteractiveClient {
 				tableExists = false;
 				boolean keyExists = false;
 				tableName = null;
-				String key = null;
+				key = null;
 				tableName = console.readLine("Enter the valid table name from which you want to get the values: ");
 				tableExists = bftMap.containsKey(tableName);
 				if (tableExists) {
-					key = console.readLine("Enter the valid key");
+					key = console.readLine("Enter the key: ");
+					while(key.length() < 4)
+						key = "0" + key;
 					keyExists = bftMap.containsKey1(tableName, key);
 					if(keyExists) {
 						resultBytes = bftMap.getEntry(tableName,key);
@@ -161,7 +156,7 @@ public class BFTMapInteractiveClient {
 				tableName = console.readLine("Enter the table name from which you want to remove: ");
 				tableExists = bftMap.containsKey(tableName);
 				if(tableExists) {
-					key = console.readLine("Enter the valid key");
+					key = console.readLine("Enter the valid key: ");
 					keyExists = bftMap.containsKey1(tableName, key);
 					if(keyExists) {
 						byte[] result2 = bftMap.removeEntry(tableName,key);
@@ -171,7 +166,8 @@ public class BFTMapInteractiveClient {
 				} else
 					System.out.println("Table not found");
 				break;
-
+			case BFTMapRequestType.EXIT:
+				System.exit(-1);
 			}
 		}
 	}

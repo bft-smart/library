@@ -90,7 +90,7 @@ public class StandardStateManager extends BaseStateManager {
                 waitingEid, TOMUtil.SM_REQUEST, replica, null, null, -1, -1);
         tomLayer.getCommunication().send(SVManager.getCurrentViewOtherAcceptors(), smsg);
 
-        System.out.println("(TOMLayer.requestState) I just sent a request to the other replicas for the state up to EID " + waitingEid);
+        System.out.println("(StandardStateManager.requestState) I just sent a request to the other replicas for the state up to EID " + waitingEid);
 
         TimerTask stateTask =  new TimerTask() {
             public void run() {
@@ -104,7 +104,6 @@ public class StandardStateManager extends BaseStateManager {
         stateTimer = new Timer("state timer");
         timeout = timeout * 2;
         stateTimer.schedule(stateTask,timeout);
-
     }
 
     @Override

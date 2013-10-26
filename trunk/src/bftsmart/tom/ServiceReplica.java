@@ -72,7 +72,7 @@ public class ServiceReplica {
 	private int id;
 	// Server side comunication system
 	private ServerCommunicationSystem cs = null;
-        private ReplyManager repMan = null;
+	private ReplyManager repMan = null;
 	private ServerViewManager SVManager;
 	private boolean isToJoin = false;
 	private ReentrantLock waitTTPJoinMsgLock = new ReentrantLock();
@@ -205,7 +205,7 @@ public class ServiceReplica {
 
 	private void initReplica() {
 		cs.start();
-                repMan = new ReplyManager(SVManager.getStaticConf().getNumRepliers(), cs);
+		repMan = new ReplyManager(SVManager.getStaticConf().getNumRepliers(), cs);
 	}
 	//******* EDUARDO END **************//
 
@@ -225,9 +225,10 @@ public class ServiceReplica {
 		// build the reply and send it to the client
 		message.reply = new TOMMessage(id, message.getSession(), message.getSequence(),
 				response, SVManager.getCurrentViewId(), TOMMessageType.UNORDERED_REQUEST);
-		//cs.send(new int[]{message.getSender()}, message.reply); 
-                                if (SVManager.getStaticConf().getNumRepliers() > 0) repMan.send(message);
-                else cs.send(new int[]{message.getSender()}, message.reply); 
+		if (SVManager.getStaticConf().getNumRepliers() > 0)
+			repMan.send(message);
+		else
+			cs.send(new int[]{message.getSender()}, message.reply); 
 	}
 
 	public void receiveMessages(int consId[], int regency, TOMMessage[][] requests) {
@@ -238,12 +239,13 @@ public class ServiceReplica {
 
 		for(TOMMessage[] requestsFromConsensus : requests) {
 			TOMMessage firstRequest = requestsFromConsensus[0];
+			int requestCount = 0;
 			for(TOMMessage request : requestsFromConsensus) {
 				if (request.getViewID() == SVManager.getCurrentViewId()) {					
 					if (request.getReqType() == TOMMessageType.ORDERED_REQUEST) {
 						numRequests++;
 						MessageContext msgCtx = new MessageContext(firstRequest.timestamp, firstRequest.nonces,	regency, consId[consensusCount], request.getSender(), firstRequest);
-						if(consensusCount + 1 == requestsFromConsensus.length)
+						if(requestCount + 1 == requestsFromConsensus.length)
 							msgCtx.setLastInBatch();
 						request.deliveryTime = System.nanoTime();
 						if(executor instanceof BatchExecutable) {
@@ -274,10 +276,11 @@ public class ServiceReplica {
 					// him (but only if it came from consensus an not state transfer)
 					tomLayer.getCommunication().send(new int[] { request.getSender() }, new TOMMessage(SVManager.getStaticConf().getProcessId(), request.getSession(), request.getSequence(), TOMUtil.getBytes(SVManager.getCurrentView()),	SVManager.getCurrentViewId()));
 				}
+				requestCount++;
 			}
 			consensusCount++;
 		}
-		
+
 		if(executor instanceof BatchExecutable && numRequests > 0){
 			//Make new batch to deliver
 			byte[][] batch = new byte[numRequests][];
@@ -300,10 +303,10 @@ public class ServiceReplica {
 				TOMMessage request = toBatch.get(index);
 				request.reply = new TOMMessage(id, request.getSession(), request.getSequence(),
 						replies[index], SVManager.getCurrentViewId());
-				//cs.send(new int[] { request.getSender() }, request.reply);
-                                if (SVManager.getStaticConf().getNumRepliers() > 0) repMan.send(request);
-                                else cs.send(new int[] { request.getSender() }, request.reply);
-
+				if (SVManager.getStaticConf().getNumRepliers() > 0)
+					repMan.send(request);
+				else
+					cs.send(new int[] { request.getSender() }, request.reply);
 			}
 			//DEBUG
 			bftsmart.tom.util.Logger.println("BATCHEXECUTOR END");

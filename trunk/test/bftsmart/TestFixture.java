@@ -20,7 +20,6 @@ import java.io.IOException;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 
-import bftsmart.reconfiguration.StatusReply;
 import bftsmart.reconfiguration.TTP;
 
 /**
@@ -42,15 +41,22 @@ public class TestFixture {
 
 	private static String[] command = new String[5];
 	
-	private static TTP ttp;
-
 	@BeforeClass
 	public static void startServers() {
 		try {
+			System.out.println("Stoping running servers, if any");
+			String stopCmd = "kill -9 $(ps aux | grep '[b]ftsmart.demo.bftmap.BFTMapServer' | awk '{print $ 2}')";
+			try {
+				new ProcessBuilder(stopCmd).redirectErrorStream(true).start();
+			} catch (IOException e) {
+				System.out.println("Exception stoping remaining replicas");
+				e.printStackTrace();
+			}
+			
 			System.out.println("Starting the servers");
 			command[0] = "java";
 			command[1] = "-cp";
-			command[2] = "bin/BFT-SMaRt.jar:lib/slf4j-api-1.5.8.jar:lib/slf4j-jdk14-1.5.8.jar:lib/netty-3.1.1.GA.jar:lib/commons-codec-1.5.jar";
+			command[2] = "bin/:lib/*";
 			command[3] = "bftsmart.demo.bftmap.BFTMapServer";
 			command[4] = "0";
 			
@@ -146,11 +152,4 @@ public class TestFixture {
 		}
 	}
 	
-	public static StatusReply askStatus(int replicaId) {
-		if(ttp == null)
-			ttp = new TTP();
-		StatusReply reply = ttp.askStatus(replicaId);
-		System.out.println("---- Status atual: " + reply);
-		return reply;
-	}
 }
