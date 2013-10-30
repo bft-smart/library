@@ -22,7 +22,6 @@ import java.util.HashMap;
 import org.junit.Test;
 
 import bftsmart.demo.bftmap.BFTMap;
-import bftsmart.ReplicaStatusLogger;
 import bftsmart.TestFixture;
 
 /**
@@ -158,8 +157,6 @@ public class BFTMapClientTest extends TestFixture {
 			insert("TestTable4", 200);
 			assertEquals("Main table size should be 201", 201, bftMap.size1("TestTable4"));
 
-			ReplicaStatusLogger statusLogger = new ReplicaStatusLogger(1);
-			
 			stopServer(0);
 
 			Thread.sleep(1000);
@@ -167,8 +164,6 @@ public class BFTMapClientTest extends TestFixture {
 			insert("TestTable4", 200);
 			assertEquals("Main table size should be 401", 401, bftMap.size1("TestTable4"));
 			
-			statusLogger.interrupt();
-
 		} catch(InterruptedException ie) {
 			System.out.println("Exception during Thread sleep: " + ie.getMessage());
 		}
