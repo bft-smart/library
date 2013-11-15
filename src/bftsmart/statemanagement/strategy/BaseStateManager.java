@@ -18,7 +18,7 @@ package bftsmart.statemanagement.strategy;
 import java.util.Collection;
 import java.util.HashMap;
 
-import bftsmart.reconfiguration.ServerViewManager;
+import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.reconfiguration.views.View;
 import bftsmart.statemanagement.ApplicationState;
 import bftsmart.statemanagement.SMMessage;
@@ -35,7 +35,7 @@ import bftsmart.tom.util.Logger;
 public abstract class BaseStateManager implements StateManager {
 	
     protected TOMLayer tomLayer;
-    protected ServerViewManager SVManager;
+    protected ServerViewController SVController;
 	
     protected HashMap<Integer, ApplicationState> senderStates = null;
     protected HashMap<Integer, View> senderViews = null;
@@ -59,15 +59,15 @@ public abstract class BaseStateManager implements StateManager {
     }
 
     protected boolean moreThanF_Replies() {
-    	return senderStates.size() > SVManager.getCurrentViewF();
+    	return senderStates.size() > SVController.getCurrentViewF();
     }
 
     protected boolean moreThan2F_Regencies(int regency) {
-        return senderRegencies.size() > SVManager.getQuorumStrong();
+        return senderRegencies.size() > SVController.getQuorumStrong();
     }
     
     protected boolean moreThan2F_Leaders(int leader) {
-        return senderLeaders.size() > SVManager.getQuorumStrong();
+        return senderLeaders.size() > SVController.getQuorumStrong();
     }
 
     protected boolean moreThan2F_Views(View view) {
@@ -77,7 +77,7 @@ public abstract class BaseStateManager implements StateManager {
     		if(view.equals(v))
     			counter++;
     	}
-        boolean result = counter > SVManager.getQuorumStrong();
+        boolean result = counter > SVController.getQuorumStrong();
         views = null;
         return result;
     }
@@ -122,7 +122,7 @@ public abstract class BaseStateManager implements StateManager {
         if (waitingEid == -1) {
             Logger.println("(TOMLayer.analyzeState) I'm not waiting for any state, so I will keep record of this message");
             if (tomLayer.execManager.isDecidable(eid)) {
-                System.out.println("BaseStateManager.analyzeState: I have now more than " + SVManager.getCurrentViewF() + " messages for EID " + eid + " which are beyond EID " + lastEid);
+                System.out.println("BaseStateManager.analyzeState: I have now more than " + SVController.getCurrentViewF() + " messages for EID " + eid + " which are beyond EID " + lastEid);
                 lastEid = eid;
                 waitingEid = eid - 1;
         		System.out.println("analyzeState " + waitingEid);

@@ -35,10 +35,15 @@ import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.PBEKeySpec;
 
 import bftsmart.communication.SystemMessage;
-import bftsmart.reconfiguration.ServerViewManager;
-import bftsmart.reconfiguration.TTPMessage;
+import bftsmart.reconfiguration.ServerViewController;
+import bftsmart.reconfiguration.VMMessage;
 import bftsmart.tom.ServiceReplica;
 import bftsmart.tom.util.Logger;
+import bftsmart.tom.util.TOMUtil;
+import java.math.BigInteger;
+import java.security.PrivateKey;
+import java.security.PublicKey;
+import java.security.Signature;
 import java.util.HashSet;
 
 /**
@@ -50,11 +55,10 @@ import java.util.HashSet;
  */
 public class ServerConnection {
 
-    private static final String PASSWORD = "commsyst";
-    private static final String MAC_ALGORITHM = "HmacMD5";
+    public static final String MAC_ALGORITHM = "HmacMD5";
     private static final long POOL_TIME = 5000;
     //private static final int SEND_QUEUE_SIZE = 50;
-    private ServerViewManager manager;
+    private ServerViewController controller;
     private Socket socket;
     private DataOutputStream socketOutStream = null;
     private DataInputStream socketInStream = null;
@@ -64,7 +68,7 @@ public class ServerConnection {
     private HashSet<Integer> noMACs = null; // this is used to keep track of data to be sent without a MAC.
                                             // It uses the reference id for that same data
     private LinkedBlockingQueue<SystemMessage> inQueue;
-    private SecretKey authKey;
+    private SecretKey authKey = null;
     private Mac macSend;
     private Mac macReceive;
     private int macSize;
@@ -73,10 +77,10 @@ public class ServerConnection {
     private Lock sendLock;
     private boolean doWork = true;
 
-    public ServerConnection(ServerViewManager manager, Socket socket, int remoteId,
+    public ServerConnection(ServerViewController controller, Socket socket, int remoteId,
             LinkedBlockingQueue<SystemMessage> inQueue, ServiceReplica replica) {
 
-        this.manager = manager;
+        this.controller = controller;
 
         this.socket = socket;
 
@@ -84,17 +88,17 @@ public class ServerConnection {
 
         this.inQueue = inQueue;
 
-        this.outQueue = new LinkedBlockingQueue<byte[]>(this.manager.getStaticConf().getOutQueueSize());
+        this.outQueue = new LinkedBlockingQueue<byte[]>(this.controller.getStaticConf().getOutQueueSize());
 
         this.noMACs = new HashSet<Integer>();
         // Connect to the remote process or just wait for the connection?
         if (isToConnect()) {
             //I have to connect to the remote server
             try {
-                this.socket = new Socket(this.manager.getStaticConf().getHost(remoteId),
-                        this.manager.getStaticConf().getServerToServerPort(remoteId));
+                this.socket = new Socket(this.controller.getStaticConf().getHost(remoteId),
+                        this.controller.getStaticConf().getServerToServerPort(remoteId));
                 ServersCommunicationLayer.setSocketOptions(this.socket);
-                new DataOutputStream(this.socket.getOutputStream()).writeInt(this.manager.getStaticConf().getProcessId());
+                new DataOutputStream(this.socket.getOutputStream()).writeInt(this.controller.getStaticConf().getProcessId());
 
             } catch (UnknownHostException ex) {
                 ex.printStackTrace();
@@ -113,19 +117,19 @@ public class ServerConnection {
                 ex.printStackTrace();
             }
         }
-
+               
        //******* EDUARDO BEGIN **************//
-        this.useSenderThread = this.manager.getStaticConf().isUseSenderThread();
+        this.useSenderThread = this.controller.getStaticConf().isUseSenderThread();
 
-        if (useSenderThread && (this.manager.getStaticConf().getTTPId() != remoteId)) {
+        if (useSenderThread && (this.controller.getStaticConf().getTTPId() != remoteId)) {
             new SenderThread().start();
         } else {
             sendLock = new ReentrantLock();
         }
         authenticateAndEstablishAuthKey();
-
-        if (!this.manager.getStaticConf().isTheTTP()) {
-            if (this.manager.getStaticConf().getTTPId() == remoteId) {
+ 
+        if (!this.controller.getStaticConf().isTheTTP()) {
+            if (this.controller.getStaticConf().getTTPId() == remoteId) {
                 //Uma thread "diferente" para as msgs recebidas da TTP
                 new TTPReceiverThread(replica).start();
             } else {
@@ -181,7 +185,7 @@ public class ServerConnection {
             if (socket != null && socketOutStream != null) {
                 try {
                     //do an extra copy of the data to be sent, but on a single out stream write
-                    byte[] mac = (useMAC && this.manager.getStaticConf().getUseMACs() == 1)?macSend.doFinal(messageData):null;
+                    byte[] mac = (useMAC && this.controller.getStaticConf().getUseMACs() == 1)?macSend.doFinal(messageData):null;
                     byte[] data = new byte[5 +messageData.length+((mac!=null)?mac.length:0)];
                     int value = messageData.length;
 
@@ -213,23 +217,23 @@ public class ServerConnection {
     //******* EDUARDO BEGIN **************//
     //return true of a process shall connect to the remote process, false otherwise
     private boolean isToConnect() {
-        if (this.manager.getStaticConf().getTTPId() == remoteId) {
+        if (this.controller.getStaticConf().getTTPId() == remoteId) {
             //Need to wait for the connection request from the TTP, do not tray to connect to it
             return false;
-        } else if (this.manager.getStaticConf().getTTPId() == this.manager.getStaticConf().getProcessId()) {
+        } else if (this.controller.getStaticConf().getTTPId() == this.controller.getStaticConf().getProcessId()) {
             //If this is a TTP, one must connect to the remote process
             return true;
         }
         boolean ret = false;
-        if (this.manager.isInCurrentView()) {
-            boolean me = this.manager.isInLastJoinSet(this.manager.getStaticConf().getProcessId());
-            boolean remote = this.manager.isInLastJoinSet(remoteId);
+        if (this.controller.isInCurrentView()) {
+            boolean me = this.controller.isInLastJoinSet(this.controller.getStaticConf().getProcessId());
+            boolean remote = this.controller.isInLastJoinSet(remoteId);
 
             //either both endpoints are old in the system (entered the system in a previous view),
             //or both entered during the last reconfiguration
             if ((me && remote) || (!me && !remote)) {
                 //in this case, the node with higher ID starts the connection
-                if (this.manager.getStaticConf().getProcessId() > remoteId) {
+                if (this.controller.getStaticConf().getProcessId() > remoteId) {
                     ret = true;
                 }
             //this process is the older one, and the other one entered in the last reconfiguration
@@ -262,10 +266,10 @@ public class ServerConnection {
                 //******* EDUARDO BEGIN **************//
                 if (isToConnect()) {
 
-                    socket = new Socket(this.manager.getStaticConf().getHost(remoteId),
-                            this.manager.getStaticConf().getServerToServerPort(remoteId));
+                    socket = new Socket(this.controller.getStaticConf().getHost(remoteId),
+                            this.controller.getStaticConf().getServerToServerPort(remoteId));
                     ServersCommunicationLayer.setSocketOptions(socket);
-                    new DataOutputStream(socket.getOutputStream()).writeInt(this.manager.getStaticConf().getProcessId());
+                    new DataOutputStream(socket.getOutputStream()).writeInt(this.controller.getStaticConf().getProcessId());
 
                 //******* EDUARDO END **************//
                 } else {
@@ -283,12 +287,13 @@ public class ServerConnection {
                 try {
                     socketOutStream = new DataOutputStream(socket.getOutputStream());
                     socketInStream = new DataInputStream(socket.getInputStream());
+                    
+                    authKey = null;
+                    authenticateAndEstablishAuthKey();
                 } catch (IOException ex) {
                     ex.printStackTrace();
                 }
             }
-
-        //authenticateAndEstablishAuthKey();
         }
 
         connectLock.unlock();
@@ -296,7 +301,7 @@ public class ServerConnection {
 
     //TODO!
     public void authenticateAndEstablishAuthKey() {
-        if (authKey != null) {
+        if (authKey != null || socketOutStream == null || socketInStream == null) {
             return;
         }
 
@@ -308,9 +313,72 @@ public class ServerConnection {
             // I received a connection request, so I'm second on the auth protocol
             //DataInputStream dis = new DataInputStream(socket.getInputStream());
             //}
+            
+            //Derive DH private key from replica's own RSA private key
+            
+            PrivateKey RSAprivKey = controller.getStaticConf().getRSAPrivateKey();
+            BigInteger DHPrivKey =
+                    new BigInteger(RSAprivKey.getEncoded());
+            
+            //Create DH public key
+            BigInteger myDHPubKey =
+                    controller.getStaticConf().getDHG().modPow(DHPrivKey, controller.getStaticConf().getDHP());
+            
+            //turn it into a byte array
+            byte[] bytes = myDHPubKey.toByteArray();
+            
+            byte[] signature = TOMUtil.signMessage(RSAprivKey, bytes);
+            
+            //send my DH public key and signature
+            socketOutStream.writeInt(bytes.length);
+            socketOutStream.write(bytes);
+            
+            socketOutStream.writeInt(signature.length);
+            socketOutStream.write(signature);
+            
+            //receive remote DH public key and signature
+            int dataLength = socketInStream.readInt();
+            bytes = new byte[dataLength];
+            int read = 0;
+            do {
+                read += socketInStream.read(bytes, read, dataLength - read);
+                
+            } while (read < dataLength);
+            
+            byte[] remote_Bytes = bytes;
 
+            dataLength = socketInStream.readInt();
+            bytes = new byte[dataLength];
+            read = 0;
+            do {
+                read += socketInStream.read(bytes, read, dataLength - read);
+                
+            } while (read < dataLength);
+            
+            byte[] remote_Signature = bytes;
+            
+            //verify signature
+            PublicKey remoteRSAPubkey = controller.getStaticConf().getRSAPublicKey(remoteId);
+            
+            if (!TOMUtil.verifySignature(remoteRSAPubkey, remote_Bytes, remote_Signature)) {
+                
+                System.out.println(remoteId + " sent an invalid signature!");
+                shutdown();
+                return;
+            }
+            
+            BigInteger remoteDHPubKey = new BigInteger(remote_Bytes);
+
+            //Create secret key
+            BigInteger secretKey =
+                    remoteDHPubKey.modPow(DHPrivKey, controller.getStaticConf().getDHP());
+            
+           System.out.println("#Diffie-Hellman complete with " + remoteId);
+            
             SecretKeyFactory fac = SecretKeyFactory.getInstance("PBEWithMD5AndDES");
-            PBEKeySpec spec = new PBEKeySpec(PASSWORD.toCharArray());
+            PBEKeySpec spec = new PBEKeySpec(secretKey.toString().toCharArray());
+            
+            //PBEKeySpec spec = new PBEKeySpec(PASSWORD.toCharArray());
             authKey = fac.generateSecret(spec);
 
             macSend = Mac.getInstance(MAC_ALGORITHM);
@@ -420,7 +488,7 @@ public class ServerConnection {
                         boolean result = true;
                         
                         byte hasMAC = socketInStream.readByte();
-                        if (manager.getStaticConf().getUseMACs() == 1 && hasMAC == 1) {
+                        if (controller.getStaticConf().getUseMACs() == 1 && hasMAC == 1) {
                             read = 0;
                             do {
                                 read += socketInStream.read(receivedMac, read, macSize - read);
@@ -431,7 +499,7 @@ public class ServerConnection {
 
                         if (result) {
                             SystemMessage sm = (SystemMessage) (new ObjectInputStream(new ByteArrayInputStream(data)).readObject());
-                            sm.authenticated = (manager.getStaticConf().getUseMACs() == 1 && hasMAC == 1);
+                            sm.authenticated = (controller.getStaticConf().getUseMACs() == 1 && hasMAC == 1);
                             
                             if (sm.getSender() == remoteId) {
                                 if (!inQueue.offer(sm)) {
@@ -502,7 +570,7 @@ public class ServerConnection {
                         boolean result = true;
                         
                         byte hasMAC = socketInStream.readByte();
-                        if (manager.getStaticConf().getUseMACs() == 1 && hasMAC == 1) {
+                        if (controller.getStaticConf().getUseMACs() == 1 && hasMAC == 1) {
                             
                             System.out.println("TTP CON USEMAC");
                             read = 0;
@@ -522,7 +590,7 @@ public class ServerConnection {
                                 bftsmart.tom.util.Logger.println("(ReceiverThread.run) in queue full (message from " + remoteId + " discarded).");
                                 System.out.println("(ReceiverThread.run) in queue full (message from " + remoteId + " discarded).");
                                 }*/
-                                this.replica.joinMsgReceived((TTPMessage) sm);
+                                this.replica.joinMsgReceived((VMMessage) sm);
                             }
                         } else {
                             //TODO: violation of authentication... we should do something

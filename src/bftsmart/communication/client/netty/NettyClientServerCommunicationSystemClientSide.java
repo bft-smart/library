@@ -29,7 +29,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.Executors;
-import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import javax.crypto.Mac;
@@ -51,7 +50,7 @@ import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
 
 import bftsmart.communication.client.CommunicationSystemClientSide;
 import bftsmart.communication.client.ReplyReceiver;
-import bftsmart.reconfiguration.ClientViewManager;
+import bftsmart.reconfiguration.ClientViewController;
 import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.util.Logger;
 import bftsmart.tom.util.TOMUtil;
@@ -63,42 +62,40 @@ import bftsmart.tom.util.TOMUtil;
 @ChannelPipelineCoverage("all")
 public class NettyClientServerCommunicationSystemClientSide extends SimpleChannelUpstreamHandler implements CommunicationSystemClientSide {
 
-    //private static final int MAGIC = 59;
-    //private static final int CONNECT_TIMEOUT = 3000;
-    private static final String PASSWORD = "newcs";
-    //private static final int BENCHMARK_PERIOD = 10000;
+    private int clientId;
     protected ReplyReceiver trr;
     //******* EDUARDO BEGIN **************//
-    private ClientViewManager manager;
+    private ClientViewController controller;
     //******* EDUARDO END **************//
     private Map sessionTable = new HashMap();
     private ReentrantReadWriteLock rl;
-    private SecretKey authKey;
     //the signature engine used in the system
     private Signature signatureEngine;
-    //private Storage st;
-    //private int count = 0;
     private int signatureLength;
     private boolean closed = false;
 
-    public NettyClientServerCommunicationSystemClientSide(ClientViewManager manager) {
+    public NettyClientServerCommunicationSystemClientSide(int clientId, ClientViewController controller) {
         super();
-        try {
+        
+        this.clientId = clientId;
+        try {           
             SecretKeyFactory fac = SecretKeyFactory.getInstance("PBEWithMD5AndDES");
-            PBEKeySpec spec = new PBEKeySpec(PASSWORD.toCharArray());
-            authKey = fac.generateSecret(spec);
 
-            this.manager = manager;
+            this.controller = controller;
             //this.st = new Storage(BENCHMARK_PERIOD);
             this.rl = new ReentrantReadWriteLock();
-            Mac macDummy = Mac.getInstance(manager.getStaticConf().getHmacAlgorithm());
-            signatureLength = TOMUtil.getSignatureSize(manager);
+            Mac macDummy = Mac.getInstance(controller.getStaticConf().getHmacAlgorithm());
+            signatureLength = TOMUtil.getSignatureSize(controller);
 
 
-            int[] currV = manager.getCurrentViewProcesses();
+            int[] currV = controller.getCurrentViewProcesses();
             for (int i = 0; i < currV.length; i++) {
                 try {
-                    // Configure the client.
+                    
+                    String str = this.clientId + ":" + currV[i];
+                    PBEKeySpec spec = new PBEKeySpec(str.toCharArray());
+                    SecretKey authKey = fac.generateSecret(spec);
+                    // Configure the client.                                        
                     ClientBootstrap bootstrap = new ClientBootstrap(
                             new NioClientSocketChannelFactory(
                             Executors.newCachedThreadPool(),
@@ -109,24 +106,24 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
                     bootstrap.setOption("connectTimeoutMillis", 10000);
 
                     // Set up the default event pipeline.
-                    bootstrap.setPipelineFactory(new NettyClientPipelineFactory(this, true, sessionTable,
-                            authKey, macDummy.getMacLength(), manager, rl, signatureLength, new ReentrantLock()));
+                    bootstrap.setPipelineFactory(new NettyClientPipelineFactory(this, sessionTable,
+                            macDummy.getMacLength(), controller, rl, signatureLength));
 
                     //******* EDUARDO BEGIN **************//
 
                     // Start the connection attempt.
-                    ChannelFuture future = bootstrap.connect(manager.getRemoteAddress(currV[i]));
+                    ChannelFuture future = bootstrap.connect(controller.getRemoteAddress(currV[i]));
 
                     //creates MAC stuff
-                    Mac macSend = Mac.getInstance(manager.getStaticConf().getHmacAlgorithm());
+                    Mac macSend = Mac.getInstance(controller.getStaticConf().getHmacAlgorithm());
                     macSend.init(authKey);
-                    Mac macReceive = Mac.getInstance(manager.getStaticConf().getHmacAlgorithm());
+                    Mac macReceive = Mac.getInstance(controller.getStaticConf().getHmacAlgorithm());
                     macReceive.init(authKey);
                     NettyClientServerSession cs = new NettyClientServerSession(future.getChannel(), macSend,
-                            macReceive, currV[i], manager.getStaticConf().getRSAPublicKey(), new ReentrantLock());
+                            macReceive, currV[i]);
                     sessionTable.put(currV[i], cs);
 
-                    System.out.println("Connecting to replica " + currV[i] + " at " + manager.getRemoteAddress(currV[i]));
+                    System.out.println("Connecting to replica " + currV[i] + " at " + controller.getRemoteAddress(currV[i]));
                     //******* EDUARDO END **************//
 
                     future.awaitUninterruptibly();
@@ -153,9 +150,9 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 
     @Override
     public void updateConnections() {
-        int[] currV = manager.getCurrentViewProcesses();
+        int[] currV = controller.getCurrentViewProcesses();
         try {
-            Mac macDummy = Mac.getInstance(manager.getStaticConf().getHmacAlgorithm());
+            Mac macDummy = Mac.getInstance(controller.getStaticConf().getHmacAlgorithm());
             
             //open connections with new servers
             for (int i = 0; i < currV.length; i++) {
@@ -164,6 +161,8 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 
                     rl.readLock().unlock();
                     rl.writeLock().lock();
+                    
+                    SecretKeyFactory fac = SecretKeyFactory.getInstance("PBEWithMD5AndDES");
                     try {
                         // Configure the client.
                         ClientBootstrap bootstrap = new ClientBootstrap(
@@ -177,30 +176,34 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 
                         // Set up the default event pipeline.
                         bootstrap.setPipelineFactory(
-                                new NettyClientPipelineFactory(this, true, sessionTable,
-                                authKey, macDummy.getMacLength(), manager, rl, signatureLength,
-                                new ReentrantLock()));
+                                new NettyClientPipelineFactory(this, sessionTable,
+                                macDummy.getMacLength(), controller, rl, signatureLength));
 
 
                         //******* EDUARDO BEGIN **************//
                         // Start the connection attempt.
-                        ChannelFuture future = bootstrap.connect(manager.getRemoteAddress(currV[i]));
+                        ChannelFuture future = bootstrap.connect(controller.getRemoteAddress(currV[i]));
 
-
+                        String str = this.clientId + ":" + currV[i];
+                        PBEKeySpec spec = new PBEKeySpec(str.toCharArray());
+                        SecretKey authKey = fac.generateSecret(spec);
+                    
                         //creates MAC stuff
-                        Mac macSend = Mac.getInstance(manager.getStaticConf().getHmacAlgorithm());
+                        Mac macSend = Mac.getInstance(controller.getStaticConf().getHmacAlgorithm());
                         macSend.init(authKey);
-                        Mac macReceive = Mac.getInstance(manager.getStaticConf().getHmacAlgorithm());
+                        Mac macReceive = Mac.getInstance(controller.getStaticConf().getHmacAlgorithm());
                         macReceive.init(authKey);
-                        NettyClientServerSession cs = new NettyClientServerSession(future.getChannel(), macSend, macReceive, currV[i], manager.getStaticConf().getRSAPublicKey(), new ReentrantLock());
+                        NettyClientServerSession cs = new NettyClientServerSession(future.getChannel(), macSend, macReceive, currV[i]);
                         sessionTable.put(currV[i], cs);
 
-                        System.out.println("Connecting to replica " + currV[i] + " at " + manager.getRemoteAddress(currV[i]));
+                        System.out.println("Connecting to replica " + currV[i] + " at " + controller.getRemoteAddress(currV[i]));
                         //******* EDUARDO END **************//
 
                         future.awaitUninterruptibly();
 
                     } catch (InvalidKeyException ex) {
+                        ex.printStackTrace();
+                    } catch (InvalidKeySpecException ex) {
                         ex.printStackTrace();
                     }
                     rl.writeLock().unlock();
@@ -259,18 +262,18 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
         for (NettyClientServerSession ncss : sessions) {
             if (ncss.getChannel() == ctx.getChannel()) {
                 try {
-                    Mac macDummy = Mac.getInstance(manager.getStaticConf().getHmacAlgorithm());
+                    Mac macDummy = Mac.getInstance(controller.getStaticConf().getHmacAlgorithm());
                     // Configure the client.
                     ClientBootstrap bootstrap = new ClientBootstrap(new NioClientSocketChannelFactory(Executors.newCachedThreadPool(), Executors.newCachedThreadPool()));
                     // Set up the default event pipeline.
-                    bootstrap.setPipelineFactory(new NettyClientPipelineFactory(this, true, sessionTable, authKey, macDummy.getMacLength(), manager, rl, TOMUtil.getSignatureSize(manager), new ReentrantLock()));
+                    bootstrap.setPipelineFactory(new NettyClientPipelineFactory(this, sessionTable, macDummy.getMacLength(), controller, rl, TOMUtil.getSignatureSize(controller)));
                     // Start the connection attempt.
-                    if (manager.getRemoteAddress(ncss.getReplicaId()) != null) {
-                        ChannelFuture future = bootstrap.connect(manager.getRemoteAddress(ncss.getReplicaId()));
+                    if (controller.getRemoteAddress(ncss.getReplicaId()) != null) {
+                        ChannelFuture future = bootstrap.connect(controller.getRemoteAddress(ncss.getReplicaId()));
                         //creates MAC stuff
                         Mac macSend = ncss.getMacSend();
                         Mac macReceive = ncss.getMacReceive();
-                        NettyClientServerSession cs = new NettyClientServerSession(future.getChannel(), macSend, macReceive, ncss.getReplicaId(), manager.getStaticConf().getRSAPublicKey(), new ReentrantLock());
+                        NettyClientServerSession cs = new NettyClientServerSession(future.getChannel(), macSend, macReceive, ncss.getReplicaId());
                         sessionTable.remove(ncss.getReplicaId());
                         sessionTable.put(ncss.getReplicaId(), cs);
                         //System.out.println("RE-Connecting to replica "+ncss.getReplicaId()+" at " + conf.getRemoteAddress(ncss.getReplicaId()));
@@ -324,7 +327,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
         //produce signature
         if (sign && sm.serializedMessageSignature == null) {
             sm.serializedMessageSignature = signMessage(
-                    manager.getStaticConf().getRSAPrivateKey(), sm.serializedMessage);
+                    controller.getStaticConf().getRSAPrivateKey(), sm.serializedMessage);
         }
 
         int sent = 0;
@@ -344,7 +347,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 
         }
 
-        if (targets.length > manager.getCurrentViewF() && sent < manager.getCurrentViewF() + 1) {
+        if (targets.length > controller.getCurrentViewF() && sent < controller.getCurrentViewF() + 1) {
             //if less than f+1 servers are connected send an exception to the client
             throw new RuntimeException("Impossible to connect to servers!");
         }
@@ -374,7 +377,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 
         //******* EDUARDO BEGIN **************//
         //produce signature
-        byte[] data2 = signMessage(manager.getStaticConf().getRSAPrivateKey(), data);
+        byte[] data2 = signMessage(controller.getStaticConf().getRSAPrivateKey(), data);
         //******* EDUARDO END **************//
 
         sm.serializedMessageSignature = data2;

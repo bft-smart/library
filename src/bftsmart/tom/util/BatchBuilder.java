@@ -19,7 +19,7 @@ import java.nio.ByteBuffer;
 import java.util.Collection;
 import java.util.Random;
 
-import bftsmart.reconfiguration.ServerViewManager;
+import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.tom.core.messages.TOMMessage;
 
 /**
@@ -36,10 +36,10 @@ public final class BatchBuilder {
 
 	/** build buffer */
 	private byte[] createBatch(long timestamp, int numberOfNonces, int numberOfMessages, int totalMessagesSize,
-			boolean useSignatures, byte[][] messages, byte[][] signatures, ServerViewManager manager) {
+			boolean useSignatures, byte[][] messages, byte[][] signatures, ServerViewController controller) {
 		int size = 20 + //timestamp 8, nonces 4, nummessages 4
 				(numberOfNonces > 0 ? 8 : 0) + //seed if needed
-				(numberOfMessages*(4+(useSignatures?TOMUtil.getSignatureSize(manager):0)))+ // msglength + signature for each msg
+				(numberOfMessages*(4+(useSignatures?TOMUtil.getSignatureSize(controller):0)))+ // msglength + signature for each msg
 				totalMessagesSize; //size of all msges
 
 		ByteBuffer  proposalBuffer = ByteBuffer.allocate(size);
@@ -70,7 +70,7 @@ public final class BatchBuilder {
 		}
 	}
 
-	public byte[] makeBatch(Collection<TOMMessage> msgs, int numNounces, long timestamp, ServerViewManager reconfManager) {
+	public byte[] makeBatch(Collection<TOMMessage> msgs, int numNounces, long timestamp, ServerViewController controller) {
 
 		int numMsgs = msgs.size();
 		int totalMessageSize = 0; //total size of the messages being batched
@@ -92,7 +92,7 @@ public final class BatchBuilder {
 
 		// return the batch
 		return createBatch(timestamp, numNounces, numMsgs, totalMessageSize,
-				reconfManager.getStaticConf().getUseSignatures() == 1, messages, signatures, reconfManager);
+				controller.getStaticConf().getUseSignatures() == 1, messages, signatures, controller);
 
 	}
 }

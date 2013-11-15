@@ -15,6 +15,7 @@ limitations under the License.
 */
 package bftsmart.tom.leaderchange;
 
+import bftsmart.communication.server.ServerConnection;
 import java.io.IOException;
 import java.security.MessageDigest;
 import java.security.SignedObject;
@@ -30,7 +31,7 @@ import java.util.logging.Logger;
 import bftsmart.paxosatwar.executionmanager.TimestampValuePair;
 import bftsmart.paxosatwar.messages.MessageFactory;
 import bftsmart.paxosatwar.messages.PaxosMessage;
-import bftsmart.reconfiguration.ServerViewManager;
+import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.tom.core.TOMLayer;
 import bftsmart.tom.core.messages.TOMMessage;
 import java.io.ByteArrayOutputStream;
@@ -40,7 +41,9 @@ import java.security.NoSuchAlgorithmException;
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.Mac;
 import javax.crypto.NoSuchPaddingException;
+import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 
 /**
@@ -65,12 +68,13 @@ public class LCManager {
     private HashMap<Integer,HashSet<SignedObject>> collects;
 
     //stuff from the TOM layer that this object needss
-    private ServerViewManager SVManager;
+    private ServerViewController SVController;
     private MessageDigest md;
     private TOMLayer tomLayer;
     
     private int currentLeader;
-    private Cipher cipher;
+    //private Cipher cipher;
+    private Mac mac;
     
     /**
      * Constructor
@@ -78,7 +82,7 @@ public class LCManager {
      * @param reconfManager The reconfiguration manager from TOM layer
      * @param md The message digest engine from TOM layer
      */
-    public LCManager(TOMLayer tomLayer,ServerViewManager reconfManager, MessageDigest md) {
+    public LCManager(TOMLayer tomLayer,ServerViewController SVController, MessageDigest md) {
         this.tomLayer = tomLayer;
         this.lastreg = 0;
         this.nextreg = 0;
@@ -88,19 +92,21 @@ public class LCManager {
         this.lastEids = new HashMap<Integer, HashSet<LastEidData>>();
         this.collects = new HashMap<Integer, HashSet<SignedObject>>();
 
-        this.SVManager = reconfManager;
+        this.SVController = SVController;
         this.md = md;
 
         try {
-            this.cipher = Cipher.getInstance("DES/ECB/PKCS5Padding");
-        } catch (NoSuchAlgorithmException | NoSuchPaddingException ex) {
+            //this.cipher = Cipher.getInstance("DES/ECB/PKCS5Padding");
+            //this.cipher = Cipher.getInstance(ServerConnection.MAC_ALGORITHM);
+            this.mac = Mac.getInstance(ServerConnection.MAC_ALGORITHM);
+        } catch (NoSuchAlgorithmException /*| NoSuchPaddingException*/ ex) {
             ex.printStackTrace();
         }
 
     }
     public int getNewLeader() {
 
-        int[] proc = SVManager.getCurrentViewProcesses();
+        int[] proc = SVController.getCurrentViewProcesses();
         int minProc = proc[0];
         int maxProc = proc[0];
                     
@@ -116,7 +122,7 @@ public class LCManager {
 
                 currentLeader = minProc;    
             }
-        } while(!SVManager.isCurrentViewMember(currentLeader));
+        } while(!SVController.isCurrentViewMember(currentLeader));
         
         return currentLeader;
     }
@@ -391,7 +397,7 @@ public class LCManager {
      */
     public boolean binds(int timestamp, byte[] value, HashSet<CollectData> collects) {
 
-        return (value != null && collects != null && collects.size() > (SVManager.getCurrentViewN() - SVManager.getCurrentViewF()))
+        return (value != null && collects != null && collects.size() > (SVController.getCurrentViewN() - SVController.getCurrentViewF()))
                 && quorumHighest(timestamp, value, collects) && certifiedValue(timestamp, value, collects);
     }
 
@@ -480,7 +486,7 @@ public class LCManager {
         boolean unbound = false;
         int count = 0;
 
-        if (collects.size() >= (SVManager.getCurrentViewN() - SVManager.getCurrentViewF())) {
+        if (collects.size() >= (SVController.getCurrentViewN() - SVController.getCurrentViewF())) {
 
 
             for (CollectData c : collects) {
@@ -490,11 +496,11 @@ public class LCManager {
         }
         else return false;
 
-        if(SVManager.getStaticConf().isBFT()) {
-            unbound = count > ((SVManager.getCurrentViewN() + SVManager.getCurrentViewF()) / 2);
+        if(SVController.getStaticConf().isBFT()) {
+            unbound = count > ((SVController.getCurrentViewN() + SVController.getCurrentViewF()) / 2);
         }
         else {
-        	unbound = count > ((SVManager.getCurrentViewN()) / 2);
+        	unbound = count > ((SVController.getCurrentViewN()) / 2);
         }
         return unbound;
         
@@ -534,11 +540,11 @@ public class LCManager {
 
         }
 
-        if(SVManager.getStaticConf().isBFT()) {
-            quorum = count > ((SVManager.getCurrentViewN() + SVManager.getCurrentViewF()) / 2);
+        if(SVController.getStaticConf().isBFT()) {
+            quorum = count > ((SVController.getCurrentViewN() + SVController.getCurrentViewF()) / 2);
         }
         else {
-            quorum = count > ((SVManager.getCurrentViewN())/2);
+            quorum = count > ((SVController.getCurrentViewN())/2);
         }      
         return appears && quorum;
     }
@@ -569,8 +575,8 @@ public class LCManager {
 
         }
 
-        if(SVManager.getStaticConf().isBFT()) {
-            certified = count > SVManager.getCurrentViewF();
+        if(SVController.getStaticConf().isBFT()) {
+            certified = count > SVController.getCurrentViewF();
         } else {
             certified = count > 0;
         }
@@ -683,7 +689,7 @@ public class LCManager {
         for (LastEidData l : lasts) {
 
             //TODO: CHECK OF THE PROOF IS MISSING!!!!
-            if (tomLayer.reconfManager.getStaticConf().isBFT() && hasValidProof(l) && l.getEid() > highest.getEid()) 
+            if (tomLayer.controller.getStaticConf().isBFT() && hasValidProof(l) && l.getEid() > highest.getEid()) 
                     highest = l;
             else if(l.getEid() > highest.getEid()){
                     highest = l;
@@ -697,8 +703,8 @@ public class LCManager {
     private boolean hasValidProof(LastEidData led) {
         byte[] hashedValue = md.digest(led.getEidDecision());
         Set<PaxosMessage> PaxosMessages = led.getEidProof();
-        int myId = tomLayer.reconfManager.getStaticConf().getProcessId();
-        int certificate = (2*tomLayer.reconfManager.getCurrentViewF()) + 1;
+        int myId = tomLayer.controller.getStaticConf().getProcessId();
+        int certificate = (2*tomLayer.controller.getCurrentViewF()) + 1;
         int countValid = 0;
             
         for (PaxosMessage paxosMsg : PaxosMessages) {
@@ -718,15 +724,17 @@ public class LCManager {
             }
 
             byte[] data = bOut.toByteArray();
-            byte[] hash = tomLayer.computeHash(data);
+            //byte[] hash = tomLayer.computeHash(data);
             byte[] myMAC = null;
                 
-            SecretKeySpec key = new SecretKeySpec(tomLayer.getCommunication().getServersConn().getSecretKey(paxosMsg.getSender()).getEncoded(), "DES");
+            /*byte[] k = tomLayer.getCommunication().getServersConn().getSecretKey(paxosMsg.getSender()).getEncoded();
+            SecretKeySpec key = new SecretKeySpec(new String(k).substring(0, 8).getBytes(), "DES");*/
                 
+            SecretKey key = tomLayer.getCommunication().getServersConn().getSecretKey(paxosMsg.getSender());
             try {
-                this.cipher.init(Cipher.ENCRYPT_MODE, key);                   
-                myMAC = this.cipher.doFinal(hash);
-            } catch (IllegalBlockSizeException | BadPaddingException | InvalidKeyException ex) {
+                this.mac.init(key);                   
+                myMAC = this.mac.doFinal(data);
+            } catch (/*IllegalBlockSizeException | BadPaddingException |*/ InvalidKeyException ex) {
                 ex.printStackTrace();
             }
             

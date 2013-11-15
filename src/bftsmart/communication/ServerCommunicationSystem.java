@@ -24,7 +24,7 @@ import bftsmart.communication.client.CommunicationSystemServerSideFactory;
 import bftsmart.communication.client.RequestReceiver;
 import bftsmart.communication.server.ServersCommunicationLayer;
 import bftsmart.paxosatwar.roles.Acceptor;
-import bftsmart.reconfiguration.ServerViewManager;
+import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.tom.ServiceReplica;
 import bftsmart.tom.core.TOMLayer;
 import bftsmart.tom.core.messages.TOMMessage;
@@ -41,17 +41,17 @@ public class ServerCommunicationSystem extends Thread {
     protected MessageHandler messageHandler = new MessageHandler();
     private ServersCommunicationLayer serversConn;
     private CommunicationSystemServerSide clientsConn;
-    private ServerViewManager manager;
+    private ServerViewController controller;
 
     /**
      * Creates a new instance of ServerCommunicationSystem
      */
-    public ServerCommunicationSystem(ServerViewManager manager, ServiceReplica replica) throws Exception {
+    public ServerCommunicationSystem(ServerViewController controller, ServiceReplica replica) throws Exception {
         super("Server CS");
 
-        this.manager = manager;
+        this.controller = controller;
 
-        inQueue = new LinkedBlockingQueue<SystemMessage>(manager.getStaticConf().getInQueueSize());
+        inQueue = new LinkedBlockingQueue<SystemMessage>(controller.getStaticConf().getInQueueSize());
 
         //create a new conf, with updated port number for servers
         //TOMConfiguration serversConf = new TOMConfiguration(conf.getProcessId(),
@@ -59,11 +59,11 @@ public class ServerCommunicationSystem extends Thread {
 
         //serversConf.increasePortNumber();
 
-        serversConn = new ServersCommunicationLayer(manager, inQueue, replica);
+        serversConn = new ServersCommunicationLayer(controller, inQueue, replica);
 
         //******* EDUARDO BEGIN **************//
        // if (manager.isInCurrentView() || manager.isInInitView()) {
-            clientsConn = CommunicationSystemServerSideFactory.getCommunicationSystemServerSide(manager);
+            clientsConn = CommunicationSystemServerSideFactory.getCommunicationSystemServerSide(controller);
        // }
         //******* EDUARDO END **************//
         //start();
@@ -77,7 +77,7 @@ public class ServerCommunicationSystem extends Thread {
     public void updateServersConnections() {
         this.serversConn.updateConnections();
         if (clientsConn == null) {
-            clientsConn = CommunicationSystemServerSideFactory.getCommunicationSystemServerSide(manager);
+            clientsConn = CommunicationSystemServerSideFactory.getCommunicationSystemServerSide(controller);
         }
 
     }
@@ -93,7 +93,7 @@ public class ServerCommunicationSystem extends Thread {
 
     public void setRequestReceiver(RequestReceiver requestReceiver) {
         if (clientsConn == null) {
-            clientsConn = CommunicationSystemServerSideFactory.getCommunicationSystemServerSide(manager);
+            clientsConn = CommunicationSystemServerSideFactory.getCommunicationSystemServerSide(controller);
         }
         clientsConn.setRequestReceiver(requestReceiver);
     }

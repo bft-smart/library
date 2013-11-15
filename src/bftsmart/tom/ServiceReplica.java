@@ -30,8 +30,8 @@ import bftsmart.paxosatwar.roles.Acceptor;
 import bftsmart.paxosatwar.roles.Proposer;
 import bftsmart.reconfiguration.Reconfiguration;
 import bftsmart.reconfiguration.ReconfigureReply;
-import bftsmart.reconfiguration.ServerViewManager;
-import bftsmart.reconfiguration.TTPMessage;
+import bftsmart.reconfiguration.ServerViewController;
+import bftsmart.reconfiguration.VMMessage;
 import bftsmart.tom.core.ReplyManager;
 import bftsmart.tom.core.TOMLayer;
 import bftsmart.tom.core.messages.TOMMessage;
@@ -73,7 +73,7 @@ public class ServiceReplica {
 	// Server side comunication system
 	private ServerCommunicationSystem cs = null;
 	private ReplyManager repMan = null;
-	private ServerViewManager SVManager;
+	private ServerViewController SVController;
 	private boolean isToJoin = false;
 	private ReentrantLock waitTTPJoinMsgLock = new ReentrantLock();
 	private Condition canProceed = waitTTPJoinMsgLock.newCondition();
@@ -119,7 +119,7 @@ public class ServiceReplica {
 	public ServiceReplica(int id, String configHome, boolean isToJoin, Executable executor, Recoverable recoverer) {
 		this.isToJoin = isToJoin;
 		this.id = id;
-		this.SVManager = new ServerViewManager(id, configHome);
+		this.SVController = new ServerViewController(id, configHome);
 		this.executor = executor;
 		this.recoverer = recoverer;
 		this.replier = new DefaultReplier();
@@ -137,7 +137,7 @@ public class ServiceReplica {
 	// this method initializes the object
 	private void init() {
 		try {
-			cs = new ServerCommunicationSystem(this.SVManager, this);
+			cs = new ServerCommunicationSystem(this.SVController, this);
 		} catch (Exception ex) {
 			Logger.getLogger(ServiceReplica.class.getName()).log(Level.SEVERE, null, ex);
 			throw new RuntimeException("Unable to build a communication system.");
@@ -145,16 +145,16 @@ public class ServiceReplica {
 
 		//******* EDUARDO BEGIN **************//
 
-		if (this.SVManager.isInCurrentView()) {
-			System.out.println("In current view: " + this.SVManager.getCurrentView());
+		if (this.SVController.isInCurrentView()) {
+			System.out.println("In current view: " + this.SVController.getCurrentView());
 			initTOMLayer(-1, -1); // initiaze the TOM layer
 		} else {
-			System.out.println("Not in current view: " + this.SVManager.getCurrentView());
+			System.out.println("Not in current view: " + this.SVController.getCurrentView());
 			if (this.isToJoin) {
-				System.out.println("Sending join: " + this.SVManager.getCurrentView());
+				System.out.println("Sending join: " + this.SVController.getCurrentView());
 				//Não está na visão inicial e é para executar um join;
-				int port = this.SVManager.getStaticConf().getServerToServerPort(id) - 1;
-				String ip = this.SVManager.getStaticConf().getServerToServerRemoteAddress(id).getAddress().getHostAddress();
+				int port = this.SVController.getStaticConf().getServerToServerPort(id) - 1;
+				String ip = this.SVController.getStaticConf().getServerToServerRemoteAddress(id).getAddress().getHostAddress();
 				ReconfigureReply r = null;
 				Reconfiguration rec = new Reconfiguration(id);
 				do {
@@ -164,7 +164,7 @@ public class ServiceReplica {
 					r = rec.execute();
 				} while (!r.getView().isMember(id));
 				rec.close();
-				this.SVManager.processJoinResult(r);
+				this.SVController.processJoinResult(r);
 
 				// initiaze the TOM layer
 				initTOMLayer(r.getLastExecConsId(), r.getExecLeader());
@@ -173,7 +173,7 @@ public class ServiceReplica {
 				this.cs.joinViewReceived();
 			} else {
 				//Not in the initial view, just waiting for the view where the join has been executed
-				System.out.println("Waiting for the TTP: " + this.SVManager.getCurrentView());
+				System.out.println("Waiting for the TTP: " + this.SVController.getCurrentView());
 				waitTTPJoinMsgLock.lock();
 				try {
 					canProceed.awaitUninterruptibly();
@@ -187,11 +187,11 @@ public class ServiceReplica {
 		initReplica();
 	}
 
-	public void joinMsgReceived(TTPMessage msg) {
+	public void joinMsgReceived(VMMessage msg) {
 		ReconfigureReply r = msg.getReply();
 
 		if (r.getView().isMember(id)) {
-			this.SVManager.processJoinResult(r);
+			this.SVController.processJoinResult(r);
 
 			initTOMLayer(r.getLastExecConsId(), r.getExecLeader()); // initiaze the TOM layer
 			//this.startState = r.getStartState();
@@ -205,7 +205,7 @@ public class ServiceReplica {
 
 	private void initReplica() {
 		cs.start();
-		repMan = new ReplyManager(SVManager.getStaticConf().getNumRepliers(), cs);
+		repMan = new ReplyManager(SVController.getStaticConf().getNumRepliers(), cs);
 	}
 	//******* EDUARDO END **************//
 
@@ -224,8 +224,8 @@ public class ServiceReplica {
 
 		// build the reply and send it to the client
 		message.reply = new TOMMessage(id, message.getSession(), message.getSequence(),
-				response, SVManager.getCurrentViewId(), TOMMessageType.UNORDERED_REQUEST);
-		if (SVManager.getStaticConf().getNumRepliers() > 0)
+				response, SVController.getCurrentViewId(), TOMMessageType.UNORDERED_REQUEST);
+		if (SVController.getStaticConf().getNumRepliers() > 0)
 			repMan.send(message);
 		else
 			cs.send(new int[]{message.getSender()}, message.reply); 
@@ -241,7 +241,7 @@ public class ServiceReplica {
 			TOMMessage firstRequest = requestsFromConsensus[0];
 			int requestCount = 0;
 			for(TOMMessage request : requestsFromConsensus) {
-				if (request.getViewID() == SVManager.getCurrentViewId()) {					
+				if (request.getViewID() == SVController.getCurrentViewId()) {					
 					if (request.getReqType() == TOMMessageType.ORDERED_REQUEST) {
 						numRequests++;
 						MessageContext msgCtx = new MessageContext(firstRequest.timestamp, firstRequest.nonces,	regency, consId[consensusCount], request.getSender(), firstRequest);
@@ -254,27 +254,27 @@ public class ServiceReplica {
 						} else if(executor instanceof FIFOExecutable) {
 							byte[]response = ((FIFOExecutable)executor).executeOrderedFIFO(request.getContent(), msgCtx, request.getSender(), request.getOperationId());
 							request.reply = new TOMMessage(id, request.getSession(),
-									request.getSequence(), response, SVManager.getCurrentViewId());
+									request.getSequence(), response, SVController.getCurrentViewId());
 							bftsmart.tom.util.Logger.println("(ServiceReplica.receiveMessages) sending reply to " + request.getSender());
 							replier.manageReply(request, msgCtx);
 						} else if(executor instanceof SingleExecutable) {
 							byte[]response = ((SingleExecutable)executor).executeOrdered(request.getContent(), msgCtx);
 							request.reply = new TOMMessage(id, request.getSession(),
-									request.getSequence(), response, SVManager.getCurrentViewId());
+									request.getSequence(), response, SVController.getCurrentViewId());
 							bftsmart.tom.util.Logger.println("(ServiceReplica.receiveMessages) sending reply to " + request.getSender());
 							replier.manageReply(request, msgCtx);
 						} else {
 							throw new UnsupportedOperationException("Interface not existent");
 						}
 					} else if (request.getReqType() == TOMMessageType.RECONFIG) {
-						SVManager.enqueueUpdate(request);
+						SVController.enqueueUpdate(request);
 					} else {
 						throw new RuntimeException("Should never reach here!");
 					}
-				} else if (request.getViewID() < SVManager.getCurrentViewId()) {
+				} else if (request.getViewID() < SVController.getCurrentViewId()) {
 					// message sender had an old view, resend the message to
 					// him (but only if it came from consensus an not state transfer)
-					tomLayer.getCommunication().send(new int[] { request.getSender() }, new TOMMessage(SVManager.getStaticConf().getProcessId(), request.getSession(), request.getSequence(), TOMUtil.getBytes(SVManager.getCurrentView()),	SVManager.getCurrentViewId()));
+					tomLayer.getCommunication().send(new int[] { request.getSender() }, new TOMMessage(SVController.getStaticConf().getProcessId(), request.getSession(), request.getSequence(), TOMUtil.getBytes(SVController.getCurrentView()),	SVController.getCurrentViewId()));
 				}
 				requestCount++;
 			}
@@ -302,8 +302,8 @@ public class ServiceReplica {
 			for(int index = 0; index < toBatch.size(); index++){
 				TOMMessage request = toBatch.get(index);
 				request.reply = new TOMMessage(id, request.getSession(), request.getSequence(),
-						replies[index], SVManager.getCurrentViewId());
-				if (SVManager.getStaticConf().getNumRepliers() > 0)
+						replies[index], SVController.getCurrentViewId());
+				if (SVController.getStaticConf().getNumRepliers() > 0)
 					repMan.send(request);
 				else
 					cs.send(new int[] { request.getSender() }, request.reply);
@@ -341,7 +341,7 @@ public class ServiceReplica {
 		}
 
 		//******* EDUARDO BEGIN **************//
-		if (!SVManager.isInCurrentView()) {
+		if (!SVController.isInCurrentView()) {
 			throw new RuntimeException("I'm not an acceptor!");
 		}
 		//******* EDUARDO END **************//
@@ -351,33 +351,33 @@ public class ServiceReplica {
 
 		LeaderModule lm = new LeaderModule();
 
-		Acceptor acceptor = new Acceptor(cs, messageFactory, lm, SVManager);
+		Acceptor acceptor = new Acceptor(cs, messageFactory, lm, SVController);
 		cs.setAcceptor(acceptor);
 
-		Proposer proposer = new Proposer(cs, messageFactory, SVManager);
+		Proposer proposer = new Proposer(cs, messageFactory, SVController);
 
-		ExecutionManager executionManager = new ExecutionManager(SVManager, acceptor, proposer, id);
+		ExecutionManager executionManager = new ExecutionManager(SVController, acceptor, proposer, id);
 
 		acceptor.setExecutionManager(executionManager);
 
-		tomLayer = new TOMLayer(executionManager, this, recoverer, lm, acceptor, cs, SVManager);
+		tomLayer = new TOMLayer(executionManager, this, recoverer, lm, acceptor, cs, SVController);
 
 		executionManager.setTOMLayer(tomLayer);
 
-		SVManager.setTomLayer(tomLayer);
+		SVController.setTomLayer(tomLayer);
 
 		cs.setTOMLayer(tomLayer);
 		cs.setRequestReceiver(tomLayer);
 
 		acceptor.setTOMLayer(tomLayer);
 
-		if(SVManager.getStaticConf().isShutdownHookEnabled()){
+		if(SVController.getStaticConf().isShutdownHookEnabled()){
 			Runtime.getRuntime().addShutdownHook(new ShutdownHookThread(cs, lm, acceptor, executionManager, tomLayer));
 		}
 		tomLayer.start(); // start the layer execution
 		tomStackCreated = true;
 
-		replicaCtx = new ReplicaContext(cs, SVManager);
+		replicaCtx = new ReplicaContext(cs, SVController);
 	}
 
 	/**

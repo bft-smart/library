@@ -45,7 +45,7 @@ import bftsmart.paxosatwar.executionmanager.Round;
 import bftsmart.paxosatwar.executionmanager.TimestampValuePair;
 import bftsmart.paxosatwar.messages.PaxosMessage;
 import bftsmart.paxosatwar.roles.Acceptor;
-import bftsmart.reconfiguration.ServerViewManager;
+import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.statemanagement.StateManager;
 import bftsmart.tom.ServiceReplica;
 import bftsmart.tom.core.messages.TOMMessage;
@@ -106,7 +106,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 	/*************************************************************/
 
 	private PrivateKey prk;
-	public ServerViewManager reconfManager;
+	public ServerViewController controller;
 
 	/**
 	 * Creates a new instance of TOMulticastLayer
@@ -115,7 +115,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 	 * @param lm Leader module
 	 * @param a Acceptor role of the PaW algorithm
 	 * @param cs Communication system between replicas
-	 * @param recManager Reconfiguration Manager
+	 * @param controller Reconfiguration Manager
 	 */
 	public TOMLayer(ExecutionManager manager,
 			ServiceReplica receiver,
@@ -123,7 +123,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 			LeaderModule lm,
 			Acceptor a,
 			ServerCommunicationSystem cs,
-			ServerViewManager recManager) {
+			ServerViewController controller) {
 
 		super("TOM Layer");
 
@@ -131,15 +131,15 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 		this.lm = lm;
 		this.acceptor = a;
 		this.communication = cs;
-		this.reconfManager = recManager;
+		this.controller = controller;
 
 		//do not create a timer manager if the timeout is 0
-		if (reconfManager.getStaticConf().getRequestTimeout() == 0){
+		if (this.controller.getStaticConf().getRequestTimeout() == 0){
 			this.requestsTimer = null;
 		}
-		else this.requestsTimer = new RequestsTimer(this, communication, reconfManager); // Create requests timers manager (a thread)
+		else this.requestsTimer = new RequestsTimer(this, communication, this.controller); // Create requests timers manager (a thread)
 
-		this.clientsManager = new ClientsManager(reconfManager, requestsTimer); // Create clients manager
+		this.clientsManager = new ClientsManager(this.controller, requestsTimer); // Create clients manager
 
 		try {
 			this.md = MessageDigest.getInstance("MD5"); // TODO: shouldn't it be SHA?
@@ -153,9 +153,9 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 			e.printStackTrace(System.err);
 		}
 
-		this.prk = reconfManager.getStaticConf().getRSAPrivateKey();
-		this.lcManager = new LCManager(this,recManager, md);
-		this.dt = new DeliveryThread(this, receiver, recoverer, this.reconfManager); // Create delivery thread
+		this.prk = this.controller.getStaticConf().getRSAPrivateKey();
+		this.lcManager = new LCManager(this,controller, md);
+		this.dt = new DeliveryThread(this, receiver, recoverer, this.controller); // Create delivery thread
 		this.dt.start();
 		this.stateManager = recoverer.getStateManager();
 		stateManager.init(this, dt);
@@ -194,7 +194,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 	 */
 	public boolean verifySignature(SignedObject so, int sender) {
 		try {
-			return so.verify(reconfManager.getStaticConf().getRSAPublicKey(), engine);
+			return so.verify(controller.getStaticConf().getRSAPublicKey(sender), engine);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -297,7 +297,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 		RequestList pendingRequests = clientsManager.getPendingRequests();
 
 		int numberOfMessages = pendingRequests.size(); // number of messages retrieved
-		int numberOfNonces = this.reconfManager.getStaticConf().getNumberOfNonces(); // ammount of nonces to be generated
+		int numberOfNonces = this.controller.getStaticConf().getNumberOfNonces(); // ammount of nonces to be generated
 
 		//for benchmarking
 		if (cons.getId() > -1) { // if this is from the leader change, it doesnt matter
@@ -308,7 +308,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
 		Logger.println("(TOMLayer.run) creating a PROPOSE with " + numberOfMessages + " msgs");
 
-		return bb.makeBatch(pendingRequests, numberOfNonces, System.currentTimeMillis(),reconfManager);
+		return bb.makeBatch(pendingRequests, numberOfNonces, System.currentTimeMillis(),controller);
 	}
 	/**
 	 * This is the main code for this thread. It basically waits until this replica becomes the leader,
@@ -324,7 +324,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 			Logger.println("Next leader for eid=" + (getLastExec() + 1) + ": " + lm.getCurrentLeader());
 
 			//******* EDUARDO BEGIN **************//
-			if (/*lm.getLeader(getLastExec() + 1, 0)*/ lm.getCurrentLeader() != this.reconfManager.getStaticConf().getProcessId()) {
+			if (/*lm.getLeader(getLastExec() + 1, 0)*/ lm.getCurrentLeader() != this.controller.getStaticConf().getProcessId()) {
 				iAmLeader.awaitUninterruptibly();
 				//waitForPaxosToFinish();
 			}
@@ -353,7 +353,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
 			Logger.println("(TOMLayer.run) I can try to propose.");
 
-			if ((lm.getCurrentLeader() == this.reconfManager.getStaticConf().getProcessId()) && //I'm the leader
+			if ((lm.getCurrentLeader() == this.controller.getStaticConf().getProcessId()) && //I'm the leader
 					(clientsManager.havePendingRequests()) && //there are messages to be ordered
 					(getInExec() == -1)) { //there is no consensus in execution
 
@@ -364,14 +364,14 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 				Consensus cons = execManager.getExecution(execId).getLearner();
 
 				// Bypass protocol if service is not replicated
-				if (reconfManager.getCurrentViewN() == 1) {
+				if (controller.getCurrentViewN() == 1) {
 
 					Logger.println("(TOMLayer.run) Only one replica, bypassing consensus.");
 
 					byte[] value = createPropose(cons);
 
 					Execution execution = execManager.getExecution(cons.getId());
-					Round round = execution.getRound(0, reconfManager);
+					Round round = execution.getRound(0, controller);
 					round.propValue = value;
 					round.propValueHash = computeHash(value);
 					round.getExecution().addWritten(value);
@@ -411,14 +411,14 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 		Logger.println("(TOMLayer.isProposedValueValid) starting");
 
 		BatchReader batchReader = new BatchReader(proposedValue, 
-				this.reconfManager.getStaticConf().getUseSignatures() == 1);
+				this.controller.getStaticConf().getUseSignatures() == 1);
 
 		TOMMessage[] requests = null;
 
 		try {
 			//deserialize the message
 			//TODO: verify Timestamps and Nonces
-			requests = batchReader.deserialiseRequests(this.reconfManager);
+			requests = batchReader.deserialiseRequests(this.controller);
 
 			if (addToClientManager) {
 				for (int i = 0; i < requests.length; i++) {
@@ -446,10 +446,10 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
 	public void forwardRequestToLeader(TOMMessage request) {
 		int leaderId = lm.getCurrentLeader();
-		if (this.reconfManager.isCurrentViewMember(leaderId)) {
+		if (this.controller.isCurrentViewMember(leaderId)) {
 			Logger.println("(TOMLayer.forwardRequestToLeader) forwarding " + request + " to " + leaderId);
 			communication.send(new int[]{leaderId}, 
-					new ForwardedMessage(this.reconfManager.getStaticConf().getProcessId(), request));
+					new ForwardedMessage(this.controller.getStaticConf().getProcessId(), request));
 		}
 	}
 
@@ -516,7 +516,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 			lcManager.setCurrentRequestTimedOut(requestList);
 
 			// store information about messages that I'm going to send
-			lcManager.addStop(regency, this.reconfManager.getStaticConf().getProcessId());
+			lcManager.addStop(regency, this.controller.getStaticConf().getProcessId());
 
 			execManager.stop(); // stop consensus execution
 
@@ -526,7 +526,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 				if (lcManager.getCurrentRequestTimedOut() != null) {
 
 					//TODO: If this is null, then there was no timeout. What to do?
-					byte[] msgs = bb.makeBatch(lcManager.getCurrentRequestTimedOut(), 0, 0, reconfManager);
+					byte[] msgs = bb.makeBatch(lcManager.getCurrentRequestTimedOut(), 0, 0, controller);
 					out.writeBoolean(true);
 					out.writeObject(msgs);
 				} else {
@@ -543,8 +543,8 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
 				// send STOP-message
 				Logger.println("(TOMLayer.triggerTimeout) sending STOP message to install regency " + regency);
-				communication.send(this.reconfManager.getCurrentViewOtherAcceptors(),
-						new LCMessage(this.reconfManager.getStaticConf().getProcessId(), TOMUtil.STOP, regency, payload));
+				communication.send(this.controller.getCurrentViewOtherAcceptors(),
+						new LCMessage(this.controller.getStaticConf().getProcessId(), TOMUtil.STOP, regency, payload));
 
 			} catch (IOException ex) {
 				ex.printStackTrace();
@@ -568,13 +568,13 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 	// this method is called when a timeout occurs or when a STOP message is recevied
 	private void evaluateStops(int nextReg) {
 
-		boolean enterFirstPhase = this.reconfManager.getStaticConf().isBFT();
+		boolean enterFirstPhase = this.controller.getStaticConf().isBFT();
 		boolean condition = false;
 		ObjectOutputStream out = null;
 		ByteArrayOutputStream bos = null;
 
 		// pass to the leader change phase if more than f messages have been received already
-		if (enterFirstPhase && lcManager.getStopsSize(nextReg) > this.reconfManager.getQuorumF() && lcManager.getNextReg() == lcManager.getLastReg()) {
+		if (enterFirstPhase && lcManager.getStopsSize(nextReg) > this.controller.getQuorumF() && lcManager.getNextReg() == lcManager.getLastReg()) {
 
 			Logger.println("(TOMLayer.evaluateStops) initialize synch phase");
 			requestsTimer.Enabled(false);
@@ -585,7 +585,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 			int regency = lcManager.getNextReg();
 
 			// store information about message I am going to send
-			lcManager.addStop(regency, this.reconfManager.getStaticConf().getProcessId());
+			lcManager.addStop(regency, this.controller.getStaticConf().getProcessId());
 
 			execManager.stop(); // stop execution of consensus
 
@@ -597,7 +597,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
 					//TODO: If this is null, there was no timeout. What shall be done then?
 					out.writeBoolean(true);
-					byte[] msgs = bb.makeBatch(lcManager.getCurrentRequestTimedOut(), 0, 0, reconfManager);
+					byte[] msgs = bb.makeBatch(lcManager.getCurrentRequestTimedOut(), 0, 0, controller);
 					out.writeObject(msgs);
 				}
 				else {
@@ -613,8 +613,8 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
 				// send message STOP
 				Logger.println("(TOMLayer.evaluateStops) sending STOP message to install regency " + regency);
-				communication.send(this.reconfManager.getCurrentViewOtherAcceptors(),
-						new LCMessage(this.reconfManager.getStaticConf().getProcessId(), TOMUtil.STOP, regency, payload));
+				communication.send(this.controller.getCurrentViewOtherAcceptors(),
+						new LCMessage(this.controller.getStaticConf().getProcessId(), TOMUtil.STOP, regency, payload));
 
 			} catch (IOException ex) {
 				ex.printStackTrace();
@@ -630,10 +630,10 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 			}
 		}
 
-		if(this.reconfManager.getStaticConf().isBFT()) {
-			condition = lcManager.getStopsSize(nextReg) > this.reconfManager.getCertificateQuorum() && lcManager.getNextReg() > lcManager.getLastReg();
+		if(this.controller.getStaticConf().isBFT()) {
+			condition = lcManager.getStopsSize(nextReg) > this.controller.getCertificateQuorum() && lcManager.getNextReg() > lcManager.getLastReg();
 		} else {
-			condition = (lcManager.getStopsSize(nextReg) > this.reconfManager.getQuorumStrong() && lcManager.getNextReg() > lcManager.getLastReg());
+			condition = (lcManager.getStopsSize(nextReg) > this.controller.getQuorumStrong() && lcManager.getNextReg() > lcManager.getLastReg());
 		}
 		// May I proceed to the synchronization phase?
 		//if (lcManager.getStopsSize(nextReg) > this.reconfManager.getQuorum2F() && lcManager.getNextReg() > lcManager.getLastReg()) {
@@ -660,7 +660,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 			lm.setNewLeader(leader);
 
 			// If I am not the leader, I have to send a STOPDATE message to it
-			if (leader != this.reconfManager.getStaticConf().getProcessId()) {
+			if (leader != this.controller.getStaticConf().getProcessId()) {
 
 				try { // serialize content of the SYNC message
 
@@ -710,7 +710,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 						TimestampValuePair quorumWeaks = exec.getQuorumWeaks();
 						HashSet<TimestampValuePair> writeSet = exec.getWriteSet();
 
-						CollectData collect = new CollectData(this.reconfManager.getStaticConf().getProcessId(), in, quorumWeaks, writeSet);
+						CollectData collect = new CollectData(this.controller.getStaticConf().getProcessId(), in, quorumWeaks, writeSet);
 
 						SignedObject signedCollect = sign(collect);
 
@@ -720,7 +720,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
 					else {
 
-						CollectData collect = new CollectData(this.reconfManager.getStaticConf().getProcessId(), -1, new TimestampValuePair(-1, new byte[0]), new HashSet<TimestampValuePair>());
+						CollectData collect = new CollectData(this.controller.getStaticConf().getProcessId(), -1, new TimestampValuePair(-1, new byte[0]), new HashSet<TimestampValuePair>());
 
 						SignedObject signedCollect = sign(collect);
 
@@ -741,7 +741,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 					Logger.println("(TOMLayer.evaluateStops) sending STOPDATA of regency " + regency);
 					// send message SYNC to the new leader
 					communication.send(b,
-							new LCMessage(this.reconfManager.getStaticConf().getProcessId(), TOMUtil.STOPDATA, regency, payload));
+							new LCMessage(this.controller.getStaticConf().getProcessId(), TOMUtil.STOPDATA, regency, payload));
 
 					//TODO: Turn on timeout again
 
@@ -788,11 +788,11 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 					byte[] decision = exec.getDecisionRound().propValue;
 					Set<PaxosMessage> proof = exec.getDecisionRound().getProof();
 
-					lastData = new LastEidData(this.reconfManager.getStaticConf().getProcessId(), last, decision, proof);
+					lastData = new LastEidData(this.controller.getStaticConf().getProcessId(), last, decision, proof);
 					// TODO: WILL BE NECESSARY TO ADD A PROOF!!!
 
 				} else {
-					lastData = new LastEidData(this.reconfManager.getStaticConf().getProcessId(), last, null, null);
+					lastData = new LastEidData(this.controller.getStaticConf().getProcessId(), last, null, null);
 				}
 				lcManager.addLastEid(regency, lastData);
 
@@ -803,10 +803,10 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 					TimestampValuePair quorumWeaks = exec.getQuorumWeaks();
 					HashSet<TimestampValuePair> writeSet = exec.getWriteSet();
 
-					collect = new CollectData(this.reconfManager.getStaticConf().getProcessId(), in, quorumWeaks, writeSet);
+					collect = new CollectData(this.controller.getStaticConf().getProcessId(), in, quorumWeaks, writeSet);
 
 				} else {
-					collect = new CollectData(this.reconfManager.getStaticConf().getProcessId(), -1, new TimestampValuePair(-1, new byte[0]), new HashSet<TimestampValuePair>());
+					collect = new CollectData(this.controller.getStaticConf().getProcessId(), -1, new TimestampValuePair(-1, new byte[0]), new HashSet<TimestampValuePair>());
 				}
 
 				SignedObject signedCollect = sign(collect);
@@ -848,8 +848,8 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 						//TODO: The requests have to be verified!
 						byte[] temp = (byte[]) ois.readObject();
 						BatchReader batchReader = new BatchReader(temp,
-								reconfManager.getStaticConf().getUseSignatures() == 1);
-						TOMMessage[] requests = batchReader.deserialiseRequests(reconfManager);
+								controller.getStaticConf().getUseSignatures() == 1);
+						TOMMessage[] requests = batchReader.deserialiseRequests(controller);
 					}
 					clientsManager.getClientsLock().unlock();
 
@@ -878,7 +878,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
 			// Am I the new leader, and am I expecting this messages?
 			if (regency == lcManager.getLastReg() &&
-					this.reconfManager.getStaticConf().getProcessId() == lm.getCurrentLeader()/*(regency % this.reconfManager.getCurrentViewN())*/) {
+					this.controller.getStaticConf().getProcessId() == lm.getCurrentLeader()/*(regency % this.reconfManager.getCurrentViewN())*/) {
 
 				Logger.println("(TOMLayer.deliverTimeoutRequest) I'm the new leader and I received a STOPDATA");
 				//TODO: It is necessary to verify the proof of the last decided consensus and the signature of the state of the current consensus!
@@ -918,13 +918,13 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
 					lcManager.addCollect(regency, signedCollect);
 
-					int bizantineQuorum = (reconfManager.getCurrentViewN() + reconfManager.getCurrentViewF()) / 2;
-					int cftQuorum = (reconfManager.getCurrentViewN()) / 2;
+					int bizantineQuorum = (controller.getCurrentViewN() + controller.getCurrentViewF()) / 2;
+					int cftQuorum = (controller.getCurrentViewN()) / 2;
 
 					// I already got messages from a Byzantine/Crash quorum,
 					// related to the last eid as well as for the current?
 
-					boolean conditionBFT = (reconfManager.getStaticConf().isBFT() && lcManager.getLastEidsSize(regency) > bizantineQuorum &&
+					boolean conditionBFT = (controller.getStaticConf().isBFT() && lcManager.getLastEidsSize(regency) > bizantineQuorum &&
 							lcManager.getCollectsSize(regency) > bizantineQuorum);
 
 					boolean conditionCFT = (lcManager.getLastEidsSize(regency) > cftQuorum && lcManager.getCollectsSize(regency) > cftQuorum);
@@ -1044,8 +1044,8 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 				Logger.println("(TOMLayer.catch_up) sending SYNC message for regency " + regency);
 
 				// send the CATCH-UP message
-				communication.send(this.reconfManager.getCurrentViewOtherAcceptors(),
-						new LCMessage(this.reconfManager.getStaticConf().getProcessId(), TOMUtil.SYNC, regency, payload));
+				communication.send(this.controller.getCurrentViewOtherAcceptors(),
+						new LCMessage(this.controller.getStaticConf().getProcessId(), TOMUtil.SYNC, regency, payload));
 
 				finalise(regency, lastHighestEid, currentEid, signedCollects, propose, batchSize, true);
 
@@ -1079,7 +1079,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 		Round r = exec.getLastRound();
 
 		if (r == null) {
-			r = exec.createRound(reconfManager);
+			r = exec.createRound(controller);
 		}
 		else {
 			r.clear();
@@ -1102,7 +1102,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 			int currentEid, HashSet<SignedObject> signedCollects, byte[] propose, int batchSize, boolean iAmLeader) {
 
 		Logger.println("(TOMLayer.finalise) final stage of LC protocol");
-		int me = this.reconfManager.getStaticConf().getProcessId();
+		int me = this.controller.getStaticConf().getProcessId();
 		Execution exec = null;
 		Round r = null;
 
@@ -1136,7 +1136,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 			r = exec.getLastRound();
 
 			if (r == null) {
-				r = exec.createRound(reconfManager);
+				r = exec.createRound(controller);
 			}
 			else {
 				r.clear();
@@ -1177,7 +1177,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 			r = exec.getLastRound();
 
 			if (r == null) {
-				r = exec.createRound(reconfManager);
+				r = exec.createRound(controller);
 			}
 			else {
 				r.clear();
@@ -1209,7 +1209,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
 			//System.out.println(regency + " // WEAK (R: " + r.getNumber() + "): " + Base64.encodeBase64String(r.propValueHash));
 			// send a WEAK message to the other replicas
-			communication.send(this.reconfManager.getCurrentViewOtherAcceptors(),
+			communication.send(this.controller.getCurrentViewOtherAcceptors(),
 					acceptor.getFactory().createWeak(currentEid, r.getNumber(), r.propValueHash));
 
 		}

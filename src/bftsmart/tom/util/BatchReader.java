@@ -20,7 +20,7 @@ import java.io.DataInputStream;
 import java.nio.ByteBuffer;
 import java.util.Random;
 
-import bftsmart.reconfiguration.ServerViewManager;
+import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.tom.core.messages.TOMMessage;
 
 /**
@@ -39,7 +39,7 @@ public final class BatchReader {
         this.useSignatures = useSignatures;
     }
 
-    public TOMMessage[] deserialiseRequests(ServerViewManager manager) {
+    public TOMMessage[] deserialiseRequests(ServerViewController controller) {
 
         //obtain the timestamps to be delivered to the application
         long timestamp = proposalBuffer.getLong();
@@ -64,7 +64,7 @@ public final class BatchReader {
 
             byte[] signature = null;
             if(useSignatures){
-                signature = new byte[TOMUtil.getSignatureSize(manager)];
+                signature = new byte[TOMUtil.getSignatureSize(controller)];
                 proposalBuffer.get(signature);
             }
             //obtain the nonces to be delivered to the application

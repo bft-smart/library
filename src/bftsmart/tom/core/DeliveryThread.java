@@ -23,7 +23,7 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 import bftsmart.paxosatwar.Consensus;
-import bftsmart.reconfiguration.ServerViewManager;
+import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.statemanagement.ApplicationState;
 import bftsmart.tom.MessageContext;
 import bftsmart.tom.ServiceReplica;
@@ -43,7 +43,7 @@ public final class DeliveryThread extends Thread {
     private TOMLayer tomLayer; // TOM layer
     private ServiceReplica receiver; // Object that receives requests from clients
     private Recoverable recoverer; // Object that uses state transfer
-    private ServerViewManager manager;
+    private ServerViewController controller;
     private Lock decidedLock = new ReentrantLock();
     private Condition notEmptyQueue = decidedLock.newCondition();
 
@@ -53,14 +53,14 @@ public final class DeliveryThread extends Thread {
      * @param receiver Object that receives requests from clients
      * @param conf TOM configuration
      */
-    public DeliveryThread(TOMLayer tomLayer, ServiceReplica receiver, Recoverable recoverer, ServerViewManager manager) {
+    public DeliveryThread(TOMLayer tomLayer, ServiceReplica receiver, Recoverable recoverer, ServerViewController controller) {
         super("Delivery Thread");
 
         this.tomLayer = tomLayer;
         this.receiver = receiver;
         this.recoverer = recoverer;
         //******* EDUARDO BEGIN **************//
-        this.manager = manager;
+        this.controller = controller;
         //******* EDUARDO END **************//
     }
 
@@ -103,7 +103,7 @@ public final class DeliveryThread extends Thread {
 
         for (TOMMessage decidedMessage : decidedMessages) {
             if (decidedMessage.getReqType() == TOMMessageType.RECONFIG
-                    && decidedMessage.getViewID() == manager.getCurrentViewId()) {
+                    && decidedMessage.getViewID() == controller.getCurrentViewId()) {
                 return true;
             }
         }
@@ -201,7 +201,7 @@ public final class DeliveryThread extends Thread {
   						deliverMessages(consensusIds, tomLayer.getLCManager().getLastReg(), requests);
 
   						// ******* EDUARDO BEGIN ***********//
-  						if (manager.hasUpdates()) {
+  						if (controller.hasUpdates()) {
   							processReconfigMessages(lastConsensus.getId(),
   									lastConsensus.getDecisionRound()
   											.getNumber());
@@ -247,8 +247,8 @@ public final class DeliveryThread extends Thread {
 
     		// obtain an array of requests from the taken consensus
     		BatchReader batchReader = new BatchReader(cons.getDecision(),
-    				manager.getStaticConf().getUseSignatures() == 1);
-    		requests = batchReader.deserialiseRequests(manager);
+    				controller.getStaticConf().getUseSignatures() == 1);
+    		requests = batchReader.deserialiseRequests(controller);
     	} else {
     		Logger.println("(DeliveryThread.run) using cached requests from the propose.");
     	}
@@ -267,14 +267,14 @@ public final class DeliveryThread extends Thread {
     }
 
     private void processReconfigMessages(int consId, int decisionRoundNumber) {
-        byte[] response = manager.executeUpdates(consId, decisionRoundNumber);
-        TOMMessage[] dests = manager.clearUpdates();
+        byte[] response = controller.executeUpdates(consId, decisionRoundNumber);
+        TOMMessage[] dests = controller.clearUpdates();
 
         for (int i = 0; i < dests.length; i++) {
             tomLayer.getCommunication().send(new int[]{dests[i].getSender()},
-                    new TOMMessage(manager.getStaticConf().getProcessId(),
+                    new TOMMessage(controller.getStaticConf().getProcessId(),
                     dests[i].getSession(), dests[i].getSequence(), response,
-                    manager.getCurrentViewId(),TOMMessageType.RECONFIG));
+                    controller.getCurrentViewId(),TOMMessageType.RECONFIG));
         }
 
         tomLayer.getCommunication().updateServersConnections();

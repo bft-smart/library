@@ -30,7 +30,7 @@ import bftsmart.tom.util.TOMUtil;
  *
  * @author eduardo
  */
-public class ServerViewManager extends ViewManager {
+public class ServerViewController extends ViewController {
 
     public static final int ADD_SERVER = 0;
     public static final int REMOVE_SERVER = 1;
@@ -47,7 +47,7 @@ public class ServerViewManager extends ViewManager {
     private TOMLayer tomLayer;
    // protected View initialView;
     
-    public ServerViewManager(int procId) {
+    public ServerViewController(int procId) {
         this(procId,"");
         /*super(procId);
         initialView = new View(0, getStaticConf().getInitialView(), 
@@ -56,7 +56,7 @@ public class ServerViewManager extends ViewManager {
         reconfigureTo(initialView);*/
     }
 
-    public ServerViewManager(int procId, String configHome) {
+    public ServerViewController(int procId, String configHome) {
         super(procId, configHome);
         View cv = getViewStore().readView();
         if(cv == null){
@@ -102,7 +102,7 @@ public class ServerViewManager extends ViewManager {
 
     public void enqueueUpdate(TOMMessage up) {
         ReconfigureRequest request = (ReconfigureRequest) TOMUtil.getObject(up.getContent());
-        if (TOMUtil.verifySignature(getStaticConf().getRSAPublicKey(),
+        if (TOMUtil.verifySignature(getStaticConf().getRSAPublicKey(request.getSender()),
                 request.toString().getBytes(), request.getSignature())) {
             if (request.getSender() == getStaticConf().getTTPId()) {
                 this.updates.add(up);

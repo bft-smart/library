@@ -32,11 +32,13 @@ import org.apache.commons.codec.binary.Base64;
 public class RSAKeyLoader {
 
 	private String path;
-
+        private int id;
 	private PrivateKey priKey;
 	
 	/** Creates a new instance of RSAKeyLoader */
-	public RSAKeyLoader(String configHome) {
+	public RSAKeyLoader(int id, String configHome) {
+            
+                this.id = id;
 		if (configHome.equals("")) {
 			path = "config" + System.getProperty("file.separator") + "keys" +
 					System.getProperty("file.separator");
@@ -52,8 +54,20 @@ public class RSAKeyLoader {
 	 * @return the PublicKey loaded from config/keys/publickey<id>
 	 * @throws Exception problems reading or parsing the key
 	 */
+	public PublicKey loadPublicKey(int id) throws Exception {
+		BufferedReader r = new BufferedReader(new FileReader(path + "publickey" + id));
+		String tmp = "";
+		String key = "";
+		while ((tmp = r.readLine()) != null) {
+			key = key + tmp;
+		}
+		r.close();
+		PublicKey ret = getPublicKeyFromString(key);
+		return ret;
+	}
+        
 	public PublicKey loadPublicKey() throws Exception {
-		BufferedReader r = new BufferedReader(new FileReader(path + "publickey"));
+		BufferedReader r = new BufferedReader(new FileReader(path + "publickey" + this.id));
 		String tmp = "";
 		String key = "";
 		while ((tmp = r.readLine()) != null) {
@@ -73,7 +87,7 @@ public class RSAKeyLoader {
 	public PrivateKey loadPrivateKey() throws Exception {
 		if (priKey == null) {
 			BufferedReader r = new BufferedReader(
-					new FileReader(path + "privatekey"));
+					new FileReader(path + "privatekey" + this.id));
 			String tmp = "";
 			String key = "";
 			while ((tmp = r.readLine()) != null) {

@@ -54,7 +54,7 @@ public class StandardStateManager extends BaseStateManager {
 
     @Override
     public void init(TOMLayer tomLayer, DeliveryThread dt) {
-    	SVManager = tomLayer.reconfManager;
+    	SVController = tomLayer.controller;
     	
         this.tomLayer = tomLayer;
         this.dt = dt;
@@ -63,7 +63,7 @@ public class StandardStateManager extends BaseStateManager {
 
         this.replica = 0;
 
-        if (SVManager.getCurrentViewN() > 1 && replica == SVManager.getStaticConf().getProcessId())
+        if (SVController.getCurrentViewN() > 1 && replica == SVController.getStaticConf().getProcessId())
         	changeReplica();
 
         state = null;
@@ -76,9 +76,9 @@ public class StandardStateManager extends BaseStateManager {
     private void changeReplica() {
         int pos = -1;
         do {
-            pos = this.SVManager.getCurrentViewPos(replica);
-            replica = this.SVManager.getCurrentViewProcesses()[(pos + 1) % SVManager.getCurrentViewN()];
-        } while (replica == SVManager.getStaticConf().getProcessId());
+            pos = this.SVController.getCurrentViewPos(replica);
+            replica = this.SVController.getCurrentViewProcesses()[(pos + 1) % SVController.getCurrentViewN()];
+        } while (replica == SVController.getStaticConf().getProcessId());
     }
     
     @Override
@@ -86,9 +86,9 @@ public class StandardStateManager extends BaseStateManager {
         if (tomLayer.requestsTimer != null)
         	tomLayer.requestsTimer.clearAll();
 
-        SMMessage smsg = new StandardSMMessage(SVManager.getStaticConf().getProcessId(),
+        SMMessage smsg = new StandardSMMessage(SVController.getStaticConf().getProcessId(),
                 waitingEid, TOMUtil.SM_REQUEST, replica, null, null, -1, -1);
-        tomLayer.getCommunication().send(SVManager.getCurrentViewOtherAcceptors(), smsg);
+        tomLayer.getCommunication().send(SVController.getCurrentViewOtherAcceptors(), smsg);
 
         System.out.println("(StandardStateManager.requestState) I just sent a request to the other replicas for the state up to EID " + waitingEid);
 
@@ -96,7 +96,7 @@ public class StandardStateManager extends BaseStateManager {
             public void run() {
             	System.out.println("Timeout to retrieve state");
                 int[] myself = new int[1];
-                myself[0] = SVManager.getStaticConf().getProcessId();
+                myself[0] = SVController.getStaticConf().getProcessId();
                 tomLayer.getCommunication().send(myself, new StandardSMMessage(-1, waitingEid, TOMUtil.TRIGGER_SM_LOCALLY, -1, null, null, -1, -1));
             }
         };
@@ -121,16 +121,16 @@ public class StandardStateManager extends BaseStateManager {
     
 	@Override
     public void SMRequestDeliver(SMMessage msg, boolean isBFT) {
-        if (SVManager.getStaticConf().isStateTransferEnabled() && dt.getRecoverer() != null) {
+        if (SVController.getStaticConf().isStateTransferEnabled() && dt.getRecoverer() != null) {
         	StandardSMMessage stdMsg = (StandardSMMessage)msg;
-            boolean sendState = stdMsg.getReplica() == SVManager.getStaticConf().getProcessId();
+            boolean sendState = stdMsg.getReplica() == SVController.getStaticConf().getProcessId();
             ApplicationState thisState = dt.getRecoverer().getState(msg.getEid(), sendState);
             if (thisState == null) {
               thisState = dt.getRecoverer().getState(-1, sendState);
             }
             int[] targets = { msg.getSender() };
-            SMMessage smsg = new StandardSMMessage(SVManager.getStaticConf().getProcessId(),
-                    msg.getEid(), TOMUtil.SM_REPLY, -1, thisState, SVManager.getCurrentView(), lcManager.getLastReg(), tomLayer.lm.getCurrentLeader());
+            SMMessage smsg = new StandardSMMessage(SVController.getStaticConf().getProcessId(),
+                    msg.getEid(), TOMUtil.SM_REPLY, -1, thisState, SVController.getCurrentView(), lcManager.getLastReg(), tomLayer.lm.getCurrentLeader());
             System.out.println("Sending state");
             tomLayer.getCommunication().send(targets, smsg);
             System.out.println("Sent");
@@ -140,7 +140,7 @@ public class StandardStateManager extends BaseStateManager {
 	@Override
     public void SMReplyDeliver(SMMessage msg, boolean isBFT) {
         lockTimer.lock();
-        if (SVManager.getStaticConf().isStateTransferEnabled()) {
+        if (SVController.getStaticConf().isStateTransferEnabled()) {
             if (waitingEid != -1 && msg.getEid() == waitingEid) {
                 int currentRegency = -1;
                 int currentLeader = -1;
@@ -158,7 +158,7 @@ public class StandardStateManager extends BaseStateManager {
                 } else {
                     currentLeader = tomLayer.lm.getCurrentLeader();
                     currentRegency = lcManager.getLastReg();
-                    currentView = SVManager.getCurrentView();
+                    currentView = SVController.getCurrentView();
                 }
                 
                 if (msg.getSender() == replica && msg.getState().getSerializedState() != null) {
@@ -180,7 +180,7 @@ public class StandardStateManager extends BaseStateManager {
                             hash = tomLayer.computeHash(state.getSerializedState());
                             if (otherReplicaState != null) {
                                 if (Arrays.equals(hash, otherReplicaState.getStateHash())) haveState = 1;
-                                else if (getNumEqualStates() > SVManager.getCurrentViewF())
+                                else if (getNumEqualStates() > SVController.getCurrentViewF())
                                     haveState = -1;
                             }
                         }
@@ -213,9 +213,9 @@ public class StandardStateManager extends BaseStateManager {
                         
                         tomLayer.processOutOfContext();
                         
-                        if (SVManager.getCurrentViewId() != currentView.getId()) {
+                        if (SVController.getCurrentViewId() != currentView.getId()) {
                             System.out.println("Installing current view!");
-                            SVManager.reconfigureTo(currentView);
+                            SVController.reconfigureTo(currentView);
                         }
                         
                         dt.canDeliver();
@@ -233,7 +233,7 @@ public class StandardStateManager extends BaseStateManager {
                         	appStateOnly = false;
                             tomLayer.resumeLC();
                         }
-                    } else if (otherReplicaState == null && (SVManager.getCurrentViewN() / 2) < getReplies()) {
+                    } else if (otherReplicaState == null && (SVController.getCurrentViewN() / 2) < getReplies()) {
                     	waitingEid = -1;
                         reset();
  
@@ -264,7 +264,7 @@ public class StandardStateManager extends BaseStateManager {
      * @return The state sent from other replica
      */
     private ApplicationState getOtherReplicaState() {
-    	int[] processes = SVManager.getCurrentViewProcesses();
+    	int[] processes = SVController.getCurrentViewProcesses();
     	for(int process : processes) {
     		if(process == replica)
     			continue;

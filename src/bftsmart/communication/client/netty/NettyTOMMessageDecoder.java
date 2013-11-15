@@ -33,9 +33,11 @@ import org.jboss.netty.channel.ChannelHandlerContext;
 import org.jboss.netty.channel.ChannelPipelineCoverage;
 import org.jboss.netty.handler.codec.frame.FrameDecoder;
 
-import bftsmart.reconfiguration.ViewManager;
+import bftsmart.reconfiguration.ViewController;
 import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.util.Logger;
+import javax.crypto.SecretKeyFactory;
+import javax.crypto.spec.PBEKeySpec;
 
 /**
  *
@@ -50,11 +52,10 @@ public class NettyTOMMessageDecoder extends FrameDecoder {
     //private final int BENCHMARK_PERIOD = 10000;
     private boolean isClient;
     private Map sessionTable;
-    private SecretKey authKey;
     //private Storage st;
     private int macSize;
     private int signatureSize;
-    private ViewManager manager;
+    private ViewController controller;
     private boolean firstTime;
     private ReentrantReadWriteLock rl;
     //******* EDUARDO BEGIN: commented out some unused variables **************//
@@ -71,17 +72,14 @@ public class NettyTOMMessageDecoder extends FrameDecoder {
     
     private boolean useMAC;
 
-    public NettyTOMMessageDecoder(boolean isClient, Map sessionTable, SecretKey authKey, int macLength, ViewManager manager, ReentrantReadWriteLock rl, int signatureLength, boolean useMAC) {
+    public NettyTOMMessageDecoder(boolean isClient, Map sessionTable, int macLength, ViewController controller, ReentrantReadWriteLock rl, int signatureLength, boolean useMAC) {
         this.isClient = isClient;
         this.sessionTable = sessionTable;
-        this.authKey = authKey;
-        //this.st = new Storage(benchmarkPeriod);
         this.macSize = macLength;
-        this.manager = manager;
+        this.controller = controller;
         this.firstTime = true;
         this.rl = rl;
         this.signatureSize = signatureLength;
-        //this.st = new Storage(BENCHMARK_PERIOD);
         this.useMAC = useMAC;
         bftsmart.tom.util.Logger.println("new NettyTOMMessageDecoder!!, isClient=" + isClient);
     }
@@ -180,11 +178,16 @@ public class NettyTOMMessageDecoder extends FrameDecoder {
 
                     rl.readLock().unlock();
                     
-                    Mac macSend = Mac.getInstance(manager.getStaticConf().getHmacAlgorithm());
+                    SecretKeyFactory fac = SecretKeyFactory.getInstance("PBEWithMD5AndDES");
+                    String str = sm.getSender() + ":" + this.controller.getStaticConf().getProcessId();                                        
+                    PBEKeySpec spec = new PBEKeySpec(str.toCharArray());
+                    SecretKey authKey = fac.generateSecret(spec);
+            
+                    Mac macSend = Mac.getInstance(controller.getStaticConf().getHmacAlgorithm());
                     macSend.init(authKey);
-                    Mac macReceive = Mac.getInstance(manager.getStaticConf().getHmacAlgorithm());
+                    Mac macReceive = Mac.getInstance(controller.getStaticConf().getHmacAlgorithm());
                     macReceive.init(authKey);
-                    NettyClientServerSession cs = new NettyClientServerSession(channel, macSend, macReceive, sm.getSender(), manager.getStaticConf().getRSAPublicKey(), new ReentrantLock());
+                    NettyClientServerSession cs = new NettyClientServerSession(channel, macSend, macReceive, sm.getSender());
 
                     rl.writeLock().lock();
                     sessionTable.put(sm.getSender(), cs);

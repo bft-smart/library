@@ -22,7 +22,7 @@ import java.util.Collection;
 import java.util.TreeSet;
 import org.apache.commons.codec.binary.Base64;
 
-import bftsmart.reconfiguration.ServerViewManager;
+import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.reconfiguration.views.View;
 import bftsmart.tom.core.messages.TOMMessage;
 import java.util.HashSet;
@@ -55,7 +55,7 @@ public class Round implements Serializable {
 
     private View lastView = null;
 
-    private ServerViewManager manager;
+    private ServerViewController controller;
 
     /**
      * Creates a new instance of Round for acceptors
@@ -63,18 +63,18 @@ public class Round implements Serializable {
      * @param number Number of the round
      * @param timeout Timeout duration for this round
      */
-    protected Round(ServerViewManager manager, Execution parent, int number) {
+    protected Round(ServerViewController controller, Execution parent, int number) {
         this.execution = parent;
         this.number = number;
-        this.manager = manager;
+        this.controller = controller;
         this.proof = new HashSet<PaxosMessage>();
         //ExecutionManager manager = execution.getManager();
 
-        this.lastView = manager.getCurrentView();
-        this.me = manager.getStaticConf().getProcessId();
+        this.lastView = controller.getCurrentView();
+        this.me = controller.getStaticConf().getProcessId();
 
         //int[] acceptors = manager.getAcceptors();
-        int n = manager.getCurrentViewN();
+        int n = controller.getCurrentViewN();
 
         weakSetted = new boolean[n];
         strongSetted = new boolean[n];
@@ -89,7 +89,7 @@ public class Round implements Serializable {
             Arrays.fill((Object[]) weak, null);
             Arrays.fill((Object[]) strong, null);
         } else {
-            Round previousRound = execution.getRound(number - 1, manager);
+            Round previousRound = execution.getRound(number - 1, controller);
 
             this.weak = previousRound.getWeak();
             this.strong = previousRound.getStrong();
@@ -100,9 +100,9 @@ public class Round implements Serializable {
     // receiving messages, the weak and strong arrays must be updated
     private void updateArrays() {
         
-        if (lastView.getId() != manager.getCurrentViewId()) {
+        if (lastView.getId() != controller.getCurrentViewId()) {
             
-            int n = manager.getCurrentViewN();
+            int n = controller.getCurrentViewN();
             
             byte[][] weak = new byte[n][];
             byte[][] strong = new byte[n][];
@@ -115,9 +115,9 @@ public class Round implements Serializable {
         
             for (int pid : lastView.getProcesses()) {
                 
-                if (manager.isCurrentViewMember(pid)) {
+                if (controller.isCurrentViewMember(pid)) {
                     
-                    int currentPos = manager.getCurrentViewPos(pid);
+                    int currentPos = controller.getCurrentViewPos(pid);
                     int lastPos = lastView.getPos(pid);
                     
                     weak[currentPos] = this.weak[lastPos];
@@ -135,7 +135,7 @@ public class Round implements Serializable {
             this.weakSetted = weakSetted;
             this.strongSetted = strongSetted;
 
-            lastView = manager.getCurrentView();
+            lastView = controller.getCurrentView();
             
         }
     }
@@ -197,7 +197,7 @@ public class Round implements Serializable {
         updateArrays();
         
         //******* EDUARDO BEGIN **************//
-        int p = this.manager.getCurrentViewPos(acceptor);
+        int p = this.controller.getCurrentViewPos(acceptor);
         if(p >= 0){
             return weak[p] != null;
         }else{
@@ -216,7 +216,7 @@ public class Round implements Serializable {
         updateArrays();
         
         //******* EDUARDO BEGIN **************//
-        int p = this.manager.getCurrentViewPos(acceptor);
+        int p = this.controller.getCurrentViewPos(acceptor);
         if(p >= 0){
             return strong[p] != null;
         }else{
@@ -235,7 +235,7 @@ public class Round implements Serializable {
         updateArrays();
         
         //******* EDUARDO BEGIN **************//
-        int p = this.manager.getCurrentViewPos(acceptor);
+        int p = this.controller.getCurrentViewPos(acceptor);
         if(p >= 0){        
             return this.weak[p];
         }else{
@@ -262,7 +262,7 @@ public class Round implements Serializable {
         updateArrays();
         
         //******* EDUARDO BEGIN **************//
-        int p = this.manager.getCurrentViewPos(acceptor);
+        int p = this.controller.getCurrentViewPos(acceptor);
         if (p >=0 && /*!weakSetted[p] &&*/ !isFrozen()) { //it can only be setted once
             weak[p] = value;
             weakSetted[p] = true;
@@ -280,7 +280,7 @@ public class Round implements Serializable {
         updateArrays();
         
         //******* EDUARDO BEGIN **************//
-         int p = this.manager.getCurrentViewPos(acceptor);
+         int p = this.controller.getCurrentViewPos(acceptor);
         if(p >= 0){        
         return strong[p];
         }else{
@@ -307,7 +307,7 @@ public class Round implements Serializable {
         updateArrays();
         
         //******* EDUARDO BEGIN **************//
-        int p = this.manager.getCurrentViewPos(acceptor);
+        int p = this.controller.getCurrentViewPos(acceptor);
         if (p >= 0 /*&& !strongSetted[p]*/ && !isFrozen()) { //it can only be setted once
             strong[p] = value;
             strongSetted[p] = true;
@@ -447,7 +447,7 @@ public class Round implements Serializable {
      */
     public void clear() {
 
-        int n = manager.getCurrentViewN();
+        int n = controller.getCurrentViewN();
         
         weakSetted = new boolean[n];
         strongSetted = new boolean[n];

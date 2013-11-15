@@ -42,16 +42,16 @@ public class Reconfiguration {
     }
     
     public void addServer(int id, String ip, int port){
-        this.setReconfiguration(ServerViewManager.ADD_SERVER, id + ":" + ip + ":" + port);
+        this.setReconfiguration(ServerViewController.ADD_SERVER, id + ":" + ip + ":" + port);
     }
     
     public void removeServer(int id){
-        this.setReconfiguration(ServerViewManager.REMOVE_SERVER, String.valueOf(id));
+        this.setReconfiguration(ServerViewController.REMOVE_SERVER, String.valueOf(id));
     }
     
 
     public void setF(int f){
-      this.setReconfiguration(ServerViewManager.CHANGE_F,String.valueOf(f));  
+      this.setReconfiguration(ServerViewController.CHANGE_F,String.valueOf(f));  
     }
     
     

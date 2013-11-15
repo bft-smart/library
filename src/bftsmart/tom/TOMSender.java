@@ -23,7 +23,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import bftsmart.communication.client.CommunicationSystemClientSide;
 import bftsmart.communication.client.CommunicationSystemClientSideFactory;
 import bftsmart.communication.client.ReplyReceiver;
-import bftsmart.reconfiguration.ClientViewManager;
+import bftsmart.reconfiguration.ClientViewController;
 import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.core.messages.TOMMessageType;
 
@@ -34,7 +34,7 @@ public abstract class TOMSender implements ReplyReceiver {
 
 	private int me; // process id
 
-	private ClientViewManager viewManager;
+	private ClientViewController viewController;
 
 	private int session = 0; // session id
 	private int sequence = 0; // sequence number
@@ -62,8 +62,8 @@ public abstract class TOMSender implements ReplyReceiver {
 
 
 	//******* EDUARDO BEGIN **************//
-	public ClientViewManager getViewManager(){
-		return this.viewManager;
+	public ClientViewController getViewManager(){
+		return this.viewController;
 	}
 
 	/**
@@ -73,20 +73,20 @@ public abstract class TOMSender implements ReplyReceiver {
 	 * @param processId ID of the process
 	 */
 	public void init(int processId) {
-		this.viewManager = new ClientViewManager(processId);
-		startsCS();
+		this.viewController = new ClientViewController(processId);
+		startsCS(processId);
 	}
 
 	public void init(int processId, String configHome) {
-		this.viewManager = new ClientViewManager(processId,configHome);
-		startsCS();
+		this.viewController = new ClientViewController(processId,configHome);
+		startsCS(processId);
 	}
 
-	private void startsCS() {
-		this.cs = CommunicationSystemClientSideFactory.getCommunicationSystemClientSide(this.viewManager);
+	private void startsCS(int clientId) {
+		this.cs = CommunicationSystemClientSideFactory.getCommunicationSystemClientSide(clientId, this.viewController);
 		this.cs.setReplyReceiver(this); // This object itself shall be a reply receiver
-		this.me = this.viewManager.getStaticConf().getProcessId();
-		this.useSignatures = this.viewManager.getStaticConf().getUseSignatures()==1?true:false;
+		this.me = this.viewController.getStaticConf().getProcessId();
+		this.useSignatures = this.viewController.getStaticConf().getUseSignatures()==1?true:false;
 		this.session = new Random().nextInt();
 	}
 	//******* EDUARDO END **************//
@@ -129,7 +129,7 @@ public abstract class TOMSender implements ReplyReceiver {
 	 * @param sm Message to be multicast
 	 */
 	public void TOMulticast(TOMMessage sm) {
-		cs.send(useSignatures, this.viewManager.getCurrentViewProcesses(), sm);
+		cs.send(useSignatures, this.viewController.getCurrentViewProcesses(), sm);
 	}
 
 	/**
@@ -140,14 +140,14 @@ public abstract class TOMSender implements ReplyReceiver {
 	 * @param reqType TOM_NORMAL, TOM_READONLY or TOM_RECONFIGURATION
 	 */
 	public void TOMulticast(byte[] m, int reqId, TOMMessageType reqType) {
-		cs.send(useSignatures, viewManager.getCurrentViewProcesses(),
-				new TOMMessage(me, session, reqId, m, viewManager.getCurrentViewId(),
+		cs.send(useSignatures, viewController.getCurrentViewProcesses(),
+				new TOMMessage(me, session, reqId, m, viewController.getCurrentViewId(),
 						reqType));
 	}
 
 	public void TOMulticast(byte[] m, int reqId, int operationId, TOMMessageType reqType) {
-		cs.send(useSignatures, viewManager.getCurrentViewProcesses(),
-				new TOMMessage(me, session, reqId, operationId, m, viewManager.getCurrentViewId(),
+		cs.send(useSignatures, viewController.getCurrentViewProcesses(),
+				new TOMMessage(me, session, reqId, operationId, m, viewController.getCurrentViewId(),
 						reqType));
 	}
 
@@ -156,7 +156,7 @@ public abstract class TOMSender implements ReplyReceiver {
 			type = TOMMessageType.ASK_STATUS;
 		}
 		cs.send(useSignatures, targets,
-				new TOMMessage(me, session, reqId, m, viewManager.getCurrentViewId(), type));
+				new TOMMessage(me, session, reqId, m, viewController.getCurrentViewId(), type));
 	}
 
 	public void sendMessageToTargets(byte[] m, int reqId, int operationId, int[] targets, TOMMessageType type) {
@@ -164,7 +164,7 @@ public abstract class TOMSender implements ReplyReceiver {
 			type = TOMMessageType.ASK_STATUS;
 		}
 		cs.send(useSignatures, targets,
-				new TOMMessage(me, session, reqId, operationId, m, viewManager.getCurrentViewId(), type));
+				new TOMMessage(me, session, reqId, operationId, m, viewController.getCurrentViewId(), type));
 	}
 
 	/**

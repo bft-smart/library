@@ -29,7 +29,7 @@ import java.security.SignatureException;
 import java.util.Arrays;
 import java.util.concurrent.locks.ReentrantLock;
 
-import bftsmart.reconfiguration.ViewManager;
+import bftsmart.reconfiguration.ViewController;
 
 public class TOMUtil {
 
@@ -59,12 +59,12 @@ public class TOMUtil {
 
     //private static Storage st = new Storage(BENCHMARK_PERIOD);
     //private static int count=0;
-    public static int getSignatureSize(ViewManager manager) {
+    public static int getSignatureSize(ViewController controller) {
         if (signatureSize > 0) {
             return signatureSize;
         }
 
-        byte[] signature = signMessage(manager.getStaticConf().getRSAPrivateKey(),
+        byte[] signature = signMessage(controller.getStaticConf().getRSAPrivateKey(),
                 "a".getBytes());
 
         if (signature != null) {

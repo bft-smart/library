@@ -22,7 +22,6 @@ import java.net.ConnectException;
 import java.net.InetSocketAddress;
 import java.nio.channels.ClosedChannelException;
 import java.security.NoSuchAlgorithmException;
-import java.security.spec.InvalidKeySpecException;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map.Entry;
@@ -32,10 +31,6 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import javax.crypto.Mac;
-import javax.crypto.SecretKey;
-import javax.crypto.SecretKeyFactory;
-import javax.crypto.spec.PBEKeySpec;
-
 
 import org.jboss.netty.bootstrap.ServerBootstrap;
 import org.jboss.netty.channel.Channel;
@@ -49,7 +44,7 @@ import org.jboss.netty.channel.socket.nio.NioServerSocketChannelFactory;
 
 import bftsmart.communication.client.CommunicationSystemServerSide;
 import bftsmart.communication.client.RequestReceiver;
-import bftsmart.reconfiguration.ServerViewManager;
+import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.util.Logger;
 import bftsmart.tom.util.TOMUtil;
@@ -61,22 +56,15 @@ import bftsmart.tom.util.TOMUtil;
 @ChannelPipelineCoverage("all")
 public class NettyClientServerCommunicationSystemServerSide extends SimpleChannelHandler implements CommunicationSystemServerSide {
 
-    private static final String PASSWORD = "newcs";
     private RequestReceiver requestReceiver;
     private HashMap sessionTable;
     private ReentrantReadWriteLock rl;
-    private SecretKey authKey;
-    //private List<TOMMessage> requestsReceived = Collections.synchronizedList(new ArrayList<TOMMessage>());
-    //private ReentrantLock lock = new ReentrantLock();
-    private ServerViewManager manager;
+    private ServerViewController controller;
 
-    public NettyClientServerCommunicationSystemServerSide(ServerViewManager manager) {
+    public NettyClientServerCommunicationSystemServerSide(ServerViewController controller) {
         try {
-            SecretKeyFactory fac = SecretKeyFactory.getInstance("PBEWithMD5AndDES");
-            PBEKeySpec spec = new PBEKeySpec(PASSWORD.toCharArray());
-            authKey = fac.generateSecret(spec);
 
-            this.manager = manager;
+            this.controller = controller;
             sessionTable = new HashMap();
             rl = new ReentrantReadWriteLock();
 
@@ -88,7 +76,7 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
                     Executors.newCachedThreadPool()));
 
             //******* EDUARDO BEGIN **************//
-            Mac macDummy = Mac.getInstance(manager.getStaticConf().getHmacAlgorithm());
+            Mac macDummy = Mac.getInstance(controller.getStaticConf().getHmacAlgorithm());
 
             bootstrap.setOption("tcpNoDelay", true);
             bootstrap.setOption("keepAlive", true);
@@ -97,23 +85,23 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
             bootstrap.setOption("child.keepAlive", true);
 
             //Set up the default event pipeline.
-            bootstrap.setPipelineFactory(new NettyServerPipelineFactory(this, false, sessionTable, authKey, macDummy.getMacLength(), manager, rl, TOMUtil.getSignatureSize(manager), new ReentrantLock()));
+            bootstrap.setPipelineFactory(new NettyServerPipelineFactory(this, sessionTable, macDummy.getMacLength(), controller, rl, TOMUtil.getSignatureSize(controller)));
 
             //Bind and start to accept incoming connections.
-            bootstrap.bind(new InetSocketAddress(manager.getStaticConf().getHost(
-                    manager.getStaticConf().getProcessId()),
-                    manager.getStaticConf().getPort(manager.getStaticConf().getProcessId())));
+            bootstrap.bind(new InetSocketAddress(controller.getStaticConf().getHost(
+                    controller.getStaticConf().getProcessId()),
+                    controller.getStaticConf().getPort(controller.getStaticConf().getProcessId())));
             
-            System.out.println("#Bound to port " + manager.getStaticConf().getPort(manager.getStaticConf().getProcessId()));
-            System.out.println("#myId " + manager.getStaticConf().getProcessId());
-            System.out.println("#n " + manager.getCurrentViewN());
-            System.out.println("#f " + manager.getCurrentViewF());
-            System.out.println("#requestTimeout= " + manager.getStaticConf().getRequestTimeout());
-            System.out.println("#maxBatch= " + manager.getStaticConf().getMaxBatchSize());
-            System.out.println("#Using MACs = " + manager.getStaticConf().getUseMACs());
-            System.out.println("#Using Signatures = " + manager.getStaticConf().getUseSignatures());
+            System.out.println("#Bound to port " + controller.getStaticConf().getPort(controller.getStaticConf().getProcessId()));
+            System.out.println("#myId " + controller.getStaticConf().getProcessId());
+            System.out.println("#n " + controller.getCurrentViewN());
+            System.out.println("#f " + controller.getCurrentViewF());
+            System.out.println("#requestTimeout= " + controller.getStaticConf().getRequestTimeout());
+            System.out.println("#maxBatch= " + controller.getStaticConf().getMaxBatchSize());
+            System.out.println("#Using MACs = " + controller.getStaticConf().getUseMACs());
+            System.out.println("#Using Signatures = " + controller.getStaticConf().getUseSignatures());
             //******* EDUARDO END **************//
-        } catch (InvalidKeySpecException ex) {
+
         } catch (NoSuchAlgorithmException ex) {
         }
     }
@@ -201,7 +189,7 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
         //produce signature if necessary (never in the current version)
         if (sm.signed) {
             //******* EDUARDO BEGIN **************//
-            byte[] data2 = TOMUtil.signMessage(manager.getStaticConf().getRSAPrivateKey(), data);
+            byte[] data2 = TOMUtil.signMessage(controller.getStaticConf().getRSAPrivateKey(), data);
             //******* EDUARDO END **************//
             sm.serializedMessageSignature = data2;
         }
