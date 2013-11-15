@@ -17,7 +17,7 @@ package bftsmart.paxosatwar.roles;
 
 import bftsmart.communication.ServerCommunicationSystem;
 import bftsmart.paxosatwar.messages.MessageFactory;
-import bftsmart.reconfiguration.ServerViewManager;
+import bftsmart.reconfiguration.ServerViewController;
 
 /**
  * This class represents the proposer role in the consensus protocol.
@@ -26,7 +26,7 @@ public class Proposer {
 
     private MessageFactory factory; // Factory for PaW messages
     private ServerCommunicationSystem communication; // Replicas comunication system
-    private ServerViewManager reconfManager;
+    private ServerViewController controller;
 
     /**
      * Creates a new instance of Proposer
@@ -37,10 +37,10 @@ public class Proposer {
      * @param conf TOM configuration
      */
     public Proposer(ServerCommunicationSystem communication, MessageFactory factory,
-            ServerViewManager manager) {
+            ServerViewController controller) {
         this.communication = communication;
         this.factory = factory;
-        this.reconfManager = manager;
+        this.controller = controller;
     }
 
     /**
@@ -52,7 +52,7 @@ public class Proposer {
      */
     public void startExecution(int eid, byte[] value) {
         //******* EDUARDO BEGIN **************//
-        communication.send(this.reconfManager.getCurrentViewAcceptors(),
+        communication.send(this.controller.getCurrentViewAcceptors(),
                 factory.createPropose(eid, 0, value, null));
         //******* EDUARDO END **************//
     }

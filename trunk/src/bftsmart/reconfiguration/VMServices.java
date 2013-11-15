@@ -20,10 +20,10 @@ package bftsmart.reconfiguration;
  * @author Andre Nogueira
  */
 
-public class TTPServices {
+public class VMServices {
 	public static void main(String[] args) throws InterruptedException {
 
-		TTP ttp = new TTP();
+		ViewManager viewManager = new ViewManager();
 
 
 		if(args.length == 1){
@@ -31,7 +31,7 @@ public class TTPServices {
 
 			int smartId = Integer.parseInt(args[0]);
 
-			ttp.removeServer(smartId);
+			viewManager.removeServer(smartId);
 		}else if(args.length == 3){
 			System.out.println("####Tpp Service[Join]####");
 
@@ -39,17 +39,17 @@ public class TTPServices {
 			String ipAddress = args[1];
 			int port = Integer.parseInt(args[2]);
 
-			ttp.addServer(smartId, ipAddress,port);
+			viewManager.addServer(smartId, ipAddress,port);
 
 		}else{
 			System.out.println("Usage: java -jar TppServices <smart id> [ip address] [port]");
 			System.exit(1);
 		}
 
-		ttp.executeUpdates();
+		viewManager.executeUpdates();
 		
 		Thread.sleep(2000);//2s
-		ttp.close();
+		viewManager.close();
 
 		System.exit(0);
 	}

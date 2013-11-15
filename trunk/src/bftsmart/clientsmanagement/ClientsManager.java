@@ -22,7 +22,7 @@ import java.util.Map.Entry;
 import java.util.concurrent.locks.ReentrantLock;
 
 import bftsmart.communication.ServerCommunicationSystem;
-import bftsmart.reconfiguration.ServerViewManager;
+import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.core.timer.RequestsTimer;
 import bftsmart.tom.util.Logger;
@@ -34,13 +34,13 @@ import bftsmart.tom.util.Logger;
  */
 public class ClientsManager {
 
-    private ServerViewManager manager;
+    private ServerViewController controller;
     private RequestsTimer timer;
     private HashMap<Integer, ClientData> clientsData = new HashMap<Integer, ClientData>();
     private ReentrantLock clientsLock = new ReentrantLock();
 
-    public ClientsManager(ServerViewManager manager, RequestsTimer timer) {
-        this.manager = manager;
+    public ClientsManager(ServerViewController controller, RequestsTimer timer) {
+        this.controller = controller;
         this.timer = timer;
     }
 
@@ -62,8 +62,8 @@ public class ClientsManager {
 
             //******* EDUARDO BEGIN **************//
             clientData = new ClientData(clientId,
-                    (manager.getStaticConf().getUseSignatures() == 1)
-                    ? manager.getStaticConf().getRSAPublicKey()
+                    (controller.getStaticConf().getUseSignatures() == 1)
+                    ? controller.getStaticConf().getRSAPublicKey(clientId)
                     : null);
             //******* EDUARDO END **************//
             clientsData.put(clientId, clientData);
@@ -94,7 +94,7 @@ public class ClientsManager {
             int noMoreMessages = 0;
 
             while (it.hasNext()
-                    && allReq.size() < manager.getStaticConf().getMaxBatchSize()
+                    && allReq.size() < controller.getStaticConf().getMaxBatchSize()
                     && noMoreMessages < clientsEntrySet.size()) {
 
                 ClientData clientData = it.next().getValue();
@@ -119,7 +119,7 @@ public class ClientsManager {
                 }
             }
             
-            if(allReq.size() == manager.getStaticConf().getMaxBatchSize() ||
+            if(allReq.size() == controller.getStaticConf().getMaxBatchSize() ||
                     noMoreMessages == clientsEntrySet.size()) {
                 
                 break;
@@ -229,8 +229,8 @@ public class ClientsManager {
 
         /* ################################################ */
         //pjsousa: simple flow control mechanism to avoid out of memory exception
-        if (fromClient && (manager.getStaticConf().getUseControlFlow() != 0)) {
-            if (clientData.getPendingRequests().size() > manager.getStaticConf().getUseControlFlow()) {
+        if (fromClient && (controller.getStaticConf().getUseControlFlow() != 0)) {
+            if (clientData.getPendingRequests().size() > controller.getStaticConf().getUseControlFlow()) {
                 //clients should not have more than defined in the config file
                 //outstanding messages, otherwise they will be dropped.
                 //just account for the message reception

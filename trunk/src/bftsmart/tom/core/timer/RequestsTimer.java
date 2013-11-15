@@ -24,7 +24,7 @@ import java.util.TreeSet;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import bftsmart.communication.ServerCommunicationSystem;
-import bftsmart.reconfiguration.ServerViewManager;
+import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.tom.core.TOMLayer;
 import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.leaderchange.LCMessage;
@@ -47,7 +47,7 @@ public class RequestsTimer {
     private boolean enabled = true;
     
     private ServerCommunicationSystem communication; // Communication system between replicas
-    private ServerViewManager reconfManager; // Reconfiguration manager
+    private ServerViewController controller; // Reconfiguration manager
     
     //private Storage st1 = new Storage(100000);
     //private Storage st2 = new Storage(10000);
@@ -55,13 +55,13 @@ public class RequestsTimer {
      * Creates a new instance of RequestsTimer
      * @param tomLayer TOM layer
      */
-    public RequestsTimer(TOMLayer tomLayer, ServerCommunicationSystem communication, ServerViewManager reconfManager) {
+    public RequestsTimer(TOMLayer tomLayer, ServerCommunicationSystem communication, ServerViewController controller) {
         this.tomLayer = tomLayer;
         
         this.communication = communication;
-        this.reconfManager = reconfManager;
+        this.controller = controller;
         
-        this.timeout = this.reconfManager.getStaticConf().getRequestTimeout();
+        this.timeout = this.controller.getStaticConf().getRequestTimeout();
         this.shortTimeout = -1;
     }
 
@@ -82,7 +82,7 @@ public class RequestsTimer {
             long t = (shortTimeout > -1 ? shortTimeout : timeout);
             //shortTimeout = -1;
             rtTask = new RequestTimerTask();
-            if (reconfManager.getCurrentViewN() > 1) timer.schedule(rtTask, t);
+            if (controller.getCurrentViewN() > 1) timer.schedule(rtTask, t);
         }
     }
     
@@ -203,7 +203,7 @@ public class RequestsTimer {
         public void run() {
             
             int[] myself = new int[1];
-            myself[0] = reconfManager.getStaticConf().getProcessId();
+            myself[0] = controller.getStaticConf().getProcessId();
 
             communication.send(myself, new LCMessage(-1, TOMUtil.TRIGGER_LC_LOCALLY, -1, null));
 

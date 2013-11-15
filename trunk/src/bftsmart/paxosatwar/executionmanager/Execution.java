@@ -22,7 +22,7 @@ import java.util.Set;
 import java.util.concurrent.locks.ReentrantLock;
 
 import bftsmart.paxosatwar.Consensus;
-import bftsmart.reconfiguration.ServerViewManager;
+import bftsmart.reconfiguration.ServerViewController;
 
 
 
@@ -87,8 +87,8 @@ public class Execution {
      * @param number The number of the round
      * @return The round
      */
-    public Round getRound(int number, ServerViewManager recManager) {
-        return getRound(number,true, recManager);
+    public Round getRound(int number, ServerViewController controller) {
+        return getRound(number,true, controller);
     }
 
     /**
@@ -97,12 +97,12 @@ public class Execution {
      * @param create if the round is to be created if not existent
      * @return The round
      */
-    public Round getRound(int number, boolean create, ServerViewManager recManager) {
+    public Round getRound(int number, boolean create, ServerViewController controller) {
         roundsLock.lock();
 
         Round round = rounds.get(number);
         if(round == null && create){
-            round = new Round(recManager, this, number);
+            round = new Round(controller, this, number);
             rounds.put(number, round);
         }
 
@@ -165,7 +165,7 @@ public class Execution {
      * Creates a round associated with this execution, supposedly the next
      * @return The round
      */
-    public Round createRound(ServerViewManager recManager) {
+    public Round createRound(ServerViewController recManager) {
         roundsLock.lock();
 
         Set<Integer> keys = rounds.keySet();

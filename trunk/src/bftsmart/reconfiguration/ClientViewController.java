@@ -22,9 +22,9 @@ import bftsmart.reconfiguration.views.View;
  *
  * @author eduardo
  */
-public class ClientViewManager extends ViewManager {
+public class ClientViewController extends ViewController {
 
-    public ClientViewManager(int procId) {
+    public ClientViewController(int procId) {
         super(procId);
         View cv = getViewStore().readView();
         if(cv == null){
@@ -35,7 +35,7 @@ public class ClientViewManager extends ViewManager {
         }
     }
 
-    public ClientViewManager(int procId, String configHome) {
+    public ClientViewController(int procId, String configHome) {
         super(procId, configHome);
         View cv = getViewStore().readView();
         if(cv == null){

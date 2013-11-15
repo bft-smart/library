@@ -34,7 +34,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import bftsmart.communication.SystemMessage;
-import bftsmart.reconfiguration.ServerViewManager;
+import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.tom.ServiceReplica;
 import javax.crypto.SecretKey;
 import javax.crypto.SecretKeyFactory;
@@ -47,7 +47,7 @@ import javax.crypto.spec.PBEKeySpec;
  */
 public class ServersCommunicationLayer extends Thread {
 
-    private ServerViewManager manager;
+    private ServerViewController controller;
     private LinkedBlockingQueue<SystemMessage> inQueue;
     private Hashtable<Integer, ServerConnection> connections = new Hashtable<Integer, ServerConnection>();
     private ServerSocket serverSocket;
@@ -61,17 +61,17 @@ public class ServersCommunicationLayer extends Thread {
     private SecretKey selfPwd;
     private static final String PASSWORD = "commsyst";
 
-    public ServersCommunicationLayer(ServerViewManager manager,
+    public ServersCommunicationLayer(ServerViewController controller,
             LinkedBlockingQueue<SystemMessage> inQueue, ServiceReplica replica) throws Exception {
 
-        this.manager = manager;
+        this.controller = controller;
         this.inQueue = inQueue;
-        this.me = manager.getStaticConf().getProcessId();
+        this.me = controller.getStaticConf().getProcessId();
         this.replica = replica;
 
         //Try connecting if a member of the current view. Otherwise, wait until the Join has been processed!
-        if (manager.isInCurrentView()) {
-            int[] initialV = manager.getCurrentViewAcceptors();
+        if (controller.isInCurrentView()) {
+            int[] initialV = controller.getCurrentViewAcceptors();
             for (int i = 0; i < initialV.length; i++) {
                 if (initialV[i] != me) {
                     getConnection(initialV[i]);
@@ -79,8 +79,8 @@ public class ServersCommunicationLayer extends Thread {
             }
         }
 
-        serverSocket = new ServerSocket(manager.getStaticConf().getServerToServerPort(
-                manager.getStaticConf().getProcessId()));
+        serverSocket = new ServerSocket(controller.getStaticConf().getServerToServerPort(
+                controller.getStaticConf().getProcessId()));
 
         SecretKeyFactory fac = SecretKeyFactory.getInstance("PBEWithMD5AndDES");
         PBEKeySpec spec = new PBEKeySpec(PASSWORD.toCharArray());
@@ -93,7 +93,7 @@ public class ServersCommunicationLayer extends Thread {
     }
 
     public SecretKey getSecretKey(int id) {
-        if (id == manager.getStaticConf().getProcessId()) return selfPwd;
+        if (id == controller.getStaticConf().getProcessId()) return selfPwd;
         else return connections.get(id).getSecretKey();
     }
 
@@ -101,13 +101,13 @@ public class ServersCommunicationLayer extends Thread {
     public void updateConnections() {
         connectionsLock.lock();
 
-        if (this.manager.isInCurrentView()) {
+        if (this.controller.isInCurrentView()) {
 
             Iterator<Integer> it = this.connections.keySet().iterator();
             List<Integer> toRemove = new LinkedList<Integer>();
             while (it.hasNext()) {
                 int rm = it.next();
-                if (!this.manager.isCurrentViewMember(rm)) {
+                if (!this.controller.isCurrentViewMember(rm)) {
                     toRemove.add(rm);
                 }
             }
@@ -115,7 +115,7 @@ public class ServersCommunicationLayer extends Thread {
                 this.connections.remove(toRemove.get(i)).shutdown();
             }
 
-            int[] newV = manager.getCurrentViewAcceptors();
+            int[] newV = controller.getCurrentViewAcceptors();
             for (int i = 0; i < newV.length; i++) {
                 if (newV[i] != me) {
                     getConnection(newV[i]);
@@ -136,7 +136,7 @@ public class ServersCommunicationLayer extends Thread {
         connectionsLock.lock();
         ServerConnection ret = this.connections.get(remoteId);
         if (ret == null) {
-            ret = new ServerConnection(manager, null, remoteId, this.inQueue, this.replica);
+            ret = new ServerConnection(controller, null, remoteId, this.inQueue, this.replica);
             this.connections.put(remoteId, ret);
         }
         connectionsLock.unlock();
@@ -177,7 +177,7 @@ public class ServersCommunicationLayer extends Thread {
         doWork = false;
 
         //******* EDUARDO BEGIN **************//
-        int[] activeServers = manager.getCurrentViewAcceptors();
+        int[] activeServers = controller.getCurrentViewAcceptors();
 
         for (int i = 0; i < activeServers.length; i++) {
             //if (connections[i] != null) {
@@ -221,8 +221,8 @@ public class ServersCommunicationLayer extends Thread {
                 int remoteId = new DataInputStream(newSocket.getInputStream()).readInt();
 
                 //******* EDUARDO BEGIN **************//
-                if (!this.manager.isInCurrentView() &&
-                     (this.manager.getStaticConf().getTTPId() != remoteId)) {
+                if (!this.controller.isInCurrentView() &&
+                     (this.controller.getStaticConf().getTTPId() != remoteId)) {
                     waitViewLock.lock();
                     pendingConn.add(new PendingConnection(newSocket, remoteId));
                     waitViewLock.unlock();
@@ -249,13 +249,13 @@ public class ServersCommunicationLayer extends Thread {
 
     //******* EDUARDO BEGIN **************//
     private void establishConnection(Socket newSocket, int remoteId) throws IOException {
-        if ((this.manager.getStaticConf().getTTPId() == remoteId) || this.manager.isCurrentViewMember(remoteId)) {
+        if ((this.controller.getStaticConf().getTTPId() == remoteId) || this.controller.isCurrentViewMember(remoteId)) {
             connectionsLock.lock();
             //System.out.println("Vai se conectar com: "+remoteId);
             if (this.connections.get(remoteId) == null) { //This must never happen!!!
                 //first time that this connection is being established
                 //System.out.println("THIS DOES NOT HAPPEN....."+remoteId);
-                this.connections.put(remoteId, new ServerConnection(manager, newSocket, remoteId, inQueue, replica));
+                this.connections.put(remoteId, new ServerConnection(controller, newSocket, remoteId, inQueue, replica));
             } else {
                 //reconnection
                 this.connections.get(remoteId).reconnect(newSocket);
@@ -281,7 +281,7 @@ public class ServersCommunicationLayer extends Thread {
     public String toString() {
         String str = "inQueue=" + inQueue.toString();
 
-        int[] activeServers = manager.getCurrentViewAcceptors();
+        int[] activeServers = controller.getCurrentViewAcceptors();
 
         for (int i = 0; i < activeServers.length; i++) {
 

@@ -27,7 +27,7 @@ import javax.crypto.SecretKey;
 import org.jboss.netty.channel.ChannelPipeline;
 import org.jboss.netty.channel.ChannelPipelineFactory;
 
-import bftsmart.reconfiguration.ClientViewManager;
+import bftsmart.reconfiguration.ClientViewController;
 
 
 /**
@@ -38,37 +38,31 @@ import bftsmart.reconfiguration.ClientViewManager;
 public class NettyClientPipelineFactory implements ChannelPipelineFactory {
 
     NettyClientServerCommunicationSystemClientSide ncs;
-    boolean isClient;
     Map sessionTable;
-    SecretKey authKey;
     int macLength;
     int signatureLength;
 
     //******* EDUARDO BEGIN **************//
-    ClientViewManager manager;
+    ClientViewController controller;
     //******* EDUARDO END **************//
 
     ReentrantReadWriteLock rl;
-    ReentrantLock lock;
 
-    public NettyClientPipelineFactory(NettyClientServerCommunicationSystemClientSide ncs, boolean isClient, Map sessionTable, SecretKey authKey, int macLength, ClientViewManager manager, ReentrantReadWriteLock rl, int signatureLength, ReentrantLock lock) {
+    public NettyClientPipelineFactory(NettyClientServerCommunicationSystemClientSide ncs, Map sessionTable, int macLength, ClientViewController controller, ReentrantReadWriteLock rl, int signatureLength) {
         this.ncs = ncs;
-        this.isClient = isClient;
         this.sessionTable = sessionTable;
-        this.authKey = authKey;
         this.macLength = macLength;
         this.signatureLength = signatureLength;
         this.rl = rl;
-        this.lock = lock;
-        this.manager = manager;
+        this.controller = controller;
     }
 
 
     @Override
     public ChannelPipeline getPipeline() throws Exception {
         ChannelPipeline p = pipeline();
-        p.addLast("decoder", new NettyTOMMessageDecoder(isClient, sessionTable, authKey, macLength,manager,rl,signatureLength,manager.getStaticConf().getUseMACs()==1?true:false));
-        p.addLast("encoder", new NettyTOMMessageEncoder(isClient, sessionTable, macLength,rl, signatureLength, manager.getStaticConf().getUseMACs()==1?true:false));
+        p.addLast("decoder", new NettyTOMMessageDecoder(true, sessionTable, macLength,controller,rl,signatureLength,controller.getStaticConf().getUseMACs()==1?true:false));
+        p.addLast("encoder", new NettyTOMMessageEncoder(true, sessionTable, macLength,rl, signatureLength, controller.getStaticConf().getUseMACs()==1?true:false));
         p.addLast("handler", ncs);
 
         return p;

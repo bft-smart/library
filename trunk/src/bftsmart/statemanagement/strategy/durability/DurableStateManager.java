@@ -60,7 +60,7 @@ public class DurableStateManager extends BaseStateManager {
 
 	@Override
 	public void init(TOMLayer tomLayer, DeliveryThread dt) {
-		SVManager = tomLayer.reconfManager;
+		SVController = tomLayer.controller;
 
 		this.tomLayer = tomLayer;
 		this.dt = dt;
@@ -80,9 +80,9 @@ public class DurableStateManager extends BaseStateManager {
 		if (tomLayer.requestsTimer != null)
 			tomLayer.requestsTimer.clearAll();
 
-		int myProcessId = SVManager.getStaticConf().getProcessId();
-		int[] otherProcesses = SVManager.getCurrentViewOtherAcceptors();
-		int globalCkpPeriod = SVManager.getStaticConf()
+		int myProcessId = SVController.getStaticConf().getProcessId();
+		int[] otherProcesses = SVController.getCurrentViewOtherAcceptors();
+		int globalCkpPeriod = SVController.getStaticConf()
 				.getGlobalCheckpointPeriod();
 
 		CSTRequestF1 cst = new CSTRequestF1(waitingEid);
@@ -91,7 +91,7 @@ public class DurableStateManager extends BaseStateManager {
 		CSTSMMessage cstMsg = new CSTSMMessage(myProcessId, waitingEid,
 				TOMUtil.SM_REQUEST, cst, null, null, -1, -1);
 		tomLayer.getCommunication().send(
-				SVManager.getCurrentViewOtherAcceptors(), cstMsg);
+				SVController.getCurrentViewOtherAcceptors(), cstMsg);
 
 		System.out
 				.println("(TOMLayer.requestState) I just sent a request to the other replicas for the state up to EID "
@@ -100,7 +100,7 @@ public class DurableStateManager extends BaseStateManager {
 		TimerTask stateTask = new TimerTask() {
 			public void run() {
 				int[] myself = new int[1];
-				myself[0] = SVManager.getStaticConf().getProcessId();
+				myself[0] = SVController.getStaticConf().getProcessId();
 				tomLayer.getCommunication().send(
 						myself,
 						new CSTSMMessage(-1, waitingEid,
@@ -130,14 +130,14 @@ public class DurableStateManager extends BaseStateManager {
 	public void SMRequestDeliver(SMMessage msg, boolean isBFT) {
 		System.out.println("(TOMLayer.SMRequestDeliver) invoked method");
 		Logger.println("(TOMLayer.SMRequestDeliver) invoked method");
-		if (SVManager.getStaticConf().isStateTransferEnabled()
+		if (SVController.getStaticConf().isStateTransferEnabled()
 				&& dt.getRecoverer() != null) {
 			Logger.println("(TOMLayer.SMRequestDeliver) The state transfer protocol is enabled");
 			Logger.println("(TOMLayer.SMRequestDeliver) I received a state request for EID "
 					+ msg.getEid() + " from replica " + msg.getSender());
 			CSTSMMessage cstMsg = (CSTSMMessage) msg;
 			CSTRequestF1 cstConfig = cstMsg.getCstConfig();
-			boolean sendState = cstConfig.getCheckpointReplica() == SVManager
+			boolean sendState = cstConfig.getCheckpointReplica() == SVController
 					.getStaticConf().getProcessId();
 			if (sendState)
 				Logger.println("(TOMLayer.SMRequestDeliver) I should be the one sending the state");
@@ -145,16 +145,16 @@ public class DurableStateManager extends BaseStateManager {
 			System.out.println("--- state asked");
 
 			int[] targets = { msg.getSender() };
-			InetSocketAddress address = SVManager.getCurrentView().getAddress(
-					SVManager.getStaticConf().getProcessId());
+			InetSocketAddress address = SVController.getCurrentView().getAddress(
+					SVController.getStaticConf().getProcessId());
 			String myIp = address.getHostName();
-			int myId = SVManager.getStaticConf().getProcessId();
+			int myId = SVController.getStaticConf().getProcessId();
 			int port = 4444 + myId;
 			address = new InetSocketAddress(myIp, port);
 			cstConfig.setAddress(address);
 			CSTSMMessage reply = new CSTSMMessage(myId, msg.getEid(),
 					TOMUtil.SM_REPLY, cstConfig, null,
-					SVManager.getCurrentView(), lcManager.getLastReg(),
+					SVController.getCurrentView(), lcManager.getLastReg(),
 					tomLayer.lm.getCurrentLeader());
 
 			StateSenderServer stateServer = new StateSenderServer(port);
@@ -171,7 +171,7 @@ public class DurableStateManager extends BaseStateManager {
 	public void SMReplyDeliver(SMMessage msg, boolean isBFT) {
 		lockTimer.lock();
 		CSTSMMessage reply = (CSTSMMessage) msg;
-		if (SVManager.getStaticConf().isStateTransferEnabled()) {
+		if (SVController.getStaticConf().isStateTransferEnabled()) {
 			Logger.println("(TOMLayer.SMReplyDeliver) The state transfer protocol is enabled");
 			System.out
 					.println("(TOMLayer.SMReplyDeliver) I received a state reply for EID "
@@ -197,7 +197,7 @@ public class DurableStateManager extends BaseStateManager {
 						currentLeader = reply.getLeader();
 					if (moreThan2F_Views(reply.getView())) {
 						currentView = reply.getView();
-						if (!currentView.isMember(SVManager.getStaticConf()
+						if (!currentView.isMember(SVController.getStaticConf()
 								.getProcessId())) {
 							System.out.println("Not a member!");
 						}
@@ -205,7 +205,7 @@ public class DurableStateManager extends BaseStateManager {
 				} else {
 					currentLeader = tomLayer.lm.getCurrentLeader();
 					currentRegency = lcManager.getLastReg();
-					currentView = SVManager.getCurrentView();
+					currentView = SVController.getCurrentView();
 				}
 
 				Logger.println("(TOMLayer.SMReplyDeliver) The reply is for the EID that I want!");
@@ -328,9 +328,9 @@ public class DurableStateManager extends BaseStateManager {
 						System.out.println("Processing out of context messages");
 						tomLayer.processOutOfContext();
 
-						if (SVManager.getCurrentViewId() != currentView.getId()) {
+						if (SVController.getCurrentViewId() != currentView.getId()) {
 							System.out.println("Installing current view!");
-							SVManager.reconfigureTo(currentView);
+							SVController.reconfigureTo(currentView);
 						}
 
 						dt.canDeliver();
@@ -350,11 +350,11 @@ public class DurableStateManager extends BaseStateManager {
 							tomLayer.resumeLC();
 						}
 					} else if (state == null
-							&& (SVManager.getCurrentViewN() / 2) < getReplies()) {
+							&& (SVController.getCurrentViewN() / 2) < getReplies()) {
 						System.out.println("---- DIDNT RECEIVE STATE ----");
 
 						Logger.println("(TOMLayer.SMReplyDeliver) I have more than "
-								+ (SVManager.getCurrentViewN() / 2)
+								+ (SVController.getCurrentViewN() / 2)
 								+ " messages that are no good!");
 
 						waitingEid = -1;

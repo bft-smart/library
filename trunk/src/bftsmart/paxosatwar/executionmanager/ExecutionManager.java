@@ -30,7 +30,7 @@ import bftsmart.paxosatwar.messages.MessageFactory;
 import bftsmart.paxosatwar.messages.PaxosMessage;
 import bftsmart.paxosatwar.roles.Acceptor;
 import bftsmart.paxosatwar.roles.Proposer;
-import bftsmart.reconfiguration.ServerViewManager;
+import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.tom.core.TOMLayer;
 import bftsmart.tom.util.Logger;
 
@@ -43,7 +43,7 @@ import bftsmart.tom.util.Logger;
  */
 public final class ExecutionManager {
 
-    private ServerViewManager reconfManager;
+    private ServerViewController controller;
     private Acceptor acceptor; // Acceptor role of the PaW algorithm
     private Proposer proposer; // Proposer role of the PaW algorithm
     //******* EDUARDO BEGIN: now these variables are all concentrated in the Reconfigurationmanager **************//
@@ -80,18 +80,18 @@ public final class ExecutionManager {
      * @param me This process ID
      * @param initialTimeout initial timeout for rounds
      */
-    public ExecutionManager(ServerViewManager manager, Acceptor acceptor,
+    public ExecutionManager(ServerViewController controller, Acceptor acceptor,
             Proposer proposer, int me) {
         //******* EDUARDO BEGIN **************//
-        this.reconfManager = manager;
+        this.controller = controller;
         this.acceptor = acceptor;
         this.proposer = proposer;
         //this.me = me;
 
-        this.paxosHighMark = reconfManager.getStaticConf().getPaxosHighMark();
+        this.paxosHighMark = this.controller.getStaticConf().getPaxosHighMark();
         /** THIS IS JOAO'S CODE, TO HANDLE THE STATE TRANSFER */
-        this.revivalHighMark = reconfManager.getStaticConf().getRevivalHighMark();
-        this.timeoutHighMark = reconfManager.getStaticConf().getTimeoutHighMark();
+        this.revivalHighMark = this.controller.getStaticConf().getRevivalHighMark();
+        this.timeoutHighMark = this.controller.getStaticConf().getTimeoutHighMark();
         /******************************************************************/
         //******* EDUARDO END **************//
     }
@@ -246,7 +246,7 @@ public final class ExecutionManager {
                     + msg.getNumber() + " is beyond the paxos highmark, adding it to out of context set");
             addOutOfContextMessage(msg);
 
-            if (reconfManager.getStaticConf().isStateTransferEnabled()) {
+            if (controller.getStaticConf().isStateTransferEnabled()) {
                 //Logger.debug = true;
                 tomLayer.getStateManager().analyzeState(msg.getNumber());
             }
@@ -363,7 +363,7 @@ public final class ExecutionManager {
         if (receivedOutOfContextPropose(eid)) {
             Execution exec = getExecution(eid);
             PaxosMessage prop = outOfContextProposes.get(exec.getId());
-            Round round = exec.getRound(prop.getRound(), reconfManager);
+            Round round = exec.getRound(prop.getRound(), controller);
             byte[] propHash = tomLayer.computeHash(prop.getValue());
             List<PaxosMessage> msgs = outOfContext.get(eid);
             int countWeaks = 0;
@@ -380,11 +380,11 @@ public final class ExecutionManager {
                 }
             }
             
-            if(reconfManager.getStaticConf().isBFT()){
-            	return ((countWeaks > (2*reconfManager.getCurrentViewF())) &&
-            			(countStrongs > (2*reconfManager.getCurrentViewF())));
+            if(controller.getStaticConf().isBFT()){
+            	return ((countWeaks > (2*controller.getCurrentViewF())) &&
+            			(countStrongs > (2*controller.getCurrentViewF())));
             }else{
-            	return (countStrongs > reconfManager.getQuorumStrong());
+            	return (countStrongs > controller.getQuorumStrong());
             }
         }
         return false;

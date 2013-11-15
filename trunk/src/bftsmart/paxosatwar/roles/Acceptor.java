@@ -21,25 +21,22 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 
 import bftsmart.communication.ServerCommunicationSystem;
+import bftsmart.communication.server.ServerConnection;
 import bftsmart.paxosatwar.executionmanager.Execution;
 import bftsmart.paxosatwar.executionmanager.ExecutionManager;
 import bftsmart.paxosatwar.executionmanager.LeaderModule;
 import bftsmart.paxosatwar.executionmanager.Round;
 import bftsmart.paxosatwar.messages.MessageFactory;
 import bftsmart.paxosatwar.messages.PaxosMessage;
-import bftsmart.reconfiguration.ServerViewManager;
+import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.tom.core.TOMLayer;
 import bftsmart.tom.util.Logger;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.util.HashMap;
-import javax.crypto.BadPaddingException;
-import javax.crypto.Cipher;
-import javax.crypto.IllegalBlockSizeException;
-import javax.crypto.NoSuchPaddingException;
-import javax.crypto.spec.SecretKeySpec;
-
+import javax.crypto.Mac;
+import javax.crypto.SecretKey;
 
 /**
  * This class represents the acceptor role in the consensus protocol.
@@ -56,8 +53,9 @@ public final class Acceptor {
     private ServerCommunicationSystem communication; // Replicas comunication system
     private LeaderModule leaderModule; // Manager for information about leaders
     private TOMLayer tomLayer; // TOM layer
-    private ServerViewManager reconfManager;
-    private Cipher cipher;
+    private ServerViewController controller;
+    //private Cipher cipher;
+    private Mac mac;
 
     /**
      * Creates a new instance of Acceptor.
@@ -67,15 +65,17 @@ public final class Acceptor {
      * @param conf TOM configuration
      */
     public Acceptor(ServerCommunicationSystem communication, MessageFactory factory,
-                                LeaderModule lm, ServerViewManager manager) {
+                                LeaderModule lm, ServerViewController controller) {
         this.communication = communication;
-        this.me = manager.getStaticConf().getProcessId();
+        this.me = controller.getStaticConf().getProcessId();
         this.factory = factory;
         this.leaderModule = lm;
-        this.reconfManager = manager;
+        this.controller = controller;
         try {
-            this.cipher = Cipher.getInstance("DES/ECB/PKCS5Padding");
-        } catch (NoSuchAlgorithmException | NoSuchPaddingException ex) {
+            //this.cipher = Cipher.getInstance("DES/ECB/PKCS5Padding");
+            //this.cipher = Cipher.getInstance(ServerConnection.MAC_ALGORITHM);
+            this.mac = Mac.getInstance(ServerConnection.MAC_ALGORITHM);
+        } catch (NoSuchAlgorithmException /*| NoSuchPaddingException*/ ex) {
             ex.printStackTrace();
         }
     }
@@ -127,7 +127,7 @@ public final class Acceptor {
         Execution execution = executionManager.getExecution(msg.getNumber());
 
         execution.lock.lock();
-        Round round = execution.getRound(msg.getRound(), reconfManager);
+        Round round = execution.getRound(msg.getRound(), controller);
         switch (msg.getPaxosType()){
             case MessageFactory.PROPOSE:{
                     proposeReceived(round, msg);
@@ -195,12 +195,12 @@ public final class Acceptor {
                 }
                 round.getExecution().getLearner().firstMessageProposed.proposeReceivedTime = System.nanoTime();
                 
-                if(reconfManager.getStaticConf().isBFT()){
+                if(controller.getStaticConf().isBFT()){
                     Logger.println("(Acceptor.executePropose) sending weak for " + eid);
 
                     round.setWeak(me, round.propValueHash);
                     round.getExecution().getLearner().firstMessageProposed.weakSentTime = System.nanoTime();
-                    communication.send(this.reconfManager.getCurrentViewOtherAcceptors(),
+                    communication.send(this.controller.getCurrentViewOtherAcceptors(),
                             factory.createWeak(eid, round.getNumber(), round.propValueHash));
 
                     Logger.println("(Acceptor.executePropose) weak sent for " + eid);
@@ -217,7 +217,7 @@ public final class Acceptor {
  	                round.getExecution().setQuorumWeaks(round.propValueHash);
  	                /*****************************************/
 
-                        communication.send(this.reconfManager.getCurrentViewOtherAcceptors(),
+                        communication.send(this.controller.getCurrentViewOtherAcceptors(),
  	                    factory.createStrong(eid, round.getNumber(), round.propValueHash));
 
                         computeStrong(eid, round, round.propValueHash);
@@ -257,7 +257,7 @@ public final class Acceptor {
         Logger.println("(Acceptor.computeWeak) I have " + weakAccepted +
                 " weaks for " + eid + "," + round.getNumber());
 
-        if (weakAccepted > reconfManager.getQuorumStrong() && Arrays.equals(value, round.propValueHash)) { // Can a send a STRONG message?
+        if (weakAccepted > controller.getQuorumStrong() && Arrays.equals(value, round.propValueHash)) { // Can a send a STRONG message?
             if (!round.isStrongSetted(me)) {
                 Logger.println("(Acceptor.computeWeak) sending STRONG for " + eid);
 
@@ -284,25 +284,30 @@ public final class Acceptor {
 
                 byte[] data = bOut.toByteArray();
         
-                byte[] hash = tomLayer.computeHash(data);
+                //byte[] hash = tomLayer.computeHash(data);
                 
-                int[] processes = this.reconfManager.getCurrentViewAcceptors();
+                int[] processes = this.controller.getCurrentViewAcceptors();
                 
                 HashMap<Integer, byte[]> macVector = new HashMap<Integer, byte[]>();
                 
                 for (int id : processes) {
                     try {
-                        SecretKeySpec key = new SecretKeySpec(communication.getServersConn().getSecretKey(id).getEncoded(), "DES");
-                        this.cipher.init(Cipher.ENCRYPT_MODE, key);
-                        macVector.put(id, this.cipher.doFinal(hash));
-                    } catch (IllegalBlockSizeException | BadPaddingException | InvalidKeyException ex) {
+                        
+                        /*byte[] k = communication.getServersConn().getSecretKey(id).getEncoded();
+                        SecretKeySpec key = new SecretKeySpec(new String(k).substring(0, 8).getBytes(), "DES");
+                        this.cipher.init(Cipher.ENCRYPT_MODE, key);*/
+                        SecretKey key = communication.getServersConn().getSecretKey(id);
+                        //this.cipher.init(Cipher.ENCRYPT_MODE, key);
+                        this.mac.init(key);
+                        macVector.put(id, this.mac.doFinal(data));
+                    } catch (/*IllegalBlockSizeException | BadPaddingException |*/ InvalidKeyException ex) {
                         ex.printStackTrace();
                     }
                 }
                 
                 pm.setMACVector(macVector);
                 
-                int[] targets = this.reconfManager.getCurrentViewOtherAcceptors();
+                int[] targets = this.controller.getCurrentViewOtherAcceptors();
                 communication.getServersConn().send(targets, pm, true);
                 
                 //communication.send(this.reconfManager.getCurrentViewOtherAcceptors(),
@@ -339,7 +344,7 @@ public final class Acceptor {
         Logger.println("(Acceptor.computeStrong) I have " + round.countStrong(value) +
                 " strongs for " + eid + "," + round.getNumber());
 
-        if (round.countStrong(value) > reconfManager.getCertificateQuorum() && !round.getExecution().isDecided()) {
+        if (round.countStrong(value) > controller.getCertificateQuorum() && !round.getExecution().isDecided()) {
             Logger.println("(Acceptor.computeStrong) Deciding " + eid);
             decide(round, value);
         }

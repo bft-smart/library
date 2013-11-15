@@ -15,8 +15,8 @@ limitations under the License.
 */
 package bftsmart.communication.client.netty;
 
-import java.security.PublicKey;
 import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import javax.crypto.Mac;
 
@@ -31,17 +31,15 @@ public class NettyClientServerSession {
     private Mac macSend;
     private Mac macReceive;
     private int replicaId;
-    private PublicKey pKey;
     private Lock lock;
     private int lastMsgReceived;
 
-    public NettyClientServerSession(Channel channel, Mac macSend, Mac macReceive, int replicaId, PublicKey pKey, Lock lock) {
+    public NettyClientServerSession(Channel channel, Mac macSend, Mac macReceive, int replicaId) {
         this.channel = channel;
         this.macSend = macSend;
         this.macReceive = macReceive;
         this.replicaId = replicaId;
-        this.pKey = pKey;
-        this.lock = lock;
+        this.lock =  new ReentrantLock();
         this.lastMsgReceived = -1;
     }
     
@@ -62,10 +60,6 @@ public class NettyClientServerSession {
 
     public int getReplicaId() {
         return replicaId;
-    }
-
-    public PublicKey getPublicKey(){
-        return pKey;
     }
 
     public Lock getLock(){

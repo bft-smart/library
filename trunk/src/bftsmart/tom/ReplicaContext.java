@@ -16,7 +16,7 @@ limitations under the License.
 package bftsmart.tom;
 
 import bftsmart.communication.ServerCommunicationSystem;
-import bftsmart.reconfiguration.ServerViewManager;
+import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.reconfiguration.util.TOMConfiguration;
 import bftsmart.reconfiguration.views.View;
 
@@ -27,12 +27,12 @@ import bftsmart.reconfiguration.views.View;
 public class ReplicaContext {
     
     private ServerCommunicationSystem cs; // Server side comunication system
-    private ServerViewManager SVManager;
+    private ServerViewController SVController;
 
     public ReplicaContext(ServerCommunicationSystem cs, 
-                                 ServerViewManager SVManager) {
+                                 ServerViewController SVController) {
         this.cs = cs;
-        this.SVManager = SVManager;
+        this.SVController = SVController;
     }
     
     //TODO: implement a method that allow the replica to send a message with
@@ -44,7 +44,7 @@ public class ReplicaContext {
      * @return the static configuration of this replica
      */
     public TOMConfiguration getStaticConfiguration() {
-        return SVManager.getStaticConf();
+        return SVController.getStaticConf();
     }
     
     /**
@@ -53,7 +53,7 @@ public class ReplicaContext {
      * @return the current view of the replica group.
      */
     public View getCurrentView() {
-        return SVManager.getCurrentView();
+        return SVController.getCurrentView();
     }
 
 	public ServerCommunicationSystem getServerCommunicationSystem() {

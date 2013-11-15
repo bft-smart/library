@@ -312,8 +312,6 @@ public class TOMConfiguration extends Configuration {
             } else {
                 globalCheckpointPeriod = Integer.parseInt(s);
             }
-            
-            rsaLoader = new RSAKeyLoader(TOMConfiguration.configHome);
 
             s = (String) configs.remove("system.bft");
             isBFT = (s != null) ? Boolean.parseBoolean(s) : true;
@@ -324,6 +322,8 @@ public class TOMConfiguration extends Configuration {
             } else {
                 numRepliers = Integer.parseInt(s);
             }
+            
+            rsaLoader = new RSAKeyLoader(processId, TOMConfiguration.configHome);
         } catch (Exception e) {
             e.printStackTrace(System.err);
         }
@@ -486,6 +486,16 @@ public class TOMConfiguration extends Configuration {
 
     }
 
+    public PublicKey getRSAPublicKey(int id) {
+        try {
+            return rsaLoader.loadPublicKey(id);
+        } catch (Exception e) {
+            e.printStackTrace(System.err);
+            return null;
+        }
+
+    }
+    
     public PrivateKey getRSAPrivateKey() {
         try {
             return rsaLoader.loadPrivateKey();

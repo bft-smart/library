@@ -15,6 +15,7 @@ limitations under the License.
 */
 package bftsmart.communication;
 
+import bftsmart.communication.server.ServerConnection;
 import bftsmart.paxosatwar.messages.MessageFactory;
 import bftsmart.paxosatwar.messages.PaxosMessage;
 import bftsmart.paxosatwar.roles.Acceptor;
@@ -35,7 +36,9 @@ import java.util.HashMap;
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.Mac;
 import javax.crypto.NoSuchPaddingException;
+import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 
 /**
@@ -46,12 +49,14 @@ public class MessageHandler {
 
     private Acceptor acceptor;
     private TOMLayer tomLayer;
-    private Cipher cipher;
+    //private Cipher cipher;
+    private Mac mac;
     
     public MessageHandler() {
         try {
-            this.cipher = Cipher.getInstance("DES/ECB/PKCS5Padding");
-        } catch (NoSuchAlgorithmException | NoSuchPaddingException ex) {
+            //this.cipher = Cipher.getInstance("DES/ECB/PKCS5Padding");
+            this.mac = Mac.getInstance(ServerConnection.MAC_ALGORITHM);
+        } catch (NoSuchAlgorithmException /*| NoSuchPaddingException*/ ex) {
             ex.printStackTrace();
         }
     }
@@ -66,7 +71,7 @@ public class MessageHandler {
     protected void processData(SystemMessage sm) {
         if (sm instanceof PaxosMessage) {
             
-            int myId = tomLayer.reconfManager.getStaticConf().getProcessId();
+            int myId = tomLayer.controller.getStaticConf().getProcessId();
             
             PaxosMessage paxosMsg = (PaxosMessage) sm;
 
@@ -90,16 +95,18 @@ public class MessageHandler {
 
                 byte[] data = bOut.toByteArray();
         
-                byte[] hash = tomLayer.computeHash(data); 
+                //byte[] hash = tomLayer.computeHash(data); 
                 
                 byte[] myMAC = null;
                 
-                SecretKeySpec key = new SecretKeySpec(tomLayer.getCommunication().getServersConn().getSecretKey(paxosMsg.getSender()).getEncoded(), "DES");
+                /*byte[] k = tomLayer.getCommunication().getServersConn().getSecretKey(paxosMsg.getSender()).getEncoded();
+                SecretKeySpec key = new SecretKeySpec(new String(k).substring(0, 8).getBytes(), "DES");*/
                 
+                SecretKey key = tomLayer.getCommunication().getServersConn().getSecretKey(paxosMsg.getSender());
                 try {
-                    this.cipher.init(Cipher.ENCRYPT_MODE, key);                   
-                    myMAC = this.cipher.doFinal(hash);
-                } catch (IllegalBlockSizeException | BadPaddingException | InvalidKeyException ex) {
+                    this.mac.init(key);                   
+                    myMAC = this.mac.doFinal(data);
+                } catch (/*IllegalBlockSizeException | BadPaddingException |*/ InvalidKeyException ex) {
                     ex.printStackTrace();
                 }
                 
@@ -165,9 +172,9 @@ public class MessageHandler {
 	                if (smsg.TRIGGER_SM_LOCALLY) {
 	                    tomLayer.getStateManager().stateTimeout();
 	                } else if (smsg.getType() == TOMUtil.SM_REQUEST) {
-	                    tomLayer.getStateManager().SMRequestDeliver(smsg, tomLayer.reconfManager.getStaticConf().isBFT());
+	                    tomLayer.getStateManager().SMRequestDeliver(smsg, tomLayer.controller.getStaticConf().isBFT());
 	                } else {
-	                    tomLayer.getStateManager().SMReplyDeliver(smsg, tomLayer.reconfManager.getStaticConf().isBFT());
+	                    tomLayer.getStateManager().SMReplyDeliver(smsg, tomLayer.controller.getStaticConf().isBFT());
 	                }
 	            /******************************************************************/
 	            } else {

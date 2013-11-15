@@ -16,7 +16,7 @@ limitations under the License.
 package bftsmart.communication.client;
 
 import bftsmart.communication.client.netty.NettyClientServerCommunicationSystemClientSide;
-import bftsmart.reconfiguration.ClientViewManager;
+import bftsmart.reconfiguration.ClientViewController;
 
 /**
  *
@@ -24,7 +24,7 @@ import bftsmart.reconfiguration.ClientViewManager;
  */
 public class CommunicationSystemClientSideFactory {
 
-    public static CommunicationSystemClientSide getCommunicationSystemClientSide(ClientViewManager manager) {
-        return new NettyClientServerCommunicationSystemClientSide(manager);
+    public static CommunicationSystemClientSide getCommunicationSystemClientSide(int clientId, ClientViewController controller) {
+        return new NettyClientServerCommunicationSystemClientSide(clientId, controller);
     }
 }

@@ -25,17 +25,17 @@ import bftsmart.communication.SystemMessage;
  *
  * @author eduardo
  */
-public class TTPMessage extends SystemMessage{
+public class VMMessage extends SystemMessage{
     private ReconfigureReply reply;
     
-    public TTPMessage(){}
+    public VMMessage(){}
     
-    public TTPMessage(ReconfigureReply reply){
+    public VMMessage(ReconfigureReply reply){
         super();
         this.reply = reply;
     }
     
-     public TTPMessage(int from, ReconfigureReply reply){
+     public VMMessage(int from, ReconfigureReply reply){
          super(from);
          this.reply = reply;
     }
