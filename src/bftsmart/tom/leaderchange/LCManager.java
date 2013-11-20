@@ -34,10 +34,13 @@ import bftsmart.paxosatwar.messages.PaxosMessage;
 import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.tom.core.TOMLayer;
 import bftsmart.tom.core.messages.TOMMessage;
+import bftsmart.tom.util.TOMUtil;
 import java.io.ByteArrayOutputStream;
 import java.io.ObjectOutputStream;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
+import java.security.PrivateKey;
+import java.security.PublicKey;
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
@@ -701,18 +704,23 @@ public class LCManager {
     
     // verifies is a proof associated with a decided value is valid
     private boolean hasValidProof(LastEidData led) {
+        
+        if (led.getEid() == -1) return true; // If the last eid is -1 it means the replica
+                                             // did not complete any consensus and cannot have
+                                             // any proof
+        
         byte[] hashedValue = md.digest(led.getEidDecision());
         Set<PaxosMessage> PaxosMessages = led.getEidProof();
         int myId = tomLayer.controller.getStaticConf().getProcessId();
-        int certificate = (2*tomLayer.controller.getCurrentViewF()) + 1;
+        int certificateCurrentView = (2*tomLayer.controller.getCurrentViewF()) + 1;
+        int certificateLastView = -1;
+        if (tomLayer.controller.getLastView() != null) certificateLastView = (2*tomLayer.controller.getLastView().getF()) + 1;
         int countValid = 0;
+        SecretKey secretKey = null;
+        PublicKey pubRSAKey = null;
             
         for (PaxosMessage paxosMsg : PaxosMessages) {
             
-            HashMap<Integer, byte[]> macVector = (HashMap<Integer, byte[]>) paxosMsg.getMACVector();
-                               
-            byte[] recvMAC = macVector.get(myId);
-
             PaxosMessage pm = new PaxosMessage(MessageFactory.STRONG,paxosMsg.getNumber(),
                     paxosMsg.getRound(), paxosMsg.getSender(), paxosMsg.getValue());
 
@@ -724,28 +732,54 @@ public class LCManager {
             }
 
             byte[] data = bOut.toByteArray();
-            //byte[] hash = tomLayer.computeHash(data);
-            byte[] myMAC = null;
+
+            if (paxosMsg.getProof() instanceof HashMap) { // Certificate is made of MAC vector
                 
-            /*byte[] k = tomLayer.getCommunication().getServersConn().getSecretKey(paxosMsg.getSender()).getEncoded();
-            SecretKeySpec key = new SecretKeySpec(new String(k).substring(0, 8).getBytes(), "DES");*/
-                
-            SecretKey key = tomLayer.getCommunication().getServersConn().getSecretKey(paxosMsg.getSender());
-            try {
-                this.mac.init(key);                   
-                myMAC = this.mac.doFinal(data);
-            } catch (/*IllegalBlockSizeException | BadPaddingException |*/ InvalidKeyException ex) {
-                ex.printStackTrace();
-            }
+                System.out.println("Prova em MACs!");
             
-            if (recvMAC != null && myMAC != null && Arrays.equals(recvMAC, myMAC) &&
-                    Arrays.equals(paxosMsg.getValue(), hashedValue) &&
-                    paxosMsg.getNumber() == led.getEid()) {
+                HashMap<Integer, byte[]> macVector = (HashMap<Integer, byte[]>) paxosMsg.getProof();
+                               
+                byte[] recvMAC = macVector.get(myId);
+
+                byte[] myMAC = null;
+                                
+                secretKey = tomLayer.getCommunication().getServersConn().getSecretKey(paxosMsg.getSender());
+                try {
+                    this.mac.init(secretKey);                   
+                   myMAC = this.mac.doFinal(data);
+                } catch (InvalidKeyException ex) {
+                    ex.printStackTrace();
+                }
+            
+                if (recvMAC != null && myMAC != null && Arrays.equals(recvMAC, myMAC) &&
+                        Arrays.equals(paxosMsg.getValue(), hashedValue) &&
+                        paxosMsg.getNumber() == led.getEid()) {
                 
-                countValid++;
+                    countValid++;
+                }
+            } else { // certificate is made of signatures
+                
+                System.out.println("Prova em SIGs!");
+                pubRSAKey = SVController.getStaticConf().getRSAPublicKey(paxosMsg.getSender());
+                   
+                byte[] signature = (byte[]) paxosMsg.getProof();
+                            
+                if (TOMUtil.verifySignature(pubRSAKey, data, signature)) countValid++;
+   
             }
         }
-        return countValid >= certificate;
+        /*System.out.println("Estou a validar!");
+        System.out.println("Resultado: " + countValid + " >= " + certificate);
+        System.exit(0);*/
+        
+        // If proofs were made of signatures, use a certificate correspondent to last view
+        // otherwise, use certificate for the current view
+                
+        System.out.println("teste: " + certificateLastView + " != -1 " + pubRSAKey + " != null");
+        System.out.println("conta: " + countValid + " >= " + (certificateLastView != -1 && pubRSAKey != null ? certificateLastView : certificateCurrentView));
+        
+        //return countValid >= certificateCurrentView;
+        return countValid >=  (certificateLastView != -1 && pubRSAKey != null ? certificateLastView : certificateCurrentView);
     }
 
     /**

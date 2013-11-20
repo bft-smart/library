@@ -76,10 +76,10 @@ public class MessageHandler {
             PaxosMessage paxosMsg = (PaxosMessage) sm;
 
             if (paxosMsg.authenticated || paxosMsg.getSender() == myId) acceptor.deliver(paxosMsg);
-            else if (paxosMsg.getPaxosType() == MessageFactory.STRONG && paxosMsg.getMACVector() != null) {
+            else if (paxosMsg.getPaxosType() == MessageFactory.STRONG && paxosMsg.getProof() != null) {
                                         
                 //We are going to verify the MAC vector at the algorithm level
-                HashMap<Integer, byte[]> macVector = (HashMap<Integer, byte[]>) paxosMsg.getMACVector();
+                HashMap<Integer, byte[]> macVector = (HashMap<Integer, byte[]>) paxosMsg.getProof();
                                
                 byte[] recvMAC = macVector.get(myId);
                 

@@ -32,7 +32,8 @@ public class PaxosMessage extends SystemMessage {
     private int round; // Round number to which this message belongs to
     private int paxosType; // Message type
     private byte[] value = null; // Value used when message type is PROPOSE
-    private Object macVector; // Proof used when message type is COLLECT
+    private Object proof; // Proof used when message type is COLLECT
+                              // Can be either a MAC vector or a RSA signature
 
     /**
      * Creates a paxos message. Not used. TODO: How about making it private?
@@ -47,9 +48,8 @@ public class PaxosMessage extends SystemMessage {
      * @param round Round number
      * @param from This should be this process ID
      * @param value This should be null if its a COLLECT message, or the proposed value if it is a PROPOSE message
-     * @param proof The proof to be sent by the leader for all replicas
      */
-    public PaxosMessage(int paxosType, int id,int round,int from, byte[] value, Object proof){
+    public PaxosMessage(int paxosType, int id,int round,int from, byte[] value){
 
         super(from);
 
@@ -57,24 +57,10 @@ public class PaxosMessage extends SystemMessage {
         this.number = id;
         this.round = round;
         this.value = value;
-        this.macVector = proof;
+        //this.macVector = proof;
 
     }
 
-    /**
-     * Creates a paxos message. Used by the message factory to create a WEAK, STRONG, or DECIDE message
-     * TODO: How about removing the modifier, to make it visible just within the package?
-     * @param paxosType This should be MessageFactory.WEAK, MessageFactory.STRONG or MessageFactory.DECIDE
-     * @param id Consensus's execution ID
-     * @param round Round number
-     * @param from This should be this process ID
-     * @param value The value decided, or strongly/weakly accepted
-     */
-    public PaxosMessage(int paxosType, int id,int round,int from, byte[] value) {
-
-        this(paxosType, id, round, from, value, null);
-
-    }
 
     /**
      * Creates a paxos message. Used by the message factory to create a FREEZE message
@@ -86,7 +72,7 @@ public class PaxosMessage extends SystemMessage {
      */
     public PaxosMessage(int paxosType, int id,int round, int from) {
 
-        this(paxosType, id, round, from, null, null);
+        this(paxosType, id, round, from, null);
 
     }
 
@@ -113,7 +99,7 @@ public class PaxosMessage extends SystemMessage {
 
         if(paxosType == MessageFactory.STRONG || paxosType == MessageFactory.COLLECT) {
 
-            out.writeObject(macVector);
+            out.writeObject(proof);
 
         }
 
@@ -146,8 +132,8 @@ public class PaxosMessage extends SystemMessage {
         //WEAK, STRONG, DECIDE and FREEZE does not have associated proofs
         if(paxosType == MessageFactory.STRONG) {
 
-            macVector = in.readObject();
-
+            proof = in.readObject();
+            
         }
 
     }
@@ -172,18 +158,18 @@ public class PaxosMessage extends SystemMessage {
 
     }
 
-    public void setMACVector(Object proof) {
+    public void setProof(Object proof) {
         
-        this.macVector = proof;
+        this.proof = proof;
     }
     
     /**
      * Returns the proof associated with a PROPOSE or COLLECT message
      * @return The proof
      */
-    public Object getMACVector() {
+    public Object getProof() {
 
-        return macVector;
+        return proof;
 
     }
 
