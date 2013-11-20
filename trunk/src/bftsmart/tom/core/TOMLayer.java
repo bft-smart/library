@@ -1120,7 +1120,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 			tempBatchSize = batchSize;
 			tempIAmLeader = iAmLeader;
 
-			execManager.getStoppedMsgs().add(acceptor.getFactory().createPropose(currentEid, 0, propose, null));
+			execManager.getStoppedMsgs().add(acceptor.getFactory().createPropose(currentEid, 0, propose));
 			stateManager.requestAppState(lastHighestEid.getEid());
 
 			return;

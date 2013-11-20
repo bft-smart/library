@@ -53,7 +53,7 @@ public class Proposer {
     public void startExecution(int eid, byte[] value) {
         //******* EDUARDO BEGIN **************//
         communication.send(this.controller.getCurrentViewAcceptors(),
-                factory.createPropose(eid, 0, value, null));
+                factory.createPropose(eid, 0, value));
         //******* EDUARDO END **************//
     }
 }

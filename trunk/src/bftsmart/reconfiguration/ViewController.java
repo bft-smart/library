@@ -28,7 +28,8 @@ import bftsmart.reconfiguration.views.ViewStorage;
  */
 public class ViewController {
 
-    protected View currentView;
+    protected View lastView = null;
+    protected View currentView = null;
     private TOMConfiguration staticConf;
     private ViewStorage viewStore;
 
@@ -62,11 +63,16 @@ public class ViewController {
         return this.currentView;
     }
     
+    public View getLastView(){
+        return this.lastView;
+    }
+    
     public SocketAddress getRemoteAddress(int id) {
         return getCurrentView().getAddress(id);
     }
     
     public void reconfigureTo(View newView) {
+        this.lastView = this.currentView;
         this.currentView = newView;
     }
 

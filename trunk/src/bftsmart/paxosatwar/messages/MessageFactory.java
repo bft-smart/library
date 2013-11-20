@@ -48,10 +48,9 @@ public class MessageFactory{
      * @param proof Proofs from other replicas
      * @return A paxos message of the PROPOSE type, with the specified id, round, value, and proof
      */
-    public PaxosMessage createPropose(int id, int round, byte[] value,
-            Object proof) {
+    public PaxosMessage createPropose(int id, int round, byte[] value) {
 
-        return new PaxosMessage(PROPOSE, id, round, from, value, proof);
+        return new PaxosMessage(PROPOSE, id, round, from, value);
 
     }
 
@@ -103,19 +102,6 @@ public class MessageFactory{
     public PaxosMessage createFreeze(int id, int round) {
 
         return new PaxosMessage(FREEZE,id,round, from);
-
-    }
-
-    /**
-     * Creates a COLLECT message to be sent by this process
-     * @param id Consensus's execution ID
-     * @param round Round number
-     * @param proof The proof to be sent by the leader for all replicas
-     * @return A paxos message of the COLLECT type, with the specified id, round, and proof
-     */
-    public PaxosMessage createCollect(int id, int round, Object proof) {
-
-        return new PaxosMessage(COLLECT,id,round, from, null, proof);
 
     }
 

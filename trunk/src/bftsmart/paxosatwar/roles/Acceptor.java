@@ -30,10 +30,14 @@ import bftsmart.paxosatwar.messages.MessageFactory;
 import bftsmart.paxosatwar.messages.PaxosMessage;
 import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.tom.core.TOMLayer;
+import bftsmart.tom.core.messages.TOMMessage;
+import bftsmart.tom.core.messages.TOMMessageType;
 import bftsmart.tom.util.Logger;
+import bftsmart.tom.util.TOMUtil;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
+import java.security.PrivateKey;
 import java.util.HashMap;
 import javax.crypto.Mac;
 import javax.crypto.SecretKey;
@@ -253,12 +257,14 @@ public final class Acceptor {
      */
     private void computeWeak(int eid, Round round, byte[] value) {
         int weakAccepted = round.countWeak(value);
-
+        
         Logger.println("(Acceptor.computeWeak) I have " + weakAccepted +
                 " weaks for " + eid + "," + round.getNumber());
 
         if (weakAccepted > controller.getQuorumStrong() && Arrays.equals(value, round.propValueHash)) { // Can a send a STRONG message?
+                        
             if (!round.isStrongSetted(me)) {
+                
                 Logger.println("(Acceptor.computeWeak) sending STRONG for " + eid);
 
                 /**** LEADER CHANGE CODE! ******/
@@ -271,7 +277,7 @@ public final class Acceptor {
 
                         round.getExecution().getLearner().firstMessageProposed.strongSentTime = System.nanoTime();
                 }
-                
+                        
                 PaxosMessage pm = factory.createStrong(eid, round.getNumber(), value);
 
                 // override default authentication and create a vector of MACs
@@ -286,26 +292,46 @@ public final class Acceptor {
         
                 //byte[] hash = tomLayer.computeHash(data);
                 
-                int[] processes = this.controller.getCurrentViewAcceptors();
-                
-                HashMap<Integer, byte[]> macVector = new HashMap<Integer, byte[]>();
-                
-                for (int id : processes) {
-                    try {
-                        
-                        /*byte[] k = communication.getServersConn().getSecretKey(id).getEncoded();
-                        SecretKeySpec key = new SecretKeySpec(new String(k).substring(0, 8).getBytes(), "DES");
-                        this.cipher.init(Cipher.ENCRYPT_MODE, key);*/
-                        SecretKey key = communication.getServersConn().getSecretKey(id);
-                        //this.cipher.init(Cipher.ENCRYPT_MODE, key);
-                        this.mac.init(key);
-                        macVector.put(id, this.mac.doFinal(data));
-                    } catch (/*IllegalBlockSizeException | BadPaddingException |*/ InvalidKeyException ex) {
-                        ex.printStackTrace();
+                // check if consensus contains reconfiguration request
+                TOMMessage [] msgs = round.deserializedPropValue;
+                boolean hasReconf = false;
+
+                for (TOMMessage msg : msgs) {
+                    if (msg.getReqType() == TOMMessageType.RECONFIG
+                            && msg.getViewID() == controller.getCurrentViewId()) {
+                        hasReconf = true;
                     }
                 }
                 
-                pm.setMACVector(macVector);
+                //If this consensus contains a reconfiguration request, we need to use
+                // signatures...
+                if (hasReconf) {
+                    
+                    PrivateKey RSAprivKey = controller.getStaticConf().getRSAPrivateKey();
+                    
+                    byte[] signature = TOMUtil.signMessage(RSAprivKey, data);
+                                       
+                    pm.setProof(signature);
+                
+                } else { //... if not, we can use MAC vectores
+                    int[] processes = this.controller.getCurrentViewAcceptors();
+                
+                    HashMap<Integer, byte[]> macVector = new HashMap<Integer, byte[]>();
+                
+                    for (int id : processes) {
+                        try {
+                        
+                            SecretKey key = communication.getServersConn().getSecretKey(id);
+
+                            this.mac.init(key);
+                          macVector.put(id, this.mac.doFinal(data));
+                        } catch (InvalidKeyException ex) {
+                           ex.printStackTrace();
+                        }
+                    }
+                
+                    pm.setProof(macVector);
+                }
                 
                 int[] targets = this.controller.getCurrentViewOtherAcceptors();
                 communication.getServersConn().send(targets, pm, true);
