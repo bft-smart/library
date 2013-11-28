@@ -15,7 +15,7 @@ limitations under the License.
 */
 package bftsmart.tom.leaderchange;
 
-import bftsmart.paxosatwar.messages.PaxosMessage;
+import bftsmart.consensus.messages.PaxosMessage;
 import java.io.Externalizable;
 import java.io.IOException;
 import java.io.ObjectInput;

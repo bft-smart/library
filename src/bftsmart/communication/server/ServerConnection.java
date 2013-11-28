@@ -127,7 +127,7 @@ public class ServerConnection {
             sendLock = new ReentrantLock();
         }
         authenticateAndEstablishAuthKey();
- 
+        
         if (!this.controller.getStaticConf().isTheTTP()) {
             if (this.controller.getStaticConf().getTTPId() == remoteId) {
                 //Uma thread "diferente" para as msgs recebidas da TTP
@@ -226,6 +226,19 @@ public class ServerConnection {
         }
         boolean ret = false;
         if (this.controller.isInCurrentView()) {
+            
+             //in this case, the node with higher ID starts the connection
+             if (this.controller.getStaticConf().getProcessId() > remoteId) {
+                 ret = true;
+             }
+                
+            /** JCS: I commented the code below to fix a bug, but I am not sure
+             whether its completely useless or not. The 'if' above was taken
+             from that same code (its the only part I understand why is necessary)
+             I keep the code commented just to be on the safe side*/
+            
+            /**
+            
             boolean me = this.controller.isInLastJoinSet(this.controller.getStaticConf().getProcessId());
             boolean remote = this.controller.isInLastJoinSet(remoteId);
 
@@ -243,6 +256,8 @@ public class ServerConnection {
             } //else if (me && !remote) { //this process entered in the last reconfig and the other one is old
                 //ret=false; //not necessary, as ret already is false
             //}
+              
+            */
         }
         return ret;
     }
@@ -256,7 +271,7 @@ public class ServerConnection {
      * (only used if processId is less than remoteId)
      */
     protected void reconnect(Socket newSocket) {
-
+        
         connectLock.lock();
 
         if (socket == null || !socket.isConnected()) {

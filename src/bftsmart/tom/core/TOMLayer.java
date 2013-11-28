@@ -37,14 +37,14 @@ import bftsmart.clientsmanagement.ClientsManager;
 import bftsmart.clientsmanagement.RequestList;
 import bftsmart.communication.ServerCommunicationSystem;
 import bftsmart.communication.client.RequestReceiver;
-import bftsmart.paxosatwar.Consensus;
-import bftsmart.paxosatwar.executionmanager.Execution;
-import bftsmart.paxosatwar.executionmanager.ExecutionManager;
-import bftsmart.paxosatwar.executionmanager.LeaderModule;
-import bftsmart.paxosatwar.executionmanager.Round;
-import bftsmart.paxosatwar.executionmanager.TimestampValuePair;
-import bftsmart.paxosatwar.messages.PaxosMessage;
-import bftsmart.paxosatwar.roles.Acceptor;
+import bftsmart.consensus.Consensus;
+import bftsmart.consensus.executionmanager.Execution;
+import bftsmart.consensus.executionmanager.ExecutionManager;
+import bftsmart.consensus.executionmanager.LeaderModule;
+import bftsmart.consensus.Round;
+import bftsmart.consensus.executionmanager.TimestampValuePair;
+import bftsmart.consensus.messages.PaxosMessage;
+import bftsmart.consensus.roles.Acceptor;
 import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.statemanagement.StateManager;
 import bftsmart.tom.ServiceReplica;
@@ -633,7 +633,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 		if(this.controller.getStaticConf().isBFT()) {
 			condition = lcManager.getStopsSize(nextReg) > this.controller.getCertificateQuorum() && lcManager.getNextReg() > lcManager.getLastReg();
 		} else {
-			condition = (lcManager.getStopsSize(nextReg) > this.controller.getQuorumStrong() && lcManager.getNextReg() > lcManager.getLastReg());
+			condition = (lcManager.getStopsSize(nextReg) > this.controller.getQuorumAccept() && lcManager.getNextReg() > lcManager.getLastReg());
 		}
 		// May I proceed to the synchronization phase?
 		//if (lcManager.getStopsSize(nextReg) > this.reconfManager.getQuorum2F() && lcManager.getNextReg() > lcManager.getLastReg()) {
@@ -649,7 +649,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
 			requestsTimer.Enabled(true);
 			requestsTimer.setShortTimeout(-1);
-			requestsTimer.setTimeout(requestsTimer.getTimer() * 2);
+			//requestsTimer.setTimeout(requestsTimer.getTimeout() * 2);
 			requestsTimer.startTimer();
 
 			//int leader = regency % this.reconfManager.getCurrentViewN(); // new leader
@@ -707,10 +707,10 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
 						Execution exec = execManager.getExecution(in);
 
-						TimestampValuePair quorumWeaks = exec.getQuorumWeaks();
+						TimestampValuePair quorumWrites = exec.getQuorumWrites();
 						HashSet<TimestampValuePair> writeSet = exec.getWriteSet();
 
-						CollectData collect = new CollectData(this.controller.getStaticConf().getProcessId(), in, quorumWeaks, writeSet);
+						CollectData collect = new CollectData(this.controller.getStaticConf().getProcessId(), in, quorumWrites, writeSet);
 
 						SignedObject signedCollect = sign(collect);
 
@@ -800,10 +800,10 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 				if (in > -1) { // content of eid being executed
 					Execution exec = execManager.getExecution(in);
 
-					TimestampValuePair quorumWeaks = exec.getQuorumWeaks();
+					TimestampValuePair quorumWrites = exec.getQuorumWrites();
 					HashSet<TimestampValuePair> writeSet = exec.getWriteSet();
 
-					collect = new CollectData(this.controller.getStaticConf().getProcessId(), in, quorumWeaks, writeSet);
+					collect = new CollectData(this.controller.getStaticConf().getProcessId(), in, quorumWrites, writeSet);
 
 				} else {
 					collect = new CollectData(this.controller.getStaticConf().getProcessId(), -1, new TimestampValuePair(-1, new byte[0]), new HashSet<TimestampValuePair>());
@@ -967,8 +967,8 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
 					lcManager.setCollects(regency, signedCollects);
 
-					// the predicate "sound" is true?
-					if (lcManager.sound(lcManager.selectCollects(regency, currentEid))) {
+					// Is the predicate "sound" true? Is the certificate for LastEid valid?
+					if (lcManager.sound(lcManager.selectCollects(regency, currentEid)) && (!controller.getStaticConf().isBFT() || lcManager.hasValidProof(lastHighestEid))) {
 
 						finalise(regency, lastHighestEid, currentEid, signedCollects, propose, batchSize, false);
 					}
@@ -1195,7 +1195,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 					exec.getLearner().firstMessageProposed = r.deserializedPropValue[0];
 				else exec.getLearner().firstMessageProposed = new TOMMessage(); // to avoid null pointer
 			}
-			r.setWeak(me, hash);
+			r.setWrite(me, hash);
 
 			// resume normal operation
 			execManager.restart();
@@ -1205,12 +1205,11 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 				Logger.println("(TOMLayer.finalise) wake up proposer thread");
 				imAmTheLeader();
 			} // waik up the thread that propose values in normal operation
-			Logger.println("(TOMLayer.finalise) sending WEAK message");
+			Logger.println("(TOMLayer.finalise) sending WRITE message");
 
-			//System.out.println(regency + " // WEAK (R: " + r.getNumber() + "): " + Base64.encodeBase64String(r.propValueHash));
-			// send a WEAK message to the other replicas
+			// send a WRITE message to the other replicas
 			communication.send(this.controller.getCurrentViewOtherAcceptors(),
-					acceptor.getFactory().createWeak(currentEid, r.getNumber(), r.propValueHash));
+					acceptor.getFactory().createWrite(currentEid, r.getNumber(), r.propValueHash));
 
 		}
 

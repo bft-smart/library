@@ -63,11 +63,11 @@ public abstract class BaseStateManager implements StateManager {
     }
 
     protected boolean moreThan2F_Regencies(int regency) {
-        return senderRegencies.size() > SVController.getQuorumStrong();
+        return senderRegencies.size() > SVController.getQuorumAccept();
     }
     
     protected boolean moreThan2F_Leaders(int leader) {
-        return senderLeaders.size() > SVController.getQuorumStrong();
+        return senderLeaders.size() > SVController.getQuorumAccept();
     }
 
     protected boolean moreThan2F_Views(View view) {
@@ -77,7 +77,7 @@ public abstract class BaseStateManager implements StateManager {
     		if(view.equals(v))
     			counter++;
     	}
-        boolean result = counter > SVController.getQuorumStrong();
+        boolean result = counter > SVController.getQuorumAccept();
         views = null;
         return result;
     }

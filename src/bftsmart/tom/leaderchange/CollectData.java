@@ -21,7 +21,7 @@ import java.io.ObjectInput;
 import java.io.ObjectOutput;
 import java.util.HashSet;
 
-import bftsmart.paxosatwar.executionmanager.TimestampValuePair;
+import bftsmart.consensus.executionmanager.TimestampValuePair;
 
 /**
  * This class represents a COLLECT object with the information about the running consensus
@@ -32,7 +32,7 @@ public class CollectData implements Externalizable {
 
     private int pid; // process id
     private int eid; // execution id
-    private TimestampValuePair quorumWeaks; // last value recevied from a Byzantine quorum of WEAKS
+    private TimestampValuePair quorumWrites; // last value recevied from a Byzantine quorum of WRITEs
     private HashSet<TimestampValuePair> writeSet; // values written by the replica
     
     /**
@@ -41,7 +41,7 @@ public class CollectData implements Externalizable {
     public CollectData() {
         pid = -1;
         eid = -1;
-        quorumWeaks = null;
+        quorumWrites = null;
         writeSet = null;
     }
 
@@ -50,14 +50,14 @@ public class CollectData implements Externalizable {
      *
      * @param pid process id
      * @param eid execution id
-     * @param quorumWeaks last value recevied from a Byzantine quorum of WEAKS
+     * @param quorumWrites last value recevied from a Byzantine quorum of WRITEs
      * @param writeSet values written by the replica
      */
-    public CollectData(int pid, int eid, TimestampValuePair quorumWeaks, HashSet<TimestampValuePair> writeSet) {
+    public CollectData(int pid, int eid, TimestampValuePair quorumWrites, HashSet<TimestampValuePair> writeSet) {
         
         this.pid = pid;
         this.eid = eid;
-        this.quorumWeaks = quorumWeaks;
+        this.quorumWrites = quorumWrites;
         this.writeSet = writeSet;
     }
 
@@ -78,11 +78,11 @@ public class CollectData implements Externalizable {
     }
 
     /**
-     * Get value received from a Byzantine quorum of WEAKS
-     * @return value received from a Byzantine quorum of WEAKS
+     * Get value received from a Byzantine quorum of WRITEs
+     * @return value received from a Byzantine quorum of WRITEs
      */
-    public TimestampValuePair getQuorumWeaks() {
-        return quorumWeaks;
+    public TimestampValuePair getQuorumWrites() {
+        return quorumWrites;
     }
 
     /**
@@ -113,7 +113,7 @@ public class CollectData implements Externalizable {
 
         out.writeInt(pid);
         out.writeInt(eid);
-        out.writeObject(quorumWeaks);
+        out.writeObject(quorumWrites);
         out.writeObject(writeSet);
     }
 
@@ -121,7 +121,7 @@ public class CollectData implements Externalizable {
 
         pid = in.readInt();
         eid = in.readInt();
-        quorumWeaks = (TimestampValuePair) in.readObject();
+        quorumWrites = (TimestampValuePair) in.readObject();
         writeSet = (HashSet<TimestampValuePair>) in.readObject();
     }
 }
