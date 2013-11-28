@@ -23,11 +23,11 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import bftsmart.communication.ServerCommunicationSystem;
-import bftsmart.paxosatwar.executionmanager.ExecutionManager;
-import bftsmart.paxosatwar.executionmanager.LeaderModule;
-import bftsmart.paxosatwar.messages.MessageFactory;
-import bftsmart.paxosatwar.roles.Acceptor;
-import bftsmart.paxosatwar.roles.Proposer;
+import bftsmart.consensus.executionmanager.ExecutionManager;
+import bftsmart.consensus.executionmanager.LeaderModule;
+import bftsmart.consensus.messages.MessageFactory;
+import bftsmart.consensus.roles.Acceptor;
+import bftsmart.consensus.roles.Proposer;
 import bftsmart.reconfiguration.Reconfiguration;
 import bftsmart.reconfiguration.ReconfigureReply;
 import bftsmart.reconfiguration.ServerViewController;

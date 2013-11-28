@@ -23,8 +23,8 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.locks.ReentrantLock;
 
-import bftsmart.paxosatwar.executionmanager.ExecutionManager;
-import bftsmart.paxosatwar.messages.PaxosMessage;
+import bftsmart.consensus.executionmanager.ExecutionManager;
+import bftsmart.consensus.messages.PaxosMessage;
 import bftsmart.reconfiguration.views.View;
 import bftsmart.statemanagement.ApplicationState;
 import bftsmart.statemanagement.SMMessage;
@@ -196,6 +196,8 @@ public class StandardStateManager extends BaseStateManager {
                         lcManager.setNextReg(currentRegency);
                         lcManager.setNewLeader(currentLeader);
                         tomLayer.lm.setNewLeader(currentLeader);
+                        //if (currentRegency > 0)
+                        //    tomLayer.requestsTimer.setTimeout(tomLayer.requestsTimer.getTimeout() * (currentRegency * 2));
                         
                         dt.deliverLock();
                         waitingEid = -1;

@@ -65,8 +65,8 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 	//for benchmarking purposes
 	public transient long consensusStartTime = 0; //time the consensus is created
 	public transient long proposeReceivedTime = 0; //time the propose is received
-	public transient long weakSentTime = 0; //time the replica' weak message is sent
-	public transient long strongSentTime = 0; //time the replica' strong message is sent
+	public transient long writeSentTime = 0; //time the replica' write message is sent
+	public transient long acceptSentTime = 0; //time the replica' accept message is sent
 	public transient long decisionTime = 0; //time the decision is established
 	public transient long deliveryTime =0; //time the request is delivered
 	public transient long executedTime =0; //time the request is executed

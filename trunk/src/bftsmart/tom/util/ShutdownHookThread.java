@@ -16,10 +16,10 @@ limitations under the License.
 package bftsmart.tom.util;
 
 import bftsmart.communication.ServerCommunicationSystem;
-import bftsmart.paxosatwar.executionmanager.ExecutionManager;
-import bftsmart.paxosatwar.executionmanager.LeaderModule;
-import bftsmart.paxosatwar.executionmanager.Round;
-import bftsmart.paxosatwar.roles.Acceptor;
+import bftsmart.consensus.executionmanager.ExecutionManager;
+import bftsmart.consensus.executionmanager.LeaderModule;
+import bftsmart.consensus.Round;
+import bftsmart.consensus.roles.Acceptor;
 import bftsmart.tom.core.TOMLayer;
 
 /**

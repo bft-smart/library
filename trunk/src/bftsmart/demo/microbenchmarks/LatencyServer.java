@@ -40,8 +40,8 @@ public class LatencyServer implements SingleExecutable, Recoverable {
     private Storage preConsLatency = null;
     private Storage posConsLatency = null;
     private Storage proposeLatency = null;
-    private Storage weakLatency = null;
-    private Storage strongLatency = null;
+    private Storage writeLatency = null;
+    private Storage acceptLatency = null;
     private ServiceReplica replica;
     private ReplicaContext replicaContext;
 
@@ -59,8 +59,8 @@ public class LatencyServer implements SingleExecutable, Recoverable {
         preConsLatency = new Storage(interval);
         posConsLatency = new Storage(interval);
         proposeLatency = new Storage(interval);
-        weakLatency = new Storage(interval);
-        strongLatency = new Storage(interval);
+        writeLatency = new Storage(interval);
+        acceptLatency = new Storage(interval);
     }
     
     public void setReplicaContext(ReplicaContext replicaContext) {
@@ -87,9 +87,9 @@ public class LatencyServer implements SingleExecutable, Recoverable {
         consensusLatency.store(msgCtx.getFirstInBatch().decisionTime - msgCtx.getFirstInBatch().consensusStartTime);
         preConsLatency.store(msgCtx.getFirstInBatch().consensusStartTime - msgCtx.getFirstInBatch().receptionTime);
         posConsLatency.store(msgCtx.getFirstInBatch().executedTime - msgCtx.getFirstInBatch().decisionTime);
-        proposeLatency.store(msgCtx.getFirstInBatch().weakSentTime - msgCtx.getFirstInBatch().consensusStartTime);
-        weakLatency.store(msgCtx.getFirstInBatch().strongSentTime - msgCtx.getFirstInBatch().weakSentTime);
-        strongLatency.store(msgCtx.getFirstInBatch().decisionTime - msgCtx.getFirstInBatch().strongSentTime);
+        proposeLatency.store(msgCtx.getFirstInBatch().writeSentTime - msgCtx.getFirstInBatch().consensusStartTime);
+        writeLatency.store(msgCtx.getFirstInBatch().acceptSentTime - msgCtx.getFirstInBatch().writeSentTime);
+        acceptLatency.store(msgCtx.getFirstInBatch().decisionTime - msgCtx.getFirstInBatch().acceptSentTime);
 
         if(iterations % interval == 0) {
             System.out.println("--- Measurements after "+ iterations+" ops ("+interval+" samples) ---");
@@ -103,10 +103,10 @@ public class LatencyServer implements SingleExecutable, Recoverable {
             posConsLatency.reset();
             System.out.println("Propose latency = " + proposeLatency.getAverage(false) / 1000 + " (+/- "+ (long)proposeLatency.getDP(false) / 1000 +") us ");
             proposeLatency.reset();
-            System.out.println("Weak latency = " + weakLatency.getAverage(false) / 1000 + " (+/- "+ (long)weakLatency.getDP(false) / 1000 +") us ");
-            weakLatency.reset();
-            System.out.println("Strong latency = " + strongLatency.getAverage(false) / 1000 + " (+/- "+ (long)strongLatency.getDP(false) / 1000 +") us ");
-            strongLatency.reset();
+            System.out.println("Write latency = " + writeLatency.getAverage(false) / 1000 + " (+/- "+ (long)writeLatency.getDP(false) / 1000 +") us ");
+            writeLatency.reset();
+            System.out.println("Accept latency = " + acceptLatency.getAverage(false) / 1000 + " (+/- "+ (long)acceptLatency.getDP(false) / 1000 +") us ");
+            acceptLatency.reset();
         }
 
         return new byte[replySize];

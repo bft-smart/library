@@ -28,9 +28,9 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import bftsmart.paxosatwar.executionmanager.TimestampValuePair;
-import bftsmart.paxosatwar.messages.MessageFactory;
-import bftsmart.paxosatwar.messages.PaxosMessage;
+import bftsmart.consensus.executionmanager.TimestampValuePair;
+import bftsmart.consensus.messages.MessageFactory;
+import bftsmart.consensus.messages.PaxosMessage;
 import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.tom.core.TOMLayer;
 import bftsmart.tom.core.messages.TOMMessage;
@@ -345,19 +345,19 @@ public class LCManager {
 
         for (CollectData c : collects) { // organize all existing timestamps and values separately
             
-            timestamps.add(c.getQuorumWeaks().getRound()); //store timestamp received from a Byzatine quorum of WEAKS
+            timestamps.add(c.getQuorumWrites().getRound()); //store timestamp received from a Byzatine quorum of WRITES
             
-            // store value received from a Byzantine quorum of WEAKS, unless it is an empty value
-            if (!Arrays.equals(c.getQuorumWeaks().getValue(), new byte[0])) {
+            // store value received from a Byzantine quorum of WRITES, unless it is an empty value
+            if (!Arrays.equals(c.getQuorumWrites().getValue(), new byte[0])) {
                 boolean insert = true; // this loop avoids putting duplicated values in the set
                 for (byte[] b : values) {
 
-                    if (Arrays.equals(b, c.getQuorumWeaks().getValue())) {
+                    if (Arrays.equals(b, c.getQuorumWrites().getValue())) {
                         insert = false;
                         break;
                     }
                 }
-                if (insert) values.add(c.getQuorumWeaks().getValue());
+                if (insert) values.add(c.getQuorumWrites().getValue());
             }
             for (TimestampValuePair rv : c.getWriteSet()) { // store all timestamps and written values
                 timestamps.add(rv.getRound());
@@ -419,19 +419,19 @@ public class LCManager {
 
         for (CollectData c : collects) { // organize all existing timestamps and values separately
 
-            timestamps.add(c.getQuorumWeaks().getRound()); //store round received from a Byzantine quorum of weaks
+            timestamps.add(c.getQuorumWrites().getRound()); //store round received from a Byzantine quorum of writes
             
-            // store value received from a Byzantine quorum of weaks, unless it is an empty value
-            if (!Arrays.equals(c.getQuorumWeaks().getValue(), new byte[0])) {
+            // store value received from a Byzantine quorum of writes, unless it is an empty value
+            if (!Arrays.equals(c.getQuorumWrites().getValue(), new byte[0])) {
                 boolean insert = true; // this loops avoids putting duplicated values in the set
                 for (byte[] b : values) {
 
-                    if (Arrays.equals(b, c.getQuorumWeaks().getValue())) {
+                    if (Arrays.equals(b, c.getQuorumWrites().getValue())) {
                         insert = false;
                         break;
                     }
                 }
-                if (insert) values.add(c.getQuorumWeaks().getValue());
+                if (insert) values.add(c.getQuorumWrites().getValue());
             }
             for (TimestampValuePair rv : c.getWriteSet()) { // store all timestamps and written values
                 timestamps.add(rv.getRound());
@@ -494,7 +494,7 @@ public class LCManager {
 
             for (CollectData c : collects) {
 
-                if (c.getQuorumWeaks().getRound() == 0) count++;
+                if (c.getQuorumWrites().getRound() == 0) count++;
             }
         }
         else return false;
@@ -527,7 +527,7 @@ public class LCManager {
 
         for (CollectData c : collects) {
 
-            if (c.getQuorumWeaks().getRound() == timestamp && Arrays.equals(value, c.getQuorumWeaks().getValue())) {
+            if (c.getQuorumWrites().getRound() == timestamp && Arrays.equals(value, c.getQuorumWrites().getValue())) {
 
                 appears = true;
                 break;
@@ -537,8 +537,8 @@ public class LCManager {
         int count = 0;
         for (CollectData c : collects) {
 
-            if ((c.getQuorumWeaks().getRound() < timestamp)
-                    || (c.getQuorumWeaks().getRound() == timestamp && Arrays.equals(value, c.getQuorumWeaks().getValue())))
+            if ((c.getQuorumWrites().getRound() < timestamp)
+                    || (c.getQuorumWrites().getRound() == timestamp && Arrays.equals(value, c.getQuorumWrites().getValue())))
                         count++;
 
         }
@@ -703,7 +703,7 @@ public class LCManager {
     }
     
     // verifies is a proof associated with a decided value is valid
-    private boolean hasValidProof(LastEidData led) {
+    public boolean hasValidProof(LastEidData led) {
         
         if (led.getEid() == -1) return true; // If the last eid is -1 it means the replica
                                              // did not complete any consensus and cannot have
@@ -721,7 +721,7 @@ public class LCManager {
             
         for (PaxosMessage paxosMsg : PaxosMessages) {
             
-            PaxosMessage pm = new PaxosMessage(MessageFactory.STRONG,paxosMsg.getNumber(),
+            PaxosMessage pm = new PaxosMessage(MessageFactory.ACCEPT,paxosMsg.getNumber(),
                     paxosMsg.getRound(), paxosMsg.getSender(), paxosMsg.getValue());
 
             ByteArrayOutputStream bOut = new ByteArrayOutputStream(248);

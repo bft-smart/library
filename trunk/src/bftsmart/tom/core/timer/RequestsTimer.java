@@ -73,7 +73,7 @@ public class RequestsTimer {
         this.timeout = timeout;
     }
     
-    public long getTimer() {
+    public long getTimeout() {
         return timeout;
     }
     
@@ -144,6 +144,8 @@ public class RequestsTimer {
     }
     
     public void run_lc_protocol() {
+        
+        System.out.println("Timeout value: " + timeout);
      
         long t = (shortTimeout > -1 ? shortTimeout : timeout);
         

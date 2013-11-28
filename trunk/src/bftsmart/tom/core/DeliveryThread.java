@@ -22,7 +22,7 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-import bftsmart.paxosatwar.Consensus;
+import bftsmart.consensus.Consensus;
 import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.statemanagement.ApplicationState;
 import bftsmart.tom.MessageContext;
@@ -81,7 +81,7 @@ public final class DeliveryThread extends Thread {
             tomLayer.setLastExec(cons.getId());
             //define that end of this execution
             tomLayer.setInExec(-1);
-        }
+        } //else if (tomLayer.controller.getStaticConf().getProcessId() == 0) System.exit(0);
         try {
         	decidedLock.lock();
             decided.put(cons);

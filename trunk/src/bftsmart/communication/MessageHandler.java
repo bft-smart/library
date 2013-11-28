@@ -16,9 +16,9 @@ limitations under the License.
 package bftsmart.communication;
 
 import bftsmart.communication.server.ServerConnection;
-import bftsmart.paxosatwar.messages.MessageFactory;
-import bftsmart.paxosatwar.messages.PaxosMessage;
-import bftsmart.paxosatwar.roles.Acceptor;
+import bftsmart.consensus.messages.MessageFactory;
+import bftsmart.consensus.messages.PaxosMessage;
+import bftsmart.consensus.roles.Acceptor;
 import bftsmart.statemanagement.SMMessage;
 import bftsmart.tom.core.TOMLayer;
 import bftsmart.tom.core.messages.TOMMessage;
@@ -76,14 +76,14 @@ public class MessageHandler {
             PaxosMessage paxosMsg = (PaxosMessage) sm;
 
             if (paxosMsg.authenticated || paxosMsg.getSender() == myId) acceptor.deliver(paxosMsg);
-            else if (paxosMsg.getPaxosType() == MessageFactory.STRONG && paxosMsg.getProof() != null) {
+            else if (paxosMsg.getPaxosType() == MessageFactory.ACCEPT && paxosMsg.getProof() != null) {
                                         
                 //We are going to verify the MAC vector at the algorithm level
                 HashMap<Integer, byte[]> macVector = (HashMap<Integer, byte[]>) paxosMsg.getProof();
                                
                 byte[] recvMAC = macVector.get(myId);
                 
-                PaxosMessage pm = new PaxosMessage(MessageFactory.STRONG,paxosMsg.getNumber(),
+                PaxosMessage pm = new PaxosMessage(MessageFactory.ACCEPT,paxosMsg.getNumber(),
                         paxosMsg.getRound(), paxosMsg.getSender(), paxosMsg.getValue());
                 
                 ByteArrayOutputStream bOut = new ByteArrayOutputStream(248);
