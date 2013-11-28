@@ -320,13 +320,28 @@ public final class Acceptor {
                     for (int id : processes) {
                         try {
                         
-                            SecretKey key = communication.getServersConn().getSecretKey(id);
+                            SecretKey key = null;
+                            do {
+                                key = communication.getServersConn().getSecretKey(id);
+                                if (key == null) {
+                                    System.out.println("I don't have yet a secret key with " + id + ". Retrying.");
+                                    Thread.sleep(1000);
+                                }
 
+                            } while (key == null); // JCS: This loop is to solve a race condition where a
+                                                   // replica might have already been insert in the view or
+                                                   // recovered after a crash, but it still did not concluded
+                                                   // the diffie helman protocol. Not an elegant solution,
+                                                   // but for now it will do
                             this.mac.init(key);
                           macVector.put(id, this.mac.doFinal(data));
+                        } catch (InterruptedException ex) {
+                            ex.printStackTrace();
                         } catch (InvalidKeyException ex) {
+                            
+                           System.out.println("Problem with secret key from " + id);
                            ex.printStackTrace();
-                        }
+                        } 
                     }
                 
                     pm.setProof(macVector);

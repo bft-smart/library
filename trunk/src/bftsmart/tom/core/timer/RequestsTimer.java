@@ -144,9 +144,7 @@ public class RequestsTimer {
     }
     
     public void run_lc_protocol() {
-        
-        System.out.println("Timeout value: " + timeout);
-     
+            
         long t = (shortTimeout > -1 ? shortTimeout : timeout);
         
         //System.out.println("(RequestTimerTask.run) I SOULD NEVER RUN WHEN THERE IS NO TIMEOUT");
