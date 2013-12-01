@@ -90,7 +90,7 @@ public class Configuration {
                     + "FFFFFFFF FFFFFFFF";
                     DH_P = new BigInteger(pHexString.replaceAll(" ", ""), 16);
             } else {
-                DH_P = new BigInteger(s);
+                DH_P = new BigInteger(s,16);
             }
             s = (String) configs.remove("system.diffie-hellman.g");
             if (s == null) {
