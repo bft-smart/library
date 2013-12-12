@@ -60,9 +60,12 @@ public class ServerViewController extends ViewController {
         super(procId, configHome);
         View cv = getViewStore().readView();
         if(cv == null){
+            
+            System.out.println("#Creating current view from configuration file");
             reconfigureTo(new View(0, getStaticConf().getInitialView(), 
                 getStaticConf().getF(), getInitAdddresses()));
         }else{
+            System.out.println("#Using view stored on disk");
             reconfigureTo(cv);
         }
        

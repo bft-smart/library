@@ -45,18 +45,13 @@ import bftsmart.tom.server.defaultservices.DefaultRecoverable;
 public class BFTListImpl extends DefaultRecoverable {
 
     BFTMapList tableList = new BFTMapList();
-    ServiceReplica replica = null;
-    ReplicaContext replicaCtx;
-    
+    ServiceReplica replica = null;    
     //The constructor passes the id of the server to the super class
     public BFTListImpl(int id) {
         super();
     	replica = new ServiceReplica(id, this, this);
     }
 
-    public void setReplicaContext(ReplicaContext replicaCtx) {
-    	this.replicaCtx = replicaCtx;
-    }
     
     public static void main(String[] args){
         if(args.length < 1) {

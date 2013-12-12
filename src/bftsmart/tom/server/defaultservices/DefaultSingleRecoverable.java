@@ -98,6 +98,10 @@ public abstract class DefaultSingleRecoverable implements Recoverable, SingleExe
     }
     
     private StateLog getLog() {
+        
+        if(log == null)
+            	initLog();
+        
     	return log;
     }
     

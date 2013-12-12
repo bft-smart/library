@@ -43,13 +43,15 @@ import bftsmart.tom.server.defaultservices.DefaultSingleRecoverable;
  */
 public class BFTMapServer extends DefaultSingleRecoverable {
 
-    MapOfMaps tableMap = new MapOfMaps();
-    ServiceReplica replica = null;
-    private ReplicaContext replicaContext;
+    MapOfMaps tableMap = null;
+    //ServiceReplica replica = null;
+    //private ReplicaContext replicaContext;
 
     //The constructor passes the id of the server to the super class
     public BFTMapServer(int id) {
-    	replica = new ServiceReplica(id, this, this);
+        
+        tableMap = new MapOfMaps();
+        new ServiceReplica(id, this, this);
     }
 
     public static void main(String[] args){
@@ -276,9 +278,4 @@ public class BFTMapServer extends DefaultSingleRecoverable {
     }
 
     
-    @Override
-    public void setReplicaContext(ReplicaContext replicaContext) {
-    	this.replicaContext = replicaContext;
-    }
-
 }
