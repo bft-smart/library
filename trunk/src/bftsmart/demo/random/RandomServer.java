@@ -41,7 +41,6 @@ public final class RandomServer extends DefaultRecoverable {
     private long currentTime = -1;
     /***********************************************************************/
     private ServiceReplica replica;
-    private ReplicaContext replicaContext;
     
     public ServiceReplica getReplica() {
 		return replica;
@@ -51,9 +50,6 @@ public final class RandomServer extends DefaultRecoverable {
 		this.replica = replica;
 	}
 
-    public void setReplicaContext(ReplicaContext replicaContext) {
-    	this.replicaContext = replicaContext;
-    }
 
     public RandomServer(int id) {
     	replica = new ServiceReplica(id, this, this);
