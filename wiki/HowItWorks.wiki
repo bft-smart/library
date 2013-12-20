@@ -3,7 +3,7 @@
 
 = Introduction =
 
-BFT-SMaRt is a replication library written in Java. It implements state machine replication. It is designed to tolerate Byzantine faults, while still being highly efficient - even if some replicas are faulty. In this page we describe how this library works, in a high level of abstraction.
+BFT-SMaRt is a replication library written in Java. It implements state machine replication. It is designed to tolerate Byzantine faults, while still being highly efficient - even if some replicas are faulty. In this page we describe how this library works, in a high level of abstraction. More details can be found in the [http://docs.di.fc.ul.pt/handle/10455/6897 technical report] describing the system.
 
 = State Machine Replication (SMR) =
 
