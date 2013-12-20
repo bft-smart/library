@@ -28,3 +28,11 @@ In this file there are several options to configure the replication protocol, nu
 || {{{system.totalordermulticast.revival_highMark}}} || Maximum ahead-of-time message not discarded when the replica is still on EID 0 (after which the state transfer is triggered). In practice this is used for a replica to verify if it crashed and was revived || integer || 10 ||
 || {{{system.initial.view}}} || Replicas IDs for the initial view, separated by comma. The number of replicas in this parameter should be equal to the one specified in {{{system.servers.num}}} || integer, || 0,1,2,3 ||
 || {{{system.ttp.id}}} || The ID of the trusted third party (TTP). The TTP is used to add and remove replicas to the system || integer || 7002 ||
+
+==Public keys==
+
+If you need to generate public/private keys for replicas or clients, you can use the following command to generate files for public and private keys:
+
+./smartrun.sh bftsmart.tom.util.RSAKeyPairGenerator <id of the replica/client>
+
+Keys are stored in the config/keys folder. The command above creates key pairs both for clients and replicas. Currently such keys need to be manually distributed.
