@@ -86,20 +86,56 @@ public final class ThroughputLatencyServer implements SingleExecutable, Recovera
     }
     
     public byte[] execute(byte[] command, MessageContext msgCtx) {        
-        iterations++;
+        boolean readOnly = false;
         
-        if(msgCtx.getConsensusId() == -1) {
-            return new byte[replySize];
-        }
-     
-        totalLatency.store(msgCtx.getFirstInBatch().executedTime - msgCtx.getFirstInBatch().receptionTime);
-        consensusLatency.store(msgCtx.getFirstInBatch().decisionTime - msgCtx.getFirstInBatch().consensusStartTime);
-        preConsLatency.store(msgCtx.getFirstInBatch().consensusStartTime - msgCtx.getFirstInBatch().receptionTime);
-        posConsLatency.store(msgCtx.getFirstInBatch().executedTime - msgCtx.getFirstInBatch().decisionTime);
-        proposeLatency.store(msgCtx.getFirstInBatch().writeSentTime - msgCtx.getFirstInBatch().consensusStartTime);
-        writeLatency.store(msgCtx.getFirstInBatch().acceptSentTime - msgCtx.getFirstInBatch().writeSentTime);
-        acceptLatency.store(msgCtx.getFirstInBatch().decisionTime - msgCtx.getFirstInBatch().acceptSentTime);
+        iterations++;
 
+        if (msgCtx != null && msgCtx.getFirstInBatch() != null) {
+            
+
+            readOnly = msgCtx.readOnly;
+                    
+            msgCtx.getFirstInBatch().executedTime = System.nanoTime();
+                        
+            totalLatency.store(msgCtx.getFirstInBatch().executedTime - msgCtx.getFirstInBatch().receptionTime);
+
+            if (readOnly == false) {
+
+                consensusLatency.store(msgCtx.getFirstInBatch().decisionTime - msgCtx.getFirstInBatch().consensusStartTime);
+                long temp = msgCtx.getFirstInBatch().consensusStartTime - msgCtx.getFirstInBatch().receptionTime;
+                preConsLatency.store(temp > 0 ? temp : 0);
+                posConsLatency.store(msgCtx.getFirstInBatch().executedTime - msgCtx.getFirstInBatch().decisionTime);            
+                proposeLatency.store(msgCtx.getFirstInBatch().writeSentTime - msgCtx.getFirstInBatch().consensusStartTime);
+                writeLatency.store(msgCtx.getFirstInBatch().acceptSentTime - msgCtx.getFirstInBatch().writeSentTime);
+                acceptLatency.store(msgCtx.getFirstInBatch().decisionTime - msgCtx.getFirstInBatch().acceptSentTime);
+                
+
+            } else {
+            
+           
+                consensusLatency.store(0);
+                preConsLatency.store(0);
+                posConsLatency.store(0);            
+                proposeLatency.store(0);
+                writeLatency.store(0);
+                acceptLatency.store(0);
+                
+                
+            }
+            
+        } else {
+            
+            
+                consensusLatency.store(0);
+                preConsLatency.store(0);
+                posConsLatency.store(0);            
+                proposeLatency.store(0);
+                writeLatency.store(0);
+                acceptLatency.store(0);
+                
+               
+        }
+        
         float tp = -1;
         if(iterations % interval == 0) {
             if (context) System.out.println("--- (Context)  iterations: "+ iterations + " // regency: " + msgCtx.getRegency() + " // consensus: " + msgCtx.getConsensusId() + " ---");

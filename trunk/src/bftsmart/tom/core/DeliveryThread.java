@@ -259,6 +259,7 @@ public final class DeliveryThread extends Thread {
     protected void deliverUnordered(TOMMessage request, int regency) {
         MessageContext msgCtx = new MessageContext(System.currentTimeMillis(),
                 new byte[0], regency, -1, request.getSender(), null);
+        msgCtx.readOnly = true;
         receiver.receiveReadonlyMessage(request, msgCtx);
     }
 

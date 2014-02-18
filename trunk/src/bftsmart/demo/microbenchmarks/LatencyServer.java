@@ -31,7 +31,6 @@ import bftsmart.tom.util.Storage;
 public class LatencyServer implements SingleExecutable, Recoverable {
     
     private int interval;
-    private int hashs;
     private int replySize;
     
     private int iterations = 0;
@@ -47,11 +46,10 @@ public class LatencyServer implements SingleExecutable, Recoverable {
 
     private StateManager stateManager;
 
-    public LatencyServer(int id, int interval, int hashs, int replySize) {
+    public LatencyServer(int id, int interval, int replySize) {
     	replica = new ServiceReplica(id, this, this);
 
         this.interval = interval;
-        this.hashs = hashs;
         this.replySize = replySize;
 
         totalLatency = new Storage(interval);
@@ -78,19 +76,56 @@ public class LatencyServer implements SingleExecutable, Recoverable {
     }
     
     public byte[] execute(byte[] command, MessageContext msgCtx) {        
+        boolean readOnly = false;
+        
         iterations++;
-        if(msgCtx.getConsensusId() == -1) {
-            return new byte[replySize];
+
+        if (msgCtx != null && msgCtx.getFirstInBatch() != null) {
+            
+
+            readOnly = msgCtx.readOnly;
+                    
+            msgCtx.getFirstInBatch().executedTime = System.nanoTime();
+                        
+            totalLatency.store(msgCtx.getFirstInBatch().executedTime - msgCtx.getFirstInBatch().receptionTime);
+
+            if (readOnly == false) {
+
+                consensusLatency.store(msgCtx.getFirstInBatch().decisionTime - msgCtx.getFirstInBatch().consensusStartTime);
+                long temp = msgCtx.getFirstInBatch().consensusStartTime - msgCtx.getFirstInBatch().receptionTime;
+                preConsLatency.store(temp > 0 ? temp : 0);
+                posConsLatency.store(msgCtx.getFirstInBatch().executedTime - msgCtx.getFirstInBatch().decisionTime);            
+                proposeLatency.store(msgCtx.getFirstInBatch().writeSentTime - msgCtx.getFirstInBatch().consensusStartTime);
+                writeLatency.store(msgCtx.getFirstInBatch().acceptSentTime - msgCtx.getFirstInBatch().writeSentTime);
+                acceptLatency.store(msgCtx.getFirstInBatch().decisionTime - msgCtx.getFirstInBatch().acceptSentTime);
+                
+
+            } else {
+            
+           
+                consensusLatency.store(0);
+                preConsLatency.store(0);
+                posConsLatency.store(0);            
+                proposeLatency.store(0);
+                writeLatency.store(0);
+                acceptLatency.store(0);
+                
+                
+            }
+            
+        } else {
+            
+            
+                consensusLatency.store(0);
+                preConsLatency.store(0);
+                posConsLatency.store(0);            
+                proposeLatency.store(0);
+                writeLatency.store(0);
+                acceptLatency.store(0);
+                
+               
         }
         
-        totalLatency.store(msgCtx.getFirstInBatch().executedTime - msgCtx.getFirstInBatch().receptionTime);
-        consensusLatency.store(msgCtx.getFirstInBatch().decisionTime - msgCtx.getFirstInBatch().consensusStartTime);
-        preConsLatency.store(msgCtx.getFirstInBatch().consensusStartTime - msgCtx.getFirstInBatch().receptionTime);
-        posConsLatency.store(msgCtx.getFirstInBatch().executedTime - msgCtx.getFirstInBatch().decisionTime);
-        proposeLatency.store(msgCtx.getFirstInBatch().writeSentTime - msgCtx.getFirstInBatch().consensusStartTime);
-        writeLatency.store(msgCtx.getFirstInBatch().acceptSentTime - msgCtx.getFirstInBatch().writeSentTime);
-        acceptLatency.store(msgCtx.getFirstInBatch().decisionTime - msgCtx.getFirstInBatch().acceptSentTime);
-
         if(iterations % interval == 0) {
             System.out.println("--- Measurements after "+ iterations+" ops ("+interval+" samples) ---");
             System.out.println("Total latency = " + totalLatency.getAverage(false) / 1000 + " (+/- "+ (long)totalLatency.getDP(false) / 1000 +") us ");
@@ -113,17 +148,16 @@ public class LatencyServer implements SingleExecutable, Recoverable {
     }
 
     public static void main(String[] args){
-        if(args.length < 4) {
-            System.out.println("Use: java ...LatencyServer <processId> <measurement interval> <processing hashs> <reply size>");
+        if(args.length < 3) {
+            System.out.println("Use: java ...LatencyServer <processId> <measurement interval> <reply size>");
             System.exit(-1);
         }
 
         int processId = Integer.parseInt(args[0]);
         int interval = Integer.parseInt(args[1]);
-        int hashs = Integer.parseInt(args[2]);
-        int replySize = Integer.parseInt(args[3]);
+        int replySize = Integer.parseInt(args[2]);
 
-        new LatencyServer(processId,interval,hashs,replySize);
+        new LatencyServer(processId,interval,replySize);
     }
 
     public byte[] getState() {
