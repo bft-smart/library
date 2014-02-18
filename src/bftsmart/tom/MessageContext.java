@@ -33,6 +33,8 @@ public class MessageContext {
     private TOMMessage firstInBatch; //to be replaced by a statistics class
     private boolean lastInBatch; // indicates that the command is the last in the batch. Used for logging
 
+    public boolean readOnly = false;
+    
     public MessageContext(long timestamp, byte[] nonces, int regency, int consensusId, int sender, TOMMessage firstInBatch) {
         this.timestamp = timestamp;
         this.nonces = nonces;
