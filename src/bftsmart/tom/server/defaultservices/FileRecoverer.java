@@ -16,8 +16,6 @@ limitations under the License.
 package bftsmart.tom.server.defaultservices;
 
 import java.io.ByteArrayInputStream;
-import java.io.File;
-import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.RandomAccessFile;
@@ -28,22 +26,16 @@ import java.util.Arrays;
 
 public class FileRecoverer {
 
-	private static final int EOF = 0;
-	private int processId;
-	private String defaultDirectory;
 	private byte[] ckpHash;
 
-	public FileRecoverer(int id, String filesDir) {
-		this.processId = id;
-		this.defaultDirectory = filesDir;
+	public FileRecoverer() {
 	}
 
-	public CommandsInfo[] getLogState(int index) {
-		String file = getTSLogsPathes(".log");
+	public CommandsInfo[] getLogState(int index, String logPath) {
 		RandomAccessFile log = null;
 
-		if ((log = openLogFile(file)) != null) {
-			System.out.println("GETTING STATE FROM " + file);
+		System.out.println("GETTING LOG FROM " + logPath);
+		if ((log = openLogFile(logPath)) != null) {
 
 			CommandsInfo[] logState = recoverLogState(log, index);
 
@@ -65,12 +57,11 @@ public class FileRecoverer {
 	 * @param number the number of commands retrieved
 	 * @return The commands for the period selected
 	 */
-	public CommandsInfo[] getLogState(long pointer, int startOffset,  int number) {
-		String file = getTSLogsPathes(".log");
+	public CommandsInfo[] getLogState(long pointer, int startOffset,  int number, String logPath) {
 		RandomAccessFile log = null;
 
-		if ((log = openLogFile(file)) != null) {
-			System.out.println("GETTING STATE FROM " + file);
+		System.out.println("GETTING LOG FROM " + logPath);
+		if ((log = openLogFile(logPath)) != null) {
 
 			CommandsInfo[] logState = recoverLogState(log, pointer, startOffset, number);
 
@@ -86,12 +77,11 @@ public class FileRecoverer {
 		return null;
 	}
 
-	public byte[] getCkpState() {
-		String file = getTSLogsPathes(".ckp");
+	public byte[] getCkpState(String ckpPath) {
 		RandomAccessFile ckp = null;
 
-		if ((ckp = openLogFile(file)) != null) {
-			System.out.println("GETTING STATE FROM " + file);
+		System.out.println("GETTING CHECKPOINT FROM " + ckpPath);
+		if ((ckp = openLogFile(ckpPath)) != null) {
 
 			byte[] ckpState = recoverCkpState(ckp);
 
@@ -107,12 +97,11 @@ public class FileRecoverer {
 		return null;
 	}
 
-	public void recoverCkpHash() {
-		String file = getTSLogsPathes(".ckp");
+	public void recoverCkpHash(String ckpPath) {
 		RandomAccessFile ckp = null;
 
-		if ((ckp = openLogFile(file)) != null) {
-			System.out.println("GETTING HASH FROM " + file);
+		System.out.println("GETTING HASH FROM CHECKPOINT" + ckpPath);
+		if ((ckp = openLogFile(ckpPath)) != null) {
 			byte[] ckpHash = null;
 			try {
 				int ckpSize = ckp.readInt();
@@ -180,12 +169,11 @@ public class FileRecoverer {
 		return ckpState;
 	}
 
-	public void transferLog(SocketChannel sChannel, int index) {
-		String file = getTSLogsPathes(".log");
+	public void transferLog(SocketChannel sChannel, int index, String logPath) {
 		RandomAccessFile log = null;
 
-		if ((log = openLogFile(file)) != null) {
-			System.out.println("GETTING STATE FROM LOG " + file);
+		System.out.println("GETTING STATE FROM LOG " + logPath);
+		if ((log = openLogFile(logPath)) != null) {
 			transferLog(log, sChannel, index);
 		}
 	}
@@ -215,12 +203,11 @@ public class FileRecoverer {
 		}
 	}
 
-	public void transferCkpState(SocketChannel sChannel) {
-		String file = getTSLogsPathes(".ckp");
+	public void transferCkpState(SocketChannel sChannel, String ckpPath) {
 		RandomAccessFile ckp = null;
 
-		if ((ckp = openLogFile(file)) != null) {
-			System.out.println("GETTING STATE FROM " + file);
+		System.out.println("GETTING CHECKPOINT FROM " + ckpPath);
+		if ((ckp = openLogFile(ckpPath)) != null) {
 
 			transferCkpState(ckp, sChannel);
 
@@ -264,26 +251,7 @@ public class FileRecoverer {
 		return ckpHash;
 	}
 
-	private String getTSLogsPathes(String extention) {
-
-		File directory = new File(defaultDirectory);
-
-		ArrayList<String> files = new ArrayList<String>();
-
-		if (directory.isDirectory()) {
-			File[] serverLogs = directory.listFiles(new FileListFilter(
-					processId, extention));
-
-			for (File f : serverLogs) {
-				files.add(f.getAbsolutePath());
-			}
-		}
-
-		return files.get(0);// Only one log file
-	}
-
 	private RandomAccessFile openLogFile(String file) {
-
 		try {
 			return new RandomAccessFile(file, "r");
 
@@ -292,30 +260,6 @@ public class FileRecoverer {
 		}
 
 		return null;
-	}
-
-	private class FileListFilter implements FilenameFilter {
-
-		private int id;
-		private String extention;
-
-		public FileListFilter(int id, String extention) {
-			this.id = id;
-			this.extention = extention;
-		}
-
-		public boolean accept(File directory, String filename) {
-			boolean fileOK = false;
-
-			if (id >= 0) {
-				if (filename.startsWith(id + ".")
-						&& filename.endsWith(extention)) {
-					fileOK = true;
-				}
-			}
-
-			return fileOK;
-		}
 	}
 
 	private CommandsInfo[] recoverLogState(RandomAccessFile log, int endOffset) {

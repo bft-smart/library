@@ -26,14 +26,14 @@ import java.util.TreeMap;
 
 import bftsmart.tom.MessageContext;
 import bftsmart.tom.ServiceReplica;
-import bftsmart.tom.server.defaultservices.DefaultRecoverable;
+import bftsmart.tom.server.defaultservices.durability.DurabilityCoordinator;
 
 /**
  * 
  * @author Marcel Santos
  *
  */
-public class YCSBServer extends DefaultRecoverable {
+public class YCSBServer extends DurabilityCoordinator {
 	private static boolean _debug	= false;
 	private TreeMap<String, YCSBTable>	mTables;
 	

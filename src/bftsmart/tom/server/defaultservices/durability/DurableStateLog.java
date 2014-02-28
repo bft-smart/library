@@ -185,18 +185,18 @@ public class DurableStateLog extends StateLog {
 		System.out.println("EID = " + eid);
 		System.out.println("LAST EID = " + lastEid);
 		
-		FileRecoverer fr = new FileRecoverer(id, DEFAULT_DIR);
+		FileRecoverer fr = new FileRecoverer();
 		
 		if(cstRequest instanceof CSTRequestF1) {
 			CSTRequestF1 requestF1 = (CSTRequestF1)cstRequest;
 			if(id == requestF1.getCheckpointReplica()) {
 				// This replica is expected to send the checkpoint plus the hashes of lower and upper log portions
 				checkpointLock.lock();
-				byte[] ckpState = fr.getCkpState();
+				byte[] ckpState = fr.getCkpState(lastCkpPath);
 				checkpointLock.unlock();
 	    		System.out.println("--- sending checkpoint: " + ckpState.length);
-	    		CommandsInfo[] logLower = fr.getLogState(requestF1.getLogLowerSize());
-	    		CommandsInfo[] logUpper = fr.getLogState(logPointers.get(requestF1.getLogUpper()), 0, requestF1.getLogUpperSize());
+	    		CommandsInfo[] logLower = fr.getLogState(requestF1.getLogLowerSize(), logPath);
+	    		CommandsInfo[] logUpper = fr.getLogState(logPointers.get(requestF1.getLogUpper()), 0, requestF1.getLogUpperSize(), logPath);
 	    		byte[] logLowerBytes = TOMUtil.getBytes(logLower);
 	    		System.out.println(logLower.length + " Log lower bytes size: " + logLowerBytes.length);
 	    		byte[] logLowerHash = TOMUtil.computeHash(logLowerBytes);
@@ -208,7 +208,7 @@ public class DurableStateLog extends StateLog {
 			} else if(id == requestF1.getLogLower()) {
 				// This replica is expected to send the lower part of the log
 	    		System.out.print("--- sending lower log: " + requestF1.getLogLowerSize() + " from " + logPointers.get(requestF1.getCheckpointReplica())) ;
-	    		CommandsInfo[] logLower = fr.getLogState(logPointers.get(requestF1.getCheckpointReplica()), 0, requestF1.getLogLowerSize());
+	    		CommandsInfo[] logLower = fr.getLogState(logPointers.get(requestF1.getCheckpointReplica()), 0, requestF1.getLogLowerSize(), logPath);
 	    		System.out.println(" " + TOMUtil.getBytes(logLower).length + " bytes");
 	    		CSTState cstState = new CSTState(null, null, logLower, null, null, null, lastCheckpointEid, lastEid);
 	    		return cstState;
@@ -216,11 +216,11 @@ public class DurableStateLog extends StateLog {
 				// This replica is expected to send the upper part of the log plus the hash for its checkpoint
 	    		System.out.println("--- sending upper log: " + requestF1.getLogUpperSize());
 				checkpointLock.lock();
-				fr.recoverCkpHash();
+				fr.recoverCkpHash(lastCkpPath);
 				byte[] ckpHash = fr.getCkpStateHash();
-				byte[] ckpState = fr.getCkpState();
+				byte[] ckpState = fr.getCkpState(lastCkpPath);
 				checkpointLock.unlock();
-	    		CommandsInfo[] logUpper = fr.getLogState(requestF1.getLogUpperSize());
+	    		CommandsInfo[] logUpper = fr.getLogState(requestF1.getLogUpperSize(), logPath);
 	    		System.out.println(" " + TOMUtil.getBytes(logUpper).length + " bytes");
 	    		System.out.println("--- State size: " + ckpState.length + " Current state Hash: " + ckpHash);
 	    		int lastEidInState = lastCheckpointEid + requestF1.getLogUpperSize();
@@ -251,8 +251,8 @@ public class DurableStateLog extends StateLog {
 	}
 	
 	public void transferApplicationState(SocketChannel sChannel, int eid) {
-		FileRecoverer fr = new FileRecoverer(id, DEFAULT_DIR);
-		fr.transferCkpState(sChannel);
+		FileRecoverer fr = new FileRecoverer();
+		fr.transferCkpState(sChannel, lastCkpPath);
 		
 //		int lastCheckpointEid = getLastCheckpointEid();
 //		int lastEid = getLastEid();
