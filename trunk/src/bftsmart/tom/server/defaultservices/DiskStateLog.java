@@ -189,11 +189,11 @@ public class DiskStateLog extends StateLog {
 
 			int size = eid - lastCheckpointEid;
 
-			FileRecoverer fr = new FileRecoverer(id, DEFAULT_DIR);
+			FileRecoverer fr = new FileRecoverer();
 
 //			if (size > 0 && sendState) {
 			if (size > 0) {
-				CommandsInfo[] recoveredBatches = fr.getLogState(size);
+				CommandsInfo[] recoveredBatches = fr.getLogState(size, logPath);
 
 				batches = new CommandsInfo[size];
 
@@ -202,7 +202,7 @@ public class DiskStateLog extends StateLog {
 			}
 			
 			checkpointLock.lock();
-			byte[] ckpState = fr.getCkpState();
+			byte[] ckpState = fr.getCkpState(lastCkpPath);
 			byte[] ckpStateHash = fr.getCkpStateHash();
 			checkpointLock.unlock();
 
@@ -219,9 +219,8 @@ public class DiskStateLog extends StateLog {
 	}
 	
 	public void transferApplicationState(SocketChannel sChannel, int eid) {
-		FileRecoverer fr = new FileRecoverer(id, DEFAULT_DIR);
-		fr.transferCkpState(sChannel);
-		
+		FileRecoverer fr = new FileRecoverer();
+		fr.transferCkpState(sChannel, lastCkpPath);
 //		int lastCheckpointEid = getLastCheckpointEid();
 //		int lastEid = getLastEid();
 //		if (eid >= lastCheckpointEid && eid <= lastEid) {

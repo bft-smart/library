@@ -20,8 +20,6 @@ import java.io.IOException;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 
-import bftsmart.reconfiguration.TTP;
-
 /**
  * 
  * @author Marcel Santos
