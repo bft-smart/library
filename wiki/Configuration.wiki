@@ -28,6 +28,7 @@ In this file there are several options to configure the replication protocol, nu
 || {{{system.totalordermulticast.revival_highMark}}} || Maximum ahead-of-time message not discarded when the replica is still on EID 0 (after which the state transfer is triggered). In practice this is used for a replica to verify if it crashed and was revived || integer || 10 ||
 || {{{system.initial.view}}} || Replicas IDs for the initial view, separated by comma. The number of replicas in this parameter should be equal to the one specified in {{{system.servers.num}}} || integer, || 0,1,2,3 ||
 || {{{system.ttp.id}}} || The ID of the trusted third party (TTP). The TTP is used to add and remove replicas to the system || integer || 7002 ||
+|| {{{system.bft}}} || This sets if the system will function in Byzantine or crash-only mode. Set to "true" to support Byzantine faults. || boolean || true ||
 
 ==Public keys==
 
