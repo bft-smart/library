@@ -105,7 +105,6 @@ public class ServiceReplica {
 		this(id, configHome, false, executor, recoverer);
 	}
 
-	//******* EDUARDO BEGIN **************//
 	/**
 	 * Constructor
 	 * @param id Replica ID
@@ -132,8 +131,6 @@ public class ServiceReplica {
 		this.replier = replier;
 	}
 
-
-	//******* EDUARDO END **************//
 	// this method initializes the object
 	private void init() {
 		try {
@@ -143,8 +140,6 @@ public class ServiceReplica {
 			throw new RuntimeException("Unable to build a communication system.");
 		}
 
-		//******* EDUARDO BEGIN **************//
-
 		if (this.SVController.isInCurrentView()) {
 			System.out.println("In current view: " + this.SVController.getCurrentView());
 			initTOMLayer(-1, -1); // initiaze the TOM layer
@@ -152,15 +147,13 @@ public class ServiceReplica {
 			System.out.println("Not in current view: " + this.SVController.getCurrentView());
 			if (this.isToJoin) {
 				System.out.println("Sending join: " + this.SVController.getCurrentView());
-				//Não está na visão inicial e é para executar um join;
+				// Not in initial view. Will perform a join;
 				int port = this.SVController.getStaticConf().getServerToServerPort(id) - 1;
 				String ip = this.SVController.getStaticConf().getServerToServerRemoteAddress(id).getAddress().getHostAddress();
 				ReconfigureReply r = null;
 				Reconfiguration rec = new Reconfiguration(id);
 				do {
-					//System.out.println("while 1");
 					rec.addServer(id, ip, port);
-
 					r = rec.execute();
 				} while (!r.getView().isMember(id));
 				rec.close();
@@ -194,7 +187,6 @@ public class ServiceReplica {
 			this.SVController.processJoinResult(r);
 
 			initTOMLayer(r.getLastExecConsId(), r.getExecLeader()); // initiaze the TOM layer
-			//this.startState = r.getStartState();
 			cs.updateServersConnections();
 			this.cs.joinViewReceived();
 			waitTTPJoinMsgLock.lock();
@@ -207,7 +199,6 @@ public class ServiceReplica {
 		cs.start();
 		repMan = new ReplyManager(SVController.getStaticConf().getNumRepliers(), cs);
 	}
-	//******* EDUARDO END **************//
 
 	/**
 	 * This message delivers a readonly message, i.e., a message that was not
@@ -340,11 +331,9 @@ public class ServiceReplica {
 			return;
 		}
 
-		//******* EDUARDO BEGIN **************//
 		if (!SVController.isInCurrentView()) {
 			throw new RuntimeException("I'm not an acceptor!");
 		}
-		//******* EDUARDO END **************//
 
 		// Assemble the total order messaging layer
 		MessageFactory messageFactory = new MessageFactory(id);

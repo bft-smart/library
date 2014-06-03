@@ -33,13 +33,8 @@ import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 import java.util.HashMap;
-import javax.crypto.BadPaddingException;
-import javax.crypto.Cipher;
-import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.Mac;
-import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
-import javax.crypto.spec.SecretKeySpec;
 
 /**
  *
@@ -68,6 +63,7 @@ public class MessageHandler {
         this.tomLayer = tomLayer;
     }
 
+    @SuppressWarnings("unchecked")
     protected void processData(SystemMessage sm) {
         if (sm instanceof PaxosMessage) {
             
@@ -156,25 +152,23 @@ public class MessageHandler {
 	            /** This is Joao's code, to handle state transfer */
 	            } else if (sm instanceof SMMessage) {
 	                SMMessage smsg = (SMMessage) sm;
-	                String type = null;
+	                // System.out.println("(MessageHandler.processData) SM_MSG received: type " + smsg.getType() + ", regency " + smsg.getRegency() + ", (replica " + smsg.getSender() + ")");
 	                switch(smsg.getType()) {
 	                    case TOMUtil.SM_REQUEST:
-	                        type = "SM_REQUEST";
+		                    tomLayer.getStateManager().SMRequestDeliver(smsg, tomLayer.controller.getStaticConf().isBFT());
 	                        break;
 	                    case TOMUtil.SM_REPLY:
-	                        type = "SM_REPLY";
+		                    tomLayer.getStateManager().SMReplyDeliver(smsg, tomLayer.controller.getStaticConf().isBFT());
 	                        break;
+	                    case TOMUtil.SM_ASK_INITIAL:
+	                    	tomLayer.getStateManager().currentConsensusIdAsked(smsg.getSender());
+	                    	break;
+	                    case TOMUtil.SM_REPLY_INITIAL:
+	                    	tomLayer.getStateManager().currentConsensusIdReceived(smsg);
+	                    	break;
 	                    default:
-	                        type = "LOCAL";
+		                    tomLayer.getStateManager().stateTimeout();
 	                        break;
-	                }
-	                System.out.println("(MessageHandler.processData) SM_MSG received: type " + type + ", regency " + smsg.getRegency() + ", (replica " + smsg.getSender() + ")");
-	                if (smsg.TRIGGER_SM_LOCALLY) {
-	                    tomLayer.getStateManager().stateTimeout();
-	                } else if (smsg.getType() == TOMUtil.SM_REQUEST) {
-	                    tomLayer.getStateManager().SMRequestDeliver(smsg, tomLayer.controller.getStaticConf().isBFT());
-	                } else {
-	                    tomLayer.getStateManager().SMReplyDeliver(smsg, tomLayer.controller.getStaticConf().isBFT());
 	                }
 	            /******************************************************************/
 	            } else {

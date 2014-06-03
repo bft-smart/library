@@ -82,10 +82,12 @@ public class StateLog {
      * Sets the state associated with the last checkpoint, and updates the execution ID associated with it
      * @param state State associated with the last checkpoint
      */
-    public void newCheckpoint(byte[] state, byte[] stateHash) {
+    public void newCheckpoint(byte[] state, byte[] stateHash, int lastConsensusId) {
 
-        for (int i = 0; i < this.messageBatches.length; i++)
-            messageBatches[i] = null;
+    	if(messageBatches != null) {
+    		for (int i = 0; i < this.messageBatches.length; i++)
+                messageBatches[i] = null;
+    	}
 
         position = 0;
         this.state = state;
@@ -160,7 +162,6 @@ public class StateLog {
      * @return Execution ID for the last messages batch delivered to the application
      */
     public int getLastEid() {
-
         return lastEid;
     }
 
@@ -184,15 +185,16 @@ public class StateLog {
      * Adds a message batch to the log. This batches should be added to the log
      * in the same order in which they are delivered to the application. Only
      * the 'k' batches received after the last checkpoint are supposed to be kept
-     * @param batch The batch of messages to be kept.
+     * @param commands The batch of messages to be kept.
+     * @param round the round in which the messages were ordered
+     * @param leader the leader by the moment the messages were ordered
      */
-    public void addMessageBatch(byte[][] commands, int round, int leader) {
-
+    public void addMessageBatch(byte[][] commands, int round, int leader, int lastConsensusId) {
         if (position < messageBatches.length) {
-
             messageBatches[position] = new CommandsInfo(commands, round, leader);
             position++;
         }
+        setLastEid(lastConsensusId);
     }
 
     /**

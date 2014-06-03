@@ -43,7 +43,6 @@ import bftsmart.tom.util.TOMUtil;
 
 public class DurableStateManager extends BaseStateManager {
 
-	private DeliveryThread dt;
 	private LCManager lcManager;
 	private ExecutionManager execManager;
 
@@ -70,8 +69,7 @@ public class DurableStateManager extends BaseStateManager {
 		state = null;
 		lastEid = 1;
 		waitingEid = -1;
-		System.out.println("waitingeid is -1");
-
+		
 		appStateOnly = false;
 	}
 
@@ -332,6 +330,8 @@ public class DurableStateManager extends BaseStateManager {
 							System.out.println("Installing current view!");
 							SVController.reconfigureTo(currentView);
 						}
+						
+						isInitializing = false;
 
 						dt.canDeliver();
 						dt.deliverUnlock();
@@ -382,5 +382,5 @@ public class DurableStateManager extends BaseStateManager {
 		}
 		lockTimer.unlock();
 	}
-
+	
 }

@@ -16,6 +16,8 @@ limitations under the License.
 package bftsmart.tom.server.defaultservices;
 
 import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.RandomAccessFile;
@@ -27,9 +29,29 @@ import java.util.Arrays;
 public class FileRecoverer {
 
 	private byte[] ckpHash;
+	private int ckpLastConsensusId;
+	private int logLastConsensusId;
+	
+	private int replicaId;
+	private String defaultDir;
 
-	public FileRecoverer() {
+	public FileRecoverer(int replicaId, String defaultDir) {
+		this.replicaId = replicaId;
+		this.defaultDir = defaultDir;
+		ckpLastConsensusId = 0;
+		logLastConsensusId = 0;
 	}
+	
+	/**
+	 * Reads all log messages from the last log file created
+	 * @return an array with batches of messages executed for each consensus
+	 */
+//	public CommandsInfo[] getLogState() {
+//		String lastLogFilename = getLatestFile(".log");
+//		if(lastLogFilename != null)
+//			return getLogState(0, lastLogFilename);
+//		return null;
+//	}
 
 	public CommandsInfo[] getLogState(int index, String logPath) {
 		RandomAccessFile log = null;
@@ -122,20 +144,18 @@ public class FileRecoverer {
 	private byte[] recoverCkpState(RandomAccessFile ckp) {
 		byte[] ckpState = null;
 		try {
-			long logLength = ckp.length();
+			long ckpLength = ckp.length();
 			boolean mayRead = true;
 			while (mayRead) {
-
 				try {
-					if (ckp.getFilePointer() < logLength) {
+					if (ckp.getFilePointer() < ckpLength) {
 						int size = ckp.readInt();
-
 						if (size > 0) {
 							ckpState = new byte[size];//ckp state
 							int read = ckp.read(ckpState);
 							if (read == size) {
 								int hashSize = ckp.readInt();
-								if (size > 0) {
+								if (hashSize > 0) {
 									ckpHash = new byte[hashSize];//ckp hash
 									read = ckp.read(ckpHash);
 									if (read == hashSize) {
@@ -149,8 +169,9 @@ public class FileRecoverer {
 								mayRead = false;
 								ckp = null;
 							}
-						} else
+						} else {
 							mayRead = false;
+						}
 					} else {
 						mayRead = false;
 					}
@@ -159,6 +180,10 @@ public class FileRecoverer {
 					ckp = null;
 					mayRead = false;
 				}
+			}
+			if (ckp.readInt() == 0) {
+				ckpLastConsensusId = ckp.readInt();
+				System.out.println("LAST CKP read from file: " + ckpLastConsensusId);
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -251,14 +276,20 @@ public class FileRecoverer {
 		return ckpHash;
 	}
 
+	public int getCkpLastConsensusId() {
+		return ckpLastConsensusId;
+	}
+
+	public int getLogLastConsensusId() {
+		return logLastConsensusId;
+	}
+
 	private RandomAccessFile openLogFile(String file) {
 		try {
 			return new RandomAccessFile(file, "r");
-
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-
 		return null;
 	}
 
@@ -292,8 +323,10 @@ public class FileRecoverer {
 								state.clear();
 							}
 						} else {
-							System.out.println("ELSE 1");
-							mayRead = false;
+							logLastConsensusId = log.readInt();
+							System.out.print("ELSE 1. Recovered batches: " + recoveredBatches);
+							System.out.println(", logLastConsensusId: " + logLastConsensusId);
+							return state.toArray(new CommandsInfo[state.size()]);
 						}
 					} else {
 						System.out.println("ELSE 2 " + recoveredBatches);
@@ -384,6 +417,49 @@ public class FileRecoverer {
 		}
 
 		return null;
+	}
+
+	public String getLatestFile(String extention) {
+		File directory = new File(defaultDir);
+		String latestFile = null;
+		if (directory.isDirectory()) {
+			File[] serverLogs = directory.listFiles(new FileListFilter(
+					replicaId, extention));
+			long timestamp = 0;
+			for (File f : serverLogs) {
+				String[] nameItems = f.getName().split("\\.");
+				long filets = new Long(nameItems[1]).longValue();
+				if(filets > timestamp) {
+					timestamp = filets;
+					latestFile = f.getAbsolutePath();
+				}
+			}
+		}
+		return latestFile;
+	}
+
+	private class FileListFilter implements FilenameFilter {
+
+		private int id;
+		private String extention;
+
+		public FileListFilter(int id, String extention) {
+			this.id = id;
+			this.extention = extention;
+		}
+
+		public boolean accept(File directory, String filename) {
+			boolean fileOK = false;
+
+			if (id >= 0) {
+				if (filename.startsWith(id + ".")
+						&& filename.endsWith(extention)) {
+					fileOK = true;
+				}
+			}
+
+			return fileOK;
+		}
 	}
 
 }

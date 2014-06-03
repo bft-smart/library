@@ -133,6 +133,8 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
 			
 		}
         
+		if(eids != null && eids.length > 0)
+			getStateManager().setLastEID(eids[eids.length-1]);
         return replies;
     }
 
@@ -158,7 +160,7 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
 
         Logger.println("(TOMLayer.saveState) Saving state of EID " + lastEid + ", round " + decisionRound + " and leader " + leader);
 
-        thisLog.newCheckpoint(snapshot, computeHash(snapshot));
+        thisLog.newCheckpoint(snapshot, computeHash(snapshot), lastEid);
         thisLog.setLastEid(-1);
         thisLog.setLastCheckpointEid(lastEid);
         thisLog.setLastCheckpointRound(decisionRound);
@@ -168,19 +170,18 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
         Logger.println("(TOMLayer.saveState) Finished saving state of EID " + lastEid + ", round " + decisionRound + " and leader " + leader);
     }
 
-    public void saveCommands(byte[][] commands, int lastEid, int decisionRound, int leader) {
+    public void saveCommands(byte[][] commands, int lastConsensusId, int decisionRound, int leader) {
         StateLog thisLog = getLog();
 
         logLock.lock();
 
-        Logger.println("(TOMLayer.saveBatch) Saving batch of EID " + lastEid + ", round " + decisionRound + " and leader " + leader);
+        Logger.println("(TOMLayer.saveBatch) Saving batch of EID " + lastConsensusId + ", round " + decisionRound + " and leader " + leader);
 
-        thisLog.addMessageBatch(commands, decisionRound, leader);
-        thisLog.setLastEid(lastEid);
-
+        thisLog.addMessageBatch(commands, decisionRound, leader, lastConsensusId);
+        
         logLock.unlock();
         
-        Logger.println("(TOMLayer.saveBatch) Finished saving batch of EID " + lastEid + ", round " + decisionRound + " and leader " + leader);
+        Logger.println("(TOMLayer.saveBatch) Finished saving batch of EID " + lastConsensusId + ", round " + decisionRound + " and leader " + leader);
     }
 
 	/**
@@ -202,13 +203,11 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
 		for(int i = 0; i <= eids.length; i++) {
 			if(i == eids.length) { // the batch command contains only one command or it is the last position of the array
 				byte[][] batch = Arrays.copyOfRange(commands, batchStart, i);
-				log.addMessageBatch(batch, decisionRound, leader);
-				log.setLastEid(eid);
+				log.addMessageBatch(batch, decisionRound, leader, eid);
 			} else {
 				if(eids[i] > eid) { // saves commands when the eid changes or when it is the last batch
 					byte[][] batch = Arrays.copyOfRange(commands, batchStart, i);
-					log.addMessageBatch(batch, decisionRound, leader);
-					log.setLastEid(eid);
+					log.addMessageBatch(batch, decisionRound, leader, eid);
 					eid = eids[i];
 					batchStart = i;
 				}
@@ -233,18 +232,18 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
             
             DefaultApplicationState state = (DefaultApplicationState) recvState;
             
-            getLog().update(state);
-            
             int lastCheckpointEid = state.getLastCheckpointEid();
-            
             lastEid = state.getLastEid();
-            //lastEid = lastCheckpointEid + (state.getMessageBatches() != null ? state.getMessageBatches().length : 0);
 
             bftsmart.tom.util.Logger.println("(DurabilityCoordinator.setState) I'm going to update myself from EID "
                     + lastCheckpointEid + " to EID " + lastEid);
 
             stateLock.lock();
-            installSnapshot(state.getState());
+			if(state.getSerializedState() != null) {
+				System.out.println("The state is not null. Will install it");
+				log.update(state);
+				installSnapshot(state.getSerializedState());
+			}
 
             // INUTIL??????
             //tomLayer.lm.addLeaderInfo(lastCheckpointEid, state.getLastCheckpointRound(),
@@ -360,8 +359,16 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
             	boolean syncLog = config.isToWriteSyncLog();
             	boolean syncCkp = config.isToWriteSyncCkp();
             	log = new DiskStateLog(replicaId, state, computeHash(state), isToLog, syncLog, syncCkp);
-            } else
+            	
+				ApplicationState storedState = ((DiskStateLog)log).loadDurableState();
+				if(storedState.getLastEid() > 0) {
+					setState(storedState);
+					getStateManager().setLastEID(storedState.getLastEid());
+				}
+            } else {
             	log = new StateLog(checkpointPeriod, state, computeHash(state));
+            }
+			getStateManager().askCurrentConsensusId();
     	}
     }
     

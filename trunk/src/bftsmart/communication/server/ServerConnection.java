@@ -43,7 +43,6 @@ import bftsmart.tom.util.TOMUtil;
 import java.math.BigInteger;
 import java.security.PrivateKey;
 import java.security.PublicKey;
-import java.security.Signature;
 import java.util.HashSet;
 
 /**

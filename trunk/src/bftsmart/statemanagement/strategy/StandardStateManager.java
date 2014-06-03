@@ -47,7 +47,6 @@ public class StandardStateManager extends BaseStateManager {
     private final static long INIT_TIMEOUT = 40000;
     private long timeout = INIT_TIMEOUT;
     
-    private DeliveryThread dt;
     private LCManager lcManager;
     private ExecutionManager execManager;
 
@@ -220,6 +219,8 @@ public class StandardStateManager extends BaseStateManager {
                             SVController.reconfigureTo(currentView);
                         }
                         
+						isInitializing = false;
+						
                         dt.canDeliver();
                         dt.deliverUnlock();
 
@@ -294,4 +295,11 @@ public class StandardStateManager extends BaseStateManager {
         return match;
     }
 
+	@Override
+	public void currentConsensusIdAsked(int sender) {
+		int me = SVController.getStaticConf().getProcessId();
+		SMMessage currentEid = new StandardSMMessage(me, lastEid, TOMUtil.SM_REPLY_INITIAL, 0, null, null, 0, 0);
+		tomLayer.getCommunication().send(new int[]{sender}, currentEid);
+	}
+	
 }
