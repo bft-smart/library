@@ -80,9 +80,9 @@ public abstract class DefaultSingleRecoverable implements Recoverable, SingleExe
 	            stateLock.unlock();
 	            saveState(snapshot, eid, 0, 0/*tomLayer.lm.getLeader(cons.getId(), cons.getDecisionRound().getNumber())*/);
 	        } else {
-//	            System.out.println("(DefaultSingleRecoverable.executeOrdered) Storing message batch in the state log for consensus " + eid);
 	            saveCommands(commands.toArray(new byte[0][]), eid, 0, 0);
 	        }
+			getStateManager().setLastEID(eid);
 	        commands = new ArrayList<byte[]>();
         }
         return reply;
@@ -98,22 +98,19 @@ public abstract class DefaultSingleRecoverable implements Recoverable, SingleExe
     }
     
     private StateLog getLog() {
-        
         if(log == null)
-            	initLog();
-        
+           	initLog();
     	return log;
     }
     
     private void saveState(byte[] snapshot, int lastEid, int decisionRound, int leader) {
-
         StateLog thisLog = getLog();
 
         logLock.lock();
 
         Logger.println("(TOMLayer.saveState) Saving state of EID " + lastEid + ", round " + decisionRound + " and leader " + leader);
 
-        thisLog.newCheckpoint(snapshot, computeHash(snapshot));
+        thisLog.newCheckpoint(snapshot, computeHash(snapshot), lastEid);
         thisLog.setLastEid(-1);
         thisLog.setLastCheckpointEid(lastEid);
         thisLog.setLastCheckpointRound(decisionRound);
@@ -133,8 +130,7 @@ public abstract class DefaultSingleRecoverable implements Recoverable, SingleExe
 
         Logger.println("(TOMLayer.saveBatch) Saving batch of EID " + lastEid + ", round " + decisionRound + " and leader " + leader);
 
-        thisLog.addMessageBatch(commands, decisionRound, leader);
-        thisLog.setLastEid(lastEid);
+        thisLog.addMessageBatch(commands, decisionRound, leader, lastEid);
 
         logLock.unlock();
         

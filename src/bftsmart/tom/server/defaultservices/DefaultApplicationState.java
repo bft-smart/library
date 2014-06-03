@@ -105,7 +105,6 @@ public class DefaultApplicationState implements ApplicationState {
      * @return Execution ID for the last messages batch delivered to the application
      */
     public int getLastEid() {
-
         return lastEid;
     }
     

@@ -26,6 +26,7 @@ import bftsmart.statemanagement.StateManager;
 import bftsmart.tom.core.DeliveryThread;
 import bftsmart.tom.core.TOMLayer;
 import bftsmart.tom.util.Logger;
+import bftsmart.tom.util.TOMUtil;
 
 /**
  * 
@@ -36,6 +37,7 @@ public abstract class BaseStateManager implements StateManager {
 	
     protected TOMLayer tomLayer;
     protected ServerViewController SVController;
+	protected DeliveryThread dt;
 	
     protected HashMap<Integer, ApplicationState> senderStates = null;
     protected HashMap<Integer, View> senderViews = null;
@@ -46,7 +48,10 @@ public abstract class BaseStateManager implements StateManager {
     protected int waitingEid = -1;
     protected int lastEid;
     protected ApplicationState state;
-
+    
+    protected boolean isInitializing =  true;
+    private HashMap<Integer, Integer> senderEids = null;
+    
     public BaseStateManager() {
         senderStates = new HashMap<Integer, ApplicationState>();
         senderViews = new HashMap<Integer, View>();
@@ -136,8 +141,80 @@ public abstract class BaseStateManager implements StateManager {
 	
 	@Override
     public boolean isRetrievingState() {
+		if(isInitializing) {
+			return true;
+		}
     	return waitingEid > -1;
     }
+	
+	@Override
+	public void askCurrentConsensusId() {
+		int me = SVController.getStaticConf().getProcessId();
+		int[] target = SVController.getCurrentViewAcceptors();
+			
+		SMMessage currentEid = new StandardSMMessage(me, -1, TOMUtil.SM_ASK_INITIAL, 0, null, null, 0, 0);
+		tomLayer.getCommunication().send(target, currentEid);
+		
+		target = SVController.getCurrentViewOtherAcceptors();
+		
+		while(isInitializing) {
+			tomLayer.getCommunication().send(target, currentEid);
+			try {
+				Thread.sleep(1000);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+		}
+	}
+	
+	@Override
+	public void currentConsensusIdAsked(int sender) {
+		int me = SVController.getStaticConf().getProcessId();
+		int lastConsensusId = lastEid;
+		SMMessage currentEidReply = new StandardSMMessage(me, lastConsensusId, TOMUtil.SM_REPLY_INITIAL, 0, null, null, 0, 0);
+		tomLayer.getCommunication().send(new int[]{sender}, currentEidReply);
+	}
+
+	@Override
+	public synchronized void currentConsensusIdReceived(SMMessage smsg) {
+		if(!isInitializing || waitingEid > -1)
+			return;
+		if(senderEids == null) {
+			senderEids = new HashMap<Integer, Integer>();
+		}
+		senderEids.put(smsg.getSender(), smsg.getEid());
+		if(senderEids.size() >= SVController.getQuorumAccept()) {
+			HashMap<Integer, Integer> eids = new HashMap<Integer, Integer>();
+			for(int value : senderEids.values()) {
+				Integer count = eids.get(value);
+				if(count == null)
+					eids.put(value, 0);
+				else
+					eids.put(value, count.intValue() + 1);
+			}
+			for(int key : eids.keySet()) {
+				if(eids.get(key) >= SVController.getQuorumAccept()) {
+					if(key == lastEid) {
+						System.out.println("QUORUM OF REPLICAS REPLIED WITH EID " + key);
+						dt.deliverLock();
+						isInitializing = false;
+						tomLayer.setLastExec(key);
+						dt.canDeliver();
+						dt.deliverUnlock();
+						break;
+					} else {
+						//ask for state
+						System.out.println("QUORUM " + key + " DIFFERENT FROM MY EID " + lastEid + ". WILL ASK FOR STATE");
+		                lastEid = key + 1;
+		                if(waitingEid == -1) {
+			                waitingEid = key;
+			                requestState();
+		                }
+					}
+				}
+			}
+		}
+	}
 
 	protected abstract void requestState();
 	

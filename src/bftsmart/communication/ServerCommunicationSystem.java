@@ -115,7 +115,6 @@ public class ServerCommunicationSystem extends Thread {
 
                 if (sm != null) {
                     Logger.println("<-------receiving---------- " + sm);
-                    
                     messageHandler.processData(sm);
                     count++;
                 } else {                

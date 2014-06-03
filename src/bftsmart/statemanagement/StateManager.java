@@ -38,6 +38,14 @@ public interface StateManager {
     public void SMRequestDeliver(SMMessage msg, boolean isBFT);
     
     public void SMReplyDeliver(SMMessage msg, boolean isBFT);
+
+    public void askCurrentConsensusId();
+    
+    public void currentConsensusIdAsked(int sender);
+    
+    public void currentConsensusIdReceived(SMMessage msg);
+    
+    public void setLastEID(int lastEid);
     
     public boolean isRetrievingState();
 }

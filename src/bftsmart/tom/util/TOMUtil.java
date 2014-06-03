@@ -44,6 +44,8 @@ public class TOMUtil {
     public static final int SYNC = 5;
     public static final int SM_REQUEST = 6;
     public static final int SM_REPLY = 7;
+    public static final int SM_ASK_INITIAL = 11;
+    public static final int SM_REPLY_INITIAL = 12;
 
     public static final int TRIGGER_LC_LOCALLY = 8;
     public static final int TRIGGER_SM_LOCALLY = 9;

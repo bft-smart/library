@@ -27,6 +27,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.locks.ReentrantLock;
 
+import bftsmart.statemanagement.ApplicationState;
+
 public class DiskStateLog extends StateLog {
 
 	private int id;
@@ -52,8 +54,6 @@ public class DiskStateLog extends StateLog {
 		this.syncLog = syncLog;
 		this.syncCkp = syncCkp;
 		this.logPointers = new HashMap<Integer, Long>();
-		if (isToLog)
-			createLogFile();
 	}
 
 	private void createLogFile() {
@@ -79,14 +79,17 @@ public class DiskStateLog extends StateLog {
 	 * @param batch
 	 *            The batch of messages to be kept.
 	 */
-	public void addMessageBatch(byte[][] commands, int round, int leader) {
-			CommandsInfo command = new CommandsInfo(commands, round, leader);
-			
-			if (isToLog)
-				writeCommandToDisk(command);
+	public void addMessageBatch(byte[][] commands, int round, int leader, int consensusId) {
+		CommandsInfo command = new CommandsInfo(commands, round, leader);
+		if (isToLog) {
+			if(log == null)
+				createLogFile();
+			writeCommandToDisk(command, consensusId);
+		}
+		setLastEid(consensusId);
 	}
 
-	private void writeCommandToDisk(CommandsInfo commandsInfo) {
+	private void writeCommandToDisk(CommandsInfo commandsInfo, int consensusId) {
 		ByteArrayOutputStream bos = new ByteArrayOutputStream();
 		try {
 			ObjectOutputStream oos = new ObjectOutputStream(bos);
@@ -95,14 +98,15 @@ public class DiskStateLog extends StateLog {
 
 			byte[] batchBytes = bos.toByteArray();
 
-			ByteBuffer bf = ByteBuffer.allocate(2 * INT_BYTE_SIZE
+			ByteBuffer bf = ByteBuffer.allocate(3 * INT_BYTE_SIZE
 					+ batchBytes.length);
 			bf.putInt(batchBytes.length);
 			bf.put(batchBytes);
 			bf.putInt(EOF);
+			bf.putInt(consensusId);
 			
 			log.write(bf.array());
-			log.seek(log.length() - INT_BYTE_SIZE);// Next write will overwrite
+			log.seek(log.length() - 2 * INT_BYTE_SIZE);// Next write will overwrite
 													// the EOF mark
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
@@ -110,7 +114,7 @@ public class DiskStateLog extends StateLog {
 	    }
 	}
 
-	public void newCheckpoint(byte[] state, byte[] stateHash) {
+	public void newCheckpoint(byte[] state, byte[] stateHash, int consensusId) {
 		String ckpPath = DEFAULT_DIR + String.valueOf(id) + "."
 				+ System.currentTimeMillis() + ".tmp";
 		try {
@@ -119,16 +123,18 @@ public class DiskStateLog extends StateLog {
 					(syncCkp ? "rwd" : "rw"));
 
 			ByteBuffer bf = ByteBuffer.allocate(state.length + stateHash.length
-					+ 3 * INT_BYTE_SIZE);
+					+ 4 * INT_BYTE_SIZE);
 			bf.putInt(state.length);
 			bf.put(state);
 			bf.putInt(stateHash.length);
 			bf.put(stateHash);
 			bf.putInt(EOF);
+			bf.putInt(consensusId);
 
 			byte[] ckpState = bf.array();
 			
 			ckp.write(ckpState);
+			ckp.close();
 
 			if (isToLog)
 				deleteLogFile();
@@ -161,10 +167,10 @@ public class DiskStateLog extends StateLog {
 
 	private void deleteLogFile() {
 		try {
-			log.close();
+			if(log != null)
+				log.close();
 			new File(logPath).delete();
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 	}
@@ -189,7 +195,7 @@ public class DiskStateLog extends StateLog {
 
 			int size = eid - lastCheckpointEid;
 
-			FileRecoverer fr = new FileRecoverer();
+			FileRecoverer fr = new FileRecoverer(id, DEFAULT_DIR);
 
 //			if (size > 0 && sendState) {
 			if (size > 0) {
@@ -219,7 +225,7 @@ public class DiskStateLog extends StateLog {
 	}
 	
 	public void transferApplicationState(SocketChannel sChannel, int eid) {
-		FileRecoverer fr = new FileRecoverer();
+		FileRecoverer fr = new FileRecoverer(id, DEFAULT_DIR);
 		fr.transferCkpState(sChannel, lastCkpPath);
 //		int lastCheckpointEid = getLastCheckpointEid();
 //		int lastEid = getLastEid();
@@ -252,8 +258,31 @@ public class DiskStateLog extends StateLog {
 	 *            used to updated this log
 	 */
 	public void update(DefaultApplicationState transState) {
-		newCheckpoint(transState.getState(), transState.getStateHash());
+		newCheckpoint(transState.getState(), transState.getStateHash(), transState.getLastCheckpointEid());
 		setLastCheckpointEid(transState.getLastCheckpointEid());
 	}
-
+	
+	protected ApplicationState loadDurableState() {
+		FileRecoverer fr = new FileRecoverer(id, DEFAULT_DIR);
+		lastCkpPath = fr.getLatestFile(".ckp");
+		logPath = fr.getLatestFile(".log");
+		byte[] checkpoint = null;
+		if(lastCkpPath != null)
+			checkpoint = fr.getCkpState(lastCkpPath);
+		CommandsInfo[] log = null;
+		if(logPath !=null)
+			log = fr.getLogState(0, logPath);
+		int ckpLastConsensusId = fr.getCkpLastConsensusId();
+		int logLastConsensusId = fr.getLogLastConsensusId();
+		System.out.println("log last consensus di: " + logLastConsensusId);
+		ApplicationState state = new DefaultApplicationState(log, ckpLastConsensusId, -1, -1,
+				logLastConsensusId, checkpoint, fr.getCkpStateHash());
+		if(logLastConsensusId > ckpLastConsensusId) {
+			super.setLastEid(logLastConsensusId);
+		} else
+			super.setLastEid(ckpLastConsensusId);
+		super.setLastCheckpointEid(ckpLastConsensusId);
+		
+		return state;
+	}
 }

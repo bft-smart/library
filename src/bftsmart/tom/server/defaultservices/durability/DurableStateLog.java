@@ -51,6 +51,7 @@ public class DurableStateLog extends StateLog {
 	private boolean isToLog;
 	private ReentrantLock checkpointLock = new ReentrantLock();
 	private Map<Integer, Long> logPointers;
+	private FileRecoverer fr;
 	
 	public DurableStateLog(int id, byte[] initialState, byte[] initialHash,
 			boolean isToLog, boolean syncLog, boolean syncCkp) {
@@ -60,8 +61,7 @@ public class DurableStateLog extends StateLog {
 		this.syncLog = syncLog;
 		this.syncCkp = syncCkp;
 		this.logPointers = new HashMap<Integer, Long>();
-		if (isToLog)
-			createLogFile();
+		this.fr = new FileRecoverer(id, DEFAULT_DIR);
 	}
 
 	private void createLogFile() {
@@ -69,10 +69,6 @@ public class DurableStateLog extends StateLog {
 				+ System.currentTimeMillis() + ".log";
 		try {
 			log = new RandomAccessFile(logPath, (syncLog ? "rwd" : "rw"));
-			// PreAllocation
-			/*
-			 * log.setLength(TEN_MB); log.seek(0);
-			 */
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
 		}
@@ -83,17 +79,22 @@ public class DurableStateLog extends StateLog {
 	 * in the same order in which they are delivered to the application. Only
 	 * the 'k' batches received after the last checkpoint are supposed to be
 	 * kept
-	 * 
-	 * @param batch
-	 *            The batch of messages to be kept.
+     * @param commands The batch of messages to be kept.
+     * @param round the round in which the messages were ordered
+     * @param leader the leader by the moment the messages were ordered
+     * @param consensusId the consensus id added to the batch
 	 */
-	public void addMessageBatch(byte[][] commands, int round, int leader) {
+	public void addMessageBatch(byte[][] commands, int round, int leader, int consensusId) {
+//		System.out.println("DurableStateLog#addMessageBatch. consensusId: " + consensusId);
 		CommandsInfo command = new CommandsInfo(commands, round, leader);
-		if (isToLog)
-			writeCommandToDisk(command);
+		if (isToLog) {
+			if(log == null)
+				createLogFile();
+			writeCommandToDisk(command, consensusId);
+		}
 	}
 
-	private void writeCommandToDisk(CommandsInfo commandsInfo) {
+	private void writeCommandToDisk(CommandsInfo commandsInfo, int consensusId) {
 		ByteArrayOutputStream bos = new ByteArrayOutputStream();
 		try {
 			ObjectOutputStream oos = new ObjectOutputStream(bos);
@@ -102,22 +103,23 @@ public class DurableStateLog extends StateLog {
 
 			byte[] batchBytes = bos.toByteArray();
 
-			ByteBuffer bf = ByteBuffer.allocate(2 * INT_BYTE_SIZE
+			ByteBuffer bf = ByteBuffer.allocate(3 * INT_BYTE_SIZE
 					+ batchBytes.length);
 			bf.putInt(batchBytes.length);
 			bf.put(batchBytes);
 			bf.putInt(EOF);
+			bf.putInt(consensusId);
 			
 			log.write(bf.array());
-			log.seek(log.length() - INT_BYTE_SIZE);// Next write will overwrite
+			log.seek(log.length() - 2 * INT_BYTE_SIZE);// Next write will overwrite
 													// the EOF mark
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 	    }
 	}
-
-	public void newCheckpoint(byte[] state, byte[] stateHash) {
+	
+	public void newCheckpoint(byte[] state, byte[] stateHash, int consensusId) {
 		String ckpPath = DEFAULT_DIR + String.valueOf(id) + "."
 				+ System.currentTimeMillis() + ".tmp";
 		try {
@@ -126,16 +128,18 @@ public class DurableStateLog extends StateLog {
 					(syncCkp ? "rwd" : "rw"));
 
 			ByteBuffer bf = ByteBuffer.allocate(state.length + stateHash.length
-					+ 3 * INT_BYTE_SIZE);
+					+ 4 * INT_BYTE_SIZE);
 			bf.putInt(state.length);
 			bf.put(state);
 			bf.putInt(stateHash.length);
 			bf.put(stateHash);
 			bf.putInt(EOF);
+			bf.putInt(consensusId);
 
 			byte[] ckpState = bf.array();
 			
 			ckp.write(ckpState);
+			ckp.close();
 
 			if (isToLog)
 				deleteLogFile();
@@ -168,10 +172,10 @@ public class DurableStateLog extends StateLog {
 
 	private void deleteLogFile() {
 		try {
-			log.close();
+			if(log != null)
+				log.close();
 			new File(logPath).delete();
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 	}
@@ -184,8 +188,6 @@ public class DurableStateLog extends StateLog {
 		System.out.println("LAST CKP EID = " + lastCheckpointEid);
 		System.out.println("EID = " + eid);
 		System.out.println("LAST EID = " + lastEid);
-		
-		FileRecoverer fr = new FileRecoverer();
 		
 		if(cstRequest instanceof CSTRequestF1) {
 			CSTRequestF1 requestF1 = (CSTRequestF1)cstRequest;
@@ -251,7 +253,6 @@ public class DurableStateLog extends StateLog {
 	}
 	
 	public void transferApplicationState(SocketChannel sChannel, int eid) {
-		FileRecoverer fr = new FileRecoverer();
 		fr.transferCkpState(sChannel, lastCkpPath);
 		
 //		int lastCheckpointEid = getLastCheckpointEid();
@@ -280,13 +281,33 @@ public class DurableStateLog extends StateLog {
 	 * Updates this log, according to the information contained in the
 	 * TransferableState object
 	 * 
-	 * @param transState
-	 *            TransferableState object containing the information which is
-	 *            used to updated this log
+	 * @param transState TransferableState object containing the information which is
+	 * used to updated this log
 	 */
 	public void update(CSTState state) {
-		newCheckpoint(state.getSerializedState(), state.getStateHash());
+		newCheckpoint(state.getSerializedState(), state.getStateHash(), state.getCheckpointEid());
 		setLastCheckpointEid(state.getCheckpointEid());
 	}
 
+	protected CSTState loadDurableState() {
+		FileRecoverer fr = new FileRecoverer(id, DEFAULT_DIR);
+		lastCkpPath = fr.getLatestFile(".ckp");
+		logPath = fr.getLatestFile(".log");
+		byte[] checkpoint = null;
+		if(lastCkpPath != null)
+			checkpoint = fr.getCkpState(lastCkpPath);
+		CommandsInfo[] log = null;
+		if(logPath !=null)
+			log = fr.getLogState(0, logPath);
+		int ckpLastConsensusId = fr.getCkpLastConsensusId();
+		int logLastConsensusId = fr.getLogLastConsensusId();
+		CSTState cstState = new CSTState(checkpoint, fr.getCkpStateHash(), log, null,
+				null, null, ckpLastConsensusId, logLastConsensusId);
+		if(logLastConsensusId > ckpLastConsensusId) {
+			super.setLastEid(logLastConsensusId);
+		} else
+			super.setLastEid(ckpLastConsensusId);
+		super.setLastCheckpointEid(ckpLastConsensusId);
+		return cstState;
+	}
 }
