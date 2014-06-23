@@ -25,13 +25,13 @@ Papers describing different aspects of BFT-SMaRt:
 
 Non-complete list of papers that use BFT-SMaRt or parts of its code base:
 
-* Alysson Bessani, Ricardo Mendes, Tiago Oliveira, Nuno Neves, Miguel Correia, Marcelo Pasin, Paulo Verissimo. SCFS: a Shared Cloud-backed File System. USENIX’14: USENIX Annual Technical Conference. Philadelphia, USA. June 2014.
+ * Alysson Bessani, Ricardo Mendes, Tiago Oliveira, Nuno Neves, Miguel Correia, Marcelo Pasin, Paulo Verissimo. SCFS: a Shared Cloud-backed File System. USENIX’14: USENIX Annual Technical Conference. Philadelphia, USA. June 2014.
 
  * Julian James Stephen, Patrick Eugster. Assured Cloud-Based Data Analysis with ClusterBFT. Middleware'13: The 14th ACM/IFIP/USENIX International Middleware Conference. Beijing, China. December 2013.
 
  * Rolando Martins , Rajeev Gandhi , Priya Narasimhan , Soila Pertet , Antonio Casimiro , Diego Kreutz and Paulo Verissimo. Experiences with Fault-Injection in a Byzantine Fault-Tolerant Protocol. Middleware'13: The 14th ACM/IFIP/USENIX International Middleware Conference. Beijing, China. December 2013.
 
-* Vinicius Cogo, André Nogueira, João Sousa, Marcelo Pasin, Hans P. Reiser, Alysson Bessani. FITCH: Supporting Adaptive Replicated Services in the Cloud. DAIS'13: 13th International IFIP Conference on Distributed Applications and Interoperable Systems. Florence, Italy. June 2013.
+ * Vinicius Cogo, André Nogueira, João Sousa, Marcelo Pasin, Hans P. Reiser, Alysson Bessani. FITCH: Supporting Adaptive Replicated Services in the Cloud. DAIS'13: 13th International IFIP Conference on Distributed Applications and Interoperable Systems. Florence, Italy. June 2013.
 
  * Giuliana Veronese, Miguel Correia, Alysson Bessani, Lau Lung, Paulo Verissimo. Efficient Byzantine Fault Tolerance. IEEE Transactions on Computers. Vol. 62, Num. 1, pp. 16-30. IEEE Computer Society. January 2013.
 
