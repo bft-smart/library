@@ -17,17 +17,21 @@ Projects in which components use BFT-SMaRt:
 
 Papers describing different aspects of BFT-SMaRt:
 
- * Alysson Bessani, João Sousa, Eduardo Alchieri. State Machine Replication for the Masses with BFT-SMaRt. Department of Informatics, University of Lisbon. DI-FCUL-TR-2013-07. October 2013.  (*we kindly ask researchers using BFT-SMaRt to cite this report to make it easy for us to track references*)
+ * Alysson Bessani, João Sousa, Eduardo Alchieri. [http://www.di.fc.ul.pt/~bessani/publications/dsn14-bftsmart.pdf State Machine Replication for the Masses with BFT-SMaRt]. DSN'14: The 2014 IEEE/IFIP International Conference on Dependable Systems and Networks. Atlanta, Georgia, USA. June 2014. An extended version is available as technical report [http://hdl.handle.net/10455/6897 DI-FCUL-TR-2013-07]. October 2013.  (*we kindly ask researchers using BFT-SMaRt to cite this to make it easy for us to track references*)
 
- * Alysson Bessani, Marcel Santos, João Felix, Nuno Neves, Miguel Correia. On the Efficiency of Durable State Machine Replication. USENIX’13: USENIX Annual Technical Conference. San Jose, CA, USA. June 2013. 
+ * Alysson Bessani, Marcel Santos, João Felix, Nuno Neves, Miguel Correia. [http://www.di.fc.ul.pt/~bessani/publications/usenix13-dsmr.pdf On the Efficiency of Durable State Machine Replication]. USENIX’13: USENIX Annual Technical Conference. San Jose, CA, USA. June 2013. 
 
- * João Sousa, Alysson Bessani. From Byzantine Consensus to BFT State Machine Replication: A Latency-optimal transformation. EDCC'12: The 9th European Conference on Dependable Computing. Sibiu, Romania. May 2012.
+ * João Sousa, Alysson Bessani. [http://www.di.fc.ul.pt/~bessani/publications/edcc12-modsmart.pdf From Byzantine Consensus to BFT State Machine Replication: A Latency-optimal transformation]. EDCC'12: The 9th European Conference on Dependable Computing. Sibiu, Romania. May 2012.
 
 Non-complete list of papers that use BFT-SMaRt or parts of its code base:
+
+* Alysson Bessani, Ricardo Mendes, Tiago Oliveira, Nuno Neves, Miguel Correia, Marcelo Pasin, Paulo Verissimo. SCFS: a Shared Cloud-backed File System. USENIX’14: USENIX Annual Technical Conference. Philadelphia, USA. June 2014.
 
  * Julian James Stephen, Patrick Eugster. Assured Cloud-Based Data Analysis with ClusterBFT. Middleware'13: The 14th ACM/IFIP/USENIX International Middleware Conference. Beijing, China. December 2013.
 
  * Rolando Martins , Rajeev Gandhi , Priya Narasimhan , Soila Pertet , Antonio Casimiro , Diego Kreutz and Paulo Verissimo. Experiences with Fault-Injection in a Byzantine Fault-Tolerant Protocol. Middleware'13: The 14th ACM/IFIP/USENIX International Middleware Conference. Beijing, China. December 2013.
+
+* Vinicius Cogo, André Nogueira, João Sousa, Marcelo Pasin, Hans P. Reiser, Alysson Bessani. FITCH: Supporting Adaptive Replicated Services in the Cloud. DAIS'13: 13th International IFIP Conference on Distributed Applications and Interoperable Systems. Florence, Italy. June 2013.
 
  * Giuliana Veronese, Miguel Correia, Alysson Bessani, Lau Lung, Paulo Verissimo. Efficient Byzantine Fault Tolerance. IEEE Transactions on Computers. Vol. 62, Num. 1, pp. 16-30. IEEE Computer Society. January 2013.
 
