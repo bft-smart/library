@@ -352,9 +352,9 @@ public abstract class DurabilityCoordinator implements Recoverable, BatchExecuta
 				} else {
 					System.out.println("REPLICA IS IN INITIAL STATE");
 				}
-				getStateManager().askCurrentConsensusId();
 			}
-		}
+                        getStateManager().askCurrentConsensusId();
+                }
 	}
 
     private int getCheckpointPortionIndex() {
