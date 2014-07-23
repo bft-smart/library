@@ -15,20 +15,15 @@ limitations under the License.
 */
 package bftsmart.demo.microbenchmarks;
 
-import bftsmart.statemanagement.ApplicationState;
-import bftsmart.statemanagement.StateManager;
-import bftsmart.statemanagement.strategy.StandardStateManager;
 import bftsmart.tom.MessageContext;
-import bftsmart.tom.ReplicaContext;
 import bftsmart.tom.ServiceReplica;
-import bftsmart.tom.server.Recoverable;
-import bftsmart.tom.server.SingleExecutable;
+import bftsmart.tom.server.defaultservices.DefaultRecoverable;
 import bftsmart.tom.util.Storage;
 
 /**
  * Simple server that just acknowledge the reception of a request.
  */
-public final class ThroughputLatencyServer implements SingleExecutable, Recoverable {
+public final class ThroughputLatencyServer extends DefaultRecoverable{
     
     private int interval;
     private int replySize;
@@ -48,12 +43,8 @@ public final class ThroughputLatencyServer implements SingleExecutable, Recovera
     private Storage writeLatency = null;
     private Storage acceptLatency = null;
     private ServiceReplica replica;
-    private ReplicaContext replicaContext;
-
-    private StateManager stateManager;
 
     public ThroughputLatencyServer(int id, int interval, int replySize, int stateSize, boolean context) {
-        replica = new ServiceReplica(id, this, this);
 
         this.interval = interval;
         this.replySize = replySize;
@@ -71,14 +62,22 @@ public final class ThroughputLatencyServer implements SingleExecutable, Recovera
         proposeLatency = new Storage(interval);
         writeLatency = new Storage(interval);
         acceptLatency = new Storage(interval);
+
+        replica = new ServiceReplica(id, this, this);
     }
     
-    public void setReplicaContext(ReplicaContext replicaContext) {
-    	this.replicaContext = replicaContext;
-    }
-
-    public byte[] executeOrdered(byte[] command, MessageContext msgCtx) {
-        return execute(command,msgCtx);
+    @Override
+    public byte[][] appExecuteBatch(byte[][] commands, MessageContext[] msgCtxs) {
+        
+        byte[][] replies = new byte[commands.length][];
+        
+        for (int i = 0; i < commands.length; i++) {
+            
+            replies[i] = execute(commands[i],msgCtxs[i]);
+            
+        }
+        
+        return replies;
     }
     
     public byte[] executeUnordered(byte[] command, MessageContext msgCtx) {
@@ -184,28 +183,15 @@ public final class ThroughputLatencyServer implements SingleExecutable, Recovera
         new ThroughputLatencyServer(processId,interval,replySize, stateSize, context);        
     }
 
-    public byte[] getState() {
-        return state;
-    }
-
-    public void setState(byte[] state) {
+    @Override
+    public void installSnapshot(byte[] state) {
+        //nothing
     }
 
     @Override
-    public ApplicationState getState(int eid, boolean sendState) {
-        throw new UnsupportedOperationException("Not supported yet.");
+    public byte[] getSnapshot() {
+        return this.state;
     }
 
-    @Override
-    public int setState(ApplicationState state) {
-        throw new UnsupportedOperationException("Not supported yet.");
-    }
-
-    @Override
-    public StateManager getStateManager() {
-    	if(stateManager == null)
-    		stateManager = new StandardStateManager();
-    	return stateManager;
-    }
    
 }
