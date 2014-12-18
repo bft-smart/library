@@ -21,7 +21,6 @@ import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
-import bftsmart.communication.client.ReplyListener;
 import bftsmart.reconfiguration.ReconfigureReply;
 import bftsmart.reconfiguration.views.View;
 import bftsmart.tom.core.messages.TOMMessage;
@@ -39,8 +38,8 @@ import bftsmart.tom.util.TOMUtil;
 public class ServiceProxy extends TOMSender {
 
     // Locks for send requests and receive replies
-    private ReentrantLock canReceiveLock = new ReentrantLock();
-    private ReentrantLock canSendLock = new ReentrantLock();
+    protected ReentrantLock canReceiveLock = new ReentrantLock();
+    protected ReentrantLock canSendLock = new ReentrantLock();
     private Semaphore sm = new Semaphore(0);
     private int reqId = -1; // request id
     private int operationId = -1; // request id
@@ -52,7 +51,6 @@ public class ServiceProxy extends TOMSender {
     private int invokeTimeout = 40;
     private Comparator<byte[]> comparator;
     private Extractor extractor;
-    private ReplyListener replyListener = null;
 
     /**
      * Constructor
@@ -106,7 +104,6 @@ public class ServiceProxy extends TOMSender {
                 return replies[lastReceived];
             }
         };
-        replyListener = null;
     }
 
     /**
@@ -137,21 +134,6 @@ public class ServiceProxy extends TOMSender {
         return invoke(request, TOMMessageType.UNORDERED_REQUEST);
     }
 
-    public void invokeAsynchronous(byte[] request, ReplyListener listener, int[] targets, TOMMessageType type) {
-    	canSendLock.lock();
-    	receivedReplies = 0;
-        reqId = generateRequestId(type);
-        operationId = generateOperationId();
-        requestType = type;
-        replyQuorum = getReplyQuorum();
-        this.replyListener = listener;
-		try {
-        	sendMessageToTargets(request, reqId, operationId, targets, type);
-		} finally {
-	    	canSendLock.unlock();
-		}
-    }
-
     /**
      * This method sends a request to the replicas, and returns the related reply.
      * If the servers take more than invokeTimeout seconds the method returns null.
@@ -169,7 +151,6 @@ public class ServiceProxy extends TOMSender {
         Arrays.fill(replies, null);
         receivedReplies = 0;
         response = null;
-        replyListener = null;
         replyQuorum = getReplyQuorum();
 
         // Send the request to the replicas, and get its ID
@@ -287,11 +268,6 @@ public class ServiceProxy extends TOMSender {
             }
 
             if (reply.getSequence() == reqId && reply.getReqType() == requestType) {
-                if (replyListener != null) {
-                    replyListener.replyReceived(reply);
-                    canReceiveLock.unlock();
-                    return;
-                }
 
                 Logger.println("Receiving reply from " + reply.getSender()
                         + " with reqId:" + reply.getSequence() + ". Putting on pos=" + pos);
