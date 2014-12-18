@@ -123,9 +123,17 @@ public class StandardStateManager extends BaseStateManager {
         if (SVController.getStaticConf().isStateTransferEnabled() && dt.getRecoverer() != null) {
         	StandardSMMessage stdMsg = (StandardSMMessage)msg;
             boolean sendState = stdMsg.getReplica() == SVController.getStaticConf().getProcessId();
+            
+            System.out.println("-- Should I send the state? " + sendState);
+            
             ApplicationState thisState = dt.getRecoverer().getState(msg.getEid(), sendState);
             if (thisState == null) {
+                
+                System.out.println("-- For some reason, I am sending a void state");
               thisState = dt.getRecoverer().getState(-1, sendState);
+            }
+            else {
+                System.out.println("-- Will I send the state? " + thisState.getSerializedState() != null);
             }
             int[] targets = { msg.getSender() };
             SMMessage smsg = new StandardSMMessage(SVController.getStaticConf().getProcessId(),
