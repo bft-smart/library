@@ -161,7 +161,7 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
         Logger.println("(TOMLayer.saveState) Saving state of EID " + lastEid + ", round " + decisionRound + " and leader " + leader);
 
         thisLog.newCheckpoint(snapshot, computeHash(snapshot), lastEid);
-        thisLog.setLastEid(-1);
+        thisLog.setLastEid(lastEid);
         thisLog.setLastCheckpointEid(lastEid);
         thisLog.setLastCheckpointRound(decisionRound);
         thisLog.setLastCheckpointLeader(leader);
@@ -190,8 +190,8 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
 	 * @param msgCtx
 	 */
 	private void saveCommands(byte[][] commands, int[] eids) {
-		if(!config.isToLog())
-			return;
+		//if(!config.isToLog())
+		//	return;
 		if(commands.length != eids.length)
 			System.out.println("----SIZE OF COMMANDS AND EIDS IS DIFFERENT----");
 		logLock.lock();

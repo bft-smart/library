@@ -92,7 +92,7 @@ public class StateLog {
         position = 0;
         this.state = state;
         this.stateHash = stateHash;
-        
+                       
     }
 
     /**
@@ -154,7 +154,7 @@ public class StateLog {
      */
     public void setLastEid(int lastEid) {
 
-        this.lastEid = lastEid;
+       this.lastEid = lastEid;
     }
 
     /**
@@ -231,12 +231,15 @@ public class StateLog {
      */
     public DefaultApplicationState getApplicationState(int eid, boolean setState) {
 
-    	System.out.println("--- Eid requested: " + eid + ". Last checkpoint: " + lastCheckpointEid);
+    	System.out.println("--- Eid requested: " + eid + ". Last checkpoint: " + lastCheckpointEid + ". Last EID: " + this.lastEid);
         CommandsInfo[] batches = null;
 
         int lastEid = -1;
-
+       
         if (eid >= lastCheckpointEid && eid <= this.lastEid) {
+            
+    	System.out.println("--- Constructing ApplicationState up until EID " + eid);
+
             int size = eid - lastCheckpointEid ;
 
             if (size > 0) {
