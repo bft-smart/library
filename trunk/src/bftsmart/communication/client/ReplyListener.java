@@ -15,10 +15,11 @@ limitations under the License.
 */
 package bftsmart.communication.client;
 
+import bftsmart.tom.RequestContext;
 import bftsmart.tom.core.messages.TOMMessage;
 
 
 public interface ReplyListener {
 
-	public void replyReceived(TOMMessage reply);
+	public void replyReceived(RequestContext context, TOMMessage reply);
 }
