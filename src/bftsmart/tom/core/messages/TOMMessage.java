@@ -30,7 +30,7 @@ import bftsmart.tom.util.DebugInfo;
 /**
  * This class represents a total ordered message
  */
-public class TOMMessage extends SystemMessage implements Externalizable, Comparable {
+public class TOMMessage extends SystemMessage implements Externalizable, Comparable, Cloneable {
 
 	//******* EDUARDO BEGIN **************//
 	private int viewID; //current sender view
@@ -337,4 +337,8 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 
 		 return EQUAL;
 	 }
+	 
+	 public Object clone() throws CloneNotSupportedException {
+			return super.clone();
+		}
 }

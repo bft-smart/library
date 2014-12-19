@@ -20,7 +20,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
-
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.concurrent.locks.ReentrantLock;
@@ -69,6 +68,7 @@ public final class CounterServer implements BatchExecutable, Recoverable  {
     
     public void setReplicaContext(ReplicaContext replicaContext) {
     	this.replicaContext = replicaContext;
+		getStateManager().askCurrentConsensusId();
     }
     
     @Override

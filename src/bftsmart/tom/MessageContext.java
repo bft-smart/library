@@ -15,6 +15,8 @@ limitations under the License.
 */
 package bftsmart.tom;
 
+import java.io.Serializable;
+
 import bftsmart.tom.core.messages.TOMMessage;
 
 /**
@@ -24,8 +26,11 @@ import bftsmart.tom.core.messages.TOMMessage;
  * 
  * @author alysson
  */
-public class MessageContext {
-    private long timestamp;
+public class MessageContext implements Serializable {
+	
+	private static final long serialVersionUID = -3757195646384786213L;
+	
+	private long timestamp;
     private byte[] nonces;
     private int regency;
     private int consensusId;

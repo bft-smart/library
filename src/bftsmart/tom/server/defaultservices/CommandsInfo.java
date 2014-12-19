@@ -18,6 +18,8 @@ package bftsmart.tom.server.defaultservices;
 import java.io.Serializable;
 import java.util.Arrays;
 
+import bftsmart.tom.MessageContext;
+
 /**
  *
  * @author Joao Sousa
@@ -27,17 +29,36 @@ public class CommandsInfo implements Serializable {
 	private static final long serialVersionUID = 342711292879899682L;
 	
 	public final byte[][] commands;
+	public final MessageContext[] msgCtx;
     public final int round;
     public final int leader;
 
 
     public CommandsInfo () {
         this.commands = null;
+        this.msgCtx = null;
         this.round = -1;
         this.leader = -1;
     }
+    
     public CommandsInfo(byte[][] commands, int round, int leader) {
+    	this(commands, null, round, leader);
+    }
+    
+    public CommandsInfo(byte[][] commands, MessageContext[] msgCtx, int round, int leader) {
         this.commands = commands;
+        MessageContext[] onlyNeeded = null;
+        if (msgCtx != null && msgCtx.length > 0) {
+        	onlyNeeded = new MessageContext[msgCtx.length];
+        	for(int i = 0; i < msgCtx.length; i++) {
+				MessageContext msg = new MessageContext(
+						msgCtx[i].getTimestamp(), null, msgCtx[i].getRegency(),
+						msgCtx[i].getConsensusId(), msgCtx[i].getSender(),
+						msgCtx[i].getFirstInBatch());
+				onlyNeeded[i] = msg;
+        	}
+        }
+        this.msgCtx = onlyNeeded;
         this.round = round;
         this.leader = leader;
     }
