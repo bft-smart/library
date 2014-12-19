@@ -30,6 +30,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import bftsmart.statemanagement.strategy.durability.CSTRequest;
 import bftsmart.statemanagement.strategy.durability.CSTRequestF1;
 import bftsmart.statemanagement.strategy.durability.CSTState;
+import bftsmart.tom.MessageContext;
 import bftsmart.tom.server.defaultservices.CommandsInfo;
 import bftsmart.tom.server.defaultservices.FileRecoverer;
 import bftsmart.tom.server.defaultservices.StateLog;
@@ -84,9 +85,9 @@ public class DurableStateLog extends StateLog {
      * @param leader the leader by the moment the messages were ordered
      * @param consensusId the consensus id added to the batch
 	 */
-	public void addMessageBatch(byte[][] commands, int round, int leader, int consensusId) {
+	public void addMessageBatch(byte[][] commands, MessageContext[] msgCtx, int round, int leader, int consensusId) {
 //		System.out.println("DurableStateLog#addMessageBatch. consensusId: " + consensusId);
-		CommandsInfo command = new CommandsInfo(commands, round, leader);
+		CommandsInfo command = new CommandsInfo(commands, msgCtx, round, leader);
 		if (isToLog) {
 			if(log == null)
 				createLogFile();

@@ -679,13 +679,16 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
 							System.out.println("[DEBUG INFO FOR LAST EID #1]");
 
-							if (exec.getDecisionRound() == null) 
+							if (exec.getDecisionRound() == null){
 								System.out.println("No decision round for eid " + last);
-							else System.out.println("round for eid: " + last + ": " + exec.getDecisionRound().toString());
-							if (exec.getDecisionRound().propValue == null) 
-								System.out.println("No propose for eid " + last);
-							else {
-								System.out.println("Propose hash for eid " + last + ": " + Base64.encodeBase64String(computeHash(exec.getDecisionRound().propValue)));
+							}else{
+								System.out.println("round for eid: " + last + ": " + exec.getDecisionRound().toString());
+
+								if (exec.getDecisionRound().propValue == null) 
+									System.out.println("No propose for eid " + last);
+								else {
+									System.out.println("Propose hash for eid " + last + ": " + Base64.encodeBase64String(computeHash(exec.getDecisionRound().propValue)));
+								}
 							}
 
 							return;

@@ -168,7 +168,7 @@ public final class DeliveryThread extends Thread {
   			while (tomLayer.isRetrievingState()) {
   				System.out.println("(DeliveryThread.run) Retrieving State.");
   				canDeliver.awaitUninterruptibly();
-  				System.out.println("(DeliveryThread.run) canDeliver unleashed.");
+  				System.out.println("(DeliveryThread.run) canDeliver released.");
   			}
   			try {
   				ArrayList<Consensus> consensuses = new ArrayList<Consensus>();

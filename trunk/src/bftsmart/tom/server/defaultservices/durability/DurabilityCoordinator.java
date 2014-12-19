@@ -331,30 +331,33 @@ public abstract class DurabilityCoordinator implements Recoverable, BatchExecuta
 	@Override
 	public void setReplicaContext(ReplicaContext replicaContext) {
 		this.config = replicaContext.getStaticConfiguration();
-		if(log == null) {
-	        globalCheckpointPeriod = config.getGlobalCheckpointPeriod();
-	        replicaCkpIndex = getCheckpointPortionIndex();
-	        checkpointPortion = globalCheckpointPeriod / config.getN();
-	        
-//			byte[] state = getSnapshot();
-			if(config.isToLog()) {
+		if (log == null) {
+			globalCheckpointPeriod = config.getGlobalCheckpointPeriod();
+			replicaCkpIndex = getCheckpointPortionIndex();
+			checkpointPortion = globalCheckpointPeriod / config.getN();
+
+			// byte[] state = getSnapshot();
+			if (config.isToLog()) {
 				int replicaId = config.getProcessId();
 				boolean isToLog = config.isToLog();
 				boolean syncLog = config.isToWriteSyncLog();
 				boolean syncCkp = config.isToWriteSyncCkp();
-//				log = new DurableStateLog(replicaId, state, computeHash(state), isToLog, syncLog, syncCkp);
-				log = new DurableStateLog(replicaId, null, null, isToLog, syncLog, syncCkp);
+				// log = new DurableStateLog(replicaId, state,
+				// computeHash(state), isToLog, syncLog, syncCkp);
+				log = new DurableStateLog(replicaId, null, null, isToLog,
+						syncLog, syncCkp);
 				CSTState storedState = log.loadDurableState();
-				if(storedState.getLastEid() > -1) {
-					System.out.println("LAST EID RECOVERED FROM LOG: " + storedState.getLastEid());
+				if (storedState.getLastEid() > -1) {
+					System.out.println("LAST EID RECOVERED FROM LOG: "
+							+ storedState.getLastEid());
 					setState(storedState);
 					getStateManager().setLastEID(storedState.getLastEid());
 				} else {
 					System.out.println("REPLICA IS IN INITIAL STATE");
 				}
 			}
-                        getStateManager().askCurrentConsensusId();
-                }
+			getStateManager().askCurrentConsensusId();
+		}
 	}
 
     private int getCheckpointPortionIndex() {
