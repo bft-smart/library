@@ -15,73 +15,46 @@ limitations under the License.
 */
 package bftsmart.demo.counter;
 
+import bftsmart.tom.MessageContext;
+import bftsmart.tom.ServiceReplica;
+import bftsmart.tom.server.defaultservices.DefaultRecoverable;
+//import bftsmart.tom.server.defaultservices.DefaultRecoverable;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.util.concurrent.locks.ReentrantLock;
-
-import bftsmart.statemanagement.ApplicationState;
-import bftsmart.statemanagement.StateManager;
-import bftsmart.statemanagement.strategy.StandardStateManager;
-import bftsmart.tom.MessageContext;
-import bftsmart.tom.ReplicaContext;
-import bftsmart.tom.ServiceReplica;
-import bftsmart.tom.server.BatchExecutable;
-import bftsmart.tom.server.Recoverable;
+import java.io.ObjectInput;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutput;
+import java.io.ObjectOutputStream;
 
 /**
  * Example replica that implements a BFT replicated service (a counter).
  *
  */
 
-public final class CounterServer implements BatchExecutable, Recoverable  {
+public final class CounterServer extends DefaultRecoverable  {
     
     private int counter = 0;
     private int iterations = 0;
-    private ReplicaContext replicaContext = null;
     
-    private MessageDigest md;
-    private ReentrantLock stateLock = new ReentrantLock();
-    private int lastEid = -1;
-    
-    private StateManager stateManager;
+    ServiceReplica replica = null;
 
     public CounterServer(int id) {
-    	new ServiceReplica(id, this, this);
-
-        try {
-            md = MessageDigest.getInstance("MD5"); // TODO: shouldn't it be SHA?
-        } catch (NoSuchAlgorithmException ex) {
-            ex.printStackTrace();
-        }
-    }
-    
-     //******* EDUARDO BEGIN **************//
-    public CounterServer(int id, boolean join) {
-    	new ServiceReplica(id, join, this, this);
-    }
-     //******* EDUARDO END **************//
-    
-    public void setReplicaContext(ReplicaContext replicaContext) {
-    	this.replicaContext = replicaContext;
-		getStateManager().askCurrentConsensusId();
+    	replica = new ServiceReplica(id, this, this);
     }
     
     @Override
-    public byte[][] executeBatch(byte[][] commands, MessageContext[] msgCtxs) {
+    public byte[][] appExecuteBatch(byte[][] commands, MessageContext[] msgCtxs) {
         
-        stateLock.lock();
         
         byte [][] replies = new byte[commands.length][];
         for (int i = 0; i < commands.length; i++) {
-            replies[i] = execute(commands[i],msgCtxs[i]);
+            if(msgCtxs != null && msgCtxs[i] != null) {
+            replies[i] = executeSingle(commands[i],msgCtxs[i]);
+            }
         }
-        
-        stateLock.unlock();
         
         return replies;
     }
@@ -89,22 +62,35 @@ public final class CounterServer implements BatchExecutable, Recoverable  {
     @Override
     public byte[] executeUnordered(byte[] command, MessageContext msgCtx) {
                 
-        return execute(command,msgCtx);
+        iterations++;
+        System.out.println("(" + iterations + ") Reading counter at value: " + counter);
+        try {
+            ByteArrayOutputStream out = new ByteArrayOutputStream(4);
+            new DataOutputStream(out).writeInt(counter);
+            return out.toByteArray();
+        } catch (IOException ex) {
+            System.err.println("Invalid request received!");
+            return new byte[0];
+        }
     }
     
-    public byte[] execute(byte[] command, MessageContext msgCtx) {
+    private byte[] executeSingle(byte[] command, MessageContext msgCtx) {
         iterations++;
         try {
             int increment = new DataInputStream(new ByteArrayInputStream(command)).readInt();
             //System.out.println("read-only request: "+(msgCtx.getConsensusId() == -1));
             counter += increment;
-            lastEid = msgCtx.getConsensusId();
             
-            if (msgCtx.getConsensusId() == -1)
-                System.out.println("(" + iterations + ") Counter incremented: " + counter);
-            else
-                System.out.println("(" + iterations + " / " + msgCtx.getConsensusId() + ") Counter incremented: " + counter);
-            
+            if (msgCtx != null) {
+                if (msgCtx.getConsensusId() == -1) {
+                    System.out.println("(" + iterations + ") Counter was incremented: " + counter);
+                } else {
+                    System.out.println("(" + iterations + " / " + msgCtx.getConsensusId() + ") Counter was incremented: " + counter);
+                }
+            }
+            else {
+                System.out.println("(" + iterations + ") Counter was incremented: " + counter);
+            }
             ByteArrayOutputStream out = new ByteArrayOutputStream(4);
             new DataOutputStream(out).writeInt(counter);
             return out.toByteArray();
@@ -116,65 +102,45 @@ public final class CounterServer implements BatchExecutable, Recoverable  {
 
     public static void main(String[] args){
         if(args.length < 1) {
-            System.out.println("Use: java CounterServer <processId> <join option (optional)>");
+            System.out.println("Use: java CounterServer <processId>");
             System.exit(-1);
-        }
-
-        if(args.length > 1) {
-            new CounterServer(Integer.parseInt(args[0]), Boolean.valueOf(args[1]));
-        }else{        
-            new CounterServer(Integer.parseInt(args[0]));
-        }
+        }      
+        new CounterServer(Integer.parseInt(args[0]));
     }
 
-    /** THIS IS JOAO'S CODE, TO HANDLE CHECKPOINTS */
+    
+	@SuppressWarnings("unchecked")
+	@Override
+	public void installSnapshot(byte[] state) {
+		try {
+			System.out.println("setState called");
+			ByteArrayInputStream bis = new ByteArrayInputStream(state);
+			ObjectInput in = new ObjectInputStream(bis);
+			counter =  in.readInt();
+			in.close();
+			bis.close();
+		} catch (Exception e) {
+			System.err.println("[ERROR] Error deserializing state: "
+					+ e.getMessage());
+		}
+	}
 
-
-    @Override
-    public ApplicationState getState(int eid, boolean sendState) {
-        
-        stateLock.lock();
-        
-        if (eid == -1 || eid > lastEid) return new CounterState();
-        
-        byte[] b = new byte[4];
-        byte[] d = null;
-
-        for (int i = 0; i < 4; i++) {
-            int offset = (b.length - 1 - i) * 8;
-            b[i] = (byte) ((counter >>> offset) & 0xFF);
-        }
-
-        stateLock.unlock();
-        
-        d = md.digest(b);
-        
-        return new CounterState(lastEid, (sendState ? b : null), d);
-    }
-
-    @Override
-    public int setState(ApplicationState state) {
-
-        int value = 0;
-        for (int i = 0; i < 4; i++) {
-            int shift = (4 - 1 - i) * 8;
-            value += (state.getSerializedState()[i] & 0x000000FF) << shift;
-        }
-
-        //System.out.println("setting counter to: "+value);
-        
-        stateLock.lock();
-        this.counter = value;
-        stateLock.unlock();
-        this.lastEid = state.getLastEid();
-        return state.getLastEid();
-    }
-
-    @Override
-    public StateManager getStateManager() {
-    	if(stateManager == null)
-    		stateManager = new StandardStateManager();
-    	return stateManager;
-    }
-
+	@Override
+	public byte[] getSnapshot() {
+		try {
+			System.out.println("getState called");
+			ByteArrayOutputStream bos = new ByteArrayOutputStream();
+			ObjectOutput out = new ObjectOutputStream(bos);
+			out.writeInt(counter);
+			out.flush();
+			bos.flush();
+			out.close();
+			bos.close();
+			return bos.toByteArray();
+		} catch (IOException ioe) {
+			System.err.println("[ERROR] Error serializing state: "
+					+ ioe.getMessage());
+			return "ERROR".getBytes();
+		}
+	}
 }
