@@ -12,7 +12,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
-*/
+ */
 package bftsmart.tom.server.defaultservices.durability;
 
 import java.security.MessageDigest;
@@ -31,6 +31,7 @@ import bftsmart.tom.MessageContext;
 import bftsmart.tom.ReplicaContext;
 import bftsmart.tom.server.BatchExecutable;
 import bftsmart.tom.server.Recoverable;
+import bftsmart.tom.server.defaultservices.CommandsInfo;
 import bftsmart.tom.util.Logger;
 import bftsmart.tom.util.TOMUtil;
 
@@ -61,10 +62,10 @@ public abstract class DurabilityCoordinator implements Recoverable, BatchExecuta
 	private StateManager stateManager;
 
 	private int lastCkpEid;
-    private int globalCheckpointPeriod;
+	private int globalCheckpointPeriod;
 	private int checkpointPortion;
-    private int replicaCkpIndex;
-	
+	private int replicaCkpIndex;
+
 	public DurabilityCoordinator() {
 		try {
 			md = MessageDigest.getInstance("MD5"); // TODO: shouldn't it be SHA?
@@ -75,9 +76,8 @@ public abstract class DurabilityCoordinator implements Recoverable, BatchExecuta
 
 	@Override
 	public byte[][] executeBatch(byte[][] commands, MessageContext[] msgCtx) {
-
 		int eid = msgCtx[msgCtx.length-1].getConsensusId();
-		
+
 		int[] eids = consensusIds(msgCtx);
 		int checkpointIndex = findCheckpointPosition(eids);
 		byte[][] replies = new byte[commands.length][];
@@ -90,7 +90,7 @@ public abstract class DurabilityCoordinator implements Recoverable, BatchExecuta
 			replies = appExecuteBatch(commands, msgCtx);
 			stateLock.unlock();
 			Logger.println("(DurabilityCoordinator.executeBatch) Storing message batch in the state log for consensus " + eid);
-			saveCommands(commands, eids);
+			saveCommands(commands, msgCtx);
 		} else {
 			// there is a replica supposed to take the checkpoint. In this case, the commands
 			// has to be executed in two steps. First the batch of commands containing commands
@@ -99,27 +99,27 @@ public abstract class DurabilityCoordinator implements Recoverable, BatchExecuta
 			// or log, the pointer in the log is updated and then the remaining portion of the
 			// commands is executed
 			byte[][] firstHalf = new byte[checkpointIndex + 1][];
-			int[] firstHalfEids = new int[firstHalf.length];
+			MessageContext[] firstHalfMsgCtx = new MessageContext[firstHalf.length];
 			byte[][] secondHalf = new byte[commands.length - (checkpointIndex + 1)][];
-			int[] secondHalfEids = new int[secondHalf.length];
+			MessageContext[] secondHalfMsgCtx = new MessageContext[secondHalf.length];
 			System.arraycopy(commands, 0, firstHalf, 0, checkpointIndex +1);
-			System.arraycopy(eids, 0, firstHalfEids, 0, checkpointIndex+1);
+			System.arraycopy(msgCtx, 0, firstHalfMsgCtx, 0, checkpointIndex+1);
 			if(secondHalf.length > 0) {
 				System.arraycopy(commands, checkpointIndex + 1, secondHalf, 0, commands.length - (checkpointIndex + 1));
-				System.arraycopy(eids, checkpointIndex+1, secondHalfEids, 0,  commands.length - (checkpointIndex + 1));
+				System.arraycopy(msgCtx, checkpointIndex+1, secondHalfMsgCtx, 0,  commands.length - (checkpointIndex + 1));
 			} else
-				firstHalfEids = eids;
-			
+				firstHalfMsgCtx = msgCtx;
+
 			byte[][] firstHalfReplies = new byte[firstHalf.length][];
 			byte[][] secondHalfReplies = new byte[secondHalf.length][];
-			
+
 			// execute the first half
 			eid = msgCtx[checkpointIndex].getConsensusId();
 			stateLock.lock();
 			firstHalfReplies = appExecuteBatch(firstHalf, msgCtx);
 			stateLock.unlock();
-			
-	        if (eid % globalCheckpointPeriod == replicaCkpIndex && lastCkpEid < eid ) {
+
+			if (eid % globalCheckpointPeriod == replicaCkpIndex && lastCkpEid < eid ) {
 				Logger.println("(DurabilityCoordinator.executeBatch) Performing checkpoint for consensus " + eid);
 				stateLock.lock();
 				byte[] snapshot = getSnapshot();
@@ -128,32 +128,32 @@ public abstract class DurabilityCoordinator implements Recoverable, BatchExecuta
 				lastCkpEid = eid;
 			} else {
 				Logger.println("(DurabilityCoordinator.executeBatch) Storing message batch in the state log for consensus " + eid);
-				saveCommands(firstHalf, firstHalfEids);
+				saveCommands(firstHalf, firstHalfMsgCtx);
 			}
-	        
+
 			System.arraycopy(firstHalfReplies, 0, replies, 0, firstHalfReplies.length);
-			
+
 			// execute the second half if it exists
-	        if(secondHalf.length > 0) {
-//	        	System.out.println("----THERE IS A SECOND HALF----");
+			if(secondHalf.length > 0) {
+				//	        	System.out.println("----THERE IS A SECOND HALF----");
 				eid = msgCtx[msgCtx.length - 1].getConsensusId();
 				stateLock.lock();
 				secondHalfReplies = appExecuteBatch(secondHalf, msgCtx);
 				stateLock.unlock();
-	        	
+
 				Logger.println("(DurabilityCoordinator.executeBatch) Storing message batch in the state log for consensus " + eid);
-				saveCommands(secondHalf, secondHalfEids);
-				
+				saveCommands(secondHalf, secondHalfMsgCtx);
+
 				System.arraycopy(secondHalfReplies, 0, replies, firstHalfReplies.length, secondHalfReplies.length);
-	        }
-	        
+			}
+
 		}
-		
+
 		if(eids != null && eids.length > 0)
 			getStateManager().setLastEID(eids[eids.length-1]);
 		return replies;
 	}
-	
+
 	/**
 	 * Iterates over the commands to find if any replica took a checkpoint.
 	 * When a replica take a checkpoint, it is necessary to save in an auxiliary table
@@ -188,7 +188,7 @@ public abstract class DurabilityCoordinator implements Recoverable, BatchExecuta
 		}
 		return -1;
 	}
-	
+
 	/**
 	 * Iterates over the message contexts to retrieve the index of the last
 	 * command executed prior to the checkpoint. That index is used by the
@@ -240,15 +240,17 @@ public abstract class DurabilityCoordinator implements Recoverable, BatchExecuta
 				log.update(state);
 				installSnapshot(state.getSerializedState());
 			}
-			
+
 			System.out.print("--- Installing log from " + (lastCheckpointEid+1) + " to " + lastEid);
 
 			for (int eid = lastCheckpointEid + 1; eid <= lastEid; eid++) {
 				try {
 					bftsmart.tom.util.Logger.println("(DurabilityCoordinator.setState) interpreting and verifying batched requests for eid " + eid);
-					byte[][] commands = state.getMessageBatch(eid).commands;
+					CommandsInfo cmdInfo = state.getMessageBatch(eid); 
+					byte[][] commands = cmdInfo.commands;
+					MessageContext[] msgCtx = cmdInfo.msgCtx;
 					if (commands == null || commands.length <= 0) continue;
-					appExecuteBatch(commands, null);
+					appExecuteBatch(commands, msgCtx);
 				} catch (Exception e) {
 					e.printStackTrace(System.err);
 				}
@@ -290,31 +292,33 @@ public abstract class DurabilityCoordinator implements Recoverable, BatchExecuta
 	 * @param commands array of commands. Each command is an array of bytes
 	 * @param msgCtx
 	 */
-	private void saveCommands(byte[][] commands, int[] eids) {
+	private void saveCommands(byte[][] commands, MessageContext[] msgCtx) {
 		if(!config.isToLog())
 			return;
-		if(commands.length != eids.length)
+		if(commands.length != msgCtx.length)
 			System.out.println("----SIZE OF COMMANDS AND EIDS IS DIFFERENT----");
 		logLock.lock();
 		int decisionRound = 0;
 		int leader = 0;
-		
-		int eid = eids[0];
+
+		int eid = msgCtx[0].getConsensusId();
 		int batchStart = 0;
-		for(int i = 0; i <= eids.length; i++) {
-			if(i == eids.length) { // the batch command contains only one command or it is the last position of the array
+		for(int i = 0; i <= msgCtx.length; i++) {
+			if(i == msgCtx.length) { // the batch command contains only one command or it is the last position of the array
 				byte[][] batch = Arrays.copyOfRange(commands, batchStart, i);
-				log.addMessageBatch(batch, decisionRound, leader, eid);
+				MessageContext[] batchMsgCtx = Arrays.copyOfRange(msgCtx, batchStart, i);
+				log.addMessageBatch(batch, batchMsgCtx, decisionRound, leader, eid);
 				log.setLastEid(eid, globalCheckpointPeriod, checkpointPortion);
-//				if(batchStart > 0)
-//					System.out.println("Last batch: " + commands.length + "," + batchStart + "-" + i + "," + batch.length);
+				//				if(batchStart > 0)
+				//					System.out.println("Last batch: " + commands.length + "," + batchStart + "-" + i + "," + batch.length);
 			} else {
-				if(eids[i] > eid) { // saves commands when the eid changes or when it is the last batch
+				if(msgCtx[i].getConsensusId() > eid) { // saves commands when the eid changes or when it is the last batch
 					byte[][] batch = Arrays.copyOfRange(commands, batchStart, i);
-//					System.out.println("THERE IS MORE THAN ONE EID in this batch." + commands.length + "," + batchStart + "-" + i + "," + batch.length);
-					log.addMessageBatch(batch, decisionRound, leader, eid);
+					MessageContext[] batchMsgCtx = Arrays.copyOfRange(msgCtx, batchStart, i);
+					//					System.out.println("THERE IS MORE THAN ONE EID in this batch." + commands.length + "," + batchStart + "-" + i + "," + batch.length);
+					log.addMessageBatch(batch, batchMsgCtx, decisionRound, leader, eid);
 					log.setLastEid(eid, globalCheckpointPeriod, checkpointPortion);
-					eid = eids[i];
+					eid = msgCtx[i].getConsensusId();
 					batchStart = i;
 				}
 			}
@@ -331,25 +335,22 @@ public abstract class DurabilityCoordinator implements Recoverable, BatchExecuta
 	@Override
 	public void setReplicaContext(ReplicaContext replicaContext) {
 		this.config = replicaContext.getStaticConfiguration();
-		if (log == null) {
+		if(log == null) {
 			globalCheckpointPeriod = config.getGlobalCheckpointPeriod();
 			replicaCkpIndex = getCheckpointPortionIndex();
 			checkpointPortion = globalCheckpointPeriod / config.getN();
 
-			// byte[] state = getSnapshot();
-			if (config.isToLog()) {
+//			byte[] state = getSnapshot();
+			if(config.isToLog()) {
 				int replicaId = config.getProcessId();
 				boolean isToLog = config.isToLog();
 				boolean syncLog = config.isToWriteSyncLog();
 				boolean syncCkp = config.isToWriteSyncCkp();
-				// log = new DurableStateLog(replicaId, state,
-				// computeHash(state), isToLog, syncLog, syncCkp);
-				log = new DurableStateLog(replicaId, null, null, isToLog,
-						syncLog, syncCkp);
+//				log = new DurableStateLog(replicaId, state, computeHash(state), isToLog, syncLog, syncCkp);
+				log = new DurableStateLog(replicaId, null, null, isToLog, syncLog, syncCkp);
 				CSTState storedState = log.loadDurableState();
-				if (storedState.getLastEid() > -1) {
-					System.out.println("LAST EID RECOVERED FROM LOG: "
-							+ storedState.getLastEid());
+				if(storedState.getLastEid() > -1) {
+					System.out.println("LAST EID RECOVERED FROM LOG: " + storedState.getLastEid());
 					setState(storedState);
 					getStateManager().setLastEID(storedState.getLastEid());
 				} else {
@@ -360,28 +361,28 @@ public abstract class DurabilityCoordinator implements Recoverable, BatchExecuta
 		}
 	}
 
-    private int getCheckpointPortionIndex() {
-    	int numberOfReplicas = config.getN();
-    	int ckpIndex = ((globalCheckpointPeriod / numberOfReplicas) * (config.getProcessId() + 1)) -1;
-    	return ckpIndex;
-    }
-    
-    /**
-     * Iterates over the message context array and get the consensus id of each command
-     * being executed. As several times during the execution of commands and logging the
-     * only information important in MessageContext is the consensus id, it saves time to
-     * have it already in an array of ids
-     * @param ctxs the message context, one for each command to be executed
-     * @return the id of the consensus decision for each command
-     */
-    private int[] consensusIds(MessageContext[] ctxs) {
-    	int[] eids = new int[ctxs.length];
-    	for(int i = 0; i < ctxs.length; i++)
-    		eids[i] = ctxs[i].getConsensusId();
-    	return eids;
-    }
+	private int getCheckpointPortionIndex() {
+		int numberOfReplicas = config.getN();
+		int ckpIndex = ((globalCheckpointPeriod / numberOfReplicas) * (config.getProcessId() + 1)) -1;
+		return ckpIndex;
+	}
 
-    @Override
+	/**
+	 * Iterates over the message context array and get the consensus id of each command
+	 * being executed. As several times during the execution of commands and logging the
+	 * only information important in MessageContext is the consensus id, it saves time to
+	 * have it already in an array of ids
+	 * @param ctxs the message context, one for each command to be executed
+	 * @return the id of the consensus decision for each command
+	 */
+	private int[] consensusIds(MessageContext[] ctxs) {
+		int[] eids = new int[ctxs.length];
+		for(int i = 0; i < ctxs.length; i++)
+			eids[i] = ctxs[i].getConsensusId();
+		return eids;
+	}
+
+	@Override
 	public StateManager getStateManager() {
 		if(stateManager == null)
 			stateManager = new DurableStateManager();
@@ -394,7 +395,7 @@ public abstract class DurabilityCoordinator implements Recoverable, BatchExecuta
 		System.out.println("--- State size: " + currentState.length + " Current state Hash: " + Arrays.toString(currentStateHash));
 		return currentStateHash;
 	}
-	
+
 	public abstract void installSnapshot(byte[] state);
 	public abstract byte[] getSnapshot();
 	public abstract byte[][] appExecuteBatch(byte[][] commands, MessageContext[] msgCtxs);
