@@ -56,6 +56,8 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 
 	public transient long receptionTime;//the reception time of this message
 	public transient boolean timeout = false;//this message was timed out?
+        
+        public transient boolean recvFromClient = false; // Did the client already sent this message to me, or did it arrived in the batch?
 
 	//the bytes received from the client and its MAC and signature
 	public transient byte[] serializedMessage = null;
@@ -217,11 +219,11 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 
 	@Override
 	public int hashCode() {
-		int hash = 5;
+		/*int hash = 5;
 		hash = 59 * hash + this.sequence;
 		hash = 59 * hash + this.getSender();
-		hash = 59 * hash + this.getOperationId();
-		return hash;
+		hash = 59 * hash + this.getOperationId();*/
+		return this.id;
 	}
 
 	@Override
@@ -266,7 +268,12 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 	 * Used to build an unique id for the message
 	 */
 	 private void buildId() {
-		 id = (sender << 20) | sequence;
+		 //id = (sender << 20) | sequence;
+             	int hash = 5;
+ 		hash = 59 * hash + this.getSender();               
+		hash = 59 * hash + this.sequence;
+		hash = 59 * hash + this.session;
+		id = hash;
 	 }
 
 	 /**
