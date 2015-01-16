@@ -162,7 +162,7 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
     
     @Override
     public void send(int[] targets, TOMMessage sm, boolean serializeClassHeaders) {
-        
+             
         //serialize message
         DataOutputStream dos = null;
 
@@ -197,14 +197,16 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
         for (int i = 0; i < targets.length; i++) {
             rl.readLock().lock();
             sendLock.lock();
-            try {
+            try {       
 	            NettyClientServerSession ncss = (NettyClientServerSession) sessionTable.get(targets[i]);
 	            if (ncss != null) {
 	                Channel session = ncss.getChannel();
 	                sm.destination = targets[i];
 	                //send message
 	                session.write(sm); // This used to invoke "await". Removed to avoid blockage and race condition.
-	            }
+	            } else {
+                            System.out.println("!!!!!!!!NettyClientServerSession NULL !!!!!! sequence: " + sm.getSequence() + ", ID; " + targets[i]);
+                    }
             } finally {
                 sendLock.unlock();
                 rl.readLock().unlock();
