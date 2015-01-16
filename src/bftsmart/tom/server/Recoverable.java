@@ -54,5 +54,17 @@ public interface Recoverable {
      * @return the implementation of state manager that suplies the strategy defined
      */
     public StateManager getStateManager();
+    
+    /*
+     * This method is invoked by ServiceReplica to indicate that a consensus instance
+     * finished without delivering anything to the application (e.g., an instance
+     * only decided a single reconfiguration operation. or an instance where the client
+     * operation was not delivered because its view was outdated). To allow the underlying state
+     * transfer protocol to execute correctly, it needs to be notified of this special case
+     * In the current protocols included, it suffices to register a NOOP operation in the
+     * logs used within the state transfer, but never deliver it to the application
+     * @param lastEid the consensus instance where the aforementioned condition occurred
+     */
+    public void noOp(int lastEid); 
 	
 }
