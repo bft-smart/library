@@ -66,7 +66,7 @@ public class StandardStateManager extends BaseStateManager {
         	changeReplica();
 
         state = null;
-        lastEid = 1;
+        lastEid = -1;
         waitingEid = -1;
 
         appStateOnly = false;
@@ -245,7 +245,8 @@ public class StandardStateManager extends BaseStateManager {
                             tomLayer.resumeLC();
                         }
                     } else if (otherReplicaState == null && (SVController.getCurrentViewN() / 2) < getReplies()) {
-                    	waitingEid = -1;
+                    	System.out.println("otherReplicaState == null && (SVController.getCurrentViewN() / 2) < getReplies()");
+                        waitingEid = -1;
                         reset();
  
                         if (stateTimer != null) stateTimer.cancel();
@@ -254,6 +255,7 @@ public class StandardStateManager extends BaseStateManager {
                             requestState();
                         }
                     } else if (haveState == -1) {
+                        System.out.println("haveState == -1");
                         Logger.println("(TOMLayer.SMReplyDeliver) The replica from which I expected the state, sent one which doesn't match the hash of the others, or it never sent it at all");
 
                         changeReplica();
@@ -261,6 +263,16 @@ public class StandardStateManager extends BaseStateManager {
                         requestState();
 
                         if (stateTimer != null) stateTimer.cancel();
+                    } else if (haveState == 0 && (SVController.getCurrentViewN() - SVController.getCurrentViewF()) <= getReplies()) {
+
+                        Logger.println("(TOMLayer.SMReplyDeliver) Could not obtain the state, retrying");
+                        reset();
+                        if (stateTimer != null) stateTimer.cancel();
+                        waitingEid = -1;
+                        //requestState();
+                    } else {
+                        System.out.println(" -- State transfer not yet finished");
+
                     }
                 }
             }
