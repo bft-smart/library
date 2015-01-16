@@ -221,7 +221,7 @@ public class ClientsManager {
 
         //Logger.println("(ClientsManager.requestReceived) getting info about client "+clientId);
         ClientData clientData = getClientData(clientId);
-
+        
         //Logger.println("(ClientsManager.requestReceived) wait for lock for client "+clientData.getClientId());
         clientData.clientLock.lock();
         /******* BEGIN CLIENTDATA CRITICAL SECTION ******/
@@ -247,6 +247,8 @@ public class ClientsManager {
         if (clientData.getSession() != request.getSession()) {
             clientData.setSession(request.getSession());
             clientData.setLastMessageReceived(-1);
+            clientData.getOrderedRequests().clear();
+            clientData.getPendingRequests().clear();
         }
 
         if ((clientData.getLastMessageReceived() == -1) || //first message received or new session (see above)
@@ -261,6 +263,7 @@ public class ClientsManager {
                 //I don't have the message but it is valid, I will
                 //insert it in the pending requests of this client
 
+                request.recvFromClient = fromClient;
                 clientData.getPendingRequests().add(request); 
                 clientData.setLastMessageReceived(request.getSequence());
                 clientData.setLastMessageReceivedTime(request.receptionTime);
@@ -278,11 +281,21 @@ public class ClientsManager {
                 //I already have/had this message
 
                 //send reply if it is available
-                TOMMessage reply = clientData.getReply(request.getId());
+                TOMMessage reply = clientData.getReply(request.getSequence());
+                
                 if (reply != null && cs != null) {
-                    cs.send(new int[]{request.getSender()}, reply);
-                }
 
+                    if (reply.recvFromClient && fromClient) {
+                        System.out.println("[CACHE] re-send reply [Sender: " + reply.getSender() + ", sequence: " + reply.getSequence()+", session: " + reply.getSession()+ "]");
+                        cs.send(new int[]{request.getSender()}, reply);
+
+                    } 
+                    
+                    else if (!reply.recvFromClient && fromClient) {
+                        reply.recvFromClient = true;
+                    }
+                    
+                }
                 accounted = true;
             } else {
                 //a too forward message... the client must be malicious

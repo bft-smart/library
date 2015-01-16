@@ -100,7 +100,16 @@ public class RequestList extends LinkedList<TOMMessage> {
         }
         return null;
     }
-
+    
+    public TOMMessage getBySequence(int sequence){
+        for(ListIterator<TOMMessage> li = listIterator(); li.hasNext(); ) {
+            TOMMessage msg = li.next();
+            if(msg.getSequence() == sequence) {
+                return msg;
+            }
+        }
+        return null;
+    }
     public boolean contains(int id){
         for(ListIterator<TOMMessage> li = listIterator(); li.hasNext(); ) {
             TOMMessage msg = li.next();
