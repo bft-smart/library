@@ -228,7 +228,7 @@ public final class Acceptor {
                 }
                 executionManager.processOutOfContext(round.getExecution());
             }
-        }
+        } 
     }
 
     /**
@@ -384,7 +384,7 @@ public final class Acceptor {
         Logger.println("(Acceptor.computeAccept) I have " + round.countAccept(value) +
                 " ACCEPTs for " + eid + "," + round.getNumber());
 
-        if (round.countAccept(value) > controller.getCertificateQuorum() && !round.getExecution().isDecided()) {
+        if (round.countAccept(value) > controller.getQuorumAccept() && !round.getExecution().isDecided()) {
             Logger.println("(Acceptor.computeAccept) Deciding " + eid);
             decide(round, value);
         }
