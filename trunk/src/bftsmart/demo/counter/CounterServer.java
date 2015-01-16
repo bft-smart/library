@@ -54,6 +54,7 @@ public final class CounterServer extends DefaultRecoverable  {
             if(msgCtxs != null && msgCtxs[i] != null) {
             replies[i] = executeSingle(commands[i],msgCtxs[i]);
             }
+            else executeSingle(commands[i],null);
         }
         
         return replies;
