@@ -64,17 +64,27 @@ public abstract class DefaultSingleRecoverable implements Recoverable, SingleExe
     
     public byte[] executeOrdered(byte[] command, MessageContext msgCtx) {
         
+        return executeOrdered(command, msgCtx, false);
+        
+    }
+    
+    private byte[] executeOrdered(byte[] command, MessageContext msgCtx, boolean noop) {
+        
         int eid = msgCtx.getConsensusId();
+        
+        byte[] reply = null;
             
-        stateLock.lock();
-        byte[] reply = appExecuteOrdered(command, msgCtx);
-        stateLock.unlock();
-
+        if (!noop) {
+            stateLock.lock();
+            reply = appExecuteOrdered(command, msgCtx);
+            stateLock.unlock();
+        }
+        
         commands.add(command);
         
         if(msgCtx.isLastInBatch()) {
 	        if ((eid > 0) && ((eid % checkpointPeriod) == 0)) {
-	            Logger.println("(DurabilityCoordinator.executeBatch) Performing checkpoint for consensus " + eid);
+	            Logger.println("(DefaultSingleRecoverable.executeOrdered) Performing checkpoint for consensus " + eid);
 	            stateLock.lock();
 	            byte[] snapshot = getSnapshot();
 	            stateLock.unlock();
@@ -230,6 +240,14 @@ public abstract class DefaultSingleRecoverable implements Recoverable, SingleExe
     	}
 	}
     
+    @Override
+    public void noOp(int lastEid) {
+        
+        MessageContext msgCtx = new MessageContext(-1, new byte[0], -1, lastEid, -1, null);
+        msgCtx.setLastInBatch();
+ 
+        executeOrdered(new byte[0], msgCtx, true);
+    }    
     public abstract void installSnapshot(byte[] state);
     public abstract byte[] getSnapshot();
     public abstract byte[] appExecuteOrdered(byte[] command, MessageContext msgCtx);

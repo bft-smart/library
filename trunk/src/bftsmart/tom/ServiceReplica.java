@@ -42,9 +42,12 @@ import bftsmart.tom.server.FIFOExecutable;
 import bftsmart.tom.server.Recoverable;
 import bftsmart.tom.server.Replier;
 import bftsmart.tom.server.SingleExecutable;
+import bftsmart.tom.server.defaultservices.DefaultRecoverable;
 import bftsmart.tom.server.defaultservices.DefaultReplier;
 import bftsmart.tom.util.ShutdownHookThread;
 import bftsmart.tom.util.TOMUtil;
+import java.util.HashSet;
+import java.util.Set;
 
 
 /**
@@ -227,52 +230,75 @@ public class ServiceReplica {
 		int consensusCount = 0;
 		List<TOMMessage> toBatch = new ArrayList<TOMMessage>();
 		List<MessageContext> msgCtxts = new ArrayList<MessageContext>();
+                //Set<Integer> appEids = new HashSet<Integer>();
+                boolean noop = true;
 
 		for(TOMMessage[] requestsFromConsensus : requests) {
-			TOMMessage firstRequest = requestsFromConsensus[0];
+                    
+                        TOMMessage firstRequest = requestsFromConsensus[0];
 			int requestCount = 0;
+                        noop = true;
 			for(TOMMessage request : requestsFromConsensus) {
-				if (request.getViewID() == SVController.getCurrentViewId()) {					
+                                                    
+				if (request.getViewID() == SVController.getCurrentViewId()) {	
+                                    
 					if (request.getReqType() == TOMMessageType.ORDERED_REQUEST) {
+                                            
+                                                noop = false;
+                                            
 						numRequests++;
 						MessageContext msgCtx = new MessageContext(firstRequest.timestamp, firstRequest.nonces,	regency, consId[consensusCount], request.getSender(), firstRequest);
-						if(requestCount + 1 == requestsFromConsensus.length)
-							msgCtx.setLastInBatch();
+						if(requestCount + 1 == requestsFromConsensus.length) {
+                                                 
+                                                    msgCtx.setLastInBatch();
+                                                }
 						request.deliveryTime = System.nanoTime();
 						if(executor instanceof BatchExecutable) {
 							msgCtxts.add(msgCtx);
 							toBatch.add(request);
-						} else if(executor instanceof FIFOExecutable) {
+						} else if(executor instanceof FIFOExecutable) {                                                    
 							byte[]response = ((FIFOExecutable)executor).executeOrderedFIFO(request.getContent(), msgCtx, request.getSender(), request.getOperationId());
 							request.reply = new TOMMessage(id, request.getSession(),
 									request.getSequence(), response, SVController.getCurrentViewId());
 							bftsmart.tom.util.Logger.println("(ServiceReplica.receiveMessages) sending reply to " + request.getSender());
 							replier.manageReply(request, msgCtx);
-						} else if(executor instanceof SingleExecutable) {
+						} else if(executor instanceof SingleExecutable) {                                                      
 							byte[]response = ((SingleExecutable)executor).executeOrdered(request.getContent(), msgCtx);
 							request.reply = new TOMMessage(id, request.getSession(),
 									request.getSequence(), response, SVController.getCurrentViewId());
 							bftsmart.tom.util.Logger.println("(ServiceReplica.receiveMessages) sending reply to " + request.getSender());
 							replier.manageReply(request, msgCtx);
-						} else {
+						} else {                                                       
 							throw new UnsupportedOperationException("Interface not existent");
 						}
 					} else if (request.getReqType() == TOMMessageType.RECONFIG) {
-						SVController.enqueueUpdate(request);
-					} else {
+						SVController.enqueueUpdate(request);                                                
+					} else {                                          
 						throw new RuntimeException("Should never reach here!");
 					}
 				} else if (request.getViewID() < SVController.getCurrentViewId()) {
 					// message sender had an old view, resend the message to
 					// him (but only if it came from consensus an not state transfer)
-					tomLayer.getCommunication().send(new int[] { request.getSender() }, new TOMMessage(SVController.getStaticConf().getProcessId(), request.getSession(), request.getSequence(), TOMUtil.getBytes(SVController.getCurrentView()),	SVController.getCurrentViewId()));
+                                        tomLayer.getCommunication().send(new int[] { request.getSender() }, new TOMMessage(SVController.getStaticConf().getProcessId(), request.getSession(), request.getSequence(), TOMUtil.getBytes(SVController.getCurrentView()),	SVController.getCurrentViewId()));
 				}
 				requestCount++;
 			}
-			consensusCount++;
-		}
+                        
+                        // This happens when a consensus finishes but there are no requests to deliver
+                        // to the application. This can happen if a reconfiguration is issued and is the only
+                        // operation contained in the batch. The recoverer must be notified about this,
+                        // hence the invocation of "noop"
+                        if (noop && this.recoverer != null) {
+                            System.out.println(" --- A consensus instance finished, but there were no commands to deliver to the application.");
+                            System.out.println(" --- Notifying recoverable about a blank consensus.");
 
-		if(executor instanceof BatchExecutable && numRequests > 0){
+                            this.recoverer.noOp(consId[consensusCount]);
+                        }
+
+			consensusCount++;          
+                }
+
+                if(executor instanceof BatchExecutable && numRequests > 0){
 			//Make new batch to deliver
 			byte[][] batch = new byte[numRequests][];
 
@@ -290,15 +316,18 @@ public class ServiceReplica {
 			byte[][] replies = ((BatchExecutable) executor).executeBatch(batch, msgContexts);
 
 			//Send the replies back to the client
-			for(int index = 0; index < toBatch.size(); index++){
-				TOMMessage request = toBatch.get(index);
+			for(int index = 0; index < toBatch.size(); index++){                               
+				TOMMessage request = toBatch.get(index);                
 				request.reply = new TOMMessage(id, request.getSession(), request.getSequence(),
-						replies[index], SVController.getCurrentViewId());
-				if (SVController.getStaticConf().getNumRepliers() > 0)
+						replies[index], SVController.getCurrentViewId());                       
+                                
+				if (SVController.getStaticConf().getNumRepliers() > 0) {                                    
 					repMan.send(request);
-				else
-					cs.send(new int[] { request.getSender() }, request.reply);
-			}
+                                }
+                                else {
+                                    cs.send(new int[] { request.getSender() }, request.reply);
+                                }
+                        }
 			//DEBUG
 			bftsmart.tom.util.Logger.println("BATCHEXECUTOR END");
 		}
