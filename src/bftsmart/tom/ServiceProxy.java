@@ -240,6 +240,7 @@ public class ServiceProxy extends TOMSender {
     private void reconfigureTo(View v) {
         Logger.println("Installing a most up-to-date view with id=" + v.getId());
         getViewManager().reconfigureTo(v);
+        getViewManager().getViewStore().storeView(v);
         replies = new TOMMessage[getViewManager().getCurrentViewN()];
         getCommunicationSystem().updateConnections();
     }
@@ -261,7 +262,7 @@ public class ServiceProxy extends TOMSender {
             }
 
             int pos = getViewManager().getCurrentViewPos(reply.getSender());
-
+            
             if (pos < 0) { //ignore messages that don't come from replicas
                 canReceiveLock.unlock();
                 return;
