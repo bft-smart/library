@@ -47,5 +47,7 @@ public interface StateManager {
     
     public void setLastEID(int lastEid);
     
+    public int getLastEID();
+    
     public boolean isRetrievingState();
 }
