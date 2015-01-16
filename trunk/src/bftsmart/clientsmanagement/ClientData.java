@@ -45,7 +45,7 @@ public class ClientData {
     private RequestList orderedRequests = new RequestList(5);
 
     private Signature signatureVerificator = null;
-
+    
     /**
      * Class constructor. Just store the clientId and creates a signature
      * verificator for a given client public key.
@@ -146,8 +146,8 @@ public class ClientData {
     	return result;
     }
 
-    public TOMMessage getReply(int reqId) {
-        TOMMessage request = orderedRequests.getById(reqId);
+    public TOMMessage getReply(int reqSequence) {
+        TOMMessage request = orderedRequests.getBySequence(reqSequence);
         if(request != null) {
             return request.reply;
         } else {
