@@ -210,7 +210,14 @@ public class ServiceProxy extends TOMSender {
                     canSendLock.unlock();
                     return invoke(request, reqType);
                 }
-            } else {
+            } else if (reqType == TOMMessageType.UNORDERED_REQUEST){
+				if (response.getViewID() == getViewManager().getCurrentViewId()) {
+					ret = response.getContent(); // return the response
+				}else{
+					canSendLock.unlock();
+					return invoke(request,TOMMessageType.ORDERED_REQUEST);
+				}
+			} else {
                 if (response.getViewID() > getViewManager().getCurrentViewId()) {
                     //Reply to a reconfigure request!
                     Logger.println("Reconfiguration request' reply received!");
@@ -220,13 +227,14 @@ public class ServiceProxy extends TOMSender {
 
                         canSendLock.unlock();
                         return invoke(request, reqType);
-                    } else { //reconfiguration executed!
-                        reconfigureTo(((ReconfigureReply) r).getView());
-                        ret = response.getContent();
-                    }
+                    }  else if (r instanceof ReconfigureReply) { //reconfiguration executed!
+						reconfigureTo(((ReconfigureReply) r).getView());
+						ret = response.getContent();
+					} else{
+						Logger.println("Unknown response type");
+					}
                 } else {
-                	// Reply to readonly request
-                    ret = response.getContent();
+                	Logger.println("Unexpected execution flow");
                 }
             }
         }
