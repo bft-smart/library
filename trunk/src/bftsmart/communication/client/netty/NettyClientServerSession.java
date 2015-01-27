@@ -15,12 +15,13 @@ limitations under the License.
 */
 package bftsmart.communication.client.netty;
 
+import io.netty.channel.Channel;
+
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 import javax.crypto.Mac;
 
-import org.jboss.netty.channel.Channel;
 
 /**
  *
