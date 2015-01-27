@@ -15,7 +15,9 @@ limitations under the License.
 */
 package bftsmart.communication.client.netty;
 
-import static org.jboss.netty.channel.Channels.pipeline;
+import io.netty.channel.SimpleChannelInboundHandler;
+import io.netty.handler.codec.ByteToMessageDecoder;
+import io.netty.handler.codec.MessageToByteEncoder;
 
 import java.util.Map;
 import java.util.concurrent.locks.ReentrantLock;
@@ -23,19 +25,10 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import javax.crypto.SecretKey;
 
-
-import org.jboss.netty.channel.ChannelPipeline;
-import org.jboss.netty.channel.ChannelPipelineFactory;
-
 import bftsmart.reconfiguration.ClientViewController;
 
 
-/**
- * @author The Netty Project (netty-dev@lists.jboss.org)
- * @author Trustin Lee (tlee@redhat.com)
- * @version $Rev: 643 $, $Date: 2009/09/08 00:11:57 $
- */
-public class NettyClientPipelineFactory implements ChannelPipelineFactory {
+public class NettyClientPipelineFactory{
 
     NettyClientServerCommunicationSystemClientSide ncs;
     Map sessionTable;
@@ -58,13 +51,16 @@ public class NettyClientPipelineFactory implements ChannelPipelineFactory {
     }
 
 
-    @Override
-    public ChannelPipeline getPipeline() throws Exception {
-        ChannelPipeline p = pipeline();
-        p.addLast("decoder", new NettyTOMMessageDecoder(true, sessionTable, macLength,controller,rl,signatureLength,controller.getStaticConf().getUseMACs()==1?true:false));
-        p.addLast("encoder", new NettyTOMMessageEncoder(true, sessionTable, macLength,rl, signatureLength, controller.getStaticConf().getUseMACs()==1?true:false));
-        p.addLast("handler", ncs);
-
-        return p;
+    public ByteToMessageDecoder getDecoder(){
+    	return new NettyTOMMessageDecoder(true, sessionTable, macLength,controller,rl,signatureLength,controller.getStaticConf().getUseMACs()==1?true:false);	
     }
+    
+    public MessageToByteEncoder getEncoder(){
+    	return new NettyTOMMessageEncoder(true, sessionTable, macLength,rl, signatureLength, controller.getStaticConf().getUseMACs()==1?true:false);	
+    }
+    
+    public SimpleChannelInboundHandler getHandler(){
+    	return ncs;	
+    }
+
 }

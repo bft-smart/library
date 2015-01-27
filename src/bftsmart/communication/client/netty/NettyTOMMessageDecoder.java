@@ -15,36 +15,33 @@ limitations under the License.
 */
 package bftsmart.communication.client.netty;
 
+import io.netty.buffer.ByteBuf;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.handler.codec.ByteToMessageDecoder;
+
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
-import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import javax.crypto.Mac;
 import javax.crypto.SecretKey;
+import javax.crypto.SecretKeyFactory;
+import javax.crypto.spec.PBEKeySpec;
 
-
-
-import org.jboss.netty.buffer.ChannelBuffer;
-import org.jboss.netty.channel.Channel;
-import org.jboss.netty.channel.ChannelHandlerContext;
-import org.jboss.netty.channel.ChannelPipelineCoverage;
-import org.jboss.netty.handler.codec.frame.FrameDecoder;
+import org.slf4j.LoggerFactory;
 
 import bftsmart.reconfiguration.ViewController;
 import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.util.Logger;
-import javax.crypto.SecretKeyFactory;
-import javax.crypto.spec.PBEKeySpec;
 
 /**
  *
  * @author Paulo Sousa
  */
-@ChannelPipelineCoverage("one")
-public class NettyTOMMessageDecoder extends FrameDecoder {
+public class NettyTOMMessageDecoder extends ByteToMessageDecoder {
 
     /**
      * number of measures used to calculate statistics
@@ -72,6 +69,9 @@ public class NettyTOMMessageDecoder extends FrameDecoder {
     
     private boolean useMAC;
 
+    private org.slf4j.Logger logger = LoggerFactory.getLogger(NettyTOMMessageDecoder.class);
+
+    
     public NettyTOMMessageDecoder(boolean isClient, Map sessionTable, int macLength, ViewController controller, ReentrantReadWriteLock rl, int signatureLength, boolean useMAC) {
         this.isClient = isClient;
         this.sessionTable = sessionTable;
@@ -85,12 +85,11 @@ public class NettyTOMMessageDecoder extends FrameDecoder {
     }
 
     @Override
-    protected Object decode(
-            ChannelHandlerContext ctx, Channel channel, ChannelBuffer buffer) {
+    protected void decode(ChannelHandlerContext context, ByteBuf buffer, List<Object> list) throws Exception  {
 
         // Wait until the length prefix is available.
         if (buffer.readableBytes() < 4) {
-            return null;
+            return;
         }
 
         int dataLength = buffer.getInt(buffer.readerIndex());
@@ -99,7 +98,7 @@ public class NettyTOMMessageDecoder extends FrameDecoder {
 
         // Wait until the whole data is available.
         if (buffer.readableBytes() < dataLength + 4) {
-            return null;
+            return;
         }
 
         // Skip the length field because we know it already.
@@ -157,7 +156,7 @@ public class NettyTOMMessageDecoder extends FrameDecoder {
                 if (useMAC) {
                     if (!verifyMAC(sm.getSender(), data, digest)) {
                         System.out.println("MAC error: message discarded");
-                        return null;
+                        return;
                     }
                 }
             } else { /* it's a server */
@@ -168,7 +167,7 @@ public class NettyTOMMessageDecoder extends FrameDecoder {
                     if (useMAC) {
                         if (!verifyMAC(sm.getSender(), data, digest)) {
                             Logger.println("MAC error: message discarded");
-                            return null;
+                            return;
                         }
                     }
                 } else {
@@ -187,25 +186,26 @@ public class NettyTOMMessageDecoder extends FrameDecoder {
                     macSend.init(authKey);
                     Mac macReceive = Mac.getInstance(controller.getStaticConf().getHmacAlgorithm());
                     macReceive.init(authKey);
-                    NettyClientServerSession cs = new NettyClientServerSession(channel, macSend, macReceive, sm.getSender());
-
+                    NettyClientServerSession cs = new NettyClientServerSession(context.channel(), macSend, macReceive, sm.getSender());
+                                       
                     rl.writeLock().lock();
+//                    logger.info("PUT INTO SESSIONTABLE - [client id]:"+sm.getSender()+" [channel]: "+cs.getChannel());
                     sessionTable.put(sm.getSender(), cs);
                     bftsmart.tom.util.Logger.println("#active clients " + sessionTable.size());
                     rl.writeLock().unlock();
                     if (useMAC && !verifyMAC(sm.getSender(), data, digest)) {
                         Logger.println("MAC error: message discarded");
-                        return null;
+                        return;
                     }
                 }
             }
-            return sm;
+            list.add(sm);
         } catch (Exception ex) {
             bftsmart.tom.util.Logger.println("Impossible to decode message: "+
                     ex.getMessage());
             ex.printStackTrace();
         }
-        return null;
+        return;
     }
 
     boolean verifyMAC(int id, byte[] data, byte[] digest) {
@@ -218,4 +218,5 @@ public class NettyTOMMessageDecoder extends FrameDecoder {
         //st.store(duration);
         return result;
     }
+
 }

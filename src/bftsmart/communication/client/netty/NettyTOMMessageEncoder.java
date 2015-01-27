@@ -15,26 +15,21 @@ limitations under the License.
 */
 package bftsmart.communication.client.netty;
 
-import static org.jboss.netty.buffer.ChannelBuffers.buffer;
 
+import io.netty.buffer.ByteBuf;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.handler.codec.MessageToByteEncoder;
+
+import java.nio.channels.Channels;
 import java.util.Map;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import javax.crypto.Mac;
 
-
-import org.jboss.netty.buffer.ChannelBuffer;
-import org.jboss.netty.channel.ChannelHandlerContext;
-import org.jboss.netty.channel.ChannelPipelineCoverage;
-import org.jboss.netty.channel.Channels;
-import org.jboss.netty.channel.MessageEvent;
-import org.jboss.netty.channel.SimpleChannelHandler;
-
 import bftsmart.tom.core.messages.TOMMessage;
 
 
-@ChannelPipelineCoverage("all")
-public class NettyTOMMessageEncoder extends SimpleChannelHandler {
+public class NettyTOMMessageEncoder extends MessageToByteEncoder<TOMMessage> {
     
     private boolean isClient;
     private Map sessionTable;
@@ -53,8 +48,7 @@ public class NettyTOMMessageEncoder extends SimpleChannelHandler {
     }
 
     @Override
-    public void writeRequested(ChannelHandlerContext ctx, MessageEvent e) throws Exception {
-        TOMMessage sm = (TOMMessage) e.getMessage();
+	protected void encode(ChannelHandlerContext context, TOMMessage sm, ByteBuf buffer) throws Exception {
         byte[] msgData;
         byte[] macData = null;
         byte[] signatureData = null;
@@ -79,22 +73,20 @@ public class NettyTOMMessageEncoder extends SimpleChannelHandler {
                 (signatureData==null?0:signatureData.length);
 
         //Logger.println("Sending message with "+dataLength+" bytes.");
-
-        ChannelBuffer buf = buffer(4+dataLength);
         /* msg size */
-        buf.writeInt(dataLength);
+        buffer.writeInt(dataLength);
         /* control byte indicating if the message is signed or not */
-        buf.writeByte(sm.signed==true?(byte)1:(byte)0);       
+        buffer.writeByte(sm.signed==true?(byte)1:(byte)0);       
         /* data to be sent */
-        buf.writeBytes(msgData);
+        buffer.writeBytes(msgData);
          /* MAC */
         if (useMAC)
-            buf.writeBytes(macData);
+        	buffer.writeBytes(macData);
         /* signature */
         if (signatureData != null)
-            buf.writeBytes(signatureData);
+        	buffer.writeBytes(signatureData);
 
-        Channels.write(ctx, e.getFuture(), buf);
+        context.flush();
     }
 
     byte[] produceMAC(int id, byte[] data, int me) {

@@ -15,25 +15,16 @@ limitations under the License.
 */
 package bftsmart.communication.client.netty;
 
+import io.netty.channel.SimpleChannelInboundHandler;
+import io.netty.handler.codec.ByteToMessageDecoder;
+import io.netty.handler.codec.MessageToByteEncoder;
+
 import java.util.HashMap;
-import static org.jboss.netty.channel.Channels.pipeline;
-
-import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-
-import javax.crypto.SecretKey;
-import org.jboss.netty.channel.ChannelPipeline;
-import org.jboss.netty.channel.ChannelPipelineFactory;
 
 import bftsmart.reconfiguration.ServerViewController;
 
-
-/**
- * @author The Netty Project (netty-dev@lists.jboss.org)
- * @author Trustin Lee (tlee@redhat.com)
- * @version $Rev: 643 $, $Date: 2009/09/08 00:11:57 $
- */
-public class NettyServerPipelineFactory implements ChannelPipelineFactory {
+public class NettyServerPipelineFactory{
 
     NettyClientServerCommunicationSystemServerSide ncs;
     HashMap sessionTable;
@@ -51,18 +42,15 @@ public class NettyServerPipelineFactory implements ChannelPipelineFactory {
         this.rl = rl;
     }
 
-
-    public ChannelPipeline getPipeline() throws Exception {
-        ChannelPipeline p = pipeline();
-
-        //******* EDUARDO BEGIN **************//
-        p.addLast("decoder", new NettyTOMMessageDecoder(false, sessionTable,
-                macLength,controller,rl,signatureLength,controller.getStaticConf().getUseMACs()==1?true:false));
-        p.addLast("encoder", new NettyTOMMessageEncoder(false, sessionTable, macLength,rl,signatureLength, controller.getStaticConf().getUseMACs()==1?true:false));
-        //******* EDUARDO END **************//
-
-        p.addLast("handler", ncs);
-
-        return p;
+    public ByteToMessageDecoder getDecoder(){
+    	return new NettyTOMMessageDecoder(false, sessionTable,macLength,controller,rl,signatureLength,controller.getStaticConf().getUseMACs()==1?true:false);	
+    }
+    
+    public MessageToByteEncoder getEncoder(){
+    	return new NettyTOMMessageEncoder(false, sessionTable, macLength,rl,signatureLength, controller.getStaticConf().getUseMACs()==1?true:false);	
+    }
+    
+    public SimpleChannelInboundHandler getHandler(){
+    	return ncs;	
     }
 }
