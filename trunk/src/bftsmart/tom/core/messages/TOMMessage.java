@@ -76,6 +76,8 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 	//the reply associated with this message
 	public transient TOMMessage reply = null;
 	public transient boolean alreadyProposed = false;
+	
+	private int replyServer = -1;
 
 	public TOMMessage() {
 	}
@@ -238,7 +240,8 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 		out.writeInt(session);
 		out.writeInt(sequence);
 		out.writeInt(operationId);
-
+		out.writeInt(replyServer);
+		
 		if (content == null) {
 			out.writeInt(-1);
 		} else {
@@ -254,7 +257,8 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 		session = in.readInt();
 		sequence = in.readInt();
 		operationId = in.readInt();
-
+		replyServer = in.readInt();
+		
 		int toRead = in.readInt();
 		if (toRead != -1) {
 			content = new byte[toRead];
@@ -348,4 +352,14 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 	 public Object clone() throws CloneNotSupportedException {
 			return super.clone();
 		}
+
+
+	public int getReplyServer() {
+		return replyServer;
+	}
+
+
+	public void setReplyServer(int replyServer) {
+		this.replyServer = replyServer;
+	}
 }

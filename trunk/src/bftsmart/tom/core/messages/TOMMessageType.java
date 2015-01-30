@@ -26,7 +26,8 @@ public enum TOMMessageType {
     REPLY, //2
     RECONFIG, //3
     ASK_STATUS, // 4
-    STATUS_REPLY; // 5
+    STATUS_REPLY,// 5
+    UNORDERED_HASHED_REQUEST; //6
     
     public int toInt() {
         switch(this) {
@@ -36,6 +37,7 @@ public enum TOMMessageType {
             case RECONFIG: return 3;
             case ASK_STATUS: return 4;
             case STATUS_REPLY: return 5;
+            case UNORDERED_HASHED_REQUEST: return 6;
             default: return -1;
         }
     }
@@ -48,6 +50,7 @@ public enum TOMMessageType {
             case 3: return RECONFIG;
             case 4: return ASK_STATUS;
             case 5: return STATUS_REPLY;
+            case 6: return UNORDERED_HASHED_REQUEST;
             default: return RECONFIG;
         }            
     }
