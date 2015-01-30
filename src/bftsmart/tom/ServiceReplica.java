@@ -42,12 +42,11 @@ import bftsmart.tom.server.FIFOExecutable;
 import bftsmart.tom.server.Recoverable;
 import bftsmart.tom.server.Replier;
 import bftsmart.tom.server.SingleExecutable;
-import bftsmart.tom.server.defaultservices.DefaultRecoverable;
+
 import bftsmart.tom.server.defaultservices.DefaultReplier;
 import bftsmart.tom.util.ShutdownHookThread;
 import bftsmart.tom.util.TOMUtil;
-import java.util.HashSet;
-import java.util.Set;
+
 
 
 /**
@@ -216,9 +215,15 @@ public class ServiceReplica {
 		} else
 			response = executor.executeUnordered(message.getContent(), msgCtx);
 
+		if(message.getReqType()==TOMMessageType.UNORDERED_HASHED_REQUEST && 
+				message.getReplyServer()!= this.id){
+				response = TOMUtil.computeHash(response);
+		}
+		
 		// build the reply and send it to the client
 		message.reply = new TOMMessage(id, message.getSession(), message.getSequence(),
-				response, SVController.getCurrentViewId(), TOMMessageType.UNORDERED_REQUEST);
+				response, SVController.getCurrentViewId(), message.getReqType());
+		
 		if (SVController.getStaticConf().getNumRepliers() > 0)
 			repMan.send(message);
 		else

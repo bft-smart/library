@@ -167,6 +167,9 @@ public abstract class TOMSender implements ReplyReceiver {
 				new TOMMessage(me, session, reqId, operationId, m, viewController.getCurrentViewId(), type));
 	}
 
+	public int getSession(){
+		return session;
+	}
 	/**
 	 * Create TOMMessage and sign it
 	 *
