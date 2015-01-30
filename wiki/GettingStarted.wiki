@@ -3,7 +3,7 @@
 BFT-SMaRt provides a middleware to replicate request from multiple clients to multiple servers. This page has the instructions to download and install BFT-SMaRt.
 
 ==Installation==
-First, download the latest stable version of BFT-SMaRt from this [https://drive.google.com/folderview?id=0B6fb-GjKp57SbHd3ZnZPeGpiVEU&usp=sharing link] or from the repository.
+First, download the latest stable version of BFT-SMaRt from this [https://drive.google.com/folderview?id=0B6fb-GjKp57SbHd3ZnZPeGpiVEU&usp=sharing link] or from the [http://code.google.com/p/bft-smart/source/checkout repository].
 The BFT-SMaRt code has to be installed in each replica and client that will use it.
 To do so, first, extract the archive downloaded. After that, copy the following files and folders to each of the servers and clients:
 
