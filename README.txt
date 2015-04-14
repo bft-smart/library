@@ -1,12 +1,16 @@
-BFT-SMaRt v0.8
+BFT-SMaRt v1.0-beta
 ----------
 
 This package contains the BFT-SMaRt source code (src/), binary file (bin/), libraries needed (lib/), documentation (doc/), and configuration files (config/).
 BFT-SMaRt requires the Java Runtime Environment version 1.7 or later.
 
--------------------------
-To run any demonstration you first need to configure BFT-SMaRt to define the protocol behavior and the location of
-each replica.
+------------ Important notice for developers -------------
+
+This beta version of BFT-SMaRt offers the most stable execution via the class bftsmart.tom.server.defaultservices.DefaultRecoverable under Byzantine faults. Applications can also be implemente using bftsmart.tom.server.defaultservices.DefaultSingleRecoverable and bftsmart.tom.server.defaultservices.durability.DurabilityCoordinator, but they are not as stable as DefaultRecoverable. In future versions these classes will be properly tested and fixed.
+
+------------- How to run BFT-SMaRt -----------------------
+
+To run any demonstration you first need to configure BFT-SMaRt to define the protocol behavior and the location of each replica.
 
 1.) The servers must be specified in the configuration file (see config/hosts.config). An example:
 
@@ -21,33 +25,53 @@ each replica.
 You can run the counter demonstration by executing the following commands, from within the main folder:
 
 #Start the servers (4 replicas, to tolerate 1 fault)
-runscripts\smartrun.bat bftsmart.demo.counter.CounterServer 0
-runscripts\smartrun.bat bftsmart.demo.counter.CounterServer 1
-runscripts\smartrun.bat bftsmart.demo.counter.CounterServer 2
-runscripts\smartrun.bat bftsmart.demo.counter.CounterServer 3
+./smartrun.sh bftsmart.demo.counter.CounterServer 0
+./smartrun.sh bftsmart.demo.counter.CounterServer 1
+./smartrun.sh bftsmart.demo.counter.CounterServer 2
+./smartrun.sh bftsmart.demo.counter.CounterServer 3
 
 #Start a client
 
-runscripts\smartrun.bat bftsmart.demo.counter.CounterClient 1001 <increment> [<number of operations>]
+./smartrun.sh bftsmart.demo.counter.CounterClient 1001 <increment> [<number of operations>]
 
-#if <increment> equals 0 the request will be read-only
-#default <number of operations> equals 1000
+If <increment> equals 0 the request will be read-only. Default <number of operations> equals 1000.
 
-You can use the "runsmart.bat" script in Windows, and the "runsmart.sh" script em Linux.
+You can use the "runsmart.bat" script in Windows, and the "runsmart.sh" script in Linux.
 When running the script in Linux it is necessary to set the permissions to execute the script with the command "chmod +x runsmart.sh".
-These scripts can be easily be adapted to run other demos.
+These scripts can easily be adapted to run other demos.
 
-Other demo options are:
+Other available demos:
+
 - Random demo. You can run it by using the RandomServer and RandomClient classes located in the package bftsmart.demo.random.
 - BFTMap. A Table of hash maps where tables can be created and key value pair added to it.
-  The server is bftmap.demo.bftmap.BFTMapServer and the clients are BFTMapClient for incremental inserts or BFTMapInteractiveClient for a command line client.
-  Parameters to run the BFTMap demo are displayed when attempts to start the servers and clients are made without parameters.
+  The server is bftmap.demo.bftmap.BFTMapServer and the clients are BFTMapClient for incremental inserts or BFTMapInteractiveClient for a command line client. Parameters to run the BFTMap demo are displayed when attempts to start the servers and clients are made without parameters.
+- YCSB. You can run a Yahoo! Cloud Serving Benchmark with BFT-SMaRt by executing the startReplicaYCSB.sh and ycsbClient.sh
+  scripts located in the main folder.
 
-This version of BFT-SMaRt implements a state transfer protocol, which is already pretty robust.
-You can activate/deactivate it by editing the "config/system.config" file, and setting the parameter "system.totalordermulticast.state_transfer" to "false".
+------------- Additional Information ------------------
 
-This version also implements a reconfiguration protocol, that you can use to add/remove replicas from the initial group. This protocol is still experimental.
+BFT-SMaRt offers two state transfer protocols. The first is a basic protocol that can be used by extending the class bftsmart.tom.server.defaultservices.DefaultRecoverable that logs requests into memory and periodically takes snapshots of the application state.
 
-Finally, we have also implemented a new version of the leader change protocol, which is also experimental.
- 
-Feel free to contact us if you have any questions.
+The second, more advanced protocol can be used by extending the class bftsmart.tom.server.defaultservices.durability.DurabilityCoordinator. This protocol stores its logs to disk. To mitigate the latency of writing to disk, such tasks is done in batches and in parallel with the requests' execution. Additionally, the snapshots are taken at different points of the execution in different replicas.
+
+The library also implements a reconfiguration protocol, that you can use to add/remove replicas from the initial group. You can add/remove replicas on-the-fly by executing the following commands:
+
+./smartrun.sh bftsmart.reconfiguration.VMServices <smart id> <ip address> <port> (to add a replica to the group)
+./smartrun.sh bftsmart.reconfiguration.VMServices <smart id> (to remove a replica from the group)
+
+You can run BFT-SMaRt in crash-faults only mode by setting the "system.bft" parameter in the configuration file to "false". This mode requires less replicas to execute, but will not withstand full Byzantine behavior from compromised replicas.
+
+If you need to generate public/private keys for more replicas or clients, you can use the following command:
+
+./smartrun.sh bftsmart.tom.util.RSAKeyPairGenerator <id>
+
+Keys are stored in the config/keys folder. The command above creates key pairs both for clients and replicas.
+
+Finally, if you are interested in learning more about BFT-SMaRt, you can read:
+
+- The technical report at the handler: http://hdl.handle.net/10455/6897
+- The paper about its state machine protocol published in EDCC 2012: http://ieeexplore.ieee.org/xpl/articleDetails.jsp?arnumber=6214759
+- The paper about its advanced state transfer protocol published in Usenix 2013: https://www.usenix.org/conference/atc13/technical-sessions/presentation/bessani
+- The tool description published in DSN 2014: http://ieeexplore.ieee.org/xpls/abs_all.jsp?arnumber=6903593&tag=1
+
+Feel free to contact us if you have any questions!
