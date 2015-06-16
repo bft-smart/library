@@ -5,6 +5,8 @@ import java.util.Hashtable;
 import bftsmart.communication.client.ReplyListener;
 import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.core.messages.TOMMessageType;
+import bftsmart.tom.util.Extractor;
+import java.util.Comparator;
 
 /**
  * 
@@ -25,6 +27,7 @@ public class AsynchServiceProxy extends ServiceProxy{
 	 */
 	public AsynchServiceProxy(int processId) {
 		this(processId, null);
+                requestsContext =  new Hashtable<Integer, RequestContext>();
 	}
 
 	/**
@@ -37,6 +40,11 @@ public class AsynchServiceProxy extends ServiceProxy{
 		requestsContext =  new Hashtable<Integer, RequestContext>();
 	}
 
+        public AsynchServiceProxy(int processId, String configHome,
+			Comparator<byte[]> replyComparator, Extractor replyExtractor) {
+            super(processId, configHome, replyComparator, replyExtractor);
+            requestsContext =  new Hashtable<Integer, RequestContext>();
+        }
 
 	/**
 	 * 
