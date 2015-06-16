@@ -212,11 +212,36 @@ public abstract class DefaultSingleRecoverable implements Recoverable, SingleExe
         return lastEid;
     }
 
-	@Override
+        @Override
+        public void setReplicaContext(ReplicaContext replicaContext) {
+            this.replicaContext = replicaContext;
+            this.config = replicaContext.getStaticConfiguration();
+            if (log == null) {
+                checkpointPeriod = config.getCheckpointPeriod();
+                byte[] state = getSnapshot();
+                if (config.isToLog() && config.logToDisk()) {
+                    int replicaId = config.getProcessId();
+                    boolean isToLog = config.isToLog();
+                    boolean syncLog = config.isToWriteSyncLog();
+                    boolean syncCkp = config.isToWriteSyncCkp();
+                    log = new DiskStateLog(replicaId, state, computeHash(state), isToLog, syncLog, syncCkp);
+
+                    ApplicationState storedState = ((DiskStateLog) log).loadDurableState();
+                    if (storedState.getLastEid() > 0) {
+                        setState(storedState);
+                        getStateManager().setLastEID(storedState.getLastEid());
+                    }
+                } else {
+                    log = new StateLog(checkpointPeriod, state, computeHash(state));
+                }
+            }
+            getStateManager().askCurrentConsensusId();
+        }
+	/*@Override
 	public void setReplicaContext(ReplicaContext replicaCtx) {
 		this.replicaContext = replicaCtx;
     	this.config = replicaCtx.getStaticConfiguration();
-	}
+	}*/
 
 	@Override
     public StateManager getStateManager() {
