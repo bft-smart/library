@@ -53,6 +53,8 @@ public class Round implements Serializable {
 
     private ServerViewController controller;
 
+    private double[] sumWeightsWrite;
+    private double[] sumWeightsAccept;
     /**
      * Creates a new instance of Round for acceptors
      * @param parent Execution to which this round belongs
@@ -78,6 +80,9 @@ public class Round implements Serializable {
         Arrays.fill(writeSetted, false);
         Arrays.fill(acceptSetted, false);
 
+        sumWeightsWrite = new double[n];
+        sumWeightsAccept = new double[n];
+        
         if (number == 0) {
             this.write = new byte[n][];
             this.accept = new byte[n][];
@@ -262,6 +267,7 @@ public class Round implements Serializable {
         if (p >=0 /*&& !writeSetted[p] && !isFrozen() */) { //it can only be setted once
             write[p] = value;
             writeSetted[p] = true;
+            sumWeightsWrite[p]  = this.controller.getCurrentView().getWeight(acceptor);
         }
         //******* EDUARDO END **************//
     }
@@ -307,6 +313,7 @@ public class Round implements Serializable {
         if (p >= 0 /*&& !strongSetted[p] && !isFrozen()*/) { //it can only be setted once
             accept[p] = value;
             acceptSetted[p] = true;
+            sumWeightsAccept[p]  = this.controller.getCurrentView().getWeight(acceptor);
         }
         //******* EDUARDO END **************//
     }
@@ -347,7 +354,42 @@ public class Round implements Serializable {
         }
         return 0;
     }
+    /**
+     * Retrieves the total weights from which this process received a WRITE value
+     * @param value The value in question
+     * @return total weights from which this process received the specified value
+     */
+    public int countWriteWeigths(byte[] value) {
+        return countWeigths(writeSetted,sumWeightsWrite, write, value);
+    }
 
+    /**
+     * Retrieves the total weights from which this process accepted a specified value
+     * @param value The value in question
+     * @return total weights from which this process accepted the specified value
+     */
+    public int countAcceptWeigths(byte[] value) {
+        return countWeigths(acceptSetted,sumWeightsAccept, accept, value);
+    }
+
+    /**
+     * Counts how many times 'value' occurs in 'array'
+     * @param array Array where to count
+     * @param value Value to count
+     * @return Ammount of times that 'value' was find in 'array'
+     */
+    private int countWeigths(boolean[] arraySetted, double[] arrayWeights, byte[][] array, byte[] value) {
+        if (value != null) {
+            int counter = 0;
+            for (int i = 0; i < array.length; i++) {
+                if (arraySetted != null && arraySetted[i] && Arrays.equals(value, array[i])) {
+                    counter += arrayWeights[i];
+                }
+            }
+            return counter;
+        }
+        return 0;
+    }
     /*************************** DEBUG METHODS *******************************/
     /**
      * Print round information.
@@ -406,5 +448,8 @@ public class Round implements Serializable {
         Arrays.fill((Object[]) accept, null);
         
         this.proof = new HashSet<PaxosMessage>();
+        
+        sumWeightsWrite = new double[n];
+        sumWeightsAccept = new double[n];
     }
 }

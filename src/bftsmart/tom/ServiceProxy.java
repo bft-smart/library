@@ -322,6 +322,7 @@ public class ServiceProxy extends TOMSender {
 			}
 
 			int sameContent = 1;
+                        double overlay = getViewManager().getCurrentView().getWeight(reply.getSender());
 			if (reply.getSequence() == reqId && reply.getReqType() == requestType) {
 
 				Logger.println("Receiving reply from " + reply.getSender()
@@ -350,7 +351,13 @@ public class ServiceProxy extends TOMSender {
 						if ((i != pos || getViewManager().getCurrentViewN() == 1) && replies[i] != null
 								&& (comparator.compare(replies[i].getContent(), reply.getContent()) == 0)) {
 							sameContent++;
-							if (sameContent >= replyQuorum) {
+                                                        overlay += getViewManager().getCurrentView().getWeight(replies[i].getSender());
+							
+                                                        // code for classic quorums
+                                                        //if (sameContent >= replyQuorum) {
+                                                        
+                                                        //code for small quorum size
+                                                        if (overlay >= replyQuorum) {
 								response = extractor.extractResponse(replies, sameContent, pos);
 								reqId = -1;
 								this.sm.release(); // resumes the thread that is executing the "invoke" method
@@ -391,12 +398,24 @@ public class ServiceProxy extends TOMSender {
 	}
 
 	private int getReplyQuorum() {
-		if (getViewManager().getStaticConf().isBFT()) {
+            
+                // code for classic quorums
+		/*if (getViewManager().getStaticConf().isBFT()) {
 			return (int) Math.ceil((getViewManager().getCurrentViewN()
 					+ getViewManager().getCurrentViewF()) / 2) + 1;
 		} else {
 			return (int) Math.ceil((getViewManager().getCurrentViewN()) / 2) + 1;
-		}
+		}*/
+            
+            // code for small quorum size
+            if (getViewManager().getStaticConf().isBFT()) {
+                return (int) Math.ceil((getViewManager().getCurrentView().getOverlayN()
+                        + (getViewManager().getCurrentView().getOverlayF() ) + 1) / 2);
+            } else {
+            
+                return (int) Math.ceil(((getViewManager().getCurrentView().getOverlayN()) + 1) / 2);
+            
+            }
 	}
 
 	private int getRandomlyServerId(){

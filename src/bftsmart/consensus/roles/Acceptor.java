@@ -255,13 +255,25 @@ public final class Acceptor {
      * @param value Value sent in the message
      */
     private void computeWrite(int eid, Round round, byte[] value) {
-        int writeAccepted = round.countWrite(value);
+        //int writeAccepted = round.countWrite(value);
+        int writeWeigths = round.countWriteWeigths(value);
         
-        Logger.println("(Acceptor.computeWrite) I have " + writeAccepted +
-                " WRITEs for " + eid + "," + round.getNumber());
+        //Logger.println("(Acceptor.computeWrite) I have " + writeAccepted +
+        //        " WRITEs for " + eid + "," + round.getNumber());
 
-        if (writeAccepted > controller.getQuorum() && Arrays.equals(value, round.propValueHash)) {
-                        
+        Logger.println("(Acceptor.computeWrite) I have " + writeWeigths +
+                " WRITEs weigths  and " + round.countWrite(value) + " WRITE messages for " + eid + "," + round.getNumber());
+
+        // code for classic quorums
+        //if (writeAccepted > controller.getQuorum() && Arrays.equals(value, round.propValueHash)) {
+        
+        if (writeWeigths > controller.getOverlayQuorum() && Arrays.equals(value, round.propValueHash)) {              
+
+            //code for tentative execution
+            //Logger.println("(Acceptor.computeWrite) Tentatively Deciding " + eid);
+            //decide(round, value, false, round.countWrite(value) <= controller.getQuorum());
+            
+            //normal code for standard execution
             if (!round.isAcceptSetted(me)) {
                 
                 Logger.println("(Acceptor.computeWrite) sending WRITE for " + eid);
@@ -381,10 +393,17 @@ public final class Acceptor {
      * @param value Value sent in the message
      */
     private void computeAccept(int eid, Round round, byte[] value) {
-        Logger.println("(Acceptor.computeAccept) I have " + round.countAccept(value) +
-                " ACCEPTs for " + eid + "," + round.getNumber());
+        //Logger.println("(Acceptor.computeAccept) I have " + round.countAccept(value) +
+        //        " ACCEPTs for " + eid + "," + round.getNumber());
 
-        if (round.countAccept(value) > controller.getQuorum() && !round.getExecution().isDecided()) {
+        Logger.println("(Acceptor.computeAccept) I have " + round.countAcceptWeigths(value) +
+                " ACCEPT weigths and " + round.countAccept(value) + " ACCEPT messages for " + eid + "," + round.getNumber());
+
+        //normal code, for classic quorums
+        //if (round.countAccept(value) > controller.getQuorum() && !round.getExecution().isDecided()) {
+        
+        //code for small quorum size
+        if (round.countAcceptWeigths(value) > controller.getOverlayQuorum() && !round.getExecution().isDecided()) {
             Logger.println("(Acceptor.computeAccept) Deciding " + eid);
             decide(round, value);
         }
