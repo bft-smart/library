@@ -1,4 +1,4 @@
-BFT-SMaRt v1.0-beta
+WHEAT 0.1-alpha
 ----------
 
 This package contains the BFT-SMaRt source code (src/), binary file (bin/), libraries needed (lib/), documentation (doc/), and configuration files (config/).
