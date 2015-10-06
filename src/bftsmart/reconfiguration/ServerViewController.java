@@ -63,7 +63,7 @@ public class ServerViewController extends ViewController {
             
             System.out.println("#Creating current view from configuration file");
             reconfigureTo(new View(0, getStaticConf().getInitialView(), 
-                getStaticConf().getF(), getInitAdddresses()));
+                getStaticConf().getF(), getInitAdddresses(), getStaticConf().isBFT(), getStaticConf().getDelta()));
         }else{
             System.out.println("#Using view stored on disk");
             reconfigureTo(cv);
@@ -230,7 +230,7 @@ public class ServerViewController extends ViewController {
         for(int i = 0 ;i < nextV.length ;i++)
         	addresses[i] = getStaticConf().getRemoteAddress(nextV[i]);
 
-        View newV = new View(currentView.getId() + 1, nextV, f,addresses);
+        View newV = new View(currentView.getId() + 1, nextV, f,addresses, getStaticConf().isBFT(), getStaticConf().getDelta());
 
         System.out.println("new view: " + newV);
         System.out.println("installed on eid: " + eid);
