@@ -634,7 +634,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 		if(this.controller.getStaticConf().isBFT()) {
 			condition = lcManager.getStopsSize(nextReg) > this.controller.getCertificateQuorum() && lcManager.getNextReg() > lcManager.getLastReg();
 		} else {
-			condition = (lcManager.getStopsSize(nextReg) > this.controller.getQuorumAccept() && lcManager.getNextReg() > lcManager.getLastReg());
+			condition = (lcManager.getStopsSize(nextReg) > this.controller.getQuorum() && lcManager.getNextReg() > lcManager.getLastReg());
 		}
 		// May I proceed to the synchronization phase?
 		//if (lcManager.getStopsSize(nextReg) > this.reconfManager.getQuorum2F() && lcManager.getNextReg() > lcManager.getLastReg()) {

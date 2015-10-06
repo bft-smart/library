@@ -260,7 +260,7 @@ public final class Acceptor {
         Logger.println("(Acceptor.computeWrite) I have " + writeAccepted +
                 " WRITEs for " + eid + "," + round.getNumber());
 
-        if (writeAccepted > controller.getQuorumAccept() && Arrays.equals(value, round.propValueHash)) {
+        if (writeAccepted > controller.getQuorum() && Arrays.equals(value, round.propValueHash)) {
                         
             if (!round.isAcceptSetted(me)) {
                 
@@ -384,7 +384,7 @@ public final class Acceptor {
         Logger.println("(Acceptor.computeAccept) I have " + round.countAccept(value) +
                 " ACCEPTs for " + eid + "," + round.getNumber());
 
-        if (round.countAccept(value) > controller.getQuorumAccept() && !round.getExecution().isDecided()) {
+        if (round.countAccept(value) > controller.getQuorum() && !round.getExecution().isDecided()) {
             Logger.println("(Acceptor.computeAccept) Deciding " + eid);
             decide(round, value);
         }

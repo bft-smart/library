@@ -38,14 +38,19 @@ public class ServerViewController extends ViewController {
     
     private int quorumF; // f replicas
     private int quorum2F; // f * 2 replicas
-    private int quorumAccept; // ((n + f) / 2) replicas
-    private int quorumCFT_Accept; // Quorum para caso CFT
+    private int quorumBFT; // ((n + f) / 2) replicas
+    private int quorumCFT; // Quorum para caso CFT
     private int quorumFastDecide; // ((n + 3 * f) / 2) replicas
     private int[] otherProcesses;
     private int[] lastJoinStet;
     private List<TOMMessage> updates = new LinkedList<TOMMessage>();
     private TOMLayer tomLayer;
    // protected View initialView;
+    
+    private int overlayN;
+    private int overlayF;
+    private int overlayQ_BFT;
+    private int overlayQ_CFT;
     
     public ServerViewController(int procId) {
         this(procId,"");
@@ -309,9 +314,14 @@ public class ServerViewController extends ViewController {
 
             this.quorumF = this.currentView.getF();
             this.quorum2F = 2 * this.quorumF;
-            this.quorumAccept = (int) Math.ceil((this.currentView.getN() + this.quorumF) / 2);
-            this.quorumCFT_Accept = (int) Math.ceil(this.currentView.getN() / 2);
+            this.quorumBFT = (int) Math.ceil((this.currentView.getN() + this.quorumF) / 2);
+            this.quorumCFT = (int) Math.ceil(this.currentView.getN() / 2);
             this.quorumFastDecide = (int) Math.ceil((this.currentView.getN() + 3 * this.quorumF) / 2);
+
+            this.overlayN = this.currentView.getOverlayN();
+            this.overlayF = this.currentView.getOverlayF();
+            this.overlayQ_BFT = (int) Math.ceil((this.overlayN + this.overlayF) / 2);
+            this.overlayQ_CFT = (int) Math.ceil(this.overlayN / 2);
         } else if (this.currentView != null && this.currentView.isMember(getStaticConf().getProcessId())) {
             //TODO: Left the system in newView -> LEAVE
             //CODE for LEAVE   
@@ -344,7 +354,11 @@ public class ServerViewController extends ViewController {
         return quorumFastDecide;
     }
 
-    public int getQuorumAccept() {
-        return getStaticConf().isBFT() ? quorumAccept : quorumCFT_Accept;
+    public int getQuorum() {
+        return getStaticConf().isBFT() ? quorumBFT : quorumCFT;
+    }
+
+    public int getOverlayQuorum() {
+        return getStaticConf().isBFT() ? overlayQ_BFT : overlayQ_CFT;
     }
 }

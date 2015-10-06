@@ -385,7 +385,7 @@ public final class ExecutionManager {
             	return ((countWrites > (2*controller.getCurrentViewF())) &&
             			(countAccepts > (2*controller.getCurrentViewF())));
             }else{
-            	return (countAccepts > controller.getQuorumAccept());
+            	return (countAccepts > controller.getQuorum());
             }
         }
         return false;
