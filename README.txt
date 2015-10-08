@@ -16,7 +16,7 @@ $ java -cp ./bin/WHEAT.jar:./lib/* bftsmart.demo.counter.CounterClient 1001 10
 To configure the vote assigment scheme, it is necessary to:
 
 1) sort the replicas IDs from fastest to slowest in ./config/system.config;
-2) set the "useWeights" to "true".
+2) set the "useWeights" parameter to "true".
 
 Example for 5 replicas (BFT mode, f = 1, delta = 1):
 
