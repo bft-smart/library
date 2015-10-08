@@ -330,7 +330,7 @@ public class TOMConfiguration extends Configuration {
             useWeights = (s != null) ? Boolean.parseBoolean(s) : false;
             
             if (useWeights) {
-                delta = n - ((3*f) + 1);
+                delta = n - ( (isBFT ? 3*f : 2*f) + 1);
             } else {
                 delta = 0;
             }

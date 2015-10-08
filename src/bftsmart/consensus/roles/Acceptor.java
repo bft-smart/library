@@ -267,20 +267,21 @@ public final class Acceptor {
         // code for classic quorums
         //if (writeAccepted > controller.getQuorum() && Arrays.equals(value, round.propValueHash)) {
         
+        //code for vote schemes
         if (writeWeigths > controller.getOverlayQuorum() && Arrays.equals(value, round.propValueHash)) {              
 
             //code for tentative execution
-            //Logger.println("(Acceptor.computeWrite) Tentatively Deciding " + eid);
-            //decide(round, value, false, round.countWrite(value) <= controller.getQuorum());
+            Logger.println("(Acceptor.computeWrite) Tentatively Deciding " + eid);
+            decide(round, value);
             
             //normal code for standard execution
-            if (!round.isAcceptSetted(me)) {
+            /*if (!round.isAcceptSetted(me)) {
                 
                 Logger.println("(Acceptor.computeWrite) sending WRITE for " + eid);
 
-                /**** LEADER CHANGE CODE! ******/
+                //////// LEADER CHANGE CODE! /////////////
                 round.getExecution().setQuorumWrites(value);
-                /*****************************************/
+                //////////////////////////////////////////
                 
                 round.setAccept(me, value);
 
@@ -366,7 +367,7 @@ public final class Acceptor {
                         //factory.createStrong(eid, round.getNumber(), value));
                 round.addToProof(pm);
                 computeAccept(eid, round, value);
-            }
+            }*/
         }
     }
 
@@ -402,7 +403,7 @@ public final class Acceptor {
         //normal code, for classic quorums
         //if (round.countAccept(value) > controller.getQuorum() && !round.getExecution().isDecided()) {
         
-        //code for small quorum size
+        //code for vote scheme
         if (round.countAcceptWeigths(value) > controller.getOverlayQuorum() && !round.getExecution().isDecided()) {
             Logger.println("(Acceptor.computeAccept) Deciding " + eid);
             decide(round, value);

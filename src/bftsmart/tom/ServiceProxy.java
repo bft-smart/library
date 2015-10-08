@@ -348,7 +348,7 @@ public class ServiceProxy extends TOMSender {
 					
 					for (int i = 0; i < replies.length; i++) {
 
-						if ((i != pos || getViewManager().getCurrentViewN() == 1) && replies[i] != null
+						if ((i != pos || getViewManager().getCurrentViewN() == 1 || replyQuorum == 1) && replies[i] != null
 								&& (comparator.compare(replies[i].getContent(), reply.getContent()) == 0)) {
 							sameContent++;
                                                         overlay += getViewManager().getCurrentView().getWeight(replies[i].getSender());
@@ -407,14 +407,18 @@ public class ServiceProxy extends TOMSender {
 			return (int) Math.ceil((getViewManager().getCurrentViewN()) / 2) + 1;
 		}*/
             
-            // code for small quorum size
+            // code for vote schemes
             if (getViewManager().getStaticConf().isBFT()) {
                 return (int) Math.ceil((getViewManager().getCurrentView().getOverlayN()
                         + (getViewManager().getCurrentView().getOverlayF() ) + 1) / 2);
             } else {
             
-                return (int) Math.ceil(((getViewManager().getCurrentView().getOverlayN()) + 1) / 2);
+                //code for simple majority (of votes)
+                //return (int) Math.ceil(((getViewManager().getCurrentView().getOverlayN()) + 1) / 2);
             
+                //Code to only wait one reply
+                Logger.println("(ServiceProxy.getReplyQuorum) only one reply will be gathered");
+                return 1;
             }
 	}
 
