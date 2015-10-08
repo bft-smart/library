@@ -25,6 +25,8 @@ system.useweights = true
 
 The code will automatically compute the values delta, u and Vmax discussed in [1] during start-up. Bear in mind that this code is highly experimental, and only runned in fault-free executions.
 
+Finally, do not forget to always erase the ./config/currentView file after changing N, F, or the order of replicas. This file stores information about the system view, and if it exists, WHEAT/SMART assumes the data from that file instead of creating it again from the settings available in the configuration files.
+
 Feel free to contact us if you have any questions!
 
 References:
