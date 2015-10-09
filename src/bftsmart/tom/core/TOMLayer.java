@@ -1199,7 +1199,8 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 					exec.getLearner().firstMessageProposed = r.deserializedPropValue[0];
 				else exec.getLearner().firstMessageProposed = new TOMMessage(); // to avoid null pointer
 			}
-			r.setWrite(me, hash);
+			if (this.controller.getStaticConf().isBFT()) r.setWrite(me, hash);
+                        else r.setAccept(me, hash);
 
 			// resume normal operation
 			execManager.restart();
@@ -1209,12 +1210,17 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 				Logger.println("(TOMLayer.finalise) wake up proposer thread");
 				imAmTheLeader();
 			} // waik up the thread that propose values in normal operation
-			Logger.println("(TOMLayer.finalise) sending WRITE message");
 
-			// send a WRITE message to the other replicas
-			communication.send(this.controller.getCurrentViewOtherAcceptors(),
+			// send a WRITE/ACCEPT message to the other replicas
+			if (this.controller.getStaticConf().isBFT()) {
+                            Logger.println("(TOMLayer.finalise) sending WRITE message");
+                            communication.send(this.controller.getCurrentViewOtherAcceptors(),
 					acceptor.getFactory().createWrite(currentEid, r.getNumber(), r.propValueHash));
-
+                        } else {
+                            Logger.println("(TOMLayer.finalise) sending ACCEPT message");
+                            communication.send(this.controller.getCurrentViewOtherAcceptors(),
+					acceptor.getFactory().createAccept(currentEid, r.getNumber(), r.propValueHash));
+                        }
 		}
 
 		else Logger.println("(TOMLayer.finalise) sync phase failed for regency" + regency);
