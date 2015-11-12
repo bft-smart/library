@@ -42,9 +42,9 @@ public class RSAKeyPairGenerator {
      * @param id the id of the process to generate key
      * @throws Exception something goes wrong when writing the files
      */
-    public void run(int id) throws Exception {
+    public void run(int id, int size) throws Exception {
         KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
-        keyGen.initialize(1024);
+        keyGen.initialize(size);
         KeyPair kp = keyGen.generateKeyPair();
         PublicKey puk = kp.getPublic();
         PrivateKey prk = kp.getPrivate();
@@ -75,9 +75,9 @@ public class RSAKeyPairGenerator {
 
     public static void main(String[] args){
         try{
-            new RSAKeyPairGenerator().run(Integer.parseInt(args[0]));
+            new RSAKeyPairGenerator().run(Integer.parseInt(args[0]), Integer.parseInt(args[1]));
         }catch(Exception e){
-            System.err.println("Use: RSAKeyPairGenerator <id>");
+            System.err.println("Use: RSAKeyPairGenerator <id> <key size>");
         }
     }
 
