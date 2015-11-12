@@ -22,9 +22,13 @@ import java.security.interfaces.RSAPublicKey;
 
 .........
 
-int id = Integer.parseInt(args[0]);
+int id;
+byte[] operation;
+
+......... initialize 'id' and 'operation' ........
+
 ServiceProxy proxy = new ServiceProxy(id);
-byte[] reply = proxy.invokeOrdered(out.toByteArray());
+byte[] reply = proxy.invokeOrdered(operation);
 
 CertificatedReply certificate = proxy.getCertificatedReply();
 RSAPublicKey thresholdKey = proxy.getPublicThresholdKey();
