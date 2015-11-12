@@ -54,6 +54,9 @@ public class TOMUtil {
     private static Signature signatureEngine;
     private static int signatureSize = -1;
 
+    //the message digest engine used in the system
+    private static MessageDigest md = null;
+           
     //lock to make signMessage and verifySignature reentrant
     private static ReentrantLock lock = new ReentrantLock();
 
@@ -217,15 +220,22 @@ public class TOMUtil {
         return Arrays.equals(h2, h2);
     }
 
-	public static final byte[] computeHash(byte[] data) {
-		MessageDigest md = null;
-		try {
-			md = MessageDigest.getInstance("MD5");
-		} catch (NoSuchAlgorithmException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} // TODO: shouldn't it be SHA?
-		return md.digest(data);
-	}
-
+    public static final byte[] computeHash(byte[] data) {
+        
+        lock.lock();
+        byte[] result = null;
+        
+        try {
+            if (md == null) md = MessageDigest.getInstance("MD5");
+            
+        } catch (NoSuchAlgorithmException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        } // TODO: shouldn't it be SHA?
+        
+        result = md.digest(data);
+        lock.unlock();
+        return result;
+    }
+    
 }
