@@ -10,6 +10,8 @@ To create a new set of keyshares and public key, use class 'ThresholdSignatureGe
 
 java -cp ./bin/*:./lib/* bftsmart.tom.util.ThresholdSignatureGenerator <key size>
 
+The keyshares and public key will appear in the 'config' directory.
+
 Finally, here it is an example of verifying the reply against the key shares within Java code:
 
 
