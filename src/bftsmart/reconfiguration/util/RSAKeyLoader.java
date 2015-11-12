@@ -77,7 +77,18 @@ public class RSAKeyLoader {
 		PublicKey ret = getPublicKeyFromString(key);
 		return ret;
 	}
-
+        
+	public PublicKey loadPublicThresholdKey() throws Exception {
+		BufferedReader r = new BufferedReader(new FileReader(path + "thresholdkey"));
+		String tmp = "";
+		String key = "";
+		while ((tmp = r.readLine()) != null) {
+			key = key + tmp;
+		}
+		r.close();
+		PublicKey ret = getPublicKeyFromString(key);
+		return ret;
+	}
 	/**
 	 * Loads the private key of this process
 	 *

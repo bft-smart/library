@@ -16,6 +16,7 @@ limitations under the License.
 package bftsmart.tom.util;
 
 import bftsmart.tom.core.messages.TOMMessage;
+import threshsig.SigShare;
 
 /**
  * Provides support for building custom response extractors to be used in the
@@ -25,4 +26,5 @@ import bftsmart.tom.core.messages.TOMMessage;
  */
 public interface Extractor {
     TOMMessage extractResponse(TOMMessage[] replies, int sameContent, int lastReceived);
+    SigShare[] extractSigShares(TOMMessage[] replies, int sameContent, int lastReceived);
 }

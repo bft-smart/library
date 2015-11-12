@@ -46,6 +46,12 @@ import bftsmart.tom.server.SingleExecutable;
 import bftsmart.tom.server.defaultservices.DefaultReplier;
 import bftsmart.tom.util.ShutdownHookThread;
 import bftsmart.tom.util.TOMUtil;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import threshsig.KeyShare;
+import threshsig.SigShare;
 
 
 
@@ -86,6 +92,7 @@ public class ServiceReplica {
 	private boolean tomStackCreated = false;
 	private ReplicaContext replicaCtx = null;
 	private Replier replier = null;
+        private KeyShare ks = null;
 
 
 	/*******************************************************/
@@ -198,8 +205,25 @@ public class ServiceReplica {
 	}
 
 	private void initReplica() {
-		cs.start();
-		repMan = new ReplyManager(SVController.getStaticConf().getNumRepliers(), cs);
+            cs.start();
+            repMan = new ReplyManager(SVController.getStaticConf().getNumRepliers(), cs);
+                
+            String path = "config"+System.getProperty("file.separator")+"keys"+
+                    System.getProperty("file.separator");
+            try {
+                
+                
+                ObjectInputStream r = new ObjectInputStream(new FileInputStream(path+"share"+id));
+                ks = (KeyShare) r.readObject();
+                r.close();
+                
+            } catch (FileNotFoundException ex) {
+                Logger.getLogger(ServiceReplica.class.getName()).log(Level.SEVERE, null, ex);
+            } catch (IOException ex) {
+                Logger.getLogger(ServiceReplica.class.getName()).log(Level.SEVERE, null, ex);
+            } catch (ClassNotFoundException ex) {
+                Logger.getLogger(ServiceReplica.class.getName()).log(Level.SEVERE, null, ex);
+            }
 	}
 
 	/**
@@ -215,6 +239,7 @@ public class ServiceReplica {
 		} else
 			response = executor.executeUnordered(message.getContent(), msgCtx);
 
+                SigShare sign = thresholdSign(message.getSender(), message.getSession(), message.getSequence(), response);
 		if(message.getReqType()==TOMMessageType.UNORDERED_HASHED_REQUEST && 
 				message.getReplyServer()!= this.id){
 				response = TOMUtil.computeHash(response);
@@ -224,6 +249,8 @@ public class ServiceReplica {
 		message.reply = new TOMMessage(id, message.getSession(), message.getSequence(),
 				response, SVController.getCurrentViewId(), message.getReqType());
 		
+                message.reply.setSigShare(sign);
+                
 		if (SVController.getStaticConf().getNumRepliers() > 0)
 			repMan.send(message);
 		else
@@ -263,15 +290,19 @@ public class ServiceReplica {
 							toBatch.add(request);
 						} else if(executor instanceof FIFOExecutable) {                                                    
 							byte[]response = ((FIFOExecutable)executor).executeOrderedFIFO(request.getContent(), msgCtx, request.getSender(), request.getOperationId());
-							request.reply = new TOMMessage(id, request.getSession(),
+							SigShare sign = thresholdSign(request.getSender(), request.getSession(), request.getSequence(), response);
+                                                        request.reply = new TOMMessage(id, request.getSession(),
 									request.getSequence(), response, SVController.getCurrentViewId());
-							bftsmart.tom.util.Logger.println("(ServiceReplica.receiveMessages) sending reply to " + request.getSender());
+							request.reply.setSigShare(sign);
+                                                        bftsmart.tom.util.Logger.println("(ServiceReplica.receiveMessages) sending reply to " + request.getSender());
 							replier.manageReply(request, msgCtx);
 						} else if(executor instanceof SingleExecutable) {                                                      
 							byte[]response = ((SingleExecutable)executor).executeOrdered(request.getContent(), msgCtx);
-							request.reply = new TOMMessage(id, request.getSession(),
+							SigShare sign = thresholdSign(request.getSender(), request.getSession(), request.getSequence(), response);
+                                                        request.reply = new TOMMessage(id, request.getSession(),
 									request.getSequence(), response, SVController.getCurrentViewId());
-							bftsmart.tom.util.Logger.println("(ServiceReplica.receiveMessages) sending reply to " + request.getSender());
+							request.reply.setSigShare(sign);
+                                                        bftsmart.tom.util.Logger.println("(ServiceReplica.receiveMessages) sending reply to " + request.getSender());
 							replier.manageReply(request, msgCtx);
 						} else {                                                       
 							throw new UnsupportedOperationException("Interface not existent");
@@ -323,9 +354,11 @@ public class ServiceReplica {
 			//Send the replies back to the client
 			for(int index = 0; index < toBatch.size(); index++){                               
 				TOMMessage request = toBatch.get(index);                
-				request.reply = new TOMMessage(id, request.getSession(), request.getSequence(),
+				SigShare sign = thresholdSign(request.getSender(), request.getSession(), request.getSequence(), replies[index]);
+                                request.reply = new TOMMessage(id, request.getSession(), request.getSequence(),
 						replies[index], SVController.getCurrentViewId());                       
-                                
+
+                                request.reply.setSigShare(sign);
 				if (SVController.getStaticConf().getNumRepliers() > 0) {                                    
 					repMan.send(request);
                                 }
@@ -413,4 +446,16 @@ public class ServiceReplica {
 		return replicaCtx;
 	}
 
+        private SigShare thresholdSign(int id, int session, int sequence, byte[] response) {
+            
+            SigShare sig = null;
+            
+            if (tomLayer.controller.getStaticConf().getThreshold()) {
+                
+                sig = ks.sign(TOMUtil.generateThesholdPayload(response, id, session, sequence));
+
+            }
+
+            return sig;
+        }
 }

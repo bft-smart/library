@@ -26,6 +26,11 @@ import java.io.IOException;
 
 import bftsmart.communication.SystemMessage;
 import bftsmart.tom.util.DebugInfo;
+import java.io.ObjectInput;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutput;
+import java.io.ObjectOutputStream;
+import threshsig.SigShare;
 
 /**
  * This class represents a total ordered message
@@ -45,6 +50,8 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 
 	private byte[] content = null; // Content of the message
 
+        private SigShare sigShare = null;
+        
 	//the fields bellow are not serialized!!!
 	private transient int id; // ID for this message. It should be unique
 
@@ -197,6 +204,13 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 		return content;
 	}
 
+        public void setSigShare(SigShare sigShare) {
+            this.sigShare = sigShare;
+        }
+        public SigShare getSigShare() {
+            return sigShare;
+        }
+        
 	/**
 	 * Verifies if two TOMMessage are equal. For performance reasons, the method
 	 * only verifies if the send and sequence are equal.
@@ -248,7 +262,20 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 			out.writeInt(content.length);
 			out.write(content);
 		}
-	}
+		if (sigShare == null) {
+			out.writeInt(-1);
+		} else {
+
+                        //serialize sigshare
+                        ByteArrayOutputStream b = new ByteArrayOutputStream();
+                        ObjectOutput  o = new ObjectOutputStream(b);   
+                        o.writeObject(sigShare);
+                        byte[] sig = b.toByteArray();
+                        
+                        out.writeInt(sig.length);
+                        out.write(sig);
+		}
+        }
 
 	public void rExternal(DataInput in) throws IOException, ClassNotFoundException {
 		sender = in.readInt();
@@ -265,6 +292,18 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 			in.readFully(content);
 		}
 
+                toRead = in.readInt();
+		if (toRead != -1) {
+                    byte sig[] = new byte[toRead];
+                    in.readFully(sig);
+                        
+                    ByteArrayInputStream b = new ByteArrayInputStream(sig);
+                    ObjectInput i = new ObjectInputStream(b);
+                    Object o = i.readObject(); 
+                    
+                    sigShare = (SigShare) o;
+			
+		}
 		buildId();
 	}
 

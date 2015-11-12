@@ -20,6 +20,7 @@ import java.security.PublicKey;
 import java.util.StringTokenizer;
 
 import bftsmart.tom.util.Logger;
+import java.security.interfaces.RSAPublicKey;
 
 public class TOMConfiguration extends Configuration {
 
@@ -56,6 +57,7 @@ public class TOMConfiguration extends Configuration {
 	private boolean syncCkp;
     private boolean isBFT;
     private int numRepliers;
+    private boolean threshold;
     
     /** Creates a new instance of TOMConfiguration */
     public TOMConfiguration(int processId) {
@@ -323,6 +325,14 @@ public class TOMConfiguration extends Configuration {
                 numRepliers = Integer.parseInt(s);
             }
             
+            s = (String) configs.remove("system.threshold");
+            
+            if (s == null) {
+                threshold = false;
+            } else {
+                threshold = Boolean.parseBoolean(s);
+            }
+            
             rsaLoader = new RSAKeyLoader(processId, TOMConfiguration.configHome);
         } catch (Exception e) {
             e.printStackTrace(System.err);
@@ -476,6 +486,16 @@ public class TOMConfiguration extends Configuration {
         return useControlFlow;
     }
 
+    public RSAPublicKey getRSAPublicThresholdKey() {
+        try {
+            return (RSAPublicKey) rsaLoader.loadPublicThresholdKey();
+        } catch (Exception e) {
+            e.printStackTrace(System.err);
+            return null;
+        }
+
+    }
+    
     public PublicKey getRSAPublicKey() {
         try {
             return rsaLoader.loadPublicKey();
@@ -516,5 +536,9 @@ public class TOMConfiguration extends Configuration {
 
     public int getNumRepliers() {
         return numRepliers;
+    }
+
+    public boolean getThreshold() {
+        return threshold;
     }
 }
