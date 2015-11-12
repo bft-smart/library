@@ -130,7 +130,11 @@ public final class ExecutionManager {
     public boolean stopped() {
         return stopped;
     }
-    
+
+    public boolean hasMsgs() {
+        return !stoppedMsgs.isEmpty();
+    }
+
     public Queue<PaxosMessage> getStoppedMsgs() {
         return stoppedMsgs;
     }
