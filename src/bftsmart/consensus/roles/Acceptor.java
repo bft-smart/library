@@ -267,6 +267,7 @@ public final class Acceptor {
                 Logger.println("(Acceptor.computeWrite) sending WRITE for " + eid);
 
                 /**** LEADER CHANGE CODE! ******/
+                Logger.println("(Acceptor.computeWrite) Setting EID's " + eid + " QuorumWrite tiemstamp to " + round.getExecution().getEts() + " and value: " + Arrays.toString(TOMUtil.computeHash(value)));
                 round.getExecution().setQuorumWrites(value);
                 /*****************************************/
                 
