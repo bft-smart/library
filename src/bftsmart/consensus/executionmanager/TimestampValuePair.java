@@ -106,8 +106,9 @@ public class TimestampValuePair implements Externalizable {
     }
 
     public String toString() {
-        
-        return timestamp + " :: " + (this.hashedValue != null ? Arrays.toString(this.hashedValue) : Arrays.toString(TOMUtil.computeHash(value)));
+                
+        if (this.value == null || this.value.length == 0) return timestamp + " :: []";
+        else return timestamp + " :: " + (this.hashedValue != null && this.hashedValue.length > 0 ? Arrays.toString(this.hashedValue) : Arrays.toString(value));
     }
     
     @Override
