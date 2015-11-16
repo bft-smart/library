@@ -24,7 +24,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -39,15 +38,9 @@ import java.io.ByteArrayOutputStream;
 import java.io.ObjectOutputStream;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
-import java.security.PrivateKey;
 import java.security.PublicKey;
-import javax.crypto.BadPaddingException;
-import javax.crypto.Cipher;
-import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.Mac;
-import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
-import javax.crypto.spec.SecretKeySpec;
 
 /**
  *
@@ -338,12 +331,16 @@ public class LCManager {
      */
     public boolean sound(HashSet<CollectData> collects) {
 
+        System.out.println("[sound] Collects size: " + collects.size());
+        
         if (collects == null) return false;
         
         HashSet<Integer> timestamps = new HashSet<Integer>();
         HashSet<byte[]> values = new HashSet<byte[]>();
 
         for (CollectData c : collects) { // organize all existing timestamps and values separately
+            
+            System.out.println("CollectData REPLICA ID["+c.getPid()+"] EID["+c.getEid()+"] WRITESET["+c.getWriteSet()+"] WRITTEN[" + c.getQuorumWrites() +"]");
             
             timestamps.add(c.getQuorumWrites().getRound()); //store timestamp received from a Byzatine quorum of WRITES
             
@@ -375,10 +372,14 @@ public class LCManager {
 
         }
 
+	System.out.println("\tvalues size: "+values.size());
+        System.out.println("\ttimestamps size: "+timestamps.size());
+
         // after having organized all timestamps and values, properly apply the predicate
         for (int r : timestamps) {
             for (byte[] v : values) {
 
+                System.out.println("[TESTING BIND] " + r + " - " + Arrays.toString(v));
                 if (binds(r, v, collects)) {
 
                     return true;
@@ -400,7 +401,14 @@ public class LCManager {
      */
     public boolean binds(int timestamp, byte[] value, HashSet<CollectData> collects) {
 
-        return (value != null && collects != null && collects.size() > (SVController.getCurrentViewN() - SVController.getCurrentViewF()))
+        System.out.println("\t[BIND] value != null : " + (value != null));
+        System.out.println("\t[BIND] collects != null : " + (collects != null));
+        System.out.println("\t[BIND] collects.size() >= (SVController.getCurrentViewN() - SVController.getCurrentViewF()) : " + (collects.size() >= (SVController.getCurrentViewN() - SVController.getCurrentViewF())));
+        System.out.println("\t[BIND] quorumHighest(timestamp, value, collects) : " + (quorumHighest(timestamp, value, collects)));
+        System.out.println("\t[BIND] certifiedValue(timestamp, value, collects) : " + (certifiedValue(timestamp, value, collects)));
+
+                
+        return (value != null && collects != null && collects.size() >= (SVController.getCurrentViewN() - SVController.getCurrentViewF()))
                 && quorumHighest(timestamp, value, collects) && certifiedValue(timestamp, value, collects);
     }
 
@@ -537,6 +545,9 @@ public class LCManager {
         int count = 0;
         for (CollectData c : collects) {
 
+            //System.out.println("\t\t[QUORUM HIGHEST] ts' < ts : " + (c.getQuorumWrites().getRound() < timestamp));
+            //System.out.println("\t\t[QUORUM HIGHEST] ts' = ts && val' = val : " + (c.getQuorumWrites().getRound() == timestamp && Arrays.equals(value, c.getQuorumWrites().getValue())));
+            
             if ((c.getQuorumWrites().getRound() < timestamp)
                     || (c.getQuorumWrites().getRound() == timestamp && Arrays.equals(value, c.getQuorumWrites().getValue())))
                         count++;
@@ -572,6 +583,8 @@ public class LCManager {
 
             for (TimestampValuePair pv : c.getWriteSet()) {
 
+//                System.out.println("\t\t[CERTIFIED VALUE] " + pv.getRound() + "  >= " + timestamp);
+//                System.out.println("\t\t[CERTIFIED VALUE] " + Arrays.toString(value) + "  == " + Arrays.toString(pv.getValue()));
                 if (pv.getRound() >= timestamp && Arrays.equals(value, pv.getHashedValue()))
                     count++;
             }
