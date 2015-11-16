@@ -714,7 +714,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
                                                 exec.incEts(); // make the execution advance to the next round/epoch
                                                 
-                                                System.out.println("[NEW ETS] " + exec.getId() + " // " + exec.getEts() );
+                                                System.out.println("[NEW EID // ETS] " + exec.getId() + " // " + exec.getEts() );
                                                 if (exec.getQuorumWrites() != null) {
                                                     
                                                     TimestampValuePair quorumWrites = exec.getQuorumWrites();
