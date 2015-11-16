@@ -15,10 +15,13 @@ limitations under the License.
 */
 package bftsmart.consensus.executionmanager;
 
+import bftsmart.tom.util.TOMUtil;
 import java.io.Externalizable;
 import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
+import java.math.BigInteger;
+import java.util.Arrays;
 
 /**
  * This class associates a round to a value
@@ -88,14 +91,23 @@ public class TimestampValuePair implements Externalizable {
     @Override
     public boolean equals(Object o) {
         if (o instanceof TimestampValuePair) {
-            return ((TimestampValuePair) o).timestamp == timestamp;
+            return ((TimestampValuePair) o).timestamp == timestamp &&
+                    Arrays.equals(((TimestampValuePair) o).value,value);
         }
         return false;
     }
 
     @Override
     public int hashCode() {
-        return timestamp;
+        int hash = 1;
+        hash = hash * 17 + timestamp;
+        hash = hash * 31 + (new BigInteger(value)).intValue();
+        return hash;
+    }
+
+    public String toString() {
+        
+        return timestamp + " :: " + (this.hashedValue != null ? Arrays.toString(this.hashedValue) : Arrays.toString(TOMUtil.computeHash(value)));
     }
     
     @Override
