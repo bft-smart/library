@@ -340,7 +340,7 @@ public class LCManager {
 
         for (CollectData c : collects) { // organize all existing timestamps and values separately
             
-            System.out.println("CollectData REPLICA ID["+c.getPid()+"] EID["+c.getEid()+"] WRITESET["+c.getWriteSet()+"] WRITTEN[" + c.getQuorumWrites() +"]");
+            System.out.println("CollectData REPLICA ID["+c.getPid()+"] EID["+c.getEid()+"] WRITESET["+c.getWriteSet()+"] (VALTS,VAL)[" + c.getQuorumWrites() +"]");
             
             timestamps.add(c.getQuorumWrites().getRound()); //store timestamp received from a Byzatine quorum of WRITES
             
