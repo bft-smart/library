@@ -61,6 +61,7 @@ import bftsmart.tom.util.BatchBuilder;
 import bftsmart.tom.util.BatchReader;
 import bftsmart.tom.util.Logger;
 import bftsmart.tom.util.TOMUtil;
+import java.util.Arrays;
 import java.util.Set;
 
 
@@ -711,20 +712,39 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
 						Execution exec = execManager.getExecution(in);
 
-						TimestampValuePair quorumWrites = exec.getQuorumWrites();
-						HashSet<TimestampValuePair> writeSet = exec.getWriteSet();
+                                                exec.incEts(); // make the execution advance to the next round/epoch
+                                                
+                                                System.out.println("[NEW ETS] " + exec.getId() + " // " + exec.getEts() );
+                                                if (exec.getQuorumWrites() != null) {
+                                                    
+                                                    TimestampValuePair quorumWrites = exec.getQuorumWrites();
+                                                    HashSet<TimestampValuePair> writeSet = exec.getWriteSet();
+						
+                                                    CollectData collect = new CollectData(this.controller.getStaticConf().getProcessId(), in, quorumWrites, writeSet);
 
-						CollectData collect = new CollectData(this.controller.getStaticConf().getProcessId(), in, quorumWrites, writeSet);
+                                                    SignedObject signedCollect = sign(collect);
 
-						SignedObject signedCollect = sign(collect);
+                                                    out.writeObject(signedCollect);
 
-						out.writeObject(signedCollect);
+                                                } else {
+
+                        				CollectData collect = new CollectData(this.controller.getStaticConf().getProcessId(), in, new TimestampValuePair(-1, new byte[0]), new HashSet<TimestampValuePair>());
+
+                					SignedObject signedCollect = sign(collect);
+
+        						out.writeObject(signedCollect);
+                                                    
+                                                }
 
 					}
 
 					else {
 
-						CollectData collect = new CollectData(this.controller.getStaticConf().getProcessId(), -1, new TimestampValuePair(-1, new byte[0]), new HashSet<TimestampValuePair>());
+                                                Execution exec = execManager.getExecution(last + 1);
+                                       
+                                                exec.incEts(); // make the execution advance to the next round/epoch
+
+                                                CollectData collect = new CollectData(this.controller.getStaticConf().getProcessId(), -1, new TimestampValuePair(-1, new byte[0]), new HashSet<TimestampValuePair>());
 
 						SignedObject signedCollect = sign(collect);
 
@@ -804,13 +824,26 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 				if (in > -1) { // content of eid being executed
 					Execution exec = execManager.getExecution(in);
 
-					TimestampValuePair quorumWrites = exec.getQuorumWrites();
-					HashSet<TimestampValuePair> writeSet = exec.getWriteSet();
+                                        exec.incEts(); // make the execution advance to the next round/epoch
+                                        System.out.println("[NEW EID // ETS] " + exec.getId() + " // " + exec.getEts() );
+                                        
+                                        if (exec.getQuorumWrites() != null) {
+                                        
+                                            TimestampValuePair quorumWrites = exec.getQuorumWrites();
+                                            HashSet<TimestampValuePair> writeSet = exec.getWriteSet();
 
-					collect = new CollectData(this.controller.getStaticConf().getProcessId(), in, quorumWrites, writeSet);
+                                            collect = new CollectData(this.controller.getStaticConf().getProcessId(), in, quorumWrites, writeSet);
+                                        } else {
+                                            collect = new CollectData(this.controller.getStaticConf().getProcessId(), in, new TimestampValuePair(-1, new byte[0]), new HashSet<TimestampValuePair>());
+                                        }
 
 				} else {
-					collect = new CollectData(this.controller.getStaticConf().getProcessId(), -1, new TimestampValuePair(-1, new byte[0]), new HashSet<TimestampValuePair>());
+
+                                    Execution exec = execManager.getExecution(last + 1);
+                                       
+                                    exec.incEts(); // make the execution advance to the next round/epoch
+
+                                    collect = new CollectData(this.controller.getStaticConf().getProcessId(), -1, new TimestampValuePair(-1, new byte[0]), new HashSet<TimestampValuePair>());
 				}
 
 				SignedObject signedCollect = sign(collect);
@@ -1173,7 +1206,6 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 			lcManager.removeCollects(regency); // avoid memory leaks
 
 			exec = execManager.getExecution(currentEid);
-			exec.incEts();
 
 			exec.removeWritten(tmpval);
 			exec.addWritten(tmpval);

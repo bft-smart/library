@@ -43,7 +43,7 @@ public class Execution {
 
     //NEW ATTRIBUTES FOR THE LEADER CHANGE
     private int ets = 0;
-    private TimestampValuePair quorumWrites = new TimestampValuePair(0, new byte[0]);
+    private TimestampValuePair quorumWrites = null;
     private HashSet<TimestampValuePair> writeSet = new HashSet<TimestampValuePair>();
 
     public ReentrantLock lock = new ReentrantLock(); //this execution lock (called by other classes)
@@ -113,12 +113,21 @@ public class Execution {
     }
     
     /**
-     * Increment the ETS of this replica
+     * Increments the ETS of this replica, thus advancing 
+     * to the next epoch of the consensus
      */
     public void incEts() {
         ets++;
     }
-
+    
+    /**
+     * Returns the timestamp for the current epoch
+     * @return the timestamp for the current epoch
+     */
+    public int getEts() {
+        return ets;
+    }
+    
     /**
      * Store the value read from a Byzantine quorum of WRITES
      * @param value
