@@ -172,7 +172,24 @@ public class Execution {
         return writeSet;
     }
     /**
+     * Creates a round associated with this execution, with the specified timestamp
+     * @param timestamp The timestamp to associated to this round
+     * @param recManager The replica's ServerViewController
+     * @return The round
+     */
+    public Round createRound(int timestamp, ServerViewController recManager) {
+        roundsLock.lock();
+
+        Round round = new Round(recManager, this, timestamp);
+        rounds.put(timestamp, round);
+
+        roundsLock.unlock();
+
+        return round;
+    }
+    /**
      * Creates a round associated with this execution, supposedly the next
+     * @param recManager The replica's ServerViewController
      * @return The round
      */
     public Round createRound(ServerViewController recManager) {
@@ -235,7 +252,8 @@ public class Execution {
             roundsLock.unlock();
             return null;
         }
-        Round r = rounds.get(rounds.size() - 1);
+        //Round r = rounds.get(rounds.size() - 1);
+        Round r = rounds.get(ets); // the last round corresponds to the current ETS
         roundsLock.unlock();
         return r;
     }
