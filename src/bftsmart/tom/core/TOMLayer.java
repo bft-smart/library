@@ -714,27 +714,27 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
                                                 exec.incEts(); // make the execution advance to the next round/epoch
                                                 
-                                                System.out.println("[NEW EID // ETS] " + exec.getId() + " // " + exec.getEts() );
+                                                int ets = exec.getEts();
+                                                exec.createRound(ets, controller);
+                                                System.out.println("[NEW EID // ETS] " + exec.getId() + " // " + ets);
+
+                                                TimestampValuePair quorumWrites;
                                                 if (exec.getQuorumWrites() != null) {
                                                     
-                                                    TimestampValuePair quorumWrites = exec.getQuorumWrites();
-                                                    HashSet<TimestampValuePair> writeSet = exec.getWriteSet();
-						
-                                                    CollectData collect = new CollectData(this.controller.getStaticConf().getProcessId(), in, quorumWrites, writeSet);
-
-                                                    SignedObject signedCollect = sign(collect);
-
-                                                    out.writeObject(signedCollect);
-
-                                                } else {
-
-                        				CollectData collect = new CollectData(this.controller.getStaticConf().getProcessId(), in, new TimestampValuePair(-1, new byte[0]), new HashSet<TimestampValuePair>());
-
-                					SignedObject signedCollect = sign(collect);
-
-        						out.writeObject(signedCollect);
+                                                    quorumWrites = exec.getQuorumWrites();
                                                     
+                                                } else {
+                                                    
+                                                    quorumWrites = new TimestampValuePair(0, new byte[0]);
                                                 }
+                                                    
+                                                HashSet<TimestampValuePair> writeSet = exec.getWriteSet();
+
+                                                CollectData collect = new CollectData(this.controller.getStaticConf().getProcessId(), in, quorumWrites, writeSet);
+
+                                                SignedObject signedCollect = sign(collect);
+
+                                                out.writeObject(signedCollect);                                                 
 
 					}
 
@@ -744,7 +744,11 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                                        
                                                 exec.incEts(); // make the execution advance to the next round/epoch
 
-                                                CollectData collect = new CollectData(this.controller.getStaticConf().getProcessId(), -1, new TimestampValuePair(-1, new byte[0]), new HashSet<TimestampValuePair>());
+                                                int ets = exec.getEts();
+                                                exec.createRound(ets, controller);
+                                                System.out.println("[NEW EID // ETS] " + exec.getId() + " // " + ets);
+
+                                                CollectData collect = new CollectData(this.controller.getStaticConf().getProcessId(), last + 1, new TimestampValuePair(0, new byte[0]), new HashSet<TimestampValuePair>());
 
 						SignedObject signedCollect = sign(collect);
 
@@ -822,20 +826,27 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
 
 				if (in > -1) { // content of eid being executed
-					Execution exec = execManager.getExecution(in);
+                                    Execution exec = execManager.getExecution(in);
 
-                                        exec.incEts(); // make the execution advance to the next round/epoch
-                                        System.out.println("[NEW EID // ETS] " + exec.getId() + " // " + exec.getEts() );
-                                        
-                                        if (exec.getQuorumWrites() != null) {
-                                        
-                                            TimestampValuePair quorumWrites = exec.getQuorumWrites();
-                                            HashSet<TimestampValuePair> writeSet = exec.getWriteSet();
+                                    exec.incEts(); // make the execution advance to the next round/epoch
 
-                                            collect = new CollectData(this.controller.getStaticConf().getProcessId(), in, quorumWrites, writeSet);
-                                        } else {
-                                            collect = new CollectData(this.controller.getStaticConf().getProcessId(), in, new TimestampValuePair(-1, new byte[0]), new HashSet<TimestampValuePair>());
-                                        }
+                                    int ets = exec.getEts();                                               
+                                    exec.createRound(ets, controller);
+                                    System.out.println("[NEW EID // ETS] " + exec.getId() + " // " + ets);
+
+                                    TimestampValuePair quorumWrites;
+
+                                    if (exec.getQuorumWrites() != null) {
+
+                                        quorumWrites = exec.getQuorumWrites();
+                                    }
+                                    else {
+                                        quorumWrites = new TimestampValuePair(0, new byte[0]);
+                                    }
+
+                                    HashSet<TimestampValuePair> writeSet = exec.getWriteSet();
+
+                                    collect = new CollectData(this.controller.getStaticConf().getProcessId(), in, quorumWrites, writeSet);
 
 				} else {
 
@@ -843,7 +854,11 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                                        
                                     exec.incEts(); // make the execution advance to the next round/epoch
 
-                                    collect = new CollectData(this.controller.getStaticConf().getProcessId(), -1, new TimestampValuePair(-1, new byte[0]), new HashSet<TimestampValuePair>());
+                                    int ets = exec.getEts();
+                                    exec.createRound(ets, controller);
+                                    System.out.println("[NEW EID // ETS] " + exec.getId() + " // " + ets);
+
+                                    collect = new CollectData(this.controller.getStaticConf().getProcessId(), last + 1, new TimestampValuePair(0, new byte[0]), new HashSet<TimestampValuePair>());
 				}
 
 				SignedObject signedCollect = sign(collect);
@@ -1114,9 +1129,11 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
 		Execution exec = execManager.getExecution(tempLastHighestEid.getEid());
 		Round r = exec.getLastRound();
+                
+                int ets = exec.getEts();
 
-		if (r == null) {
-			r = exec.createRound(controller);
+		if (r == null || r.getNumber() != ets) {
+			r = exec.createRound(ets, controller);
 		}
 		else {
 			r.clear();
@@ -1172,9 +1189,10 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 			exec = execManager.getExecution(lastHighestEid.getEid());
 			r = exec.getLastRound();
 
-			if (r == null) {
-				r = exec.createRound(controller);
-			}
+                        int ets = exec.getEts();
+
+                        if (r == null || r.getNumber() != ets) {
+                            r = exec.createRound(ets, controller);			}
 			else {
 				r.clear();
 			}
@@ -1212,9 +1230,10 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
 			r = exec.getLastRound();
 
-			if (r == null) {
-				r = exec.createRound(controller);
-			}
+                        int ets = exec.getEts();
+
+                        if (r == null || r.getNumber() != ets) {
+                            r = exec.createRound(ets, controller);			}
 			else {
 				r.clear();
 			}
