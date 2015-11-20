@@ -331,7 +331,7 @@ public class LCManager {
      */
     public boolean sound(HashSet<CollectData> collects) {
 
-        System.out.println("[sound] Collects size: " + collects.size());
+        System.out.println("(LCManager.sound) I collected the context from " + collects.size() + " replicas");
         
         if (collects == null) return false;
         
@@ -340,7 +340,7 @@ public class LCManager {
 
         for (CollectData c : collects) { // organize all existing timestamps and values separately
             
-            System.out.println("CollectData REPLICA ID["+c.getPid()+"] EID["+c.getEid()+"] WRITESET["+c.getWriteSet()+"] (VALTS,VAL)[" + c.getQuorumWrites() +"]");
+            System.out.println("(LCManager.sound) Context for replica "+c.getPid()+": EID["+c.getEid()+"] WRITESET["+c.getWriteSet()+"] (VALTS,VAL)[" + c.getQuorumWrites() +"]");
             
             timestamps.add(c.getQuorumWrites().getRound()); //store timestamp received from a Byzatine quorum of WRITES
             
@@ -372,22 +372,33 @@ public class LCManager {
 
         }
 
-	System.out.println("\tvalues size: "+values.size());
-        System.out.println("\ttimestamps size: "+timestamps.size());
+        System.out.println("(LCManager.sound) number of timestamps: "+timestamps.size());
+        System.out.println("(LCManager.sound) number of values: "+values.size());
 
         // after having organized all timestamps and values, properly apply the predicate
         for (int r : timestamps) {
             for (byte[] v : values) {
 
-                System.out.println("[TESTING BIND] " + r + " - " + Arrays.toString(v));
+                System.out.println("(LCManager.sound) testing predicate BIND for timestamp/value pair (" + r + " , " + Arrays.toString(v) + ")");
                 if (binds(r, v, collects)) {
 
+                    System.out.println("(LCManager.sound) Predicate BIND is true for timestamp/value pair (" + r + " , " + Arrays.toString(v) + ")");
+                    System.out.println("(LCManager.sound) Predicate SOUND is true for the for context collected from N-F replicas");
                     return true;
                 }
             }
         }
 
-        return unbound(collects);
+        System.out.println("(LCManager.sound) No timestamp/value pair passed on the BIND predicate");
+        
+        boolean unbound = unbound(collects);
+        
+        if (unbound) {
+            System.out.println("(LCManager.sound) Predicate UNBOUND is true for N-F replicas");
+            System.out.println("(LCManager.sound) Predicate SOUND is true for the for context collected from N-F replicas");
+        }
+
+        return unbound;
     }
 
     /**
@@ -401,15 +412,20 @@ public class LCManager {
      */
     public boolean binds(int timestamp, byte[] value, HashSet<CollectData> collects) {
 
-        System.out.println("\t[BIND] value != null : " + (value != null));
-        System.out.println("\t[BIND] collects != null : " + (collects != null));
-        System.out.println("\t[BIND] collects.size() >= (SVController.getCurrentViewN() - SVController.getCurrentViewF()) : " + (collects.size() >= (SVController.getCurrentViewN() - SVController.getCurrentViewF())));
-        System.out.println("\t[BIND] quorumHighest(timestamp, value, collects) : " + (quorumHighest(timestamp, value, collects)));
-        System.out.println("\t[BIND] certifiedValue(timestamp, value, collects) : " + (certifiedValue(timestamp, value, collects)));
+        if (value == null || collects == null) {
+            System.out.println("(LCManager.binds) Received null objects, returning false");
+            return false;
+        }
+        
+        if (!(collects.size() >= (SVController.getCurrentViewN() - SVController.getCurrentViewF()))) {
+            System.out.println("(LCManager.binds) Less than N-F contexts collected from replicas, returning false");
+            return false;
+        }
 
-                
-        return (value != null && collects != null && collects.size() >= (SVController.getCurrentViewN() - SVController.getCurrentViewF()))
-                && quorumHighest(timestamp, value, collects) && certifiedValue(timestamp, value, collects);
+        return (quorumHighest(timestamp, value, collects) && certifiedValue(timestamp, value, collects));
+
+        //return value != null && collects != null && (collects.size() >= (SVController.getCurrentViewN() - SVController.getCurrentViewF()))
+        //        && quorumHighest(timestamp, value, collects) && certifiedValue(timestamp, value, collects);
     }
 
     /**
@@ -467,11 +483,8 @@ public class LCManager {
                     for (CollectData c : collects) {
                         for (TimestampValuePair rv : c.getWriteSet()) {
 
-                            for (byte[] b : values) {
-
-                                if (rv.getValue() != null && Arrays.equals(v, rv.getHashedValue())) {
-                                    return rv.getValue();
-                                }
+                            if (rv.getValue() != null && Arrays.equals(v, rv.getHashedValue())) {
+                                return rv.getValue();
                             }
 
                         }
@@ -542,6 +555,8 @@ public class LCManager {
             }
         }
 
+        if (appears) System.out.println("(LCManager.quorumHighest) timestamp/value pair (" + timestamp + " , " + Arrays.toString(value) + ") appears in at least one replica context");
+        
         int count = 0;
         for (CollectData c : collects) {
 
@@ -559,7 +574,9 @@ public class LCManager {
         }
         else {
             quorum = count > ((SVController.getCurrentViewN())/2);
-        }      
+        }
+        if (quorum) System.out.println("(LCManager.quorumHighest) timestamp/value pair (" + timestamp + " , " + Arrays.toString(value) +
+                ") has the highest timestamp among a " + (SVController.getStaticConf().isBFT() ? "Byzantine" : "simple") + " quorum of replica contexts");
         return appears && quorum;
     }
 
@@ -596,6 +613,9 @@ public class LCManager {
         } else {
             certified = count > 0;
         }
+        if (certified) System.out.println("(LCManager.certifiedValue) timestamp/value pair (" + timestamp + " , " + Arrays.toString(value) +
+                ") has been written by at least " + count + " replica(s)");
+
         return certified;
     }
 
@@ -748,7 +768,7 @@ public class LCManager {
 
             if (paxosMsg.getProof() instanceof HashMap) { // Certificate is made of MAC vector
                 
-                System.out.println("Prova em MACs!");
+                System.out.println("(LCManager.hasValidProof) Proof made of MAC vector");
             
                 HashMap<Integer, byte[]> macVector = (HashMap<Integer, byte[]>) paxosMsg.getProof();
                                
@@ -772,7 +792,7 @@ public class LCManager {
                 }
             } else { // certificate is made of signatures
                 
-                System.out.println("Prova em SIGs!");
+                System.out.println("(LCManager.hasValidProof) Proof made of Signatures");
                 pubRSAKey = SVController.getStaticConf().getRSAPublicKey(paxosMsg.getSender());
                    
                 byte[] signature = (byte[]) paxosMsg.getProof();
@@ -781,15 +801,13 @@ public class LCManager {
    
             }
         }
-        /*System.out.println("Estou a validar!");
-        System.out.println("Resultado: " + countValid + " >= " + certificate);
-        System.exit(0);*/
         
         // If proofs were made of signatures, use a certificate correspondent to last view
         // otherwise, use certificate for the current view
+        // To understand why this is important, check the comments in Acceptor.computeWrite()
                 
-        System.out.println("teste: " + certificateLastView + " != -1 " + pubRSAKey + " != null");
-        System.out.println("conta: " + countValid + " >= " + (certificateLastView != -1 && pubRSAKey != null ? certificateLastView : certificateCurrentView));
+        if (certificateLastView != -1 && pubRSAKey != null)
+            System.out.println("(LCManager.hasValidProof) Computing certificate based on previous view");
         
         //return countValid >= certificateCurrentView;
         return countValid >=  (certificateLastView != -1 && pubRSAKey != null ? certificateLastView : certificateCurrentView);
