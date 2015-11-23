@@ -485,17 +485,22 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 		return stateManager;
 	}
 
-	public LCManager getLCManager() {
-		return lcManager;
-	}
 
 	/*** THIS IS JOAO'S CODE, RELATED TO LEADER CHANGE */
+        
+        // out of context messages related to the leader change are stored here
+        private HashSet<LCMessage> outOfContextLC = new HashSet<>();
+        
+        public LCManager getLCManager() {
+		return lcManager;
+	}
+        
 
 	/**
 	 * This method is called when there is a timeout and the request has already been forwarded to the leader
 	 * @param requestList List of requests that the replica wanted to order but didn't manage to
-	 */
-	public void triggerTimeout(List<TOMMessage> requestList) {
+	 */        
+        public void triggerTimeout(List<TOMMessage> requestList) {
 
 		ObjectOutputStream out = null;
 		ByteArrayOutputStream bos = new ByteArrayOutputStream();
@@ -507,7 +512,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
 		if (lcManager.getNextReg() == lcManager.getLastReg()) {
 
-			System.out.println("(TOMLayer.triggerTimeout) initialize synchronization phase");
+			Logger.println("(TOMLayer.triggerTimeout) initialize synchronization phase");
 
 			lcManager.setNextReg(lcManager.getLastReg() + 1); // define next timestamp
 
@@ -561,12 +566,197 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 				}
 			}
 
+                        processOutOfContextSTOPs(regency); // the replica might have received STOPs
+                                                           // that were out of context at the time they
+                                                           // were received, but now can be processed
 			evaluateStops(regency); // evaluate STOP messages
 
 		}
 
 	}
 
+        private void processOutOfContextSTOPs(int regency) {
+
+            Logger.println("(TOMLayer.processOutOfContextSTOPs) Checking if there are out of context STOPs for regency " + regency);
+
+            Set<LCMessage> stops = getOutOfContextLC(TOMUtil.STOP, regency);
+
+            if (stops.size() > 0) {
+                System.out.println("(TOMLayer.processOutOfContextSTOPs) Processing " + stops.size() + " out of context STOPs for regency " + regency);
+            }
+            else Logger.println("(TOMLayer.processOutOfContextSTOPs) No out of context STOPs for regency " + regency);
+
+            for (LCMessage m : stops) {
+                TOMMessage[] requests = deserializeTOMMessages(m.getPayload());
+                lcManager.addStop(regency, m.getSender());
+            }
+        }
+
+        private void processSTOPDATA(LCMessage msg, int regency) {
+           
+            //TODO: It is necessary to verify the proof of the last decided consensus and the signature of the state of the current consensus!
+
+            LastEidData lastData = null;
+            SignedObject signedCollect = null;
+
+            int last = -1;
+            byte[] lastValue = null;
+            Set<PaxosMessage> proof = null;
+
+            ByteArrayInputStream bis;
+            ObjectInputStream ois;
+
+            try { // deserialize the content of the message
+
+                bis = new ByteArrayInputStream(msg.getPayload());
+                ois = new ObjectInputStream(bis);
+
+                if (ois.readBoolean()) { // content of the last decided eid
+
+                    last = ois.readInt();
+
+                    lastValue = (byte[]) ois.readObject();
+                    proof = (Set<PaxosMessage>) ois.readObject();
+
+                    //TODO: Proof is missing!
+                }
+
+                lastData = new LastEidData(msg.getSender(), last, lastValue, proof);
+
+                lcManager.addLastEid(regency, lastData);
+
+                // conteudo do eid a executar
+                signedCollect = (SignedObject) ois.readObject();
+
+                ois.close();
+                bis.close();
+
+                lcManager.addCollect(regency, signedCollect);
+
+                int bizantineQuorum = (controller.getCurrentViewN() + controller.getCurrentViewF()) / 2;
+                int cftQuorum = (controller.getCurrentViewN()) / 2;
+
+                // I already got messages from a Byzantine/Crash quorum,
+                // related to the last eid as well as for the current?
+                boolean conditionBFT = (controller.getStaticConf().isBFT() && lcManager.getLastEidsSize(regency) > bizantineQuorum
+                        && lcManager.getCollectsSize(regency) > bizantineQuorum);
+
+                boolean conditionCFT = (lcManager.getLastEidsSize(regency) > cftQuorum && lcManager.getCollectsSize(regency) > cftQuorum);
+
+                if (conditionBFT || conditionCFT) {
+                    catch_up(regency);
+                }
+
+            } catch (IOException ex) {
+                ex.printStackTrace(System.err);
+            } catch (ClassNotFoundException ex) {
+                ex.printStackTrace(System.err);
+            }
+
+        }
+        
+        private void processSYNC(byte[] payload, int regency) {
+
+            LastEidData lastHighestEid = null;
+            int currentEid = -1;
+            HashSet<SignedObject> signedCollects = null;
+            byte[] propose = null;
+            int batchSize = -1;
+
+            ByteArrayInputStream bis;
+            ObjectInputStream ois;
+
+            try { // deserialization of the message content
+
+                bis = new ByteArrayInputStream(payload);
+                ois = new ObjectInputStream(bis);
+
+                lastHighestEid = (LastEidData) ois.readObject();
+                currentEid = ois.readInt();
+                signedCollects = (HashSet<SignedObject>) ois.readObject();
+                propose = (byte[]) ois.readObject();
+                batchSize = ois.readInt();
+
+                lcManager.setCollects(regency, signedCollects);
+
+                // Is the predicate "sound" true? Is the certificate for LastEid valid?
+                if (lcManager.sound(lcManager.selectCollects(regency, currentEid)) && (!controller.getStaticConf().isBFT() || lcManager.hasValidProof(lastHighestEid))) {
+
+                    finalise(regency, lastHighestEid, currentEid, signedCollects, propose, batchSize, false);
+                }
+
+                ois.close();
+                bis.close();
+
+            } catch (IOException ex) {
+                ex.printStackTrace();
+                java.util.logging.Logger.getLogger(TOMLayer.class.getName()).log(Level.SEVERE, null, ex);
+            } catch (ClassNotFoundException ex) {
+                ex.printStackTrace();
+                java.util.logging.Logger.getLogger(TOMLayer.class.getName()).log(Level.SEVERE, null, ex);
+
+            }
+        }
+
+        private Set<LCMessage> getOutOfContextLC(int type, int regency) {
+
+            HashSet<LCMessage> result = new HashSet<>();
+
+            for (LCMessage m : outOfContextLC) {
+
+                if (m.getType() == type && m.getReg() == regency) {
+                    result.add(m);
+                }
+
+            }
+
+            //outOfContextLC.removeAll(result); // avoid memory leaks
+
+            return result;
+        }
+        
+        private TOMMessage[] deserializeTOMMessages(byte[] playload) {
+
+            ByteArrayInputStream bis;
+            ObjectInputStream ois;
+
+            TOMMessage[] requests = null;
+
+            try { // deserialize the content of the STOP message
+
+                bis = new ByteArrayInputStream(playload);
+                ois = new ObjectInputStream(bis);
+
+                boolean hasReqs = ois.readBoolean();
+                //clientsManager.getClientsLock().lock();
+
+                if (hasReqs) {
+
+                    // Store requests that the other replica did not manage to order
+                    //TODO: The requests have to be verified!
+                    byte[] temp = (byte[]) ois.readObject();
+                    BatchReader batchReader = new BatchReader(temp,
+                            controller.getStaticConf().getUseSignatures() == 1);
+                    requests = batchReader.deserialiseRequests(controller);
+                }
+                //clientsManager.getClientsLock().unlock();
+
+                ois.close();
+                bis.close();
+
+            } catch (IOException ex) {
+                ex.printStackTrace();
+                java.util.logging.Logger.getLogger(TOMLayer.class.getName()).log(Level.SEVERE, null, ex);
+            } catch (ClassNotFoundException ex) {
+                ex.printStackTrace();
+                java.util.logging.Logger.getLogger(TOMLayer.class.getName()).log(Level.SEVERE, null, ex);
+
+            }
+
+            return requests;
+
+        }
+        
 	// this method is called when a timeout occurs or when a STOP message is recevied
 	private void evaluateStops(int nextReg) {
 
@@ -578,7 +768,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 		// pass to the leader change phase if more than f messages have been received already
 		if (enterFirstPhase && lcManager.getStopsSize(nextReg) > this.controller.getQuorumF() && lcManager.getNextReg() == lcManager.getLastReg()) {
 
-			System.out.println("(TOMLayer.evaluateStops) initialize synch phase");
+			Logger.println("(TOMLayer.evaluateStops) initialize synch phase");
 			requestsTimer.Enabled(false);
 			requestsTimer.stopTimer();
 
@@ -641,7 +831,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 		//if (lcManager.getStopsSize(nextReg) > this.reconfManager.getQuorum2F() && lcManager.getNextReg() > lcManager.getLastReg()) {
 		if (condition) {
 
-			System.out.println("(TOMLayer.evaluateStops) installing regency " + lcManager.getNextReg());
+			Logger.println("(TOMLayer.evaluateStops) installing regency " + lcManager.getNextReg());
 			lcManager.setLastReg(lcManager.getNextReg()); // define last timestamp
 
 			int regency = lcManager.getLastReg();
@@ -661,10 +851,10 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
 			lm.setNewLeader(leader);
 
-			// If I am not the leader, I have to send a STOPDATE message to it
+			// If I am not the leader, I have to send a STOPDATA message to the elected leader
 			if (leader != this.controller.getStaticConf().getProcessId()) {
 
-				try { // serialize content of the SYNC message
+				try { // serialize content of the STOPDATA message
 
 					bos = new ByteArrayOutputStream();
 					out = new ObjectOutputStream(bos);
@@ -716,7 +906,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                                                 
                                                 int ets = exec.getEts();
                                                 exec.createRound(ets, controller);
-                                                System.out.println("(TOMLayer.evaluateStops) incrementing timestamp of execution " + exec.getId() + " to " + ets);
+                                                Logger.println("(TOMLayer.evaluateStops) incrementing timestamp of execution " + exec.getId() + " to " + ets);
 
                                                 TimestampValuePair quorumWrites;
                                                 if (exec.getQuorumWrites() != null) {
@@ -746,7 +936,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
                                                 int ets = exec.getEts();
                                                 exec.createRound(ets, controller);
-                                                System.out.println("(TOMLayer.evaluateStops) incrementing timestamp of execution " + exec.getId() + " to " + ets);
+                                                Logger.println("(TOMLayer.evaluateStops) incrementing timestamp of execution " + exec.getId() + " to " + ets);
 
                                                 CollectData collect = new CollectData(this.controller.getStaticConf().getProcessId(), last + 1, new TimestampValuePair(0, new byte[0]), new HashSet<TimestampValuePair>());
 
@@ -766,7 +956,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 					int[] b = new int[1];
 					b[0] = leader;
 
-					System.out.println("(TOMLayer.evaluateStops) sending STOPDATA of regency " + regency);
+					Logger.println("(TOMLayer.evaluateStops) sending STOPDATA of regency " + regency);
 					// send message SYNC to the new leader
 					communication.send(b,
 							new LCMessage(this.controller.getStaticConf().getProcessId(), TOMUtil.STOPDATA, regency, payload));
@@ -785,10 +975,30 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 						java.util.logging.Logger.getLogger(TOMLayer.class.getName()).log(Level.SEVERE, null, ex);
 					}
 				}
+                                
+                                
+                                 // the replica might have received a SYNC that was out of context at the time it was received, but now can be processed
+                                Set<LCMessage> sync = getOutOfContextLC(TOMUtil.SYNC, regency);
+
+                                Logger.println("(TOMLayer.evaluateStops) Checking if there are out of context SYNC for regency " + regency);
+                                
+                                if (sync.size() > 0) {
+                                    System.out.println("(TOMLayer.evaluateStops) Processing out of context SYNC for regency " + regency);
+                                }
+                                
+                                else Logger.println("(TOMLayer.evaluateStops) No out of context SYNC for regency " + regency);
+
+
+                                for (LCMessage m : sync) {
+                                    if (m.getSender() == lm.getCurrentLeader()) {
+                                        processSYNC(m.getPayload(), regency);
+                                        return; // makes no sense to continue, since there is only one SYNC message
+                                    }
+                                }
 
 			} else { // If leader, I will store information that I would send in a SYNC message
 
-				System.out.println("(TOMLayer.evaluateStops) I'm the leader for this new regency");
+				Logger.println("(TOMLayer.evaluateStops) I'm the leader for this new regency");
 				LastEidData lastData = null;
 				CollectData collect = null;
 
@@ -832,7 +1042,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
                                     int ets = exec.getEts();                                               
                                     exec.createRound(ets, controller);
-                                    System.out.println("(TOMLayer.evaluateStops) incrementing timestamp of execution " + exec.getId() + " to " + ets);
+                                    Logger.println("(TOMLayer.evaluateStops) incrementing timestamp of execution " + exec.getId() + " to " + ets);
 
                                     TimestampValuePair quorumWrites;
 
@@ -856,7 +1066,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
                                     int ets = exec.getEts();
                                     exec.createRound(ets, controller);
-                                    System.out.println("(TOMLayer.evaluateStops) incrementing timestamp of execution " + exec.getId() + " to " + ets);
+                                    Logger.println("(TOMLayer.evaluateStops) incrementing timestamp of execution " + exec.getId() + " to " + ets);
 
                                     collect = new CollectData(this.controller.getStaticConf().getProcessId(), last + 1, new TimestampValuePair(0, new byte[0]), new HashSet<TimestampValuePair>());
 				}
@@ -864,6 +1074,19 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 				SignedObject signedCollect = sign(collect);
 
 				lcManager.addCollect(regency, signedCollect);
+                                
+                                // the replica might have received STOPDATAs that were out of context at the time they were received, but now can be processed
+                                Set<LCMessage> stopdatas = getOutOfContextLC(TOMUtil.STOPDATA, regency);
+
+                                Logger.println("(TOMLayer.evaluateStops) Checking if there are out of context STOPDATAs for regency " + regency);
+                                if (stopdatas.size() > 0) {
+                                    System.out.println("(TOMLayer.evaluateStops) Processing " + stopdatas.size() + " out of context STOPDATAs for regency " + regency);
+                                } else Logger.println("(TOMLayer.evaluateStops) No out of context STOPDATAs for regency " + regency);
+
+                                for (LCMessage m : stopdatas) {
+                                   processSTOPDATA(m,regency);
+                                }
+                                
 			}
 
 		}
@@ -886,46 +1109,34 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 			// this message is for the next leader change?
 			if (msg.getReg() == lcManager.getLastReg() + 1) {
 
-				System.out.println("(TOMLayer.deliverTimeoutRequest) received regency change request");
-				try { // deserialize the content of the STOP message
+				Logger.println("(TOMLayer.deliverTimeoutRequest) received regency change request");
 
-					bis = new ByteArrayInputStream(msg.getPayload());
-					ois = new ObjectInputStream(bis);
-
-					boolean hasReqs = ois.readBoolean();
-					clientsManager.getClientsLock().lock();
-
-					if (hasReqs) {
-						// Store requests that the other replica did not manage to order
-						//TODO: The requests have to be verified!
-						byte[] temp = (byte[]) ois.readObject();
-						BatchReader batchReader = new BatchReader(temp,
-								controller.getStaticConf().getUseSignatures() == 1);
-						TOMMessage[] requests = batchReader.deserialiseRequests(controller);
-					}
-					clientsManager.getClientsLock().unlock();
-
-					ois.close();
-					bis.close();
-
-				} catch (IOException ex) {
-					ex.printStackTrace();
-					java.util.logging.Logger.getLogger(TOMLayer.class.getName()).log(Level.SEVERE, null, ex);
-				} catch (ClassNotFoundException ex) {
-					ex.printStackTrace();
-					java.util.logging.Logger.getLogger(TOMLayer.class.getName()).log(Level.SEVERE, null, ex);
-
-				}
-
+                                TOMMessage[] requests = deserializeTOMMessages(msg.getPayload());
+                                
 				// store information about the message STOP
 				lcManager.addStop(msg.getReg(), msg.getSender());
 
-				evaluateStops(msg.getReg()); // evaluate STOP messages
-			}
+                                processOutOfContextSTOPs(msg.getReg()); // the replica might have received STOPs
+                                                                        // that were out of context at the time they
+                                                                        // were received, but now can be processed
+
+                                evaluateStops(msg.getReg()); // evaluate STOP messages
+			
+                        }
+                        else if (msg.getReg() > lcManager.getLastReg()) { // send STOP to out of context if
+                                                                          // it is for a future regency
+                            System.out.println("(TOMLayer.deliverTimeoutRequest) Keeping STOP message as out of context for regency " + msg.getReg());
+                            outOfContextLC.add(msg);
+
+                        }
+                        
+                        else {
+                            System.out.println("(TOMLayer.deliverTimeoutRequest) Discarding STOP message");
+                        }
 		}
 		break;
-		case TOMUtil.STOPDATA: {
-			// STOPDATA messages
+		case TOMUtil.STOPDATA: { // STOPDATA messages
+			
 			int regency = msg.getReg();
                         
                         System.out.println("(TOMLayer.deliverTimeoutRequest) Last regency: " + lcManager.getLastReg() + ", next regency: " + lcManager.getNextReg());
@@ -934,68 +1145,24 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 			if (regency == lcManager.getLastReg() &&
 					this.controller.getStaticConf().getProcessId() == lm.getCurrentLeader()/*(regency % this.reconfManager.getCurrentViewN())*/) {
 
-				System.out.println("(TOMLayer.deliverTimeoutRequest) I'm the new leader and I received a STOPDATA");
-				//TODO: It is necessary to verify the proof of the last decided consensus and the signature of the state of the current consensus!
 
-				LastEidData lastData = null;
-				SignedObject signedCollect = null;
-
-				int last = -1;
-				byte[] lastValue = null;
-				Set<PaxosMessage> proof = null;
-
-				try { // deserialize the content of the message
-
-					bis = new ByteArrayInputStream(msg.getPayload());
-					ois = new ObjectInputStream(bis);
-
-					if (ois.readBoolean()) { // content of the last decided eid
-
-						last = ois.readInt();
-
-						lastValue = (byte[]) ois.readObject();
-						proof = (Set<PaxosMessage>) ois.readObject();
-
-						//TODO: Proof is missing!
-					}
-
-					lastData = new LastEidData(msg.getSender(), last, lastValue, proof);
-
-					lcManager.addLastEid(regency, lastData);
-
-					// conteudo do eid a executar
-
-					signedCollect = (SignedObject) ois.readObject();
-
-					ois.close();
-					bis.close();
-
-					lcManager.addCollect(regency, signedCollect);
-
-					int bizantineQuorum = (controller.getCurrentViewN() + controller.getCurrentViewF()) / 2;
-					int cftQuorum = (controller.getCurrentViewN()) / 2;
-
-					// I already got messages from a Byzantine/Crash quorum,
-					// related to the last eid as well as for the current?
-
-					boolean conditionBFT = (controller.getStaticConf().isBFT() && lcManager.getLastEidsSize(regency) > bizantineQuorum &&
-							lcManager.getCollectsSize(regency) > bizantineQuorum);
-
-					boolean conditionCFT = (lcManager.getLastEidsSize(regency) > cftQuorum && lcManager.getCollectsSize(regency) > cftQuorum);
-
-					if (conditionBFT || conditionCFT) catch_up(regency);
-
-				} catch (IOException ex) {
-					ex.printStackTrace(System.err);
-				} catch (ClassNotFoundException ex) {
-					ex.printStackTrace(System.err);
-				}
-
+                            Logger.println("(TOMLayer.deliverTimeoutRequest) I'm the new leader and I received a STOPDATA");
+                            processSTOPDATA(msg, regency);
 			}
+                        else if (msg.getReg() > lcManager.getLastReg()) { // send STOPDATA to out of context if
+                                                                          // it is for a future regency
+                            
+                            System.out.println("(TOMLayer.deliverTimeoutRequest) Keeping STOPDATA message as out of context for regency " + msg.getReg());
+                            outOfContextLC.add(msg);
+
+                        }
+                        else {
+                            System.out.println("(TOMLayer.deliverTimeoutRequest) Discarding STOPDATA message");
+                        }
 		}
 		break;
-		case TOMUtil.SYNC: // message SYNC
-		{
+		case TOMUtil.SYNC: { // message SYNC
+		
 			int regency = msg.getReg();
 
                         System.out.println("(TOMLayer.deliverTimeoutRequest) Last regency: " + lcManager.getLastReg() + ", next regency: " + lcManager.getNextReg());
@@ -1020,44 +1187,18 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 			//if (msg.getReg() == lcManager.getLastReg() &&
 			//		msg.getReg() == lcManager.getNextReg() && msg.getSender() == lm.getCurrentLeader()/*(regency % this.reconfManager.getCurrentViewN())*/) {
 
-				LastEidData lastHighestEid = null;
-				int currentEid = -1;
-				HashSet<SignedObject> signedCollects = null;
-				byte[] propose = null;
-				int batchSize = -1;
-
-				try { // deserialization of the message content
-
-					bis = new ByteArrayInputStream(msg.getPayload());
-					ois = new ObjectInputStream(bis);
-
-					lastHighestEid = (LastEidData) ois.readObject();
-					currentEid = ois.readInt();
-					signedCollects = (HashSet<SignedObject>) ois.readObject();
-					propose = (byte[]) ois.readObject();
-					batchSize = ois.readInt();
-
-					lcManager.setCollects(regency, signedCollects);
-
-					// Is the predicate "sound" true? Is the certificate for LastEid valid?
-					if (lcManager.sound(lcManager.selectCollects(regency, currentEid)) && (!controller.getStaticConf().isBFT() || lcManager.hasValidProof(lastHighestEid))) {
-
-						finalise(regency, lastHighestEid, currentEid, signedCollects, propose, batchSize, false);
-					}
-
-					ois.close();
-					bis.close();
-
-				} catch (IOException ex) {
-					ex.printStackTrace();
-					java.util.logging.Logger.getLogger(TOMLayer.class.getName()).log(Level.SEVERE, null, ex);
-				} catch (ClassNotFoundException ex) {
-					ex.printStackTrace();
-					java.util.logging.Logger.getLogger(TOMLayer.class.getName()).log(Level.SEVERE, null, ex);
-
-				}
+                            processSYNC(msg.getPayload(), regency);
 
 			}
+                        else if (msg.getReg() > lcManager.getLastReg()) { // send SYNC to out of context if
+                                                                          // it is for a future regency
+                            System.out.println("(TOMLayer.deliverTimeoutRequest) Keeping SYNC message as out of context for regency " + msg.getReg());
+                            outOfContextLC.add(msg);
+
+                        }
+                        else {
+                            System.out.println("(TOMLayer.deliverTimeoutRequest) Discarding SYNC message");
+                        }
 		}
 		break;
 
@@ -1069,7 +1210,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 	// and also sends the message
 	private void catch_up(int regency) {
 
-		System.out.println("(TOMLayer.catch_up) verify STOPDATA info");
+		Logger.println("(TOMLayer.catch_up) verify STOPDATA info");
 		ObjectOutputStream out = null;
 		ByteArrayOutputStream bos = null;
 
@@ -1083,7 +1224,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 		// normalize the collects and apply to them the predicate "sound"
 		if (lcManager.sound(lcManager.selectCollects(regency, currentEid))) {
 
-			System.out.println("(TOMLayer.catch_up) sound predicate is true");
+			Logger.println("(TOMLayer.catch_up) sound predicate is true");
 
 			signedCollects = lcManager.getCollects(regency); // all original collects that the replica has received
 
@@ -1113,7 +1254,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 				out.close();
 				bos.close();
 
-				System.out.println("(TOMLayer.catch_up) sending SYNC message for regency " + regency);
+				Logger.println("(TOMLayer.catch_up) sending SYNC message for regency " + regency);
 
 				// send the CATCH-UP message
 				communication.send(this.controller.getCurrentViewOtherAcceptors(),
@@ -1175,7 +1316,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 	private void finalise(int regency, LastEidData lastHighestEid,
 			int currentEid, HashSet<SignedObject> signedCollects, byte[] propose, int batchSize, boolean iAmLeader) {
 
-		System.out.println("(TOMLayer.finalise) final stage of LC protocol");
+		Logger.println("(TOMLayer.finalise) final stage of LC protocol");
 		int me = this.controller.getStaticConf().getProcessId();
 		Execution exec = null;
 		Round r = null;
@@ -1230,18 +1371,18 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
 		// get a value that satisfies the predicate "bind"
 		tmpval = lcManager.getBindValue(selectedColls);
-                System.out.println("(TOMLayer.finalise) Trying to find a binded value");
+                Logger.println("(TOMLayer.finalise) Trying to find a binded value");
 
 		// If such value does not exist, obtain the value written by the new leader
 		if (tmpval == null && lcManager.unbound(selectedColls)) {
-			System.out.println("(TOMLayer.finalise) did not found a value that might have already been decided");
+			Logger.println("(TOMLayer.finalise) did not found a value that might have already been decided");
 			tmpval = propose;
 		}
-		else System.out.println("(TOMLayer.finalise) found a value that might have been decided");
+		else Logger.println("(TOMLayer.finalise) found a value that might have been decided");
 
 		if (tmpval != null) { // did I manage to get some value?
 
-			System.out.println("(TOMLayer.finalise) resuming normal phase");
+			Logger.println("(TOMLayer.finalise) resuming normal phase");
 			lcManager.removeCollects(regency); // avoid memory leaks
 
 			exec = execManager.getExecution(currentEid);
@@ -1279,23 +1420,23 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 			//leaderChanged = true;
 			setInExec(currentEid);
 			if (iAmLeader) {
-				System.out.println("(TOMLayer.finalise) wake up proposer thread");
+				Logger.println("(TOMLayer.finalise) wake up proposer thread");
 				imAmTheLeader();
 			} // waik up the thread that propose values in normal operation
 
 			// send a WRITE/ACCEPT message to the other replicas
 			if (this.controller.getStaticConf().isBFT()) {
-                            System.out.println("(TOMLayer.finalise) sending WRITE message");
+                            Logger.println("(TOMLayer.finalise) sending WRITE message");
                             communication.send(this.controller.getCurrentViewOtherAcceptors(),
 					acceptor.getFactory().createWrite(currentEid, r.getNumber(), r.propValueHash));
                         } else {
-                            System.out.println("(TOMLayer.finalise) sending ACCEPT message");
+                            Logger.println("(TOMLayer.finalise) sending ACCEPT message");
                             communication.send(this.controller.getCurrentViewOtherAcceptors(),
 					acceptor.getFactory().createAccept(currentEid, r.getNumber(), r.propValueHash));
                         }
 		}
 
-		else System.out.println("(TOMLayer.finalise) sync phase failed for regency" + regency);
+		else Logger.println("(TOMLayer.finalise) sync phase failed for regency" + regency);
 	}
 	/**************************************************************/
 }
