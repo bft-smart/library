@@ -154,8 +154,13 @@ public final class Acceptor {
      */
     public void proposeReceived(Round round, PaxosMessage msg) {
         int eid = round.getExecution().getId();
-    	Logger.println("(Acceptor.proposeReceived) PROPOSE for consensus " + eid);
-    	if (msg.getSender() == leaderModule.getCurrentLeader()) {
+        
+        int ts = round.getExecution().getEts();
+        int ets = executionManager.getExecution(msg.getNumber()).getEts();
+
+        Logger.println("(Acceptor.proposeReceived) PROPOSE for consensus " + eid);
+   	if (msg.getSender() == leaderModule.getCurrentLeader() // Is the replica the leader?
+                && round.getNumber() == 0 && ts == ets && ets == 0) { // Is all this in epoch 0?
     		executePropose(round, msg.getValue());
     	} else {
     		Logger.println("Propose received is not from the expected leader");
@@ -181,6 +186,7 @@ public final class Acceptor {
             
             /*** LEADER CHANGE CODE ********/
             round.getExecution().addWritten(value);
+            Logger.println("(Acceptor.executePropose) I have written value " + Arrays.toString(round.propValueHash) + " in instance " + eid + " with timestamp " + round.getExecution().getEts());
             /*****************************************/
 
             //start this execution if it is not already running
@@ -218,7 +224,8 @@ public final class Acceptor {
                  	round.getExecution().getLearner().firstMessageProposed.writeSentTime = System.nanoTime();
                         round.getExecution().getLearner().firstMessageProposed.acceptSentTime = System.nanoTime();
                  	/**** LEADER CHANGE CODE! ******/
- 	                round.getExecution().setQuorumWrites(round.propValueHash);
+ 	                Logger.println("(Acceptor.executePropose) (CFT Mode) Setting EID's " + eid + " QuorumWrite tiemstamp to " + round.getExecution().getEts() + " and value " + Arrays.toString(round.propValueHash));
+                        round.getExecution().setQuorumWrites(round.propValueHash);
  	                /*****************************************/
 
                         communication.send(this.controller.getCurrentViewOtherAcceptors(),
@@ -280,7 +287,7 @@ public final class Acceptor {
                 Logger.println("(Acceptor.computeWrite) sending WRITE for " + eid);
 
                 //////// LEADER CHANGE CODE! /////////////
-                Logger.println("(Acceptor.computeWrite) Setting EID's " + eid + " QuorumWrite tiemstamp to " + round.getExecution().getEts() + " and value: " + Arrays.toString(TOMUtil.computeHash(value)));    
+                Logger.println("(Acceptor.computeWrite) Setting EID's " + eid + " QuorumWrite tiemstamp to " + round.getExecution().getEts() + " and value " + Arrays.toString(value));
                 round.getExecution().setQuorumWrites(value);
                 //////////////////////////////////////////
                 
