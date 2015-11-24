@@ -24,7 +24,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -39,20 +38,16 @@ import java.io.ByteArrayOutputStream;
 import java.io.ObjectOutputStream;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
-import java.security.PrivateKey;
 import java.security.PublicKey;
-import javax.crypto.BadPaddingException;
-import javax.crypto.Cipher;
-import javax.crypto.IllegalBlockSizeException;
+import java.util.LinkedList;
 import javax.crypto.Mac;
-import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
-import javax.crypto.spec.SecretKeySpec;
 
 /**
  *
  * This class implements a manager of information related to the leader change protocol
- * It also implements some predicates and methods necessary for the protocol.
+ * It also implements some predicates and methods necessary for the protocol in accordance
+ * to Cachin's 'Yet Another Visit to Paxos' (April 2011).
  * 
  * @author Joao Sousa
  */
@@ -65,6 +60,9 @@ public class LCManager {
     //requests that timed out
     private List<TOMMessage> currentRequestTimedOut = null;
 
+    //requests received in STOP messages
+    private List<TOMMessage> requestsFromSTOP = null;
+    
     //data structures for info in stop, sync and catch-up messages
     private HashMap<Integer,HashSet<Integer>> stops;
     private HashMap<Integer,HashSet<LastEidData>> lastEids;
@@ -107,6 +105,12 @@ public class LCManager {
         }
 
     }
+    
+    /**
+     * Deterministically elects a new leader, based current leader and membership
+     * 
+     * @return The new leader
+     */
     public int getNewLeader() {
 
         int[] proc = SVController.getCurrentViewProcesses();
@@ -130,27 +134,69 @@ public class LCManager {
         return currentLeader;
     }
     
+    /**
+     * Informs the object of who is the current leader
+     * @param leader The current leader
+     */
     public void setNewLeader(int leader) {
         currentLeader = leader;
     }
     
     /**
-     * This is meant to keep track of timed out messages in this replica
+     * This is meant to keep track of timed out requests in this replica
      *
-     * @param currentRequestTimedOut
+     * @param currentRequestTimedOut Timed out requests in this replica
      */
     public void setCurrentRequestTimedOut(List<TOMMessage> currentRequestTimedOut) {
         this.currentRequestTimedOut = currentRequestTimedOut;
     }
 
     /**
-     * Get the timed out messages in this replica
-     * @return timed out messages in this replica
+     * Get the timed out requests in this replica
+     * @return timed out requests in this replica
      */
     public List<TOMMessage> getCurrentRequestTimedOut() {
         return currentRequestTimedOut;
     }
+    
+    /**
+     * Discard timed out requests in this replica
+     */
+    public void clearCurrentRequestTimedOut() {
+        if (currentRequestTimedOut != null) currentRequestTimedOut.clear();
+        currentRequestTimedOut = null;
+    }
 
+    /**
+     * This is meant to keep track of requests received in STOP messages
+     *
+     * @param requestsFromSTOP Requests received in a STOP message
+     */
+    public void addRequestsFromSTOP(TOMMessage[] requestsFromSTOP) {
+        if (this.requestsFromSTOP == null)
+            this.requestsFromSTOP = new LinkedList<>();
+        
+        for (TOMMessage m : requestsFromSTOP)
+            this.requestsFromSTOP.add(m);
+    }
+
+    /**
+     * Get the requests received in STOP messages
+     * @return requests received in STOP messages
+     */
+    public List<TOMMessage> getRequestsFromSTOP() {
+        return requestsFromSTOP;
+    }
+    
+    /**
+     * Discard requests received in STOP messages
+     */    
+    public void clearRequestsFromSTOP() {
+        if (requestsFromSTOP != null) requestsFromSTOP.clear();
+        requestsFromSTOP = null;
+    }
+    
+    
     /**
      * Set the previous regency
      * @param lastreg current regency
@@ -334,16 +380,22 @@ public class LCManager {
      * filtered using the method selectCollects()
      *
      * @param collects the collect data to which to apply the predicate.
-     * @return see pages 252 and 253 from "Introduction to Reliable and Secure Distributed Programming"
+     * @return See Cachin's 'Yet Another Visit to Paxos' (April 2011), page 11
+     * 
+     * In addition, see pages 252 and 253 from "Introduction to Reliable and Secure Distributed Programming"
      */
     public boolean sound(HashSet<CollectData> collects) {
 
+        bftsmart.tom.util.Logger.println("(LCManager.sound) I collected the context from " + collects.size() + " replicas");
+        
         if (collects == null) return false;
         
         HashSet<Integer> timestamps = new HashSet<Integer>();
         HashSet<byte[]> values = new HashSet<byte[]>();
 
         for (CollectData c : collects) { // organize all existing timestamps and values separately
+            
+            bftsmart.tom.util.Logger.println("(LCManager.sound) Context for replica "+c.getPid()+": EID["+c.getEid()+"] WRITESET["+c.getWriteSet()+"] (VALTS,VAL)[" + c.getQuorumWrites() +"]");
             
             timestamps.add(c.getQuorumWrites().getRound()); //store timestamp received from a Byzatine quorum of WRITES
             
@@ -375,18 +427,33 @@ public class LCManager {
 
         }
 
+        bftsmart.tom.util.Logger.println("(LCManager.sound) number of timestamps: "+timestamps.size());
+        bftsmart.tom.util.Logger.println("(LCManager.sound) number of values: "+values.size());
+
         // after having organized all timestamps and values, properly apply the predicate
         for (int r : timestamps) {
             for (byte[] v : values) {
 
+                bftsmart.tom.util.Logger.println("(LCManager.sound) testing predicate BIND for timestamp/value pair (" + r + " , " + Arrays.toString(v) + ")");
                 if (binds(r, v, collects)) {
 
+                    bftsmart.tom.util.Logger.println("(LCManager.sound) Predicate BIND is true for timestamp/value pair (" + r + " , " + Arrays.toString(v) + ")");
+                    bftsmart.tom.util.Logger.println("(LCManager.sound) Predicate SOUND is true for the for context collected from N-F replicas");
                     return true;
                 }
             }
         }
 
-        return unbound(collects);
+        bftsmart.tom.util.Logger.println("(LCManager.sound) No timestamp/value pair passed on the BIND predicate");
+        
+        boolean unbound = unbound(collects);
+        
+        if (unbound) {
+            bftsmart.tom.util.Logger.println("(LCManager.sound) Predicate UNBOUND is true for N-F replicas");
+            bftsmart.tom.util.Logger.println("(LCManager.sound) Predicate SOUND is true for the for context collected from N-F replicas");
+        }
+
+        return unbound;
     }
 
     /**
@@ -396,12 +463,26 @@ public class LCManager {
      * @param timestamp the timestamp to search for
      * @param value the value to search for
      * @param collects the collect data to which to apply the predicate.
-     * @return see pages 252 and 253 from "Introduction to Reliable and Secure Distributed Programming"
+     * @return See Cachin's 'Yet Another Visit to Paxos' (April 2011), page 11
+     * 
+     * In addition, see pages 252 and 253 from "Introduction to Reliable and Secure Distributed Programming"
      */
     public boolean binds(int timestamp, byte[] value, HashSet<CollectData> collects) {
 
-        return (value != null && collects != null && collects.size() > (SVController.getCurrentViewN() - SVController.getCurrentViewF()))
-                && quorumHighest(timestamp, value, collects) && certifiedValue(timestamp, value, collects);
+        if (value == null || collects == null) {
+            bftsmart.tom.util.Logger.println("(LCManager.binds) Received null objects, returning false");
+            return false;
+        }
+        
+        if (!(collects.size() >= (SVController.getCurrentViewN() - SVController.getCurrentViewF()))) {
+            bftsmart.tom.util.Logger.println("(LCManager.binds) Less than N-F contexts collected from replicas, returning false");
+            return false;
+        }
+
+        return (quorumHighest(timestamp, value, collects) && certifiedValue(timestamp, value, collects));
+
+        //return value != null && collects != null && (collects.size() >= (SVController.getCurrentViewN() - SVController.getCurrentViewF()))
+        //        && quorumHighest(timestamp, value, collects) && certifiedValue(timestamp, value, collects);
     }
 
     /**
@@ -409,6 +490,9 @@ public class LCManager {
      * with a timestamp greater or equal to zero
      * @param collects Set of collects from which to determine the value
      * @return The bind value
+     * 
+     * See Cachin's 'Yet Another Visit to Paxos' (April 2011), page 11
+     * Also, see pages 252 and 253 from "Introduction to Reliable and Secure Distributed Programming"
      */
     public byte[] getBindValue(HashSet<CollectData> collects) {
 
@@ -459,11 +543,8 @@ public class LCManager {
                     for (CollectData c : collects) {
                         for (TimestampValuePair rv : c.getWriteSet()) {
 
-                            for (byte[] b : values) {
-
-                                if (rv.getValue() != null && Arrays.equals(v, rv.getHashedValue())) {
-                                    return rv.getValue();
-                                }
+                            if (rv.getValue() != null && Arrays.equals(v, rv.getHashedValue())) {
+                                return rv.getValue();
                             }
 
                         }
@@ -480,7 +561,9 @@ public class LCManager {
      * filtered using the method selectCollects()
      *
      * @param collects the collect data to which to apply the predicate.
-     * @return see page 253 from "Introduction to Reliable and Secure Distributed Programming"
+     * @return See Cachin's 'Yet Another Visit to Paxos' (April 2011), page 11
+     * 
+     * In addition, see page 253 from "Introduction to Reliable and Secure Distributed Programming"
      */
     public boolean unbound(HashSet<CollectData> collects) {
 
@@ -516,7 +599,9 @@ public class LCManager {
      * @param timestamp the timestamp to search for
      * @param value the value to search for
      * @param collects the collect data to which to apply the predicate.
-     * @return see pages 252 and 253 from "Introduction to Reliable and Secure Distributed Programming"
+     * @return See Cachin's 'Yet Another Visit to Paxos' (April 2011), pages 10-11
+     * 
+     * In addition, see pages 252 and 253 from "Introduction to Reliable and Secure Distributed Programming"
      */
     public boolean quorumHighest(int timestamp, byte[] value, HashSet<CollectData> collects) {
 
@@ -534,9 +619,14 @@ public class LCManager {
             }
         }
 
+        if (appears) bftsmart.tom.util.Logger.println("(LCManager.quorumHighest) timestamp/value pair (" + timestamp + " , " + Arrays.toString(value) + ") appears in at least one replica context");
+        
         int count = 0;
         for (CollectData c : collects) {
 
+            //bftsmart.tom.util.Logger.println("\t\t[QUORUM HIGHEST] ts' < ts : " + (c.getQuorumWrites().getRound() < timestamp));
+            //bftsmart.tom.util.Logger.println("\t\t[QUORUM HIGHEST] ts' = ts && val' = val : " + (c.getQuorumWrites().getRound() == timestamp && Arrays.equals(value, c.getQuorumWrites().getValue())));
+            
             if ((c.getQuorumWrites().getRound() < timestamp)
                     || (c.getQuorumWrites().getRound() == timestamp && Arrays.equals(value, c.getQuorumWrites().getValue())))
                         count++;
@@ -548,7 +638,9 @@ public class LCManager {
         }
         else {
             quorum = count > ((SVController.getCurrentViewN())/2);
-        }      
+        }
+        if (quorum) bftsmart.tom.util.Logger.println("(LCManager.quorumHighest) timestamp/value pair (" + timestamp + " , " + Arrays.toString(value) +
+                ") has the highest timestamp among a " + (SVController.getStaticConf().isBFT() ? "Byzantine" : "simple") + " quorum of replica contexts");
         return appears && quorum;
     }
 
@@ -559,7 +651,9 @@ public class LCManager {
      * @param timestamp the timestamp to search for
      * @param value the value to search for
      * @param collects the collect data to which to apply the predicate.
-     * @return see page 253 from "Introduction to Reliable and Secure Distributed Programming"
+     * @return See Cachin's 'Yet Another Visit to Paxos' (April 2011), page 11
+     * 
+     * In addition, see page 253 from "Introduction to Reliable and Secure Distributed Programming"
      */
     public boolean certifiedValue(int timestamp, byte[] value, HashSet<CollectData> collects) {
 
@@ -572,6 +666,8 @@ public class LCManager {
 
             for (TimestampValuePair pv : c.getWriteSet()) {
 
+//                bftsmart.tom.util.Logger.println("\t\t[CERTIFIED VALUE] " + pv.getRound() + "  >= " + timestamp);
+//                bftsmart.tom.util.Logger.println("\t\t[CERTIFIED VALUE] " + Arrays.toString(value) + "  == " + Arrays.toString(pv.getValue()));
                 if (pv.getRound() >= timestamp && Arrays.equals(value, pv.getHashedValue()))
                     count++;
             }
@@ -583,6 +679,9 @@ public class LCManager {
         } else {
             certified = count > 0;
         }
+        if (certified) bftsmart.tom.util.Logger.println("(LCManager.certifiedValue) timestamp/value pair (" + timestamp + " , " + Arrays.toString(value) +
+                ") has been written by at least " + count + " replica(s)");
+
         return certified;
     }
 
@@ -735,7 +834,7 @@ public class LCManager {
 
             if (paxosMsg.getProof() instanceof HashMap) { // Certificate is made of MAC vector
                 
-                System.out.println("Prova em MACs!");
+                bftsmart.tom.util.Logger.println("(LCManager.hasValidProof) Proof made of MAC vector");
             
                 HashMap<Integer, byte[]> macVector = (HashMap<Integer, byte[]>) paxosMsg.getProof();
                                
@@ -759,7 +858,7 @@ public class LCManager {
                 }
             } else { // certificate is made of signatures
                 
-                System.out.println("Prova em SIGs!");
+                bftsmart.tom.util.Logger.println("(LCManager.hasValidProof) Proof made of Signatures");
                 pubRSAKey = SVController.getStaticConf().getRSAPublicKey(paxosMsg.getSender());
                    
                 byte[] signature = (byte[]) paxosMsg.getProof();
@@ -768,15 +867,13 @@ public class LCManager {
    
             }
         }
-        /*System.out.println("Estou a validar!");
-        System.out.println("Resultado: " + countValid + " >= " + certificate);
-        System.exit(0);*/
         
         // If proofs were made of signatures, use a certificate correspondent to last view
         // otherwise, use certificate for the current view
+        // To understand why this is important, check the comments in Acceptor.computeWrite()
                 
-        System.out.println("teste: " + certificateLastView + " != -1 " + pubRSAKey + " != null");
-        System.out.println("conta: " + countValid + " >= " + (certificateLastView != -1 && pubRSAKey != null ? certificateLastView : certificateCurrentView));
+        if (certificateLastView != -1 && pubRSAKey != null)
+            bftsmart.tom.util.Logger.println("(LCManager.hasValidProof) Computing certificate based on previous view");
         
         //return countValid >= certificateCurrentView;
         return countValid >=  (certificateLastView != -1 && pubRSAKey != null ? certificateLastView : certificateCurrentView);
