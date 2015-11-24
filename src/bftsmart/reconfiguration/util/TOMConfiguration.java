@@ -506,10 +506,6 @@ public class TOMConfiguration extends Configuration {
     }
 
     public boolean isBFT(){
-    	if(this.isBFT)
-    		Logger.println("----------------ISBFT--------------");
-    	else
-    		Logger.println("----------------ISCFT---------------");
     	
     	return this.isBFT;
     }
