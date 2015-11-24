@@ -39,6 +39,7 @@ import java.io.ObjectOutputStream;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
+import java.util.LinkedList;
 import javax.crypto.Mac;
 import javax.crypto.SecretKey;
 
@@ -58,6 +59,9 @@ public class LCManager {
     //requests that timed out
     private List<TOMMessage> currentRequestTimedOut = null;
 
+    //requests received in STOP messages
+    private List<TOMMessage> requestsFromSTOP = null;
+    
     //data structures for info in stop, sync and catch-up messages
     private HashMap<Integer,HashSet<Integer>> stops;
     private HashMap<Integer,HashSet<LastEidData>> lastEids;
@@ -128,22 +132,60 @@ public class LCManager {
     }
     
     /**
-     * This is meant to keep track of timed out messages in this replica
+     * This is meant to keep track of timed out requests in this replica
      *
-     * @param currentRequestTimedOut
+     * @param currentRequestTimedOut Timed out requests in this replica
      */
     public void setCurrentRequestTimedOut(List<TOMMessage> currentRequestTimedOut) {
         this.currentRequestTimedOut = currentRequestTimedOut;
     }
 
     /**
-     * Get the timed out messages in this replica
-     * @return timed out messages in this replica
+     * Get the timed out requests in this replica
+     * @return timed out requests in this replica
      */
     public List<TOMMessage> getCurrentRequestTimedOut() {
         return currentRequestTimedOut;
     }
+    
+    /**
+     * Discard timed out requests in this replica
+     */
+    public void clearCurrentRequestTimedOut() {
+        if (currentRequestTimedOut != null) currentRequestTimedOut.clear();
+        currentRequestTimedOut = null;
+    }
 
+    /**
+     * This is meant to keep track of requests received in STOP messages
+     *
+     * @param requestsFromSTOP Requests received in a STOP message
+     */
+    public void addRequestsFromSTOP(TOMMessage[] requestsFromSTOP) {
+        if (this.requestsFromSTOP == null)
+            this.requestsFromSTOP = new LinkedList<>();
+        
+        for (TOMMessage m : requestsFromSTOP)
+            this.requestsFromSTOP.add(m);
+    }
+
+    /**
+     * Get the requests received in STOP messages
+     * @return requests received in STOP messages
+     */
+    public List<TOMMessage> getRequestsFromSTOP() {
+        return requestsFromSTOP;
+    }
+    
+    /**
+     * Discard requests received in STOP messages
+     */    
+    public void clearRequestsFromSTOP() {
+        if (requestsFromSTOP != null) requestsFromSTOP.clear();
+        requestsFromSTOP = null;
+    }
+    
+    
     /**
      * Set the previous regency
      * @param lastreg current regency
