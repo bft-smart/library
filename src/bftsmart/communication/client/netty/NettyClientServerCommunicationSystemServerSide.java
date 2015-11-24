@@ -64,7 +64,9 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 	private HashMap sessionTable;
 	private ReentrantReadWriteLock rl;
 	private ServerViewController controller;
-	private ReentrantLock sendLock = new ReentrantLock();
+        
+        // This locked seems to introduce a bottleneck and seems useless, but I cannot recall why I added it
+	//private ReentrantLock sendLock = new ReentrantLock();
 	private NettyServerPipelineFactory serverPipelineFactory;
     private org.slf4j.Logger logger = LoggerFactory.getLogger(NettyClientServerCommunicationSystemServerSide.class);
 
@@ -209,7 +211,7 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 
 		for (int i = 0; i < targets.length; i++) {
 			rl.readLock().lock();
-			sendLock.lock();
+			//sendLock.lock();
 			try {       
 				NettyClientServerSession ncss = (NettyClientServerSession) sessionTable.get(targets[i]);
 				if (ncss != null) {
@@ -221,7 +223,7 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 					System.out.println("!!!!!!!!NettyClientServerSession NULL !!!!!! sequence: " + sm.getSequence() + ", ID; " + targets[i]);
 				}
 			} finally {
-				sendLock.unlock();
+				//sendLock.unlock();
 				rl.readLock().unlock();
 			}
 		}
