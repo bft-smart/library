@@ -62,6 +62,7 @@ import bftsmart.tom.util.BatchReader;
 import bftsmart.tom.util.Logger;
 import bftsmart.tom.util.TOMUtil;
 import java.util.Arrays;
+import java.util.LinkedList;
 import java.util.Set;
 
 
@@ -527,17 +528,24 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
 			execManager.stop(); // stop consensus execution
 
+                        //Get requests that timed out and the requests received in STOP messages
+                        //and add those STOPed requests to the client manager
+                        addSTOPedRequestsToClientManager();
+                        List<TOMMessage> messages = getRequestsToRelay();
+
 			try { // serialize content to send in STOP message
 				out = new ObjectOutputStream(bos);
 
-				if (lcManager.getCurrentRequestTimedOut() != null) {
+				if (messages != null && messages.size() > 0) {
 
-					//TODO: If this is null, then there was no timeout. What to do?
-					byte[] msgs = bb.makeBatch(lcManager.getCurrentRequestTimedOut(), 0, 0, controller);
+					//TODO: If this is null, then there was no timeout nor STOP messages.
+                                        //What to do?
+					byte[] serialized = bb.makeBatch(messages, 0, 0, controller);
 					out.writeBoolean(true);
-					out.writeObject(msgs);
+					out.writeObject(serialized);
 				} else {
 					out.writeBoolean(false);
+                                        System.out.println("(TOMLayer.triggerTimeout) Strange... did not include any request in my STOP message for regency " + regency);
 				}
 
 				byte[] payload = bos.toByteArray();
@@ -549,7 +557,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 				bos.close();
 
 				// send STOP-message
-				System.out.println("(TOMLayer.triggerTimeout) sending STOP message to install regency " + regency);
+				System.out.println("(TOMLayer.triggerTimeout) sending STOP message to install regency " + regency + " with " + (messages != null ? messages.size() : 0) + " request(s) to relay");
 				communication.send(this.controller.getCurrentViewOtherAcceptors(),
 						new LCMessage(this.controller.getStaticConf().getProcessId(), TOMUtil.STOP, regency, payload));
 
@@ -588,6 +596,11 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
             for (LCMessage m : stops) {
                 TOMMessage[] requests = deserializeTOMMessages(m.getPayload());
+
+                // store requests that came with the STOP message
+                lcManager.addRequestsFromSTOP(requests);
+                                
+                // store information about the STOP message
                 lcManager.addStop(regency, m.getSender());
             }
         }
@@ -757,6 +770,50 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
         }
         
+        // Get requests that timed out and the requests received in STOP messages
+        private List<TOMMessage> getRequestsToRelay() {
+            
+            List<TOMMessage> messages = lcManager.getCurrentRequestTimedOut();
+
+            if (messages == null) {
+
+                messages = new LinkedList<>();
+            }
+
+            // Include requests from STOP messages in my own STOP message
+            List <TOMMessage> messagesFromSTOP = lcManager.getRequestsFromSTOP();
+            if (messagesFromSTOP != null) {
+
+                for (TOMMessage m : messagesFromSTOP) {
+
+                    if (!messages.contains(m)) {
+
+                        messages.add(m);
+                    }
+                }
+            }
+            
+            Logger.println("(TOMLayer.getRequestsToRelay) I need to relay " + messages.size() + " requests");
+
+            return messages;
+        }
+        
+        
+        //adds requests received via STOP messages to the client manager
+        private void addSTOPedRequestsToClientManager() {
+            
+            List <TOMMessage> messagesFromSTOP = lcManager.getRequestsFromSTOP();
+            if (messagesFromSTOP != null) {
+
+                Logger.println("(TOMLayer.addRequestsToClientManager) Adding to client manager the requests contained in STOP messages");
+
+                for (TOMMessage m : messagesFromSTOP) {
+                    requestReceived(m);
+
+                }
+            }
+
+        }
 	// this method is called when a timeout occurs or when a STOP message is recevied
 	private void evaluateStops(int nextReg) {
 
@@ -781,19 +838,28 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
 			execManager.stop(); // stop execution of consensus
 
+                        //Get requests that timed out and the requests received in STOP messages
+                        //and add those STOPed requests to the client manager
+                        addSTOPedRequestsToClientManager();
+                        List<TOMMessage> messages = getRequestsToRelay();
+                        
 			try { // serialize conent to send in the STOP message
 				bos = new ByteArrayOutputStream();
 				out = new ObjectOutputStream(bos);
+                                
+                                
+                                // Do I have messages to send in the STOP message?
+				if (messages != null && messages.size() > 0) {
 
-				if (lcManager.getCurrentRequestTimedOut() != null) {
-
-					//TODO: If this is null, there was no timeout. What shall be done then?
+					//TODO: If this is null, there was no timeout nor STOP messages.
+                                        //What shall be done then?
 					out.writeBoolean(true);
-					byte[] msgs = bb.makeBatch(lcManager.getCurrentRequestTimedOut(), 0, 0, controller);
-					out.writeObject(msgs);
+					byte[] serialized = bb.makeBatch(messages, 0, 0, controller);
+					out.writeObject(serialized);
 				}
 				else {
 					out.writeBoolean(false);
+                                        System.out.println("(TOMLayer.evaluateStops) Strange... did not include any request in my STOP message for regency " + regency);
 				}
 
 				out.flush();
@@ -804,7 +870,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 				bos.close();
 
 				// send message STOP
-				System.out.println("(TOMLayer.evaluateStops) sending STOP message to install regency " + regency);
+				System.out.println("(TOMLayer.evaluateStops) sending STOP message to install regency " + regency + " with " + (messages != null ? messages.size() : 0) + " request(s) to relay");
 				communication.send(this.controller.getCurrentViewOtherAcceptors(),
 						new LCMessage(this.controller.getStaticConf().getProcessId(), TOMUtil.STOP, regency, payload));
 
@@ -836,8 +902,10 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
 			int regency = lcManager.getLastReg();
 
-			// avoid a memory leak
+			// avoid memory leaks
 			lcManager.removeStops(nextReg);
+                        lcManager.clearCurrentRequestTimedOut();
+                        lcManager.clearRequestsFromSTOP();
 
 			requestsTimer.Enabled(true);
 			requestsTimer.setShortTimeout(-1);
@@ -1098,8 +1166,6 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 	 * @param msg Message received from the other replica
 	 */
 	public void deliverTimeoutRequest(LCMessage msg) {
-		ByteArrayInputStream bis = null;
-		ObjectInputStream ois = null;
 
 		switch (msg.getType()) {
 		case TOMUtil.STOP: { // message STOP
@@ -1112,6 +1178,9 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 				Logger.println("(TOMLayer.deliverTimeoutRequest) received regency change request");
 
                                 TOMMessage[] requests = deserializeTOMMessages(msg.getPayload());
+                                
+                                // store requests that came with the STOP message
+                                lcManager.addRequestsFromSTOP(requests);
                                 
 				// store information about the message STOP
 				lcManager.addStop(msg.getReg(), msg.getSender());
