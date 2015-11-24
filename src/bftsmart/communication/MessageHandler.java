@@ -71,7 +71,7 @@ public class MessageHandler {
             
             PaxosMessage paxosMsg = (PaxosMessage) sm;
 
-            if (paxosMsg.authenticated || paxosMsg.getSender() == myId) acceptor.deliver(paxosMsg);
+            if (tomLayer.controller.getStaticConf().getUseMACs() == 0 || paxosMsg.authenticated || paxosMsg.getSender() == myId) acceptor.deliver(paxosMsg);
             else if (paxosMsg.getPaxosType() == MessageFactory.ACCEPT && paxosMsg.getProof() != null) {
                                         
                 //We are going to verify the MAC vector at the algorithm level
@@ -118,7 +118,7 @@ public class MessageHandler {
             }
 
         } else {
-        	if (sm.authenticated) {
+        	if (tomLayer.controller.getStaticConf().getUseMACs() == 0 || sm.authenticated) {
 	            /*** This is Joao's code, related to leader change */
 	            if (sm instanceof LCMessage) {
 	                LCMessage lcMsg = (LCMessage) sm;
