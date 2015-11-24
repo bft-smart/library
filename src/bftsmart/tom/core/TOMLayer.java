@@ -710,7 +710,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
             }
 
-            //outOfContextLC.removeAll(result); // avoid memory leaks
+            outOfContextLC.removeAll(result); // avoid memory leaks
 
             return result;
         }
