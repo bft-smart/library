@@ -131,6 +131,10 @@ public final class ExecutionManager {
         return stopped;
     }
     
+    public boolean hasMsgs() {
+        return !stoppedMsgs.isEmpty();
+    }
+
     public Queue<PaxosMessage> getStoppedMsgs() {
         return stoppedMsgs;
     }
