@@ -61,7 +61,7 @@ public final class RandomServer extends DefaultRecoverable {
         this.id = id;
     }
 
-    public byte[] executeOrdered(byte[] command, MessageContext msgCtx) {
+    public byte[] execute(byte[] command, MessageContext msgCtx) {
         iterations++;
         try {
             DataInputStream input = new DataInputStream(new ByteArrayInputStream(command));
@@ -101,7 +101,7 @@ public final class RandomServer extends DefaultRecoverable {
     }
 
     /**
-     * Just return the current value of the counter.
+     * Just return the current value.
      * 
      * @param command Command to b executed
      * @param msgCtx Context of  the message received
@@ -193,7 +193,7 @@ public final class RandomServer extends DefaultRecoverable {
     public byte[][] appExecuteBatch(byte[][] commands, MessageContext[] msgCtxs) {
         byte [][] replies = new byte[commands.length][];
         for (int i = 0; i < commands.length; i++) {
-            replies[i] = executeOrdered(commands[i], (msgCtxs  != null ? msgCtxs[i] : null));
+            replies[i] = execute(commands[i], (msgCtxs  != null ? msgCtxs[i] : null));
         }
         return replies;
     }
