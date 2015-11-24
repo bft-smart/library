@@ -46,7 +46,8 @@ import javax.crypto.SecretKey;
 /**
  *
  * This class implements a manager of information related to the leader change protocol
- * It also implements some predicates and methods necessary for the protocol.
+ * It also implements some predicates and methods necessary for the protocol in accordance
+ * to Cachin's 'Yet Another Visit to Paxos' (April 2011).
  * 
  * @author Joao Sousa
  */
@@ -104,6 +105,12 @@ public class LCManager {
         }
 
     }
+    
+    /**
+     * Deterministically elects a new leader, based current leader and membership
+     * 
+     * @return The new leader
+     */
     public int getNewLeader() {
 
         int[] proc = SVController.getCurrentViewProcesses();
@@ -127,6 +134,10 @@ public class LCManager {
         return currentLeader;
     }
     
+    /**
+     * Informs the object of who is the current leader
+     * @param leader The current leader
+     */
     public void setNewLeader(int leader) {
         currentLeader = leader;
     }
@@ -369,7 +380,9 @@ public class LCManager {
      * filtered using the method selectCollects()
      *
      * @param collects the collect data to which to apply the predicate.
-     * @return see pages 252 and 253 from "Introduction to Reliable and Secure Distributed Programming"
+     * @return See Cachin's 'Yet Another Visit to Paxos' (April 2011), page 11
+     * 
+     * In addition, see pages 252 and 253 from "Introduction to Reliable and Secure Distributed Programming"
      */
     public boolean sound(HashSet<CollectData> collects) {
 
@@ -450,7 +463,9 @@ public class LCManager {
      * @param timestamp the timestamp to search for
      * @param value the value to search for
      * @param collects the collect data to which to apply the predicate.
-     * @return see pages 252 and 253 from "Introduction to Reliable and Secure Distributed Programming"
+     * @return See Cachin's 'Yet Another Visit to Paxos' (April 2011), page 11
+     * 
+     * In addition, see pages 252 and 253 from "Introduction to Reliable and Secure Distributed Programming"
      */
     public boolean binds(int timestamp, byte[] value, HashSet<CollectData> collects) {
 
@@ -475,6 +490,9 @@ public class LCManager {
      * with a timestamp greater or equal to zero
      * @param collects Set of collects from which to determine the value
      * @return The bind value
+     * 
+     * See Cachin's 'Yet Another Visit to Paxos' (April 2011), page 11
+     * Also, see pages 252 and 253 from "Introduction to Reliable and Secure Distributed Programming"
      */
     public byte[] getBindValue(HashSet<CollectData> collects) {
 
@@ -543,7 +561,9 @@ public class LCManager {
      * filtered using the method selectCollects()
      *
      * @param collects the collect data to which to apply the predicate.
-     * @return see page 253 from "Introduction to Reliable and Secure Distributed Programming"
+     * @return See Cachin's 'Yet Another Visit to Paxos' (April 2011), page 11
+     * 
+     * In addition, see page 253 from "Introduction to Reliable and Secure Distributed Programming"
      */
     public boolean unbound(HashSet<CollectData> collects) {
 
@@ -579,7 +599,9 @@ public class LCManager {
      * @param timestamp the timestamp to search for
      * @param value the value to search for
      * @param collects the collect data to which to apply the predicate.
-     * @return see pages 252 and 253 from "Introduction to Reliable and Secure Distributed Programming"
+     * @return See Cachin's 'Yet Another Visit to Paxos' (April 2011), pages 10-11
+     * 
+     * In addition, see pages 252 and 253 from "Introduction to Reliable and Secure Distributed Programming"
      */
     public boolean quorumHighest(int timestamp, byte[] value, HashSet<CollectData> collects) {
 
@@ -629,7 +651,9 @@ public class LCManager {
      * @param timestamp the timestamp to search for
      * @param value the value to search for
      * @param collects the collect data to which to apply the predicate.
-     * @return see page 253 from "Introduction to Reliable and Secure Distributed Programming"
+     * @return See Cachin's 'Yet Another Visit to Paxos' (April 2011), page 11
+     * 
+     * In addition, see page 253 from "Introduction to Reliable and Secure Distributed Programming"
      */
     public boolean certifiedValue(int timestamp, byte[] value, HashSet<CollectData> collects) {
 
