@@ -43,7 +43,7 @@ import bftsmart.tom.util.TOMUtil;
 
 public class DurableStateManager extends BaseStateManager {
 
-	private LCManager lcManager;
+	//private LCManager lcManager;
 	private ExecutionManager execManager;
 
 	private ReentrantLock lockTimer = new ReentrantLock();
@@ -63,7 +63,7 @@ public class DurableStateManager extends BaseStateManager {
 
 		this.tomLayer = tomLayer;
 		this.dt = dt;
-		this.lcManager = tomLayer.getLCManager();
+		//this.lcManager = tomLayer.getSyncher().getLCManager();
 		this.execManager = tomLayer.execManager;
 
 		state = null;
@@ -152,7 +152,7 @@ public class DurableStateManager extends BaseStateManager {
 			cstConfig.setAddress(address);
 			CSTSMMessage reply = new CSTSMMessage(myId, msg.getEid(),
 					TOMUtil.SM_REPLY, cstConfig, null,
-					SVController.getCurrentView(), lcManager.getLastReg(),
+					SVController.getCurrentView(), tomLayer.getSynchronizer().getLCManager().getLastReg(),
 					tomLayer.lm.getCurrentLeader());
 
 			StateSenderServer stateServer = new StateSenderServer(port);
@@ -202,7 +202,7 @@ public class DurableStateManager extends BaseStateManager {
 					}
 				} else {
 					currentLeader = tomLayer.lm.getCurrentLeader();
-					currentRegency = lcManager.getLastReg();
+					currentRegency = tomLayer.getSynchronizer().getLCManager().getLastReg();
 					currentView = SVController.getCurrentView();
 				}
 
@@ -297,9 +297,9 @@ public class DurableStateManager extends BaseStateManager {
 						Logger.println("(TOMLayer.SMReplyDeliver) EID State requested: " + reply.getEid());
 						Logger.println("(TOMLayer.SMReplyDeliver) EID State received: "	+ stateUpper.getLastEid());
 
-						lcManager.setLastReg(currentRegency);
-						lcManager.setNextReg(currentRegency);
-						lcManager.setNewLeader(currentLeader);
+						tomLayer.getSynchronizer().getLCManager().setLastReg(currentRegency);
+						tomLayer.getSynchronizer().getLCManager().setNextReg(currentRegency);
+						tomLayer.getSynchronizer().getLCManager().setNewLeader(currentLeader);
 
 						tomLayer.lm.setNewLeader(currentLeader);
 						
@@ -347,7 +347,7 @@ public class DurableStateManager extends BaseStateManager {
 
 						if (appStateOnly) {
 							appStateOnly = false;
-							tomLayer.resumeLC();
+							tomLayer.getSynchronizer().resumeLC();
 						}
 					} else if (state == null
 							&& (SVController.getCurrentViewN() / 2) < getReplies()) {

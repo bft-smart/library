@@ -178,7 +178,7 @@ public class RequestsTimer {
                 //Logger.debug = true;
                 //tomLayer.requestTimeout(pendingRequests);
                 //if (reconfManager.getStaticConf().getProcessId() == 4) Logger.debug = true;
-                tomLayer.triggerTimeout(pendingRequests);
+                tomLayer.getSynchronizer().triggerTimeout(pendingRequests);
             }
             else {
                 rtTask = new RequestTimerTask();

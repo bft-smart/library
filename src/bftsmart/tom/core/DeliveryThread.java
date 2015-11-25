@@ -198,7 +198,7 @@ public final class DeliveryThread extends Thread {
   					Consensus lastConsensus = consensuses.get(consensuses.size() - 1);
 
   					if (requests != null && requests.length > 0) {
-  						deliverMessages(consensusIds, tomLayer.getLCManager().getLastReg(), requests);
+  						deliverMessages(consensusIds, tomLayer.getSynchronizer().getLCManager().getLastReg(), requests);
 
   						// ******* EDUARDO BEGIN ***********//
   						if (controller.hasUpdates()) {

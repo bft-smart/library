@@ -142,7 +142,7 @@ public class MessageHandler {
 	
 	                System.out.println("(MessageHandler.processData) LC_MSG received: type " + type + ", regency " + lcMsg.getReg() + ", (replica " + lcMsg.getSender() + ")");
 	                if (lcMsg.TRIGGER_LC_LOCALLY) tomLayer.requestsTimer.run_lc_protocol();
-	                else tomLayer.deliverTimeoutRequest(lcMsg);
+	                else tomLayer.getSynchronizer().deliverTimeoutRequest(lcMsg);
 	            /**************************************************************/
 	
 	            } else if (sm instanceof ForwardedMessage) {

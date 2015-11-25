@@ -47,7 +47,7 @@ public class StandardStateManager extends BaseStateManager {
     private final static long INIT_TIMEOUT = 40000;
     private long timeout = INIT_TIMEOUT;
     
-    private LCManager lcManager;
+    //private LCManager lcManager;
     private ExecutionManager execManager;
 
 
@@ -57,7 +57,7 @@ public class StandardStateManager extends BaseStateManager {
     	
         this.tomLayer = tomLayer;
         this.dt = dt;
-        this.lcManager = tomLayer.getLCManager();
+        //this.lcManager = tomLayer.getSyncher().getLCManager();
         this.execManager = tomLayer.execManager;
 
         this.replica = 0;
@@ -137,7 +137,7 @@ public class StandardStateManager extends BaseStateManager {
             }
             int[] targets = { msg.getSender() };
             SMMessage smsg = new StandardSMMessage(SVController.getStaticConf().getProcessId(),
-                    msg.getEid(), TOMUtil.SM_REPLY, -1, thisState, SVController.getCurrentView(), lcManager.getLastReg(), tomLayer.lm.getCurrentLeader());
+                    msg.getEid(), TOMUtil.SM_REPLY, -1, thisState, SVController.getCurrentView(), tomLayer.getSynchronizer().getLCManager().getLastReg(), tomLayer.lm.getCurrentLeader());
             System.out.println("Sending state");
             tomLayer.getCommunication().send(targets, smsg);
             System.out.println("Sent");
@@ -164,7 +164,7 @@ public class StandardStateManager extends BaseStateManager {
                     }
                 } else {
                     currentLeader = tomLayer.lm.getCurrentLeader();
-                    currentRegency = lcManager.getLastReg();
+                    currentRegency = tomLayer.getSynchronizer().getLCManager().getLastReg();
                     currentView = SVController.getCurrentView();
                 }
                 
@@ -199,9 +199,9 @@ public class StandardStateManager extends BaseStateManager {
 
                     	System.out.println("Received state. Will install it");
                     	
-                        lcManager.setLastReg(currentRegency);
-                        lcManager.setNextReg(currentRegency);
-                        lcManager.setNewLeader(currentLeader);
+                        tomLayer.getSynchronizer().getLCManager().setLastReg(currentRegency);
+                        tomLayer.getSynchronizer().getLCManager().setNextReg(currentRegency);
+                        tomLayer.getSynchronizer().getLCManager().setNewLeader(currentLeader);
                         tomLayer.lm.setNewLeader(currentLeader);
                         //if (currentRegency > 0)
                         //    tomLayer.requestsTimer.setTimeout(tomLayer.requestsTimer.getTimeout() * (currentRegency * 2));
@@ -242,7 +242,7 @@ public class StandardStateManager extends BaseStateManager {
                         
                         if (appStateOnly) {
                         	appStateOnly = false;
-                            tomLayer.resumeLC();
+                            tomLayer.getSynchronizer().resumeLC();
                         }
                     } else if (otherReplicaState == null && (SVController.getCurrentViewN() / 2) < getReplies()) {
                     	System.out.println("otherReplicaState == null && (SVController.getCurrentViewN() / 2) < getReplies()");
