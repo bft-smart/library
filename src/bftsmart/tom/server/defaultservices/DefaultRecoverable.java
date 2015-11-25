@@ -121,7 +121,7 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
             stateLock.lock();
             byte[] snapshot = getSnapshot();
             stateLock.unlock();
-            saveState(snapshot, eid, 0, 0/*tomLayer.lm.getLeader(cons.getId(), cons.getDecisionRound().getNumber())*/);
+            saveState(snapshot, eid);
 //	        } else {
 //	            Logger.println("(DefaultRecoverable.executeBatch) Storing message batch in the state log for consensus " + eid);
 //	            saveCommands(firstHalf, firstHalfEids);
@@ -167,22 +167,20 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
         return log;
     }
 
-    private void saveState(byte[] snapshot, int lastEid, int decisionRound, int leader) {
+    private void saveState(byte[] snapshot, int lastEid) {
 
         StateLog thisLog = getLog();
 
         logLock.lock();
 
-        Logger.println("(TOMLayer.saveState) Saving state of EID " + lastEid + ", round " + decisionRound + " and leader " + leader);
+        Logger.println("(TOMLayer.saveState) Saving state of EID " + lastEid);
 
         thisLog.newCheckpoint(snapshot, computeHash(snapshot), lastEid);
         thisLog.setLastEid(lastEid);
         thisLog.setLastCheckpointEid(lastEid);
-        thisLog.setLastCheckpointRound(decisionRound);
-        thisLog.setLastCheckpointLeader(leader);
 
         logLock.unlock();
-        Logger.println("(TOMLayer.saveState) Finished saving state of EID " + lastEid + ", round " + decisionRound + " and leader " + leader);
+        Logger.println("(TOMLayer.saveState) Finished saving state of EID " + lastEid);
     }
 
     /*public void saveCommands(byte[][] commands, int lastConsensusId, int decisionRound, int leader) {
@@ -211,19 +209,17 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
             System.out.println("----SIZE OF COMMANDS AND EIDS IS DIFFERENT----");
         }
         logLock.lock();
-        int decisionRound = 0;
-        int leader = 0;
 
         int eid = eids[0];
         int batchStart = 0;
         for (int i = 0; i <= eids.length; i++) {
             if (i == eids.length) { // the batch command contains only one command or it is the last position of the array
                 byte[][] batch = Arrays.copyOfRange(commands, batchStart, i);
-                log.addMessageBatch(batch, decisionRound, leader, eid);
+                log.addMessageBatch(batch, eid);
             } else {
                 if (eids[i] > eid) { // saves commands when the eid changes or when it is the last batch
                     byte[][] batch = Arrays.copyOfRange(commands, batchStart, i);
-                    log.addMessageBatch(batch, decisionRound, leader, eid);
+                    log.addMessageBatch(batch, eid);
                     eid = eids[i];
                     batchStart = i;
                 }

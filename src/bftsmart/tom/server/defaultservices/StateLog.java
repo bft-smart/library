@@ -24,14 +24,12 @@ import bftsmart.tom.server.defaultservices.DefaultApplicationState;
  * checkpoint together with all the batches of messages received so far, comprises this replica
  * current state
  * 
- * @author Jo�o Sousa
+ * @author Joao Sousa
  */
 public class StateLog {
 
     private CommandsInfo[] messageBatches; // batches received since the last checkpoint.
     private int lastCheckpointEid; // Execution ID for the last checkpoint
-    private int lastCheckpointRound; // Decision round for the last checkpoint
-    private int lastCheckpointLeader; // Leader for the last checkpoint
     private byte[] state; // State associated with the last checkpoint
     private byte[] stateHash; // Hash of the state associated with the last checkpoint
     private int position; // next position in the array of batches to be written
@@ -45,8 +43,6 @@ public class StateLog {
 
         this.messageBatches = new CommandsInfo[k - 1];
         this.lastCheckpointEid = -1;
-        this.lastCheckpointRound = -1;
-        this.lastCheckpointLeader = -1;
         this.state = initialState;
         this.stateHash = initialHash;
         this.position = 0;
@@ -61,8 +57,6 @@ public class StateLog {
 
         this.messageBatches = new CommandsInfo[k - 1];
         this.lastCheckpointEid = -1;
-        this.lastCheckpointRound = -1;
-        this.lastCheckpointLeader = -1;
         this.state = null;
         this.stateHash = null;
         this.position = 0;
@@ -71,8 +65,6 @@ public class StateLog {
 
     public StateLog(byte[] initialState, byte[] initialHash) {
         this.lastCheckpointEid = -1;
-        this.lastCheckpointRound = -1;
-        this.lastCheckpointLeader = -1;
         this.state = initialState;
         this.stateHash = initialHash;
         this.lastEid = -1;
@@ -113,42 +105,6 @@ public class StateLog {
     }
 
     /**
-     * Sets the decision round for the last checkpoint
-     * @param lastCheckpointRound Decision round for the last checkpoint
-     */
-    public void setLastCheckpointRound(int lastCheckpointRound) {
-
-        this.lastCheckpointRound = lastCheckpointRound;
-    }
-
-    /**
-     * Retrieves the decision round for the last checkpoint
-     * @return Decision round for the last checkpoint, or -1 if none was obtained
-     */
-    public int getLastCheckpointRound() {
-
-        return lastCheckpointRound ;
-    }
-
-    /**
-     * Sets the leader for the last checkpoint
-     * @param lastCheckpointLeader Leader for the last checkpoint
-     */
-    public void setLastCheckpointLeader(int lastCheckpointLeader) {
-
-        this.lastCheckpointLeader = lastCheckpointLeader;
-    }
-
-    /**
-     * Retrieves the leader for the last checkpoint
-     * @return Leader for the last checkpoint, or -1 if none was obtained
-     */
-    public int getLastCheckpointLeader() {
-
-        return lastCheckpointLeader;
-    }
-
-    /**
      * Sets the execution ID for the last messages batch delivered to the application
      * @param lastEid the execution ID for the last messages batch delivered to the application
      */
@@ -186,12 +142,11 @@ public class StateLog {
      * in the same order in which they are delivered to the application. Only
      * the 'k' batches received after the last checkpoint are supposed to be kept
      * @param commands The batch of messages to be kept.
-     * @param round the round in which the messages were ordered
-     * @param leader the leader by the moment the messages were ordered
+     * @param lastConsensusId
      */
-    public void addMessageBatch(byte[][] commands, int round, int leader, int lastConsensusId) {
+    public void addMessageBatch(byte[][] commands, int lastConsensusId) {
         if (position < messageBatches.length) {
-            messageBatches[position] = new CommandsInfo(commands, round, leader);
+            messageBatches[position] = new CommandsInfo(commands);
             position++;
         }
         setLastEid(lastConsensusId);
@@ -249,7 +204,7 @@ public class StateLog {
                     batches[i] = messageBatches[i];
             }
             lastEid = eid;
-            return new DefaultApplicationState(batches, lastCheckpointEid, lastCheckpointRound, lastCheckpointLeader, lastEid, (setState ? state : null), stateHash);
+            return new DefaultApplicationState(batches, lastCheckpointEid, lastEid, (setState ? state : null), stateHash);
 
         }
         else return null;

@@ -80,14 +80,13 @@ public class DurableStateLog extends StateLog {
 	 * in the same order in which they are delivered to the application. Only
 	 * the 'k' batches received after the last checkpoint are supposed to be
 	 * kept
-     * @param commands The batch of messages to be kept.
-     * @param round the round in which the messages were ordered
-     * @param leader the leader by the moment the messages were ordered
-     * @param consensusId the consensus id added to the batch
+         * @param commands The batch of messages to be kept.
+         * @param msgCtx
+         * @param consensusId the consensus id added to the batch
 	 */
-	public void addMessageBatch(byte[][] commands, MessageContext[] msgCtx, int round, int leader, int consensusId) {
+	public void addMessageBatch(byte[][] commands, MessageContext[] msgCtx, int consensusId) {
 //		System.out.println("DurableStateLog#addMessageBatch. consensusId: " + consensusId);
-		CommandsInfo command = new CommandsInfo(commands, msgCtx, round, leader);
+		CommandsInfo command = new CommandsInfo(commands, msgCtx);
 		if (isToLog) {
 			if(log == null)
 				createLogFile();

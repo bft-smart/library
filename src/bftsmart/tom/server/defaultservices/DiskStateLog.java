@@ -76,11 +76,12 @@ public class DiskStateLog extends StateLog {
 	 * the 'k' batches received after the last checkpoint are supposed to be
 	 * kept
 	 * 
-	 * @param batch
-	 *            The batch of messages to be kept.
+	 * @param commands The batch of messages to be kept.
+         * @param consensusId
 	 */
-	public void addMessageBatch(byte[][] commands, int round, int leader, int consensusId) {
-		CommandsInfo command = new CommandsInfo(commands, round, leader);
+        @Override
+	public void addMessageBatch(byte[][] commands, int consensusId) {
+		CommandsInfo command = new CommandsInfo(commands);
 		if (isToLog) {
 			if(log == null)
 				createLogFile();
@@ -217,8 +218,7 @@ public class DiskStateLog extends StateLog {
 
 //			return new DefaultApplicationState((sendState ? batches : null), lastCheckpointEid,
 			return new DefaultApplicationState(batches, lastCheckpointEid,
-					getLastCheckpointRound(), getLastCheckpointLeader(), eid,
-					(sendState ? ckpState : null), ckpStateHash);
+					eid, (sendState ? ckpState : null), ckpStateHash);
 
 		}
 		return null;
@@ -275,7 +275,7 @@ public class DiskStateLog extends StateLog {
 		int ckpLastConsensusId = fr.getCkpLastConsensusId();
 		int logLastConsensusId = fr.getLogLastConsensusId();
 		System.out.println("log last consensus di: " + logLastConsensusId);
-		ApplicationState state = new DefaultApplicationState(log, ckpLastConsensusId, -1, -1,
+		ApplicationState state = new DefaultApplicationState(log, ckpLastConsensusId,
 				logLastConsensusId, checkpoint, fr.getCkpStateHash());
 		if(logLastConsensusId > ckpLastConsensusId) {
 			super.setLastEid(logLastConsensusId);

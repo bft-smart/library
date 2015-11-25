@@ -26,26 +26,22 @@ import bftsmart.tom.MessageContext;
  */
 public class CommandsInfo implements Serializable {
 	
-	private static final long serialVersionUID = 342711292879899682L;
+    private static final long serialVersionUID = 342711292879899682L;
 	
-	public final byte[][] commands;
-	public final MessageContext[] msgCtx;
-    public final int round;
-    public final int leader;
+    public final byte[][] commands;
+    public final MessageContext[] msgCtx;
 
 
     public CommandsInfo () {
         this.commands = null;
         this.msgCtx = null;
-        this.round = -1;
-        this.leader = -1;
     }
     
-    public CommandsInfo(byte[][] commands, int round, int leader) {
-    	this(commands, null, round, leader);
+    public CommandsInfo(byte[][] commands) {
+    	this(commands, null);
     }
     
-    public CommandsInfo(byte[][] commands, MessageContext[] msgCtx, int round, int leader) {
+    public CommandsInfo(byte[][] commands, MessageContext[] msgCtx) {
         this.commands = commands;
         MessageContext[] onlyNeeded = null;
         if (msgCtx != null && msgCtx.length > 0) {
@@ -59,8 +55,6 @@ public class CommandsInfo implements Serializable {
         	}
         }
         this.msgCtx = onlyNeeded;
-        this.round = round;
-        this.leader = leader;
     }
 
     @Override
@@ -102,7 +96,7 @@ public class CommandsInfo implements Serializable {
             }
             //System.out.print("[CommandsInfo] returnig........");
             //System.out.println((this.round == ci.round) + " " + (this.leader == ci.leader));
-            return this.round == ci.round && this.leader == ci.leader;
+            return true;
         }
         //System.out.println("[CommandsInfo] returing FALSE!");
         return false;
@@ -125,9 +119,6 @@ public class CommandsInfo implements Serializable {
         } else {
             hash = hash * 31 + 0;
         }
-
-        hash = hash * 31 + this.round;
-        hash = hash * 31 + this.leader;
 
         return hash;
     }

@@ -124,7 +124,7 @@ public abstract class DurabilityCoordinator implements Recoverable, BatchExecuta
 				stateLock.lock();
 				byte[] snapshot = getSnapshot();
 				stateLock.unlock();
-				saveState(snapshot, eid, 0, 0);
+				saveState(snapshot, eid);
 				lastCkpEid = eid;
 			} else {
 				Logger.println("(DurabilityCoordinator.executeBatch) Storing message batch in the state log for consensus " + eid);
@@ -272,19 +272,17 @@ public abstract class DurabilityCoordinator implements Recoverable, BatchExecuta
 		return ret;
 	}
 
-	private void saveState(byte[] snapshot, int lastEid, int decisionRound, int leader) {
+	private void saveState(byte[] snapshot, int lastEid) {
 		logLock.lock();
 
-		Logger.println("(TOMLayer.saveState) Saving state of EID " + lastEid + ", round " + decisionRound + " and leader " + leader);
+		Logger.println("(TOMLayer.saveState) Saving state of EID " + lastEid);
 
 		log.newCheckpoint(snapshot, computeHash(snapshot), lastEid);
 		log.setLastEid(-1);
 		log.setLastCheckpointEid(lastEid);
-		log.setLastCheckpointRound(decisionRound);
-		log.setLastCheckpointLeader(leader);
 
 		logLock.unlock();
-		Logger.println("(TOMLayer.saveState) Finished saving state of EID " + lastEid + ", round " + decisionRound + " and leader " + leader);
+		Logger.println("(TOMLayer.saveState) Finished saving state of EID " + lastEid);
 	}
 
 	/**
@@ -298,8 +296,6 @@ public abstract class DurabilityCoordinator implements Recoverable, BatchExecuta
 		if(commands.length != msgCtx.length)
 			System.out.println("----SIZE OF COMMANDS AND EIDS IS DIFFERENT----");
 		logLock.lock();
-		int decisionRound = 0;
-		int leader = 0;
 
 		int eid = msgCtx[0].getConsensusId();
 		int batchStart = 0;
@@ -307,7 +303,7 @@ public abstract class DurabilityCoordinator implements Recoverable, BatchExecuta
 			if(i == msgCtx.length) { // the batch command contains only one command or it is the last position of the array
 				byte[][] batch = Arrays.copyOfRange(commands, batchStart, i);
 				MessageContext[] batchMsgCtx = Arrays.copyOfRange(msgCtx, batchStart, i);
-				log.addMessageBatch(batch, batchMsgCtx, decisionRound, leader, eid);
+				log.addMessageBatch(batch, batchMsgCtx, eid);
 				log.setLastEid(eid, globalCheckpointPeriod, checkpointPortion);
 				//				if(batchStart > 0)
 				//					System.out.println("Last batch: " + commands.length + "," + batchStart + "-" + i + "," + batch.length);
@@ -316,7 +312,7 @@ public abstract class DurabilityCoordinator implements Recoverable, BatchExecuta
 					byte[][] batch = Arrays.copyOfRange(commands, batchStart, i);
 					MessageContext[] batchMsgCtx = Arrays.copyOfRange(msgCtx, batchStart, i);
 					//					System.out.println("THERE IS MORE THAN ONE EID in this batch." + commands.length + "," + batchStart + "-" + i + "," + batch.length);
-					log.addMessageBatch(batch, batchMsgCtx, decisionRound, leader, eid);
+					log.addMessageBatch(batch, batchMsgCtx, eid);
 					log.setLastEid(eid, globalCheckpointPeriod, checkpointPortion);
 					eid = msgCtx[i].getConsensusId();
 					batchStart = i;

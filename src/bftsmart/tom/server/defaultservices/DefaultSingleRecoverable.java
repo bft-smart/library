@@ -88,9 +88,9 @@ public abstract class DefaultSingleRecoverable implements Recoverable, SingleExe
 	            stateLock.lock();
 	            byte[] snapshot = getSnapshot();
 	            stateLock.unlock();
-	            saveState(snapshot, eid, 0, 0/*tomLayer.lm.getLeader(cons.getId(), cons.getDecisionRound().getNumber())*/);
+	            saveState(snapshot, eid);
 	        } else {
-	            saveCommands(commands.toArray(new byte[0][]), eid, 0, 0);
+	            saveCommands(commands.toArray(new byte[0][]), eid);
 	        }
 			getStateManager().setLastEID(eid);
 	        commands = new ArrayList<byte[]>();
@@ -113,40 +113,38 @@ public abstract class DefaultSingleRecoverable implements Recoverable, SingleExe
     	return log;
     }
     
-    private void saveState(byte[] snapshot, int lastEid, int decisionRound, int leader) {
+    private void saveState(byte[] snapshot, int lastEid) {
         StateLog thisLog = getLog();
 
         logLock.lock();
 
-        Logger.println("(TOMLayer.saveState) Saving state of EID " + lastEid + ", round " + decisionRound + " and leader " + leader);
+        Logger.println("(TOMLayer.saveState) Saving state of EID " + lastEid);
 
         thisLog.newCheckpoint(snapshot, computeHash(snapshot), lastEid);
         thisLog.setLastEid(-1);
         thisLog.setLastCheckpointEid(lastEid);
-        thisLog.setLastCheckpointRound(decisionRound);
-        thisLog.setLastCheckpointLeader(leader);
 
         logLock.unlock();
         /*System.out.println("fiz checkpoint");
         System.out.println("tamanho do snapshot: " + snapshot.length);
         System.out.println("tamanho do log: " + thisLog.getMessageBatches().length);*/
-        Logger.println("(TOMLayer.saveState) Finished saving state of EID " + lastEid + ", round " + decisionRound + " and leader " + leader);
+        Logger.println("(TOMLayer.saveState) Finished saving state of EID " + lastEid);
     }
 
-    private void saveCommands(byte[][] commands, int lastEid, int decisionRound, int leader) {
+    private void saveCommands(byte[][] commands, int lastEid) {
         StateLog thisLog = getLog();
 
         logLock.lock();
 
-        Logger.println("(TOMLayer.saveBatch) Saving batch of EID " + lastEid + ", round " + decisionRound + " and leader " + leader);
+        Logger.println("(TOMLayer.saveBatch) Saving batch of EID " + lastEid);
 
-        thisLog.addMessageBatch(commands, decisionRound, leader, lastEid);
+        thisLog.addMessageBatch(commands, lastEid);
 
         logLock.unlock();
         
         /*System.out.println("guardei comandos");
         System.out.println("tamanho do log: " + thisLog.getNumBatches());*/
-        Logger.println("(TOMLayer.saveBatch) Finished saving batch of EID " + lastEid + ", round " + decisionRound + " and leader " + leader);
+        Logger.println("(TOMLayer.saveBatch) Finished saving batch of EID " + lastEid);
     }
 
     @Override

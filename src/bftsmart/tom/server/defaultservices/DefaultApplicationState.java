@@ -39,8 +39,6 @@ public class DefaultApplicationState implements ApplicationState {
 
     private CommandsInfo[] messageBatches; // batches received since the last checkpoint.
     private int lastCheckpointEid; // Execution ID for the last checkpoint
-    private int lastCheckpointRound; // Round for the last checkpoint
-    private int lastCheckpointLeader; // Leader for the last checkpoint
     private byte[] logHash;
 
     /**
@@ -50,20 +48,18 @@ public class DefaultApplicationState implements ApplicationState {
      * @param state State associated with the last checkpoint
      * @param stateHash Hash of the state associated with the last checkpoint
      */
-    public DefaultApplicationState(CommandsInfo[] messageBatches, int lastCheckpointEid, int lastCheckpointRound, int lastCheckpointLeader, int lastEid, byte[] state, byte[] stateHash) {
+    public DefaultApplicationState(CommandsInfo[] messageBatches, int lastCheckpointEid, int lastEid, byte[] state, byte[] stateHash) {
        
         this.messageBatches = messageBatches; // batches received since the last checkpoint.
         this.lastCheckpointEid = lastCheckpointEid; // Execution ID for the last checkpoint
-        this.lastCheckpointRound = lastCheckpointRound; // Round for the last checkpoint
-        this.lastCheckpointLeader = lastCheckpointLeader; // Leader for the last checkpoint
         this.lastEid = lastEid; // Execution ID for the last messages batch delivered to the application
         this.state = state; // State associated with the last checkpoint
         this.stateHash = stateHash;
         this.hasState = true;
     }
 
-    public DefaultApplicationState(CommandsInfo[] messageBatches, byte[] logHash, int lastCheckpointEid, int lastCheckpointRound, int lastCheckpointLeader, int lastEid, byte[] state, byte[] stateHash) {
-    	this(messageBatches, lastCheckpointEid, lastCheckpointRound, lastCheckpointLeader, lastEid, state, stateHash);
+    public DefaultApplicationState(CommandsInfo[] messageBatches, byte[] logHash, int lastCheckpointEid, int lastEid, byte[] state, byte[] stateHash) {
+    	this(messageBatches, lastCheckpointEid, lastEid, state, stateHash);
     	this.logHash = logHash;
     }
 
@@ -74,8 +70,6 @@ public class DefaultApplicationState implements ApplicationState {
     public DefaultApplicationState() {
         this.messageBatches = null; // batches received since the last checkpoint.
         this.lastCheckpointEid = -1; // Execution ID for the last checkpoint
-        this.lastCheckpointRound = -1; // Round for the last checkpoint
-        this.lastCheckpointLeader = -1; // Leader for the last checkpoint
         this.lastEid = -1;
         this.state = null; // State associated with the last checkpoint
         this.stateHash = null;
@@ -165,23 +159,6 @@ public class DefaultApplicationState implements ApplicationState {
         return lastCheckpointEid;
     }
 
-    /**
-     * Retrieves the decision round for the last checkpoint
-     * @return Decision round for the last checkpoint, or -1 if no checkpoint was yet executed
-     */
-    public int getLastCheckpointRound() {
-
-        return lastCheckpointRound;
-    }
-
-    /**
-     * Retrieves the leader for the last checkpoint
-     * @return Leader for the last checkpoint, or -1 if no checkpoint was yet executed
-     */
-    public int getLastCheckpointLeader() {
-
-        return lastCheckpointLeader;
-    }
 
     @Override
     public boolean equals(Object obj) {
@@ -222,8 +199,6 @@ public class DefaultApplicationState implements ApplicationState {
             }
             return (Arrays.equals(this.stateHash, tState.stateHash) &&
                     tState.lastCheckpointEid == this.lastCheckpointEid &&
-                    tState.lastCheckpointRound == this.lastCheckpointRound &&
-                    tState.lastCheckpointLeader == this.lastCheckpointLeader &&
                     tState.lastEid == this.lastEid && tState.hasState == this.hasState);
         }
         //System.out.println("[DefaultApplicationState] returing FALSE!");
@@ -234,8 +209,6 @@ public class DefaultApplicationState implements ApplicationState {
     public int hashCode() {
         int hash = 1;
         hash = hash * 31 + this.lastCheckpointEid;
-        hash = hash * 31 + this.lastCheckpointRound;
-        hash = hash * 31 + this.lastCheckpointLeader;
         hash = hash * 31 + this.lastEid;
         hash = hash * 31 + (this.hasState ? 1 : 0);
         if (this.stateHash != null) {
