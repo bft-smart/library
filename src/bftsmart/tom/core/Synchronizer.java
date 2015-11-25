@@ -33,6 +33,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.security.MessageDigest;
 import java.security.SignedObject;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -1075,6 +1076,10 @@ public class Synchronizer {
                 r.setWrite(me, hash);
             } else {
                 r.setAccept(me, hash);
+
+                Logger.println("(Synchronizer.finalise) [CFT Mode] Setting EID's " + currentEid + " QuorumWrite tiemstamp to " + r.getExecution().getEts() + " and value " + Arrays.toString(hash));
+ 	        r.getExecution().setQuorumWrites(hash);
+
             }
 
             // resume normal operation
