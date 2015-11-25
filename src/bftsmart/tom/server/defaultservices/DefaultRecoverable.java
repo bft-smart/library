@@ -183,19 +183,6 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
         Logger.println("(TOMLayer.saveState) Finished saving state of EID " + lastEid);
     }
 
-    /*public void saveCommands(byte[][] commands, int lastConsensusId, int decisionRound, int leader) {
-     StateLog thisLog = getLog();
-
-     logLock.lock();
-
-     Logger.println("(TOMLayer.saveBatch) Saving batch of EID " + lastConsensusId + ", round " + decisionRound + " and leader " + leader);
-
-     thisLog.addMessageBatch(commands, decisionRound, leader, lastConsensusId);
-        
-     logLock.unlock();
-        
-     Logger.println("(TOMLayer.saveBatch) Finished saving batch of EID " + lastConsensusId + ", round " + decisionRound + " and leader " + leader);
-     }*/
     /**
      * Write commands to log file
      *
@@ -259,10 +246,6 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
                 log.update(state);
                 installSnapshot(state.getSerializedState());
             }
-
-            // INUTIL??????
-            //tomLayer.lm.addLeaderInfo(lastCheckpointEid, state.getLastCheckpointRound(),
-            //        state.getLastCheckpointLeader());
 
             for (int eid = lastCheckpointEid + 1; eid <= lastEid; eid++) {
                 try {

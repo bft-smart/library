@@ -29,7 +29,7 @@ import bftsmart.tom.core.messages.TOMMessage;
 public class Consensus {
 
     private int eid; // execution ID
-    private Round decisionRound = null;
+    private Epoch decisionEpoch = null;
     private byte[] decision = null; // decided value
     private TOMMessage[] deserializedDecision = null; // decided value (deserialized)
     
@@ -47,12 +47,12 @@ public class Consensus {
         this.eid = eid;
     }
 
-    public void decided(Round round) {
-        this.decisionRound = round;
+    public void decided(Epoch epoch) {
+        this.decisionEpoch = epoch;
     }
 
-    public Round getDecisionRound() {
-        return decisionRound;
+    public Epoch getDecisionEpoch() {
+        return decisionEpoch;
     }
 
     /**
@@ -62,7 +62,7 @@ public class Consensus {
     public byte[] getDecision() {
         while (decision == null) {
             waitForPropose(); // Eduardo: should have a separate waitForDecision  (works for now, because it is just a sleep)
-            decision = decisionRound.propValue;
+            decision = decisionEpoch.propValue;
         }
         return decision;
     }
@@ -70,7 +70,7 @@ public class Consensus {
     public TOMMessage[] getDeserializedDecision() {
         while (deserializedDecision == null) {
             waitForPropose();
-            deserializedDecision = decisionRound.deserializedPropValue;
+            deserializedDecision = decisionEpoch.deserializedPropValue;
         }
         return deserializedDecision;
     }
@@ -84,8 +84,8 @@ public class Consensus {
     }
 
     private void waitForPropose() {
-        while (decisionRound == null &&
-                decisionRound.deserializedPropValue == null) {
+        while (decisionEpoch == null &&
+                decisionEpoch.deserializedPropValue == null) {
             try {
                 System.out.println("waiting for propose for " + eid);
                 Thread.sleep(1);

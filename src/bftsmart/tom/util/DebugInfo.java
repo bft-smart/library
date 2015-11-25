@@ -24,13 +24,13 @@ import bftsmart.tom.core.messages.TOMMessage;
 public class DebugInfo {
 
     public final int eid;
-    public final int round;
+    public final int epoch;
     public final int leader;
     public final TOMMessage msg;
 
-    public DebugInfo(int eid, int round, int leader, TOMMessage msg) {
+    public DebugInfo(int eid, int epoch, int leader, TOMMessage msg) {
         this.eid = eid;
-        this.round = round;
+        this.epoch = epoch;
         this.leader = leader;
         this.msg = msg;
     }

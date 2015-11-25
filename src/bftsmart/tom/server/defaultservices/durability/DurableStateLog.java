@@ -238,14 +238,14 @@ public class DurableStateLog extends StateLog {
 //				checkpointLock.unlock(); 
 //	    		batches = fr.getLogState(requestFGT1.getLogSize());
 //	    		System.out.println("--- sending checkpoint: " + ckpState.length);
-//	            return new DefaultApplicationState(batches, lastCheckpointEid, getLastCheckpointRound(), getLastCheckpointLeader(), eid, ckpState, null);
+//	            return new DefaultApplicationState(batches, lastCheckpointEid, eid, ckpState, null);
 //			} else { // Replica should send the checkpoint and log hashes
 //	    		batches = fr.getLogState(requestFGT1.getLogSize() - requestFGT1.getNbrHashesBeforeCkp());
 //	    		byte[] logBytes = TOMUtil.getBytes(batches);
 //	    		byte[] logHash = TOMUtil.computeHash(logBytes);
 //	    		fr.recoverCkpHash();
 //				byte[] ckpHash = fr.getCkpStateHash();
-//	            return new DefaultApplicationState(null, logHash, lastCheckpointEid, getLastCheckpointRound(), getLastCheckpointLeader(), eid, null, ckpHash);
+//	            return new DefaultApplicationState(null, logHash, lastCheckpointEid, eid, null, ckpHash);
 //			}
 //				
 //		}

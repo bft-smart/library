@@ -29,7 +29,7 @@ import bftsmart.communication.SystemMessage;
 public class PaxosMessage extends SystemMessage {
 
     private int number; //execution ID for this message TODO: Shouldn't this be called 'eid'?
-    private int round; // Round number to which this message belongs to
+    private int epoch; // Epoch to which this message belongs to
     private int paxosType; // Message type
     private byte[] value = null; // Value used when message type is PROPOSE
     private Object proof; // Proof used when message type is COLLECT
@@ -45,17 +45,17 @@ public class PaxosMessage extends SystemMessage {
      * TODO: How about removing the modifier, to make it visible just within the package?
      * @param paxosType This should be MessageFactory.COLLECT or MessageFactory.PROPOSE
      * @param id Consensus's execution ID
-     * @param round Round number
+     * @param epoch Epoch timestamp
      * @param from This should be this process ID
      * @param value This should be null if its a COLLECT message, or the proposed value if it is a PROPOSE message
      */
-    public PaxosMessage(int paxosType, int id,int round,int from, byte[] value){
+    public PaxosMessage(int paxosType, int id,int epoch,int from, byte[] value){
 
         super(from);
 
         this.paxosType = paxosType;
         this.number = id;
-        this.round = round;
+        this.epoch = epoch;
         this.value = value;
         //this.macVector = proof;
 
@@ -67,12 +67,12 @@ public class PaxosMessage extends SystemMessage {
      * TODO: How about removing the modifier, to make it visible just within the package?
      * @param paxosType This should be MessageFactory.FREEZE
      * @param id Consensus's execution ID
-     * @param round Round number
+     * @param epoch Epoch timestamp
      * @param from This should be this process ID
      */
-    public PaxosMessage(int paxosType, int id,int round, int from) {
+    public PaxosMessage(int paxosType, int id,int epoch, int from) {
 
-        this(paxosType, id, round, from, null);
+        this(paxosType, id, epoch, from, null);
 
     }
 
@@ -83,7 +83,7 @@ public class PaxosMessage extends SystemMessage {
         super.writeExternal(out);
 
         out.writeInt(number);
-        out.writeInt(round);
+        out.writeInt(epoch);
         out.writeInt(paxosType);
 
         if(value == null) {
@@ -112,7 +112,7 @@ public class PaxosMessage extends SystemMessage {
         super.readExternal(in);
 
         number = in.readInt();
-        round = in.readInt();
+        epoch = in.readInt();
         paxosType = in.readInt();
 
         int toRead = in.readInt();
@@ -139,12 +139,12 @@ public class PaxosMessage extends SystemMessage {
     }
 
     /**
-     * Retrieves the round number to which this message belongs
-     * @return Round number to which this message belongs
+     * Retrieves the epoch number to which this message belongs
+     * @return Epoch to which this message belongs
      */
-    public int getRound() {
+    public int getEpoch() {
 
-        return round;
+        return epoch;
 
     }
     
@@ -210,8 +210,8 @@ public class PaxosMessage extends SystemMessage {
 
     @Override
     public String toString() {
-        return "type="+getPaxosVerboseType()+", number="+getNumber()+", round="+
-                getRound()+", from="+getSender();
+        return "type="+getPaxosVerboseType()+", number="+getNumber()+", epoch="+
+                getEpoch()+", from="+getSender();
     }
 
 }

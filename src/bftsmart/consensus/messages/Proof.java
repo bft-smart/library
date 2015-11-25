@@ -22,7 +22,7 @@ import java.security.SignedObject;
  *
  * @author edualchieri
  *
- * This class represents the proof used in the rounds freeze processing.
+ * This class represents the proof used in the epochs freeze processing.
  * The SignedObject contain the CollectProof for this server.
  */
 public final class Proof implements Serializable {

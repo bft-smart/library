@@ -24,7 +24,7 @@ import java.math.BigInteger;
 import java.util.Arrays;
 
 /**
- * This class associates a round to a value
+ * This class associates a timestamp to a value
  * 
  * @author Joao Sousa
  */
@@ -37,7 +37,7 @@ public class TimestampValuePair implements Externalizable {
 
     /**
      * Constructor
-     * @param round Round
+     * @param timestamp Timestamp
      * @param value Value
      */
     public TimestampValuePair(int timestamp, byte[] value) {
@@ -73,10 +73,10 @@ public class TimestampValuePair implements Externalizable {
     }
 
     /**
-     * Get round
-     * @return Round
+     * Get timestamp
+     * @return The timestamp
      */
-    public int getRound() {
+    public int getTimestamp() {
         return timestamp;
     }
 

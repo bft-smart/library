@@ -80,7 +80,7 @@ public class MessageHandler {
                 byte[] recvMAC = macVector.get(myId);
                 
                 PaxosMessage pm = new PaxosMessage(MessageFactory.ACCEPT,paxosMsg.getNumber(),
-                        paxosMsg.getRound(), paxosMsg.getSender(), paxosMsg.getValue());
+                        paxosMsg.getEpoch(), paxosMsg.getSender(), paxosMsg.getValue());
                 
                 ByteArrayOutputStream bOut = new ByteArrayOutputStream(248);
                 try {

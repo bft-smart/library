@@ -18,7 +18,7 @@ package bftsmart.tom.util;
 import bftsmart.communication.ServerCommunicationSystem;
 import bftsmart.consensus.executionmanager.ExecutionManager;
 import bftsmart.consensus.executionmanager.LeaderModule;
-import bftsmart.consensus.Round;
+import bftsmart.consensus.Epoch;
 import bftsmart.consensus.roles.Acceptor;
 import bftsmart.tom.core.TOMLayer;
 
@@ -48,19 +48,19 @@ public class ShutdownHookThread extends Thread {
         System.err.println("---------- DEBUG INFO ----------");
         System.err.println("Current time: " + System.currentTimeMillis());
         System.err.println("Last executed consensus: " + tomLayer.getLastExec());
-        Round r = manager.getExecution(tomLayer.getLastExec()).getLastRound();
+        Epoch e = manager.getExecution(tomLayer.getLastExec()).getLastEpoch();
         //******* EDUARDO BEGIN **************//
-        if(r != null){
+        if(e != null){
             System.err.println("Last executed leader: " + tomLayer.lm.getCurrentLeader()/*lm.getLeader(r.getExecution().getId(),r.getNumber())*/);
-            System.err.println("State of the last executed round: "+r.toString());
+            System.err.println("State of the last executed epoch: "+e.toString());
         }
         //******* EDUARDO END **************//
         System.err.println("Consensus in execution: " + tomLayer.getInExec());
         if(tomLayer.getInExec() != -1) {
-            Round r2 = manager.getExecution(tomLayer.getInExec()).getLastRound();
+            Epoch r2 = manager.getExecution(tomLayer.getInExec()).getLastEpoch();
             if(r2 != null) {
                 System.out.println("Consensus in execution leader: " + tomLayer.lm.getCurrentLeader()/*lm.getLeader(r2.getExecution().getId(),r.getNumber())*/);
-                System.err.println("State of the round in execution: "+r2.toString());
+                System.err.println("State of the epoch in execution: "+r2.toString());
             }
         }
         //System.err.println("Execution manager: "+ tomLayer.execManager);

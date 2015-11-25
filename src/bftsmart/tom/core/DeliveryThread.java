@@ -203,8 +203,8 @@ public final class DeliveryThread extends Thread {
   						// ******* EDUARDO BEGIN ***********//
   						if (controller.hasUpdates()) {
   							processReconfigMessages(lastConsensus.getId(),
-  									lastConsensus.getDecisionRound()
-  											.getNumber());
+  									lastConsensus.getDecisionEpoch()
+  											.getTimestamp());
 
   							// set this consensus as the last executed
   							tomLayer.setLastExec(lastConsensus.getId());
@@ -267,8 +267,8 @@ public final class DeliveryThread extends Thread {
         receiver.receiveMessages(consId, regency, requests);
     }
 
-    private void processReconfigMessages(int consId, int decisionRoundNumber) {
-        byte[] response = controller.executeUpdates(consId, decisionRoundNumber);
+    private void processReconfigMessages(int consId, int decisionEpochTimestamp) {
+        byte[] response = controller.executeUpdates(consId, decisionEpochTimestamp);
         TOMMessage[] dests = controller.clearUpdates();
 
         for (int i = 0; i < dests.length; i++) {

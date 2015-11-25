@@ -15,7 +15,7 @@ limitations under the License.
 */
 package bftsmart.consensus.executionmanager;
 
-import bftsmart.consensus.Round;
+import bftsmart.consensus.Epoch;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -38,7 +38,7 @@ import bftsmart.tom.util.Logger;
 
 /**
  * This classe manages consensus instances. Each execution is a consensus
- * instance. It can have several rounds if there were problems during consensus.
+ * instance. It can have several epochs if there were problems during consensus.
  *
  * @author Alysson
  */
@@ -62,7 +62,7 @@ public final class ExecutionManager {
     private boolean stopped = false; // Is the execution manager stopped?
     // When the execution manager is stopped, incoming paxos messages are stored here
     private Queue<PaxosMessage> stoppedMsgs = new LinkedList<PaxosMessage>();
-    private Round stoppedRound = null; // round at which the current execution was stoppped
+    private Epoch stoppedEpoch = null; // epoch at which the current execution was stoppped
     private ReentrantLock stoppedMsgsLock = new ReentrantLock(); //lock for stopped messages
     private TOMLayer tomLayer; // TOM layer associated with this execution manager
     private int paxosHighMark; // Paxos high mark for consensus instances
@@ -79,7 +79,6 @@ public final class ExecutionManager {
      * @param acceptors Process ID's of all replicas, including this one
      * @param f Maximum number of replicas that can be faulty
      * @param me This process ID
-     * @param initialTimeout initial timeout for rounds
      */
     public ExecutionManager(ServerViewController controller, Acceptor acceptor,
             Proposer proposer, int me) {
@@ -150,9 +149,9 @@ public final class ExecutionManager {
         stoppedMsgsLock.lock();
         this.stopped = true;
         if (tomLayer.getInExec() != -1) {
-            stoppedRound = getExecution(tomLayer.getInExec()).getLastRound();
-            //stoppedRound.getTimeoutTask().cancel();
-            if (stoppedRound != null) Logger.println("(ExecutionManager.stop) Stoping round " + stoppedRound.getNumber() + " of consensus " + tomLayer.getInExec());
+            stoppedEpoch = getExecution(tomLayer.getInExec()).getLastEpoch();
+            //stoppedEpoch.getTimeoutTask().cancel();
+            if (stoppedEpoch != null) Logger.println("(ExecutionManager.stop) Stoping epoch " + stoppedEpoch.getTimestamp() + " of consensus " + tomLayer.getInExec());
         }
         stoppedMsgsLock.unlock();
     }
@@ -368,7 +367,7 @@ public final class ExecutionManager {
         if (receivedOutOfContextPropose(eid)) {
             Execution exec = getExecution(eid);
             PaxosMessage prop = outOfContextProposes.get(exec.getId());
-            Round round = exec.getRound(prop.getRound(), controller);
+            Epoch epoch = exec.getEpoch(prop.getEpoch(), controller);
             byte[] propHash = tomLayer.computeHash(prop.getValue());
             List<PaxosMessage> msgs = outOfContext.get(eid);
             int countWrites = 0;
@@ -376,7 +375,7 @@ public final class ExecutionManager {
             if (msgs != null) {
                 for (PaxosMessage msg : msgs) {
                     
-                    if (msg.getRound() == round.getNumber() &&
+                    if (msg.getEpoch() == epoch.getTimestamp() &&
                             Arrays.equals(propHash, msg.getValue())) {
                         
                         if (msg.getPaxosType() == MessageFactory.WRITE) countWrites++;

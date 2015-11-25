@@ -22,14 +22,14 @@ import java.util.Map;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
- * This class manages information about the leader of each round of each consensus
+ * This class manages information about the leader of each epoch of each consensus
  * @author edualchieri
  */
 public class LeaderModule {
 
-	// Each value of this map is a list of all the rounds of a consensus
-	// Each element of that list is a tuple which stands for a round, and the id
-	// of the process that was the leader for that round
+	// Each value of this map is a list of all the epochs of a consensus
+	// Each element of that list is a tuple which stands for a epoch, and the id
+	// of the process that was the leader for that epoch
 	private Map<Integer, List<ConsInfo>> leaderInfos = new HashMap<Integer, List<ConsInfo>>();
 
 	// This is the new way of storing info about the leader, uncoupled from consensus
@@ -46,21 +46,21 @@ public class LeaderModule {
 	/**
 	 * Adds information about a leader
 	 * @param c Consensus where the replica is a leader
-	 * @param r Rounds of the consensus where the replica is a leader
+	 * @param e Epochs of the consensus where the replica is a leader
 	 * @param l ID of the leader
 	 */
-	public void addLeaderInfo(int c, int r, int l) {
+	public void addLeaderInfo(int c, int e, int l) {
 		List<ConsInfo> list = leaderInfos.get(c);
 		if (list == null) {
 			list = new LinkedList<ConsInfo>();
 			leaderInfos.put(c, list);
 		}
-		ConsInfo ci = findInfo(list, r);
+		ConsInfo ci = findInfo(list, e);
 
 		if (ci != null) {
 			ci.leaderId = l;
 		} else {
-			list.add(new ConsInfo(r, l));
+			list.add(new ConsInfo(e, l));
 		}
 	}
 
@@ -76,16 +76,16 @@ public class LeaderModule {
 	}
 
 	/**
-	 * Retrieves the tuple for the specified round, given a list of tuples
-	 * @param l List of tuples formed by a round number and the ID of the leader
-	 * @param r Number of the round to be searched
-	 * @return The tuple for the specified round, or null if there is none
+	 * Retrieves the tuple for the specified epoch, given a list of tuples
+	 * @param l List of tuples formed by a epoch number and the ID of the leader
+	 * @param e Timestamp of the epoch to be searched
+	 * @return The tuple for the specified epoch, or null if there is none
 	 */
-	private ConsInfo findInfo(List<ConsInfo> l, int r) {
+	private ConsInfo findInfo(List<ConsInfo> l, int e) {
 		ConsInfo ret = null;
 		for (int i = 0; i < l.size(); i++) {
 			ret = l.get(i);
-			if (ret.round == r) {
+			if (ret.epoch == e) {
 				return ret;
 			}
 		}
@@ -97,7 +97,7 @@ public class LeaderModule {
 	 * It adds a new tuple to the list, which corresponds to the next consensus
 	 *
 	 * @param c ID of the consensus established as being decided
-	 * @param l ID of the replica established as being the leader for the round 0 of the next consensus
+	 * @param l ID of the replica established as being the leader for the epoch 0 of the next consensus
 	 */
 	public void decided(int c, int l) {
 		if (leaderInfos.get(c) == null) {
@@ -106,13 +106,13 @@ public class LeaderModule {
 	}
 
 	/**
-	 * Retrieves the replica ID of the leader for the specified consensus's execution ID and round number
+	 * Retrieves the replica ID of the leader for the specified consensus's execution ID and epoch number
 	 * TODO: This is more than a getter. Should'nt we change that?
 	 * @param c consensus's execution ID
-	 * @param r Round number for the specified consensus
+	 * @param e Epoch number for the specified consensus
 	 * @return The replica ID of the leader
 	 */
-	public int getLeader(int c, int r) {
+	public int getLeader(int c, int e) {
 		/***/
 		List<ConsInfo> list = leaderInfos.get(c);
 		if (list == null) {
@@ -124,15 +124,15 @@ public class LeaderModule {
 			List<ConsInfo> before = leaderInfos.get(c - 1);
 
 			if (before != null && before.size() > 0) {
-				//the leader for this round will be the leader of
+				//the leader for this epoch will be the leader of
 				ConsInfo ci = before.get(before.size() - 1);
-				list.add(new ConsInfo(r, ci.leaderId));
+				list.add(new ConsInfo(e, ci.leaderId));
 				return ci.leaderId;
 			}
 		} else {
 			for (int i = 0; i < list.size(); i++) {
 				ConsInfo ci = list.get(i);
-				if (ci.round == r) {
+				if (ci.epoch == e) {
 					return ci.leaderId;
 				}
 			}
@@ -178,15 +178,15 @@ public class LeaderModule {
 	/********************************************************/
 
 	/**
-	 * This class represents a tuple formed by a round number and the replica ID of that round's leader
+	 * This class represents a tuple formed by a epoch number and the replica ID of that epoch's leader
 	 */
 	private class ConsInfo {
 
-		public int round;
+		public int epoch;
 		public int leaderId;
 
-		public ConsInfo(int r, int l) {
-			this.round = r;
+		public ConsInfo(int e, int l) {
+			this.epoch = e;
 			this.leaderId = l;
 		}
 	}

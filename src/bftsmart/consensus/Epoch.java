@@ -28,21 +28,22 @@ import java.util.HashSet;
 import java.util.Set;
 
 /**
- * This class stands for a round of an execution of a consensus
+ * This class stands for a epoch of an execution of a consensus,
+ * as described in Cachin's 'Yet Another Visit to Paxos' (April 2011)
  */
-public class Round implements Serializable {
+public class Epoch implements Serializable {
 
-	private static final long serialVersionUID = -2891450035863688295L;
-	private transient Execution execution; // Execution where the round belongs to
+    private static final long serialVersionUID = -2891450035863688295L;
+    private transient Execution execution; // Execution where the epoch belongs to
     
-    private int number; // Round's number
+    private int timestamp; // Epochs's timestamp
     private int me; // Process ID
     private boolean[] writeSetted;
     private boolean[] acceptSetted;
     private byte[][] write; // WRITE values from other processes
     private byte[][] accept; // accepted values from other processes
     
-    private boolean alreadyRemoved = false; // indicates if this round was removed from its execution
+    private boolean alreadyRemoved = false; // indicates if this epoch was removed from its execution
 
     public byte[] propValue = null; // proposed value
     public TOMMessage[] deserializedPropValue = null; //utility var
@@ -54,14 +55,13 @@ public class Round implements Serializable {
     private ServerViewController controller;
 
     /**
-     * Creates a new instance of Round for acceptors
-     * @param parent Execution to which this round belongs
-     * @param number Number of the round
-     * @param timeout Timeout duration for this round
+     * Creates a new instance of Epoch for acceptors
+     * @param parent Execution to which this epoch belongs
+     * @param timestamp Timestamp of the epoch
      */
-    public Round(ServerViewController controller, Execution parent, int number) {
+    public Epoch(ServerViewController controller, Execution parent, int timestamp) {
         this.execution = parent;
-        this.number = number;
+        this.timestamp = timestamp;
         this.controller = controller;
         this.proof = new HashSet<PaxosMessage>();
         //ExecutionManager manager = execution.getManager();
@@ -78,17 +78,17 @@ public class Round implements Serializable {
         Arrays.fill(writeSetted, false);
         Arrays.fill(acceptSetted, false);
 
-        if (number == 0) {
+        if (timestamp == 0) {
             this.write = new byte[n][];
             this.accept = new byte[n][];
 
             Arrays.fill((Object[]) write, null);
             Arrays.fill((Object[]) accept, null);
         } else {
-            Round previousRound = execution.getRound(number - 1, controller);
+            Epoch previousEpoch = execution.getEpoch(timestamp - 1, controller);
 
-            this.write = previousRound.getWrite();
-            this.accept = previousRound.getAccept();
+            this.write = previousEpoch.getWrite();
+            this.accept = previousEpoch.getAccept();
         }
     }
 
@@ -137,14 +137,14 @@ public class Round implements Serializable {
     }
             
     /**
-     * Set this round as removed from its execution
+     * Set this epoch as removed from its execution
      */
     public void setRemoved() {
         this.alreadyRemoved = true;
     }
 
     /**
-     * Informs if this round was removed from its execution
+     * Informs if this epoch was removed from its execution
      * @return True if it is removed, false otherwise
      */
     public boolean isRemoved() {
@@ -168,16 +168,16 @@ public class Round implements Serializable {
     }*/
 
     /**
-     * Retrieves this round's number
-     * @return This round's number
+     * Retrieves this epoch's timestamp
+     * @return This epoch's timestamp
      */
-    public int getNumber() {
-        return number;
+    public int getTimestamp() {
+        return timestamp;
     }
 
     /**
-     * Retrieves this round's execution
-     * @return This round's execution
+     * Retrieves this epoch's execution
+     * @return This epoch's execution
      */
     public Execution getExecution() {
         return execution;
@@ -350,7 +350,7 @@ public class Round implements Serializable {
 
     /*************************** DEBUG METHODS *******************************/
     /**
-     * Print round information.
+     * Print epoch information.
      */
     @Override
     public String toString() {
@@ -370,7 +370,7 @@ public class Round implements Serializable {
         buffWrite.append(str(write[write.length - 1]) + " [" + (write[write.length - 1] != null ? write[write.length - 1].length : 0) + " bytes])");
         buffAccept.append(str(accept[accept.length - 1]) + " [" + (accept[accept.length - 1] != null ? accept[accept.length - 1].length : 0) + " bytes])");
 
-        return "eid=" + execution.getId() + " r=" + getNumber() + " " + buffWrite + " " + buffAccept + " " + buffDecide;
+        return "eid=" + execution.getId() + " ts=" + getTimestamp() + " " + buffWrite + " " + buffAccept + " " + buffDecide;
     }
 
     private String str(byte[] obj) {
@@ -387,7 +387,7 @@ public class Round implements Serializable {
     }
     
     /**
-     * Clear all round info.
+     * Clear all epoch info.
      */
     public void clear() {
 

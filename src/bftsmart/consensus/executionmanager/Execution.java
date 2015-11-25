@@ -15,7 +15,7 @@ limitations under the License.
 */
 package bftsmart.consensus.executionmanager;
 
-import bftsmart.consensus.Round;
+import bftsmart.consensus.Epoch;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -35,11 +35,11 @@ public class Execution {
     private ExecutionManager manager; // Execution manager for this execution
 
     private Consensus consensus; // Consensus instance to which this execution works for
-    private HashMap<Integer,Round> rounds = new HashMap<Integer,Round>(2);
-    private ReentrantLock roundsLock = new ReentrantLock(); // Lock for concurrency control
+    private HashMap<Integer,Epoch> epochs = new HashMap<Integer,Epoch>(2);
+    private ReentrantLock epochsLock = new ReentrantLock(); // Lock for concurrency control
 
     private boolean decided; // Is this execution decided?
-    private int decisionRound = -1; // round at which a desision was made
+    private int decisionEpoch = -1; // epoch at which a decision was made
 
     //NEW ATTRIBUTES FOR THE LEADER CHANGE
     private int ets = 0;
@@ -84,32 +84,32 @@ public class Execution {
     }
 
     /**
-     * Gets a round associated with this execution
-     * @param number The number of the round
-     * @return The round
+     * Gets a epoch associated with this execution
+     * @param timestamp The timestamp of the epoch
+     * @return The epoch
      */
-    public Round getRound(int number, ServerViewController controller) {
-        return getRound(number,true, controller);
+    public Epoch getEpoch(int timestamp, ServerViewController controller) {
+        return getEpoch(timestamp,true, controller);
     }
 
     /**
-     * Gets a round associated with this execution
-     * @param number The number of the round
-     * @param create if the round is to be created if not existent
-     * @return The round
+     * Gets a epoch associated with this execution
+     * @param timestamp The number of the epoch
+     * @param create if the epoch is to be created if not existent
+     * @return The epoch
      */
-    public Round getRound(int number, boolean create, ServerViewController controller) {
-        roundsLock.lock();
+    public Epoch getEpoch(int timestamp, boolean create, ServerViewController controller) {
+        epochsLock.lock();
 
-        Round round = rounds.get(number);
-        if(round == null && create){
-            round = new Round(controller, this, number);
-            rounds.put(number, round);
+        Epoch epoch = epochs.get(timestamp);
+        if(epoch == null && create){
+            epoch = new Epoch(controller, this, timestamp);
+            epochs.put(timestamp, epoch);
         }
 
-        roundsLock.unlock();
+        epochsLock.unlock();
 
-        return round;
+        return epoch;
     }
     
     /**
@@ -172,30 +172,30 @@ public class Execution {
         return writeSet;
     }
     /**
-     * Creates a round associated with this execution, with the specified timestamp
-     * @param timestamp The timestamp to associated to this round
+     * Creates an epoch associated with this execution, with the specified timestamp
+     * @param timestamp The timestamp to associated to this epoch
      * @param recManager The replica's ServerViewController
-     * @return The round
+     * @return The epoch
      */
-    public Round createRound(int timestamp, ServerViewController recManager) {
-        roundsLock.lock();
+    public Epoch createEpoch(int timestamp, ServerViewController recManager) {
+        epochsLock.lock();
 
-        Round round = new Round(recManager, this, timestamp);
-        rounds.put(timestamp, round);
+        Epoch epoch = new Epoch(recManager, this, timestamp);
+        epochs.put(timestamp, epoch);
 
-        roundsLock.unlock();
+        epochsLock.unlock();
 
-        return round;
+        return epoch;
     }
     /**
-     * Creates a round associated with this execution, supposedly the next
+     * Creates a epoch associated with this execution, supposedly the next
      * @param recManager The replica's ServerViewController
-     * @return The round
+     * @return The epoch
      */
-    public Round createRound(ServerViewController recManager) {
-        roundsLock.lock();
+    public Epoch createEpoch(ServerViewController recManager) {
+        epochsLock.lock();
 
-        Set<Integer> keys = rounds.keySet();
+        Set<Integer> keys = epochs.keySet();
 
         int max = -1;
         for (int k : keys) {
@@ -203,59 +203,59 @@ public class Execution {
         }
 
         max++;
-        Round round = new Round(recManager, this, max);
-        rounds.put(max, round);
+        Epoch epoch = new Epoch(recManager, this, max);
+        epochs.put(max, epoch);
 
-        roundsLock.unlock();
+        epochsLock.unlock();
 
-        return round;
+        return epoch;
     }
 
     /**
-     * Removes rounds greater than 'limit' from this execution
+     * Removes epochs greater than 'limit' from this execution
      *
-     * @param limit Rounds that should be kept (from 0 to 'limit')
+     * @param limit Epochs that should be kept (from 0 to 'limit')
      */
-    public void removeRounds(int limit) {
-        roundsLock.lock();
+    public void removeEpochs(int limit) {
+        epochsLock.lock();
 
-        for(Integer key : (Integer[])rounds.keySet().toArray(new Integer[0])) {
+        for(Integer key : (Integer[])epochs.keySet().toArray(new Integer[0])) {
             if(key > limit) {
-                Round round = rounds.remove(key);
-                round.setRemoved();
-                //round.getTimeoutTask().cancel();
+                Epoch epoch = epochs.remove(key);
+                epoch.setRemoved();
+                //epoch.getTimeoutTask().cancel();
             }
         }
 
-        roundsLock.unlock();
+        epochsLock.unlock();
     }
 
     /**
-     * The round at which a decision was possible to make
-     * @return Round at which a decision was possible to make
+     * The epoch at which a decision was possible to make
+     * @return Epoch at which a decision was possible to make
      */
-    public Round getDecisionRound() {
-        roundsLock.lock();
-        Round r = rounds.get(decisionRound);
-        roundsLock.unlock();
+    public Epoch getDecisionEpoch() {
+        epochsLock.lock();
+        Epoch r = epochs.get(decisionEpoch);
+        epochsLock.unlock();
         return r;
     }
 
     /**
-     * The last round of this execution
+     * The last epoch of this execution
      *
-     * @return Last round of this execution
+     * @return Last epoch of this execution
      */
-    public Round getLastRound() {
-        roundsLock.lock();
-        if (rounds.isEmpty()) {
-            roundsLock.unlock();
+    public Epoch getLastEpoch() {
+        epochsLock.lock();
+        if (epochs.isEmpty()) {
+            epochsLock.unlock();
             return null;
         }
-        //Round r = rounds.get(rounds.size() - 1);
-        Round r = rounds.get(ets); // the last round corresponds to the current ETS
-        roundsLock.unlock();
-        return r;
+        //Epoch epoch = epochs.get(epochs.size() - 1);
+        Epoch epoch = epochs.get(ets); // the last epoch corresponds to the current ETS
+        epochsLock.unlock();
+        return epoch;
     }
 
     /**
@@ -271,13 +271,13 @@ public class Execution {
      * Called by the Acceptor, to set the decided value
      *
      * @param value The decided value
-     * @param round The round at which a decision was made
+     * @param epoch The epoch at which a decision was made
      */
-    public void decided(Round round, byte[] value) {
+    public void decided(Epoch epoch, byte[] value) {
         if (!decided) {
             decided = true;
-            decisionRound = round.getNumber();
-            consensus.decided(round);
+            decisionEpoch = epoch.getTimestamp();
+            consensus.decided(epoch);
             manager.getTOMLayer().decided(consensus);
         }
     }

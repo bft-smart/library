@@ -32,7 +32,7 @@ import bftsmart.consensus.Consensus;
 import bftsmart.consensus.executionmanager.Execution;
 import bftsmart.consensus.executionmanager.ExecutionManager;
 import bftsmart.consensus.executionmanager.LeaderModule;
-import bftsmart.consensus.Round;
+import bftsmart.consensus.Epoch;
 import bftsmart.consensus.roles.Acceptor;
 import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.statemanagement.StateManager;
@@ -318,7 +318,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         Logger.println("Running."); // TODO: can't this be outside of the loop?
         while (true) {
 
-            // blocks until this replica learns to be the leader for the current round of the current consensus
+            // blocks until this replica learns to be the leader for the current epoch of the current consensus
             leaderLock.lock();
             Logger.println("Next leader for eid=" + (getLastExec() + 1) + ": " + lm.getCurrentLeader());
 
@@ -369,13 +369,13 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                     byte[] value = createPropose(cons);
 
                     Execution execution = execManager.getExecution(cons.getId());
-                    Round round = execution.getRound(0, controller);
-                    round.propValue = value;
-                    round.propValueHash = computeHash(value);
-                    round.getExecution().addWritten(value);
-                    round.deserializedPropValue = checkProposedValue(value, true);
-                    round.getExecution().getLearner().firstMessageProposed = round.deserializedPropValue[0];
-                    cons.decided(round);
+                    Epoch epoch = execution.getEpoch(0, controller);
+                    epoch.propValue = value;
+                    epoch.propValueHash = computeHash(value);
+                    epoch.getExecution().addWritten(value);
+                    epoch.deserializedPropValue = checkProposedValue(value, true);
+                    epoch.getExecution().getLearner().firstMessageProposed = epoch.deserializedPropValue[0];
+                    cons.decided(epoch);
 
                     //System.out.println("ESTOU AQUI!");
                     dt.delivery(cons);
@@ -399,7 +399,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
     }
 
     /**
-     * Verify if the value being proposed for a round is valid. It verifies the
+     * Verify if the value being proposed for a epoch is valid. It verifies the
      * client signature of all batch requests.
      *
      * TODO: verify timestamps and nonces

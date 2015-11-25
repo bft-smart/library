@@ -397,7 +397,7 @@ public class LCManager {
             
             bftsmart.tom.util.Logger.println("(LCManager.sound) Context for replica "+c.getPid()+": EID["+c.getEid()+"] WRITESET["+c.getWriteSet()+"] (VALTS,VAL)[" + c.getQuorumWrites() +"]");
             
-            timestamps.add(c.getQuorumWrites().getRound()); //store timestamp received from a Byzatine quorum of WRITES
+            timestamps.add(c.getQuorumWrites().getTimestamp()); //store timestamp received from a Byzatine quorum of WRITES
             
             // store value received from a Byzantine quorum of WRITES, unless it is an empty value
             if (!Arrays.equals(c.getQuorumWrites().getValue(), new byte[0])) {
@@ -412,7 +412,7 @@ public class LCManager {
                 if (insert) values.add(c.getQuorumWrites().getValue());
             }
             for (TimestampValuePair rv : c.getWriteSet()) { // store all timestamps and written values
-                timestamps.add(rv.getRound());
+                timestamps.add(rv.getTimestamp());
 
                 boolean insert = true; // this loop avoids putting duplicated values in the set
                 for (byte[] b : values) {
@@ -503,7 +503,7 @@ public class LCManager {
 
         for (CollectData c : collects) { // organize all existing timestamps and values separately
 
-            timestamps.add(c.getQuorumWrites().getRound()); //store round received from a Byzantine quorum of writes
+            timestamps.add(c.getQuorumWrites().getTimestamp()); //store timestamp received from a Byzantine quorum of writes
             
             // store value received from a Byzantine quorum of writes, unless it is an empty value
             if (!Arrays.equals(c.getQuorumWrites().getValue(), new byte[0])) {
@@ -518,7 +518,7 @@ public class LCManager {
                 if (insert) values.add(c.getQuorumWrites().getValue());
             }
             for (TimestampValuePair rv : c.getWriteSet()) { // store all timestamps and written values
-                timestamps.add(rv.getRound());
+                timestamps.add(rv.getTimestamp());
 
                 boolean insert = true; // this loops avoids putting duplicated values in the set
                 for (byte[] b : values) {
@@ -577,7 +577,7 @@ public class LCManager {
 
             for (CollectData c : collects) {
 
-                if (c.getQuorumWrites().getRound() == 0) count++;
+                if (c.getQuorumWrites().getTimestamp() == 0) count++;
             }
         }
         else return false;
@@ -612,7 +612,7 @@ public class LCManager {
 
         for (CollectData c : collects) {
 
-            if (c.getQuorumWrites().getRound() == timestamp && Arrays.equals(value, c.getQuorumWrites().getValue())) {
+            if (c.getQuorumWrites().getTimestamp() == timestamp && Arrays.equals(value, c.getQuorumWrites().getValue())) {
 
                 appears = true;
                 break;
@@ -624,11 +624,11 @@ public class LCManager {
         int count = 0;
         for (CollectData c : collects) {
 
-            //bftsmart.tom.util.Logger.println("\t\t[QUORUM HIGHEST] ts' < ts : " + (c.getQuorumWrites().getRound() < timestamp));
-            //bftsmart.tom.util.Logger.println("\t\t[QUORUM HIGHEST] ts' = ts && val' = val : " + (c.getQuorumWrites().getRound() == timestamp && Arrays.equals(value, c.getQuorumWrites().getValue())));
+            //bftsmart.tom.util.Logger.println("\t\t[QUORUM HIGHEST] ts' < ts : " + (c.getQuorumWrites().getTimestamp() < timestamp));
+            //bftsmart.tom.util.Logger.println("\t\t[QUORUM HIGHEST] ts' = ts && val' = val : " + (c.getQuorumWrites().getTimestamp() == timestamp && Arrays.equals(value, c.getQuorumWrites().getValue())));
             
-            if ((c.getQuorumWrites().getRound() < timestamp)
-                    || (c.getQuorumWrites().getRound() == timestamp && Arrays.equals(value, c.getQuorumWrites().getValue())))
+            if ((c.getQuorumWrites().getTimestamp() < timestamp)
+                    || (c.getQuorumWrites().getTimestamp() == timestamp && Arrays.equals(value, c.getQuorumWrites().getValue())))
                         count++;
 
         }
@@ -666,9 +666,9 @@ public class LCManager {
 
             for (TimestampValuePair pv : c.getWriteSet()) {
 
-//                bftsmart.tom.util.Logger.println("\t\t[CERTIFIED VALUE] " + pv.getRound() + "  >= " + timestamp);
+//                bftsmart.tom.util.Logger.println("\t\t[CERTIFIED VALUE] " + pv.getTimestamp() + "  >= " + timestamp);
 //                bftsmart.tom.util.Logger.println("\t\t[CERTIFIED VALUE] " + Arrays.toString(value) + "  == " + Arrays.toString(pv.getValue()));
-                if (pv.getRound() >= timestamp && Arrays.equals(value, pv.getHashedValue()))
+                if (pv.getTimestamp() >= timestamp && Arrays.equals(value, pv.getHashedValue()))
                     count++;
             }
 
@@ -748,7 +748,7 @@ public class LCManager {
 
         HashSet<CollectData> result = new HashSet<CollectData>();
 
-        // if there are collects refering to other consensus instances, lets assume that they are still at round zero of the consensus we want
+        // if there are collects refering to other consensus instances, lets assume that they are still at timestamp zero of the consensus we want
         for (CollectData c : collects) {
 
             if (c.getEid() == eid) {
@@ -821,7 +821,7 @@ public class LCManager {
         for (PaxosMessage paxosMsg : PaxosMessages) {
             
             PaxosMessage pm = new PaxosMessage(MessageFactory.ACCEPT,paxosMsg.getNumber(),
-                    paxosMsg.getRound(), paxosMsg.getSender(), paxosMsg.getValue());
+                    paxosMsg.getEpoch(), paxosMsg.getSender(), paxosMsg.getValue());
 
             ByteArrayOutputStream bOut = new ByteArrayOutputStream(248);
             try {
