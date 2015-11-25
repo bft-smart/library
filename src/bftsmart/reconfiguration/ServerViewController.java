@@ -144,7 +144,7 @@ public class ServerViewController extends ViewController {
         }
     }
 
-    public byte[] executeUpdates(int eid, int decisionEpoch) {
+    public byte[] executeUpdates(int eid) {
 
 
         List<Integer> jSet = new LinkedList<Integer>();
@@ -185,7 +185,7 @@ public class ServerViewController extends ViewController {
 
         }
         //ret = reconfigure(updates.get(i).getContent());
-        return reconfigure(jSetInfo, jSet, rSet, f, eid, decisionEpoch);
+        return reconfigure(jSetInfo, jSet, rSet, f, eid);
     }
 
     private boolean contains(int id, List<Integer> list) {
@@ -197,7 +197,7 @@ public class ServerViewController extends ViewController {
         return false;
     }
 
-    private byte[] reconfigure(List<String> jSetInfo, List<Integer> jSet, List<Integer> rSet, int f, int eid, int decisionEpoch) {
+    private byte[] reconfigure(List<String> jSetInfo, List<Integer> jSet, List<Integer> rSet, int f, int eid) {
         //ReconfigureRequest request = (ReconfigureRequest) TOMUtil.getObject(req);
         // Hashtable<Integer, String> props = request.getProperties();
         // int f = Integer.valueOf(props.get(CHANGE_F));
@@ -251,7 +251,7 @@ public class ServerViewController extends ViewController {
                 
         } 
         return TOMUtil.getBytes(new ReconfigureReply(newV, jSetInfo.toArray(new String[0]),
-                 eid, tomLayer.lm.getCurrentLeader() /*tomLayer.lm.getLeader(eid, decisionEpoch)*/));
+                 eid, tomLayer.lm.getCurrentLeader()));
     }
 
     public TOMMessage[] clearUpdates() {
