@@ -285,73 +285,9 @@ public final class Acceptor {
                         
                 PaxosMessage pm = factory.createAccept(eid, round.getNumber(), value);
 
-                // override default authentication and create a vector of MACs
-                ByteArrayOutputStream bOut = new ByteArrayOutputStream(248);
-                try {
-                    new ObjectOutputStream(bOut).writeObject(pm);
-                } catch (IOException ex) {
-                    ex.printStackTrace();
-                }
-
-                byte[] data = bOut.toByteArray();
-        
-                //byte[] hash = tomLayer.computeHash(data);
-                
-                // check if consensus contains reconfiguration request
-                TOMMessage [] msgs = round.deserializedPropValue;
-                boolean hasReconf = false;
-
-                for (TOMMessage msg : msgs) {
-                    if (msg.getReqType() == TOMMessageType.RECONFIG
-                            && msg.getViewID() == controller.getCurrentViewId()) {
-                        hasReconf = true;
-                    }
-                }
-                
-                //If this consensus contains a reconfiguration request, we need to use
-                // signatures...
-                if (hasReconf) {
-                    
-                    PrivateKey RSAprivKey = controller.getStaticConf().getRSAPrivateKey();
-                    
-                    byte[] signature = TOMUtil.signMessage(RSAprivKey, data);
-                                       
-                    pm.setProof(signature);
-                
-                } else { //... if not, we can use MAC vectores
-                    int[] processes = this.controller.getCurrentViewAcceptors();
-                
-                    HashMap<Integer, byte[]> macVector = new HashMap<Integer, byte[]>();
-                
-                    for (int id : processes) {
-                        try {
-                        
-                            SecretKey key = null;
-                            do {
-                                key = communication.getServersConn().getSecretKey(id);
-                                if (key == null) {
-                                    System.out.println("I don't have yet a secret key with " + id + ". Retrying.");
-                                    Thread.sleep(1000);
-                                }
-
-                            } while (key == null); // JCS: This loop is to solve a race condition where a
-                                                   // replica might have already been insert in the view or
-                                                   // recovered after a crash, but it still did not concluded
-                                                   // the diffie helman protocol. Not an elegant solution,
-                                                   // but for now it will do
-                            this.mac.init(key);
-                          macVector.put(id, this.mac.doFinal(data));
-                        } catch (InterruptedException ex) {
-                            ex.printStackTrace();
-                        } catch (InvalidKeyException ex) {
-                            
-                           System.out.println("Problem with secret key from " + id);
-                           ex.printStackTrace();
-                        } 
-                    }
-                
-                    pm.setProof(macVector);
-                }
+                // Create a cryptographic proof for this ACCEPT message
+                Logger.println("(Acceptor.computeWrite) Creating cryptographic proof for my ACCEPT message from consensus " + eid);
+                insertProof(pm, round);
                 
                 int[] targets = this.controller.getCurrentViewOtherAcceptors();
                 communication.getServersConn().send(targets, pm, true);
@@ -364,6 +300,86 @@ public final class Acceptor {
         }
     }
 
+    /**
+     * Create a cryptographic proof for a consensus message
+     * 
+     * This method modifies the consensus message passed as an argument,
+     * so that it contains a cryptographic proof.
+     * 
+     * @param pm The consensus message to which the proof shall be set
+     * @param round The round during in which the consensus message was created
+     */
+    private void insertProof(PaxosMessage pm, Round round) {
+        ByteArrayOutputStream bOut = new ByteArrayOutputStream(248);
+        try {
+            new ObjectOutputStream(bOut).writeObject(pm);
+        } catch (IOException ex) {
+            ex.printStackTrace();
+        }
+
+        byte[] data = bOut.toByteArray();
+
+        // check if consensus contains reconfiguration request
+        TOMMessage[] msgs = round.deserializedPropValue;
+        boolean hasReconf = false;
+
+        for (TOMMessage msg : msgs) {
+            if (msg.getReqType() == TOMMessageType.RECONFIG
+                    && msg.getViewID() == controller.getCurrentViewId()) {
+                hasReconf = true;
+                break; // no need to continue, exit the loop
+            }
+        }
+
+        //If this consensus contains a reconfiguration request, we need to use
+        // signatures (there might be replicas that will not be part of the next
+        //consensus instance, and so their MAC will be outdated and useless)
+        if (hasReconf) {
+
+            PrivateKey RSAprivKey = controller.getStaticConf().getRSAPrivateKey();
+
+            byte[] signature = TOMUtil.signMessage(RSAprivKey, data);
+
+            pm.setProof(signature);
+
+        } else { //... if not, we can use MAC vectores
+            int[] processes = this.controller.getCurrentViewAcceptors();
+
+            HashMap<Integer, byte[]> macVector = new HashMap<>();
+
+            for (int id : processes) {
+
+                try {
+
+                    SecretKey key = null;
+                    do {
+                        key = communication.getServersConn().getSecretKey(id);
+                        if (key == null) {
+                            System.out.println("(Acceptor.insertProof) I don't have yet a secret key with " + id + ". Retrying.");
+                            Thread.sleep(1000);
+                        }
+
+                    } while (key == null);  // JCS: This loop is to solve a race condition where a
+                                            // replica might have already been insert in the view or
+                                            // recovered after a crash, but it still did not concluded
+                                            // the diffie helman protocol. Not an elegant solution,
+                                            // but for now it will do
+                    this.mac.init(key);
+                    macVector.put(id, this.mac.doFinal(data));
+                } catch (InterruptedException ex) {
+                    ex.printStackTrace();
+                } catch (InvalidKeyException ex) {
+
+                    System.out.println("Problem with secret key from " + id);
+                    ex.printStackTrace();
+                }
+            }
+
+            pm.setProof(macVector);
+        }
+        
+    }
+    
     /**
      * Called when a ACCEPT message is received
      * @param eid Execution ID of the received message
