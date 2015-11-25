@@ -61,6 +61,7 @@ import bftsmart.tom.util.BatchBuilder;
 import bftsmart.tom.util.BatchReader;
 import bftsmart.tom.util.Logger;
 import bftsmart.tom.util.TOMUtil;
+import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.Set;
 
@@ -1480,8 +1481,17 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 					exec.getLearner().firstMessageProposed = r.deserializedPropValue[0];
 				else exec.getLearner().firstMessageProposed = new TOMMessage(); // to avoid null pointer
 			}
-			if (this.controller.getStaticConf().isBFT()) r.setWrite(me, hash);
-                        else r.setAccept(me, hash);
+                        
+			if (this.controller.getStaticConf().isBFT()) {
+                            r.setWrite(me, hash);
+                        }
+                        else {
+                            r.setAccept(me, hash);
+                            
+                            Logger.println("(TOMLayer.finalise) [CFT Mode] Setting EID's " + currentEid + " QuorumWrite tiemstamp to " + r.getExecution().getEts() + " and value " + Arrays.toString(hash));
+                            r.getExecution().setQuorumWrites(hash);
+
+                        }
 
 			// resume normal operation
 			execManager.restart();

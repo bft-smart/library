@@ -224,7 +224,7 @@ public final class Acceptor {
                  	round.getExecution().getLearner().firstMessageProposed.writeSentTime = System.nanoTime();
                         round.getExecution().getLearner().firstMessageProposed.acceptSentTime = System.nanoTime();
                  	/**** LEADER CHANGE CODE! ******/
- 	                Logger.println("(Acceptor.executePropose) (CFT Mode) Setting EID's " + eid + " QuorumWrite tiemstamp to " + round.getExecution().getEts() + " and value " + Arrays.toString(round.propValueHash));
+ 	                Logger.println("(Acceptor.executePropose) [CFT Mode] Setting EID's " + eid + " QuorumWrite tiemstamp to " + round.getExecution().getEts() + " and value " + Arrays.toString(round.propValueHash));
                         round.getExecution().setQuorumWrites(round.propValueHash);
  	                /*****************************************/
 
