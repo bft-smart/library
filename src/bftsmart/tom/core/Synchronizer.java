@@ -8,7 +8,7 @@ package bftsmart.tom.core;
 import bftsmart.communication.ServerCommunicationSystem;
 import bftsmart.consensus.Decision;
 import bftsmart.consensus.Epoch;
-import bftsmart.consensus.executionmanager.Execution;
+import bftsmart.consensus.executionmanager.Consensus;
 import bftsmart.consensus.executionmanager.ExecutionManager;
 import bftsmart.consensus.executionmanager.LeaderModule;
 import bftsmart.consensus.executionmanager.TimestampValuePair;
@@ -237,7 +237,7 @@ public class Synchronizer {
             bis = new ByteArrayInputStream(msg.getPayload());
             ois = new ObjectInputStream(bis);
 
-            if (ois.readBoolean()) { // content of the last decided eid
+            if (ois.readBoolean()) { // content of the last decided cid
 
                 last = ois.readInt();
 
@@ -262,7 +262,7 @@ public class Synchronizer {
             int cftQuorum = (controller.getCurrentViewN()) / 2;
 
             // Did I already got messages from a Byzantine/Crash quorum,
-            // related to the last eid as well as for the current?
+            // related to the last cid as well as for the current?
             boolean conditionBFT = (controller.getStaticConf().isBFT() && lcManager.getLastEidsSize(regency) > bizantineQuorum
                     && lcManager.getCollectsSize(regency) > bizantineQuorum);
 
@@ -528,8 +528,8 @@ public class Synchronizer {
 
             //int leader = regency % this.reconfManager.getCurrentViewN(); // new leader
             int leader = lcManager.getNewLeader();
-            int in = tom.getInExec(); // eid to execute
-            int last = tom.getLastExec(); // last eid decided
+            int in = tom.getInExec(); // cid to execute
+            int last = tom.getLastExec(); // last cid decided
 
             lm.setNewLeader(leader);
 
@@ -541,35 +541,35 @@ public class Synchronizer {
                     bos = new ByteArrayOutputStream();
                     out = new ObjectOutputStream(bos);
 
-                    if (last > -1) { // content of the last decided eid
+                    if (last > -1) { // content of the last decided cid
 
                         out.writeBoolean(true);
                         out.writeInt(last);
-                        Execution exec = execManager.getExecution(last);
+                        Consensus cons = execManager.getConsensus(last);
                         //byte[] decision = exec.getLearner().getDecision();
 
                         ////// THIS IS TO CATCH A BUG!!!!!
-                        if (exec.getDecisionEpoch() == null || exec.getDecisionEpoch().propValue == null) {
+                        if (cons.getDecisionEpoch() == null || cons.getDecisionEpoch().propValue == null) {
 
-                            System.out.println("[DEBUG INFO FOR LAST EID #1]");
+                            System.out.println("[DEBUG INFO FOR LAST CID #1]");
 
-                            if (exec.getDecisionEpoch() == null) {
-                                System.out.println("No decision epoch for eid " + last);
+                            if (cons.getDecisionEpoch() == null) {
+                                System.out.println("No decision epoch for cid " + last);
                             } else {
-                                System.out.println("epoch for eid: " + last + ": " + exec.getDecisionEpoch().toString());
+                                System.out.println("epoch for cid: " + last + ": " + cons.getDecisionEpoch().toString());
 
-                                if (exec.getDecisionEpoch().propValue == null) {
-                                    System.out.println("No propose for eid " + last);
+                                if (cons.getDecisionEpoch().propValue == null) {
+                                    System.out.println("No propose for cid " + last);
                                 } else {
-                                    System.out.println("Propose hash for eid " + last + ": " + Base64.encodeBase64String(tom.computeHash(exec.getDecisionEpoch().propValue)));
+                                    System.out.println("Propose hash for cid " + last + ": " + Base64.encodeBase64String(tom.computeHash(cons.getDecisionEpoch().propValue)));
                                 }
                             }
 
                             return;
                         }
 
-                        byte[] decision = exec.getDecisionEpoch().propValue;
-                        Set<PaxosMessage> proof = exec.getDecisionEpoch().getProof();
+                        byte[] decision = cons.getDecisionEpoch().propValue;
+                        Set<PaxosMessage> proof = cons.getDecisionEpoch().getProof();
 
                         out.writeObject(decision);
                         out.writeObject(proof);
@@ -579,27 +579,27 @@ public class Synchronizer {
                         out.writeBoolean(false);
                     }
 
-                    if (in > -1) { // content of eid in execution
+                    if (in > -1) { // content of cid in execution
 
-                        Execution exec = execManager.getExecution(in);
+                        Consensus cons = execManager.getConsensus(in);
 
-                        exec.incEts(); // make the execution advance to the next epoch
+                        cons.incEts(); // make the consensus advance to the next epoch
 
-                        int ets = exec.getEts();
-                        exec.createEpoch(ets, controller);
-                        Logger.println("(Synchronizer.startSynchronization) incrementing timestamp of execution " + exec.getId() + " to " + ets);
+                        int ets = cons.getEts();
+                        cons.createEpoch(ets, controller);
+                        Logger.println("(Synchronizer.startSynchronization) incrementing ets of consensus " + cons.getId() + " to " + ets);
 
                         TimestampValuePair quorumWrites;
-                        if (exec.getQuorumWrites() != null) {
+                        if (cons.getQuorumWrites() != null) {
 
-                            quorumWrites = exec.getQuorumWrites();
+                            quorumWrites = cons.getQuorumWrites();
 
                         } else {
 
                             quorumWrites = new TimestampValuePair(0, new byte[0]);
                         }
 
-                        HashSet<TimestampValuePair> writeSet = exec.getWriteSet();
+                        HashSet<TimestampValuePair> writeSet = cons.getWriteSet();
 
                         CollectData collect = new CollectData(this.controller.getStaticConf().getProcessId(), in, quorumWrites, writeSet);
 
@@ -609,13 +609,13 @@ public class Synchronizer {
 
                     } else {
 
-                        Execution exec = execManager.getExecution(last + 1);
+                        Consensus cons = execManager.getConsensus(last + 1);
 
-                        exec.incEts(); // make the execution advance to the next epoch
+                        cons.incEts(); // make the consensus advance to the next epoch
 
-                        int ets = exec.getEts();
-                        exec.createEpoch(ets, controller);
-                        Logger.println("(Synchronizer.startSynchronization) incrementing timestamp of execution " + exec.getId() + " to " + ets);
+                        int ets = cons.getEts();
+                        cons.createEpoch(ets, controller);
+                        Logger.println("(Synchronizer.startSynchronization) incrementing ets of consensus " + cons.getId() + " to " + ets);
 
                         CollectData collect = new CollectData(this.controller.getStaticConf().getProcessId(), last + 1, new TimestampValuePair(0, new byte[0]), new HashSet<TimestampValuePair>());
 
@@ -678,31 +678,31 @@ public class Synchronizer {
                 LastEidData lastData = null;
                 CollectData collect = null;
 
-                if (last > -1) {  // content of the last decided eid 
-                    Execution exec = execManager.getExecution(last);
+                if (last > -1) {  // content of the last decided cid 
+                    Consensus cons = execManager.getConsensus(last);
                     //byte[] decision = exec.getLearner().getDecision();
 
                     ////// THIS IS TO CATCH A BUG!!!!!
-                    if (exec.getDecisionEpoch() == null || exec.getDecisionEpoch().propValue == null) {
+                    if (cons.getDecisionEpoch() == null || cons.getDecisionEpoch().propValue == null) {
 
-                        System.out.println("[DEBUG INFO FOR LAST EID #2]");
+                        System.out.println("[DEBUG INFO FOR LAST CID #2]");
 
-                        if (exec.getDecisionEpoch() == null) {
-                            System.out.println("No decision epoch for eid " + last);
+                        if (cons.getDecisionEpoch() == null) {
+                            System.out.println("No decision epoch for cid " + last);
                         } else {
-                            System.out.println("epoch for eid: " + last + ": " + exec.getDecisionEpoch().toString());
+                            System.out.println("epoch for cid: " + last + ": " + cons.getDecisionEpoch().toString());
                         }
-                        if (exec.getDecisionEpoch().propValue == null) {
-                            System.out.println("No propose for eid " + last);
+                        if (cons.getDecisionEpoch().propValue == null) {
+                            System.out.println("No propose for cid " + last);
                         } else {
-                            System.out.println("Propose hash for eid " + last + ": " + Base64.encodeBase64String(tom.computeHash(exec.getDecisionEpoch().propValue)));
+                            System.out.println("Propose hash for cid " + last + ": " + Base64.encodeBase64String(tom.computeHash(cons.getDecisionEpoch().propValue)));
                         }
 
                         return;
                     }
 
-                    byte[] decision = exec.getDecisionEpoch().propValue;
-                    Set<PaxosMessage> proof = exec.getDecisionEpoch().getProof();
+                    byte[] decision = cons.getDecisionEpoch().propValue;
+                    Set<PaxosMessage> proof = cons.getDecisionEpoch().getProof();
 
                     lastData = new LastEidData(this.controller.getStaticConf().getProcessId(), last, decision, proof);
                     // TODO: WILL BE NECESSARY TO ADD A PROOF!!!??
@@ -712,37 +712,37 @@ public class Synchronizer {
                 }
                 lcManager.addLastEid(regency, lastData);
 
-                if (in > -1) { // content of eid being executed
-                    Execution exec = execManager.getExecution(in);
+                if (in > -1) { // content of cid being executed
+                    Consensus cons = execManager.getConsensus(in);
 
-                    exec.incEts(); // make the execution advance to the next epoch
+                    cons.incEts(); // make the consensus advance to the next epoch
 
-                    int ets = exec.getEts();
-                    exec.createEpoch(ets, controller);
-                    Logger.println("(Synchronizer.startSynchronization) incrementing timestamp of execution " + exec.getId() + " to " + ets);
+                    int ets = cons.getEts();
+                    cons.createEpoch(ets, controller);
+                    Logger.println("(Synchronizer.startSynchronization) incrementing ets of consensus " + cons.getId() + " to " + ets);
 
                     TimestampValuePair quorumWrites;
 
-                    if (exec.getQuorumWrites() != null) {
+                    if (cons.getQuorumWrites() != null) {
 
-                        quorumWrites = exec.getQuorumWrites();
+                        quorumWrites = cons.getQuorumWrites();
                     } else {
                         quorumWrites = new TimestampValuePair(0, new byte[0]);
                     }
 
-                    HashSet<TimestampValuePair> writeSet = exec.getWriteSet();
+                    HashSet<TimestampValuePair> writeSet = cons.getWriteSet();
 
                     collect = new CollectData(this.controller.getStaticConf().getProcessId(), in, quorumWrites, writeSet);
 
                 } else {
 
-                    Execution exec = execManager.getExecution(last + 1);
+                    Consensus cons = execManager.getConsensus(last + 1);
 
-                    exec.incEts(); // make the execution advance to the next epoch
+                    cons.incEts(); // make the consensus advance to the next epoch
 
-                    int ets = exec.getEts();
-                    exec.createEpoch(ets, controller);
-                    Logger.println("(Synchronizer.startSynchronization) incrementing timestamp of execution " + exec.getId() + " to " + ets);
+                    int ets = cons.getEts();
+                    cons.createEpoch(ets, controller);
+                    Logger.println("(Synchronizer.startSynchronization) incrementing ets of consensus " + cons.getId() + " to " + ets);
 
                     collect = new CollectData(this.controller.getStaticConf().getProcessId(), last + 1, new TimestampValuePair(0, new byte[0]), new HashSet<TimestampValuePair>());
                 }
@@ -950,13 +950,13 @@ public class Synchronizer {
     // that it can end synchronization
     public void resumeLC() {
 
-        Execution exec = execManager.getExecution(tempLastHighestEid.getEid());
-        Epoch e = exec.getLastEpoch();
+        Consensus cons = execManager.getConsensus(tempLastHighestEid.getEid());
+        Epoch e = cons.getLastEpoch();
 
-        int ets = exec.getEts();
+        int ets = cons.getEts();
 
         if (e == null || e.getTimestamp() != ets) {
-            e = exec.createEpoch(ets, controller);
+            e = cons.createEpoch(ets, controller);
         } else {
             e.clear();
         }
@@ -979,7 +979,7 @@ public class Synchronizer {
 
         Logger.println("(Synchronizer.finalise) final stage of LC protocol");
         int me = this.controller.getStaticConf().getProcessId();
-        Execution exec = null;
+        Consensus cons = null;
         Epoch e = null;
 
         if (tom.getLastExec() + 1 < lastHighestEid.getEid()) { // is this a delayed replica?
@@ -1002,15 +1002,15 @@ public class Synchronizer {
         } else if (tom.getLastExec() + 1 == lastHighestEid.getEid()) { // Is this replica still executing the last decided consensus?
 
             //TODO: it is necessary to verify the proof
-            System.out.println("I'm still at the eid before the most recent one!!! (" + lastHighestEid.getEid() + ")");
+            System.out.println("I'm still at the CID before the most recent one!!! (" + lastHighestEid.getEid() + ")");
 
-            exec = execManager.getExecution(lastHighestEid.getEid());
-            e = exec.getLastEpoch();
+            cons = execManager.getConsensus(lastHighestEid.getEid());
+            e = cons.getLastEpoch();
 
-            int ets = exec.getEts();
+            int ets = cons.getEts();
 
             if (e == null || e.getTimestamp() != ets) {
-                e = exec.createEpoch(ets, controller);
+                e = cons.createEpoch(ets, controller);
             } else {
                 e.clear();
             }
@@ -1020,7 +1020,7 @@ public class Synchronizer {
             e.propValue = lastHighestEid.getEidDecision();
 
             e.deserializedPropValue = tom.checkProposedValue(lastHighestEid.getEidDecision(), false);
-            exec.decided(e, hash); // pass the decision to the delivery thread
+            cons.decided(e, hash); // pass the decision to the delivery thread
         }
         byte[] tmpval = null;
 
@@ -1043,17 +1043,17 @@ public class Synchronizer {
             Logger.println("(Synchronizer.finalise) resuming normal phase");
             lcManager.removeCollects(regency); // avoid memory leaks
 
-            exec = execManager.getExecution(currentEid);
+            cons = execManager.getConsensus(currentEid);
 
-            exec.removeWritten(tmpval);
-            exec.addWritten(tmpval);
+            cons.removeWritten(tmpval);
+            cons.addWritten(tmpval);
 
-            e = exec.getLastEpoch();
+            e = cons.getLastEpoch();
 
-            int ets = exec.getEts();
+            int ets = cons.getEts();
 
             if (e == null || e.getTimestamp() != ets) {
-                e = exec.createEpoch(ets, controller);
+                e = cons.createEpoch(ets, controller);
             } else {
                 e.clear();
             }
@@ -1064,12 +1064,12 @@ public class Synchronizer {
 
             e.deserializedPropValue = tom.checkProposedValue(tmpval, false);
 
-            if (exec.getLearner().firstMessageProposed == null) {
+            if (cons.getDecision().firstMessageProposed == null) {
                 if (e.deserializedPropValue != null
                         && e.deserializedPropValue.length > 0) {
-                    exec.getLearner().firstMessageProposed = e.deserializedPropValue[0];
+                    cons.getDecision().firstMessageProposed = e.deserializedPropValue[0];
                 } else {
-                    exec.getLearner().firstMessageProposed = new TOMMessage(); // to avoid null pointer
+                    cons.getDecision().firstMessageProposed = new TOMMessage(); // to avoid null pointer
                 }
             }
             if (this.controller.getStaticConf().isBFT()) {
@@ -1077,8 +1077,8 @@ public class Synchronizer {
             } else {
                 e.setAccept(me, hash);
 
-                Logger.println("(Synchronizer.finalise) [CFT Mode] Setting EID's " + currentEid + " QuorumWrite tiemstamp to " + e.getExecution().getEts() + " and value " + Arrays.toString(hash));
- 	        e.getExecution().setQuorumWrites(hash);
+                Logger.println("(Synchronizer.finalise) [CFT Mode] Setting consensus " + currentEid + " QuorumWrite tiemstamp to " + e.getConsensus().getEts() + " and value " + Arrays.toString(hash));
+ 	        e.getConsensus().setQuorumWrites(hash);
 
             }
 

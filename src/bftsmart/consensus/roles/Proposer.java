@@ -45,15 +45,15 @@ public class Proposer {
 
     /**
      * This method is called by the TOMLayer (or any other)
-     * to start the execution of one instance of the Paxos protocol.
+     * to start the consensus instance.
      *
-     * @param eid ID for the consensus instance to be started
+     * @param cid ID for the consensus instance to be started
      * @param value Value to be proposed
      */
-    public void startExecution(int eid, byte[] value) {
+    public void startConsensus(int cid, byte[] value) {
         //******* EDUARDO BEGIN **************//
         communication.send(this.controller.getCurrentViewAcceptors(),
-                factory.createPropose(eid, 0, value));
+                factory.createPropose(cid, 0, value));
         //******* EDUARDO END **************//
     }
 }

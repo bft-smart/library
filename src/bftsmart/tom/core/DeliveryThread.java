@@ -221,7 +221,7 @@ public final class DeliveryThread extends Thread {
   						int stableConsensus = eid - 3;
 
   						tomLayer.lm.removeStableConsenusInfos(stableConsensus);
-  						tomLayer.execManager.removeExecution(stableConsensus);
+  						tomLayer.execManager.removeConsensus(stableConsensus);
   					}
   				}
   			} catch (Exception e) {

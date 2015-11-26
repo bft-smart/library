@@ -37,8 +37,8 @@ import bftsmart.tom.util.Logger;
 
 
 /**
- * This class manages consensus instances. Each execution is a consensus
- * instance. It can have several epochs if there were problems during consensus.
+ * This class manages consensus instances. It can have several epochs if
+ * there were problems during consensus.
  *
  * @author Alysson
  */
@@ -52,22 +52,22 @@ public final class ExecutionManager {
     //private int[] acceptors; // Process ID's of all replicas, including this one
     //private int[] otherAcceptors; // Process ID's of all replicas, except this one
     //******* EDUARDO END **************//
-    private Map<Integer, Execution> executions = new TreeMap<Integer, Execution>(); // Executions
-    private ReentrantLock executionsLock = new ReentrantLock(); //lock for executions table
-    // Paxos messages that were out of context (that didn't belong to the execution that was/is is progress
+    private Map<Integer, Consensus> consensuses = new TreeMap<Integer, Consensus>(); // Consensuses
+    private ReentrantLock consensusesLock = new ReentrantLock(); //lock for consensuses table
+    // Paxos messages that were out of context (that didn't belong to the consensus that was/is is progress
     private Map<Integer, List<PaxosMessage>> outOfContext = new HashMap<Integer, List<PaxosMessage>>();
-    // Proposes that were out of context (that belonged to future executions, and not the one running at the time)
+    // Proposes that were out of context (that belonged to future consensuses, and not the one running at the time)
     private Map<Integer, PaxosMessage> outOfContextProposes = new HashMap<Integer, PaxosMessage>();
     private ReentrantLock outOfContextLock = new ReentrantLock(); //lock for out of context
     private boolean stopped = false; // Is the execution manager stopped?
     // When the execution manager is stopped, incoming paxos messages are stored here
     private Queue<PaxosMessage> stoppedMsgs = new LinkedList<PaxosMessage>();
-    private Epoch stoppedEpoch = null; // epoch at which the current execution was stoppped
+    private Epoch stoppedEpoch = null; // epoch at which the current consensus was stopped
     private ReentrantLock stoppedMsgsLock = new ReentrantLock(); //lock for stopped messages
     private TOMLayer tomLayer; // TOM layer associated with this execution manager
     private int paxosHighMark; // Paxos high mark for consensus instances
     /** THIS IS JOAO'S CODE, TO HANDLE THE STATE TRANSFER */
-    private int revivalHighMark; // Paxos high mark for consensus instances when this replica EID equals 0
+    private int revivalHighMark; // Paxos high mark for consensus instances when this replica CID equals 0
     private int timeoutHighMark; // Paxos high mark for a timed-out replica
     
     /******************************************************************/
@@ -149,7 +149,7 @@ public final class ExecutionManager {
         stoppedMsgsLock.lock();
         this.stopped = true;
         if (tomLayer.getInExec() != -1) {
-            stoppedEpoch = getExecution(tomLayer.getInExec()).getLastEpoch();
+            stoppedEpoch = getConsensus(tomLayer.getInExec()).getLastEpoch();
             //stoppedEpoch.getTimeoutTask().cancel();
             if (stoppedEpoch != null) Logger.println("(ExecutionManager.stop) Stoping epoch " + stoppedEpoch.getTimestamp() + " of consensus " + tomLayer.getInExec());
         }
@@ -190,8 +190,8 @@ public final class ExecutionManager {
         int inExec = tomLayer.getInExec();
         
         Logger.println("(ExecutionManager.checkLimits) Received message  " + msg);
-        Logger.println("(ExecutionManager.checkLimits) I'm at execution " + 
-                inExec + " and my last execution is " + lastConsId);
+        Logger.println("(ExecutionManager.checkLimits) I'm at consensus " + 
+                inExec + " and my last consensus is " + lastConsId);
         
         boolean isRetrievingState = tomLayer.isRetrievingState();
 
@@ -212,9 +212,9 @@ public final class ExecutionManager {
             if (stopped) {//just an optimization to avoid calling the lock in normal case
                 stoppedMsgsLock.lock();
                 if (stopped) {
-                    Logger.println("(ExecutionManager.checkLimits) adding message for execution " + msg.getNumber() + " to stoopped");
+                    Logger.println("(ExecutionManager.checkLimits) adding message for consensus " + msg.getNumber() + " to stoopped");
                     //the execution manager was stopped, the messages should be stored
-                    //for later processing (when the execution is restarted)
+                    //for later processing (when the consensus is restarted)
                     stoppedMsgs.add(msg);
                 }
                 stoppedMsgsLock.unlock();
@@ -223,17 +223,17 @@ public final class ExecutionManager {
                         msg.getNumber() > (lastConsId + 1) || 
                         (inExec != -1 && inExec < msg.getNumber()) || 
                         (inExec == -1 && msg.getPaxosType() != MessageFactory.PROPOSE)) { //not propose message for the next consensus
-                    Logger.println("(ExecutionManager.checkLimits) Message for execution " + 
+                    Logger.println("(ExecutionManager.checkLimits) Message for consensus " + 
                             msg.getNumber() + " is out of context, adding it to out of context set");
                     
 
-                    //System.out.println("(ExecutionManager.checkLimits) Message for execution " + 
+                    //System.out.println("(ExecutionManager.checkLimits) Message for consensus " + 
                      //       msg.getNumber() + " is out of context, adding it to out of context set; isRetrievingState="+isRetrievingState);
                     
                     
                     addOutOfContextMessage(msg);
                 } else { //can process!
-                    Logger.println("(ExecutionManager.checkLimits) message for execution " + 
+                    Logger.println("(ExecutionManager.checkLimits) message for consensus " + 
                             msg.getNumber() + " can be processed");
             
                     //Logger.debug = false;
@@ -246,7 +246,7 @@ public final class ExecutionManager {
 
             //Start state transfer
             /** THIS IS JOAO'S CODE, FOR HANLDING THE STATE TRANSFER */
-            Logger.println("(ExecutionManager.checkLimits) Message for execution "
+            Logger.println("(ExecutionManager.checkLimits) Message for consensus "
                     + msg.getNumber() + " is beyond the paxos highmark, adding it to out of context set");
             addOutOfContextMessage(msg);
 
@@ -272,13 +272,13 @@ public final class ExecutionManager {
 
     /**
      * Informs if there are messages till to be processed associated the specified consensus
-     * @param eid The ID for the consensus in question
+     * @param cid The ID for the consensus in question
      * @return True if there are still messages to be processed, false otherwise
      */
-    public boolean receivedOutOfContextPropose(int eid) {
+    public boolean receivedOutOfContextPropose(int cid) {
         outOfContextLock.lock();
         /******* BEGIN OUTOFCONTEXT CRITICAL SECTION *******/
-        boolean result = outOfContextProposes.get(eid) != null;
+        boolean result = outOfContextProposes.get(cid) != null;
         /******* END OUTOFCONTEXT CRITICAL SECTION *******/
         outOfContextLock.unlock();
 
@@ -290,13 +290,13 @@ public final class ExecutionManager {
      * @param id ID of the consensus to be removed
      * @return The consensus that was removed
      */
-    public Execution removeExecution(int id) {
-        executionsLock.lock();
-        /******* BEGIN EXECUTIONS CRITICAL SECTION *******/
-        Execution execution = executions.remove(id);
+    public Consensus removeConsensus(int id) {
+        consensusesLock.lock();
+        /******* BEGIN CONSENSUS CRITICAL SECTION *******/
+        Consensus consensus = consensuses.remove(id);
 
-        /******* END EXECUTIONS CRITICAL SECTION *******/
-        executionsLock.unlock();
+        /******* END CONSENSUS CRITICAL SECTION *******/
+        consensusesLock.unlock();
 
         outOfContextLock.lock();
         /******* BEGIN OUTOFCONTEXT CRITICAL SECTION *******/
@@ -306,7 +306,7 @@ public final class ExecutionManager {
         /******* END OUTOFCONTEXT CRITICAL SECTION *******/
         outOfContextLock.unlock();
 
-        return execution;
+        return consensus;
     }
 
     /** THIS IS JOAO'S CODE, FOR HANDLING THE STATE TRANSFER */
@@ -338,38 +338,38 @@ public final class ExecutionManager {
     /**
      * Returns the specified consensus
      *
-     * @param eid ID of the consensus to be returned
+     * @param cid ID of the consensus to be returned
      * @return The consensus specified
      */
-    public Execution getExecution(int eid) {
-        executionsLock.lock();
-        /******* BEGIN EXECUTIONS CRITICAL SECTION *******/
+    public Consensus getConsensus(int cid) {
+        consensusesLock.lock();
+        /******* BEGIN CONSENSUS CRITICAL SECTION *******/
         
-        Execution execution = executions.get(eid);
+        Consensus consensus = consensuses.get(cid);
 
-        if (execution == null) {//there is no execution created with the given eid
+        if (consensus == null) {//there is no consensus created with the given cid
             //let's create one...
-            Decision dec = new Decision(eid);
+            Decision dec = new Decision(cid);
 
-            execution = new Execution(this, dec);
+            consensus = new Consensus(this, dec);
 
-            //...and add it to the executions table
-            executions.put(eid, execution);
+            //...and add it to the consensuses table
+            consensuses.put(cid, consensus);
         }
 
-        /******* END EXECUTIONS CRITICAL SECTION *******/
-        executionsLock.unlock();
+        /******* END CONSENSUS CRITICAL SECTION *******/
+        consensusesLock.unlock();
 
-        return execution;
+        return consensus;
     }
     
-    public boolean isDecidable(int eid) {
-        if (receivedOutOfContextPropose(eid)) {
-            Execution exec = getExecution(eid);
-            PaxosMessage prop = outOfContextProposes.get(exec.getId());
-            Epoch epoch = exec.getEpoch(prop.getEpoch(), controller);
+    public boolean isDecidable(int cid) {
+        if (receivedOutOfContextPropose(cid)) {
+            Consensus cons = getConsensus(cid);
+            PaxosMessage prop = outOfContextProposes.get(cons.getId());
+            Epoch epoch = cons.getEpoch(prop.getEpoch(), controller);
             byte[] propHash = tomLayer.computeHash(prop.getValue());
-            List<PaxosMessage> msgs = outOfContext.get(eid);
+            List<PaxosMessage> msgs = outOfContext.get(cid);
             int countWrites = 0;
             int countAccepts = 0;
             if (msgs != null) {
@@ -393,13 +393,13 @@ public final class ExecutionManager {
         }
         return false;
     }
-    public void processOutOfContextPropose(Execution execution) {
+    public void processOutOfContextPropose(Consensus consensus) {
         outOfContextLock.lock();
         /******* BEGIN OUTOFCONTEXT CRITICAL SECTION *******/
         
-        PaxosMessage prop = outOfContextProposes.remove(execution.getId());
+        PaxosMessage prop = outOfContextProposes.remove(consensus.getId());
         if (prop != null) {
-            Logger.println("(ExecutionManager.createExecution) (" + execution.getId()
+            Logger.println("(ExecutionManager.processOutOfContextPropose) (" + consensus.getId()
                     + ") Processing out of context propose");
             acceptor.processMessage(prop);
         }
@@ -408,26 +408,26 @@ public final class ExecutionManager {
         outOfContextLock.unlock();
     }
 
-    public void processOutOfContext(Execution execution) {
+    public void processOutOfContext(Consensus consensus) {
         outOfContextLock.lock();
         /******* BEGIN OUTOFCONTEXT CRITICAL SECTION *******/
         
         //then we have to put the pending paxos messages
-        List<PaxosMessage> messages = outOfContext.remove(execution.getId());
+        List<PaxosMessage> messages = outOfContext.remove(consensus.getId());
         if (messages != null) {
-            Logger.println("(createExecution) (" + execution.getId()
+            Logger.println("(ExecutionManager.processOutOfContext) (" + consensus.getId()
                     + ") Processing other " + messages.size()
                     + " out of context messages.");
 
             for (Iterator<PaxosMessage> i = messages.iterator(); i.hasNext();) {
                 acceptor.processMessage(i.next());
-                if (execution.isDecided()) {
-                    Logger.println("(ExecutionManager.createExecution) execution "
-                            + execution.getId() + " decided.");
+                if (consensus.isDecided()) {
+                    Logger.println("(ExecutionManager.processOutOfContext) consensus "
+                            + consensus.getId() + " decided.");
                     break;
                 }
             }
-            Logger.println("(createExecution) (" + execution.getId()
+            Logger.println("(ExecutionManager.processOutOfContext) (" + consensus.getId()
                     + ") Finished out of context processing");
         }
 

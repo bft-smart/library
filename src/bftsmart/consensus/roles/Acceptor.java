@@ -22,7 +22,7 @@ import java.util.Arrays;
 
 import bftsmart.communication.ServerCommunicationSystem;
 import bftsmart.communication.server.ServerConnection;
-import bftsmart.consensus.executionmanager.Execution;
+import bftsmart.consensus.executionmanager.Consensus;
 import bftsmart.consensus.executionmanager.ExecutionManager;
 import bftsmart.consensus.executionmanager.LeaderModule;
 import bftsmart.consensus.Epoch;
@@ -128,10 +128,10 @@ public final class Acceptor {
      * @param msg The message to be processed
      */
     public final void processMessage(PaxosMessage msg) {
-        Execution execution = executionManager.getExecution(msg.getNumber());
+        Consensus consensus = executionManager.getConsensus(msg.getNumber());
 
-        execution.lock.lock();
-        Epoch epoch = execution.getEpoch(msg.getEpoch(), controller);
+        consensus.lock.lock();
+        Epoch epoch = consensus.getEpoch(msg.getEpoch(), controller);
         switch (msg.getPaxosType()){
             case MessageFactory.PROPOSE:{
                     proposeReceived(epoch, msg);
@@ -143,20 +143,20 @@ public final class Acceptor {
                     acceptReceived(epoch, msg);
             }
         }
-        execution.lock.unlock();
+        consensus.lock.unlock();
     }
 
     /**
      * Called when a PROPOSE message is received or when processing a formerly out of context propose which
-     * is know belongs to the current execution.
+     * is know belongs to the current consensus.
      *
      * @param msg The PROPOSE message to by processed
      */
     public void proposeReceived(Epoch epoch, PaxosMessage msg) {
-        int eid = epoch.getExecution().getId();
-        int ts = epoch.getExecution().getEts();
-        int ets = executionManager.getExecution(msg.getNumber()).getEts();
-    	Logger.println("(Acceptor.proposeReceived) PROPOSE for consensus " + eid);
+        int cid = epoch.getConsensus().getId();
+        int ts = epoch.getConsensus().getEts();
+        int ets = executionManager.getConsensus(msg.getNumber()).getEts();
+    	Logger.println("(Acceptor.proposeReceived) PROPOSE for consensus " + cid);
     	if (msg.getSender() == leaderModule.getCurrentLeader() // Is the replica the leader?
                 && epoch.getTimestamp() == 0 && ts == ets && ets == 0) { // Is all this in epoch 0?
     		executePropose(epoch, msg.getValue());
@@ -168,12 +168,12 @@ public final class Acceptor {
     /**
      * Executes actions related to a proposed value.
      *
-     * @param epoch the current epoch of the execution
+     * @param epoch the current epoch of the consensus
      * @param value Value that is proposed
      */
     private void executePropose(Epoch epoch, byte[] value) {
-        int eid = epoch.getExecution().getId();
-        Logger.println("(Acceptor.executePropose) executing propose for " + eid + "," + epoch.getTimestamp());
+        int cid = epoch.getConsensus().getId();
+        Logger.println("(Acceptor.executePropose) executing propose for " + cid + "," + epoch.getTimestamp());
 
         long consensusStartTime = System.nanoTime();
 
@@ -183,55 +183,55 @@ public final class Acceptor {
             epoch.propValueHash = tomLayer.computeHash(value);
             
             /*** LEADER CHANGE CODE ********/
-            epoch.getExecution().addWritten(value);
-            Logger.println("(Acceptor.executePropose) I have written value " + Arrays.toString(epoch.propValueHash) + " in instance " + eid + " with timestamp " + epoch.getExecution().getEts());
+            epoch.getConsensus().addWritten(value);
+            Logger.println("(Acceptor.executePropose) I have written value " + Arrays.toString(epoch.propValueHash) + " in consensus instance " + cid + " with timestamp " + epoch.getConsensus().getEts());
             /*****************************************/
 
-            //start this execution if it is not already running
-            if (eid == tomLayer.getLastExec() + 1) {
-                tomLayer.setInExec(eid);
+            //start this consensus if it is not already running
+            if (cid == tomLayer.getLastExec() + 1) {
+                tomLayer.setInExec(cid);
             }
             epoch.deserializedPropValue = tomLayer.checkProposedValue(value, true);
 
             if (epoch.deserializedPropValue != null && !epoch.isWriteSetted(me)) {
-                if(epoch.getExecution().getLearner().firstMessageProposed == null) {
-                    epoch.getExecution().getLearner().firstMessageProposed = epoch.deserializedPropValue[0];
+                if(epoch.getConsensus().getDecision().firstMessageProposed == null) {
+                    epoch.getConsensus().getDecision().firstMessageProposed = epoch.deserializedPropValue[0];
                 }
-                if (epoch.getExecution().getLearner().firstMessageProposed.consensusStartTime == 0) {
-                    epoch.getExecution().getLearner().firstMessageProposed.consensusStartTime = consensusStartTime;
+                if (epoch.getConsensus().getDecision().firstMessageProposed.consensusStartTime == 0) {
+                    epoch.getConsensus().getDecision().firstMessageProposed.consensusStartTime = consensusStartTime;
                     
                 }
-                epoch.getExecution().getLearner().firstMessageProposed.proposeReceivedTime = System.nanoTime();
+                epoch.getConsensus().getDecision().firstMessageProposed.proposeReceivedTime = System.nanoTime();
                 
                 if(controller.getStaticConf().isBFT()){
-                    Logger.println("(Acceptor.executePropose) sending WRITE for " + eid);
+                    Logger.println("(Acceptor.executePropose) sending WRITE for " + cid);
 
                     epoch.setWrite(me, epoch.propValueHash);
-                    epoch.getExecution().getLearner().firstMessageProposed.writeSentTime = System.nanoTime();
+                    epoch.getConsensus().getDecision().firstMessageProposed.writeSentTime = System.nanoTime();
                     communication.send(this.controller.getCurrentViewOtherAcceptors(),
-                            factory.createWrite(eid, epoch.getTimestamp(), epoch.propValueHash));
+                            factory.createWrite(cid, epoch.getTimestamp(), epoch.propValueHash));
 
-                    Logger.println("(Acceptor.executePropose) WRITE sent for " + eid);
+                    Logger.println("(Acceptor.executePropose) WRITE sent for " + cid);
                 
-                    computeWrite(eid, epoch, epoch.propValueHash);
+                    computeWrite(cid, epoch, epoch.propValueHash);
                 
-                    Logger.println("(Acceptor.executePropose) WRITE computed for " + eid);
+                    Logger.println("(Acceptor.executePropose) WRITE computed for " + cid);
                 
                 } else {
                  	epoch.setAccept(me, epoch.propValueHash);
-                 	epoch.getExecution().getLearner().firstMessageProposed.writeSentTime = System.nanoTime();
-                        epoch.getExecution().getLearner().firstMessageProposed.acceptSentTime = System.nanoTime();
+                 	epoch.getConsensus().getDecision().firstMessageProposed.writeSentTime = System.nanoTime();
+                        epoch.getConsensus().getDecision().firstMessageProposed.acceptSentTime = System.nanoTime();
                  	/**** LEADER CHANGE CODE! ******/
-                        Logger.println("(Acceptor.executePropose) [CFT Mode] Setting EID's " + eid + " QuorumWrite tiemstamp to " + epoch.getExecution().getEts() + " and value " + Arrays.toString(epoch.propValueHash));
- 	                epoch.getExecution().setQuorumWrites(epoch.propValueHash);
+                        Logger.println("(Acceptor.executePropose) [CFT Mode] Setting consensus " + cid + " QuorumWrite tiemstamp to " + epoch.getConsensus().getEts() + " and value " + Arrays.toString(epoch.propValueHash));
+ 	                epoch.getConsensus().setQuorumWrites(epoch.propValueHash);
  	                /*****************************************/
 
                         communication.send(this.controller.getCurrentViewOtherAcceptors(),
- 	                    factory.createAccept(eid, epoch.getTimestamp(), epoch.propValueHash));
+ 	                    factory.createAccept(cid, epoch.getTimestamp(), epoch.propValueHash));
 
-                        computeAccept(eid, epoch, epoch.propValueHash);
+                        computeAccept(cid, epoch, epoch.propValueHash);
                 }
-                executionManager.processOutOfContext(epoch.getExecution());
+                executionManager.processOutOfContext(epoch.getConsensus());
             }
         } 
     }
@@ -244,58 +244,58 @@ public final class Acceptor {
      * @param value Value sent in the message
      */
     private void writeReceived(Epoch epoch, int a, byte[] value) {
-        int eid = epoch.getExecution().getId();
-        Logger.println("(Acceptor.writeAcceptReceived) WRITE from " + a + " for consensus " + eid);
+        int cid = epoch.getConsensus().getId();
+        Logger.println("(Acceptor.writeAcceptReceived) WRITE from " + a + " for consensus " + cid);
         epoch.setWrite(a, value);
 
-        computeWrite(eid, epoch, value);
+        computeWrite(cid, epoch, value);
     }
 
     /**
      * Computes WRITE values according to Byzantine consensus specification
      * values received).
      *
-     * @param eid Execution ID of the received message
+     * @param cid Consensus ID of the received message
      * @param epoch Epoch of the receives message
      * @param value Value sent in the message
      */
-    private void computeWrite(int eid, Epoch epoch, byte[] value) {
+    private void computeWrite(int cid, Epoch epoch, byte[] value) {
         int writeAccepted = epoch.countWrite(value);
         
         Logger.println("(Acceptor.computeWrite) I have " + writeAccepted +
-                " WRITEs for " + eid + "," + epoch.getTimestamp());
+                " WRITEs for " + cid + "," + epoch.getTimestamp());
 
         if (writeAccepted > controller.getQuorumAccept() && Arrays.equals(value, epoch.propValueHash)) {
                         
             if (!epoch.isAcceptSetted(me)) {
                 
-                Logger.println("(Acceptor.computeWrite) sending WRITE for " + eid);
+                Logger.println("(Acceptor.computeWrite) sending WRITE for " + cid);
 
                 /**** LEADER CHANGE CODE! ******/
-                Logger.println("(Acceptor.computeWrite) Setting EID's " + eid + " QuorumWrite tiemstamp to " + epoch.getExecution().getEts() + " and value " + Arrays.toString(value));
-                epoch.getExecution().setQuorumWrites(value);
+                Logger.println("(Acceptor.computeWrite) Setting consensus " + cid + " QuorumWrite tiemstamp to " + epoch.getConsensus().getEts() + " and value " + Arrays.toString(value));
+                epoch.getConsensus().setQuorumWrites(value);
                 /*****************************************/
                 
                 epoch.setAccept(me, value);
 
-                if(epoch.getExecution().getLearner().firstMessageProposed!=null) {
+                if(epoch.getConsensus().getDecision().firstMessageProposed!=null) {
 
-                        epoch.getExecution().getLearner().firstMessageProposed.acceptSentTime = System.nanoTime();
+                        epoch.getConsensus().getDecision().firstMessageProposed.acceptSentTime = System.nanoTime();
                 }
                         
-                PaxosMessage pm = factory.createAccept(eid, epoch.getTimestamp(), value);
+                PaxosMessage pm = factory.createAccept(cid, epoch.getTimestamp(), value);
 
                 // Create a cryptographic proof for this ACCEPT message
-                Logger.println("(Acceptor.computeWrite) Creating cryptographic proof for my ACCEPT message from consensus " + eid);
+                Logger.println("(Acceptor.computeWrite) Creating cryptographic proof for my ACCEPT message from consensus " + cid);
                 insertProof(pm, epoch);
                 
                 int[] targets = this.controller.getCurrentViewOtherAcceptors();
                 communication.getServersConn().send(targets, pm, true);
                 
                 //communication.send(this.reconfManager.getCurrentViewOtherAcceptors(),
-                        //factory.createStrong(eid, epoch.getNumber(), value));
+                        //factory.createStrong(cid, epoch.getNumber(), value));
                 epoch.addToProof(pm);
-                computeAccept(eid, epoch, value);
+                computeAccept(cid, epoch, value);
             }
         }
     }
@@ -382,18 +382,17 @@ public final class Acceptor {
     
     /**
      * Called when a ACCEPT message is received
-     * @param eid Execution ID of the received message
      * @param epoch Epoch of the receives message
      * @param a Replica that sent the message
      * @param value Value sent in the message
      */
     private void acceptReceived(Epoch epoch, PaxosMessage msg) {
-        int eid = epoch.getExecution().getId();
-        Logger.println("(Acceptor.acceptReceived) ACCEPT from " + msg.getSender() + " for consensus " + eid);
+        int cid = epoch.getConsensus().getId();
+        Logger.println("(Acceptor.acceptReceived) ACCEPT from " + msg.getSender() + " for consensus " + cid);
         epoch.setAccept(msg.getSender(), msg.getValue());
         epoch.addToProof(msg);
 
-        computeAccept(eid, epoch, msg.getValue());
+        computeAccept(cid, epoch, msg.getValue());
     }
 
     /**
@@ -402,12 +401,12 @@ public final class Acceptor {
      * @param epoch Epoch of the receives message
      * @param value Value sent in the message
      */
-    private void computeAccept(int eid, Epoch epoch, byte[] value) {
+    private void computeAccept(int cid, Epoch epoch, byte[] value) {
         Logger.println("(Acceptor.computeAccept) I have " + epoch.countAccept(value) +
-                " ACCEPTs for " + eid + "," + epoch.getTimestamp());
+                " ACCEPTs for " + cid + "," + epoch.getTimestamp());
 
-        if (epoch.countAccept(value) > controller.getQuorumAccept() && !epoch.getExecution().isDecided()) {
-            Logger.println("(Acceptor.computeAccept) Deciding " + eid);
+        if (epoch.countAccept(value) > controller.getQuorumAccept() && !epoch.getConsensus().isDecided()) {
+            Logger.println("(Acceptor.computeAccept) Deciding " + cid);
             decide(epoch, value);
         }
     }
@@ -418,13 +417,13 @@ public final class Acceptor {
      * @param value The decided value (got from WRITE or ACCEPT messages)
      */
     private void decide(Epoch epoch, byte[] value) {        
-        if (epoch.getExecution().getLearner().firstMessageProposed != null)
-            epoch.getExecution().getLearner().firstMessageProposed.decisionTime = System.nanoTime();
+        if (epoch.getConsensus().getDecision().firstMessageProposed != null)
+            epoch.getConsensus().getDecision().firstMessageProposed.decisionTime = System.nanoTime();
 
-        leaderModule.decided(epoch.getExecution().getId(),
-                tomLayer.lm.getCurrentLeader()/*leaderModule.getLeader(epoch.getExecution().getId(),
+        leaderModule.decided(epoch.getConsensus().getId(),
+                tomLayer.lm.getCurrentLeader()/*leaderModule.getLeader(epoch.getConsensus().getId(),
                 epoch.getNumber())*/);
 
-        epoch.getExecution().decided(epoch, value);
+        epoch.getConsensus().decided(epoch, value);
     }
 }

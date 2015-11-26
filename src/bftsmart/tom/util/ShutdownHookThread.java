@@ -48,7 +48,7 @@ public class ShutdownHookThread extends Thread {
         System.err.println("---------- DEBUG INFO ----------");
         System.err.println("Current time: " + System.currentTimeMillis());
         System.err.println("Last executed consensus: " + tomLayer.getLastExec());
-        Epoch e = manager.getExecution(tomLayer.getLastExec()).getLastEpoch();
+        Epoch e = manager.getConsensus(tomLayer.getLastExec()).getLastEpoch();
         //******* EDUARDO BEGIN **************//
         if(e != null){
             System.err.println("Last executed leader: " + tomLayer.lm.getCurrentLeader()/*lm.getLeader(r.getExecution().getId(),r.getNumber())*/);
@@ -57,7 +57,7 @@ public class ShutdownHookThread extends Thread {
         //******* EDUARDO END **************//
         System.err.println("Consensus in execution: " + tomLayer.getInExec());
         if(tomLayer.getInExec() != -1) {
-            Epoch r2 = manager.getExecution(tomLayer.getInExec()).getLastEpoch();
+            Epoch r2 = manager.getConsensus(tomLayer.getInExec()).getLastEpoch();
             if(r2 != null) {
                 System.out.println("Consensus in execution leader: " + tomLayer.lm.getCurrentLeader()/*lm.getLeader(r2.getExecution().getId(),r.getNumber())*/);
                 System.err.println("State of the epoch in execution: "+r2.toString());

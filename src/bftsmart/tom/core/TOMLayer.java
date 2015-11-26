@@ -29,7 +29,7 @@ import bftsmart.clientsmanagement.RequestList;
 import bftsmart.communication.ServerCommunicationSystem;
 import bftsmart.communication.client.RequestReceiver;
 import bftsmart.consensus.Decision;
-import bftsmart.consensus.executionmanager.Execution;
+import bftsmart.consensus.executionmanager.Consensus;
 import bftsmart.consensus.executionmanager.ExecutionManager;
 import bftsmart.consensus.executionmanager.LeaderModule;
 import bftsmart.consensus.Epoch;
@@ -47,8 +47,10 @@ import bftsmart.tom.util.BatchReader;
 import bftsmart.tom.util.Logger;
 
 /**
- * This class implements a thread that uses the PaW algorithm to provide the
- * application a layer of total ordered messages
+ * This class implements the state machine replication protocol described in
+ * Joao Sousa's 'From Byzantine Consensus to BFT state machine replication: a latency-optimal transformation' (May 2012)
+ * 
+ * The synchronization phase described in the paper is implemented in the Synchronizer class
  */
 public final class TOMLayer extends Thread implements RequestReceiver {
 
@@ -57,7 +59,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
     public LeaderModule lm; // Leader module
     public Acceptor acceptor; // Acceptor role of the PaW algorithm
     private ServerCommunicationSystem communication; // Communication system between replicas
-    //private OutOfContextMessageThread ot; // Thread which manages messages that do not belong to the current execution
+    //private OutOfContextMessageThread ot; // Thread which manages messages that do not belong to the current consensus
     private DeliveryThread dt; // Thread which delivers total ordered messages to the appication
     public StateManager stateManager = null; // object which deals with the state transfer protocol
 
@@ -321,7 +323,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
             // blocks until this replica learns to be the leader for the current epoch of the current consensus
             leaderLock.lock();
-            Logger.println("Next leader for eid=" + (getLastExec() + 1) + ": " + lm.getCurrentLeader());
+            Logger.println("Next leader for CID=" + (getLastExec() + 1) + ": " + lm.getCurrentLeader());
 
             //******* EDUARDO BEGIN **************//
             if (/*lm.getLeader(getLastExec() + 1, 0)*/lm.getCurrentLeader() != this.controller.getStaticConf().getProcessId()) {
@@ -356,11 +358,11 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                     (clientsManager.havePendingRequests()) && //there are messages to be ordered
                     (getInExec() == -1)) { //there is no consensus in execution
 
-                // Sets the current execution
+                // Sets the current consensus
                 int execId = getLastExec() + 1;
                 setInExec(execId);
 
-                Decision dec = execManager.getExecution(execId).getLearner();
+                Decision dec = execManager.getConsensus(execId).getDecision();
 
                 // Bypass protocol if service is not replicated
                 if (controller.getCurrentViewN() == 1) {
@@ -369,13 +371,13 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
                     byte[] value = createPropose(dec);
 
-                    Execution execution = execManager.getExecution(dec.getConsensusId());
-                    Epoch epoch = execution.getEpoch(0, controller);
+                    Consensus consensus = execManager.getConsensus(dec.getConsensusId());
+                    Epoch epoch = consensus.getEpoch(0, controller);
                     epoch.propValue = value;
                     epoch.propValueHash = computeHash(value);
-                    epoch.getExecution().addWritten(value);
+                    epoch.getConsensus().addWritten(value);
                     epoch.deserializedPropValue = checkProposedValue(value, true);
-                    epoch.getExecution().getLearner().firstMessageProposed = epoch.deserializedPropValue[0];
+                    epoch.getConsensus().getDecision().firstMessageProposed = epoch.deserializedPropValue[0];
                     dec.setDecisionEpoch(epoch);
 
                     //System.out.println("ESTOU AQUI!");
@@ -383,7 +385,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                     continue;
 
                 }
-                execManager.getProposer().startExecution(execId,
+                execManager.getProposer().startConsensus(execId,
                         createPropose(dec));
             }
         }
@@ -473,10 +475,10 @@ public final class TOMLayer extends Thread implements RequestReceiver {
     }
 
     public void processOutOfContext() {
-        for (int nextExecution = getLastExec() + 1;
-                execManager.receivedOutOfContextPropose(nextExecution);
-                nextExecution = getLastExec() + 1) {
-            execManager.processOutOfContextPropose(execManager.getExecution(nextExecution));
+        for (int nextConsensus = getLastExec() + 1;
+                execManager.receivedOutOfContextPropose(nextConsensus);
+                nextConsensus = getLastExec() + 1) {
+            execManager.processOutOfContextPropose(execManager.getConsensus(nextConsensus));
         }
     }
 

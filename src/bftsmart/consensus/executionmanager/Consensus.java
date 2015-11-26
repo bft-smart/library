@@ -28,17 +28,18 @@ import bftsmart.reconfiguration.ServerViewController;
 
 
 /**
- * This class stands for a consensus instance
+ * This class stands for a consensus instance that implements the algorithm
+ * for the Byzantine fault model described in Cachin's 'Yet Another Visit to Paxos' (April 2011)
  */
-public class Execution {
+public class Consensus {
 
-    private ExecutionManager manager; // Execution manager for this execution
+    private ExecutionManager manager; // Execution manager for this replica's consensus instances
 
-    private Decision decision; // Decision instance to which this execution works for
+    private Decision decision; // Decision instance to which this consensus works for
     private HashMap<Integer,Epoch> epochs = new HashMap<Integer,Epoch>(2);
     private ReentrantLock epochsLock = new ReentrantLock(); // Lock for concurrency control
 
-    private boolean decided; // Is this execution decided?
+    private boolean decided; // Is this consensus decided?
     private int decisionEpoch = -1; // epoch at which a decision was made
 
     //NEW ATTRIBUTES FOR THE LEADER CHANGE
@@ -46,49 +47,57 @@ public class Execution {
     private TimestampValuePair quorumWrites = null;
     private HashSet<TimestampValuePair> writeSet = new HashSet<TimestampValuePair>();
 
-    public ReentrantLock lock = new ReentrantLock(); //this execution lock (called by other classes)
+    public ReentrantLock lock = new ReentrantLock(); //this consensus lock (called by other classes)
 
     /**
-     * Creates a new instance of Execution for Acceptor Manager
+     * Creates a new instance of Consensus
      * 
      * Important: At this point, the 'decision' parameter is only a placeholder
      * for the future decision, and should not be delivered to the delivery thread.
-     *
-     * @param manager Execution manager for this execution
-     * @param decision Decision instance to which this consensus instance works for.
+     * 
+     * Use 'isDecided()' to check if the consensus already decided a value.
+     * 
+     * @param manager Execution manager for this replica's consensus instances
+     * @param decision Decision instance to which this consensus works for.
      */
-    protected Execution(ExecutionManager manager, Decision decision) {
+    protected Consensus(ExecutionManager manager, Decision decision) {
         this.manager = manager;
         this.decision = decision;
     }
 
     /**
-     * This is the execution ID
-     * @return Execution ID
+     * This is the consensus ID
+     * @return Consensus ID
      */
     public int getId() {
         return decision.getConsensusId();
     }
 
     /**
-     * This is the execution manager for this execution
-     * @return Execution manager for this execution
+     * This is the execution manager for this replica's consensus instances
+     * @return Execution manager for this replica
      */
     public ExecutionManager getManager() {
         return manager;
     }
 
     /**
-     * This is the decision instance to which this execution works for
-     * @return Decision instance to which this execution works for
+     * This is the decision instance to which this consensus works for
+     * 
+     * Important: The returned object should only be sent to the delivery thread
+     * after this consensus instance decides a value. Use 'isDecided()' to check if
+     * the consensus already decided a value.
+     * 
+     * @return Decision instance to which this consensus works for
      */
-    public Decision getLearner() { // TODO: Why it is called getLearner?
+    public Decision getDecision() {
         return decision;
     }
 
     /**
-     * Gets a epoch associated with this execution
+     * Gets a epoch associated with this consensus
      * @param timestamp The timestamp of the epoch
+     * @param controller The view controller for the replicas
      * @return The epoch
      */
     public Epoch getEpoch(int timestamp, ServerViewController controller) {
@@ -96,9 +105,10 @@ public class Execution {
     }
 
     /**
-     * Gets a epoch associated with this execution
+     * Gets a epoch associated with this consensus
      * @param timestamp The number of the epoch
      * @param create if the epoch is to be created if not existent
+     * @param controller The view controller for the replicas
      * @return The epoch
      */
     public Epoch getEpoch(int timestamp, boolean create, ServerViewController controller) {
@@ -116,8 +126,8 @@ public class Execution {
     }
     
     /**
-     * Increments the ETS of this replica, thus advancing 
-     * to the next epoch of the consensus
+     * Increments the ETS of this consensus, thus advancing 
+     * to the next epoch
      */
     public void incEts() {
         ets++;
@@ -175,7 +185,7 @@ public class Execution {
         return writeSet;
     }
     /**
-     * Creates an epoch associated with this execution, with the specified timestamp
+     * Creates an epoch associated with this consensus, with the specified timestamp
      * @param timestamp The timestamp to associated to this epoch
      * @param recManager The replica's ServerViewController
      * @return The epoch
@@ -191,7 +201,7 @@ public class Execution {
         return epoch;
     }
     /**
-     * Creates a epoch associated with this execution, supposedly the next
+     * Creates a epoch associated with this consensus, supposedly the next
      * @param recManager The replica's ServerViewController
      * @return The epoch
      */
@@ -215,7 +225,7 @@ public class Execution {
     }
 
     /**
-     * Removes epochs greater than 'limit' from this execution
+     * Removes epochs greater than 'limit' from this consensus instance
      *
      * @param limit Epochs that should be kept (from 0 to 'limit')
      */
@@ -239,15 +249,15 @@ public class Execution {
      */
     public Epoch getDecisionEpoch() {
         epochsLock.lock();
-        Epoch r = epochs.get(decisionEpoch);
+        Epoch e = epochs.get(decisionEpoch);
         epochsLock.unlock();
-        return r;
+        return e;
     }
 
     /**
-     * The last epoch of this execution
+     * The last epoch of this consensus instance
      *
-     * @return Last epoch of this execution
+     * @return Last epoch of this consensus instance
      */
     public Epoch getLastEpoch() {
         epochsLock.lock();
@@ -262,7 +272,7 @@ public class Execution {
     }
 
     /**
-     * Informs whether or not the execution is decided
+     * Informs whether or not the consensus instance has decided a value
      *
      * @return True if it is decided, false otherwise
      */
@@ -271,7 +281,7 @@ public class Execution {
     }
 
     /**
-     * Called by the Acceptor, to set the decided value
+     * Called by the Acceptor object, to set the decided value
      *
      * @param value The decided value
      * @param epoch The epoch at which a decision was made

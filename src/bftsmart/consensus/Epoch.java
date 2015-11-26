@@ -15,7 +15,7 @@ limitations under the License.
 */
 package bftsmart.consensus;
 
-import bftsmart.consensus.executionmanager.Execution;
+import bftsmart.consensus.executionmanager.Consensus;
 import bftsmart.consensus.messages.PaxosMessage;
 import java.io.Serializable;
 import java.util.Arrays;
@@ -28,13 +28,13 @@ import java.util.HashSet;
 import java.util.Set;
 
 /**
- * This class stands for a epoch of an execution of a consensus,
- * as described in Cachin's 'Yet Another Visit to Paxos' (April 2011)
+ * This class stands for a consensus epoch, as described in
+ * Cachin's 'Yet Another Visit to Paxos' (April 2011)
  */
 public class Epoch implements Serializable {
 
     private static final long serialVersionUID = -2891450035863688295L;
-    private transient Execution execution; // Execution where the epoch belongs to
+    private transient Consensus consensus; // Consensus where the epoch belongs to
     
     private int timestamp; // Epochs's timestamp
     private int me; // Process ID
@@ -43,7 +43,7 @@ public class Epoch implements Serializable {
     private byte[][] write; // WRITE values from other processes
     private byte[][] accept; // accepted values from other processes
     
-    private boolean alreadyRemoved = false; // indicates if this epoch was removed from its execution
+    private boolean alreadyRemoved = false; // indicates if this epoch was removed from its consensus
 
     public byte[] propValue = null; // proposed value
     public TOMMessage[] deserializedPropValue = null; //utility var
@@ -56,15 +56,15 @@ public class Epoch implements Serializable {
 
     /**
      * Creates a new instance of Epoch for acceptors
-     * @param parent Execution to which this epoch belongs
+     * @param parent Consensus to which this epoch belongs
      * @param timestamp Timestamp of the epoch
      */
-    public Epoch(ServerViewController controller, Execution parent, int timestamp) {
-        this.execution = parent;
+    public Epoch(ServerViewController controller, Consensus parent, int timestamp) {
+        this.consensus = parent;
         this.timestamp = timestamp;
         this.controller = controller;
         this.proof = new HashSet<PaxosMessage>();
-        //ExecutionManager manager = execution.getManager();
+        //ExecutionManager manager = consensus.getManager();
 
         this.lastView = controller.getCurrentView();
         this.me = controller.getStaticConf().getProcessId();
@@ -85,7 +85,7 @@ public class Epoch implements Serializable {
             Arrays.fill((Object[]) write, null);
             Arrays.fill((Object[]) accept, null);
         } else {
-            Epoch previousEpoch = execution.getEpoch(timestamp - 1, controller);
+            Epoch previousEpoch = consensus.getEpoch(timestamp - 1, controller);
 
             this.write = previousEpoch.getWrite();
             this.accept = previousEpoch.getAccept();
@@ -137,14 +137,14 @@ public class Epoch implements Serializable {
     }
             
     /**
-     * Set this epoch as removed from its execution
+     * Set this epoch as removed from its consensus instance
      */
     public void setRemoved() {
         this.alreadyRemoved = true;
     }
 
     /**
-     * Informs if this epoch was removed from its execution
+     * Informs if this epoch was removed from its consensus instance
      * @return True if it is removed, false otherwise
      */
     public boolean isRemoved() {
@@ -176,11 +176,11 @@ public class Epoch implements Serializable {
     }
 
     /**
-     * Retrieves this epoch's execution
-     * @return This epoch's execution
+     * Retrieves this epoch's consensus
+     * @return This epoch's consensus
      */
-    public Execution getExecution() {
-        return execution;
+    public Consensus getConsensus() {
+        return consensus;
     }
 
     /**
@@ -370,7 +370,7 @@ public class Epoch implements Serializable {
         buffWrite.append(str(write[write.length - 1]) + " [" + (write[write.length - 1] != null ? write[write.length - 1].length : 0) + " bytes])");
         buffAccept.append(str(accept[accept.length - 1]) + " [" + (accept[accept.length - 1] != null ? accept[accept.length - 1].length : 0) + " bytes])");
 
-        return "eid=" + execution.getId() + " ts=" + getTimestamp() + " " + buffWrite + " " + buffAccept + " " + buffDecide;
+        return "cid=" + consensus.getId() + " ts=" + getTimestamp() + " " + buffWrite + " " + buffAccept + " " + buffDecide;
     }
 
     private String str(byte[] obj) {
