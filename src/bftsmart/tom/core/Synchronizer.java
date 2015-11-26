@@ -6,7 +6,7 @@
 package bftsmart.tom.core;
 
 import bftsmart.communication.ServerCommunicationSystem;
-import bftsmart.consensus.Consensus;
+import bftsmart.consensus.Decision;
 import bftsmart.consensus.Epoch;
 import bftsmart.consensus.executionmanager.Execution;
 import bftsmart.consensus.executionmanager.ExecutionManager;
@@ -898,11 +898,11 @@ public class Synchronizer {
 
             signedCollects = lcManager.getCollects(regency); // all original collects that the replica has received
 
-            Consensus cons = new Consensus(-1); // the only purpose of this object is to obtain the batchsize,
+            Decision dec = new Decision(-1); // the only purpose of this object is to obtain the batchsize,
                                                 // using code inside of createPropose()
 
-            propose = tom.createPropose(cons);
-            batchSize = cons.batchSize;
+            propose = tom.createPropose(dec);
+            batchSize = dec.batchSize;
 
             try { // serialization of the CATCH-UP message
                 bos = new ByteArrayOutputStream();

@@ -23,63 +23,62 @@ import bftsmart.tom.core.messages.TOMMessage;
  *
  * @param <E> Type of the decided Object
  *
- * @author unkown
- * @author Christian Spann <christian.spann at uni-ulm.de>
+ * @author Joao Sousa
+ * @author Alysson Bessani
  */
-public class Consensus {
+public class Decision {
 
-    private int eid; // execution ID
+    private final int eid; // execution ID
     private Epoch decisionEpoch = null;
-    private byte[] decision = null; // decided value
-    private TOMMessage[] deserializedDecision = null; // decided value (deserialized)
+    private byte[] value = null; // decided value
+    private TOMMessage[] deserializedValue = null; // decided value (deserialized)
     
     //for benchmarking
     public TOMMessage firstMessageProposed = null;
     public int batchSize = 0;
 
     /**
-     * Creates a new instance of Consensus
-     * @param proposer The proposer role of PaW algorithm
-     * @param eid The execution ID for this consensus
-     * @param startTime The consensus start time
+     * Creates a new instance of Decision
+     * @param eid The ID for the respective consensus
      */
-    public Consensus(int eid) {
+    public Decision(int eid) {
         this.eid = eid;
     }
 
-    public void decided(Epoch epoch) {
+    /**
+     * Set epoch in which the value was decided
+     * @param epoch The epoch in which the value was decided
+     */
+    public void setDecisionEpoch(Epoch epoch) {
         this.decisionEpoch = epoch;
     }
 
-    public Epoch getDecisionEpoch() {
-        return decisionEpoch;
-    }
 
     /**
      * Sets the decided value
      * @return Decided Value
      */
-    public byte[] getDecision() {
-        while (decision == null) {
+    public byte[] getValue() {
+        while (value == null) {
             waitForPropose(); // Eduardo: should have a separate waitForDecision  (works for now, because it is just a sleep)
-            decision = decisionEpoch.propValue;
+            value = decisionEpoch.propValue;
         }
-        return decision;
+        return value;
     }
 
-    public TOMMessage[] getDeserializedDecision() {
-        while (deserializedDecision == null) {
+    public TOMMessage[] getDeserializedValue() {
+        while (deserializedValue == null) {
             waitForPropose();
-            deserializedDecision = decisionEpoch.deserializedPropValue;
+            deserializedValue = decisionEpoch.deserializedPropValue;
         }
-        return deserializedDecision;
+        return deserializedValue;
     }
 
     /**
-     * The Execution ID for this consensus
-     * @return Execution ID for this consensus
+     * The ID for the associated consensus
+     * @return ID for the associated consensus
      */
-    public int getId() {
+    public int getConsensusId() {
         return eid;
     }
 
@@ -87,7 +86,7 @@ public class Consensus {
         while (decisionEpoch == null &&
                 decisionEpoch.deserializedPropValue == null) {
             try {
-                System.out.println("waiting for propose for " + eid);
+                System.out.println("waiting for propose for consensus" + eid);
                 Thread.sleep(1);
             } catch (InterruptedException ie) {
             }

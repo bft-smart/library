@@ -22,19 +22,19 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.locks.ReentrantLock;
 
-import bftsmart.consensus.Consensus;
+import bftsmart.consensus.Decision;
 import bftsmart.reconfiguration.ServerViewController;
 
 
 
 /**
- * This class stands for an execution of a consensus
+ * This class stands for a consensus instance
  */
 public class Execution {
 
     private ExecutionManager manager; // Execution manager for this execution
 
-    private Consensus consensus; // Consensus instance to which this execution works for
+    private Decision decision; // Decision instance to which this execution works for
     private HashMap<Integer,Epoch> epochs = new HashMap<Integer,Epoch>(2);
     private ReentrantLock epochsLock = new ReentrantLock(); // Lock for concurrency control
 
@@ -50,13 +50,16 @@ public class Execution {
 
     /**
      * Creates a new instance of Execution for Acceptor Manager
+     * 
+     * Important: At this point, the 'decision' parameter is only a placeholder
+     * for the future decision, and should not be delivered to the delivery thread.
      *
      * @param manager Execution manager for this execution
-     * @param consensus Consensus instance to which this execution works for
+     * @param decision Decision instance to which this consensus instance works for.
      */
-    protected Execution(ExecutionManager manager, Consensus consensus) {
+    protected Execution(ExecutionManager manager, Decision decision) {
         this.manager = manager;
-        this.consensus = consensus;
+        this.decision = decision;
     }
 
     /**
@@ -64,7 +67,7 @@ public class Execution {
      * @return Execution ID
      */
     public int getId() {
-        return consensus.getId();
+        return decision.getConsensusId();
     }
 
     /**
@@ -76,11 +79,11 @@ public class Execution {
     }
 
     /**
-     * This is the consensus instance to which this execution works for
-     * @return Consensus instance to which this execution works for
+     * This is the decision instance to which this execution works for
+     * @return Decision instance to which this execution works for
      */
-    public Consensus getLearner() { // TODO: Why it is called getLearner?
-        return consensus;
+    public Decision getLearner() { // TODO: Why it is called getLearner?
+        return decision;
     }
 
     /**
@@ -277,8 +280,8 @@ public class Execution {
         if (!decided) {
             decided = true;
             decisionEpoch = epoch.getTimestamp();
-            consensus.decided(epoch);
-            manager.getTOMLayer().decided(consensus);
+            decision.setDecisionEpoch(epoch);
+            manager.getTOMLayer().decided(decision);
         }
     }
 }

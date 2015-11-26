@@ -22,7 +22,7 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-import bftsmart.consensus.Consensus;
+import bftsmart.consensus.Decision;
 import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.statemanagement.ApplicationState;
 import bftsmart.tom.MessageContext;
@@ -39,7 +39,7 @@ import bftsmart.tom.util.Logger;
  */
 public final class DeliveryThread extends Thread {
 
-    private LinkedBlockingQueue<Consensus> decided = new LinkedBlockingQueue<Consensus>(); // decided consensus
+    private LinkedBlockingQueue<Decision> decided = new LinkedBlockingQueue<Decision>(); // decided from consensus
     private TOMLayer tomLayer; // TOM layer
     private ServiceReplica receiver; // Object that receives requests from clients
     private Recoverable recoverer; // Object that uses state transfer
@@ -70,36 +70,36 @@ public final class DeliveryThread extends Thread {
     }
    
     /**
-     * Invoked by the TOM layer, to deliver a decide consensus
-     * @param cons Consensus established as being decided
+     * Invoked by the TOM layer, to deliver a decision
+     * @param dec Decision established from the consensus
      */
-    public void delivery(Consensus cons) {
-        if (!containsGoodReconfig(cons)) {
+    public void delivery(Decision dec) {
+        if (!containsGoodReconfig(dec)) {
 
-            Logger.println("(DeliveryThread.delivery) Consensus ID " + cons.getId() + " does not contain good reconfiguration");
-            //set this consensus as the last executed
-            tomLayer.setLastExec(cons.getId());
+            Logger.println("(DeliveryThread.delivery) Decision from consensus " + dec.getConsensusId() + " does not contain good reconfiguration");
+            //set this decision as the last one from this replica
+            tomLayer.setLastExec(dec.getConsensusId());
             //define that end of this execution
             tomLayer.setInExec(-1);
         } //else if (tomLayer.controller.getStaticConf().getProcessId() == 0) System.exit(0);
         try {
         	decidedLock.lock();
-            decided.put(cons);
+            decided.put(dec);
             
 			// clean the ordered messages from the pending buffer
-            TOMMessage[] requests = extractMessagesFromDecision(cons);
+            TOMMessage[] requests = extractMessagesFromDecision(dec);
 			tomLayer.clientsManager.requestsOrdered(requests);
             
             notEmptyQueue.signalAll();
             decidedLock.unlock();
-            Logger.println("(DeliveryThread.delivery) Consensus " + cons.getId() + " finished. Decided size=" + decided.size());
+            Logger.println("(DeliveryThread.delivery) Consensus " + dec.getConsensusId() + " finished. Decided size=" + decided.size());
         } catch (Exception e) {
             e.printStackTrace(System.out);
         }
     }
 
-    private boolean containsGoodReconfig(Consensus cons) {
-        TOMMessage[] decidedMessages = cons.getDeserializedDecision();
+    private boolean containsGoodReconfig(Decision dec) {
+        TOMMessage[] decidedMessages = dec.getDeserializedValue();
 
         for (TOMMessage decidedMessage : decidedMessages) {
             if (decidedMessage.getReqType() == TOMMessageType.RECONFIG
@@ -135,7 +135,7 @@ public final class DeliveryThread extends Thread {
        
         int lastEid =  recoverer.setState(state);
 
-        //set this consensus as the last executed
+        //set this decision as the last one from this replica
         System.out.println("Setting last EID to " + lastEid);
         tomLayer.setLastExec(lastEid);
 
@@ -157,7 +157,7 @@ public final class DeliveryThread extends Thread {
     }
 
     /**
-     * This is the code for the thread. It delivers decided consensus to the TOM
+     * This is the code for the thread. It delivers decisions to the TOM
      * request receiver object (which is the application)
      */
     @Override
@@ -171,41 +171,41 @@ public final class DeliveryThread extends Thread {
   				System.out.println("(DeliveryThread.run) canDeliver released.");
   			}
   			try {
-  				ArrayList<Consensus> consensuses = new ArrayList<Consensus>();
+  				ArrayList<Decision> decisions = new ArrayList<Decision>();
   				decidedLock.lock();
   				if(decided.isEmpty()) {
   					notEmptyQueue.await();
   				}
-  				decided.drainTo(consensuses);
+  				decided.drainTo(decisions);
   				decidedLock.unlock();
-  				if (consensuses.size() > 0) {
-  					TOMMessage[][] requests = new TOMMessage[consensuses.size()][];
+  				if (decisions.size() > 0) {
+  					TOMMessage[][] requests = new TOMMessage[decisions.size()][];
 					int[] consensusIds = new int[requests.length];
   					int count = 0;
-  					for (Consensus c : consensuses) {
-  						requests[count] = extractMessagesFromDecision(c);
-						consensusIds[count] = c.getId();
+  					for (Decision d : decisions) {
+  						requests[count] = extractMessagesFromDecision(d);
+						consensusIds[count] = d.getConsensusId();
   						// cons.firstMessageProposed contains the performance counters
-  						if (requests[count][0].equals(c.firstMessageProposed)) {
+  						if (requests[count][0].equals(d.firstMessageProposed)) {
   	                    	long time = requests[count][0].timestamp;
-  							requests[count][0] = c.firstMessageProposed;
+  							requests[count][0] = d.firstMessageProposed;
   	                        requests[count][0].timestamp = time;
   						}
   						
   						count++;
   					}
 
-  					Consensus lastConsensus = consensuses.get(consensuses.size() - 1);
+  					Decision lastDecision = decisions.get(decisions.size() - 1);
 
   					if (requests != null && requests.length > 0) {
   						deliverMessages(consensusIds, tomLayer.getSynchronizer().getLCManager().getLastReg(), requests);
 
   						// ******* EDUARDO BEGIN ***********//
   						if (controller.hasUpdates()) {
-  							processReconfigMessages(lastConsensus.getId());
+  							processReconfigMessages(lastDecision.getConsensusId());
 
-  							// set this consensus as the last executed
-  							tomLayer.setLastExec(lastConsensus.getId());
+  							// set the consensus associated to the last decision as the last executed
+  							tomLayer.setLastExec(lastDecision.getConsensusId());
   							// define that end of this execution
   							tomLayer.setInExec(-1);
   							// ******* EDUARDO END **************//
@@ -216,7 +216,7 @@ public final class DeliveryThread extends Thread {
   					// be removed from the leaderManager and the executionManager
   					// TODO: Is this part necessary? If it is, can we put it
   					// inside setLastExec
-  					int eid = lastConsensus.getId();
+  					int eid = lastDecision.getConsensusId();
   					if (eid > 2) {
   						int stableConsensus = eid - 3;
 
@@ -234,8 +234,8 @@ public final class DeliveryThread extends Thread {
   		}
     }
     
-    private TOMMessage[] extractMessagesFromDecision(Consensus cons) {
-    	TOMMessage[] requests = (TOMMessage[]) cons.getDeserializedDecision();
+    private TOMMessage[] extractMessagesFromDecision(Decision dec) {
+    	TOMMessage[] requests = (TOMMessage[]) dec.getDeserializedValue();
     	if (requests == null) {
     		// there are no cached deserialized requests
     		// this may happen if this batch proposal was not verified
@@ -243,8 +243,8 @@ public final class DeliveryThread extends Thread {
 
     		Logger.println("(DeliveryThread.run) interpreting and verifying batched requests.");
 
-    		// obtain an array of requests from the taken consensus
-    		BatchReader batchReader = new BatchReader(cons.getDecision(),
+    		// obtain an array of requests from the decisions obtained
+    		BatchReader batchReader = new BatchReader(dec.getValue(),
     				controller.getStaticConf().getUseSignatures() == 1);
     		requests = batchReader.deserialiseRequests(controller);
     	} else {

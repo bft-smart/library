@@ -26,7 +26,7 @@ import java.util.Queue;
 import java.util.TreeMap;
 import java.util.concurrent.locks.ReentrantLock;
 
-import bftsmart.consensus.Consensus;
+import bftsmart.consensus.Decision;
 import bftsmart.consensus.messages.MessageFactory;
 import bftsmart.consensus.messages.PaxosMessage;
 import bftsmart.consensus.roles.Acceptor;
@@ -37,7 +37,7 @@ import bftsmart.tom.util.Logger;
 
 
 /**
- * This classe manages consensus instances. Each execution is a consensus
+ * This class manages consensus instances. Each execution is a consensus
  * instance. It can have several epochs if there were problems during consensus.
  *
  * @author Alysson
@@ -271,8 +271,8 @@ public final class ExecutionManager {
     }
 
     /**
-     * Informs if there are messages till to be processed associated the specified consensus's execution
-     * @param eid The ID for the consensus execution in question
+     * Informs if there are messages till to be processed associated the specified consensus
+     * @param eid The ID for the consensus in question
      * @return True if there are still messages to be processed, false otherwise
      */
     public boolean receivedOutOfContextPropose(int eid) {
@@ -286,9 +286,9 @@ public final class ExecutionManager {
     }
 
     /**
-     * Removes a consensus's execution from this manager
-     * @param id ID of the consensus's execution to be removed
-     * @return The consensus's execution that was removed
+     * Removes a consensus from this manager
+     * @param id ID of the consensus to be removed
+     * @return The consensus that was removed
      */
     public Execution removeExecution(int id) {
         executionsLock.lock();
@@ -336,10 +336,10 @@ public final class ExecutionManager {
 
     /********************************************************/
     /**
-     * Returns the specified consensus' execution
+     * Returns the specified consensus
      *
-     * @param eid ID of the consensus execution to be returned
-     * @return The consensus execution specified
+     * @param eid ID of the consensus to be returned
+     * @return The consensus specified
      */
     public Execution getExecution(int eid) {
         executionsLock.lock();
@@ -349,9 +349,9 @@ public final class ExecutionManager {
 
         if (execution == null) {//there is no execution created with the given eid
             //let's create one...
-            Consensus cons = new Consensus(eid);
+            Decision dec = new Decision(eid);
 
-            execution = new Execution(this, cons);
+            execution = new Execution(this, dec);
 
             //...and add it to the executions table
             executions.put(eid, execution);

@@ -28,7 +28,7 @@ import bftsmart.clientsmanagement.ClientsManager;
 import bftsmart.clientsmanagement.RequestList;
 import bftsmart.communication.ServerCommunicationSystem;
 import bftsmart.communication.client.RequestReceiver;
-import bftsmart.consensus.Consensus;
+import bftsmart.consensus.Decision;
 import bftsmart.consensus.executionmanager.Execution;
 import bftsmart.consensus.executionmanager.ExecutionManager;
 import bftsmart.consensus.executionmanager.LeaderModule;
@@ -287,9 +287,10 @@ public final class TOMLayer extends Thread implements RequestReceiver {
      * Creates a value to be proposed to the acceptors. Invoked if this replica
      * is the leader
      *
+     * @param dec Object that will eventually hold the decided value
      * @return A value to be proposed to the acceptors
      */
-    public byte[] createPropose(Consensus cons) {
+    public byte[] createPropose(Decision dec) {
         // Retrieve a set of pending requests from the clients manager
         RequestList pendingRequests = clientsManager.getPendingRequests();
 
@@ -297,11 +298,11 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         int numberOfNonces = this.controller.getStaticConf().getNumberOfNonces(); // ammount of nonces to be generated
 
         //for benchmarking
-        if (cons.getId() > -1) { // if this is from the leader change, it doesnt matter
-            cons.firstMessageProposed = pendingRequests.getFirst();
-            cons.firstMessageProposed.consensusStartTime = System.nanoTime();
+        if (dec.getConsensusId() > -1) { // if this is from the leader change, it doesnt matter
+            dec.firstMessageProposed = pendingRequests.getFirst();
+            dec.firstMessageProposed.consensusStartTime = System.nanoTime();
         }
-        cons.batchSize = numberOfMessages;
+        dec.batchSize = numberOfMessages;
 
         Logger.println("(TOMLayer.run) creating a PROPOSE with " + numberOfMessages + " msgs");
 
@@ -359,43 +360,43 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                 int execId = getLastExec() + 1;
                 setInExec(execId);
 
-                Consensus cons = execManager.getExecution(execId).getLearner();
+                Decision dec = execManager.getExecution(execId).getLearner();
 
                 // Bypass protocol if service is not replicated
                 if (controller.getCurrentViewN() == 1) {
 
                     Logger.println("(TOMLayer.run) Only one replica, bypassing consensus.");
 
-                    byte[] value = createPropose(cons);
+                    byte[] value = createPropose(dec);
 
-                    Execution execution = execManager.getExecution(cons.getId());
+                    Execution execution = execManager.getExecution(dec.getConsensusId());
                     Epoch epoch = execution.getEpoch(0, controller);
                     epoch.propValue = value;
                     epoch.propValueHash = computeHash(value);
                     epoch.getExecution().addWritten(value);
                     epoch.deserializedPropValue = checkProposedValue(value, true);
                     epoch.getExecution().getLearner().firstMessageProposed = epoch.deserializedPropValue[0];
-                    cons.decided(epoch);
+                    dec.setDecisionEpoch(epoch);
 
                     //System.out.println("ESTOU AQUI!");
-                    dt.delivery(cons);
+                    dt.delivery(dec);
                     continue;
 
                 }
                 execManager.getProposer().startExecution(execId,
-                        createPropose(cons));
+                        createPropose(dec));
             }
         }
     }
 
     /**
-     * Called by the current consensus's execution, to notify the TOM layer that
+     * Called by the current consensus instance, to notify the TOM layer that
      * a value was decided
      *
-     * @param cons The decided consensus
+     * @param dec The decision of the consensus
      */
-    public void decided(Consensus cons) {
-        this.dt.delivery(cons); // Delivers the consensus to the delivery thread
+    public void decided(Decision dec) {
+        this.dt.delivery(dec); // Sends the decision to the delivery thread
     }
 
     /**
