@@ -31,6 +31,7 @@ import bftsmart.tom.ReplicaContext;
 import bftsmart.tom.server.Recoverable;
 import bftsmart.tom.server.SingleExecutable;
 import bftsmart.tom.util.Logger;
+import java.util.Arrays;
 
 /**
  *
@@ -50,6 +51,7 @@ public abstract class DefaultSingleRecoverable implements Recoverable, SingleExe
         
     private StateLog log;
     private List<byte[]> commands = new ArrayList<byte[]>();
+    private List<MessageContext> msgCtxs = new ArrayList<MessageContext>();
     
     private StateManager stateManager;
     
@@ -81,6 +83,7 @@ public abstract class DefaultSingleRecoverable implements Recoverable, SingleExe
         }
         
         commands.add(command);
+        msgCtxs.add(msgCtx);
         
         if(msgCtx.isLastInBatch()) {
 	        if ((eid > 0) && ((eid % checkpointPeriod) == 0)) {
@@ -90,10 +93,11 @@ public abstract class DefaultSingleRecoverable implements Recoverable, SingleExe
 	            stateLock.unlock();
 	            saveState(snapshot, eid);
 	        } else {
-	            saveCommands(commands.toArray(new byte[0][]), eid);
+	            saveCommands(commands.toArray(new byte[0][]), msgCtxs.toArray(new MessageContext[0]));
 	        }
 			getStateManager().setLastEID(eid);
 	        commands = new ArrayList<byte[]>();
+                msgCtxs = new ArrayList<MessageContext>();
         }
         return reply;
     }
@@ -131,20 +135,32 @@ public abstract class DefaultSingleRecoverable implements Recoverable, SingleExe
         Logger.println("(TOMLayer.saveState) Finished saving state of EID " + lastEid);
     }
 
-    private void saveCommands(byte[][] commands, int lastEid) {
-        StateLog thisLog = getLog();
+    private void saveCommands(byte[][] commands, MessageContext[] msgCtx) {
 
+        if (commands.length != msgCtx.length) {
+            System.out.println("----SIZE OF COMMANDS AND EIDS IS DIFFERENT----");
+        }
         logLock.lock();
 
-        Logger.println("(TOMLayer.saveBatch) Saving batch of EID " + lastEid);
-
-        thisLog.addMessageBatch(commands, lastEid);
-
-        logLock.unlock();
+        int eid = msgCtx[0].getConsensusId();
+        int batchStart = 0;
+        for (int i = 0; i <= msgCtx.length; i++) {
+            if (i == msgCtx.length) { // the batch command contains only one command or it is the last position of the array
+                byte[][] batch = Arrays.copyOfRange(commands, batchStart, i);
+                MessageContext[] batchMsgCtx = Arrays.copyOfRange(msgCtx, batchStart, i);
+                log.addMessageBatch(batch, batchMsgCtx, eid);
+            } else {
+                if (msgCtx[i].getConsensusId() > eid) { // saves commands when the eid changes or when it is the last batch
+                    byte[][] batch = Arrays.copyOfRange(commands, batchStart, i);
+                    MessageContext[] batchMsgCtx = Arrays.copyOfRange(msgCtx, batchStart, i);
+                    log.addMessageBatch(batch, batchMsgCtx, eid);
+                    eid = msgCtx[i].getConsensusId();
+                    batchStart = i;
+                }
+            }
+        }
         
-        /*System.out.println("guardei comandos");
-        System.out.println("tamanho do log: " + thisLog.getNumBatches());*/
-        Logger.println("(TOMLayer.saveBatch) Finished saving batch of EID " + lastEid);
+        logLock.unlock();
     }
 
     @Override
@@ -184,14 +200,17 @@ public abstract class DefaultSingleRecoverable implements Recoverable, SingleExe
             for (int eid = lastCheckpointEid + 1; eid <= lastEid; eid++) {
                 try {
                     bftsmart.tom.util.Logger.println("(DurabilityCoordinator.setState) interpreting and verifying batched requests for eid " + eid);
-                    if (state.getMessageBatch(eid) == null)
-                    	System.out.println("(DefaultSingleRecoverable.setState) " + eid + " NULO!!!");
-                    
-                    byte[][] commands = state.getMessageBatch(eid).commands; // take a batch
 
-                    if (commands == null || commands.length <= 0) continue;
-                    for(byte[] command : commands) {
-                    	appExecuteOrdered(command, null);
+                    CommandsInfo cmdInfo = state.getMessageBatch(eid); 
+                    byte[][] commands = cmdInfo.commands; // take a batch
+                    MessageContext[] msgCtxs = cmdInfo.msgCtx;
+                    
+                    if (commands == null || commands.length <= 0) { //TODO: change 'commands.length <= 0' so that it verifies msgCtx if the message is noOp
+                        continue;
+                    }
+
+                    for(int i = 0; i < commands.length; i++) {
+                    	appExecuteOrdered(commands[i], msgCtxs[i]);
                     }
                 } catch (Exception e) {
                     e.printStackTrace(System.err);

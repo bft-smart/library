@@ -15,6 +15,7 @@ limitations under the License.
 */
 package bftsmart.tom.server.defaultservices;
 
+import bftsmart.tom.MessageContext;
 import bftsmart.tom.server.defaultservices.CommandsInfo;
 import bftsmart.tom.server.defaultservices.DefaultApplicationState;
 
@@ -142,11 +143,12 @@ public class StateLog {
      * in the same order in which they are delivered to the application. Only
      * the 'k' batches received after the last checkpoint are supposed to be kept
      * @param commands The batch of messages to be kept.
+     * @param msgCtx The message contexts related to the commands
      * @param lastConsensusId
      */
-    public void addMessageBatch(byte[][] commands, int lastConsensusId) {
+    public void addMessageBatch(byte[][] commands, MessageContext[] msgCtx, int lastConsensusId) {
         if (position < messageBatches.length) {
-            messageBatches[position] = new CommandsInfo(commands);
+            messageBatches[position] = new CommandsInfo(commands, msgCtx);
             position++;
         }
         setLastEid(lastConsensusId);

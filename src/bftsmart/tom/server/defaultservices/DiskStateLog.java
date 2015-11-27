@@ -28,6 +28,7 @@ import java.util.Map;
 import java.util.concurrent.locks.ReentrantLock;
 
 import bftsmart.statemanagement.ApplicationState;
+import bftsmart.tom.MessageContext;
 
 public class DiskStateLog extends StateLog {
 
@@ -80,7 +81,7 @@ public class DiskStateLog extends StateLog {
          * @param consensusId
 	 */
         @Override
-	public void addMessageBatch(byte[][] commands, int consensusId) {
+	public void addMessageBatch(byte[][] commands, MessageContext[] msgCtx, int consensusId) {
 		CommandsInfo command = new CommandsInfo(commands);
 		if (isToLog) {
 			if(log == null)

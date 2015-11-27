@@ -64,7 +64,7 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
 
     private byte[][] executeBatch(byte[][] commands, MessageContext[] msgCtxs, boolean noop) {
 
-        int eid = msgCtxs[0].getConsensusId();
+        int eid = msgCtxs[msgCtxs.length-1].getConsensusId();
 
         // As the delivery thread may deliver several consensus at once it is necessary
         // to find if a checkpoint might be taken in the middle of the batch execution
@@ -83,7 +83,7 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
 
             }
 
-            saveCommands(commands, eids);
+            saveCommands(commands, msgCtxs);
         } else {
             // there is a replica supposed to take the checkpoint. In this case, the commands
             // must be executed in two steps. First the batch of commands containing commands
@@ -92,16 +92,16 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
             // or log, the pointer in the log is updated and then the remaining portion of the
             // commands is executed
             byte[][] firstHalf = new byte[checkpointIndex + 1][];
-            int[] firstHalfEids = new int[firstHalf.length];
+            MessageContext[] firstHalfMsgCtx = new MessageContext[firstHalf.length];
             byte[][] secondHalf = new byte[commands.length - (checkpointIndex + 1)][];
-            int[] secondHalfEids = new int[secondHalf.length];
+            MessageContext[] secondHalfMsgCtx = new MessageContext[secondHalf.length];
             System.arraycopy(commands, 0, firstHalf, 0, checkpointIndex + 1);
-            System.arraycopy(eids, 0, firstHalfEids, 0, checkpointIndex + 1);
+            System.arraycopy(msgCtxs, 0, firstHalfMsgCtx, 0, checkpointIndex + 1);
             if (secondHalf.length > 0) {
                 System.arraycopy(commands, checkpointIndex + 1, secondHalf, 0, commands.length - (checkpointIndex + 1));
-                System.arraycopy(eids, checkpointIndex + 1, secondHalfEids, 0, commands.length - (checkpointIndex + 1));
+                System.arraycopy(msgCtxs, checkpointIndex + 1, secondHalfMsgCtx, 0, commands.length - (checkpointIndex + 1));
             } else {
-                firstHalfEids = eids;
+                firstHalfMsgCtx = msgCtxs;
             }
 
             byte[][] firstHalfReplies = new byte[firstHalf.length][];
@@ -112,7 +112,7 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
 
             if (!noop) {
                 stateLock.lock();
-                firstHalfReplies = appExecuteBatch(firstHalf, msgCtxs);
+                firstHalfReplies = appExecuteBatch(firstHalf, firstHalfMsgCtx);
                 stateLock.unlock();
             }
 
@@ -136,12 +136,12 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
 
                 if (!noop) {
                     stateLock.lock();
-                    secondHalfReplies = appExecuteBatch(secondHalf, msgCtxs);
+                    secondHalfReplies = appExecuteBatch(secondHalf, secondHalfMsgCtx);
                     stateLock.unlock();
                 }
 
                 Logger.println("(DefaultRecoverable.executeBatch) Storing message batch in the state log for consensus " + eid);
-                saveCommands(secondHalf, secondHalfEids);
+                saveCommands(secondHalf, secondHalfMsgCtx);
 
                 System.arraycopy(secondHalfReplies, 0, replies, firstHalfReplies.length, secondHalfReplies.length);
             }
@@ -189,25 +189,27 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
      * @param commands array of commands. Each command is an array of bytes
      * @param msgCtx
      */
-    public void saveCommands(byte[][] commands, int[] eids) {
+    public void saveCommands(byte[][] commands, MessageContext[] msgCtx) {
         //if(!config.isToLog())
         //	return;
-        if (commands.length != eids.length) {
+        if (commands.length != msgCtx.length) {
             System.out.println("----SIZE OF COMMANDS AND EIDS IS DIFFERENT----");
         }
         logLock.lock();
 
-        int eid = eids[0];
+        int eid = msgCtx[0].getConsensusId();
         int batchStart = 0;
-        for (int i = 0; i <= eids.length; i++) {
-            if (i == eids.length) { // the batch command contains only one command or it is the last position of the array
+        for (int i = 0; i <= msgCtx.length; i++) {
+            if (i == msgCtx.length) { // the batch command contains only one command or it is the last position of the array
                 byte[][] batch = Arrays.copyOfRange(commands, batchStart, i);
-                log.addMessageBatch(batch, eid);
+                MessageContext[] batchMsgCtx = Arrays.copyOfRange(msgCtx, batchStart, i);
+                log.addMessageBatch(batch, batchMsgCtx, eid);
             } else {
-                if (eids[i] > eid) { // saves commands when the eid changes or when it is the last batch
+                if (msgCtx[i].getConsensusId() > eid) { // saves commands when the eid changes or when it is the last batch
                     byte[][] batch = Arrays.copyOfRange(commands, batchStart, i);
-                    log.addMessageBatch(batch, eid);
-                    eid = eids[i];
+                    MessageContext[] batchMsgCtx = Arrays.copyOfRange(msgCtx, batchStart, i);
+                    log.addMessageBatch(batch, batchMsgCtx, eid);
+                    eid = msgCtx[i].getConsensusId();
                     batchStart = i;
                 }
             }
@@ -255,12 +257,15 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
                         System.out.println("(DefaultRecoverable.setState) " + eid + " NULO!!!");
                     }
 
-                    byte[][] commands = state.getMessageBatch(eid).commands; // take a batch
+                    CommandsInfo cmdInfo = state.getMessageBatch(eid); 
+                    byte[][] commands = cmdInfo.commands; // take a batch
+                    MessageContext[] msgCtx = cmdInfo.msgCtx;
                     
-                    if (commands == null || commands.length <= 0) {
+                    if (commands == null || commands.length <= 0) { //TODO: change 'commands.length <= 0' so that it verifies msgCtx if the message is noOp
                         continue;
                     }
-                    appExecuteBatch(commands, null);
+                    appExecuteBatch(commands, msgCtx);
+                    
                 } catch (Exception e) {
                     e.printStackTrace(System.err);
                     if (e instanceof ArrayIndexOutOfBoundsException) {
