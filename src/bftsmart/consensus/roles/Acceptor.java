@@ -27,7 +27,7 @@ import bftsmart.consensus.executionmanager.ExecutionManager;
 import bftsmart.consensus.executionmanager.LeaderModule;
 import bftsmart.consensus.Epoch;
 import bftsmart.consensus.messages.MessageFactory;
-import bftsmart.consensus.messages.PaxosMessage;
+import bftsmart.consensus.messages.ConsensusMessage;
 import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.tom.core.TOMLayer;
 import bftsmart.tom.core.messages.TOMMessage;
@@ -111,7 +111,7 @@ public final class Acceptor {
      *
      * @param msg Paxos messages delivered by the communication layer
      */
-    public final void deliver(PaxosMessage msg) {
+    public final void deliver(ConsensusMessage msg) {
         if (executionManager.checkLimits(msg)) {
             Logger.println("processing paxos msg with id " + msg.getNumber());
             processMessage(msg);
@@ -127,7 +127,7 @@ public final class Acceptor {
      *
      * @param msg The message to be processed
      */
-    public final void processMessage(PaxosMessage msg) {
+    public final void processMessage(ConsensusMessage msg) {
         Consensus consensus = executionManager.getConsensus(msg.getNumber());
 
         consensus.lock.lock();
@@ -152,7 +152,7 @@ public final class Acceptor {
      *
      * @param msg The PROPOSE message to by processed
      */
-    public void proposeReceived(Epoch epoch, PaxosMessage msg) {
+    public void proposeReceived(Epoch epoch, ConsensusMessage msg) {
         int cid = epoch.getConsensus().getId();
         int ts = epoch.getConsensus().getEts();
         int ets = executionManager.getConsensus(msg.getNumber()).getEts();
@@ -283,18 +283,18 @@ public final class Acceptor {
                         epoch.getConsensus().getDecision().firstMessageProposed.acceptSentTime = System.nanoTime();
                 }
                         
-                PaxosMessage pm = factory.createAccept(cid, epoch.getTimestamp(), value);
+                ConsensusMessage cm = factory.createAccept(cid, epoch.getTimestamp(), value);
 
                 // Create a cryptographic proof for this ACCEPT message
                 Logger.println("(Acceptor.computeWrite) Creating cryptographic proof for my ACCEPT message from consensus " + cid);
-                insertProof(pm, epoch);
+                insertProof(cm, epoch);
                 
                 int[] targets = this.controller.getCurrentViewOtherAcceptors();
-                communication.getServersConn().send(targets, pm, true);
+                communication.getServersConn().send(targets, cm, true);
                 
                 //communication.send(this.reconfManager.getCurrentViewOtherAcceptors(),
                         //factory.createStrong(cid, epoch.getNumber(), value));
-                epoch.addToProof(pm);
+                epoch.addToProof(cm);
                 computeAccept(cid, epoch, value);
             }
         }
@@ -306,13 +306,13 @@ public final class Acceptor {
      * This method modifies the consensus message passed as an argument,
      * so that it contains a cryptographic proof.
      * 
-     * @param pm The consensus message to which the proof shall be set
+     * @param cm The consensus message to which the proof shall be set
      * @param epoch The epoch during in which the consensus message was created
      */
-    private void insertProof(PaxosMessage pm, Epoch epoch) {
+    private void insertProof(ConsensusMessage cm, Epoch epoch) {
         ByteArrayOutputStream bOut = new ByteArrayOutputStream(248);
         try {
-            new ObjectOutputStream(bOut).writeObject(pm);
+            new ObjectOutputStream(bOut).writeObject(cm);
         } catch (IOException ex) {
             ex.printStackTrace();
         }
@@ -340,7 +340,7 @@ public final class Acceptor {
 
             byte[] signature = TOMUtil.signMessage(RSAprivKey, data);
 
-            pm.setProof(signature);
+            cm.setProof(signature);
 
         } else { //... if not, we can use MAC vectores
             int[] processes = this.controller.getCurrentViewAcceptors();
@@ -375,7 +375,7 @@ public final class Acceptor {
                 }
             }
 
-            pm.setProof(macVector);
+            cm.setProof(macVector);
         }
         
     }
@@ -386,7 +386,7 @@ public final class Acceptor {
      * @param a Replica that sent the message
      * @param value Value sent in the message
      */
-    private void acceptReceived(Epoch epoch, PaxosMessage msg) {
+    private void acceptReceived(Epoch epoch, ConsensusMessage msg) {
         int cid = epoch.getConsensus().getId();
         Logger.println("(Acceptor.acceptReceived) ACCEPT from " + msg.getSender() + " for consensus " + cid);
         epoch.setAccept(msg.getSender(), msg.getValue());

@@ -24,9 +24,9 @@ import bftsmart.communication.SystemMessage;
 
 
 /**
- * This class represents a message used in the paxos protocol.
+ * This class represents a message used in a epoch of a consensus instance.
  */
-public class PaxosMessage extends SystemMessage {
+public class ConsensusMessage extends SystemMessage {
 
     private int number; //execution ID for this message TODO: Shouldn't this be called 'eid'?
     private int epoch; // Epoch to which this message belongs to
@@ -36,12 +36,12 @@ public class PaxosMessage extends SystemMessage {
                               // Can be either a MAC vector or a RSA signature
 
     /**
-     * Creates a paxos message. Not used. TODO: How about making it private?
+     * Creates a consensus message. Not used. TODO: How about making it private?
      */
-    public PaxosMessage(){}
+    public ConsensusMessage(){}
 
     /**
-     * Creates a paxos message. Used by the message factory to create a COLLECT or PROPOSE message
+     * Creates a consensus message. Used by the message factory to create a COLLECT or PROPOSE message
      * TODO: How about removing the modifier, to make it visible just within the package?
      * @param paxosType This should be MessageFactory.COLLECT or MessageFactory.PROPOSE
      * @param id Consensus's execution ID
@@ -49,7 +49,7 @@ public class PaxosMessage extends SystemMessage {
      * @param from This should be this process ID
      * @param value This should be null if its a COLLECT message, or the proposed value if it is a PROPOSE message
      */
-    public PaxosMessage(int paxosType, int id,int epoch,int from, byte[] value){
+    public ConsensusMessage(int paxosType, int id,int epoch,int from, byte[] value){
 
         super(from);
 
@@ -63,16 +63,16 @@ public class PaxosMessage extends SystemMessage {
 
 
     /**
-     * Creates a paxos message. Used by the message factory to create a FREEZE message
+     * Creates a consensus message. Used by the message factory to create a FREEZE message
      * TODO: How about removing the modifier, to make it visible just within the package?
-     * @param paxosType This should be MessageFactory.FREEZE
+     * @param type This should be MessageFactory.FREEZE
      * @param id Consensus's execution ID
      * @param epoch Epoch timestamp
      * @param from This should be this process ID
      */
-    public PaxosMessage(int paxosType, int id,int epoch, int from) {
+    public ConsensusMessage(int type, int id,int epoch, int from) {
 
-        this(paxosType, id, epoch, from, null);
+        this(type, id, epoch, from, null);
 
     }
 
@@ -97,10 +97,15 @@ public class PaxosMessage extends SystemMessage {
 
         }
 
-        if(paxosType == MessageFactory.ACCEPT || paxosType == MessageFactory.COLLECT) {
+        if(this.proof != null) {
 
+            out.writeBoolean(true);
             out.writeObject(proof);
 
+        }
+        
+        else {
+            out.writeBoolean(false);
         }
 
     }
@@ -129,13 +134,12 @@ public class PaxosMessage extends SystemMessage {
 
         }
 
-        //WRITE, ACCEPT, DECIDE and FREEZE does not have associated proofs
-        if(paxosType == MessageFactory.ACCEPT) {
-
-            proof = in.readObject();
+        boolean asProof = in.readBoolean();
+        if (asProof) {
             
+            proof = in.readObject();
         }
-
+        
     }
 
     /**

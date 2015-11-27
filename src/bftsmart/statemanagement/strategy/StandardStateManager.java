@@ -24,7 +24,7 @@ import java.util.TimerTask;
 import java.util.concurrent.locks.ReentrantLock;
 
 import bftsmart.consensus.executionmanager.ExecutionManager;
-import bftsmart.consensus.messages.PaxosMessage;
+import bftsmart.consensus.messages.ConsensusMessage;
 import bftsmart.reconfiguration.views.View;
 import bftsmart.statemanagement.ApplicationState;
 import bftsmart.statemanagement.SMMessage;
@@ -211,8 +211,8 @@ public class StandardStateManager extends BaseStateManager {
                         dt.update(state);
                         
                         if (!appStateOnly && execManager.stopped()) {
-                            Queue<PaxosMessage> stoppedMsgs = execManager.getStoppedMsgs();
-                            for (PaxosMessage stopped : stoppedMsgs) {
+                            Queue<ConsensusMessage> stoppedMsgs = execManager.getStoppedMsgs();
+                            for (ConsensusMessage stopped : stoppedMsgs) {
                                 if (stopped.getNumber() > state.getLastEid() /*msg.getEid()*/)
                                     execManager.addOutOfContextMessage(stopped);
                             }

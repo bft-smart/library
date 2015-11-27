@@ -17,7 +17,7 @@ package bftsmart.communication;
 
 import bftsmart.communication.server.ServerConnection;
 import bftsmart.consensus.messages.MessageFactory;
-import bftsmart.consensus.messages.PaxosMessage;
+import bftsmart.consensus.messages.ConsensusMessage;
 import bftsmart.consensus.roles.Acceptor;
 import bftsmart.statemanagement.SMMessage;
 import bftsmart.tom.core.TOMLayer;
@@ -65,26 +65,26 @@ public class MessageHandler {
 
     @SuppressWarnings("unchecked")
     protected void processData(SystemMessage sm) {
-        if (sm instanceof PaxosMessage) {
+        if (sm instanceof ConsensusMessage) {
             
             int myId = tomLayer.controller.getStaticConf().getProcessId();
             
-            PaxosMessage paxosMsg = (PaxosMessage) sm;
+            ConsensusMessage consMsg = (ConsensusMessage) sm;
 
-            if (tomLayer.controller.getStaticConf().getUseMACs() == 0 || paxosMsg.authenticated || paxosMsg.getSender() == myId) acceptor.deliver(paxosMsg);
-            else if (paxosMsg.getPaxosType() == MessageFactory.ACCEPT && paxosMsg.getProof() != null) {
+            if (tomLayer.controller.getStaticConf().getUseMACs() == 0 || consMsg.authenticated || consMsg.getSender() == myId) acceptor.deliver(consMsg);
+            else if (consMsg.getPaxosType() == MessageFactory.ACCEPT && consMsg.getProof() != null) {
                                         
                 //We are going to verify the MAC vector at the algorithm level
-                HashMap<Integer, byte[]> macVector = (HashMap<Integer, byte[]>) paxosMsg.getProof();
+                HashMap<Integer, byte[]> macVector = (HashMap<Integer, byte[]>) consMsg.getProof();
                                
                 byte[] recvMAC = macVector.get(myId);
                 
-                PaxosMessage pm = new PaxosMessage(MessageFactory.ACCEPT,paxosMsg.getNumber(),
-                        paxosMsg.getEpoch(), paxosMsg.getSender(), paxosMsg.getValue());
+                ConsensusMessage cm = new ConsensusMessage(MessageFactory.ACCEPT,consMsg.getNumber(),
+                        consMsg.getEpoch(), consMsg.getSender(), consMsg.getValue());
                 
                 ByteArrayOutputStream bOut = new ByteArrayOutputStream(248);
                 try {
-                    new ObjectOutputStream(bOut).writeObject(pm);
+                    new ObjectOutputStream(bOut).writeObject(cm);
                 } catch (IOException ex) {
                     ex.printStackTrace();
                 }
@@ -98,7 +98,7 @@ public class MessageHandler {
                 /*byte[] k = tomLayer.getCommunication().getServersConn().getSecretKey(paxosMsg.getSender()).getEncoded();
                 SecretKeySpec key = new SecretKeySpec(new String(k).substring(0, 8).getBytes(), "DES");*/
                 
-                SecretKey key = tomLayer.getCommunication().getServersConn().getSecretKey(paxosMsg.getSender());
+                SecretKey key = tomLayer.getCommunication().getServersConn().getSecretKey(consMsg.getSender());
                 try {
                     this.mac.init(key);                   
                     myMAC = this.mac.doFinal(data);
@@ -107,7 +107,7 @@ public class MessageHandler {
                 }
                 
                 if (recvMAC != null && myMAC != null && Arrays.equals(recvMAC, myMAC))
-                    acceptor.deliver(paxosMsg);
+                    acceptor.deliver(consMsg);
                 else {
                     Logger.println("(MessageHandler.processData) WARNING: invalid MAC from " + sm.getSender());
                     System.out.println("(MessageHandler.processData) WARNING: invalid MAC from " + sm.getSender());

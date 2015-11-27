@@ -12,7 +12,7 @@ import bftsmart.consensus.executionmanager.Consensus;
 import bftsmart.consensus.executionmanager.ExecutionManager;
 import bftsmart.consensus.executionmanager.LeaderModule;
 import bftsmart.consensus.executionmanager.TimestampValuePair;
-import bftsmart.consensus.messages.PaxosMessage;
+import bftsmart.consensus.messages.ConsensusMessage;
 import bftsmart.consensus.roles.Acceptor;
 import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.statemanagement.StateManager;
@@ -227,7 +227,7 @@ public class Synchronizer {
 
         int last = -1;
         byte[] lastValue = null;
-        Set<PaxosMessage> proof = null;
+        Set<ConsensusMessage> proof = null;
 
         ByteArrayInputStream bis;
         ObjectInputStream ois;
@@ -242,7 +242,7 @@ public class Synchronizer {
                 last = ois.readInt();
 
                 lastValue = (byte[]) ois.readObject();
-                proof = (Set<PaxosMessage>) ois.readObject();
+                proof = (Set<ConsensusMessage>) ois.readObject();
 
                 //TODO: Proof is missing!
             }
@@ -569,7 +569,7 @@ public class Synchronizer {
                         }
 
                         byte[] decision = cons.getDecisionEpoch().propValue;
-                        Set<PaxosMessage> proof = cons.getDecisionEpoch().getProof();
+                        Set<ConsensusMessage> proof = cons.getDecisionEpoch().getProof();
 
                         out.writeObject(decision);
                         out.writeObject(proof);
@@ -702,7 +702,7 @@ public class Synchronizer {
                     }
 
                     byte[] decision = cons.getDecisionEpoch().propValue;
-                    Set<PaxosMessage> proof = cons.getDecisionEpoch().getProof();
+                    Set<ConsensusMessage> proof = cons.getDecisionEpoch().getProof();
 
                     lastData = new LastEidData(this.controller.getStaticConf().getProcessId(), last, decision, proof);
                     // TODO: WILL BE NECESSARY TO ADD A PROOF!!!??

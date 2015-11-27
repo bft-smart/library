@@ -28,7 +28,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import bftsmart.consensus.Decision;
 import bftsmart.consensus.messages.MessageFactory;
-import bftsmart.consensus.messages.PaxosMessage;
+import bftsmart.consensus.messages.ConsensusMessage;
 import bftsmart.consensus.roles.Acceptor;
 import bftsmart.consensus.roles.Proposer;
 import bftsmart.reconfiguration.ServerViewController;
@@ -55,13 +55,13 @@ public final class ExecutionManager {
     private Map<Integer, Consensus> consensuses = new TreeMap<Integer, Consensus>(); // Consensuses
     private ReentrantLock consensusesLock = new ReentrantLock(); //lock for consensuses table
     // Paxos messages that were out of context (that didn't belong to the consensus that was/is is progress
-    private Map<Integer, List<PaxosMessage>> outOfContext = new HashMap<Integer, List<PaxosMessage>>();
+    private Map<Integer, List<ConsensusMessage>> outOfContext = new HashMap<Integer, List<ConsensusMessage>>();
     // Proposes that were out of context (that belonged to future consensuses, and not the one running at the time)
-    private Map<Integer, PaxosMessage> outOfContextProposes = new HashMap<Integer, PaxosMessage>();
+    private Map<Integer, ConsensusMessage> outOfContextProposes = new HashMap<Integer, ConsensusMessage>();
     private ReentrantLock outOfContextLock = new ReentrantLock(); //lock for out of context
     private boolean stopped = false; // Is the execution manager stopped?
     // When the execution manager is stopped, incoming paxos messages are stored here
-    private Queue<PaxosMessage> stoppedMsgs = new LinkedList<PaxosMessage>();
+    private Queue<ConsensusMessage> stoppedMsgs = new LinkedList<ConsensusMessage>();
     private Epoch stoppedEpoch = null; // epoch at which the current consensus was stopped
     private ReentrantLock stoppedMsgsLock = new ReentrantLock(); //lock for stopped messages
     private TOMLayer tomLayer; // TOM layer associated with this execution manager
@@ -134,7 +134,7 @@ public final class ExecutionManager {
         return !stoppedMsgs.isEmpty();
     }
 
-    public Queue<PaxosMessage> getStoppedMsgs() {
+    public Queue<ConsensusMessage> getStoppedMsgs() {
         return stoppedMsgs;
     }
     
@@ -168,7 +168,7 @@ public final class ExecutionManager {
 
         //process stopped messages
         while (!stoppedMsgs.isEmpty()) {
-            PaxosMessage pm = stoppedMsgs.remove();
+            ConsensusMessage pm = stoppedMsgs.remove();
             if (pm.getNumber() > tomLayer.getLastExec()) acceptor.processMessage(pm);
         }
         stoppedMsgsLock.unlock();
@@ -182,7 +182,7 @@ public final class ExecutionManager {
      * @param msg the received message
      * @return true in case the message can be executed, false otherwise
      */
-    public final boolean checkLimits(PaxosMessage msg) {
+    public final boolean checkLimits(ConsensusMessage msg) {
         outOfContextLock.lock();
         
         int lastConsId = tomLayer.getLastExec();
@@ -366,14 +366,14 @@ public final class ExecutionManager {
     public boolean isDecidable(int cid) {
         if (receivedOutOfContextPropose(cid)) {
             Consensus cons = getConsensus(cid);
-            PaxosMessage prop = outOfContextProposes.get(cons.getId());
+            ConsensusMessage prop = outOfContextProposes.get(cons.getId());
             Epoch epoch = cons.getEpoch(prop.getEpoch(), controller);
             byte[] propHash = tomLayer.computeHash(prop.getValue());
-            List<PaxosMessage> msgs = outOfContext.get(cid);
+            List<ConsensusMessage> msgs = outOfContext.get(cid);
             int countWrites = 0;
             int countAccepts = 0;
             if (msgs != null) {
-                for (PaxosMessage msg : msgs) {
+                for (ConsensusMessage msg : msgs) {
                     
                     if (msg.getEpoch() == epoch.getTimestamp() &&
                             Arrays.equals(propHash, msg.getValue())) {
@@ -397,7 +397,7 @@ public final class ExecutionManager {
         outOfContextLock.lock();
         /******* BEGIN OUTOFCONTEXT CRITICAL SECTION *******/
         
-        PaxosMessage prop = outOfContextProposes.remove(consensus.getId());
+        ConsensusMessage prop = outOfContextProposes.remove(consensus.getId());
         if (prop != null) {
             Logger.println("(ExecutionManager.processOutOfContextPropose) (" + consensus.getId()
                     + ") Processing out of context propose");
@@ -413,13 +413,13 @@ public final class ExecutionManager {
         /******* BEGIN OUTOFCONTEXT CRITICAL SECTION *******/
         
         //then we have to put the pending paxos messages
-        List<PaxosMessage> messages = outOfContext.remove(consensus.getId());
+        List<ConsensusMessage> messages = outOfContext.remove(consensus.getId());
         if (messages != null) {
             Logger.println("(ExecutionManager.processOutOfContext) (" + consensus.getId()
                     + ") Processing other " + messages.size()
                     + " out of context messages.");
 
-            for (Iterator<PaxosMessage> i = messages.iterator(); i.hasNext();) {
+            for (Iterator<ConsensusMessage> i = messages.iterator(); i.hasNext();) {
                 acceptor.processMessage(i.next());
                 if (consensus.isDecided()) {
                     Logger.println("(ExecutionManager.processOutOfContext) consensus "
@@ -441,16 +441,16 @@ public final class ExecutionManager {
      *
      * @param m Out of context message to be stored
      */
-    public void addOutOfContextMessage(PaxosMessage m) {
+    public void addOutOfContextMessage(ConsensusMessage m) {
         outOfContextLock.lock();
         /******* BEGIN OUTOFCONTEXT CRITICAL SECTION *******/
         if (m.getPaxosType() == MessageFactory.PROPOSE) {
             Logger.println("(ExecutionManager.addOutOfContextMessage) adding " + m);
             outOfContextProposes.put(m.getNumber(), m);
         } else {
-            List<PaxosMessage> messages = outOfContext.get(m.getNumber());
+            List<ConsensusMessage> messages = outOfContext.get(m.getNumber());
             if (messages == null) {
-                messages = new LinkedList<PaxosMessage>();
+                messages = new LinkedList<ConsensusMessage>();
                 outOfContext.put(m.getNumber(), messages);
             }
             Logger.println("(ExecutionManager.addOutOfContextMessage) adding " + m);

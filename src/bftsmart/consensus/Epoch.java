@@ -16,7 +16,7 @@ limitations under the License.
 package bftsmart.consensus;
 
 import bftsmart.consensus.executionmanager.Consensus;
-import bftsmart.consensus.messages.PaxosMessage;
+import bftsmart.consensus.messages.ConsensusMessage;
 import java.io.Serializable;
 import java.util.Arrays;
 import org.apache.commons.codec.binary.Base64;
@@ -48,7 +48,7 @@ public class Epoch implements Serializable {
     public byte[] propValue = null; // proposed value
     public TOMMessage[] deserializedPropValue = null; //utility var
     public byte[] propValueHash = null; // proposed value hash
-    public HashSet<PaxosMessage> proof; // proof from other processes
+    public HashSet<ConsensusMessage> proof; // proof from other processes
 
     private View lastView = null;
 
@@ -63,7 +63,7 @@ public class Epoch implements Serializable {
         this.consensus = parent;
         this.timestamp = timestamp;
         this.controller = controller;
-        this.proof = new HashSet<PaxosMessage>();
+        this.proof = new HashSet<ConsensusMessage>();
         //ExecutionManager manager = consensus.getManager();
 
         this.lastView = controller.getCurrentView();
@@ -152,11 +152,11 @@ public class Epoch implements Serializable {
     }
 
 
-    public void addToProof(PaxosMessage pm) {
+    public void addToProof(ConsensusMessage pm) {
         proof.add(pm);
     }
     
-    public Set<PaxosMessage> getProof() {
+    public Set<ConsensusMessage> getProof() {
         return proof;
     }
     /**
@@ -405,6 +405,6 @@ public class Epoch implements Serializable {
         Arrays.fill((Object[]) write, null);
         Arrays.fill((Object[]) accept, null);
         
-        this.proof = new HashSet<PaxosMessage>();
+        this.proof = new HashSet<ConsensusMessage>();
     }
 }

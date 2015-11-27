@@ -24,7 +24,6 @@ public class MessageFactory{
     public static final int PROPOSE = 44781;
     public static final int WRITE    = 44782;
     public static final int ACCEPT  = 44783;
-    public static final int COLLECT = 44786;
 
     private int from; // Replica ID of the process which sent this message
 
@@ -46,9 +45,9 @@ public class MessageFactory{
      * @param proof Proofs from other replicas
      * @return A paxos message of the PROPOSE type, with the specified id, epoch, value, and proof
      */
-    public PaxosMessage createPropose(int id, int epoch, byte[] value) {
+    public ConsensusMessage createPropose(int id, int epoch, byte[] value) {
 
-        return new PaxosMessage(PROPOSE, id, epoch, from, value);
+        return new ConsensusMessage(PROPOSE, id, epoch, from, value);
 
     }
 
@@ -59,9 +58,9 @@ public class MessageFactory{
      * @param value Write value
      * @return A consensus message of the WRITE type, with the specified id, epoch, and value
      */
-    public PaxosMessage createWrite(int id, int epoch, byte[] value) {
+    public ConsensusMessage createWrite(int id, int epoch, byte[] value) {
 
-        return new PaxosMessage(WRITE,id,epoch, from, value);
+        return new ConsensusMessage(WRITE,id,epoch, from, value);
 
     }
 
@@ -72,9 +71,9 @@ public class MessageFactory{
      * @param value Accepted value
      * @return A consensus message of the ACCEPT type, with the specified id, epoch, and value
      */
-    public PaxosMessage createAccept(int id, int epoch, byte[] value) {
+    public ConsensusMessage createAccept(int id, int epoch, byte[] value) {
 
-        return new PaxosMessage(ACCEPT,id,epoch, from, value);
+        return new ConsensusMessage(ACCEPT,id,epoch, from, value);
 
     }
 

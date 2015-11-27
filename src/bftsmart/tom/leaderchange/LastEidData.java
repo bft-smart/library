@@ -15,7 +15,7 @@ limitations under the License.
 */
 package bftsmart.tom.leaderchange;
 
-import bftsmart.consensus.messages.PaxosMessage;
+import bftsmart.consensus.messages.ConsensusMessage;
 import java.io.Externalizable;
 import java.io.IOException;
 import java.io.ObjectInput;
@@ -32,7 +32,7 @@ public class LastEidData implements Externalizable {
     private int pid; // process id
     private int eid; // execution id
     private byte[] eidDecision; // decision value
-    private Set<PaxosMessage>  eidProof; // proof of the decision
+    private Set<ConsensusMessage>  eidProof; // proof of the decision
     
     /**
      * Empty constructor
@@ -52,7 +52,7 @@ public class LastEidData implements Externalizable {
      * @param eidDecision decision value
      * @param eidProof proof of the decision
      */
-    public LastEidData(int pid, int eid, byte[] eidDecision, Set<PaxosMessage> eidProof) {
+    public LastEidData(int pid, int eid, byte[] eidDecision, Set<ConsensusMessage> eidProof) {
 
         this.pid = pid;
         this.eid = eid;
@@ -80,7 +80,7 @@ public class LastEidData implements Externalizable {
      * Get proof of the decision
      * @return proof of the decision
      */
-    public Set<PaxosMessage>  getEidProof() {
+    public Set<ConsensusMessage>  getEidProof() {
         return eidProof;
     }
 
@@ -120,6 +120,6 @@ public class LastEidData implements Externalizable {
         pid = in.readInt();
         eid = in.readInt();
         eidDecision = (byte[]) in.readObject();
-        eidProof = (Set<PaxosMessage>) in.readObject();
+        eidProof = (Set<ConsensusMessage>) in.readObject();
     }
 }

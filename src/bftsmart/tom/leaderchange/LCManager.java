@@ -29,7 +29,7 @@ import java.util.logging.Logger;
 
 import bftsmart.consensus.executionmanager.TimestampValuePair;
 import bftsmart.consensus.messages.MessageFactory;
-import bftsmart.consensus.messages.PaxosMessage;
+import bftsmart.consensus.messages.ConsensusMessage;
 import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.tom.core.TOMLayer;
 import bftsmart.tom.core.messages.TOMMessage;
@@ -809,7 +809,7 @@ public class LCManager {
                                              // any proof
         
         byte[] hashedValue = md.digest(led.getEidDecision());
-        Set<PaxosMessage> PaxosMessages = led.getEidProof();
+        Set<ConsensusMessage> ConsensusMessages = led.getEidProof();
         int myId = tomLayer.controller.getStaticConf().getProcessId();
         int certificateCurrentView = (2*tomLayer.controller.getCurrentViewF()) + 1;
         int certificateLastView = -1;
@@ -818,10 +818,10 @@ public class LCManager {
         SecretKey secretKey = null;
         PublicKey pubRSAKey = null;
             
-        for (PaxosMessage paxosMsg : PaxosMessages) {
+        for (ConsensusMessage consMsg : ConsensusMessages) {
             
-            PaxosMessage pm = new PaxosMessage(MessageFactory.ACCEPT,paxosMsg.getNumber(),
-                    paxosMsg.getEpoch(), paxosMsg.getSender(), paxosMsg.getValue());
+            ConsensusMessage pm = new ConsensusMessage(MessageFactory.ACCEPT,consMsg.getNumber(),
+                    consMsg.getEpoch(), consMsg.getSender(), consMsg.getValue());
 
             ByteArrayOutputStream bOut = new ByteArrayOutputStream(248);
             try {
@@ -832,17 +832,17 @@ public class LCManager {
 
             byte[] data = bOut.toByteArray();
 
-            if (paxosMsg.getProof() instanceof HashMap) { // Certificate is made of MAC vector
+            if (consMsg.getProof() instanceof HashMap) { // Certificate is made of MAC vector
                 
                 bftsmart.tom.util.Logger.println("(LCManager.hasValidProof) Proof made of MAC vector");
             
-                HashMap<Integer, byte[]> macVector = (HashMap<Integer, byte[]>) paxosMsg.getProof();
+                HashMap<Integer, byte[]> macVector = (HashMap<Integer, byte[]>) consMsg.getProof();
                                
                 byte[] recvMAC = macVector.get(myId);
 
                 byte[] myMAC = null;
                                 
-                secretKey = tomLayer.getCommunication().getServersConn().getSecretKey(paxosMsg.getSender());
+                secretKey = tomLayer.getCommunication().getServersConn().getSecretKey(consMsg.getSender());
                 try {
                     this.mac.init(secretKey);                   
                    myMAC = this.mac.doFinal(data);
@@ -851,17 +851,17 @@ public class LCManager {
                 }
             
                 if (recvMAC != null && myMAC != null && Arrays.equals(recvMAC, myMAC) &&
-                        Arrays.equals(paxosMsg.getValue(), hashedValue) &&
-                        paxosMsg.getNumber() == led.getEid()) {
+                        Arrays.equals(consMsg.getValue(), hashedValue) &&
+                        consMsg.getNumber() == led.getEid()) {
                 
                     countValid++;
                 }
             } else { // certificate is made of signatures
                 
                 bftsmart.tom.util.Logger.println("(LCManager.hasValidProof) Proof made of Signatures");
-                pubRSAKey = SVController.getStaticConf().getRSAPublicKey(paxosMsg.getSender());
+                pubRSAKey = SVController.getStaticConf().getRSAPublicKey(consMsg.getSender());
                    
-                byte[] signature = (byte[]) paxosMsg.getProof();
+                byte[] signature = (byte[]) consMsg.getProof();
                             
                 if (TOMUtil.verifySignature(pubRSAKey, data, signature)) countValid++;
    
