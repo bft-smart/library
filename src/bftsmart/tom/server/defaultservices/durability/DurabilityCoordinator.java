@@ -75,7 +75,11 @@ public abstract class DurabilityCoordinator implements Recoverable, BatchExecuta
 	}
 
 	@Override
-	public byte[][] executeBatch(byte[][] commands, MessageContext[] msgCtx) {
+        public byte[][] executeBatch(byte[][] commands, MessageContext[] msgCtxs) {
+            return executeBatch(commands, msgCtxs, false);
+        }
+    
+        private byte[][] executeBatch(byte[][] commands, MessageContext[] msgCtx, boolean noop) {
 		int eid = msgCtx[msgCtx.length-1].getConsensusId();
 
 		int[] eids = consensusIds(msgCtx);
@@ -86,11 +90,14 @@ public abstract class DurabilityCoordinator implements Recoverable, BatchExecuta
 		// replicas is supposed to take a checkpoint, so the replica will only execute
 		// the command and return the replies
 		if(checkpointIndex == -1) {
-			stateLock.lock();
+			
+                    if (!noop) {
+                        stateLock.lock();
 			replies = appExecuteBatch(commands, msgCtx);
 			stateLock.unlock();
-			Logger.println("(DurabilityCoordinator.executeBatch) Storing message batch in the state log for consensus " + eid);
-			saveCommands(commands, msgCtx);
+                    }
+                    Logger.println("(DurabilityCoordinator.executeBatch) Storing message batch in the state log for consensus " + eid);
+                    saveCommands(commands, msgCtx);
 		} else {
 			// there is a replica supposed to take the checkpoint. In this case, the commands
 			// has to be executed in two steps. First the batch of commands containing commands
@@ -115,10 +122,13 @@ public abstract class DurabilityCoordinator implements Recoverable, BatchExecuta
 
 			// execute the first half
 			eid = msgCtx[checkpointIndex].getConsensusId();
-			stateLock.lock();
-			firstHalfReplies = appExecuteBatch(firstHalf, msgCtx);
-			stateLock.unlock();
-
+			
+                        if (!noop) {
+                            stateLock.lock();
+                            firstHalfReplies = appExecuteBatch(firstHalf, firstHalfMsgCtx);
+                            stateLock.unlock();
+                        }
+                        
 			if (eid % globalCheckpointPeriod == replicaCkpIndex && lastCkpEid < eid ) {
 				Logger.println("(DurabilityCoordinator.executeBatch) Performing checkpoint for consensus " + eid);
 				stateLock.lock();
@@ -137,10 +147,13 @@ public abstract class DurabilityCoordinator implements Recoverable, BatchExecuta
 			if(secondHalf.length > 0) {
 				//	        	System.out.println("----THERE IS A SECOND HALF----");
 				eid = msgCtx[msgCtx.length - 1].getConsensusId();
-				stateLock.lock();
-				secondHalfReplies = appExecuteBatch(secondHalf, msgCtx);
-				stateLock.unlock();
-
+				if (!noop) {
+                                    
+                                    stateLock.lock();
+                                    secondHalfReplies = appExecuteBatch(secondHalf, secondHalfMsgCtx);
+                                    stateLock.unlock();
+                                    
+                                }
 				Logger.println("(DurabilityCoordinator.executeBatch) Storing message batch in the state log for consensus " + eid);
 				saveCommands(secondHalf, secondHalfMsgCtx);
 
@@ -249,7 +262,11 @@ public abstract class DurabilityCoordinator implements Recoverable, BatchExecuta
 					CommandsInfo cmdInfo = state.getMessageBatch(eid); 
 					byte[][] commands = cmdInfo.commands;
 					MessageContext[] msgCtx = cmdInfo.msgCtx;
-					if (commands == null || commands.length <= 0) continue;
+
+                                        if (commands == null || commands.length <= 0) { //TODO: change 'commands.length <= 0' so that it verifies msgCtx if the message is noOp
+                                            continue;
+                                        }
+
 					appExecuteBatch(commands, msgCtx);
 				} catch (Exception e) {
 					e.printStackTrace(System.err);
@@ -392,7 +409,17 @@ public abstract class DurabilityCoordinator implements Recoverable, BatchExecuta
 		return currentStateHash;
 	}
 
-	public abstract void installSnapshot(byte[] state);
+        @Override
+        public void noOp(int lastEid) {
+
+            MessageContext msgCtx = new MessageContext(-1, new byte[0], -1, lastEid, -1, null);
+            msgCtx.setLastInBatch();
+
+            executeBatch(new byte[1][0], new MessageContext[]{msgCtx}, true);
+
+        }
+        
+        public abstract void installSnapshot(byte[] state);
 	public abstract byte[] getSnapshot();
 	public abstract byte[][] appExecuteBatch(byte[][] commands, MessageContext[] msgCtxs);
 }
