@@ -82,7 +82,7 @@ public class DiskStateLog extends StateLog {
 	 */
         @Override
 	public void addMessageBatch(byte[][] commands, MessageContext[] msgCtx, int consensusId) {
-		CommandsInfo command = new CommandsInfo(commands);
+		CommandsInfo command = new CommandsInfo(commands, msgCtx);
 		if (isToLog) {
 			if(log == null)
 				createLogFile();
