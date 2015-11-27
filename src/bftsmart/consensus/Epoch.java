@@ -15,7 +15,6 @@ limitations under the License.
 */
 package bftsmart.consensus;
 
-import bftsmart.consensus.executionmanager.Consensus;
 import bftsmart.consensus.messages.ConsensusMessage;
 import java.io.Serializable;
 import java.util.Arrays;

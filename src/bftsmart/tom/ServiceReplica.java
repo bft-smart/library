@@ -23,8 +23,8 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import bftsmart.communication.ServerCommunicationSystem;
-import bftsmart.consensus.executionmanager.ExecutionManager;
-import bftsmart.consensus.executionmanager.LeaderModule;
+import bftsmart.tom.core.ExecutionManager;
+import bftsmart.tom.core.LeaderModule;
 import bftsmart.consensus.messages.MessageFactory;
 import bftsmart.consensus.roles.Acceptor;
 import bftsmart.consensus.roles.Proposer;

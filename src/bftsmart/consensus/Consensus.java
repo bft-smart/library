@@ -13,8 +13,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package bftsmart.consensus.executionmanager;
+package bftsmart.consensus;
 
+import bftsmart.consensus.TimestampValuePair;
 import bftsmart.consensus.Epoch;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -23,6 +24,7 @@ import java.util.Set;
 import java.util.concurrent.locks.ReentrantLock;
 
 import bftsmart.consensus.Decision;
+import bftsmart.tom.core.ExecutionManager;
 import bftsmart.reconfiguration.ServerViewController;
 
 
@@ -60,7 +62,7 @@ public class Consensus {
      * @param manager Execution manager for this replica's consensus instances
      * @param decision Decision instance to which this consensus works for.
      */
-    protected Consensus(ExecutionManager manager, Decision decision) {
+    public Consensus(ExecutionManager manager, Decision decision) {
         this.manager = manager;
         this.decision = decision;
     }

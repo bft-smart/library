@@ -22,9 +22,9 @@ import java.util.Arrays;
 
 import bftsmart.communication.ServerCommunicationSystem;
 import bftsmart.communication.server.ServerConnection;
-import bftsmart.consensus.executionmanager.Consensus;
-import bftsmart.consensus.executionmanager.ExecutionManager;
-import bftsmart.consensus.executionmanager.LeaderModule;
+import bftsmart.consensus.Consensus;
+import bftsmart.tom.core.ExecutionManager;
+import bftsmart.tom.core.LeaderModule;
 import bftsmart.consensus.Epoch;
 import bftsmart.consensus.messages.MessageFactory;
 import bftsmart.consensus.messages.ConsensusMessage;

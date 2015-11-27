@@ -21,7 +21,7 @@ import java.io.ObjectInput;
 import java.io.ObjectOutput;
 import java.util.HashSet;
 
-import bftsmart.consensus.executionmanager.TimestampValuePair;
+import bftsmart.consensus.TimestampValuePair;
 
 /**
  * This class represents a COLLECT object with the information about the running consensus

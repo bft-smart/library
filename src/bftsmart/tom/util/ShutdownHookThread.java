@@ -16,8 +16,8 @@ limitations under the License.
 package bftsmart.tom.util;
 
 import bftsmart.communication.ServerCommunicationSystem;
-import bftsmart.consensus.executionmanager.ExecutionManager;
-import bftsmart.consensus.executionmanager.LeaderModule;
+import bftsmart.tom.core.ExecutionManager;
+import bftsmart.tom.core.LeaderModule;
 import bftsmart.consensus.Epoch;
 import bftsmart.consensus.roles.Acceptor;
 import bftsmart.tom.core.TOMLayer;

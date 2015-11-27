@@ -22,7 +22,7 @@ import bftsmart.consensus.roles.Acceptor;
 import bftsmart.statemanagement.SMMessage;
 import bftsmart.tom.core.TOMLayer;
 import bftsmart.tom.core.messages.TOMMessage;
-import bftsmart.tom.core.timer.ForwardedMessage;
+import bftsmart.tom.core.messages.ForwardedMessage;
 import bftsmart.tom.leaderchange.LCMessage;
 import bftsmart.tom.util.Logger;
 import bftsmart.tom.util.TOMUtil;

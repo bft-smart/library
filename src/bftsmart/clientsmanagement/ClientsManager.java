@@ -24,7 +24,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import bftsmart.communication.ServerCommunicationSystem;
 import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.tom.core.messages.TOMMessage;
-import bftsmart.tom.core.timer.RequestsTimer;
+import bftsmart.tom.leaderchange.RequestsTimer;
 import bftsmart.tom.util.Logger;
 
 
