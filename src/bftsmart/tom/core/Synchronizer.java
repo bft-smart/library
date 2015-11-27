@@ -438,7 +438,7 @@ public class Synchronizer {
         ByteArrayOutputStream bos = null;
 
         // pass to the leader change phase if more than f messages have been received already
-        if (enterFirstPhase && lcManager.getStopsSize(nextReg) > this.controller.getQuorumF() && lcManager.getNextReg() == lcManager.getLastReg()) {
+        if (enterFirstPhase && lcManager.getStopsSize(nextReg) > this.controller.getCurrentViewF() && lcManager.getNextReg() == lcManager.getLastReg()) {
 
             Logger.println("(Synchronizer.startSynchronization) initialize synch phase");
             requestsTimer.Enabled(false);
@@ -502,9 +502,9 @@ public class Synchronizer {
         }
 
         if (this.controller.getStaticConf().isBFT()) {
-            condition = lcManager.getStopsSize(nextReg) > this.controller.getCertificateQuorum() && lcManager.getNextReg() > lcManager.getLastReg();
+            condition = lcManager.getStopsSize(nextReg) > (2 * this.controller.getCurrentViewF()) && lcManager.getNextReg() > lcManager.getLastReg();
         } else {
-            condition = (lcManager.getStopsSize(nextReg) > this.controller.getQuorumAccept() && lcManager.getNextReg() > lcManager.getLastReg());
+            condition = (lcManager.getStopsSize(nextReg) > this.controller.getQuorum() && lcManager.getNextReg() > lcManager.getLastReg());
         }
         
         // May I proceed to the synchronization phase?

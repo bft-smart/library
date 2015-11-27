@@ -69,11 +69,11 @@ public abstract class BaseStateManager implements StateManager {
     }
 
     protected boolean moreThan2F_Regencies(int regency) {
-        return senderRegencies.size() > SVController.getQuorumAccept();
+        return senderRegencies.size() > SVController.getQuorum();
     }
 
     protected boolean moreThan2F_Leaders(int leader) {
-        return senderLeaders.size() > SVController.getQuorumAccept();
+        return senderLeaders.size() > SVController.getQuorum();
     }
 
     protected boolean moreThan2F_Views(View view) {
@@ -84,7 +84,7 @@ public abstract class BaseStateManager implements StateManager {
                 counter++;
             }
         }
-        boolean result = counter > SVController.getQuorumAccept();
+        boolean result = counter > SVController.getQuorum();
         views = null;
         return result;
     }
@@ -186,7 +186,7 @@ public abstract class BaseStateManager implements StateManager {
             senderEids = new HashMap<Integer, Integer>();
         }
         senderEids.put(smsg.getSender(), smsg.getEid());
-        if (senderEids.size() >= SVController.getQuorumAccept()) {
+        if (senderEids.size() >= SVController.getQuorum()) {
             HashMap<Integer, Integer> eids = new HashMap<Integer, Integer>();
             for (int value : senderEids.values()) {
                 Integer count = eids.get(value);
@@ -197,7 +197,7 @@ public abstract class BaseStateManager implements StateManager {
                 }
             }
             for (int key : eids.keySet()) {
-                if (eids.get(key) >= SVController.getQuorumAccept()) {
+                if (eids.get(key) >= SVController.getQuorum()) {
                     if (key == lastEid) {
                         System.out.println("QUORUM OF REPLICAS REPLIED WITH EID " + key);
                         dt.deliverLock();

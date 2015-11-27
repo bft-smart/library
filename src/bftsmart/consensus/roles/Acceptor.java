@@ -265,7 +265,7 @@ public final class Acceptor {
         Logger.println("(Acceptor.computeWrite) I have " + writeAccepted +
                 " WRITEs for " + cid + "," + epoch.getTimestamp());
 
-        if (writeAccepted > controller.getQuorumAccept() && Arrays.equals(value, epoch.propValueHash)) {
+        if (writeAccepted > controller.getQuorum() && Arrays.equals(value, epoch.propValueHash)) {
                         
             if (!epoch.isAcceptSetted(me)) {
                 
@@ -405,7 +405,7 @@ public final class Acceptor {
         Logger.println("(Acceptor.computeAccept) I have " + epoch.countAccept(value) +
                 " ACCEPTs for " + cid + "," + epoch.getTimestamp());
 
-        if (epoch.countAccept(value) > controller.getQuorumAccept() && !epoch.getConsensus().isDecided()) {
+        if (epoch.countAccept(value) > controller.getQuorum() && !epoch.getConsensus().isDecided()) {
             Logger.println("(Acceptor.computeAccept) Deciding " + cid);
             decide(epoch, value);
         }

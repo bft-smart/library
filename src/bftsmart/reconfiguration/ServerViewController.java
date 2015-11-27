@@ -36,11 +36,8 @@ public class ServerViewController extends ViewController {
     public static final int REMOVE_SERVER = 1;
     public static final int CHANGE_F = 2;
     
-    private int quorumF; // f replicas
-    private int quorum2F; // f * 2 replicas
-    private int quorumAccept; // ((n + f) / 2) replicas
-    private int quorumCFT_Accept; // Quorum para caso CFT
-    private int quorumFastDecide; // ((n + 3 * f) / 2) replicas
+    private int quorumBFT; // ((n + f) / 2) replicas
+    private int quorumCFT; // (n / 2) replicas
     private int[] otherProcesses;
     private int[] lastJoinStet;
     private List<TOMMessage> updates = new LinkedList<TOMMessage>();
@@ -307,11 +304,8 @@ public class ServerViewController extends ViewController {
                 }
             }
 
-            this.quorumF = this.currentView.getF();
-            this.quorum2F = 2 * this.quorumF;
-            this.quorumAccept = (int) Math.ceil((this.currentView.getN() + this.quorumF) / 2);
-            this.quorumCFT_Accept = (int) Math.ceil(this.currentView.getN() / 2);
-            this.quorumFastDecide = (int) Math.ceil((this.currentView.getN() + 3 * this.quorumF) / 2);
+            this.quorumBFT = (int) Math.ceil((this.currentView.getN() + this.currentView.getF()) / 2);
+            this.quorumCFT = (int) Math.ceil(this.currentView.getN() / 2);
         } else if (this.currentView != null && this.currentView.isMember(getStaticConf().getProcessId())) {
             //TODO: Left the system in newView -> LEAVE
             //CODE for LEAVE   
@@ -325,26 +319,8 @@ public class ServerViewController extends ViewController {
         return quorum2F;
     }*/
     
-    /**
-      * This is the certificate quorum ncessary for some parts of the protocol.
-      * Byzantine case = 2f+1
-      * CFT case = f+1
-      * @return
-      */
-     public int getCertificateQuorum() {
-     	//return quorum2F;
-     	return getStaticConf().isBFT() ? quorum2F : quorumF;
-    }
-     
-    public int getQuorumF() {
-        return quorumF;
-    }
 
-    public int getQuorumFastDecide() {
-        return quorumFastDecide;
-    }
-
-    public int getQuorumAccept() {
-        return getStaticConf().isBFT() ? quorumAccept : quorumCFT_Accept;
+    public int getQuorum() {
+        return getStaticConf().isBFT() ? quorumBFT : quorumCFT;
     }
 }
