@@ -30,23 +30,25 @@ public class MessageContext implements Serializable {
 	
 	private static final long serialVersionUID = -3757195646384786213L;
 	
-	private long timestamp;
+    private long timestamp;
     private byte[] nonces;
     private int regency;
     private int consensusId;
     private int sender;
     private TOMMessage firstInBatch; //to be replaced by a statistics class
     private boolean lastInBatch; // indicates that the command is the last in the batch. Used for logging
-
+    private boolean noOp;
+    
     public boolean readOnly = false;
     
-    public MessageContext(long timestamp, byte[] nonces, int regency, int consensusId, int sender, TOMMessage firstInBatch) {
+    public MessageContext(long timestamp, byte[] nonces, int regency, int consensusId, int sender, TOMMessage firstInBatch, boolean noOp) {
         this.timestamp = timestamp;
         this.nonces = nonces;
         this.regency = regency;
         this.consensusId = consensusId;
         this.sender = sender;
         this.firstInBatch = firstInBatch;
+        this.noOp = noOp;
     }
 
     /**
@@ -104,6 +106,10 @@ public class MessageContext implements Serializable {
     
     public boolean isLastInBatch() {
     	return lastInBatch;
+    }
+
+    public boolean isNoOp() {
+        return noOp;
     }
 
 }

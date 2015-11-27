@@ -51,7 +51,7 @@ public abstract class DefaultSingleRecoverable implements Recoverable, SingleExe
         
     private StateLog log;
     private List<byte[]> commands = new ArrayList<byte[]>();
-    private List<MessageContext> msgCtxs = new ArrayList<MessageContext>();
+    private List<MessageContext> msgContexts = new ArrayList<MessageContext>();
     
     private StateManager stateManager;
     
@@ -83,7 +83,7 @@ public abstract class DefaultSingleRecoverable implements Recoverable, SingleExe
         }
         
         commands.add(command);
-        msgCtxs.add(msgCtx);
+        msgContexts.add(msgCtx);
         
         if(msgCtx.isLastInBatch()) {
 	        if ((eid > 0) && ((eid % checkpointPeriod) == 0)) {
@@ -93,11 +93,11 @@ public abstract class DefaultSingleRecoverable implements Recoverable, SingleExe
 	            stateLock.unlock();
 	            saveState(snapshot, eid);
 	        } else {
-	            saveCommands(commands.toArray(new byte[0][]), msgCtxs.toArray(new MessageContext[0]));
+	            saveCommands(commands.toArray(new byte[0][]), msgContexts.toArray(new MessageContext[0]));
 	        }
 			getStateManager().setLastEID(eid);
 	        commands = new ArrayList<byte[]>();
-                msgCtxs = new ArrayList<MessageContext>();
+                msgContexts = new ArrayList<MessageContext>();
         }
         return reply;
     }
@@ -202,15 +202,15 @@ public abstract class DefaultSingleRecoverable implements Recoverable, SingleExe
                     bftsmart.tom.util.Logger.println("(DurabilityCoordinator.setState) interpreting and verifying batched requests for eid " + eid);
 
                     CommandsInfo cmdInfo = state.getMessageBatch(eid); 
-                    byte[][] commands = cmdInfo.commands; // take a batch
+                    byte[][] cmds = cmdInfo.commands; // take a batch
                     MessageContext[] msgCtxs = cmdInfo.msgCtx;
                     
-                    if (commands == null || commands.length <= 0) { //TODO: change 'commands.length <= 0' so that it verifies msgCtx if the message is noOp
+                    if (commands == null || msgCtxs == null || msgCtxs[0].isNoOp()) {
                         continue;
                     }
 
-                    for(int i = 0; i < commands.length; i++) {
-                    	appExecuteOrdered(commands[i], msgCtxs[i]);
+                    for(int i = 0; i < cmds.length; i++) {
+                    	appExecuteOrdered(cmds[i], msgCtxs[i]);
                     }
                 } catch (Exception e) {
                     e.printStackTrace(System.err);
@@ -285,7 +285,7 @@ public abstract class DefaultSingleRecoverable implements Recoverable, SingleExe
     @Override
     public void noOp(int lastEid) {
         
-        MessageContext msgCtx = new MessageContext(-1, new byte[0], -1, lastEid, -1, null);
+        MessageContext msgCtx = new MessageContext(-1, new byte[0], -1, lastEid, -1, null, true);
         msgCtx.setLastInBatch();
  
         executeOrdered(new byte[0], msgCtx, true);

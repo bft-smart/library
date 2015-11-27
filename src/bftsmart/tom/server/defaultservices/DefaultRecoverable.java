@@ -261,7 +261,7 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
                     byte[][] commands = cmdInfo.commands; // take a batch
                     MessageContext[] msgCtx = cmdInfo.msgCtx;
                     
-                    if (commands == null || commands.length <= 0) { //TODO: change 'commands.length <= 0' so that it verifies msgCtx if the message is noOp
+                    if (commands == null || msgCtx == null || msgCtx[0].isNoOp()) {
                         continue;
                     }
                     appExecuteBatch(commands, msgCtx);
@@ -397,7 +397,7 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
     @Override
     public void noOp(int lastEid) {
 
-        MessageContext msgCtx = new MessageContext(-1, new byte[0], -1, lastEid, -1, null);
+        MessageContext msgCtx = new MessageContext(-1, new byte[0], -1, lastEid, -1, null, true);
         msgCtx.setLastInBatch();
 
         executeBatch(new byte[1][0], new MessageContext[]{msgCtx}, true);

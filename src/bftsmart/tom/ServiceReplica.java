@@ -252,7 +252,7 @@ public class ServiceReplica {
                                                 noop = false;
                                             
 						numRequests++;
-						MessageContext msgCtx = new MessageContext(firstRequest.timestamp, firstRequest.nonces,	regency, consId[consensusCount], request.getSender(), firstRequest);
+						MessageContext msgCtx = new MessageContext(firstRequest.timestamp, firstRequest.nonces,	regency, consId[consensusCount], request.getSender(), firstRequest, false);
 						if(requestCount + 1 == requestsFromConsensus.length) {
                                                  
                                                     msgCtx.setLastInBatch();

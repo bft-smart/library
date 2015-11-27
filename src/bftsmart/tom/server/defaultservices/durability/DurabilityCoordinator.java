@@ -263,7 +263,7 @@ public abstract class DurabilityCoordinator implements Recoverable, BatchExecuta
 					byte[][] commands = cmdInfo.commands;
 					MessageContext[] msgCtx = cmdInfo.msgCtx;
 
-                                        if (commands == null || commands.length <= 0) { //TODO: change 'commands.length <= 0' so that it verifies msgCtx if the message is noOp
+                                        if (commands == null || msgCtx == null || msgCtx[0].isNoOp()) {
                                             continue;
                                         }
 
@@ -412,7 +412,7 @@ public abstract class DurabilityCoordinator implements Recoverable, BatchExecuta
         @Override
         public void noOp(int lastEid) {
 
-            MessageContext msgCtx = new MessageContext(-1, new byte[0], -1, lastEid, -1, null);
+            MessageContext msgCtx = new MessageContext(-1, new byte[0], -1, lastEid, -1, null, true);
             msgCtx.setLastInBatch();
 
             executeBatch(new byte[1][0], new MessageContext[]{msgCtx}, true);
