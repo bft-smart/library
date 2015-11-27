@@ -88,7 +88,13 @@ public final class RandomServer extends DefaultRecoverable {
                     break;
             }
             
-            if (msgCtx != null) System.out.println("(" + id + ")[server] (" + iterations + " / " + 
+            if (msgCtx == null) {
+                
+                System.out.println("Message Context is still null!!!???");
+                System.exit(0);
+            }
+            
+            System.out.println("(" + id + ")[server] (" + iterations + " / " + 
                     msgCtx.getConsensusId() + " / " + msgCtx.getRegency() + ") Current value: " + value);
             
             ByteArrayOutputStream out = new ByteArrayOutputStream(4);
@@ -193,7 +199,8 @@ public final class RandomServer extends DefaultRecoverable {
     public byte[][] appExecuteBatch(byte[][] commands, MessageContext[] msgCtxs) {
         byte [][] replies = new byte[commands.length][];
         for (int i = 0; i < commands.length; i++) {
-            replies[i] = execute(commands[i], (msgCtxs  != null ? msgCtxs[i] : null));
+            //replies[i] = execute(commands[i], (msgCtxs  != null ? msgCtxs[i] : null));
+            replies[i] = execute(commands[i], msgCtxs[i]);
         }
         return replies;
     }
