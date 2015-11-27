@@ -37,10 +37,6 @@ public class CommandsInfo implements Serializable {
         this.msgCtx = null;
     }
     
-    public CommandsInfo(byte[][] commands) {
-    	this(commands, null);
-    }
-    
     public CommandsInfo(byte[][] commands, MessageContext[] msgCtx) {
         this.commands = commands;
         MessageContext[] onlyNeeded = null;
