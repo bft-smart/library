@@ -71,6 +71,8 @@ public final class ExecutionManager {
     private int revivalHighMark; // Paxos high mark for consensus instances when this replica CID equals 0
     private int timeoutHighMark; // Paxos high mark for a timed-out replica
     
+    private int lastRemovedCID = 0; // Addition to fix memory leak
+
     /******************************************************************/
     /**
      * Creates a new instance of ExecutionManager
@@ -296,6 +298,10 @@ public final class ExecutionManager {
         /******* BEGIN CONSENSUS CRITICAL SECTION *******/
         Consensus consensus = consensuses.remove(id);
 
+        // Addition to fix memory leak
+        for (int i = lastRemovedCID; i < id; i++) consensuses.remove(i);
+        lastRemovedCID = id;
+        
         /******* END CONSENSUS CRITICAL SECTION *******/
         consensusesLock.unlock();
 
