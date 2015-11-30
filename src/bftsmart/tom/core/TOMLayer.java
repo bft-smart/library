@@ -40,6 +40,7 @@ import bftsmart.tom.core.messages.TOMMessageType;
 import bftsmart.tom.core.messages.ForwardedMessage;
 import bftsmart.tom.leaderchange.RequestsTimer;
 import bftsmart.tom.server.Recoverable;
+import bftsmart.tom.server.RequestVerifier;
 import bftsmart.tom.util.BatchBuilder;
 import bftsmart.tom.util.BatchReader;
 import bftsmart.tom.util.Logger;
@@ -94,6 +95,8 @@ public final class TOMLayer extends Thread implements RequestReceiver {
     private PrivateKey prk;
     public ServerViewController controller;
 
+    private RequestVerifier verifier;
+            
     private Synchronizer syncher;
 
     /**
@@ -112,7 +115,8 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             LeaderModule lm,
             Acceptor a,
             ServerCommunicationSystem cs,
-            ServerViewController controller) {
+            ServerViewController controller,
+            RequestVerifier verifier) {
 
         super("TOM Layer");
 
@@ -147,6 +151,13 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         this.dt.start();
         this.stateManager = recoverer.getStateManager();
         stateManager.init(this, dt);
+        
+        this.verifier = (verifier != null) ? verifier : new RequestVerifier() {
+			@Override
+			public boolean isValidRequest(byte[] request) {
+				return true; // By default, never validate requests
+                        }
+		};
 
         this.syncher = new Synchronizer(this); // create synchronizer
     }
@@ -417,9 +428,18 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         TOMMessage[] requests = null;
 
         try {
-			//deserialize the message
+			
+            //deserialize the message
             //TODO: verify Timestamps and Nonces
             requests = batchReader.deserialiseRequests(this.controller);
+            
+            //enforce the "external validity" property, i.e, verify if the
+            //requests are valid in accordance to the application semantics
+            //and not an erroneous requests sent by a Byzantine leader.
+            for (TOMMessage r : requests) {
+                if (!verifier.isValidRequest(r.getContent())) return null;
+            }
+            
 
             if (addToClientManager) {
                 for (int i = 0; i < requests.length; i++) {

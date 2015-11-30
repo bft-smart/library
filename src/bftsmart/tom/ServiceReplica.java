@@ -41,6 +41,7 @@ import bftsmart.tom.server.Executable;
 import bftsmart.tom.server.FIFOExecutable;
 import bftsmart.tom.server.Recoverable;
 import bftsmart.tom.server.Replier;
+import bftsmart.tom.server.RequestVerifier;
 import bftsmart.tom.server.SingleExecutable;
 
 import bftsmart.tom.server.defaultservices.DefaultReplier;
@@ -86,6 +87,7 @@ public class ServiceReplica {
 	private boolean tomStackCreated = false;
 	private ReplicaContext replicaCtx = null;
 	private Replier replier = null;
+        private RequestVerifier verifier = null;
 
 
 	/*******************************************************/
@@ -94,17 +96,17 @@ public class ServiceReplica {
 	 * @param id Replica ID
 	 */
 	public ServiceReplica(int id, Executable executor, Recoverable recoverer) {
-		this(id, "", executor, recoverer);
+		this(id, "", executor, recoverer, null);
 	}
 
-	/**
+        /**
 	 * Constructor
 	 * 
 	 * @param id Process ID
 	 * @param configHome Configuration directory for JBP
 	 */
-	public ServiceReplica(int id, String configHome, Executable executor, Recoverable recoverer) {
-		this(id, configHome, false, executor, recoverer);
+	public ServiceReplica(int id, String configHome, Executable executor, Recoverable recoverer, RequestVerifier verifier) {
+		this(id, configHome, false, executor, recoverer, verifier);
 	}
 
 	/**
@@ -114,10 +116,10 @@ public class ServiceReplica {
 	 * informing its join
 	 */
 	public ServiceReplica(int id, boolean isToJoin, Executable executor, Recoverable recoverer) {
-		this(id, "", isToJoin, executor, recoverer);
+		this(id, "", isToJoin, executor, recoverer, null);
 	}
 
-	public ServiceReplica(int id, String configHome, boolean isToJoin, Executable executor, Recoverable recoverer) {
+	public ServiceReplica(int id, String configHome, boolean isToJoin, Executable executor, Recoverable recoverer, RequestVerifier verifier) {
 		this.isToJoin = isToJoin;
 		this.id = id;
 		this.SVController = new ServerViewController(id, configHome);
@@ -127,6 +129,7 @@ public class ServiceReplica {
 		this.init();
 		this.recoverer.setReplicaContext(replicaCtx);
 		this.replier.setReplicaContext(replicaCtx);
+                this.verifier = verifier;
 	}
 
 	public void setReplyController(Replier replier) {
@@ -144,7 +147,7 @@ public class ServiceReplica {
 
 		if (this.SVController.isInCurrentView()) {
 			System.out.println("In current view: " + this.SVController.getCurrentView());
-			initTOMLayer(-1, -1); // initiaze the TOM layer
+			initTOMLayer(); // initiaze the TOM layer
 		} else {
 			System.out.println("Not in current view: " + this.SVController.getCurrentView());
 			if (this.isToJoin) {
@@ -162,7 +165,7 @@ public class ServiceReplica {
 				this.SVController.processJoinResult(r);
 
 				// initiaze the TOM layer
-				initTOMLayer(r.getLastExecConsId(), r.getExecLeader());
+				initTOMLayer();
 
 				this.cs.updateServersConnections();
 				this.cs.joinViewReceived();
@@ -188,7 +191,7 @@ public class ServiceReplica {
 		if (r.getView().isMember(id)) {
 			this.SVController.processJoinResult(r);
 
-			initTOMLayer(r.getLastExecConsId(), r.getExecLeader()); // initiaze the TOM layer
+			initTOMLayer(); // initiaze the TOM layer
 			cs.updateServersConnections();
 			this.cs.joinViewReceived();
 			waitTTPJoinMsgLock.lock();
@@ -360,7 +363,7 @@ public class ServiceReplica {
 	 * @param cs Server side communication System
 	 * @param conf Total order messaging configuration
 	 */
-	private void initTOMLayer(int lastExec, int lastLeader) {
+	private void initTOMLayer() {
 		if (tomStackCreated) { // if this object was already initialized, don't do it again
 			return;
 		}
@@ -383,7 +386,7 @@ public class ServiceReplica {
 
 		acceptor.setExecutionManager(executionManager);
 
-		tomLayer = new TOMLayer(executionManager, this, recoverer, lm, acceptor, cs, SVController);
+		tomLayer = new TOMLayer(executionManager, this, recoverer, lm, acceptor, cs, SVController, verifier);
 
 		executionManager.setTOMLayer(tomLayer);
 
