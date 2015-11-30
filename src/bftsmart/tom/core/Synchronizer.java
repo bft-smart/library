@@ -115,17 +115,19 @@ public class Synchronizer {
         ObjectOutputStream out = null;
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
 
+        int regency = lcManager.getNextReg();
+        
         requestsTimer.stopTimer();
         requestsTimer.Enabled(false);
 
-		// still not in the leader change phase?
+	// still not in the leader change phase?
         if (lcManager.getNextReg() == lcManager.getLastReg()) {
 
             Logger.println("(Synchronizer.triggerTimeout) initialize synchronization phase");
 
             lcManager.setNextReg(lcManager.getLastReg() + 1); // define next timestamp
 
-            int regency = lcManager.getNextReg();
+            regency = lcManager.getNextReg(); // update variable 
 
             // store messages to be ordered
             lcManager.setCurrentRequestTimedOut(requestList);
@@ -181,12 +183,13 @@ public class Synchronizer {
                 }
             }
 
-            processOutOfContextSTOPs(regency); // the replica might have received STOPs
-                                               // that were out of context at the time they
-                                               // were received, but now can be processed
-            startSynchronization(regency); // evaluate STOP messages
-
         }
+
+        processOutOfContextSTOPs(regency); // the replica might have received STOPs
+                                           // that were out of context at the time they
+                                           // were received, but now can be processed
+        
+        startSynchronization(regency); // evaluate STOP messages
 
     }
 
@@ -521,7 +524,6 @@ public class Synchronizer {
 
             requestsTimer.Enabled(true);
             requestsTimer.setShortTimeout(-1);
-            //requestsTimer.setTimeout(requestsTimer.getTimeout() * 2);
             requestsTimer.startTimer();
 
             //int leader = regency % this.reconfManager.getCurrentViewN(); // new leader
@@ -633,7 +635,7 @@ public class Synchronizer {
                     int[] b = new int[1];
                     b[0] = leader;
 
-                    Logger.println("(Synchronizer.startSynchronization) sending STOPDATA of regency " + regency);
+                    System.out.println("(Synchronizer.startSynchronization) sending STOPDATA of regency " + regency);
                     // send message SYNC to the new leader
                     communication.send(b,
                             new LCMessage(this.controller.getStaticConf().getProcessId(), TOMUtil.STOPDATA, regency, payload));
@@ -921,7 +923,7 @@ public class Synchronizer {
                 out.close();
                 bos.close();
 
-                Logger.println("(Synchronizer.catch_up) sending SYNC message for regency " + regency);
+                System.out.println("(Synchronizer.catch_up) sending SYNC message for regency " + regency);
 
                 // send the CATCH-UP message
                 communication.send(this.controller.getCurrentViewOtherAcceptors(),
