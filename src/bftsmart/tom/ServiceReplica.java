@@ -94,16 +94,32 @@ public class ServiceReplica {
 	/**
 	 * Constructor
 	 * @param id Replica ID
+         * @param executor Executor
+         * @param recoverer Recoverer
 	 */
 	public ServiceReplica(int id, Executable executor, Recoverable recoverer) {
 		this(id, "", executor, recoverer, null);
 	}
-
+	/*******************************************************/
+	/**
+	 * Constructor
+	 * @param id Replica ID
+         * @param executor Executor
+         * @param recoverer Recoverer
+         * @param verifier Requests verifier
+	 */
+	public ServiceReplica(int id, Executable executor, Recoverable recoverer,RequestVerifier verifier) {
+		this(id, "", executor, recoverer, verifier);
+	}
+        
         /**
 	 * Constructor
 	 * 
 	 * @param id Process ID
 	 * @param configHome Configuration directory for JBP
+         * @param executor Executor
+         * @param recoverer Recoverer
+         * @param verifier Requests verifier
 	 */
 	public ServiceReplica(int id, String configHome, Executable executor, Recoverable recoverer, RequestVerifier verifier) {
 		this(id, configHome, false, executor, recoverer, verifier);
@@ -114,6 +130,8 @@ public class ServiceReplica {
 	 * @param id Replica ID
 	 * @param isToJoin: if true, the replica tries to join the system, otherwise it waits for TTP message
 	 * informing its join
+         * @param executor Executor
+         * @param recoverer Recoverer
 	 */
 	public ServiceReplica(int id, boolean isToJoin, Executable executor, Recoverable recoverer) {
 		this(id, "", isToJoin, executor, recoverer, null);
