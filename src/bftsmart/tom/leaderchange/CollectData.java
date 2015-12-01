@@ -31,7 +31,7 @@ import bftsmart.consensus.TimestampValuePair;
 public class CollectData implements Externalizable {
 
     private int pid; // process id
-    private int eid; // execution id
+    private int cid; // consensus id
     private TimestampValuePair quorumWrites; // last value recevied from a Byzantine quorum of WRITEs
     private HashSet<TimestampValuePair> writeSet; // values written by the replica
     
@@ -40,7 +40,7 @@ public class CollectData implements Externalizable {
      */
     public CollectData() {
         pid = -1;
-        eid = -1;
+        cid = -1;
         quorumWrites = null;
         writeSet = null;
     }
@@ -49,24 +49,24 @@ public class CollectData implements Externalizable {
      * Constructor
      *
      * @param pid process id
-     * @param eid execution id
-     * @param quorumWrites last value recevied from a Byzantine quorum of WRITEs
+     * @param cid Consensus id
+     * @param quorumWrites last value received from a Byzantine quorum of WRITEs
      * @param writeSet values written by the replica
      */
-    public CollectData(int pid, int eid, TimestampValuePair quorumWrites, HashSet<TimestampValuePair> writeSet) {
+    public CollectData(int pid, int cid, TimestampValuePair quorumWrites, HashSet<TimestampValuePair> writeSet) {
         
         this.pid = pid;
-        this.eid = eid;
+        this.cid = cid;
         this.quorumWrites = quorumWrites;
         this.writeSet = writeSet;
     }
 
     /**
-     * Get execution id
-     * @return exection id
+     * Get consensus id
+     * @return consensus id
      */
-    public int getEid() {
-        return eid;
+    public int getCid() {
+        return cid;
     }
 
     /**
@@ -112,7 +112,7 @@ public class CollectData implements Externalizable {
     public void writeExternal(ObjectOutput out) throws IOException{
 
         out.writeInt(pid);
-        out.writeInt(eid);
+        out.writeInt(cid);
         out.writeObject(quorumWrites);
         out.writeObject(writeSet);
     }
@@ -120,7 +120,7 @@ public class CollectData implements Externalizable {
     public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException{
 
         pid = in.readInt();
-        eid = in.readInt();
+        cid = in.readInt();
         quorumWrites = (TimestampValuePair) in.readObject();
         writeSet = (HashSet<TimestampValuePair>) in.readObject();
     }

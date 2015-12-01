@@ -984,7 +984,7 @@ public class Synchronizer {
 
         if (tom.getLastExec() + 1 < lastHighestEid.getEid()) { // is this a delayed replica?
 
-            System.out.println("NEEDING TO USE STATE TRANSFER!! (" + lastHighestEid.getEid() + ")");
+            System.out.println("(Synchronizer.finalise) NEEDING TO USE STATE TRANSFER!! (" + lastHighestEid.getEid() + ")");
 
             tempRegency = regency;
             tempLastHighestEid = lastHighestEid;
@@ -1002,11 +1002,11 @@ public class Synchronizer {
         } else if (tom.getLastExec() + 1 == lastHighestEid.getEid()) { // Is this replica still executing the last decided consensus?
 
             //TODO: it is necessary to verify the proof
-            System.out.println("I'm still at the CID before the most recent one!!! (" + lastHighestEid.getEid() + ")");
+            System.out.println("(Synchronizer.finalise) I'm still at the CID before the most recent one!!! (" + lastHighestEid.getEid() + ")");
 
             cons = execManager.getConsensus(lastHighestEid.getEid());
             e = cons.getLastEpoch();
-
+            
             int ets = cons.getEts();
 
             if (e == null || e.getTimestamp() != ets) {
@@ -1014,7 +1014,7 @@ public class Synchronizer {
             } else {
                 e.clear();
             }
-
+            
             byte[] hash = tom.computeHash(lastHighestEid.getEidDecision());
             e.propValueHash = hash;
             e.propValue = lastHighestEid.getEidDecision();
@@ -1093,11 +1093,11 @@ public class Synchronizer {
 
             // send a WRITE/ACCEPT message to the other replicas
             if (this.controller.getStaticConf().isBFT()) {
-                Logger.println("(Synchronizer.finalise) sending WRITE message");
+                System.out.println("(Synchronizer.finalise) sending WRITE message");
                 communication.send(this.controller.getCurrentViewOtherAcceptors(),
                         acceptor.getFactory().createWrite(currentEid, e.getTimestamp(), e.propValueHash));
             } else {
-                Logger.println("(Synchronizer.finalise) sending ACCEPT message");
+                System.out.println("(Synchronizer.finalise) sending ACCEPT message");
                 communication.send(this.controller.getCurrentViewOtherAcceptors(),
                         acceptor.getFactory().createAccept(currentEid, e.getTimestamp(), e.propValueHash));
             }

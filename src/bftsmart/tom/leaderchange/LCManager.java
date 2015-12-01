@@ -395,7 +395,7 @@ public class LCManager {
 
         for (CollectData c : collects) { // organize all existing timestamps and values separately
             
-            bftsmart.tom.util.Logger.println("(LCManager.sound) Context for replica "+c.getPid()+": EID["+c.getEid()+"] WRITESET["+c.getWriteSet()+"] (VALTS,VAL)[" + c.getQuorumWrites() +"]");
+            bftsmart.tom.util.Logger.println("(LCManager.sound) Context for replica "+c.getPid()+": EID["+c.getCid()+"] WRITESET["+c.getWriteSet()+"] (VALTS,VAL)[" + c.getQuorumWrites() +"]");
             
             timestamps.add(c.getQuorumWrites().getTimestamp()); //store timestamp received from a Byzatine quorum of WRITES
             
@@ -751,7 +751,7 @@ public class LCManager {
         // if there are collects refering to other consensus instances, lets assume that they are still at timestamp zero of the consensus we want
         for (CollectData c : collects) {
 
-            if (c.getEid() == eid) {
+            if (c.getCid() == eid) {
                 result.add(c);
             }
             else {
