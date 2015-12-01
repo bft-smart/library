@@ -27,8 +27,9 @@ import bftsmart.communication.ServerCommunicationSystem;
 import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.tom.core.TOMLayer;
 import bftsmart.tom.core.messages.TOMMessage;
-import bftsmart.tom.leaderchange.LCMessage;
 import bftsmart.tom.util.TOMUtil;
+import java.util.Hashtable;
+import java.util.Set;
 
 /**
  * This thread serves as a manager for all timers of pending requests.
@@ -48,6 +49,8 @@ public class RequestsTimer {
     
     private ServerCommunicationSystem communication; // Communication system between replicas
     private ServerViewController controller; // Reconfiguration manager
+    
+    private Hashtable <Integer, Timer> stopTimers = new Hashtable<>();
     
     //private Storage st1 = new Storage(100000);
     //private Storage st2 = new Storage(10000);
@@ -193,6 +196,32 @@ public class RequestsTimer {
 
     }
     
+    public void setSTOP(int regency, LCMessage stop) {
+        
+        stopSTOP(regency);
+        
+        SendStopTask stopTask = new SendStopTask(stop);
+        Timer stopTimer = new Timer("Stop message");
+        
+        stopTimer.schedule(stopTask, timeout);
+        
+       stopTimers.put(regency, stopTimer);
+
+    }   
+    
+    public void stopSTOP(int regency){
+        
+        Timer stopTimer = stopTimers.remove(regency);
+        if (stopTimer != null) stopTimer.cancel();
+
+    }
+    
+    public Set<Integer> getTimers() {
+        
+        return ((Hashtable <Integer,Timer>) stopTimers.clone()).keySet();
+        
+    }
+    
     class RequestTimerTask extends TimerTask {
 
         @Override
@@ -208,5 +237,28 @@ public class RequestsTimer {
             communication.send(myself, new LCMessage(-1, TOMUtil.TRIGGER_LC_LOCALLY, -1, null));
 
         }
+    }
+    
+    class SendStopTask extends TimerTask {
+        
+        private LCMessage stop;
+        
+        public SendStopTask(LCMessage stop) {
+            this.stop = stop;
+        }
+
+        @Override
+        /**
+         * This is the code for the TimerTask. It sends a STOP
+         * message to the other replicas
+         */
+        public void run() {
+
+                System.out.println("(SendStopTask.run) Re-transmitting STOP message to install regency " + stop.getReg());
+                communication.send(controller.getCurrentViewOtherAcceptors(),this.stop);
+
+                setSTOP(stop.getReg(), stop); //repeat
+        }
+        
     }
 }

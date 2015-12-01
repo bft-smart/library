@@ -33,6 +33,7 @@ import java.security.MessageDigest;
 import java.security.SignedObject;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
@@ -165,10 +166,12 @@ public class Synchronizer {
                 out.close();
                 bos.close();
 
-                // send STOP-message
+                // send STOP-message                
                 System.out.println("(Synchronizer.triggerTimeout) sending STOP message to install regency " + regency + " with " + (messages != null ? messages.size() : 0) + " request(s) to relay");
-                communication.send(this.controller.getCurrentViewOtherAcceptors(),
-                        new LCMessage(this.controller.getStaticConf().getProcessId(), TOMUtil.STOP, regency, payload));
+                
+                LCMessage stop = new LCMessage(this.controller.getStaticConf().getProcessId(), TOMUtil.STOP, regency, payload);
+                requestsTimer.setSTOP(regency, stop); // make replica re-transmit the stop message until a new regency is installed
+                communication.send(this.controller.getCurrentViewOtherAcceptors(), stop);
 
             } catch (IOException ex) {
                 ex.printStackTrace();
@@ -284,7 +287,7 @@ public class Synchronizer {
     // Processes SYNC messages that were not process upon reception, because they were
     // ahead of the replica's expected regency
     private void processSYNC(byte[] payload, int regency) {
-
+        
         LastEidData lastHighestEid = null;
         int currentEid = -1;
         HashSet<SignedObject> signedCollects = null;
@@ -485,8 +488,10 @@ public class Synchronizer {
 
                 // send message STOP
                 System.out.println("(Synchronizer.startSynchronization) sending STOP message to install regency " + regency + " with " + (messages != null ? messages.size() : 0) + " request(s) to relay");
-                communication.send(this.controller.getCurrentViewOtherAcceptors(),
-                        new LCMessage(this.controller.getStaticConf().getProcessId(), TOMUtil.STOP, regency, payload));
+                
+                LCMessage stop = new LCMessage(this.controller.getStaticConf().getProcessId(), TOMUtil.STOP, regency, payload);
+                requestsTimer.setSTOP(regency, stop); // make replica re-transmit the stop message until a new regency is installed
+                communication.send(this.controller.getCurrentViewOtherAcceptors(), stop);
 
             } catch (IOException ex) {
                 ex.printStackTrace();
@@ -1043,6 +1048,12 @@ public class Synchronizer {
             Logger.println("(Synchronizer.finalise) resuming normal phase");
             lcManager.removeCollects(regency); // avoid memory leaks
 
+            // stop the re-transmission of the STOP message for all regencies up to this one
+            Set<Integer> timers = requestsTimer.getTimers();
+            
+            for (int t : timers) {
+                if (t <= regency) requestsTimer.stopSTOP(t);
+            }
             cons = execManager.getConsensus(currentEid);
 
             cons.removeWritten(tmpval);
