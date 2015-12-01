@@ -601,7 +601,7 @@ public class Synchronizer {
 
                         HashSet<TimestampValuePair> writeSet = cons.getWriteSet();
 
-                        CollectData collect = new CollectData(this.controller.getStaticConf().getProcessId(), in, quorumWrites, writeSet);
+                        CollectData collect = new CollectData(this.controller.getStaticConf().getProcessId(), in, ets, quorumWrites, writeSet);
 
                         SignedObject signedCollect = tom.sign(collect);
 
@@ -617,7 +617,7 @@ public class Synchronizer {
                         cons.createEpoch(ets, controller);
                         Logger.println("(Synchronizer.startSynchronization) incrementing ets of consensus " + cons.getId() + " to " + ets);
 
-                        CollectData collect = new CollectData(this.controller.getStaticConf().getProcessId(), last + 1, new TimestampValuePair(0, new byte[0]), new HashSet<TimestampValuePair>());
+                        CollectData collect = new CollectData(this.controller.getStaticConf().getProcessId(), last + 1, ets, new TimestampValuePair(0, new byte[0]), new HashSet<TimestampValuePair>());
 
                         SignedObject signedCollect = tom.sign(collect);
 
@@ -732,7 +732,7 @@ public class Synchronizer {
 
                     HashSet<TimestampValuePair> writeSet = cons.getWriteSet();
 
-                    collect = new CollectData(this.controller.getStaticConf().getProcessId(), in, quorumWrites, writeSet);
+                    collect = new CollectData(this.controller.getStaticConf().getProcessId(), in, ets, quorumWrites, writeSet);
 
                 } else {
 
@@ -744,7 +744,7 @@ public class Synchronizer {
                     cons.createEpoch(ets, controller);
                     Logger.println("(Synchronizer.startSynchronization) incrementing ets of consensus " + cons.getId() + " to " + ets);
 
-                    collect = new CollectData(this.controller.getStaticConf().getProcessId(), last + 1, new TimestampValuePair(0, new byte[0]), new HashSet<TimestampValuePair>());
+                    collect = new CollectData(this.controller.getStaticConf().getProcessId(), last + 1, ets, new TimestampValuePair(0, new byte[0]), new HashSet<TimestampValuePair>());
                 }
 
                 SignedObject signedCollect = tom.sign(collect);
@@ -903,7 +903,7 @@ public class Synchronizer {
 
             propose = tom.createPropose(dec);
             batchSize = dec.batchSize;
-
+            
             try { // serialization of the CATCH-UP message
                 bos = new ByteArrayOutputStream();
                 out = new ObjectOutputStream(bos);
@@ -1008,7 +1008,7 @@ public class Synchronizer {
             e = cons.getLastEpoch();
             
             int ets = cons.getEts();
-
+            
             if (e == null || e.getTimestamp() != ets) {
                 e = cons.createEpoch(ets, controller);
             } else {
@@ -1052,6 +1052,22 @@ public class Synchronizer {
 
             int ets = cons.getEts();
 
+            //Update current consensus with latest ETS. This may be necessary
+            //if I 'jumped' to a consensus instance ahead of the one I was executing
+            int currentETS = lcManager.getETS(currentEid, selectedColls);
+            if (currentETS > ets) {
+                
+                System.out.println("(Synchronizer.finalise) Updating consensus' ETS after SYNC (from " + ets + " to " + currentETS +")");
+
+                do {
+                    cons.incEts();
+                } while (cons.getEts() != currentETS);
+                
+                cons.createEpoch(currentETS, controller);
+                e = cons.getLastEpoch();
+            }
+
+            // Make sure the epoch is created
             if (e == null || e.getTimestamp() != ets) {
                 e = cons.createEpoch(ets, controller);
             } else {

@@ -755,7 +755,7 @@ public class LCManager {
                 result.add(c);
             }
             else {
-                result.add(new CollectData(c.getPid(), eid, new TimestampValuePair(0, new byte[0]), new HashSet<TimestampValuePair>()));
+                result.add(new CollectData(c.getPid(), eid, 1, new TimestampValuePair(0, new byte[0]), new HashSet<TimestampValuePair>()));
             }
 
         }
@@ -904,5 +904,36 @@ public class LCManager {
         }
 
         return result;
+    }
+    
+    /**
+     * Gets the highest ETS associated with a
+     * consensus ID from the given collects
+     * 
+     * @param cid The consensus ID
+     * @param collects The collects from the other replicas
+     * @return  The highest ETS
+     */
+    public int getETS(int cid, Set<CollectData> collects) {
+        
+        int ets = -1;
+        int count = 0;
+        
+        for (CollectData c : collects) {
+            
+            if (c.getCid() == cid) {
+                
+                if (c.getEts() > ets) {
+                    
+                    ets = c.getEts();
+                    count = 1;
+                } else if (c.getEts() == ets) {
+                    count++;
+                }
+                
+            }
+        }
+        
+        return (count > this.SVController.getCurrentViewF() ? ets : -1);
     }
 }

@@ -32,6 +32,7 @@ public class CollectData implements Externalizable {
 
     private int pid; // process id
     private int cid; // consensus id
+    private int ets; // consensus ETS
     private TimestampValuePair quorumWrites; // last value recevied from a Byzantine quorum of WRITEs
     private HashSet<TimestampValuePair> writeSet; // values written by the replica
     
@@ -41,6 +42,7 @@ public class CollectData implements Externalizable {
     public CollectData() {
         pid = -1;
         cid = -1;
+        ets = -1;
         quorumWrites = null;
         writeSet = null;
     }
@@ -50,13 +52,15 @@ public class CollectData implements Externalizable {
      *
      * @param pid process id
      * @param cid Consensus id
+     * @param ets Consensus ETS
      * @param quorumWrites last value received from a Byzantine quorum of WRITEs
      * @param writeSet values written by the replica
      */
-    public CollectData(int pid, int cid, TimestampValuePair quorumWrites, HashSet<TimestampValuePair> writeSet) {
+    public CollectData(int pid, int cid, int ets, TimestampValuePair quorumWrites, HashSet<TimestampValuePair> writeSet) {
         
         this.pid = pid;
         this.cid = cid;
+        this.ets = ets;
         this.quorumWrites = quorumWrites;
         this.writeSet = writeSet;
     }
@@ -69,6 +73,14 @@ public class CollectData implements Externalizable {
         return cid;
     }
 
+    /**
+     * Get consensus ETS
+     * @return consensus ETS
+     */
+    public int getEts() {
+        return ets;
+    }
+    
     /**
      * Get process id
      * @return process id
@@ -113,6 +125,7 @@ public class CollectData implements Externalizable {
 
         out.writeInt(pid);
         out.writeInt(cid);
+        out.writeInt(ets);
         out.writeObject(quorumWrites);
         out.writeObject(writeSet);
     }
@@ -121,6 +134,7 @@ public class CollectData implements Externalizable {
 
         pid = in.readInt();
         cid = in.readInt();
+        ets = in.readInt();
         quorumWrites = (TimestampValuePair) in.readObject();
         writeSet = (HashSet<TimestampValuePair>) in.readObject();
     }
