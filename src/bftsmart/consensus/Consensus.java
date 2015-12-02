@@ -15,15 +15,12 @@ limitations under the License.
 */
 package bftsmart.consensus;
 
-import bftsmart.consensus.TimestampValuePair;
-import bftsmart.consensus.Epoch;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.locks.ReentrantLock;
 
-import bftsmart.consensus.Decision;
 import bftsmart.tom.core.ExecutionManager;
 import bftsmart.reconfiguration.ServerViewController;
 
@@ -133,6 +130,18 @@ public class Consensus {
      */
     public void incEts() {
         ets++;
+    }
+    
+    /**
+     * Increments the ETS of this consensus, thus advancing 
+     * to the next epoch
+     * 
+     * @param ets New ETS for this consensus, to advance
+     * to the next epoch. It must be greater than the current ETS
+     */
+    public void setETS(int ets) {
+        
+        if (ets > this.ets) this.ets = ets;
     }
     
     /**

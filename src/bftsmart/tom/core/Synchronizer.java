@@ -33,7 +33,6 @@ import java.security.MessageDigest;
 import java.security.SignedObject;
 import java.util.Arrays;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
@@ -588,11 +587,14 @@ public class Synchronizer {
 
                         Consensus cons = execManager.getConsensus(in);
 
-                        cons.incEts(); // make the consensus advance to the next epoch
+                        //cons.incEts(); // make the consensus advance to the next epoch
+                        cons.setETS(regency); // make the consensus advance to the next epoch
 
-                        int ets = cons.getEts();
-                        cons.createEpoch(ets, controller);
-                        Logger.println("(Synchronizer.startSynchronization) incrementing ets of consensus " + cons.getId() + " to " + ets);
+                        //int ets = cons.getEts();
+                        //cons.createEpoch(ets, controller);
+                        cons.createEpoch(regency, controller);
+                        //Logger.println("(Synchronizer.startSynchronization) incrementing ets of consensus " + cons.getId() + " to " + ets);
+                        Logger.println("(Synchronizer.startSynchronization) incrementing ets of consensus " + cons.getId() + " to " + regency);
 
                         TimestampValuePair quorumWrites;
                         if (cons.getQuorumWrites() != null) {
@@ -606,7 +608,8 @@ public class Synchronizer {
 
                         HashSet<TimestampValuePair> writeSet = cons.getWriteSet();
 
-                        CollectData collect = new CollectData(this.controller.getStaticConf().getProcessId(), in, ets, quorumWrites, writeSet);
+                        //CollectData collect = new CollectData(this.controller.getStaticConf().getProcessId(), in, ets, quorumWrites, writeSet);
+                        CollectData collect = new CollectData(this.controller.getStaticConf().getProcessId(), in, regency, quorumWrites, writeSet);
 
                         SignedObject signedCollect = tom.sign(collect);
 
@@ -616,14 +619,18 @@ public class Synchronizer {
 
                         Consensus cons = execManager.getConsensus(last + 1);
 
-                        cons.incEts(); // make the consensus advance to the next epoch
+                        //cons.incEts(); // make the consensus advance to the next epoch
+                        cons.setETS(regency); // make the consensus advance to the next epoch
+                        
+                        //int ets = cons.getEts();
+                        //cons.createEpoch(ets, controller);
+                        cons.createEpoch(regency, controller);
+                        //Logger.println("(Synchronizer.startSynchronization) incrementing ets of consensus " + cons.getId() + " to " + ets);
+                        Logger.println("(Synchronizer.startSynchronization) incrementing ets of consensus " + cons.getId() + " to " + regency);
 
-                        int ets = cons.getEts();
-                        cons.createEpoch(ets, controller);
-                        Logger.println("(Synchronizer.startSynchronization) incrementing ets of consensus " + cons.getId() + " to " + ets);
-
-                        CollectData collect = new CollectData(this.controller.getStaticConf().getProcessId(), last + 1, ets, new TimestampValuePair(0, new byte[0]), new HashSet<TimestampValuePair>());
-
+                        //CollectData collect = new CollectData(this.controller.getStaticConf().getProcessId(), last + 1, ets, new TimestampValuePair(0, new byte[0]), new HashSet<TimestampValuePair>());
+                        CollectData collect = new CollectData(this.controller.getStaticConf().getProcessId(), last + 1, regency, new TimestampValuePair(0, new byte[0]), new HashSet<TimestampValuePair>());
+                        
                         SignedObject signedCollect = tom.sign(collect);
 
                         out.writeObject(signedCollect);
@@ -720,11 +727,14 @@ public class Synchronizer {
                 if (in > -1) { // content of cid being executed
                     Consensus cons = execManager.getConsensus(in);
 
-                    cons.incEts(); // make the consensus advance to the next epoch
+                    //cons.incEts(); // make the consensus advance to the next epoch
+                    cons.setETS(regency); // make the consensus advance to the next epoch
 
-                    int ets = cons.getEts();
-                    cons.createEpoch(ets, controller);
-                    Logger.println("(Synchronizer.startSynchronization) incrementing ets of consensus " + cons.getId() + " to " + ets);
+                    //int ets = cons.getEts();
+                    //cons.createEpoch(ets, controller);
+                    cons.createEpoch(regency, controller);
+                    //Logger.println("(Synchronizer.startSynchronization) incrementing ets of consensus " + cons.getId() + " to " + ets);
+                    Logger.println("(Synchronizer.startSynchronization) incrementing ets of consensus " + cons.getId() + " to " + regency);
 
                     TimestampValuePair quorumWrites;
 
@@ -737,19 +747,24 @@ public class Synchronizer {
 
                     HashSet<TimestampValuePair> writeSet = cons.getWriteSet();
 
-                    collect = new CollectData(this.controller.getStaticConf().getProcessId(), in, ets, quorumWrites, writeSet);
+                    //collect = new CollectData(this.controller.getStaticConf().getProcessId(), in, ets, quorumWrites, writeSet);
+                    collect = new CollectData(this.controller.getStaticConf().getProcessId(), in, regency, quorumWrites, writeSet);
 
                 } else {
 
                     Consensus cons = execManager.getConsensus(last + 1);
 
-                    cons.incEts(); // make the consensus advance to the next epoch
+                    //cons.incEts(); // make the consensus advance to the next epoch
+                    cons.setETS(regency); // make the consensus advance to the next epoch
 
-                    int ets = cons.getEts();
-                    cons.createEpoch(ets, controller);
-                    Logger.println("(Synchronizer.startSynchronization) incrementing ets of consensus " + cons.getId() + " to " + ets);
+                    //int ets = cons.getEts();
+                    //cons.createEpoch(ets, controller);
+                    cons.createEpoch(regency, controller);
+                    //Logger.println("(Synchronizer.startSynchronization) incrementing ets of consensus " + cons.getId() + " to " + ets);
+                    Logger.println("(Synchronizer.startSynchronization) incrementing ets of consensus " + cons.getId() + " to " + regency);
 
-                    collect = new CollectData(this.controller.getStaticConf().getProcessId(), last + 1, ets, new TimestampValuePair(0, new byte[0]), new HashSet<TimestampValuePair>());
+                    //collect = new CollectData(this.controller.getStaticConf().getProcessId(), last + 1, ets, new TimestampValuePair(0, new byte[0]), new HashSet<TimestampValuePair>());
+                    collect = new CollectData(this.controller.getStaticConf().getProcessId(), last + 1, regency, new TimestampValuePair(0, new byte[0]), new HashSet<TimestampValuePair>());
                 }
 
                 SignedObject signedCollect = tom.sign(collect);
@@ -1029,7 +1044,7 @@ public class Synchronizer {
         }
         byte[] tmpval = null;
 
-        HashSet<CollectData> selectedColls = lcManager.selectCollects(signedCollects, currentEid);
+        HashSet<CollectData> selectedColls = lcManager.selectCollects(signedCollects, currentEid, regency);
 
         // get a value that satisfies the predicate "bind"
         tmpval = lcManager.getBindValue(selectedColls);
@@ -1065,16 +1080,23 @@ public class Synchronizer {
 
             //Update current consensus with latest ETS. This may be necessary
             //if I 'jumped' to a consensus instance ahead of the one I was executing
-            int currentETS = lcManager.getETS(currentEid, selectedColls);
-            if (currentETS > ets) {
+                   
+            //int currentETS = lcManager.getETS(currentEid, selectedColls);
+            //if (currentETS > ets) {
+            if (regency > ets) {
                 
-                System.out.println("(Synchronizer.finalise) Updating consensus' ETS after SYNC (from " + ets + " to " + currentETS +")");
+                //System.out.println("(Synchronizer.finalise) Updating consensus' ETS after SYNC (from " + ets + " to " + currentETS +")");
+                System.out.println("(Synchronizer.finalise) Updating consensus' ETS after SYNC (from " + ets + " to " + regency +")");
 
-                do {
+                /*do {
                     cons.incEts();
-                } while (cons.getEts() != currentETS);
+                } while (cons.getEts() != currentETS);*/
                 
-                cons.createEpoch(currentETS, controller);
+                cons.setETS(regency);
+                
+                //cons.createEpoch(currentETS, controller);
+                cons.createEpoch(regency, controller);
+                
                 e = cons.getLastEpoch();
             }
 

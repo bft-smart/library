@@ -697,7 +697,7 @@ public class LCManager {
 
         if (c == null) return null;
 
-        return normalizeCollects(getSignedCollects(c), eid);
+        return normalizeCollects(getSignedCollects(c), eid, regency);
         
     }
 
@@ -708,11 +708,11 @@ public class LCManager {
      * @param eid the eid to which to normalize the collects
      * @return a set of correctly signed and normalized collect data structures
      */
-    public HashSet<CollectData> selectCollects(HashSet<SignedObject> signedObjects, int eid) {
+    public HashSet<CollectData> selectCollects(HashSet<SignedObject> signedObjects, int eid, int regency) {
 
         if (signedObjects == null) return null;
 
-        return normalizeCollects(getSignedCollects(signedObjects), eid);
+        return normalizeCollects(getSignedCollects(signedObjects), eid, regency);
 
     }
 
@@ -744,7 +744,7 @@ public class LCManager {
     // Normalizes the set of collects. A set of collects is considered normalized if or when
     // all collects are related to the same eid. This is important because not all replicas
     // may be executing the same eid when tere is a leader change
-    private HashSet<CollectData> normalizeCollects(HashSet<CollectData> collects, int eid) {
+    private HashSet<CollectData> normalizeCollects(HashSet<CollectData> collects, int eid, int regency) {
 
         HashSet<CollectData> result = new HashSet<CollectData>();
 
@@ -755,7 +755,7 @@ public class LCManager {
                 result.add(c);
             }
             else {
-                result.add(new CollectData(c.getPid(), eid, 1, new TimestampValuePair(0, new byte[0]), new HashSet<TimestampValuePair>()));
+                result.add(new CollectData(c.getPid(), eid, regency, new TimestampValuePair(0, new byte[0]), new HashSet<TimestampValuePair>()));
             }
 
         }
