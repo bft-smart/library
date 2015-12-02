@@ -820,12 +820,12 @@ public class LCManager {
             
         for (ConsensusMessage consMsg : ConsensusMessages) {
             
-            ConsensusMessage pm = new ConsensusMessage(MessageFactory.ACCEPT,consMsg.getNumber(),
+            ConsensusMessage cm = new ConsensusMessage(consMsg.getType(),consMsg.getNumber(),
                     consMsg.getEpoch(), consMsg.getSender(), consMsg.getValue());
 
             ByteArrayOutputStream bOut = new ByteArrayOutputStream(248);
             try {
-                new ObjectOutputStream(bOut).writeObject(pm);
+                new ObjectOutputStream(bOut).writeObject(cm);
             } catch (IOException ex) {
                 ex.printStackTrace();
             }

@@ -191,7 +191,7 @@ public class ConsensusMessage extends SystemMessage {
      * Returns this message type
      * @return This message type
      */
-    public int getPaxosType() {
+    public int getType() {
 
         return paxosType;
 

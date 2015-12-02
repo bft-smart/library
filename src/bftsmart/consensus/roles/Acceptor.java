@@ -132,7 +132,7 @@ public final class Acceptor {
 
         consensus.lock.lock();
         Epoch epoch = consensus.getEpoch(msg.getEpoch(), controller);
-        switch (msg.getPaxosType()){
+        switch (msg.getType()){
             case MessageFactory.PROPOSE:{
                     proposeReceived(epoch, msg);
             }break;

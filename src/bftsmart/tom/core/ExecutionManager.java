@@ -225,7 +225,7 @@ public final class ExecutionManager {
                 if (isRetrievingState || 
                         msg.getNumber() > (lastConsId + 1) || 
                         (inExec != -1 && inExec < msg.getNumber()) || 
-                        (inExec == -1 && msg.getPaxosType() != MessageFactory.PROPOSE)) { //not propose message for the next consensus
+                        (inExec == -1 && msg.getType() != MessageFactory.PROPOSE)) { //not propose message for the next consensus
                     Logger.println("(ExecutionManager.checkLimits) Message for consensus " + 
                             msg.getNumber() + " is out of context, adding it to out of context set");
                     
@@ -385,8 +385,8 @@ public final class ExecutionManager {
                     if (msg.getEpoch() == epoch.getTimestamp() &&
                             Arrays.equals(propHash, msg.getValue())) {
                         
-                        if (msg.getPaxosType() == MessageFactory.WRITE) countWrites++;
-                        else if (msg.getPaxosType() == MessageFactory.ACCEPT) countAccepts++;
+                        if (msg.getType() == MessageFactory.WRITE) countWrites++;
+                        else if (msg.getType() == MessageFactory.ACCEPT) countAccepts++;
                     }
                 }
             }
@@ -451,7 +451,7 @@ public final class ExecutionManager {
     public void addOutOfContextMessage(ConsensusMessage m) {
         outOfContextLock.lock();
         /******* BEGIN OUTOFCONTEXT CRITICAL SECTION *******/
-        if (m.getPaxosType() == MessageFactory.PROPOSE) {
+        if (m.getType() == MessageFactory.PROPOSE) {
             Logger.println("(ExecutionManager.addOutOfContextMessage) adding " + m);
             outOfContextProposes.put(m.getNumber(), m);
         } else {
