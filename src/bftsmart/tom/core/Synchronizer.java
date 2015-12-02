@@ -1142,11 +1142,11 @@ public class Synchronizer {
 
             // send a WRITE/ACCEPT message to the other replicas
             if (this.controller.getStaticConf().isBFT()) {
-                System.out.println("(Synchronizer.finalise) sending WRITE message");
+                System.out.println("(Synchronizer.finalise) sending WRITE message for CID " + currentEid + ", timestamp " + e.getTimestamp() + ", value " + Arrays.toString(e.propValueHash));
                 communication.send(this.controller.getCurrentViewOtherAcceptors(),
                         acceptor.getFactory().createWrite(currentEid, e.getTimestamp(), e.propValueHash));
             } else {
-                System.out.println("(Synchronizer.finalise) sending ACCEPT message");
+                System.out.println("(Synchronizer.finalise) sending ACCEPT message for CID " + currentEid + ", timestamp " + e.getTimestamp() + ", value " + Arrays.toString(e.propValueHash));
                 communication.send(this.controller.getCurrentViewOtherAcceptors(),
                         acceptor.getFactory().createAccept(currentEid, e.getTimestamp(), e.propValueHash));
             }
