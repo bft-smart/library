@@ -74,7 +74,6 @@ public class Synchronizer {
     // if state transfer is required for synchronization
     private int tempRegency = -1;
     private LastEidData tempLastHighestEid = null;
-    private int tempCurrentEid = -1;
     private HashSet<SignedObject> tempSignedCollects = null;
     private byte[] tempPropose = null;
     private int tempBatchSize = -1;
@@ -302,17 +301,18 @@ public class Synchronizer {
             ois = new ObjectInputStream(bis);
 
             lastHighestEid = (LastEidData) ois.readObject();
-            currentEid = ois.readInt();
             signedCollects = (HashSet<SignedObject>) ois.readObject();
             propose = (byte[]) ois.readObject();
             batchSize = ois.readInt();
 
             lcManager.setCollects(regency, signedCollects);
+            
+            currentEid = lastHighestEid.getEid() + 1;
 
             // Is the predicate "sound" true? Is the certificate for LastEid valid?
             if (lcManager.sound(lcManager.selectCollects(regency, currentEid)) && (!controller.getStaticConf().isBFT() || lcManager.hasValidProof(lastHighestEid))) {
 
-                finalise(regency, lastHighestEid, currentEid, signedCollects, propose, batchSize, false);
+                finalise(regency, lastHighestEid, signedCollects, propose, batchSize, false);
             }
 
             ois.close();
@@ -945,7 +945,6 @@ public class Synchronizer {
                 out.writeObject(lastHighestEid);
 
 		//TODO: Missing: serialization of the proof?
-                out.writeInt(currentEid);
                 out.writeObject(signedCollects);
                 out.writeObject(propose);
                 out.writeInt(batchSize);
@@ -963,7 +962,7 @@ public class Synchronizer {
                 communication.send(this.controller.getCurrentViewOtherAcceptors(),
                         new LCMessage(this.controller.getStaticConf().getProcessId(), TOMUtil.SYNC, regency, payload));
 
-                finalise(regency, lastHighestEid, currentEid, signedCollects, propose, batchSize, true);
+                finalise(regency, lastHighestEid, signedCollects, propose, batchSize, true);
 
             } catch (IOException ex) {
                 ex.printStackTrace();
@@ -1001,7 +1000,7 @@ public class Synchronizer {
 
         e.deserializedPropValue = tom.checkProposedValue(tempLastHighestEid.getEidDecision(), false);
 
-        finalise(tempRegency, tempLastHighestEid, tempCurrentEid,
+        finalise(tempRegency, tempLastHighestEid,
                 tempSignedCollects, tempPropose, tempBatchSize, tempIAmLeader);
 
     }
@@ -1009,8 +1008,9 @@ public class Synchronizer {
     // this method is called on all replicas, and serves to verify and apply the
     // information sent in the catch-up message
     private void finalise(int regency, LastEidData lastHighestEid,
-            int currentEid, HashSet<SignedObject> signedCollects, byte[] propose, int batchSize, boolean iAmLeader) {
+            HashSet<SignedObject> signedCollects, byte[] propose, int batchSize, boolean iAmLeader) {
 
+        int currentEid = lastHighestEid.getEid() + 1;
         Logger.println("(Synchronizer.finalise) final stage of LC protocol");
         int me = this.controller.getStaticConf().getProcessId();
         Consensus cons = null;
@@ -1022,7 +1022,6 @@ public class Synchronizer {
 
             tempRegency = regency;
             tempLastHighestEid = lastHighestEid;
-            tempCurrentEid = currentEid;
             tempSignedCollects = signedCollects;
             tempPropose = propose;
             tempBatchSize = batchSize;
