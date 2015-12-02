@@ -213,6 +213,10 @@ public class StandardStateManager extends BaseStateManager {
                         tomLayer.getSynchronizer().getLCManager().setNextReg(currentRegency);
                         tomLayer.getSynchronizer().getLCManager().setNewLeader(currentLeader);
                         tomLayer.lm.setNewLeader(currentLeader);
+
+                        // I might have timed out before invoking the state transfer, so
+                        // stop my re-transmission of STOP messages for all regencies up to the current one
+                        if (currentRegency > 0) tomLayer.getSynchronizer().removeSTOPretransmissions(currentRegency - 1);
                         //if (currentRegency > 0)
                         //    tomLayer.requestsTimer.setTimeout(tomLayer.requestsTimer.getTimeout() * (currentRegency * 2));
                         

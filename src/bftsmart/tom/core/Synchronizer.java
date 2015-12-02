@@ -432,6 +432,20 @@ public class Synchronizer {
 
     }
 
+    /**
+     * Remove all STOP messages being retransmitted up until
+     * the specified regency
+     * @param regency The regency up to which STOP retransmission should be canceled
+     */
+    public void removeSTOPretransmissions(int regency) {
+
+        Set<Integer> timers = requestsTimer.getTimers();
+
+        for (int t : timers) {
+            if (t <= regency) requestsTimer.stopSTOP(t);
+        }
+
+    }
     // this method is called when a timeout occurs or when a STOP message is recevied
     private void startSynchronization(int nextReg) {
 
@@ -1064,11 +1078,8 @@ public class Synchronizer {
             lcManager.removeCollects(regency); // avoid memory leaks
 
             // stop the re-transmission of the STOP message for all regencies up to this one
-            Set<Integer> timers = requestsTimer.getTimers();
+            removeSTOPretransmissions(regency);
             
-            for (int t : timers) {
-                if (t <= regency) requestsTimer.stopSTOP(t);
-            }
             cons = execManager.getConsensus(currentEid);
 
             cons.removeWritten(tmpval);

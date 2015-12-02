@@ -303,7 +303,11 @@ public class DurableStateManager extends BaseStateManager {
 
 						tomLayer.lm.setNewLeader(currentLeader);
 						
-						System.out.print("trying to acquire deliverlock");
+                                                // I might have timed out before invoking the state transfer, so
+                                                // stop my re-transmission of STOP messages for all regencies up to the current one
+                                                if (currentRegency > 0) tomLayer.getSynchronizer().removeSTOPretransmissions(currentRegency - 1);
+                                                
+                                                System.out.print("trying to acquire deliverlock");
 						dt.deliverLock();
 						System.out.println("acquired");
 
