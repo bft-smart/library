@@ -30,9 +30,9 @@ import bftsmart.statemanagement.ApplicationState;
 import bftsmart.statemanagement.SMMessage;
 import bftsmart.tom.core.DeliveryThread;
 import bftsmart.tom.core.TOMLayer;
-import bftsmart.tom.leaderchange.LCManager;
 import bftsmart.tom.util.Logger;
 import bftsmart.tom.util.TOMUtil;
+import java.util.Random;
 
 /**
  * 
@@ -60,10 +60,11 @@ public class StandardStateManager extends BaseStateManager {
         //this.lcManager = tomLayer.getSyncher().getLCManager();
         this.execManager = tomLayer.execManager;
 
-        this.replica = 0;
-
-        if (SVController.getCurrentViewN() > 1 && replica == SVController.getStaticConf().getProcessId())
-        	changeReplica();
+        changeReplica(); // initialize replica from which to ask the complete state
+                
+        //this.replica = 0;
+        //if (SVController.getCurrentViewN() > 1 && replica == SVController.getStaticConf().getProcessId())
+        //	changeReplica();
 
         state = null;
         lastEid = -1;
@@ -73,10 +74,17 @@ public class StandardStateManager extends BaseStateManager {
     }
 	
     private void changeReplica() {
-        int pos = -1;
+        
+        int[] processes = this.SVController.getCurrentViewOtherAcceptors();
+        Random r = new Random();
+        
+        int pos;
         do {
-            pos = this.SVController.getCurrentViewPos(replica);
-            replica = this.SVController.getCurrentViewProcesses()[(pos + 1) % SVController.getCurrentViewN()];
+            //pos = this.SVController.getCurrentViewPos(replica);
+            //replica = this.SVController.getCurrentViewProcesses()[(pos + 1) % SVController.getCurrentViewN()];
+            
+            pos = r.nextInt(processes.length);
+            replica = processes[pos];
         } while (replica == SVController.getStaticConf().getProcessId());
     }
     
@@ -85,6 +93,8 @@ public class StandardStateManager extends BaseStateManager {
         if (tomLayer.requestsTimer != null)
         	tomLayer.requestsTimer.clearAll();
 
+        changeReplica(); // always ask the complete state to a different replica
+        
         SMMessage smsg = new StandardSMMessage(SVController.getStaticConf().getProcessId(),
                 waitingEid, TOMUtil.SM_REQUEST, replica, null, null, -1, -1);
         tomLayer.getCommunication().send(SVController.getCurrentViewOtherAcceptors(), smsg);
