@@ -856,7 +856,7 @@ public class LCManager {
                 
                     countValid++;
                 }
-            } else { // certificate is made of signatures
+            } else if (consMsg.getProof() instanceof byte[]) { // certificate is made of signatures
                 
                 bftsmart.tom.util.Logger.println("(LCManager.hasValidProof) Proof made of Signatures");
                 pubRSAKey = SVController.getStaticConf().getRSAPublicKey(consMsg.getSender());
@@ -865,6 +865,8 @@ public class LCManager {
                             
                 if (TOMUtil.verifySignature(pubRSAKey, data, signature)) countValid++;
    
+            } else {
+                return false; // the proof is invalid
             }
         }
         
