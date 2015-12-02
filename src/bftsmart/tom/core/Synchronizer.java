@@ -1101,12 +1101,17 @@ public class Synchronizer {
             }
 
             // Make sure the epoch is created
-            if (e == null || e.getTimestamp() != ets) {
+            /*if (e == null || e.getTimestamp() != ets) {
                 e = cons.createEpoch(ets, controller);
             } else {
                 e.clear();
+            }*/
+            if (e == null || e.getTimestamp() != regency) {
+                e = cons.createEpoch(regency, controller);
+            } else {
+                e.clear();
             }
-
+            
             byte[] hash = tom.computeHash(tmpval);
             e.propValueHash = hash;
             e.propValue = tmpval;
