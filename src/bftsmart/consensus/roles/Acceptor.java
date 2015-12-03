@@ -120,9 +120,9 @@ public final class Acceptor {
             tomLayer.processOutOfContext();
         }
     }
-
+   
     /**
-     * Called when a Paxos message is received or when a out of context message must be processed.
+     * Called when a Consensus message is received or when a out of context message must be processed.
      * It processes the received message according to its type
      *
      * @param msg The message to be processed
@@ -131,7 +131,7 @@ public final class Acceptor {
         Consensus consensus = executionManager.getConsensus(msg.getNumber());
 
         consensus.lock.lock();
-        Epoch epoch = consensus.getEpoch(msg.getEpoch(), controller);
+        Epoch epoch = consensus.getEpoch(msg.getEpoch(), controller);       
         switch (msg.getType()){
             case MessageFactory.PROPOSE:{
                     proposeReceived(epoch, msg);
@@ -407,16 +407,15 @@ public final class Acceptor {
 
         if (epoch.countAccept(value) > controller.getQuorum() && !epoch.getConsensus().isDecided()) {
             Logger.println("(Acceptor.computeAccept) Deciding " + cid);
-            decide(epoch, value);
+            decide(epoch);
         }
     }
 
     /**
      * This is the method invoked when a value is decided by this process
      * @param epoch Epoch at which the decision is made
-     * @param value The decided value (got from WRITE or ACCEPT messages)
      */
-    private void decide(Epoch epoch, byte[] value) {        
+    private void decide(Epoch epoch) {        
         if (epoch.getConsensus().getDecision().firstMessageProposed != null)
             epoch.getConsensus().getDecision().firstMessageProposed.decisionTime = System.nanoTime();
 
@@ -424,6 +423,6 @@ public final class Acceptor {
                 tomLayer.lm.getCurrentLeader()/*leaderModule.getLeader(epoch.getConsensus().getId(),
                 epoch.getNumber())*/);
 
-        epoch.getConsensus().decided(epoch, value);
+        epoch.getConsensus().decided(epoch, true);
     }
 }

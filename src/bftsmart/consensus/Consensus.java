@@ -294,15 +294,15 @@ public class Consensus {
     /**
      * Called by the Acceptor object, to set the decided value
      *
-     * @param value The decided value
      * @param epoch The epoch at which a decision was made
+     * @param deliver Set to true to deliver decision to TOMLayer/DeliveryTrhead
      */
-    public void decided(Epoch epoch, byte[] value) {
+    public void decided(Epoch epoch, boolean deliver) {
         if (!decided) {
             decided = true;
             decisionEpoch = epoch.getTimestamp();
             decision.setDecisionEpoch(epoch);
-            manager.getTOMLayer().decided(decision);
+            if (deliver) manager.getTOMLayer().decided(decision);
         }
     }
 }

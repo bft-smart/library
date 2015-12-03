@@ -11,6 +11,7 @@ import bftsmart.consensus.Epoch;
 import bftsmart.consensus.Consensus;
 import bftsmart.consensus.TimestampValuePair;
 import bftsmart.consensus.messages.ConsensusMessage;
+import bftsmart.consensus.messages.MessageFactory;
 import bftsmart.consensus.roles.Acceptor;
 import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.statemanagement.StateManager;
@@ -1032,9 +1033,8 @@ public class Synchronizer {
 
             return;
 
-        } else if (tom.getLastExec() + 1 == lastHighestEid.getEid()) { // Is this replica still executing the last decided consensus?
+        } /*else if (tom.getLastExec() + 1 == lastHighestEid.getEid()) { // Is this replica still executing the last decided consensus?
 
-            //TODO: it is necessary to verify the proof
             System.out.println("(Synchronizer.finalise) I'm still at the CID before the most recent one!!! (" + lastHighestEid.getEid() + ")");
 
             cons = execManager.getConsensus(lastHighestEid.getEid());
@@ -1053,13 +1053,62 @@ public class Synchronizer {
             e.propValue = lastHighestEid.getEidDecision();
 
             e.deserializedPropValue = tom.checkProposedValue(lastHighestEid.getEidDecision(), false);
-            cons.decided(e, hash); // pass the decision to the delivery thread
+            cons.decided(e, true); // pass the decision to the delivery thread
+        }*/
+        
+        // install proof of the last decided consensus
+        cons = execManager.getConsensus(lastHighestEid.getEid());
+        e = null;
+        
+        for (ConsensusMessage cm : lastHighestEid.getEidProof()) {
+            
+            if (e == null) e = cons.getEpoch(cm.getEpoch(), true, controller);
+            if (e.getTimestamp() != cm.getEpoch()) {
+                System.out.println("(Synchronizer.finalise) Strange... proof of last decided consensus contains messages from more than just one epoch");
+                e = cons.getEpoch(cm.getEpoch(), true, controller);
+            }
+            e.addToProof(cm);
+            
+            if (cm.getType() == MessageFactory.ACCEPT) {
+                e.setAccept(cm.getSender(), cm.getValue());
+            }
+            
+            else if (cm.getType() == MessageFactory.WRITE) {
+                e.setWrite(cm.getSender(), cm.getValue());
+            }
+            
+            
         }
-        byte[] tmpval = null;
+        if (e != null) {
 
+            System.out.println("(Synchronizer.finalise) Installed proof of last decided consensus " + lastHighestEid.getEid());
+            
+            byte[] hash = tom.computeHash(lastHighestEid.getEidDecision());
+            e.propValueHash = hash;
+            e.propValue = lastHighestEid.getEidDecision();
+            e.deserializedPropValue = tom.checkProposedValue(lastHighestEid.getEidDecision(), false);
+
+            // Is this replica still executing the last decided consensus?
+            if (tom.getLastExec() + 1 == lastHighestEid.getEid()) {
+                
+                System.out.println("(Synchronizer.finalise) I'm still at the CID before the most recent one!!! (" + lastHighestEid.getEid() + ")");
+                cons.decided(e, true);
+            }
+            else {
+                cons.decided(e, false);
+            }
+
+        } else {
+            System.out.println("(Synchronizer.finalise) I did not install any proof of last decided consensus " + lastHighestEid.getEid());
+        }
+        
+        cons = null;
+        e = null;
+        
+        // get a value that satisfies the predicate "bind"
+        byte[] tmpval = null;
         HashSet<CollectData> selectedColls = lcManager.selectCollects(signedCollects, currentEid, regency);
 
-        // get a value that satisfies the predicate "bind"
         tmpval = lcManager.getBindValue(selectedColls);
         Logger.println("(Synchronizer.finalise) Trying to find a binded value");
 
