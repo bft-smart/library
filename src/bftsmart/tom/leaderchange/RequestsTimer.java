@@ -151,10 +151,11 @@ public class RequestsTimer {
         long t = (shortTimeout > -1 ? shortTimeout : timeout);
         
         //System.out.println("(RequestTimerTask.run) I SOULD NEVER RUN WHEN THERE IS NO TIMEOUT");
-        rwLock.readLock().lock();
 
         LinkedList<TOMMessage> pendingRequests = new LinkedList<TOMMessage>();
 
+        rwLock.readLock().lock();
+        
         for (Iterator<TOMMessage> i = watched.iterator(); i.hasNext();) {
             TOMMessage request = i.next();
             if ((request.receptionTime + System.currentTimeMillis()) > t) {
@@ -164,6 +165,8 @@ public class RequestsTimer {
             }
         }
 
+        rwLock.readLock().unlock();
+                
         if (!pendingRequests.isEmpty()) {
             for (ListIterator<TOMMessage> li = pendingRequests.listIterator(); li.hasNext(); ) {
                 TOMMessage request = li.next();
@@ -191,9 +194,7 @@ public class RequestsTimer {
             rtTask = null;
             timer.purge();
         }
-
-        rwLock.readLock().unlock();
-
+        
     }
     
     public void setSTOP(int regency, LCMessage stop) {
