@@ -295,14 +295,17 @@ public class Consensus {
      * Called by the Acceptor object, to set the decided value
      *
      * @param epoch The epoch at which a decision was made
-     * @param deliver Set to true to deliver decision to TOMLayer/DeliveryTrhead
+     * @param deliver Set to true to deliver decision to TOMLayer/DeliveryThread
      */
     public void decided(Epoch epoch, boolean deliver) {
         if (!decided) {
             decided = true;
             decisionEpoch = epoch.getTimestamp();
             decision.setDecisionEpoch(epoch);
-            if (deliver) manager.getTOMLayer().decided(decision);
+            if (deliver) {
+                System.out.println("(Consensus.decided) Delivering decision from consensus " + getId() + " to the TOMLayer/DeliveryThread");
+                manager.getTOMLayer().decided(decision);
+            }
         }
     }
 }
