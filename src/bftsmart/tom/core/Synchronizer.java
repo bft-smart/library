@@ -123,8 +123,6 @@ public class Synchronizer {
 	// still not in the leader change phase?
         if (lcManager.getNextReg() == lcManager.getLastReg()) {
 
-            Logger.println("(Synchronizer.triggerTimeout) initialize synchronization phase");
-
             lcManager.setNextReg(lcManager.getLastReg() + 1); // define next timestamp
 
             regency = lcManager.getNextReg(); // update variable 
@@ -135,7 +133,7 @@ public class Synchronizer {
             // store information about messages that I'm going to send
             lcManager.addStop(regency, this.controller.getStaticConf().getProcessId());
 
-            execManager.stop(); // stop consensus execution
+            //execManager.stop(); // stop consensus execution
 
             //Get requests that timed out and the requests received in STOP messages
             //and add those STOPed requests to the client manager
@@ -192,7 +190,7 @@ public class Synchronizer {
                                            // were received, but now can be processed
         
         startSynchronization(regency); // evaluate STOP messages
-
+        
     }
 
     // Processes STOP messages that were not process upon reception, because they were
@@ -450,73 +448,79 @@ public class Synchronizer {
     // this method is called when a timeout occurs or when a STOP message is recevied
     private void startSynchronization(int nextReg) {
 
-        boolean enterFirstPhase = this.controller.getStaticConf().isBFT();
         boolean condition = false;
         ObjectOutputStream out = null;
         ByteArrayOutputStream bos = null;
 
-        // pass to the leader change phase if more than f messages have been received already
-        if (enterFirstPhase && lcManager.getStopsSize(nextReg) > this.controller.getCurrentViewF() && lcManager.getNextReg() == lcManager.getLastReg()) {
+        if (this.controller.getStaticConf().isBFT()) { // Enter this phase if running under BFT mode
 
-            Logger.println("(Synchronizer.startSynchronization) initialize synch phase");
-            requestsTimer.Enabled(false);
-            requestsTimer.stopTimer();
-
-            lcManager.setNextReg(lcManager.getLastReg() + 1); // define next timestamp
-
-            int regency = lcManager.getNextReg();
-
-            // store information about message I am going to send
-            lcManager.addStop(regency, this.controller.getStaticConf().getProcessId());
-
-            execManager.stop(); // stop execution of consensus
-
-            //Get requests that timed out and the requests received in STOP messages
-            //and add those STOPed requests to the client manager
-            addSTOPedRequestsToClientManager();
-            List<TOMMessage> messages = getRequestsToRelay();
-
-            try { // serialize conent to send in the STOP message
-                bos = new ByteArrayOutputStream();
-                out = new ObjectOutputStream(bos);
-
-                // Do I have messages to send in the STOP message?
-                if (messages != null && messages.size() > 0) {
-
-                    //TODO: If this is null, there was no timeout nor STOP messages.
-                    //What shall be done then?
-                    out.writeBoolean(true);
-                    byte[] serialized = bb.makeBatch(messages, 0, 0, controller);
-                    out.writeObject(serialized);
-                } else {
-                    out.writeBoolean(false);
-                    System.out.println("(Synchronizer.startSynchronization) Strange... did not include any request in my STOP message for regency " + regency);
-                }
-
-                out.flush();
-                bos.flush();
-
-                byte[] payload = bos.toByteArray();
-                out.close();
-                bos.close();
-
-                // send message STOP
-                System.out.println("(Synchronizer.startSynchronization) sending STOP message to install regency " + regency + " with " + (messages != null ? messages.size() : 0) + " request(s) to relay");
+            // pass to the leader change phase if more than f messages have been received already
+            if (lcManager.getStopsSize(nextReg) > this.controller.getCurrentViewF()) {
                 
-                LCMessage stop = new LCMessage(this.controller.getStaticConf().getProcessId(), TOMUtil.STOP, regency, payload);
-                requestsTimer.setSTOP(regency, stop); // make replica re-transmit the stop message until a new regency is installed
-                communication.send(this.controller.getCurrentViewOtherAcceptors(), stop);
+                execManager.stop(); // stop consensus execution if more than f replicas sent a STOP message
+                
+                if (lcManager.getNextReg() == lcManager.getLastReg()) {
+                    Logger.println("(Synchronizer.startSynchronization) initialize synch phase");
+                    requestsTimer.Enabled(false);
+                    requestsTimer.stopTimer();
 
-            } catch (IOException ex) {
-                ex.printStackTrace();
-                java.util.logging.Logger.getLogger(TOMLayer.class.getName()).log(Level.SEVERE, null, ex);
-            } finally {
-                try {
-                    out.close();
-                    bos.close();
-                } catch (IOException ex) {
-                    ex.printStackTrace();
-                    java.util.logging.Logger.getLogger(TOMLayer.class.getName()).log(Level.SEVERE, null, ex);
+                    lcManager.setNextReg(lcManager.getLastReg() + 1); // define next timestamp
+
+                    int regency = lcManager.getNextReg();
+
+                    // store information about message I am going to send
+                    lcManager.addStop(regency, this.controller.getStaticConf().getProcessId());
+
+                    //execManager.stop(); // stop execution of consensus
+
+                    //Get requests that timed out and the requests received in STOP messages
+                    //and add those STOPed requests to the client manager
+                    addSTOPedRequestsToClientManager();
+                    List<TOMMessage> messages = getRequestsToRelay();
+
+                    try { // serialize conent to send in the STOP message
+                        bos = new ByteArrayOutputStream();
+                        out = new ObjectOutputStream(bos);
+
+                        // Do I have messages to send in the STOP message?
+                        if (messages != null && messages.size() > 0) {
+
+                            //TODO: If this is null, there was no timeout nor STOP messages.
+                            //What shall be done then?
+                            out.writeBoolean(true);
+                            byte[] serialized = bb.makeBatch(messages, 0, 0, controller);
+                            out.writeObject(serialized);
+                        } else {
+                            out.writeBoolean(false);
+                            System.out.println("(Synchronizer.startSynchronization) Strange... did not include any request in my STOP message for regency " + regency);
+                        }
+
+                        out.flush();
+                        bos.flush();
+
+                        byte[] payload = bos.toByteArray();
+                        out.close();
+                        bos.close();
+
+                        // send message STOP
+                        System.out.println("(Synchronizer.startSynchronization) sending STOP message to install regency " + regency + " with " + (messages != null ? messages.size() : 0) + " request(s) to relay");
+
+                        LCMessage stop = new LCMessage(this.controller.getStaticConf().getProcessId(), TOMUtil.STOP, regency, payload);
+                        requestsTimer.setSTOP(regency, stop); // make replica re-transmit the stop message until a new regency is installed
+                        communication.send(this.controller.getCurrentViewOtherAcceptors(), stop);
+
+                    } catch (IOException ex) {
+                        ex.printStackTrace();
+                        java.util.logging.Logger.getLogger(TOMLayer.class.getName()).log(Level.SEVERE, null, ex);
+                    } finally {
+                        try {
+                            out.close();
+                            bos.close();
+                        } catch (IOException ex) {
+                            ex.printStackTrace();
+                            java.util.logging.Logger.getLogger(TOMLayer.class.getName()).log(Level.SEVERE, null, ex);
+                        }
+                    }
                 }
             }
         }
@@ -530,6 +534,8 @@ public class Synchronizer {
         // May I proceed to the synchronization phase?
         //if (lcManager.getStopsSize(nextReg) > this.reconfManager.getQuorum2F() && lcManager.getNextReg() > lcManager.getLastReg()) {
         if (condition) {
+            
+            if (!execManager.stopped()) execManager.stop(); // if operating in CFT mode, execution was not stopped yet
 
             Logger.println("(Synchronizer.startSynchronization) installing regency " + lcManager.getNextReg());
             lcManager.setLastReg(lcManager.getNextReg()); // define last timestamp
