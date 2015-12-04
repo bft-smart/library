@@ -316,9 +316,11 @@ public class ClientsManager {
      */
     public void requestsOrdered(TOMMessage[] requests) {
         clientsLock.lock();
+        Logger.println("(ClientsManager.requestOrdered) Updating client manager");
         for (TOMMessage request : requests) {
             requestOrdered(request);
         }
+        Logger.println("(ClientsManager.requestOrdered) Finished updating client manager");
         clientsLock.unlock();
     }
 
