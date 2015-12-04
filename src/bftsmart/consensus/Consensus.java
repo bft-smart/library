@@ -23,6 +23,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import bftsmart.tom.core.ExecutionManager;
 import bftsmart.reconfiguration.ServerViewController;
+import bftsmart.tom.util.Logger;
 
 
 
@@ -303,7 +304,7 @@ public class Consensus {
             decisionEpoch = epoch.getTimestamp();
             decision.setDecisionEpoch(epoch);
             if (deliver) {
-                System.out.println("(Consensus.decided) Delivering decision from consensus " + getId() + " to the TOMLayer/DeliveryThread");
+                Logger.println("(Consensus.decided) Delivering decision from consensus " + getId() + " to the TOMLayer/DeliveryThread");
                 manager.getTOMLayer().decided(decision);
             }
         }
