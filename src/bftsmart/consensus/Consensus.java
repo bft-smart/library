@@ -38,6 +38,7 @@ public class Consensus {
     private Decision decision; // Decision instance to which this consensus works for
     private HashMap<Integer,Epoch> epochs = new HashMap<Integer,Epoch>(2);
     private ReentrantLock epochsLock = new ReentrantLock(); // Lock for concurrency control
+    private ReentrantLock writeSetLock = new ReentrantLock(); //lock for this consensus write set
 
     private boolean decided; // Is this consensus decided?
     private int decisionEpoch = -1; // epoch at which a decision was made
@@ -48,7 +49,7 @@ public class Consensus {
     private HashSet<TimestampValuePair> writeSet = new HashSet<TimestampValuePair>();
 
     public ReentrantLock lock = new ReentrantLock(); //this consensus lock (called by other classes)
-
+    
     /**
      * Creates a new instance of Consensus
      * 
@@ -178,7 +179,9 @@ public class Consensus {
      */
     public void addWritten(byte[] value) {
 
+        writeSetLock.lock();
         writeSet.add(new TimestampValuePair(ets, value));
+        writeSetLock.unlock();
     }
 
     /**
@@ -187,14 +190,19 @@ public class Consensus {
      */
     public void removeWritten(byte[] value) {
 
-        for (TimestampValuePair rv : writeSet) {
+        writeSetLock.lock();
+        
+        Set<TimestampValuePair> temp = (HashSet<TimestampValuePair>) writeSet.clone();
+        
+        for (TimestampValuePair rv : temp) {
 
             if (Arrays.equals(rv.getValue(), value)) writeSet.remove(rv);
         }
+        writeSetLock.unlock();
 
     }
     public HashSet<TimestampValuePair> getWriteSet() {
-        return writeSet;
+        return (HashSet<TimestampValuePair>) writeSet.clone(); 
     }
     /**
      * Creates an epoch associated with this consensus, with the specified timestamp
