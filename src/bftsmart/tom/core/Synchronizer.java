@@ -190,7 +190,7 @@ public class Synchronizer {
                                            // were received, but now can be processed
         
         startSynchronization(regency); // evaluate STOP messages
-        
+                
     }
 
     // Processes STOP messages that were not process upon reception, because they were
@@ -1136,9 +1136,6 @@ public class Synchronizer {
             
             cons = execManager.getConsensus(currentEid);
 
-            cons.removeWritten(tmpval);
-            cons.addWritten(tmpval);
-
             e = cons.getLastEpoch();
 
             int ets = cons.getEts();
@@ -1177,6 +1174,11 @@ public class Synchronizer {
                 e.clear();
             }
             
+            /********* LEADER CHANGE CODE ********/
+            cons.removeWritten(tmpval);
+            cons.addWritten(tmpval);
+            /*************************************/
+            
             byte[] hash = tom.computeHash(tmpval);
             e.propValueHash = hash;
             e.propValue = tmpval;
@@ -1196,8 +1198,10 @@ public class Synchronizer {
             } else {
                 e.setAccept(me, hash);
 
+                /********* LEADER CHANGE CODE ********/
                 Logger.println("(Synchronizer.finalise) [CFT Mode] Setting consensus " + currentEid + " QuorumWrite tiemstamp to " + e.getConsensus().getEts() + " and value " + Arrays.toString(hash));
  	        e.getConsensus().setQuorumWrites(hash);
+                /*************************************/
 
             }
 
