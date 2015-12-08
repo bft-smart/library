@@ -55,6 +55,15 @@ public class Decision {
 
 
     /**
+     * Get epoch in which the value was decided
+     * 
+     * @return The epoch in which the value was decided
+     */
+    public Epoch getDecisionEpoch() {
+        return decisionEpoch;
+    }
+    
+    /**
      * Sets the decided value
      * @return Decided Value
      */
