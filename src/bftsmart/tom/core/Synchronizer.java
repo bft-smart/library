@@ -565,48 +565,55 @@ public class Synchronizer {
 
                     bos = new ByteArrayOutputStream();
                     out = new ObjectOutputStream(bos);
+                    
+                    Consensus cons = null;
+                    
+                    // content of the last decided CID
+                    if (last > -1) cons = execManager.getConsensus(last);
 
-                    if (last > -1) { // content of the last decided cid
+                    //Do I have info on my last executed consensus?
+                    if (cons != null && cons.getDecisionEpoch() != null && cons.getDecisionEpoch().propValue != null) {
+                        
+                    out.writeBoolean(true);
+                    out.writeInt(last);
+                    //byte[] decision = exec.getLearner().getDecision();
 
-                        out.writeBoolean(true);
-                        out.writeInt(last);
-                        Consensus cons = execManager.getConsensus(last);
-                        //byte[] decision = exec.getLearner().getDecision();
+                    byte[] decision = cons.getDecisionEpoch().propValue;
+                    Set<ConsensusMessage> proof = cons.getDecisionEpoch().getProof();
 
-                        ////// THIS IS TO CATCH A BUG!!!!!
-                        if (cons.getDecisionEpoch() == null || cons.getDecisionEpoch().propValue == null) {
+                    out.writeObject(decision);
+                    out.writeObject(proof);
+                    // TODO: WILL BE NECESSARY TO ADD A PROOF!!!
 
-                            System.out.println("[DEBUG INFO FOR LAST CID #1]");
+                } else {
+                    out.writeBoolean(false);
+                    
+                    ////// THIS IS TO CATCH A BUG!!!!!
+                    if (last > -1) {
+                        System.out.println("[DEBUG INFO FOR LAST CID #1]");
 
-                            if (cons.getDecisionEpoch() == null) {
-                                System.out.println("No decision epoch for cid " + last);
-                            } else {
-                                System.out.println("epoch for cid: " + last + ": " + cons.getDecisionEpoch().toString());
+                        if (cons == null) {
+                            if (last > -1) System.out.println("No consensus instance for cid " + last);
 
-                                if (cons.getDecisionEpoch().propValue == null) {
-                                    System.out.println("No propose for cid " + last);
-                                } else {
-                                    System.out.println("Propose hash for cid " + last + ": " + Base64.encodeBase64String(tom.computeHash(cons.getDecisionEpoch().propValue)));
-                                }
-                            }
-
-                            return;
                         }
+                        else if (cons.getDecisionEpoch() == null) {
+                            System.out.println("No decision epoch for cid " + last);
+                        } else {
+                            System.out.println("epoch for cid: " + last + ": " + cons.getDecisionEpoch().toString());
 
-                        byte[] decision = cons.getDecisionEpoch().propValue;
-                        Set<ConsensusMessage> proof = cons.getDecisionEpoch().getProof();
-
-                        out.writeObject(decision);
-                        out.writeObject(proof);
-                        // TODO: WILL BE NECESSARY TO ADD A PROOF!!!
-
-                    } else {
-                        out.writeBoolean(false);
+                            if (cons.getDecisionEpoch().propValue == null) {
+                                System.out.println("No propose for cid " + last);
+                            } else {
+                                System.out.println("Propose hash for cid " + last + ": " + Base64.encodeBase64String(tom.computeHash(cons.getDecisionEpoch().propValue)));
+                            }
+                        }
                     }
+
+                }
 
                     if (in > -1) { // content of cid in execution
 
-                        Consensus cons = execManager.getConsensus(in);
+                        cons = execManager.getConsensus(in);
 
                         //cons.incEts(); // make the consensus advance to the next epoch
                         cons.setETS(regency); // make the consensus advance to the next epoch
@@ -638,7 +645,7 @@ public class Synchronizer {
 
                     } else {
 
-                        Consensus cons = execManager.getConsensus(last + 1);
+                        cons = execManager.getConsensus(last + 1);
 
                         //cons.incEts(); // make the consensus advance to the next epoch
                         cons.setETS(regency); // make the consensus advance to the next epoch
@@ -711,28 +718,15 @@ public class Synchronizer {
                 LastEidData lastData = null;
                 CollectData collect = null;
 
-                if (last > -1) {  // content of the last decided cid 
-                    Consensus cons = execManager.getConsensus(last);
+                Consensus cons = null;
+                
+                //Content of the last decided CID
+                if (last > -1) cons = execManager.getConsensus(last);
+                        
+                //Do I have info on my last executed consensus?
+                if (cons != null && cons.getDecisionEpoch() != null && cons.getDecisionEpoch().propValue != null) { 
                     //byte[] decision = exec.getLearner().getDecision();
 
-                    ////// THIS IS TO CATCH A BUG!!!!!
-                    if (cons.getDecisionEpoch() == null || cons.getDecisionEpoch().propValue == null) {
-
-                        System.out.println("[DEBUG INFO FOR LAST CID #2]");
-
-                        if (cons.getDecisionEpoch() == null) {
-                            System.out.println("No decision epoch for cid " + last);
-                        } else {
-                            System.out.println("epoch for cid: " + last + ": " + cons.getDecisionEpoch().toString());
-                        }
-                        if (cons.getDecisionEpoch().propValue == null) {
-                            System.out.println("No propose for cid " + last);
-                        } else {
-                            System.out.println("Propose hash for cid " + last + ": " + Base64.encodeBase64String(tom.computeHash(cons.getDecisionEpoch().propValue)));
-                        }
-
-                        return;
-                    }
 
                     byte[] decision = cons.getDecisionEpoch().propValue;
                     Set<ConsensusMessage> proof = cons.getDecisionEpoch().getProof();
@@ -742,11 +736,32 @@ public class Synchronizer {
 
                 } else {
                     lastData = new LastEidData(this.controller.getStaticConf().getProcessId(), last, null, null);
+
+                    ////// THIS IS TO CATCH A BUG!!!!!
+                    if (last > -1) {
+                        System.out.println("[DEBUG INFO FOR LAST CID #2]");
+
+                        if (cons == null) {
+                            if (last > -1) System.out.println("No consensus instance for cid " + last);
+
+                        }
+                        else if (cons.getDecisionEpoch() == null) {
+                            System.out.println("No decision epoch for cid " + last);
+                        } else {
+                            System.out.println("epoch for cid: " + last + ": " + cons.getDecisionEpoch().toString());
+                        }
+                        if (cons.getDecisionEpoch().propValue == null) {
+                            System.out.println("No propose for cid " + last);
+                        } else {
+                            System.out.println("Propose hash for cid " + last + ": " + Base64.encodeBase64String(tom.computeHash(cons.getDecisionEpoch().propValue)));
+                        }
+                    }
+                    
                 }
                 lcManager.addLastEid(regency, lastData);
 
                 if (in > -1) { // content of cid being executed
-                    Consensus cons = execManager.getConsensus(in);
+                    cons = execManager.getConsensus(in);
 
                     //cons.incEts(); // make the consensus advance to the next epoch
                     cons.setETS(regency); // make the consensus advance to the next epoch
@@ -773,7 +788,7 @@ public class Synchronizer {
 
                 } else {
 
-                    Consensus cons = execManager.getConsensus(last + 1);
+                    cons = execManager.getConsensus(last + 1);
 
                     //cons.incEts(); // make the consensus advance to the next epoch
                     cons.setETS(regency); // make the consensus advance to the next epoch
