@@ -45,10 +45,13 @@ public final class BatchReader {
         long timestamp = proposalBuffer.getLong();
 
         int numberOfNonces = proposalBuffer.getInt();
+        
+        long seed = 0;
 
         Random rnd = null;
         if(numberOfNonces > 0){
-            rnd = new Random(proposalBuffer.getLong());
+            seed = proposalBuffer.getLong();
+            rnd = new Random(seed);
         }
 
         int numberOfMessages = proposalBuffer.getInt();
@@ -80,6 +83,7 @@ public final class BatchReader {
                 tm.serializedMessage = message;
                 tm.serializedMessageSignature = signature;
                 tm.nonces = nonces;
+                tm.seed = seed;
                 tm.timestamp = timestamp;
                 requests[i] = tm;
 
