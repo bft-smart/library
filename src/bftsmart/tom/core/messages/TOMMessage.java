@@ -49,8 +49,9 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 	private transient int id; // ID for this message. It should be unique
 
 	public transient long timestamp = 0; // timestamp to be used by the application
-	public transient byte[] nonces = null; // nonces to be used by the applciation
+
         public transient long seed = 0; // seed for the nonces
+        public transient int numOfNonces = 0; // number of nonces
         
 	public transient int destination = -1; // message destination
 	public transient boolean signed = false; // is this message signed?
