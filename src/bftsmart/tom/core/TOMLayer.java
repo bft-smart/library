@@ -82,7 +82,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
     private ReentrantLock hashLock = new ReentrantLock();
 
     //the next two are used to generate non-deterministic data in a deterministic way (by the leader)
-    public BatchBuilder bb = new BatchBuilder();
+    public BatchBuilder bb = new BatchBuilder(System.nanoTime());
 
     /* The locks and conditions used to wait upon creating a propose */
     private ReentrantLock leaderLock = new ReentrantLock();

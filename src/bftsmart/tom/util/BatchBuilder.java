@@ -33,9 +33,21 @@ import bftsmart.tom.core.messages.TOMMessage;
  */
 public final class BatchBuilder {
 
-	private Random rnd = new Random();
+	private Random rnd;
+        private long seed;
 
-	/** build buffer */
+
+        public BatchBuilder(long seed){
+            this.seed = seed;
+            rnd = new Random(this.seed);
+            
+        }
+
+        public long getSeed() {
+            return seed;
+        }
+        
+        /** build buffer */
 	private byte[] createBatch(long timestamp, int numberOfNonces, int numberOfMessages, int totalMessagesSize,
 			boolean useSignatures, byte[][] messages, byte[][] signatures, ServerViewController controller) {
 		int size = 20 + //timestamp 8, nonces 4, nummessages 4
