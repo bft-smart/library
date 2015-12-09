@@ -16,8 +16,9 @@ limitations under the License.
 package bftsmart.tom.util;
 
 import java.nio.ByteBuffer;
-import java.util.Collection;
+import java.util.List;
 import java.util.Random;
+import java.util.Collections;
 
 import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.tom.core.messages.TOMMessage;
@@ -60,7 +61,7 @@ public final class BatchBuilder {
 
 		return proposalBuffer.array();
 	}
-
+          
 	private void putMessage(ByteBuffer proposalBuffer, byte[] message, boolean isHash, byte[] signature) {
 		proposalBuffer.putInt(isHash?0:message.length);
 		proposalBuffer.put(message);
@@ -70,7 +71,7 @@ public final class BatchBuilder {
 		}
 	}
 
-	public byte[] makeBatch(Collection<TOMMessage> msgs, int numNounces, long timestamp, ServerViewController controller) {
+	public byte[] makeBatch(List<TOMMessage> msgs, int numNounces, long timestamp, ServerViewController controller) {
 
 		int numMsgs = msgs.size();
 		int totalMessageSize = 0; //total size of the messages being batched
@@ -80,6 +81,10 @@ public final class BatchBuilder {
 
 		// Fill the array of bytes for the messages/signatures being batched
 		int i = 0;
+                
+                //Sort messages deterministically
+                Collections.sort(msgs);
+                
 		for (TOMMessage msg : msgs) {
 			//TOMMessage msg = msgs.next();
 			//Logger.println("(TOMLayer.run) adding req " + msg + " to PROPOSE");
