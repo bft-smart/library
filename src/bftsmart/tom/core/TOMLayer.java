@@ -407,6 +407,10 @@ public final class TOMLayer extends Thread implements RequestReceiver {
      * @param dec The decision of the consensus
      */
     public void decided(Decision dec) {
+        
+        dec.setRegency(syncher.getLCManager().getLastReg());
+        dec.setLeader(lm.getCurrentLeader());
+        
         this.dt.delivery(dec); // Sends the decision to the delivery thread
     }
 

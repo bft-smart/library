@@ -15,9 +15,11 @@ limitations under the License.
 */
 package bftsmart.tom;
 
+import bftsmart.consensus.messages.ConsensusMessage;
 import java.io.Serializable;
 
 import bftsmart.tom.core.messages.TOMMessage;
+import java.util.Set;
 
 /**
  * This class represents the whole context of a request ordered in the system.
@@ -33,7 +35,10 @@ public class MessageContext implements Serializable {
     private long timestamp;
     private byte[] nonces;
     private int regency;
+    private int leader;
     private int consensusId;
+    private Set<ConsensusMessage> proof;
+            
     private int sender;
     private TOMMessage firstInBatch; //to be replaced by a statistics class
     private boolean lastInBatch; // indicates that the command is the last in the batch. Used for logging
@@ -41,11 +46,13 @@ public class MessageContext implements Serializable {
     
     public boolean readOnly = false;
     
-    public MessageContext(long timestamp, byte[] nonces, int regency, int consensusId, int sender, TOMMessage firstInBatch, boolean noOp) {
+    public MessageContext(long timestamp, byte[] nonces, int regency, int leader, int consensusId, Set<ConsensusMessage> proof, int sender, TOMMessage firstInBatch, boolean noOp) {
         this.timestamp = timestamp;
         this.nonces = nonces;
         this.regency = regency;
+        this.leader = leader;
         this.consensusId = consensusId;
+        this.proof = proof;
         this.sender = sender;
         this.firstInBatch = firstInBatch;
         this.noOp = noOp;
@@ -71,7 +78,22 @@ public class MessageContext implements Serializable {
     public int getConsensusId() {
         return consensusId;
     }
-
+    
+    /**
+     * 
+     * @return the leader with which the batch was decided
+     */
+    public int getLeader() {
+        return leader;
+    }
+    /**
+     * 
+     * @return the proof for the consensus
+     */
+    public Set<ConsensusMessage> getProof() {
+        return proof;
+    }
+    
     /**
      * @return the regency
      */

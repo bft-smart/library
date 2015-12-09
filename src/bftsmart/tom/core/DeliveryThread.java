@@ -23,6 +23,7 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 import bftsmart.consensus.Decision;
+import bftsmart.consensus.messages.ConsensusMessage;
 import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.statemanagement.ApplicationState;
 import bftsmart.tom.MessageContext;
@@ -32,6 +33,8 @@ import bftsmart.tom.core.messages.TOMMessageType;
 import bftsmart.tom.server.Recoverable;
 import bftsmart.tom.util.BatchReader;
 import bftsmart.tom.util.Logger;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * This class implements a thread which will deliver totally ordered requests to the application
@@ -181,10 +184,17 @@ public final class DeliveryThread extends Thread {
   				if (decisions.size() > 0) {
   					TOMMessage[][] requests = new TOMMessage[decisions.size()][];
 					int[] consensusIds = new int[requests.length];
+                                        int[] leadersIds = new int[requests.length];
+                                        int[] regenciesIds = new int[requests.length];
+                                        HashSet<ConsensusMessage>[] proofs;
+                                        proofs = new HashSet[requests.length];
   					int count = 0;
   					for (Decision d : decisions) {
   						requests[count] = extractMessagesFromDecision(d);
 						consensusIds[count] = d.getConsensusId();
+                                                leadersIds[count] = d.getLeader();
+                                                regenciesIds[count] = d.getRegency();
+                                                proofs[count] = d.getDecisionEpoch().proof;
   						// cons.firstMessageProposed contains the performance counters
   						if (requests[count][0].equals(d.firstMessageProposed)) {
   	                    	long time = requests[count][0].timestamp;
@@ -198,7 +208,7 @@ public final class DeliveryThread extends Thread {
   					Decision lastDecision = decisions.get(decisions.size() - 1);
 
   					if (requests != null && requests.length > 0) {
-  						deliverMessages(consensusIds, tomLayer.getSynchronizer().getLCManager().getLastReg(), requests);
+  						deliverMessages(consensusIds, regenciesIds, leadersIds, proofs, requests);
 
   						// ******* EDUARDO BEGIN ***********//
   						if (controller.hasUpdates()) {
@@ -256,13 +266,13 @@ public final class DeliveryThread extends Thread {
     
     protected void deliverUnordered(TOMMessage request, int regency) {
         MessageContext msgCtx = new MessageContext(System.currentTimeMillis(),
-                new byte[0], regency, -1, request.getSender(), null, false);
+                new byte[0], regency, -1, -1, null, request.getSender(), null, false);
         msgCtx.readOnly = true;
         receiver.receiveReadonlyMessage(request, msgCtx);
     }
 
-    private void deliverMessages(int consId[], int regency, TOMMessage[][] requests) {
-        receiver.receiveMessages(consId, regency, requests);
+    private void deliverMessages(int consId[], int regencies[], int leaders[], Set<ConsensusMessage>[] proofs, TOMMessage[][] requests) {
+        receiver.receiveMessages(consId, regencies, leaders, proofs, requests);
     }
 
     private void processReconfigMessages(int consId) {

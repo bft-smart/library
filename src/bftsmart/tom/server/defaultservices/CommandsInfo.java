@@ -44,9 +44,10 @@ public class CommandsInfo implements Serializable {
         	onlyNeeded = new MessageContext[msgCtx.length];
         	for(int i = 0; i < msgCtx.length; i++) {
 				MessageContext msg = new MessageContext(
-						msgCtx[i].getTimestamp(), null, msgCtx[i].getRegency(),
-						msgCtx[i].getConsensusId(), msgCtx[i].getSender(),
-						msgCtx[i].getFirstInBatch(),
+						msgCtx[i].getTimestamp(), msgCtx[i].getNonces() ,
+                                                msgCtx[i].getRegency(), msgCtx[i].getLeader(),
+						msgCtx[i].getConsensusId(), msgCtx[i].getProof(),
+                                                msgCtx[i].getSender(), msgCtx[i].getFirstInBatch(),
                                                 msgCtx[i].isNoOp());
 				onlyNeeded[i] = msg;
         	}

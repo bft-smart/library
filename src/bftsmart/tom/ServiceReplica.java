@@ -23,6 +23,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import bftsmart.communication.ServerCommunicationSystem;
+import bftsmart.consensus.messages.ConsensusMessage;
 import bftsmart.tom.core.ExecutionManager;
 import bftsmart.tom.core.LeaderModule;
 import bftsmart.consensus.messages.MessageFactory;
@@ -47,6 +48,7 @@ import bftsmart.tom.server.SingleExecutable;
 import bftsmart.tom.server.defaultservices.DefaultReplier;
 import bftsmart.tom.util.ShutdownHookThread;
 import bftsmart.tom.util.TOMUtil;
+import java.util.Set;
 
 
 
@@ -251,7 +253,7 @@ public class ServiceReplica {
 			cs.send(new int[]{message.getSender()}, message.reply); 
 	}
 
-	public void receiveMessages(int consId[], int regency, TOMMessage[][] requests) {
+	public void receiveMessages(int consId[], int regencies[], int leaders[], Set<ConsensusMessage>[] proofs, TOMMessage[][] requests) {
 		int numRequests = 0;
 		int consensusCount = 0;
 		List<TOMMessage> toBatch = new ArrayList<TOMMessage>();
@@ -273,7 +275,8 @@ public class ServiceReplica {
                                                 noop = false;
                                             
 						numRequests++;
-						MessageContext msgCtx = new MessageContext(firstRequest.timestamp, firstRequest.nonces,	regency, consId[consensusCount], request.getSender(), firstRequest, false);
+						MessageContext msgCtx = new MessageContext(firstRequest.timestamp, firstRequest.nonces,
+                                                        regencies[consensusCount], leaders[consensusCount], consId[consensusCount], proofs[consensusCount], request.getSender(), firstRequest, false);
 						if(requestCount + 1 == requestsFromConsensus.length) {
                                                  
                                                     msgCtx.setLastInBatch();

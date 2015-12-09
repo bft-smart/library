@@ -397,7 +397,7 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
     @Override
     public void noOp(int lastEid) {
 
-        MessageContext msgCtx = new MessageContext(-1, new byte[0], -1, lastEid, -1, null, true);
+        MessageContext msgCtx = new MessageContext(-1, new byte[0], -1, -1, lastEid, null, -1, null, true);
         msgCtx.setLastInBatch();
 
         executeBatch(new byte[1][0], new MessageContext[]{msgCtx}, true);
