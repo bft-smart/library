@@ -399,7 +399,7 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
     @Override
     public void noOp(int lastCID, int leader, int regency, Set<ConsensusMessage> proof) {
         
-        MessageContext msgCtx = new MessageContext(-1, new byte[0], regency, leader, lastCID, proof, -1, null, true);
+        MessageContext msgCtx = new MessageContext(-1, 0, 0, regency, leader, lastCID, proof, -1, null, true);
         msgCtx.setLastInBatch();
 
         executeBatch(new byte[1][0], new MessageContext[]{msgCtx}, true);

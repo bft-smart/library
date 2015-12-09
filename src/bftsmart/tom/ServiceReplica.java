@@ -275,7 +275,7 @@ public class ServiceReplica {
                                                 noop = false;
                                             
 						numRequests++;
-						MessageContext msgCtx = new MessageContext(firstRequest.timestamp, firstRequest.nonces,
+						MessageContext msgCtx = new MessageContext(firstRequest.timestamp, request.nonces.length, request.seed,
                                                         regencies[consensusCount], leaders[consensusCount], consId[consensusCount], proofs[consensusCount], request.getSender(), firstRequest, false);
 						if(requestCount + 1 == requestsFromConsensus.length) {
                                                  

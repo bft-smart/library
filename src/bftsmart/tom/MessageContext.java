@@ -19,6 +19,7 @@ import bftsmart.consensus.messages.ConsensusMessage;
 import java.io.Serializable;
 
 import bftsmart.tom.core.messages.TOMMessage;
+import java.util.Random;
 import java.util.Set;
 
 /**
@@ -33,10 +34,12 @@ public class MessageContext implements Serializable {
 	private static final long serialVersionUID = -3757195646384786213L;
 	
     private long timestamp;
-    private byte[] nonces;
     private int regency;
     private int leader;
     private int consensusId;
+    private int numOfNonces;
+    private long seed;
+
     private Set<ConsensusMessage> proof;
             
     private int sender;
@@ -46,12 +49,16 @@ public class MessageContext implements Serializable {
     
     public boolean readOnly = false;
     
-    public MessageContext(long timestamp, byte[] nonces, int regency, int leader, int consensusId, Set<ConsensusMessage> proof, int sender, TOMMessage firstInBatch, boolean noOp) {
+    private byte[] nonces = null;
+    
+    public MessageContext(long timestamp, int numOfNonces, long seed, int regency, int leader, int consensusId, Set<ConsensusMessage> proof, int sender, TOMMessage firstInBatch, boolean noOp) {
         this.timestamp = timestamp;
         this.nonces = nonces;
         this.regency = regency;
         this.leader = leader;
         this.consensusId = consensusId;
+        this.numOfNonces = numOfNonces;
+        this.seed = seed;
         this.proof = proof;
         this.sender = sender;
         this.firstInBatch = firstInBatch;
@@ -69,9 +76,28 @@ public class MessageContext implements Serializable {
      * @return the nonces
      */
     public byte[] getNonces() {
+        
+        if (nonces == null) { //obtain the nonces to be delivered to the application          
+            
+            nonces = new byte[numOfNonces];
+            if (nonces.length > 0) {
+                Random rnd = new Random(seed);
+                rnd.nextBytes(nonces);
+            }
+            
+        }
+        
         return nonces;
     }
 
+    public int getNumOfNonces() {
+        return numOfNonces;
+    }
+
+    public long getSeed() {
+        return seed;
+    }
+    
     /**
      * @return the consensusId
      */

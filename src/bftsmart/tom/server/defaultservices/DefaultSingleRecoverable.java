@@ -287,7 +287,7 @@ public abstract class DefaultSingleRecoverable implements Recoverable, SingleExe
     @Override
     public void noOp(int lastCID, int leader, int regency, Set<ConsensusMessage> proof) {
         
-        MessageContext msgCtx = new MessageContext(-1, new byte[0], regency, leader, lastCID, proof, -1, null, true);
+        MessageContext msgCtx = new MessageContext(-1, 0, 0, regency, leader, lastCID, proof, -1, null, true);
         msgCtx.setLastInBatch();
  
         executeOrdered(new byte[0], msgCtx, true);
