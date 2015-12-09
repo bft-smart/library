@@ -136,7 +136,7 @@ public class StandardStateManager extends BaseStateManager {
             
             System.out.println("-- Should I send the state? " + sendState);
             
-            ApplicationState thisState = dt.getRecoverer().getState(msg.getEid(), sendState);
+            ApplicationState thisState = dt.getRecoverer().getState(msg.getCID(), sendState);
             if (thisState == null) {
                 
                 System.out.println("-- For some reason, I am sending a void state");
@@ -147,7 +147,7 @@ public class StandardStateManager extends BaseStateManager {
             }
             int[] targets = { msg.getSender() };
             SMMessage smsg = new StandardSMMessage(SVController.getStaticConf().getProcessId(),
-                    msg.getEid(), TOMUtil.SM_REPLY, -1, thisState, SVController.getCurrentView(), tomLayer.getSynchronizer().getLCManager().getLastReg(), tomLayer.lm.getCurrentLeader());
+                    msg.getCID(), TOMUtil.SM_REPLY, -1, thisState, SVController.getCurrentView(), tomLayer.getSynchronizer().getLCManager().getLastReg(), tomLayer.lm.getCurrentLeader());
             System.out.println("Sending state");
             tomLayer.getCommunication().send(targets, smsg);
             System.out.println("Sent");
@@ -158,7 +158,7 @@ public class StandardStateManager extends BaseStateManager {
     public void SMReplyDeliver(SMMessage msg, boolean isBFT) {
         lockTimer.lock();
         if (SVController.getStaticConf().isStateTransferEnabled()) {
-            if (waitingEid != -1 && msg.getEid() == waitingEid) {
+            if (waitingEid != -1 && msg.getCID() == waitingEid) {
                 int currentRegency = -1;
                 int currentLeader = -1;
                 View currentView = null;

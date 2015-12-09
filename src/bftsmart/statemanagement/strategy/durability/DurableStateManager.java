@@ -132,7 +132,7 @@ public class DurableStateManager extends BaseStateManager {
 				&& dt.getRecoverer() != null) {
 			Logger.println("(TOMLayer.SMRequestDeliver) The state transfer protocol is enabled");
 			Logger.println("(TOMLayer.SMRequestDeliver) I received a state request for EID "
-					+ msg.getEid() + " from replica " + msg.getSender());
+					+ msg.getCID() + " from replica " + msg.getSender());
 			CSTSMMessage cstMsg = (CSTSMMessage) msg;
 			CSTRequestF1 cstConfig = cstMsg.getCstConfig();
 			boolean sendState = cstConfig.getCheckpointReplica() == SVController
@@ -150,7 +150,7 @@ public class DurableStateManager extends BaseStateManager {
 			int port = 4444 + myId;
 			address = new InetSocketAddress(myIp, port);
 			cstConfig.setAddress(address);
-			CSTSMMessage reply = new CSTSMMessage(myId, msg.getEid(),
+			CSTSMMessage reply = new CSTSMMessage(myId, msg.getCID(),
 					TOMUtil.SM_REPLY, cstConfig, null,
 					SVController.getCurrentView(), tomLayer.getSynchronizer().getLCManager().getLastReg(),
 					tomLayer.lm.getCurrentLeader());
@@ -173,13 +173,13 @@ public class DurableStateManager extends BaseStateManager {
 			Logger.println("(TOMLayer.SMReplyDeliver) The state transfer protocol is enabled");
 			System.out
 					.println("(TOMLayer.SMReplyDeliver) I received a state reply for EID "
-							+ reply.getEid()
+							+ reply.getCID()
 							+ " from replica "
 							+ reply.getSender());
 
-			System.out.println("--- Received eid: " + reply.getEid()
+			System.out.println("--- Received eid: " + reply.getCID()
 					+ ". Waiting " + waitingEid);
-			if (waitingEid != -1 && reply.getEid() == waitingEid) {
+			if (waitingEid != -1 && reply.getCID() == waitingEid) {
 
 				int currentRegency = -1;
 				int currentLeader = -1;
@@ -294,7 +294,7 @@ public class DurableStateManager extends BaseStateManager {
 						System.out.println("---- RECEIVED VALID STATE ----");
 
 						Logger.println("(TOMLayer.SMReplyDeliver) The state of those replies is good!");
-						Logger.println("(TOMLayer.SMReplyDeliver) EID State requested: " + reply.getEid());
+						Logger.println("(TOMLayer.SMReplyDeliver) EID State requested: " + reply.getCID());
 						Logger.println("(TOMLayer.SMReplyDeliver) EID State received: "	+ stateUpper.getLastEid());
 
 						tomLayer.getSynchronizer().getLCManager().setLastReg(currentRegency);

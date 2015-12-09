@@ -185,7 +185,7 @@ public abstract class BaseStateManager implements StateManager {
         if (senderEids == null) {
             senderEids = new HashMap<Integer, Integer>();
         }
-        senderEids.put(smsg.getSender(), smsg.getEid());
+        senderEids.put(smsg.getSender(), smsg.getCID());
         if (senderEids.size() >= SVController.getQuorum()) {
             HashMap<Integer, Integer> eids = new HashMap<Integer, Integer>();
             for (int value : senderEids.values()) {

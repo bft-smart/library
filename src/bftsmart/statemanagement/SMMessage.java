@@ -25,15 +25,15 @@ import bftsmart.reconfiguration.views.View;
 import bftsmart.tom.util.TOMUtil;
 
 /**
- * This classe represents a message used in the state transfer protocol
+ * This class represents a message used in the state transfer protocol
  * 
- * @author Jo�o Sousa
+ * @author Joao Sousa
  */
 public abstract class SMMessage extends SystemMessage implements Externalizable {
 
     private ApplicationState state; // State log
     private View view;
-    private int eid; // Execution ID up to which the sender needs to be updated
+    private int cid; // Consensus ID up to which the sender needs to be updated
     private int type; // Message type
     private int regency; // Current regency
     private int leader; // Current leader
@@ -43,16 +43,16 @@ public abstract class SMMessage extends SystemMessage implements Externalizable 
     /**
      * Constructs a SMMessage
      * @param sender Process Id of the sender
-     * @param eid Execution ID up to which the sender needs to be updated
+     * @param cid Consensus ID up to which the sender needs to be updated
      * @param type Message type
      * @param replica Replica that should send the state
      * @param state State log
      */
-    protected SMMessage(int sender, int eid, int type, ApplicationState state, View view, int regency, int leader) {
+    protected SMMessage(int sender, int cid, int type, ApplicationState state, View view, int regency, int leader) {
         super(sender);
         this.state = state;
         this.view = view;
-        this.eid = eid;
+        this.cid = cid;
         this.type = type;
         this.sender = sender;
         this.regency = regency;
@@ -91,11 +91,11 @@ public abstract class SMMessage extends SystemMessage implements Externalizable 
     }
 
     /**
-     * Retrieves the execution ID up to which the sender needs to be updated
-     * @return The execution ID up to which the sender needs to be updated
+     * Retrieves the consensus ID up to which the sender needs to be updated
+     * @return The consensus ID up to which the sender needs to be updated
      */
-    public int getEid() {
-        return eid;
+    public int getCID() {
+        return cid;
     }
 
     /**
@@ -118,7 +118,7 @@ public abstract class SMMessage extends SystemMessage implements Externalizable 
     public void writeExternal(ObjectOutput out) throws IOException{
         super.writeExternal(out);
         out.writeInt(sender);
-        out.writeInt(eid);
+        out.writeInt(cid);
         out.writeInt(type);
         out.writeInt(regency);
         out.writeInt(leader);
@@ -130,7 +130,7 @@ public abstract class SMMessage extends SystemMessage implements Externalizable 
     public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException{
         super.readExternal(in);
         sender = in.readInt();
-        eid = in.readInt();
+        cid = in.readInt();
         type = in.readInt();
         regency = in.readInt();
         leader = in.readInt();
