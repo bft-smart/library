@@ -21,15 +21,16 @@ import bftsmart.tom.core.messages.TOMMessage;
  *
  * This class represents a Consensus Instance.
  *
- * @param <E> Type of the decided Object
- *
  * @author Joao Sousa
  * @author Alysson Bessani
  */
 public class Decision {
 
-    private final int eid; // execution ID
-    private Epoch decisionEpoch = null;
+    private final int cid; // Consensus ID in which the value was decided
+    private Epoch decisionEpoch = null; // Epoch in which the value was decided
+    private int regency; // Regency in which the value was decided
+    private int leader; // Leader with which the value was decided
+    
     private byte[] value = null; // decided value
     private TOMMessage[] deserializedValue = null; // decided value (deserialized)
     
@@ -39,12 +40,44 @@ public class Decision {
 
     /**
      * Creates a new instance of Decision
-     * @param eid The ID for the respective consensus
+     * @param cid The ID for the respective consensus
      */
-    public Decision(int eid) {
-        this.eid = eid;
+    public Decision(int cid) {
+        this.cid = cid;
     }
 
+    /**
+     * Set regency in which the value was decided
+     * @param regency Regency in which the value was decided
+     */
+    public void setRegency(int regency) {
+        this.regency = regency;
+    }
+
+    /**
+     * Set leader with which the value was decided
+     * @param leader Leader with which the value was decided
+     */
+    public void setLeader(int leader) {
+        this.leader = leader;
+    }
+
+    /**
+     * Returns regency in which the value was decided
+     * @return Regency in which the value was decided
+     */
+    public int getRegency() {
+        return regency;
+    }
+
+    /**
+     * Returns leader with which the value was decided
+     * @return Leader with which the value was decided
+     */
+    public int getLeader() {
+        return leader;
+    }
+    
     /**
      * Set epoch in which the value was decided
      * @param epoch The epoch in which the value was decided
@@ -88,14 +121,14 @@ public class Decision {
      * @return ID for the associated consensus
      */
     public int getConsensusId() {
-        return eid;
+        return cid;
     }
 
     private void waitForPropose() {
         while (decisionEpoch == null &&
                 decisionEpoch.deserializedPropValue == null) {
             try {
-                System.out.println("waiting for propose for consensus" + eid);
+                System.out.println("waiting for propose for consensus" + cid);
                 Thread.sleep(1);
             } catch (InterruptedException ie) {
             }
