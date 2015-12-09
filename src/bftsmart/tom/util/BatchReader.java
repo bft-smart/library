@@ -53,7 +53,8 @@ public final class BatchReader {
             seed = proposalBuffer.getLong();
             rnd = new Random(seed);
         }
-
+        else numberOfNonces = 0; // make sure the value is correct
+        
         int numberOfMessages = proposalBuffer.getInt();
 
         TOMMessage[] requests = new TOMMessage[numberOfMessages];
