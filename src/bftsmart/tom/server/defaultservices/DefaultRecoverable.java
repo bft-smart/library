@@ -18,6 +18,7 @@
  */
 package bftsmart.tom.server.defaultservices;
 
+import bftsmart.consensus.messages.ConsensusMessage;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
@@ -33,6 +34,7 @@ import bftsmart.tom.ReplicaContext;
 import bftsmart.tom.server.BatchExecutable;
 import bftsmart.tom.server.Recoverable;
 import bftsmart.tom.util.Logger;
+import java.util.Set;
 
 /**
  *
@@ -280,7 +282,7 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
             stateLock.unlock();
 
         }
-
+        
         return lastEid;
     }
 
@@ -395,9 +397,9 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
     }
 
     @Override
-    public void noOp(int lastEid) {
-
-        MessageContext msgCtx = new MessageContext(-1, new byte[0], -1, -1, lastEid, null, -1, null, true);
+    public void noOp(int lastCID, int leader, int regency, Set<ConsensusMessage> proof) {
+        
+        MessageContext msgCtx = new MessageContext(-1, new byte[0], regency, leader, lastCID, proof, -1, null, true);
         msgCtx.setLastInBatch();
 
         executeBatch(new byte[1][0], new MessageContext[]{msgCtx}, true);

@@ -15,6 +15,7 @@ limitations under the License.
  */
 package bftsmart.tom.server.defaultservices.durability;
 
+import bftsmart.consensus.messages.ConsensusMessage;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
@@ -34,6 +35,7 @@ import bftsmart.tom.server.Recoverable;
 import bftsmart.tom.server.defaultservices.CommandsInfo;
 import bftsmart.tom.util.Logger;
 import bftsmart.tom.util.TOMUtil;
+import java.util.Set;
 
 /**
  * Implements the Collaborative State Transfer protocol. In this protocol, instead of
@@ -410,9 +412,9 @@ public abstract class DurabilityCoordinator implements Recoverable, BatchExecuta
 	}
 
         @Override
-        public void noOp(int lastEid) {
+        public void noOp(int lastCID, int leader, int regency, Set<ConsensusMessage> proof) {
 
-            MessageContext msgCtx = new MessageContext(-1, new byte[0], -1, -1, lastEid, null, -1, null, true);
+            MessageContext msgCtx = new MessageContext(-1, new byte[0], regency, leader, lastCID, proof, -1, null, true);
             msgCtx.setLastInBatch();
 
             executeBatch(new byte[1][0], new MessageContext[]{msgCtx}, true);

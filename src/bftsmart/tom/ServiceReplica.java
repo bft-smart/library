@@ -321,7 +321,7 @@ public class ServiceReplica {
                             System.out.println(" --- A consensus instance finished, but there were no commands to deliver to the application.");
                             System.out.println(" --- Notifying recoverable about a blank consensus.");
 
-                            this.recoverer.noOp(consId[consensusCount]);
+                            this.recoverer.noOp(consId[consensusCount], leaders[consensusCount], regencies[consensusCount], proofs[consensusCount]);
                         }
 
 			consensusCount++;          

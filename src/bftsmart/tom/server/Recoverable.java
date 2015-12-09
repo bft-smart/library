@@ -15,9 +15,11 @@ limitations under the License.
 */
 package bftsmart.tom.server;
 
+import bftsmart.consensus.messages.ConsensusMessage;
 import bftsmart.statemanagement.ApplicationState;
 import bftsmart.statemanagement.StateManager;
 import bftsmart.tom.ReplicaContext;
+import java.util.Set;
 
 /**
  * 
@@ -31,16 +33,15 @@ public interface Recoverable {
     /**
      * 
      * This  method should return a representation of the application state
-     * @param eid Execution up to which the application should return an Application state
+     * @param cid Consensus up to which the application should return an Application state
      * @param sendState true if the replica should send a complete
      * representation of the state instead of only the hash. False otherwise
      * @return  A representation of the application state
      */
-    public ApplicationState getState(int eid, boolean sendState);
+    public ApplicationState getState(int cid, boolean sendState);
     
     /**
      * Sets the state to the representation obtained in the state transfer protocol
-     * @param eid Execution up to which the state is complete
      * @param state State obtained in the state transfer protocol
      * @return 
      */
@@ -55,7 +56,7 @@ public interface Recoverable {
      */
     public StateManager getStateManager();
     
-    /*
+    /**
      * This method is invoked by ServiceReplica to indicate that a consensus instance
      * finished without delivering anything to the application (e.g., an instance
      * only decided a single reconfiguration operation. or an instance where the client
@@ -63,8 +64,12 @@ public interface Recoverable {
      * transfer protocol to execute correctly, it needs to be notified of this special case
      * In the current protocols included, it suffices to register a NOOP operation in the
      * logs used within the state transfer, but never deliver it to the application
-     * @param lastEid the consensus instance where the aforementioned condition occurred
+     * 
+     * @param lastCID the consensus instance where the aforementioned condition occurred
+     * @param leader The leader with which the consensus was decided
+     * @param regency The regency installed when the consensus finished
+     * @param proof Proof for the aforementioned consensus
      */
-    public void noOp(int lastEid); 
+    public void noOp(int lastCID, int leader, int regency, Set<ConsensusMessage> proof); 
 	
 }
