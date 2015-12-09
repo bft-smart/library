@@ -817,6 +817,8 @@ public class LCManager {
         int countValid = 0;
         SecretKey secretKey = null;
         PublicKey pubRSAKey = null;
+        
+        HashSet<Integer> alreadyCounted = new HashSet<>(); //stores replica IDs that were already counted
             
         for (ConsensusMessage consMsg : ConsensusMessages) {
             
@@ -852,8 +854,9 @@ public class LCManager {
             
                 if (recvMAC != null && myMAC != null && Arrays.equals(recvMAC, myMAC) &&
                         Arrays.equals(consMsg.getValue(), hashedValue) &&
-                        consMsg.getNumber() == led.getEid()) {
+                        consMsg.getNumber() == led.getEid() && !alreadyCounted.contains(consMsg.getSender())) {
                 
+                    alreadyCounted.add(consMsg.getSender());
                     countValid++;
                 }
             } else if (consMsg.getProof() instanceof byte[]) { // certificate is made of signatures
@@ -863,7 +866,11 @@ public class LCManager {
                    
                 byte[] signature = (byte[]) consMsg.getProof();
                             
-                if (TOMUtil.verifySignature(pubRSAKey, data, signature)) countValid++;
+                if (TOMUtil.verifySignature(pubRSAKey, data, signature) && !alreadyCounted.contains(consMsg.getSender())) {
+                    
+                    alreadyCounted.add(consMsg.getSender());
+                    countValid++;
+                }
    
             } else {
                 return false; // the proof is invalid
