@@ -34,21 +34,14 @@ import bftsmart.tom.core.messages.TOMMessage;
 public final class BatchBuilder {
 
 	private Random rnd;
-        private long seed;
-
 
         public BatchBuilder(long seed){
-            this.seed = seed;
-            rnd = new Random(this.seed);
+            rnd = new Random(seed);
             
         }
 
-        public long getSeed() {
-            return seed;
-        }
-        
         /** build buffer */
-	private byte[] createBatch(long timestamp, int numberOfNonces, int numberOfMessages, int totalMessagesSize,
+	private byte[] createBatch(long timestamp, int numberOfNonces, long seed, int numberOfMessages, int totalMessagesSize,
 			boolean useSignatures, byte[][] messages, byte[][] signatures, ServerViewController controller) {
 		int size = 20 + //timestamp 8, nonces 4, nummessages 4
 				(numberOfNonces > 0 ? 8 : 0) + //seed if needed
@@ -62,7 +55,7 @@ public final class BatchBuilder {
 		proposalBuffer.putInt(numberOfNonces);
 
 		if(numberOfNonces>0){
-			proposalBuffer.putLong(rnd.nextLong());
+			proposalBuffer.putLong(seed);
 		}
 
 		proposalBuffer.putInt(numberOfMessages);
@@ -108,7 +101,36 @@ public final class BatchBuilder {
 		}
 
 		// return the batch
-		return createBatch(timestamp, numNounces, numMsgs, totalMessageSize,
+		return createBatch(timestamp, numNounces,rnd.nextLong(), numMsgs, totalMessageSize,
+				controller.getStaticConf().getUseSignatures() == 1, messages, signatures, controller);
+
+	}
+	public byte[] makeBatch(List<TOMMessage> msgs, int numNounces, long seed, long timestamp, ServerViewController controller) {
+
+		int numMsgs = msgs.size();
+		int totalMessageSize = 0; //total size of the messages being batched
+
+		byte[][] messages = new byte[numMsgs][]; //bytes of the message (or its hash)
+		byte[][] signatures = new byte[numMsgs][]; //bytes of the message (or its hash)
+
+		// Fill the array of bytes for the messages/signatures being batched
+		int i = 0;
+                
+                //Sort messages deterministically
+                Collections.sort(msgs);
+                
+		for (TOMMessage msg : msgs) {
+			//TOMMessage msg = msgs.next();
+			//Logger.println("(TOMLayer.run) adding req " + msg + " to PROPOSE");
+			messages[i] = msg.serializedMessage;
+			signatures[i] = msg.serializedMessageSignature;
+
+			totalMessageSize += messages[i].length;
+			i++;
+		}
+
+		// return the batch
+		return createBatch(timestamp, numNounces,seed, numMsgs, totalMessageSize,
 				controller.getStaticConf().getUseSignatures() == 1, messages, signatures, controller);
 
 	}
