@@ -59,9 +59,9 @@ public final class CounterServer extends DefaultRecoverable  {
         
         return replies;
     }
-    
+        
     @Override
-    public byte[] executeUnordered(byte[] command, MessageContext msgCtx) {
+    public byte[] appExecuteUnordered(byte[] command, MessageContext msgCtx) {
                 
         iterations++;
         System.out.println("(" + iterations + ") Reading counter at value: " + counter);

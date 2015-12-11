@@ -80,7 +80,8 @@ public final class ThroughputLatencyServer extends DefaultRecoverable{
         return replies;
     }
     
-    public byte[] executeUnordered(byte[] command, MessageContext msgCtx) {
+    @Override
+    public byte[] appExecuteUnordered(byte[] command, MessageContext msgCtx) {
         return execute(command,msgCtx);
     }
     

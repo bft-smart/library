@@ -180,7 +180,8 @@ public class BFTMapServer extends DefaultSingleRecoverable {
         }
     }
 
-    public byte[] executeUnordered(byte[] command, MessageContext msgCtx) {
+    @Override
+    public byte[] appExecuteUnordered(byte[] command, MessageContext msgCtx) {
     	try {
 	        ByteArrayInputStream in = new ByteArrayInputStream(command);
 	        ByteArrayOutputStream out = null;

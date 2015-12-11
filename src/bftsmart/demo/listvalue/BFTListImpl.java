@@ -305,7 +305,7 @@ public class BFTListImpl extends DefaultRecoverable {
     }
 
     @SuppressWarnings("static-access")
-    public byte[] executeUnordered(byte[] command, MessageContext msgCtx) {
+    public byte[] appExecuteUnordered(byte[] command, MessageContext msgCtx) {
     	try {
 	        ByteArrayInputStream in = new ByteArrayInputStream(command);
 	        ByteArrayOutputStream out = null;

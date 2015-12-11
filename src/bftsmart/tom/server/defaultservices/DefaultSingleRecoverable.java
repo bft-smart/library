@@ -22,6 +22,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Level;
+import java.util.Arrays;
+import java.util.Set;
 
 import bftsmart.reconfiguration.util.TOMConfiguration;
 import bftsmart.statemanagement.ApplicationState;
@@ -32,8 +34,6 @@ import bftsmart.tom.ReplicaContext;
 import bftsmart.tom.server.Recoverable;
 import bftsmart.tom.server.SingleExecutable;
 import bftsmart.tom.util.Logger;
-import java.util.Arrays;
-import java.util.Set;
 
 /**
  *
@@ -52,8 +52,8 @@ public abstract class DefaultSingleRecoverable implements Recoverable, SingleExe
     private MessageDigest md;
         
     private StateLog log;
-    private List<byte[]> commands = new ArrayList<byte[]>();
-    private List<MessageContext> msgContexts = new ArrayList<MessageContext>();
+    private List<byte[]> commands = new ArrayList<>();
+    private List<MessageContext> msgContexts = new ArrayList<>();
     
     private StateManager stateManager;
     
@@ -66,6 +66,7 @@ public abstract class DefaultSingleRecoverable implements Recoverable, SingleExe
         }
     }
     
+    @Override
     public byte[] executeOrdered(byte[] command, MessageContext msgCtx) {
         
         return executeOrdered(command, msgCtx, false);
@@ -98,8 +99,8 @@ public abstract class DefaultSingleRecoverable implements Recoverable, SingleExe
 	            saveCommands(commands.toArray(new byte[0][]), msgContexts.toArray(new MessageContext[0]));
 	        }
 			getStateManager().setLastEID(eid);
-	        commands = new ArrayList<byte[]>();
-                msgContexts = new ArrayList<MessageContext>();
+	        commands = new ArrayList<>();
+                msgContexts = new ArrayList<>();
         }
         return reply;
     }
@@ -138,9 +139,10 @@ public abstract class DefaultSingleRecoverable implements Recoverable, SingleExe
     }
 
     private void saveCommands(byte[][] commands, MessageContext[] msgCtx) {
-
+        
         if (commands.length != msgCtx.length) {
-            System.out.println("----SIZE OF COMMANDS AND EIDS IS DIFFERENT----");
+            System.out.println("----SIZE OF COMMANDS AND MESSAGE CONTEXTS IS DIFFERENT----");
+            System.out.println("----COMMANDS: " + commands.length + ", CONTEXTS: " + msgCtx.length + " ----");
         }
         logLock.lock();
 
@@ -207,10 +209,10 @@ public abstract class DefaultSingleRecoverable implements Recoverable, SingleExe
                     byte[][] cmds = cmdInfo.commands; // take a batch
                     MessageContext[] msgCtxs = cmdInfo.msgCtx;
                     
-                    if (commands == null || msgCtxs == null || msgCtxs[0].isNoOp()) {
+                    if (cmds == null || msgCtxs == null || msgCtxs[0].isNoOp()) {
                         continue;
                     }
-
+                    
                     for(int i = 0; i < cmds.length; i++) {
                     	appExecuteOrdered(cmds[i], msgCtxs[i]);
                     }
@@ -291,8 +293,18 @@ public abstract class DefaultSingleRecoverable implements Recoverable, SingleExe
         msgCtx.setLastInBatch();
  
         executeOrdered(new byte[0], msgCtx, true);
-    }    
+    }
+    
+    @Override
+    public byte[] executeUnordered(byte[] command, MessageContext msgCtx) {
+        return appExecuteUnordered(command, msgCtx);
+    }
+    
     public abstract void installSnapshot(byte[] state);
+    
     public abstract byte[] getSnapshot();
+    
     public abstract byte[] appExecuteOrdered(byte[] command, MessageContext msgCtx);
+    
+    public abstract byte[] appExecuteUnordered(byte[] command, MessageContext msgCtx);
 }

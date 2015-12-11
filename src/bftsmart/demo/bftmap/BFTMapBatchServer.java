@@ -31,6 +31,7 @@ import java.util.logging.Logger;
 
 import bftsmart.tom.MessageContext;
 import bftsmart.tom.ServiceReplica;
+import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.server.defaultservices.DefaultRecoverable;
 
 
@@ -190,7 +191,8 @@ public class BFTMapBatchServer extends DefaultRecoverable {
         return replies;
     }
 
-    public byte[] executeUnordered(byte[] command, MessageContext msgCtx) {
+    @Override
+    public byte[] appExecuteUnordered(byte[] command, MessageContext msgCtx) {
     	try {
 	        ByteArrayInputStream in = new ByteArrayInputStream(command);
 	        ByteArrayOutputStream out = null;

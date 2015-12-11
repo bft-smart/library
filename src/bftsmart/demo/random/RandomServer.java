@@ -113,7 +113,8 @@ public final class RandomServer extends DefaultRecoverable {
      * @param msgCtx Context of  the message received
      * @return Reply t obe sent to the client
      */
-    public byte[] executeUnordered(byte[] command, MessageContext msgCtx) {
+    @Override
+    public byte[] appExecuteUnordered(byte[] command, MessageContext msgCtx) {
         iterations++;
         try {
             System.out.println("(" + id + ")[server] (" + iterations + " / " + 

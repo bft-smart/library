@@ -21,6 +21,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Level;
+import java.util.Set;
 
 import bftsmart.reconfiguration.util.TOMConfiguration;
 import bftsmart.statemanagement.ApplicationState;
@@ -35,7 +36,6 @@ import bftsmart.tom.server.Recoverable;
 import bftsmart.tom.server.defaultservices.CommandsInfo;
 import bftsmart.tom.util.Logger;
 import bftsmart.tom.util.TOMUtil;
-import java.util.Set;
 
 /**
  * Implements the Collaborative State Transfer protocol. In this protocol, instead of
@@ -76,7 +76,7 @@ public abstract class DurabilityCoordinator implements Recoverable, BatchExecuta
 		}
 	}
 
-	@Override
+        @Override
         public byte[][] executeBatch(byte[][] commands, MessageContext[] msgCtxs) {
             return executeBatch(commands, msgCtxs, false);
         }
@@ -268,7 +268,7 @@ public abstract class DurabilityCoordinator implements Recoverable, BatchExecuta
                                         if (commands == null || msgCtx == null || msgCtx[0].isNoOp()) {
                                             continue;
                                         }
-
+                                        
 					appExecuteBatch(commands, msgCtx);
 				} catch (Exception e) {
 					e.printStackTrace(System.err);
@@ -311,10 +311,14 @@ public abstract class DurabilityCoordinator implements Recoverable, BatchExecuta
 	 */
 	private void saveCommands(byte[][] commands, MessageContext[] msgCtx) {
 		if(!config.isToLog())
-			return;
-		if(commands.length != msgCtx.length)
-			System.out.println("----SIZE OF COMMANDS AND EIDS IS DIFFERENT----");
-		logLock.lock();
+			return;       
+                
+                if (commands.length != msgCtx.length) {
+                    System.out.println("----SIZE OF COMMANDS AND MESSAGE CONTEXTS IS DIFFERENT----");
+                    System.out.println("----COMMANDS: " + commands.length + ", CONTEXTS: " + msgCtx.length + " ----");
+                }
+                
+                logLock.lock();
 
 		int eid = msgCtx[0].getConsensusId();
 		int batchStart = 0;
@@ -396,7 +400,7 @@ public abstract class DurabilityCoordinator implements Recoverable, BatchExecuta
 			eids[i] = ctxs[i].getConsensusId();
 		return eids;
 	}
-
+        
 	@Override
 	public StateManager getStateManager() {
 		if(stateManager == null)
@@ -420,8 +424,16 @@ public abstract class DurabilityCoordinator implements Recoverable, BatchExecuta
             executeBatch(new byte[1][0], new MessageContext[]{msgCtx}, true);
 
         }
+        @Override
+        public byte[] executeUnordered(byte[] command, MessageContext msgCtx) {
+            return appExecuteUnordered(command, msgCtx);
+        }
         
         public abstract void installSnapshot(byte[] state);
+        
 	public abstract byte[] getSnapshot();
+        
 	public abstract byte[][] appExecuteBatch(byte[][] commands, MessageContext[] msgCtxs);
+        
+        public abstract byte[] appExecuteUnordered(byte[] command, MessageContext msgCtx);
 }

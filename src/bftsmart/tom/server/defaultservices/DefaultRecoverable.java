@@ -18,13 +18,13 @@
  */
 package bftsmart.tom.server.defaultservices;
 
-import bftsmart.consensus.messages.ConsensusMessage;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Level;
 
+import bftsmart.consensus.messages.ConsensusMessage;
 import bftsmart.reconfiguration.util.TOMConfiguration;
 import bftsmart.statemanagement.ApplicationState;
 import bftsmart.statemanagement.StateManager;
@@ -60,6 +60,7 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
         }
     }
 
+    @Override
     public byte[][] executeBatch(byte[][] commands, MessageContext[] msgCtxs) {
         return executeBatch(commands, msgCtxs, false);
     }
@@ -193,9 +194,10 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
      */
     public void saveCommands(byte[][] commands, MessageContext[] msgCtx) {
         //if(!config.isToLog())
-        //	return;
+        //	return;        
         if (commands.length != msgCtx.length) {
-            System.out.println("----SIZE OF COMMANDS AND EIDS IS DIFFERENT----");
+            System.out.println("----SIZE OF COMMANDS AND MESSAGE CONTEXTS IS DIFFERENT----");
+            System.out.println("----COMMANDS: " + commands.length + ", CONTEXTS: " + msgCtx.length + " ----");
         }
         logLock.lock();
 
@@ -265,7 +267,7 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
                     
                     if (commands == null || msgCtx == null || msgCtx[0].isNoOp()) {
                         continue;
-                    }
+                    }                        
                     appExecuteBatch(commands, msgCtx);
                     
                 } catch (Exception e) {
@@ -362,7 +364,7 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
         System.out.println("--- Checkpoint is in position " + index);
         return index;
     }
-
+   
     @Override
     public void setReplicaContext(ReplicaContext replicaContext) {
         this.config = replicaContext.getStaticConfiguration();
@@ -406,9 +408,17 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
 
     }
 
+    @Override
+    public byte[] executeUnordered(byte[] command, MessageContext msgCtx) {
+        return appExecuteUnordered(command, msgCtx);
+    }
+    
     public abstract void installSnapshot(byte[] state);
-
+    
     public abstract byte[] getSnapshot();
-
+    
     public abstract byte[][] appExecuteBatch(byte[][] commands, MessageContext[] msgCtxs);
+    
+    public abstract byte[] appExecuteUnordered(byte[] command, MessageContext msgCtx);
+
 }

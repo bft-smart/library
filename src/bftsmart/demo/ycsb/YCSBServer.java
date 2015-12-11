@@ -117,7 +117,7 @@ public class YCSBServer extends DefaultRecoverable {
 	}
 
 	@Override
-	public byte[] executeUnordered(byte[] theCommand, MessageContext theContext) {
+	public byte[] appExecuteUnordered(byte[] theCommand, MessageContext theContext) {
 		YCSBMessage aRequest = YCSBMessage.getObject(theCommand);
 		YCSBMessage reply = YCSBMessage.newErrorMessage("");
 		if (aRequest == null) {
