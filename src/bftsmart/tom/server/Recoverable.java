@@ -15,12 +15,10 @@ limitations under the License.
 */
 package bftsmart.tom.server;
 
-import bftsmart.consensus.messages.ConsensusMessage;
 import bftsmart.statemanagement.ApplicationState;
 import bftsmart.statemanagement.StateManager;
 import bftsmart.tom.ReplicaContext;
-import java.util.Set;
-
+import bftsmart.tom.leaderchange.LastEidData;
 /**
  * 
  * @author Marcel Santos
@@ -70,6 +68,6 @@ public interface Recoverable {
      * @param regency The regency installed when the consensus finished
      * @param proof Proof for the aforementioned consensus
      */
-    public void noOp(int lastCID, int leader, int regency, Set<ConsensusMessage> proof); 
+    public void noOp(int lastCID, int leader, int regency, LastEidData proof); 
 	
 }

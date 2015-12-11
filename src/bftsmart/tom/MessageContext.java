@@ -15,12 +15,11 @@ limitations under the License.
 */
 package bftsmart.tom;
 
-import bftsmart.consensus.messages.ConsensusMessage;
-import java.io.Serializable;
-
 import bftsmart.tom.core.messages.TOMMessage;
+import bftsmart.tom.leaderchange.LastEidData;
+
+import java.io.Serializable;
 import java.util.Random;
-import java.util.Set;
 
 /**
  * This class represents the whole context of a request ordered in the system.
@@ -40,7 +39,7 @@ public class MessageContext implements Serializable {
     private int numOfNonces;
     private long seed;
 
-    private Set<ConsensusMessage> proof;
+    private LastEidData proof;
             
     private int sender;
     private TOMMessage firstInBatch; //to be replaced by a statistics class
@@ -51,7 +50,7 @@ public class MessageContext implements Serializable {
     
     private byte[] nonces = null;
     
-    public MessageContext(long timestamp, int numOfNonces, long seed, int regency, int leader, int consensusId, Set<ConsensusMessage> proof, int sender, TOMMessage firstInBatch, boolean noOp) {
+    public MessageContext(long timestamp, int numOfNonces, long seed, int regency, int leader, int consensusId, LastEidData proof, int sender, TOMMessage firstInBatch, boolean noOp) {
         this.timestamp = timestamp;
         this.nonces = nonces;
         this.regency = regency;
@@ -116,7 +115,7 @@ public class MessageContext implements Serializable {
      * 
      * @return the proof for the consensus
      */
-    public Set<ConsensusMessage> getProof() {
+    public LastEidData getProof() {
         return proof;
     }
     

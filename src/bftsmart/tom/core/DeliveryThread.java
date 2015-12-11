@@ -30,6 +30,7 @@ import bftsmart.tom.MessageContext;
 import bftsmart.tom.ServiceReplica;
 import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.core.messages.TOMMessageType;
+import bftsmart.tom.leaderchange.LastEidData;
 import bftsmart.tom.server.Recoverable;
 import bftsmart.tom.util.BatchReader;
 import bftsmart.tom.util.Logger;
@@ -186,15 +187,19 @@ public final class DeliveryThread extends Thread {
 					int[] consensusIds = new int[requests.length];
                                         int[] leadersIds = new int[requests.length];
                                         int[] regenciesIds = new int[requests.length];
-                                        HashSet<ConsensusMessage>[] proofs;
-                                        proofs = new HashSet[requests.length];
+                                        LastEidData[] proofs;
+                                        proofs = new LastEidData[requests.length];
   					int count = 0;
   					for (Decision d : decisions) {
   						requests[count] = extractMessagesFromDecision(d);
 						consensusIds[count] = d.getConsensusId();
                                                 leadersIds[count] = d.getLeader();
                                                 regenciesIds[count] = d.getRegency();
-                                                proofs[count] = d.getDecisionEpoch().proof;
+                                                
+                                                LastEidData led = new LastEidData(this.controller.getStaticConf().getProcessId(),
+                                                        d.getConsensusId(), d.getValue(), d.getDecisionEpoch().proof);
+                                                proofs[count] = led;
+                                                
   						// cons.firstMessageProposed contains the performance counters
   						if (requests[count][0].equals(d.firstMessageProposed)) {
   	                    	long time = requests[count][0].timestamp;
@@ -271,7 +276,7 @@ public final class DeliveryThread extends Thread {
         receiver.receiveReadonlyMessage(request, msgCtx);
     }
 
-    private void deliverMessages(int consId[], int regencies[], int leaders[], Set<ConsensusMessage>[] proofs, TOMMessage[][] requests) {
+    private void deliverMessages(int consId[], int regencies[], int leaders[], LastEidData[] proofs, TOMMessage[][] requests) {
         receiver.receiveMessages(consId, regencies, leaders, proofs, requests);
     }
 

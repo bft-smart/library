@@ -15,13 +15,11 @@ limitations under the License.
  */
 package bftsmart.tom.server.defaultservices.durability;
 
-import bftsmart.consensus.messages.ConsensusMessage;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Level;
-import java.util.Set;
 
 import bftsmart.reconfiguration.util.TOMConfiguration;
 import bftsmart.statemanagement.ApplicationState;
@@ -31,6 +29,7 @@ import bftsmart.statemanagement.strategy.durability.CSTState;
 import bftsmart.statemanagement.strategy.durability.DurableStateManager;
 import bftsmart.tom.MessageContext;
 import bftsmart.tom.ReplicaContext;
+import bftsmart.tom.leaderchange.LastEidData;
 import bftsmart.tom.server.BatchExecutable;
 import bftsmart.tom.server.Recoverable;
 import bftsmart.tom.server.defaultservices.CommandsInfo;
@@ -416,7 +415,7 @@ public abstract class DurabilityCoordinator implements Recoverable, BatchExecuta
 	}
 
         @Override
-        public void noOp(int lastCID, int leader, int regency, Set<ConsensusMessage> proof) {
+        public void noOp(int lastCID, int leader, int regency, LastEidData proof) {
 
             MessageContext msgCtx = new MessageContext(-1, 0, 0, regency, leader, lastCID, proof, -1, null, true);
             msgCtx.setLastInBatch();

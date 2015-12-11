@@ -21,10 +21,8 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.Set;
 
 import bftsmart.communication.ServerCommunicationSystem;
-import bftsmart.consensus.messages.ConsensusMessage;
 import bftsmart.tom.core.ExecutionManager;
 import bftsmart.tom.core.LeaderModule;
 import bftsmart.consensus.messages.MessageFactory;
@@ -38,6 +36,7 @@ import bftsmart.tom.core.ReplyManager;
 import bftsmart.tom.core.TOMLayer;
 import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.core.messages.TOMMessageType;
+import bftsmart.tom.leaderchange.LastEidData;
 import bftsmart.tom.server.BatchExecutable;
 import bftsmart.tom.server.Executable;
 import bftsmart.tom.server.FIFOExecutable;
@@ -251,7 +250,7 @@ public class ServiceReplica {
 			cs.send(new int[]{message.getSender()}, message.reply); 
 	}
 
-	public void receiveMessages(int consId[], int regencies[], int leaders[], Set<ConsensusMessage>[] proofs, TOMMessage[][] requests) {
+	public void receiveMessages(int consId[], int regencies[], int leaders[], LastEidData[] proofs, TOMMessage[][] requests) {
 		int numRequests = 0;
 		int consensusCount = 0;
 		List<TOMMessage> toBatch = new ArrayList<TOMMessage>();

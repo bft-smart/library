@@ -15,7 +15,6 @@ limitations under the License.
 */
 package bftsmart.tom.server.defaultservices;
 
-import bftsmart.consensus.messages.ConsensusMessage;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
@@ -23,7 +22,6 @@ import java.util.List;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Level;
 import java.util.Arrays;
-import java.util.Set;
 
 import bftsmart.reconfiguration.util.TOMConfiguration;
 import bftsmart.statemanagement.ApplicationState;
@@ -31,6 +29,7 @@ import bftsmart.statemanagement.StateManager;
 import bftsmart.statemanagement.strategy.StandardStateManager;
 import bftsmart.tom.MessageContext;
 import bftsmart.tom.ReplicaContext;
+import bftsmart.tom.leaderchange.LastEidData;
 import bftsmart.tom.server.Recoverable;
 import bftsmart.tom.server.SingleExecutable;
 import bftsmart.tom.util.Logger;
@@ -287,7 +286,7 @@ public abstract class DefaultSingleRecoverable implements Recoverable, SingleExe
 	}
     
     @Override
-    public void noOp(int lastCID, int leader, int regency, Set<ConsensusMessage> proof) {
+    public void noOp(int lastCID, int leader, int regency, LastEidData proof) {
         
         MessageContext msgCtx = new MessageContext(-1, 0, 0, regency, leader, lastCID, proof, -1, null, true);
         msgCtx.setLastInBatch();
