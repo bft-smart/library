@@ -15,21 +15,24 @@ limitations under the License.
 */
 package bftsmart.tom.server.defaultservices;
 
-import java.io.Serializable;
-import java.util.Arrays;
-
 import bftsmart.tom.MessageContext;
+
+import java.io.Externalizable;
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
+import java.util.Arrays;
 
 /**
  *
  * @author Joao Sousa
  */
-public class CommandsInfo implements Serializable {
+public class CommandsInfo implements Externalizable {
 	
     private static final long serialVersionUID = 342711292879899682L;
 	
-    public final byte[][] commands;
-    public final MessageContext[] msgCtx;
+    public byte[][] commands;
+    public MessageContext[] msgCtx;
 
 
     public CommandsInfo () {
@@ -119,5 +122,58 @@ public class CommandsInfo implements Serializable {
         }
 
         return hash;
+    }
+
+    @Override
+    public void writeExternal(ObjectOutput out) throws IOException {
+        
+        if (commands != null) {
+            out.writeInt(commands.length);
+            
+            for (byte[] m : commands) {
+                out.writeInt(m.length);
+                out.write(m);
+            }
+        }
+        else {
+            out.writeInt(0);
+        }
+        
+        if (msgCtx != null) {
+            out.writeInt(msgCtx.length);
+            
+            for (MessageContext m : msgCtx)
+                out.writeObject(m);
+            
+        }
+        else {
+            out.writeInt(0);
+        }        
+
+    }
+
+    @Override
+    public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
+
+        int size = in.readInt();
+        if (size > 0) {
+            commands = new byte[size][];
+            
+            for (int i = 0; i < commands.length; i++) {
+                
+                int length = in.readInt();
+                commands[i] = new byte[length];
+                in.read(commands[i]);
+            }
+        }
+        
+        size = in.readInt();
+        if (size > 0) {
+            
+            msgCtx = new MessageContext[size];
+            for (int i = 0; i < commands.length; i++)
+                msgCtx[i] = (MessageContext) in.readObject();
+            
+        }
     }
 }
