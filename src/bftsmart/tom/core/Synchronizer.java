@@ -20,7 +20,7 @@ import bftsmart.tom.leaderchange.RequestsTimer;
 import bftsmart.tom.leaderchange.CollectData;
 import bftsmart.tom.leaderchange.LCManager;
 import bftsmart.tom.leaderchange.LCMessage;
-import bftsmart.tom.leaderchange.LastEidData;
+import bftsmart.tom.leaderchange.CertifiedDecision;
 import bftsmart.tom.util.BatchBuilder;
 import bftsmart.tom.util.BatchReader;
 import bftsmart.tom.util.Logger;
@@ -74,7 +74,7 @@ public class Synchronizer {
     // Attributes to temporarely store synchronization info
     // if state transfer is required for synchronization
     private int tempRegency = -1;
-    private LastEidData tempLastHighestEid = null;
+    private CertifiedDecision tempLastHighestEid = null;
     private HashSet<SignedObject> tempSignedCollects = null;
     private byte[] tempPropose = null;
     private int tempBatchSize = -1;
@@ -223,7 +223,7 @@ public class Synchronizer {
     private void processSTOPDATA(LCMessage msg, int regency) {
 
         //TODO: It is necessary to verify the proof of the last decided consensus and the signature of the state of the current consensus!
-        LastEidData lastData = null;
+        CertifiedDecision lastData = null;
         SignedObject signedCollect = null;
 
         int last = -1;
@@ -248,7 +248,7 @@ public class Synchronizer {
                 //TODO: Proof is missing!
             }
 
-            lastData = new LastEidData(msg.getSender(), last, lastValue, proof);
+            lastData = new CertifiedDecision(msg.getSender(), last, lastValue, proof);
 
             lcManager.addLastEid(regency, lastData);
 
@@ -285,7 +285,7 @@ public class Synchronizer {
     // ahead of the replica's expected regency
     private void processSYNC(byte[] payload, int regency) {
         
-        LastEidData lastHighestEid = null;
+        CertifiedDecision lastHighestEid = null;
         int currentEid = -1;
         HashSet<SignedObject> signedCollects = null;
         byte[] propose = null;
@@ -299,14 +299,14 @@ public class Synchronizer {
             bis = new ByteArrayInputStream(payload);
             ois = new ObjectInputStream(bis);
 
-            lastHighestEid = (LastEidData) ois.readObject();
+            lastHighestEid = (CertifiedDecision) ois.readObject();
             signedCollects = (HashSet<SignedObject>) ois.readObject();
             propose = (byte[]) ois.readObject();
             batchSize = ois.readInt();
 
             lcManager.setCollects(regency, signedCollects);
             
-            currentEid = lastHighestEid.getEid() + 1;
+            currentEid = lastHighestEid.getCID() + 1;
 
             // Is the predicate "sound" true? Is the certificate for LastEid valid?
             if (lcManager.sound(lcManager.selectCollects(regency, currentEid)) && (!controller.getStaticConf().isBFT() || lcManager.hasValidProof(lastHighestEid))) {
@@ -715,7 +715,7 @@ public class Synchronizer {
             } else { // If leader, I will store information that I would send in a SYNC message
 
                 Logger.println("(Synchronizer.startSynchronization) I'm the leader for this new regency");
-                LastEidData lastData = null;
+                CertifiedDecision lastData = null;
                 CollectData collect = null;
 
                 Consensus cons = null;
@@ -731,11 +731,11 @@ public class Synchronizer {
                     byte[] decision = cons.getDecisionEpoch().propValue;
                     Set<ConsensusMessage> proof = cons.getDecisionEpoch().getProof();
 
-                    lastData = new LastEidData(this.controller.getStaticConf().getProcessId(), last, decision, proof);
+                    lastData = new CertifiedDecision(this.controller.getStaticConf().getProcessId(), last, decision, proof);
                     // TODO: WILL BE NECESSARY TO ADD A PROOF!!!??
 
                 } else {
-                    lastData = new LastEidData(this.controller.getStaticConf().getProcessId(), last, null, null);
+                    lastData = new CertifiedDecision(this.controller.getStaticConf().getProcessId(), last, null, null);
 
                     ////// THIS IS TO CATCH A BUG!!!!!
                     if (last > -1) {
@@ -940,9 +940,9 @@ public class Synchronizer {
         ObjectOutputStream out = null;
         ByteArrayOutputStream bos = null;
 
-        LastEidData lastHighestEid = lcManager.getHighestLastEid(regency);
+        CertifiedDecision lastHighestEid = lcManager.getHighestLastEid(regency);
 
-        int currentEid = lastHighestEid.getEid() + 1;
+        int currentEid = lastHighestEid.getCID() + 1;
         HashSet<SignedObject> signedCollects = null;
         byte[] propose = null;
         int batchSize = -1;
@@ -1005,7 +1005,7 @@ public class Synchronizer {
     // that it can end synchronization
     public void resumeLC() {
 
-        Consensus cons = execManager.getConsensus(tempLastHighestEid.getEid());
+        Consensus cons = execManager.getConsensus(tempLastHighestEid.getCID());
         Epoch e = cons.getLastEpoch();
 
         int ets = cons.getEts();
@@ -1016,11 +1016,11 @@ public class Synchronizer {
             e.clear();
         }
 
-        byte[] hash = tom.computeHash(tempLastHighestEid.getEidDecision());
+        byte[] hash = tom.computeHash(tempLastHighestEid.getDecision());
         e.propValueHash = hash;
-        e.propValue = tempLastHighestEid.getEidDecision();
+        e.propValue = tempLastHighestEid.getDecision();
 
-        e.deserializedPropValue = tom.checkProposedValue(tempLastHighestEid.getEidDecision(), false);
+        e.deserializedPropValue = tom.checkProposedValue(tempLastHighestEid.getDecision(), false);
 
         finalise(tempRegency, tempLastHighestEid,
                 tempSignedCollects, tempPropose, tempBatchSize, tempIAmLeader);
@@ -1029,18 +1029,18 @@ public class Synchronizer {
 
     // this method is called on all replicas, and serves to verify and apply the
     // information sent in the catch-up message
-    private void finalise(int regency, LastEidData lastHighestEid,
+    private void finalise(int regency, CertifiedDecision lastHighestEid,
             HashSet<SignedObject> signedCollects, byte[] propose, int batchSize, boolean iAmLeader) {
 
-        int currentEid = lastHighestEid.getEid() + 1;
+        int currentEid = lastHighestEid.getCID() + 1;
         Logger.println("(Synchronizer.finalise) final stage of LC protocol");
         int me = this.controller.getStaticConf().getProcessId();
         Consensus cons = null;
         Epoch e = null;
 
-        if (tom.getLastExec() + 1 < lastHighestEid.getEid()) { // is this a delayed replica?
+        if (tom.getLastExec() + 1 < lastHighestEid.getCID()) { // is this a delayed replica?
 
-            System.out.println("(Synchronizer.finalise) NEEDING TO USE STATE TRANSFER!! (" + lastHighestEid.getEid() + ")");
+            System.out.println("(Synchronizer.finalise) NEEDING TO USE STATE TRANSFER!! (" + lastHighestEid.getCID() + ")");
 
             tempRegency = regency;
             tempLastHighestEid = lastHighestEid;
@@ -1050,7 +1050,7 @@ public class Synchronizer {
             tempIAmLeader = iAmLeader;
 
             execManager.getStoppedMsgs().add(acceptor.getFactory().createPropose(currentEid, 0, propose));
-            stateManager.requestAppState(lastHighestEid.getEid());
+            stateManager.requestAppState(lastHighestEid.getCID());
 
             return;
 
@@ -1078,10 +1078,10 @@ public class Synchronizer {
         }*/
         
         // install proof of the last decided consensus
-        cons = execManager.getConsensus(lastHighestEid.getEid());
+        cons = execManager.getConsensus(lastHighestEid.getCID());
         e = null;
         
-        for (ConsensusMessage cm : lastHighestEid.getEidProof()) {
+        for (ConsensusMessage cm : lastHighestEid.getConsMessages()) {
             
             if (e == null) e = cons.getEpoch(cm.getEpoch(), true, controller);
             if (e.getTimestamp() != cm.getEpoch()) {
@@ -1102,17 +1102,17 @@ public class Synchronizer {
         }
         if (e != null) {
 
-            System.out.println("(Synchronizer.finalise) Installed proof of last decided consensus " + lastHighestEid.getEid());
+            System.out.println("(Synchronizer.finalise) Installed proof of last decided consensus " + lastHighestEid.getCID());
             
-            byte[] hash = tom.computeHash(lastHighestEid.getEidDecision());
+            byte[] hash = tom.computeHash(lastHighestEid.getDecision());
             e.propValueHash = hash;
-            e.propValue = lastHighestEid.getEidDecision();
-            e.deserializedPropValue = tom.checkProposedValue(lastHighestEid.getEidDecision(), false);
+            e.propValue = lastHighestEid.getDecision();
+            e.deserializedPropValue = tom.checkProposedValue(lastHighestEid.getDecision(), false);
 
             // Is this replica still executing the last decided consensus?
-            if (tom.getLastExec() + 1 == lastHighestEid.getEid()) {
+            if (tom.getLastExec() + 1 == lastHighestEid.getCID()) {
                 
-                System.out.println("(Synchronizer.finalise) I'm still at the CID before the most recent one!!! (" + lastHighestEid.getEid() + ")");
+                System.out.println("(Synchronizer.finalise) I'm still at the CID before the most recent one!!! (" + lastHighestEid.getCID() + ")");
                 cons.decided(e, true);
             }
             else {
@@ -1120,7 +1120,7 @@ public class Synchronizer {
             }
 
         } else {
-            System.out.println("(Synchronizer.finalise) I did not install any proof of last decided consensus " + lastHighestEid.getEid());
+            System.out.println("(Synchronizer.finalise) I did not install any proof of last decided consensus " + lastHighestEid.getCID());
         }
         
         cons = null;

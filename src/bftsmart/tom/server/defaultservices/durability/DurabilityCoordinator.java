@@ -29,7 +29,7 @@ import bftsmart.statemanagement.strategy.durability.CSTState;
 import bftsmart.statemanagement.strategy.durability.DurableStateManager;
 import bftsmart.tom.MessageContext;
 import bftsmart.tom.ReplicaContext;
-import bftsmart.tom.leaderchange.LastEidData;
+import bftsmart.tom.leaderchange.CertifiedDecision;
 import bftsmart.tom.server.BatchExecutable;
 import bftsmart.tom.server.Recoverable;
 import bftsmart.tom.server.defaultservices.CommandsInfo;
@@ -415,7 +415,7 @@ public abstract class DurabilityCoordinator implements Recoverable, BatchExecuta
 	}
 
         @Override
-        public void noOp(int lastCID, int leader, int regency, LastEidData proof) {
+        public void noOp(int lastCID, int leader, int regency, CertifiedDecision proof) {
 
             MessageContext msgCtx = new MessageContext(-1, 0, 0, regency, leader, lastCID, proof, -1, null, true);
             msgCtx.setLastInBatch();

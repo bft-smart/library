@@ -37,7 +37,7 @@ import bftsmart.statemanagement.SMMessage;
 import bftsmart.statemanagement.strategy.BaseStateManager;
 import bftsmart.tom.core.DeliveryThread;
 import bftsmart.tom.core.TOMLayer;
-import bftsmart.tom.leaderchange.LastEidData;
+import bftsmart.tom.leaderchange.CertifiedDecision;
 import bftsmart.tom.server.defaultservices.CommandsInfo;
 import bftsmart.tom.server.defaultservices.durability.DurabilityCoordinator;
 import bftsmart.tom.util.Logger;
@@ -186,7 +186,7 @@ public class DurableStateManager extends BaseStateManager {
 				int currentRegency = -1;
 				int currentLeader = -1;
 				View currentView = null;
-                                LastEidData currentProof = null;
+                                CertifiedDecision currentProof = null;
 
 				if (!appStateOnly) {
 					senderRegencies.put(reply.getSender(), reply.getRegency());
@@ -316,7 +316,7 @@ public class DurableStateManager extends BaseStateManager {
                                                     Consensus cons = execManager.getConsensus(waitingEid);
                                                     Epoch e = null;
 
-                                                    for (ConsensusMessage cm : currentProof.getEidProof()) {
+                                                    for (ConsensusMessage cm : currentProof.getConsMessages()) {
 
                                                         e = cons.getEpoch(cm.getEpoch(), true, SVController);
                                                         if (e.getTimestamp() != cm.getEpoch()) {
@@ -339,10 +339,10 @@ public class DurableStateManager extends BaseStateManager {
 
                                                     if (e != null) {
 
-                                                        byte[] hash = tomLayer.computeHash(currentProof.getEidDecision());
+                                                        byte[] hash = tomLayer.computeHash(currentProof.getDecision());
                                                         e.propValueHash = hash;
-                                                        e.propValue = currentProof.getEidDecision();
-                                                        e.deserializedPropValue = tomLayer.checkProposedValue(currentProof.getEidDecision(), false);
+                                                        e.propValue = currentProof.getDecision();
+                                                        e.deserializedPropValue = tomLayer.checkProposedValue(currentProof.getDecision(), false);
                                                          cons.decided(e, false);
 
                                                         System.out.println("Successfully installed proof for consensus " + waitingEid);

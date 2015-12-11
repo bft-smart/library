@@ -27,75 +27,75 @@ import java.util.Set;
  *
  * @author Joao Sousa
  */
-public class LastEidData implements Externalizable {
+public class CertifiedDecision implements Externalizable {
 
     private int pid; // process id
-    private int eid; // execution id
-    private byte[] eidDecision; // decision value
-    private Set<ConsensusMessage>  eidProof; // proof of the decision
+    private int cid; // execution id
+    private byte[] decision; // decision value
+    private Set<ConsensusMessage>  consMsgs; // proof of the decision
     
     /**
      * Empty constructor
      */
-    public LastEidData() {
+    public CertifiedDecision() {
         pid = -1;
-        eid = -1;
-        eidDecision = null;
-        eidProof = null;
+        cid = -1;
+        decision = null;
+        consMsgs = null;
     }
 
     /**
      * Constructor
      * 
      * @param pid process id
-     * @param eid execution id
-     * @param eidDecision decision value
-     * @param eidProof proof of the decision
+     * @param cid execution id
+     * @param decision decision value
+     * @param consMsgs proof of the decision in the form of authenticated Consensus Messages
      */
-    public LastEidData(int pid, int eid, byte[] eidDecision, Set<ConsensusMessage> eidProof) {
+    public CertifiedDecision(int pid, int cid, byte[] decision, Set<ConsensusMessage> consMsgs) {
 
         this.pid = pid;
-        this.eid = eid;
-        this.eidDecision = eidDecision;
-        this.eidProof = eidProof;
+        this.cid = cid;
+        this.decision = decision;
+        this.consMsgs = consMsgs;
     }
 
     /**
-     * Get execution id
-     * @return execution id
+     * Get consensus ID
+     * @return consensus ID
      */
-    public int getEid() {
-        return eid;
+    public int getCID() {
+        return cid;
     }
 
     /**
      * Get decision value
      * @return decision value
      */
-    public byte[] getEidDecision() {
-        return eidDecision;
+    public byte[] getDecision() {
+        return decision;
     }
 
     /**
-     * Get proof of the decision
-     * @return proof of the decision
+     * Get proof of the decision in the form of authenticated Consensus Messages
+     * @return proof of the decision in the form of authenticated Consensus Messages
      */
-    public Set<ConsensusMessage>  getEidProof() {
-        return eidProof;
+    public Set<ConsensusMessage>  getConsMessages() {
+        return consMsgs;
     }
 
     /**
      * Get process id
      * @return process id
      */
-    public int getPid() {
+    public int getPID() {
         return pid;
     }
     public boolean equals(Object obj) {
 
-        if (obj instanceof LastEidData) {
+        if (obj instanceof CertifiedDecision) {
 
-            LastEidData l = (LastEidData) obj;
+            CertifiedDecision l = (CertifiedDecision) obj;
 
             if (l.pid == pid) return true;
         }
@@ -110,16 +110,16 @@ public class LastEidData implements Externalizable {
     public void writeExternal(ObjectOutput out) throws IOException {
 
         out.writeInt(pid);
-        out.writeInt(eid);
-        out.writeObject(eidDecision);
-        out.writeObject(eidProof);
+        out.writeInt(cid);
+        out.writeObject(decision);
+        out.writeObject(consMsgs);
     }
 
     public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
 
         pid = in.readInt();
-        eid = in.readInt();
-        eidDecision = (byte[]) in.readObject();
-        eidProof = (Set<ConsensusMessage>) in.readObject();
+        cid = in.readInt();
+        decision = (byte[]) in.readObject();
+        consMsgs = (Set<ConsensusMessage>) in.readObject();
     }
 }

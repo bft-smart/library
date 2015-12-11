@@ -15,7 +15,7 @@ limitations under the License.
 */
 package bftsmart.statemanagement;
 
-import bftsmart.tom.leaderchange.LastEidData;
+import bftsmart.tom.leaderchange.CertifiedDecision;
 
 import java.io.Serializable;
 
@@ -41,7 +41,7 @@ public interface ApplicationState extends Serializable {
      * Retrieves the proof for the last consensus present in this object
      * @return The last consensus present in this object
      */
-    public LastEidData getLastProof();
+    public CertifiedDecision getLastProof();
 
     /**
      * Indicates if the sender replica had the state requested by the recovering replica

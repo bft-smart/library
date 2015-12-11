@@ -65,7 +65,7 @@ public class LCManager {
     
     //data structures for info in stop, sync and catch-up messages
     private HashMap<Integer,HashSet<Integer>> stops;
-    private HashMap<Integer,HashSet<LastEidData>> lastEids;
+    private HashMap<Integer,HashSet<CertifiedDecision>> lastEids;
     private HashMap<Integer,HashSet<SignedObject>> collects;
 
     //stuff from the TOM layer that this object needss
@@ -90,7 +90,7 @@ public class LCManager {
         this.currentLeader = 0;
 
         this.stops = new HashMap<Integer,HashSet<Integer>>();
-        this.lastEids = new HashMap<Integer, HashSet<LastEidData>>();
+        this.lastEids = new HashMap<Integer, HashSet<CertifiedDecision>>();
         this.collects = new HashMap<Integer, HashSet<SignedObject>>();
 
         this.SVController = SVController;
@@ -269,10 +269,10 @@ public class LCManager {
      * @param regency the current regency
      * @param lastEid the last eid data
      */
-    public void addLastEid(int regency, LastEidData lastEid) {
+    public void addLastEid(int regency, CertifiedDecision lastEid) {
 
-        HashSet<LastEidData> last = lastEids.get(regency);
-        if (last == null) last = new HashSet<LastEidData>();
+        HashSet<CertifiedDecision> last = lastEids.get(regency);
+        if (last == null) last = new HashSet<CertifiedDecision>();
         last.add(lastEid);
         lastEids.put(regency, last);
     }
@@ -296,7 +296,7 @@ public class LCManager {
      * @return quantity of stored last eid  information for given regency
      */
     public int getLastEidsSize(int regency) {
-        HashSet<LastEidData> last = lastEids.get(regency);
+        HashSet<CertifiedDecision> last = lastEids.get(regency);
         return last == null ? 0 : last.size();
     }
 
@@ -305,7 +305,7 @@ public class LCManager {
      * @param regency Regency for the last eid info
      * @return a set of last eid data
      */
-    public HashSet<LastEidData> getLastEids(int regency) {
+    public HashSet<CertifiedDecision> getLastEids(int regency) {
         return lastEids.get(regency);
     }
 
@@ -314,7 +314,7 @@ public class LCManager {
      * @param regency Regency for the last eid info
      * @param lasts a set of last eid data
      */
-    public void setLastEids(int regency, HashSet<LastEidData> lasts) {
+    public void setLastEids(int regency, HashSet<CertifiedDecision> lasts) {
 
         lastEids.put(regency, lasts);
     }
@@ -780,20 +780,20 @@ public class LCManager {
      * @param ts the timestamp
      * @return -1 if there is no such eid, otherwise returns the highest valid last eid
      */
-    public LastEidData getHighestLastEid(int ts) {
+    public CertifiedDecision getHighestLastEid(int ts) {
 
-        LastEidData highest = new LastEidData(-2, -2, null, null);
+        CertifiedDecision highest = new CertifiedDecision(-2, -2, null, null);
 
-        HashSet<LastEidData> lasts = lastEids.get(ts);
+        HashSet<CertifiedDecision> lasts = lastEids.get(ts);
 
         if (lasts == null) return null;
        
-        for (LastEidData l : lasts) {
+        for (CertifiedDecision l : lasts) {
 
             //TODO: CHECK OF THE PROOF IS MISSING!!!!
-            if (tomLayer.controller.getStaticConf().isBFT() && hasValidProof(l) && l.getEid() > highest.getEid()) 
+            if (tomLayer.controller.getStaticConf().isBFT() && hasValidProof(l) && l.getCID() > highest.getCID()) 
                     highest = l;
-            else if(l.getEid() > highest.getEid()){
+            else if(l.getCID() > highest.getCID()){
                     highest = l;
              }
         }
@@ -802,14 +802,14 @@ public class LCManager {
     }
     
     // verifies is a proof associated with a decided value is valid
-    public boolean hasValidProof(LastEidData led) {
+    public boolean hasValidProof(CertifiedDecision led) {
         
-        if (led.getEid() == -1) return true; // If the last eid is -1 it means the replica
+        if (led.getCID() == -1) return true; // If the last eid is -1 it means the replica
                                              // did not complete any consensus and cannot have
                                              // any proof
         
-        byte[] hashedValue = md.digest(led.getEidDecision());
-        Set<ConsensusMessage> ConsensusMessages = led.getEidProof();
+        byte[] hashedValue = md.digest(led.getDecision());
+        Set<ConsensusMessage> ConsensusMessages = led.getConsMessages();
         int myId = tomLayer.controller.getStaticConf().getProcessId();
         int certificateCurrentView = (2*tomLayer.controller.getCurrentViewF()) + 1;
         int certificateLastView = -1;
@@ -854,7 +854,7 @@ public class LCManager {
             
                 if (recvMAC != null && myMAC != null && Arrays.equals(recvMAC, myMAC) &&
                         Arrays.equals(consMsg.getValue(), hashedValue) &&
-                        consMsg.getNumber() == led.getEid() && !alreadyCounted.contains(consMsg.getSender())) {
+                        consMsg.getNumber() == led.getCID() && !alreadyCounted.contains(consMsg.getSender())) {
                 
                     alreadyCounted.add(consMsg.getSender());
                     countValid++;
@@ -896,18 +896,18 @@ public class LCManager {
      */
     public byte[] getLastEidValue(int regency, int eid) {
 
-        HashSet<LastEidData> lasts = lastEids.get(regency);
+        HashSet<CertifiedDecision> lasts = lastEids.get(regency);
 
         if (lasts == null) return null;
 
         byte[] result = null;
 
-        for (LastEidData l : lasts) {
+        for (CertifiedDecision l : lasts) {
 
-            if (l.getEid() == eid) {
+            if (l.getCID() == eid) {
 
                 //TODO: CHECK OF THE PROOF IS MISSING!!!!
-                result = l.getEidDecision();
+                result = l.getDecision();
                 break;
             }
         }

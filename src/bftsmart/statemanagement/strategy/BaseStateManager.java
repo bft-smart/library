@@ -31,7 +31,7 @@ import bftsmart.tom.core.DeliveryThread;
 import bftsmart.tom.core.TOMLayer;
 import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.leaderchange.LCManager;
-import bftsmart.tom.leaderchange.LastEidData;
+import bftsmart.tom.leaderchange.CertifiedDecision;
 import bftsmart.tom.util.Logger;
 import bftsmart.tom.util.TOMUtil;
 
@@ -50,7 +50,7 @@ public abstract class BaseStateManager implements StateManager {
     protected HashMap<Integer, View> senderViews = null;
     protected HashMap<Integer, Integer> senderRegencies = null;
     protected HashMap<Integer, Integer> senderLeaders = null;
-    protected HashMap<Integer, LastEidData> senderProofs = null;
+    protected HashMap<Integer, CertifiedDecision> senderProofs = null;
 
     protected boolean appStateOnly;
     protected int waitingEid = -1;
@@ -123,9 +123,9 @@ public abstract class BaseStateManager implements StateManager {
     protected boolean moreThan2F_Proofs(int cid, LCManager lc) {
         
         int counter = 0;
-        for (LastEidData led : senderProofs.values()) {
+        for (CertifiedDecision led : senderProofs.values()) {
                         
-            if (cid == proofIsConsistent(led.getEidProof()) && lc.hasValidProof(led)) {
+            if (cid == proofIsConsistent(led.getConsMessages()) && lc.hasValidProof(led)) {
                 counter++;
             }
             

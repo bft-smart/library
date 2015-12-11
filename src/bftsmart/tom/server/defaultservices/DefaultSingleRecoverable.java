@@ -29,7 +29,7 @@ import bftsmart.statemanagement.StateManager;
 import bftsmart.statemanagement.strategy.StandardStateManager;
 import bftsmart.tom.MessageContext;
 import bftsmart.tom.ReplicaContext;
-import bftsmart.tom.leaderchange.LastEidData;
+import bftsmart.tom.leaderchange.CertifiedDecision;
 import bftsmart.tom.server.Recoverable;
 import bftsmart.tom.server.SingleExecutable;
 import bftsmart.tom.util.Logger;
@@ -286,7 +286,7 @@ public abstract class DefaultSingleRecoverable implements Recoverable, SingleExe
 	}
     
     @Override
-    public void noOp(int lastCID, int leader, int regency, LastEidData proof) {
+    public void noOp(int lastCID, int leader, int regency, CertifiedDecision proof) {
         
         MessageContext msgCtx = new MessageContext(-1, 0, 0, regency, leader, lastCID, proof, -1, null, true);
         msgCtx.setLastInBatch();

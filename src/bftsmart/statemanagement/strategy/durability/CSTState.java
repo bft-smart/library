@@ -16,7 +16,7 @@ limitations under the License.
 package bftsmart.statemanagement.strategy.durability;
 
 import bftsmart.statemanagement.ApplicationState;
-import bftsmart.tom.leaderchange.LastEidData;
+import bftsmart.tom.leaderchange.CertifiedDecision;
 import bftsmart.tom.server.defaultservices.CommandsInfo;
 
 /**
@@ -94,7 +94,7 @@ public class CSTState implements ApplicationState {
      * @return The last consensus present in this object
      */
     @Override
-    public LastEidData getLastProof() {
+    public CertifiedDecision getLastProof() {
         return getMessageBatch(getLastEid()).msgCtx[0].getProof();
     }
 

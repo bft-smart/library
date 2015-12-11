@@ -16,7 +16,7 @@ limitations under the License.
 package bftsmart.tom.server.defaultservices;
 
 import bftsmart.statemanagement.ApplicationState;
-import bftsmart.tom.leaderchange.LastEidData;
+import bftsmart.tom.leaderchange.CertifiedDecision;
 
 import java.util.Arrays;
 /**
@@ -109,7 +109,7 @@ public class DefaultApplicationState implements ApplicationState {
      * @return The last consensus present in this object
      */
     @Override
-    public LastEidData getLastProof() {
+    public CertifiedDecision getLastProof() {
         return getMessageBatch(getLastEid()).msgCtx[0].getProof();
     }
 

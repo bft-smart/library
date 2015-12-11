@@ -16,7 +16,7 @@ limitations under the License.
 package bftsmart.tom;
 
 import bftsmart.tom.core.messages.TOMMessage;
-import bftsmart.tom.leaderchange.LastEidData;
+import bftsmart.tom.leaderchange.CertifiedDecision;
 
 import java.io.Serializable;
 import java.util.Random;
@@ -39,7 +39,7 @@ public class MessageContext implements Serializable {
     private int numOfNonces;
     private long seed;
 
-    private LastEidData proof;
+    private CertifiedDecision proof;
             
     private int sender;
     private TOMMessage firstInBatch; //to be replaced by a statistics class
@@ -50,7 +50,7 @@ public class MessageContext implements Serializable {
     
     private byte[] nonces = null;
     
-    public MessageContext(long timestamp, int numOfNonces, long seed, int regency, int leader, int consensusId, LastEidData proof, int sender, TOMMessage firstInBatch, boolean noOp) {
+    public MessageContext(long timestamp, int numOfNonces, long seed, int regency, int leader, int consensusId, CertifiedDecision proof, int sender, TOMMessage firstInBatch, boolean noOp) {
         this.timestamp = timestamp;
         this.nonces = nonces;
         this.regency = regency;
@@ -115,7 +115,7 @@ public class MessageContext implements Serializable {
      * 
      * @return the proof for the consensus
      */
-    public LastEidData getProof() {
+    public CertifiedDecision getProof() {
         return proof;
     }
     
