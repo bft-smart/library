@@ -16,8 +16,6 @@ limitations under the License.
 package bftsmart.tom.server.defaultservices;
 
 import bftsmart.tom.MessageContext;
-import bftsmart.tom.server.defaultservices.CommandsInfo;
-import bftsmart.tom.server.defaultservices.DefaultApplicationState;
 
 /**
  * This classes serves as a log for the state associated with the last checkpoint, and the message
@@ -39,6 +37,8 @@ public class StateLog {
     /**
      * Constructs a State log
      * @param k The chekpoint period
+     * @param initialState
+     * @param initialHash
      */
     public StateLog(int k, byte[] initialState, byte[] initialHash) {
 
@@ -74,6 +74,8 @@ public class StateLog {
     /**
      * Sets the state associated with the last checkpoint, and updates the execution ID associated with it
      * @param state State associated with the last checkpoint
+     * @param stateHash
+     * @param lastConsensusId
      */
     public void newCheckpoint(byte[] state, byte[] stateHash, int lastConsensusId) {
 
@@ -184,6 +186,7 @@ public class StateLog {
     /**
      * Constructs a TransferableState using this log information
      * @param eid Execution ID correspondent to desired state
+     * @param setState
      * @return TransferableState Object containing this log information
      */
     public DefaultApplicationState getApplicationState(int eid, boolean setState) {

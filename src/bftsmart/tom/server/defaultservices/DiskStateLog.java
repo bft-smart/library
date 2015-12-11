@@ -54,7 +54,7 @@ public class DiskStateLog extends StateLog {
 		this.isToLog = isToLog;
 		this.syncLog = syncLog;
 		this.syncCkp = syncCkp;
-		this.logPointers = new HashMap<Integer, Long>();
+		this.logPointers = new HashMap<>();
 	}
 
 	private void createLogFile() {
@@ -116,6 +116,7 @@ public class DiskStateLog extends StateLog {
 	    }
 	}
 
+        @Override
 	public void newCheckpoint(byte[] state, byte[] stateHash, int consensusId) {
 		String ckpPath = DEFAULT_DIR + String.valueOf(id) + "."
 				+ System.currentTimeMillis() + ".tmp";
@@ -180,10 +181,11 @@ public class DiskStateLog extends StateLog {
 	/**
 	 * Constructs a TransferableState using this log information
 	 * 
-	 * @param eid
-	 *            Execution ID correspondent to desired state
+	 * @param eid Execution ID correspondent to desired state
+         * @param sendState
 	 * @return TransferableState Object containing this log information
 	 */
+        @Override
 	public DefaultApplicationState getApplicationState(int eid, boolean sendState) {
 //		readingState = true;
 		CommandsInfo[] batches = null;
@@ -258,6 +260,7 @@ public class DiskStateLog extends StateLog {
 	 *            TransferableState object containing the information which is
 	 *            used to updated this log
 	 */
+        @Override
 	public void update(DefaultApplicationState transState) {
 		newCheckpoint(transState.getState(), transState.getStateHash(), transState.getLastCheckpointEid());
 		setLastCheckpointEid(transState.getLastCheckpointEid());
