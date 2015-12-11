@@ -15,24 +15,22 @@ limitations under the License.
 */
 package bftsmart.tom.server.defaultservices;
 
-import java.util.Arrays;
-
-import bftsmart.tom.server.defaultservices.CommandsInfo;
-
 import bftsmart.statemanagement.ApplicationState;
+import bftsmart.tom.leaderchange.LastEidData;
 
+import java.util.Arrays;
 /**
- * This classe represents a state tranfered from a replica to another. The state associated with the last
+ * This class represents a state transfered from a replica to another. The state associated with the last
  * checkpoint together with all the batches of messages received do far, comprises the sender's
  * current state
  * 
- * @author Jo�o Sousa
+ * @author Joao Sousa
  */
 public class DefaultApplicationState implements ApplicationState {
 
-	private static final long serialVersionUID = 6771081456095596363L;
+    private static final long serialVersionUID = 6771081456095596363L;
 
-	protected byte[] state; // State associated with the last checkpoint
+    protected byte[] state; // State associated with the last checkpoint
     protected byte[] stateHash; // Hash of the state associated with the last checkpoint
     protected int lastEid = -1; // Execution ID for the last messages batch delivered to the application
     protected boolean hasState; // indicates if the replica really had the requested state
@@ -77,10 +75,12 @@ public class DefaultApplicationState implements ApplicationState {
     }
     
     
+    @Override
     public void setSerializedState(byte[] state) {
         this.state = state;
     }
 
+    @Override
     public byte[] getSerializedState() {
         return state;
     }
@@ -89,6 +89,7 @@ public class DefaultApplicationState implements ApplicationState {
      * Indicates if the TransferableState object has a valid state
      * @return true if it has a valid state, false otherwise
      */
+    @Override
     public boolean hasState() {
         return hasState;
     }
@@ -98,10 +99,20 @@ public class DefaultApplicationState implements ApplicationState {
      * Retrieves the execution ID for the last messages batch delivered to the application
      * @return Execution ID for the last messages batch delivered to the application
      */
+    @Override
     public int getLastEid() {
         return lastEid;
     }
     
+    /**
+     * Retrieves the proof for the last consensus present in this object
+     * @return The last consensus present in this object
+     */
+    @Override
+    public LastEidData getLastProof() {
+        return getMessageBatch(getLastEid()).msgCtx[0].getProof();
+    }
+
     /**
      * Retrieves the state associated with the last checkpoint
      * @return State associated with the last checkpoint
@@ -114,6 +125,7 @@ public class DefaultApplicationState implements ApplicationState {
      * Retrieves the hash of the state associated with the last checkpoint
      * @return Hash of the state associated with the last checkpoint
      */
+    @Override
     public byte[] getStateHash() {
         return stateHash;
     }

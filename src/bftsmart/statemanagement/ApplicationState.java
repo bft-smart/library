@@ -15,17 +15,19 @@ limitations under the License.
 */
 package bftsmart.statemanagement;
 
+import bftsmart.tom.leaderchange.LastEidData;
+
 import java.io.Serializable;
 
 /**
- * This classe represents a state tranfered from a replica to another. The state associated with the last
+ * This interface represents a state transfered from a replica to another. The state associated with the last
  * checkpoint together with all the batches of messages received do far, comprises the sender's
  * current state
  * 
  * IMPORTANT: The hash state MUST ALWAYS be present, regardless if the replica is supposed to
  * send the complete state or not
  * 
- * @author Jo�o Sousa
+ * @author Joao Sousa
  */
 public interface ApplicationState extends Serializable {
 
@@ -35,6 +37,12 @@ public interface ApplicationState extends Serializable {
      */
     public int getLastEid();
     
+    /**
+     * Retrieves the proof for the last consensus present in this object
+     * @return The last consensus present in this object
+     */
+    public LastEidData getLastProof();
+
     /**
      * Indicates if the sender replica had the state requested by the recovering replica
      * @return true if the sender replica had the state requested by the recovering replica, false otherwise
@@ -49,7 +57,7 @@ public interface ApplicationState extends Serializable {
     
     /**
      * Byte array that must be a representation of the application state
-     * @returns A byte array that must be a representation of the application state
+     * @return A byte array that must be a representation of the application state
      */
     public byte[] getSerializedState();
     

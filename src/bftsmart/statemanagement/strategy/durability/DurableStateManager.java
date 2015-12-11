@@ -26,16 +26,18 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.locks.ReentrantLock;
 
+import bftsmart.consensus.Consensus;
+import bftsmart.consensus.Epoch;
 import bftsmart.tom.core.ExecutionManager;
 import bftsmart.consensus.messages.ConsensusMessage;
+import bftsmart.consensus.messages.MessageFactory;
 import bftsmart.reconfiguration.views.View;
 import bftsmart.statemanagement.ApplicationState;
 import bftsmart.statemanagement.SMMessage;
 import bftsmart.statemanagement.strategy.BaseStateManager;
-import bftsmart.statemanagement.strategy.durability.CSTState;
 import bftsmart.tom.core.DeliveryThread;
 import bftsmart.tom.core.TOMLayer;
-import bftsmart.tom.leaderchange.LCManager;
+import bftsmart.tom.leaderchange.LastEidData;
 import bftsmart.tom.server.defaultservices.CommandsInfo;
 import bftsmart.tom.server.defaultservices.durability.DurabilityCoordinator;
 import bftsmart.tom.util.Logger;
@@ -184,12 +186,14 @@ public class DurableStateManager extends BaseStateManager {
 				int currentRegency = -1;
 				int currentLeader = -1;
 				View currentView = null;
+                                LastEidData currentProof = null;
 
 				if (!appStateOnly) {
 					senderRegencies.put(reply.getSender(), reply.getRegency());
 					senderLeaders.put(reply.getSender(), reply.getLeader());
 					senderViews.put(reply.getSender(), reply.getView());
-					if (moreThan2F_Regencies(reply.getRegency()))
+                                        senderProofs.put(msg.getSender(), msg.getState().getLastProof());
+                                        if (moreThan2F_Regencies(reply.getRegency()))
 						currentRegency = reply.getRegency();
 					if (moreThan2F_Leaders(reply.getLeader()))
 						currentLeader = reply.getLeader();
@@ -199,7 +203,9 @@ public class DurableStateManager extends BaseStateManager {
 								.getProcessId())) {
 							System.out.println("Not a member!");
 						}
-					}
+					}                                        
+                                        if (moreThan2F_Proofs(waitingEid, this.tomLayer.getSynchronizer().getLCManager())) currentProof = msg.getState().getLastProof();
+
 				} else {
 					currentLeader = tomLayer.lm.getCurrentLeader();
 					currentRegency = tomLayer.getSynchronizer().getLCManager().getLastReg();
@@ -290,7 +296,7 @@ public class DurableStateManager extends BaseStateManager {
 					System.out.println("-- current leader: " + currentLeader);
 					System.out.println("-- current view: " + currentView);
 					if (currentRegency > -1 && currentLeader > -1
-							&& currentView != null && haveState) {
+							&& currentView != null && haveState && (currentProof != null || appStateOnly)) {
 						System.out.println("---- RECEIVED VALID STATE ----");
 
 						Logger.println("(TOMLayer.SMReplyDeliver) The state of those replies is good!");
@@ -303,6 +309,52 @@ public class DurableStateManager extends BaseStateManager {
 
 						tomLayer.lm.setNewLeader(currentLeader);
 						
+                                                if (currentProof != null && !appStateOnly) {
+
+                                                    System.out.println("Installing proof for consensus " + waitingEid);
+
+                                                    Consensus cons = execManager.getConsensus(waitingEid);
+                                                    Epoch e = null;
+
+                                                    for (ConsensusMessage cm : currentProof.getEidProof()) {
+
+                                                        e = cons.getEpoch(cm.getEpoch(), true, SVController);
+                                                        if (e.getTimestamp() != cm.getEpoch()) {
+
+                                                            System.out.println("Strange... proof contains messages from more than just one epoch");
+                                                            e = cons.getEpoch(cm.getEpoch(), true, SVController);
+                                                        }
+                                                        e.addToProof(cm);
+
+                                                        if (cm.getType() == MessageFactory.ACCEPT) {
+                                                            e.setAccept(cm.getSender(), cm.getValue());
+                                                        }
+
+                                                        else if (cm.getType() == MessageFactory.WRITE) {
+                                                            e.setWrite(cm.getSender(), cm.getValue());
+                                                        }
+
+                                                    }
+
+
+                                                    if (e != null) {
+
+                                                        byte[] hash = tomLayer.computeHash(currentProof.getEidDecision());
+                                                        e.propValueHash = hash;
+                                                        e.propValue = currentProof.getEidDecision();
+                                                        e.deserializedPropValue = tomLayer.checkProposedValue(currentProof.getEidDecision(), false);
+                                                         cons.decided(e, false);
+
+                                                        System.out.println("Successfully installed proof for consensus " + waitingEid);
+
+                                                    } else {
+                                                        System.out.println("Failed to install proof for consensus " + waitingEid);
+
+                                                    }
+
+                                                }
+
+                                                
                                                 // I might have timed out before invoking the state transfer, so
                                                 // stop my re-transmission of STOP messages for all regencies up to the current one
                                                 if (currentRegency > 0) tomLayer.getSynchronizer().removeSTOPretransmissions(currentRegency - 1);

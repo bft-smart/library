@@ -22,9 +22,12 @@ import java.util.Queue;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.Random;
+import java.util.Set;
 
 import bftsmart.tom.core.ExecutionManager;
 import bftsmart.consensus.messages.ConsensusMessage;
+import bftsmart.consensus.messages.MessageFactory;
 import bftsmart.reconfiguration.views.View;
 import bftsmart.statemanagement.ApplicationState;
 import bftsmart.statemanagement.SMMessage;
@@ -32,7 +35,9 @@ import bftsmart.tom.core.DeliveryThread;
 import bftsmart.tom.core.TOMLayer;
 import bftsmart.tom.util.Logger;
 import bftsmart.tom.util.TOMUtil;
-import java.util.Random;
+import bftsmart.consensus.Consensus;
+import bftsmart.consensus.Epoch;
+import bftsmart.tom.leaderchange.LastEidData;
 
 /**
  * 
@@ -162,16 +167,18 @@ public class StandardStateManager extends BaseStateManager {
                 int currentRegency = -1;
                 int currentLeader = -1;
                 View currentView = null;
+                LastEidData currentProof = null;
                 
                 if (!appStateOnly) {
                 	senderRegencies.put(msg.getSender(), msg.getRegency());
                 	senderLeaders.put(msg.getSender(), msg.getLeader());
                 	senderViews.put(msg.getSender(), msg.getView());
+                        senderProofs.put(msg.getSender(), msg.getState().getLastProof());
                     if (moreThan2F_Regencies(msg.getRegency())) currentRegency = msg.getRegency();
                     if (moreThan2F_Leaders(msg.getLeader())) currentLeader = msg.getLeader();
-                    if (moreThan2F_Views(msg.getView())) {
-                        currentView = msg.getView();
-                    }
+                    if (moreThan2F_Views(msg.getView())) currentView = msg.getView();
+                    if (moreThan2F_Proofs(waitingEid, this.tomLayer.getSynchronizer().getLCManager())) currentProof = msg.getState().getLastProof();
+                    
                 } else {
                     currentLeader = tomLayer.lm.getCurrentLeader();
                     currentRegency = tomLayer.getSynchronizer().getLCManager().getLastReg();
@@ -203,9 +210,9 @@ public class StandardStateManager extends BaseStateManager {
                         }
                     
                     System.out.println("haveState: " + haveState);
-
+                                            
                     if (otherReplicaState != null && haveState == 1 && currentRegency > -1 &&
-                            currentLeader > -1 && currentView != null) {
+                            currentLeader > -1 && currentView != null && (currentProof != null || appStateOnly)) {
 
                     	System.out.println("Received state. Will install it");
                     	
@@ -213,7 +220,52 @@ public class StandardStateManager extends BaseStateManager {
                         tomLayer.getSynchronizer().getLCManager().setNextReg(currentRegency);
                         tomLayer.getSynchronizer().getLCManager().setNewLeader(currentLeader);
                         tomLayer.lm.setNewLeader(currentLeader);
+                        
+                        if (currentProof != null && !appStateOnly) {
+                            
+                            System.out.println("Installing proof for consensus " + waitingEid);
 
+                            Consensus cons = execManager.getConsensus(waitingEid);
+                            Epoch e = null;
+                            
+                            for (ConsensusMessage cm : currentProof.getEidProof()) {
+
+                                e = cons.getEpoch(cm.getEpoch(), true, SVController);
+                                if (e.getTimestamp() != cm.getEpoch()) {
+
+                                    System.out.println("Strange... proof contains messages from more than just one epoch");
+                                    e = cons.getEpoch(cm.getEpoch(), true, SVController);
+                                }
+                                e.addToProof(cm);
+
+                                if (cm.getType() == MessageFactory.ACCEPT) {
+                                    e.setAccept(cm.getSender(), cm.getValue());
+                                }
+
+                                else if (cm.getType() == MessageFactory.WRITE) {
+                                    e.setWrite(cm.getSender(), cm.getValue());
+                                }
+
+                            }
+                            
+                            
+                            if (e != null) {
+
+                                byte[] hash = tomLayer.computeHash(currentProof.getEidDecision());
+                                e.propValueHash = hash;
+                                e.propValue = currentProof.getEidDecision();
+                                e.deserializedPropValue = tomLayer.checkProposedValue(currentProof.getEidDecision(), false);
+                                 cons.decided(e, false);
+                                 
+                                System.out.println("Successfully installed proof for consensus " + waitingEid);
+
+                            } else {
+                                System.out.println("Failed to install proof for consensus " + waitingEid);
+
+                            }
+
+                        }
+                    
                         // I might have timed out before invoking the state transfer, so
                         // stop my re-transmission of STOP messages for all regencies up to the current one
                         if (currentRegency > 0) tomLayer.getSynchronizer().removeSTOPretransmissions(currentRegency - 1);

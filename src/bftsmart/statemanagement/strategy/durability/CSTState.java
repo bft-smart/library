@@ -16,6 +16,7 @@ limitations under the License.
 package bftsmart.statemanagement.strategy.durability;
 
 import bftsmart.statemanagement.ApplicationState;
+import bftsmart.tom.leaderchange.LastEidData;
 import bftsmart.tom.server.defaultservices.CommandsInfo;
 
 /**
@@ -37,60 +38,69 @@ import bftsmart.tom.server.defaultservices.CommandsInfo;
  */
 public class CSTState implements ApplicationState {
 
-	private static final long serialVersionUID = -7624656762922101703L;
-	
-	private final byte[] hashLogUpper;
-	private final byte[] hashLogLower;
-	private final byte[] hashCheckpoint;
-	
-	private final int checkpointEid;
-	private final int lastEid;
-	
-	private final CommandsInfo[] logUpper;
-	private final CommandsInfo[] logLower;
-	
-	private byte[] state;
-	
-	public CSTState(byte[] state, byte[] hashCheckpoint, CommandsInfo[] logLower, byte[] hashLogLower,
-			CommandsInfo[] logUpper, byte[] hashLogUpper, int checkpointEid, int lastEid) {
-		setSerializedState(state);
-		this.hashLogUpper = hashLogUpper;
-		this.hashLogLower = hashLogLower;
-		this.hashCheckpoint = hashCheckpoint;
-		this.logUpper = logUpper;
-		this.logLower = logLower;
-		this.checkpointEid = checkpointEid;
-		this.lastEid = lastEid;
-	}
-	
-	@Override
-	public boolean hasState() {
-		return this.getSerializedState() != null;
-	}
+    private static final long serialVersionUID = -7624656762922101703L;
 
-	@Override
-	public byte[] getSerializedState() {
-		return state;
-	}
+    private final byte[] hashLogUpper;
+    private final byte[] hashLogLower;
+    private final byte[] hashCheckpoint;
 
-	@Override
-	public byte[] getStateHash() {
-		return hashCheckpoint;
-	}
-	
-	@Override
-	public void setSerializedState(byte[] state) {
-		this.state = state;
-	}
+    private final int checkpointEid;
+    private final int lastEid;
 
-	@Override
-	public int getLastEid() {
-		return lastEid;
-	}
+    private final CommandsInfo[] logUpper;
+    private final CommandsInfo[] logLower;
 
-	public int getCheckpointEid() {
-		return checkpointEid;
-	}
+    private byte[] state;
+
+    public CSTState(byte[] state, byte[] hashCheckpoint, CommandsInfo[] logLower, byte[] hashLogLower,
+                    CommandsInfo[] logUpper, byte[] hashLogUpper, int checkpointEid, int lastEid) {
+        setSerializedState(state);
+        this.hashLogUpper = hashLogUpper;
+        this.hashLogLower = hashLogLower;
+        this.hashCheckpoint = hashCheckpoint;
+        this.logUpper = logUpper;
+        this.logLower = logLower;
+        this.checkpointEid = checkpointEid;
+        this.lastEid = lastEid;
+    }
+
+    @Override
+    public boolean hasState() {
+        return this.getSerializedState() != null;
+    }
+
+    @Override
+    public byte[] getSerializedState() {
+        return state;
+    }
+
+    @Override
+    public byte[] getStateHash() {
+        return hashCheckpoint;
+    }
+
+    @Override
+    public void setSerializedState(byte[] state) {
+        this.state = state;
+    }
+
+    @Override
+    public int getLastEid() {
+        return lastEid;
+    }
+
+    /**
+     * Retrieves the proof for the last consensus present in this object
+     * @return The last consensus present in this object
+     */
+    @Override
+    public LastEidData getLastProof() {
+        return getMessageBatch(getLastEid()).msgCtx[0].getProof();
+    }
+
+    public int getCheckpointEid() {
+        return checkpointEid;
+    }
 
     /**
      * Retrieves the specified batch of messages
@@ -99,33 +109,33 @@ public class CSTState implements ApplicationState {
      */
     public CommandsInfo getMessageBatch(int eid) {
         if (eid >= checkpointEid && eid <= lastEid) {
-        	if(logLower != null) {
-        		return logLower[eid - checkpointEid - 1];
-        	} else {
-        		return logUpper[eid - checkpointEid - 1];
-        	}
+            if(logLower != null) {
+                return logLower[eid - checkpointEid - 1];
+            } else {
+                return logUpper[eid - checkpointEid - 1];
+            }
         } else {
-        	return null;
+            return null;
         }
     }
-    
-	public byte[] getHashLogUpper() {
-		return hashLogUpper;
-	}
 
-	public byte[] getHashLogLower() {
-		return hashLogLower;
-	}
+    public byte[] getHashLogUpper() {
+        return hashLogUpper;
+    }
 
-	public CommandsInfo[] getLogUpper() {
-		return logUpper;
-	}
+    public byte[] getHashLogLower() {
+        return hashLogLower;
+    }
 
-	public CommandsInfo[] getLogLower() {
-		return logLower;
-	}
-    
-	public byte[] getHashCheckpoint() {
-		return hashCheckpoint;
-	}
+    public CommandsInfo[] getLogUpper() {
+        return logUpper;
+    }
+
+    public CommandsInfo[] getLogLower() {
+        return logLower;
+    }
+
+    public byte[] getHashCheckpoint() {
+        return hashCheckpoint;
+    }
 }

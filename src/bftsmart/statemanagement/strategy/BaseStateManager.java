@@ -18,7 +18,10 @@ package bftsmart.statemanagement.strategy;
 
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.Arrays;
+import java.util.Set;
 
+import bftsmart.consensus.messages.ConsensusMessage;
 import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.reconfiguration.views.View;
 import bftsmart.statemanagement.ApplicationState;
@@ -26,6 +29,9 @@ import bftsmart.statemanagement.SMMessage;
 import bftsmart.statemanagement.StateManager;
 import bftsmart.tom.core.DeliveryThread;
 import bftsmart.tom.core.TOMLayer;
+import bftsmart.tom.core.messages.TOMMessage;
+import bftsmart.tom.leaderchange.LCManager;
+import bftsmart.tom.leaderchange.LastEidData;
 import bftsmart.tom.util.Logger;
 import bftsmart.tom.util.TOMUtil;
 
@@ -44,6 +50,7 @@ public abstract class BaseStateManager implements StateManager {
     protected HashMap<Integer, View> senderViews = null;
     protected HashMap<Integer, Integer> senderRegencies = null;
     protected HashMap<Integer, Integer> senderLeaders = null;
+    protected HashMap<Integer, LastEidData> senderProofs = null;
 
     protected boolean appStateOnly;
     protected int waitingEid = -1;
@@ -54,10 +61,11 @@ public abstract class BaseStateManager implements StateManager {
     private HashMap<Integer, Integer> senderEids = null;
 
     public BaseStateManager() {
-        senderStates = new HashMap<Integer, ApplicationState>();
-        senderViews = new HashMap<Integer, View>();
-        senderRegencies = new HashMap<Integer, Integer>();
-        senderLeaders = new HashMap<Integer, Integer>();
+        senderStates = new HashMap<>();
+        senderViews = new HashMap<>();
+        senderRegencies = new HashMap<>();
+        senderLeaders = new HashMap<>();
+        senderProofs = new HashMap<>();
     }
 
     protected int getReplies() {
@@ -85,13 +93,50 @@ public abstract class BaseStateManager implements StateManager {
             }
         }
         boolean result = counter > SVController.getQuorum();
-        views = null;
         return result;
     }
-
+    
+    // check if the consensus messages are consistent without checking the mac/signatures
+    // if it is consistent, it returns the respective consensus ID; otherwise, returns -1
+    private int proofIsConsistent(Set<ConsensusMessage> proof) {
+        
+        int id = -1;
+        byte[] value = null;
+        
+        for (ConsensusMessage cm : proof) {
+            
+            if (id == -1) id = cm.getNumber();
+            if (value == null) value = cm.getValue();
+            
+            if (id != cm.getNumber() || !Arrays.equals(value, cm.getValue())) {
+                return -1; // they are not consistent, so the proof is invalid
+            }
+                    
+        }
+        
+        // if the values are still these, this means the proof is empty, thus is invalid
+        if (id == -1 || value == null) return -1;
+        
+        return id;
+    }
+        
+    protected boolean moreThan2F_Proofs(int cid, LCManager lc) {
+        
+        int counter = 0;
+        for (LastEidData led : senderProofs.values()) {
+                        
+            if (cid == proofIsConsistent(led.getEidProof()) && lc.hasValidProof(led)) {
+                counter++;
+            }
+            
+        }
+        boolean result = counter > SVController.getQuorum();
+        return result;
+    }
+    
     /**
      * Clear the collections and state hold by this object. Calls clear() in the
-     * States, Leaders, Regenviews and Views collections. Sets the state to
+     * States, Leaders, regencies and Views collections. Sets the state to
      * null;
      */
     protected void reset() {
@@ -99,6 +144,7 @@ public abstract class BaseStateManager implements StateManager {
         senderLeaders.clear();
         senderRegencies.clear();
         senderViews.clear();
+        senderProofs.clear();
         state = null;
     }
 
