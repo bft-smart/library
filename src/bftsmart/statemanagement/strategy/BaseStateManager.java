@@ -233,7 +233,7 @@ public abstract class BaseStateManager implements StateManager {
             senderEids = new HashMap<>();
         }
         senderEids.put(smsg.getSender(), smsg.getCID());
-        if (senderEids.size() > SVController.getQuorum()) {
+        if (senderEids.size() >= SVController.getQuorum()) {
 
             HashMap<Integer, Integer> eids = new HashMap<>();
             for (int id : senderEids.keySet()) {
@@ -248,7 +248,7 @@ public abstract class BaseStateManager implements StateManager {
                 }
             }
             for (int key : eids.keySet()) {
-                if (eids.get(key) > SVController.getQuorum()) {
+                if (eids.get(key) >= SVController.getQuorum()) {
                     if (key == lastEid) {
                         System.out.println("QUORUM OF REPLICAS REPLIED WITH EID " + key);
                         dt.deliverLock();
