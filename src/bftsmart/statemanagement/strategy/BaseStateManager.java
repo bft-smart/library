@@ -29,7 +29,6 @@ import bftsmart.statemanagement.SMMessage;
 import bftsmart.statemanagement.StateManager;
 import bftsmart.tom.core.DeliveryThread;
 import bftsmart.tom.core.TOMLayer;
-import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.leaderchange.LCManager;
 import bftsmart.tom.leaderchange.CertifiedDecision;
 import bftsmart.tom.util.Logger;
@@ -152,10 +151,12 @@ public abstract class BaseStateManager implements StateManager {
         return senderStates.values();
     }
 
+    @Override
     public void setLastEID(int eid) {
         lastEid = eid;
     }
 
+    @Override
     public int getLastEID() {
         return lastEid;
     }
@@ -218,28 +219,32 @@ public abstract class BaseStateManager implements StateManager {
     @Override
     public void currentConsensusIdAsked(int sender) {
         int me = SVController.getStaticConf().getProcessId();
-        int lastConsensusId = lastEid;
+        int lastConsensusId = tomLayer.getLastExec();
         SMMessage currentEidReply = new StandardSMMessage(me, lastConsensusId, TOMUtil.SM_REPLY_INITIAL, 0, null, null, 0, 0);
         tomLayer.getCommunication().send(new int[]{sender}, currentEidReply);
     }
 
     @Override
     public synchronized void currentConsensusIdReceived(SMMessage smsg) {
-        if (!isInitializing || waitingEid > -1) {
+        if (!isInitializing || waitingEid > -1) {            
             return;
         }
         if (senderEids == null) {
-            senderEids = new HashMap<Integer, Integer>();
+            senderEids = new HashMap<>();
         }
         senderEids.put(smsg.getSender(), smsg.getCID());
-        if (senderEids.size() >= SVController.getQuorum()) {
-            HashMap<Integer, Integer> eids = new HashMap<Integer, Integer>();
-            for (int value : senderEids.values()) {
+        if (senderEids.size() > SVController.getQuorum()) {
+
+            HashMap<Integer, Integer> eids = new HashMap<>();
+            for (int id : senderEids.keySet()) {
+                
+                int value = senderEids.get(id);
+                                
                 Integer count = eids.get(value);
                 if (count == null) {
                     eids.put(value, 0);
                 } else {
-                    eids.put(value, count.intValue() + 1);
+                    eids.put(value, count + 1);
                 }
             }
             for (int key : eids.keySet()) {

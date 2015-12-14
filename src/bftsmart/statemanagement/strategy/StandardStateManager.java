@@ -23,7 +23,6 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.Random;
-import java.util.Set;
 
 import bftsmart.tom.core.ExecutionManager;
 import bftsmart.consensus.messages.ConsensusMessage;
@@ -384,7 +383,8 @@ public class StandardStateManager extends BaseStateManager {
 	@Override
 	public void currentConsensusIdAsked(int sender) {
 		int me = SVController.getStaticConf().getProcessId();
-		SMMessage currentEid = new StandardSMMessage(me, lastEid, TOMUtil.SM_REPLY_INITIAL, 0, null, null, 0, 0);
+                int lastConsensusId = tomLayer.getLastExec();
+		SMMessage currentEid = new StandardSMMessage(me, lastConsensusId, TOMUtil.SM_REPLY_INITIAL, 0, null, null, 0, 0);
 		tomLayer.getCommunication().send(new int[]{sender}, currentEid);
 	}
 	
