@@ -17,8 +17,10 @@ package bftsmart.tom.server;
 
 import bftsmart.statemanagement.ApplicationState;
 import bftsmart.statemanagement.StateManager;
+import bftsmart.tom.MessageContext;
 import bftsmart.tom.ReplicaContext;
-import bftsmart.tom.leaderchange.CertifiedDecision;
+import bftsmart.tom.core.messages.TOMMessage;
+
 /**
  * 
  * @author Marcel Santos
@@ -55,6 +57,24 @@ public interface Recoverable {
     public StateManager getStateManager();
     
     /**
+     * This method is invoked by ServiceReplica to pass the raw information that was
+     * decided in a particular consensus instance. This method is always invoked before
+     * invoking the executor. However, multiple invocations for the same consensus ID may
+     * occur, so developers must take this behavior into consideration when developing
+     * their own logging and checkpointing. If there is no information to be passed to
+     * the application, noOp(...) is invoked instead.
+     * 
+     * @param CID the consensus instance ID
+     * @param requests The requests decided, in the form of the original TOMMessage objects
+     * @param msgCtx Message context associated with the consensus instance. Furthermore
+     * msgCtx.getConsensusId() will be equal to CID, and msgCtx.getProof().getDecision() is
+     * the serialized vector of requests present in the 'requests' parameter.
+     * 
+     * 
+     */
+    public void Op(int CID, TOMMessage[] requests, MessageContext msgCtx);
+    
+    /**
      * This method is invoked by ServiceReplica to indicate that a consensus instance
      * finished without delivering anything to the application (e.g., an instance
      * only decided a single reconfiguration operation. or an instance where the client
@@ -63,11 +83,10 @@ public interface Recoverable {
      * In the current protocols included, it suffices to register a NOOP operation in the
      * logs used within the state transfer, but never deliver it to the application
      * 
-     * @param lastCID the consensus instance where the aforementioned condition occurred
-     * @param leader The leader with which the consensus was decided
-     * @param regency The regency installed when the consensus finished
-     * @param proof Proof for the aforementioned consensus
+     * @param CID the consensus instance where the aforementioned condition occurred
+     * @param msgCtx Message context associated with the consensus instance. furthermore
+     * msgCtx.getConsensusId() will be equal to CID.
      */
-    public void noOp(int lastCID, int leader, int regency, CertifiedDecision proof); 
+    public void noOp(int CID, MessageContext msgCtx);
 	
 }
