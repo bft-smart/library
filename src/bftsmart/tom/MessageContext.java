@@ -32,34 +32,33 @@ public class MessageContext implements Serializable {
 	
 	private static final long serialVersionUID = -3757195646384786213L;
 	
-    private long timestamp;
-    private int regency;
-    private int leader;
-    private int consensusId;
-    private int numOfNonces;
-    private long seed;
+    private final long timestamp;
+    private final int regency;
+    private final int leader;
+    private final int consensusId;
+    private final int numOfNonces;
+    private final long seed;
 
-    private CertifiedDecision proof;
+    private final CertifiedDecision proof;
             
-    private int sender;
-    private TOMMessage firstInBatch; //to be replaced by a statistics class
+    private final TOMMessage firstInBatch; //to be replaced by a statistics class
     private boolean lastInBatch; // indicates that the command is the last in the batch. Used for logging
-    private boolean noOp;
+    private final boolean noOp;
     
     public boolean readOnly = false;
     
-    private byte[] nonces = null;
+    private byte[] nonces;
     
-    public MessageContext(long timestamp, int numOfNonces, long seed, int regency, int leader, int consensusId, CertifiedDecision proof, int sender, TOMMessage firstInBatch, boolean noOp) {
+    public MessageContext(long timestamp, int numOfNonces, long seed, int regency, int leader, int consensusId, CertifiedDecision proof, TOMMessage firstInBatch, boolean noOp) {
+        this.nonces = null;
+        
         this.timestamp = timestamp;
-        this.nonces = nonces;
         this.regency = regency;
         this.leader = leader;
         this.consensusId = consensusId;
         this.numOfNonces = numOfNonces;
         this.seed = seed;
         this.proof = proof;
-        this.sender = sender;
         this.firstInBatch = firstInBatch;
         this.noOp = noOp;
     }
@@ -124,20 +123,6 @@ public class MessageContext implements Serializable {
      */
     public int getRegency() {
         return regency;
-    }
-
-    /**
-     * @return the sender
-     */
-    public int getSender() {
-        return sender;
-    }
-
-    /**
-     * @param sender the sender to set
-     */
-    public void setSender(int sender) {
-        this.sender = sender;
     }
     
     /**
