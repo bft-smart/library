@@ -224,6 +224,12 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
     public ApplicationState getState(int eid, boolean sendState) {
         logLock.lock();
         ApplicationState ret = (eid > -1 ? getLog().getApplicationState(eid, sendState) : new DefaultApplicationState());
+        
+        // Only will send a state if I have a proof for the last logged decision/consensus
+        //TODO: I should always make sure to have a log with proofs, since this is a result
+        // of not storing anything after a checkpoint and before logging more requests        
+        if (ret.getLastProof() == null) ret = new DefaultApplicationState();
+        
         logLock.unlock();
         return ret;
     }

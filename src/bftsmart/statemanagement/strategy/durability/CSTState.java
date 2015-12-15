@@ -95,7 +95,8 @@ public class CSTState implements ApplicationState {
      */
     @Override
     public CertifiedDecision getLastProof() {
-        return getMessageBatch(getLastEid()).msgCtx[0].getProof();
+        CommandsInfo ci = getMessageBatch(getLastEid());
+        return (ci != null ? ci.msgCtx[0].getProof() : null);
     }
 
     public int getCheckpointEid() {
@@ -111,8 +112,10 @@ public class CSTState implements ApplicationState {
         if (eid >= checkpointEid && eid <= lastEid) {
             if(logLower != null) {
                 return logLower[eid - checkpointEid - 1];
-            } else {
+            } else if(logUpper != null) {
                 return logUpper[eid - checkpointEid - 1];
+            } else {
+                return null;
             }
         } else {
             return null;

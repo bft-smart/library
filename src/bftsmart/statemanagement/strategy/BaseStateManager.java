@@ -123,8 +123,8 @@ public abstract class BaseStateManager implements StateManager {
         
         int counter = 0;
         for (CertifiedDecision led : senderProofs.values()) {
-                        
-            if (cid == proofIsConsistent(led.getConsMessages()) && lc.hasValidProof(led)) {
+                                    
+            if (led != null && cid == proofIsConsistent(led.getConsMessages()) && lc.hasValidProof(led)) {
                 counter++;
             }
             

@@ -110,7 +110,8 @@ public class DefaultApplicationState implements ApplicationState {
      */
     @Override
     public CertifiedDecision getLastProof() {
-        return getMessageBatch(getLastEid()).msgCtx[0].getProof();
+        CommandsInfo ci = getMessageBatch(getLastEid());
+        return (ci != null ? ci.msgCtx[0].getProof() : null);
     }
 
     /**
@@ -156,7 +157,7 @@ public class DefaultApplicationState implements ApplicationState {
      * @return The batch of messages associated with the batch correspondent execution ID
      */
     public CommandsInfo getMessageBatch(int eid) {
-        if (eid >= lastCheckpointEid && eid <= lastEid) {
+        if (messageBatches != null && eid >= lastCheckpointEid && eid <= lastEid) {
             return messageBatches[eid - lastCheckpointEid - 1];
         }
         else return null;
