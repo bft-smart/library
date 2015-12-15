@@ -228,7 +228,7 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
         // Only will send a state if I have a proof for the last logged decision/consensus
         //TODO: I should always make sure to have a log with proofs, since this is a result
         // of not storing anything after a checkpoint and before logging more requests        
-        if (ret == null || ret.getLastProof() == null) ret = new DefaultApplicationState();
+        if (ret == null || (config.isBFT() && ret.getLastProof() == null)) ret = new DefaultApplicationState();
         
         logLock.unlock();
         return ret;

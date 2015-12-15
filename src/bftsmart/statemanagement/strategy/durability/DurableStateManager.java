@@ -296,7 +296,7 @@ public class DurableStateManager extends BaseStateManager {
 					System.out.println("-- current leader: " + currentLeader);
 					System.out.println("-- current view: " + currentView);
 					if (currentRegency > -1 && currentLeader > -1
-							&& currentView != null && haveState && (currentProof != null || appStateOnly)) {
+							&& currentView != null && haveState && (!isBFT || currentProof != null || appStateOnly)) {
 						System.out.println("---- RECEIVED VALID STATE ----");
 
 						Logger.println("(TOMLayer.SMReplyDeliver) The state of those replies is good!");
