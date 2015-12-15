@@ -231,6 +231,11 @@ public class ServiceReplica {
      */
     public final void receiveReadonlyMessage(TOMMessage message, MessageContext msgCtx) {
         byte[] response = null;
+
+        // This is used to deliver the requests to the application and obtain a reply to deliver
+        //to the clients. The raw decision does not need to be delivered to the recoverable since
+        // it is not associated with any consensus instance, and therefore there is no need for
+        //applications to log it or keep any proof.
         if (executor instanceof FIFOExecutable) {
             response = ((FIFOExecutable) executor).executeUnorderedFIFO(message.getContent(), msgCtx, message.getSender(), message.getOperationId());
         } else {
@@ -242,7 +247,7 @@ public class ServiceReplica {
             response = TOMUtil.computeHash(response);
         }
 
-        // build the reply and send it to the client
+        // Generate the messages to send back to the clients
         message.reply = new TOMMessage(id, message.getSession(), message.getSequence(),
                 response, SVController.getCurrentViewId(), message.getReqType());
 
@@ -256,8 +261,8 @@ public class ServiceReplica {
     public void receiveMessages(int consId[], int regencies[], int leaders[], CertifiedDecision[] proofs, TOMMessage[][] requests) {
         int numRequests = 0;
         int consensusCount = 0;
-        List<TOMMessage> toBatch = new ArrayList<TOMMessage>();
-        List<MessageContext> msgCtxts = new ArrayList<MessageContext>();
+        List<TOMMessage> toBatch = new ArrayList<>();
+        List<MessageContext> msgCtxts = new ArrayList<>();
         //Set<Integer> appEids = new HashSet<Integer>();
         boolean noop = true;
 
@@ -276,23 +281,50 @@ public class ServiceReplica {
 
                         numRequests++;
                         MessageContext msgCtx = new MessageContext(firstRequest.timestamp, request.numOfNonces, request.seed,
-                                regencies[consensusCount], leaders[consensusCount], consId[consensusCount], proofs[consensusCount], request.getSender(), firstRequest, false);
+                                regencies[consensusCount], leaders[consensusCount], consId[consensusCount], proofs[consensusCount], firstRequest, false);
                         if (requestCount + 1 == requestsFromConsensus.length) {
 
                             msgCtx.setLastInBatch();
                         }
                         request.deliveryTime = System.nanoTime();
                         if (executor instanceof BatchExecutable) {
+                            
+                            // This is used to deliver the raw content decided by a consensus instance. It is
+                            // useful to allow the application to create a log and store the proof associated
+                            // with decisions (which are needed by replicas that are asking for a state transfer). 
+                            if (this.recoverer != null) this.recoverer.Op(consId[consensusCount], requestsFromConsensus, msgCtx);
+
+                            // deliver requests and contexts to the executor later
                             msgCtxts.add(msgCtx);
                             toBatch.add(request);
                         } else if (executor instanceof FIFOExecutable) {
+                            
+                            // This is used to deliver the raw content decided by a consensus instance. It is
+                            // useful to allow the application to create a log and store the proof associated
+                            // with decisions (which are needed by replicas that are asking for a state transfer). 
+                            if (this.recoverer != null) this.recoverer.Op(consId[consensusCount], requestsFromConsensus, msgCtx);
+                            
+                            // This is used to deliver the requests to the application and obtain a reply to deliver
+                            //to the clients. The raw decision is passed to the application in the line above.
                             byte[] response = ((FIFOExecutable) executor).executeOrderedFIFO(request.getContent(), msgCtx, request.getSender(), request.getOperationId());
+
+                            // Generate the messages to send back to the clients
                             request.reply = new TOMMessage(id, request.getSession(),
                                     request.getSequence(), response, SVController.getCurrentViewId());
                             bftsmart.tom.util.Logger.println("(ServiceReplica.receiveMessages) sending reply to " + request.getSender());
                             replier.manageReply(request, msgCtx);
                         } else if (executor instanceof SingleExecutable) {
+
+                            // This is used to deliver the raw content decided by a consensus instance. It is
+                            // useful to allow the application to create a log and store the proof associated
+                            // with decisions (which are needed by replicas that are asking for a state transfer). 
+                            if (this.recoverer != null) this.recoverer.Op(consId[consensusCount], requestsFromConsensus, msgCtx);
+
+                            // This is used to deliver the requests to the application and obtain a reply to deliver
+                            //to the clients. The raw decision is passed to the application in the line above.
                             byte[] response = ((SingleExecutable) executor).executeOrdered(request.getContent(), msgCtx);
+
+                            // Generate the messages to send back to the clients
                             request.reply = new TOMMessage(id, request.getSession(),
                                     request.getSequence(), response, SVController.getCurrentViewId());
                             bftsmart.tom.util.Logger.println("(ServiceReplica.receiveMessages) sending reply to " + request.getSender());
@@ -321,9 +353,12 @@ public class ServiceReplica {
                 System.out.println(" --- A consensus instance finished, but there were no commands to deliver to the application.");
                 System.out.println(" --- Notifying recoverable about a blank consensus.");
 
-                this.recoverer.noOp(consId[consensusCount], leaders[consensusCount], regencies[consensusCount], proofs[consensusCount]);
+                MessageContext msgCtx = new MessageContext(-1, 0, 0, regencies[consensusCount], leaders[consensusCount], consId[consensusCount], proofs[consensusCount], null, true);
+                msgCtx.setLastInBatch();
+                
+                this.recoverer.noOp(consId[consensusCount], msgCtx);
             }
-
+            
             consensusCount++;
         }
 
@@ -340,7 +375,7 @@ public class ServiceReplica {
 
             MessageContext[] msgContexts = new MessageContext[msgCtxts.size()];
             msgContexts = msgCtxts.toArray(msgContexts);
-
+            
             //Deliver the batch and wait for replies
             byte[][] replies = ((BatchExecutable) executor).executeBatch(batch, msgContexts);
 

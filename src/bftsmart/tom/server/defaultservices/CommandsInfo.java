@@ -50,8 +50,8 @@ public class CommandsInfo implements Externalizable {
 						msgCtx[i].getTimestamp(), msgCtx[i].getNumOfNonces(),
                                                 msgCtx[i].getSeed(), msgCtx[i].getRegency(),
                                                 msgCtx[i].getLeader(), msgCtx[i].getConsensusId(),
-                                                msgCtx[i].getProof(), msgCtx[i].getSender(),
-                                                msgCtx[i].getFirstInBatch(), msgCtx[i].isNoOp());
+                                                msgCtx[i].getProof(), msgCtx[i].getFirstInBatch(),
+                                                msgCtx[i].isNoOp());
 				onlyNeeded[i] = msg;
         	}
         }
