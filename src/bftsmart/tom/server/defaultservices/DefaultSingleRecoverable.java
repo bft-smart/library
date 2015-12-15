@@ -29,7 +29,7 @@ import bftsmart.statemanagement.StateManager;
 import bftsmart.statemanagement.strategy.StandardStateManager;
 import bftsmart.tom.MessageContext;
 import bftsmart.tom.ReplicaContext;
-import bftsmart.tom.leaderchange.CertifiedDecision;
+import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.server.Recoverable;
 import bftsmart.tom.server.SingleExecutable;
 import bftsmart.tom.util.Logger;
@@ -285,18 +285,22 @@ public abstract class DefaultSingleRecoverable implements Recoverable, SingleExe
     	}
 	}
     
-    @Override
-    public void noOp(int lastCID, int leader, int regency, CertifiedDecision proof) {
         
-        MessageContext msgCtx = new MessageContext(-1, 0, 0, regency, leader, lastCID, proof, -1, null, true);
-        msgCtx.setLastInBatch();
- 
-        executeOrdered(new byte[0], msgCtx, true);
-    }
-    
+        
     @Override
     public byte[] executeUnordered(byte[] command, MessageContext msgCtx) {
         return appExecuteUnordered(command, msgCtx);
+    }
+    
+    @Override
+    public void Op(int CID, TOMMessage[] requests, MessageContext msgCtx) {
+        //The messages are logged within 'executeOrdered(...)' instead of in this method.
+    }
+
+    @Override
+    public void noOp(int CID, MessageContext msgCtx) {
+         
+        executeOrdered(new byte[0], msgCtx, true);
     }
     
     public abstract void installSnapshot(byte[] state);
