@@ -15,13 +15,14 @@ limitations under the License.
 */
 package bftsmart.consensus;
 
-import bftsmart.tom.util.TOMUtil;
 import java.io.Externalizable;
 import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
 import java.math.BigInteger;
 import java.util.Arrays;
+
+import org.apache.commons.codec.binary.Base64;
 
 /**
  * This class associates a timestamp to a value
@@ -108,7 +109,7 @@ public class TimestampValuePair implements Externalizable {
     public String toString() {
                 
         if (this.value == null || this.value.length == 0) return timestamp + " :: []";
-        else return timestamp + " :: " + (this.hashedValue != null && this.hashedValue.length > 0 ? Arrays.toString(this.hashedValue) : Arrays.toString(value));
+        else return timestamp + " :: " + (this.hashedValue != null && this.hashedValue.length > 0 ? str(this.hashedValue) : str(value));
     }
     
     @Override
@@ -123,5 +124,13 @@ public class TimestampValuePair implements Externalizable {
 
         timestamp = in.readInt();
         value = (byte[]) in.readObject();
+    }
+    
+    private String str(byte[] obj) {
+        if(obj == null) {
+            return "null";
+        } else {
+            return Base64.encodeBase64String(obj);
+        }
     }
 }
