@@ -25,6 +25,7 @@ import bftsmart.communication.ServerCommunicationSystem;
 import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.leaderchange.RequestsTimer;
+import bftsmart.tom.server.RequestVerifier;
 import bftsmart.tom.util.Logger;
 
 
@@ -37,11 +38,14 @@ public class ClientsManager {
     private ServerViewController controller;
     private RequestsTimer timer;
     private HashMap<Integer, ClientData> clientsData = new HashMap<Integer, ClientData>();
+    private RequestVerifier verifier;
+    
     private ReentrantLock clientsLock = new ReentrantLock();
 
-    public ClientsManager(ServerViewController controller, RequestsTimer timer) {
+    public ClientsManager(ServerViewController controller, RequestsTimer timer, RequestVerifier verifier) {
         this.controller = controller;
         this.timer = timer;
+        this.verifier = verifier;
     }
 
     /**
@@ -213,6 +217,9 @@ public class ClientsManager {
      * accounted
      */
     public boolean requestReceived(TOMMessage request, boolean fromClient, ServerCommunicationSystem cs) {
+        
+        // if the content of the request is invalid, ignore it
+        if (!verifier.isValidRequest(request.getContent())) return false;
         
         request.receptionTime = System.nanoTime();
 

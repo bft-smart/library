@@ -132,7 +132,6 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         } else {
             this.requestsTimer = new RequestsTimer(this, communication, this.controller); // Create requests timers manager (a thread)
         }
-        this.clientsManager = new ClientsManager(this.controller, requestsTimer); // Create clients manager
 
         try {
             this.md = MessageDigest.getInstance("MD5"); // TODO: shouldn't it be SHA?
@@ -158,6 +157,9 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 				return true; // By default, never validate requests
                         }
 		};
+
+        // I have a verifier, now create clients manager
+        this.clientsManager = new ClientsManager(this.controller, requestsTimer, this.verifier);
 
         this.syncher = new Synchronizer(this); // create synchronizer
     }
