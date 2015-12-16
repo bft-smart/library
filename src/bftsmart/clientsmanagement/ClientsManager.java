@@ -219,7 +219,7 @@ public class ClientsManager {
     public boolean requestReceived(TOMMessage request, boolean fromClient, ServerCommunicationSystem cs) {
         
         // if the content of the request is invalid, ignore it
-        if (!verifier.isValidRequest(request.getContent())) return false;
+        if (controller.getStaticConf().isBFT() && !verifier.isValidRequest(request.getContent())) return false;
         
         request.receptionTime = System.nanoTime();
 

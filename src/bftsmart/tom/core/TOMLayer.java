@@ -443,7 +443,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             //requests are valid in accordance to the application semantics
             //and not an erroneous requests sent by a Byzantine leader.
             for (TOMMessage r : requests) {
-                if (!verifier.isValidRequest(r.getContent())) return null;
+                if (controller.getStaticConf().isBFT() &&!verifier.isValidRequest(r.getContent())) return null;
             }
             
 
