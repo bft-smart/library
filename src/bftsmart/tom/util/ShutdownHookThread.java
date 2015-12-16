@@ -16,11 +16,16 @@ limitations under the License.
 package bftsmart.tom.util;
 
 import bftsmart.communication.ServerCommunicationSystem;
+import bftsmart.consensus.Consensus;
 import bftsmart.tom.core.ExecutionManager;
 import bftsmart.tom.core.LeaderModule;
 import bftsmart.consensus.Epoch;
+import bftsmart.consensus.TimestampValuePair;
 import bftsmart.consensus.roles.Acceptor;
 import bftsmart.tom.core.TOMLayer;
+import java.security.MessageDigest;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 /**
  * Print information about the replica when it is shutdown.
@@ -28,11 +33,12 @@ import bftsmart.tom.core.TOMLayer;
  */
 public class ShutdownHookThread extends Thread {
 
-    private ServerCommunicationSystem scs;
-    private LeaderModule lm;
-    private Acceptor acceptor;
-    private ExecutionManager manager;
-    private TOMLayer tomLayer;
+    private final ServerCommunicationSystem scs;
+    private final LeaderModule lm;
+    private final Acceptor acceptor;
+    private final ExecutionManager manager;
+    private final TOMLayer tomLayer;
+    private final MessageDigest md;
 
     public ShutdownHookThread(ServerCommunicationSystem scs, LeaderModule lm,
             Acceptor acceptor, ExecutionManager manager, TOMLayer tomLayer) {
@@ -41,35 +47,63 @@ public class ShutdownHookThread extends Thread {
         this.acceptor = acceptor;
         this.manager = manager;
         this.tomLayer = tomLayer;
+        this.md = this.tomLayer.md;
     }
 
     @Override
     public void run() {
-        System.err.println("---------- DEBUG INFO ----------");
-        System.err.println("Current time: " + System.currentTimeMillis());
-        System.err.println("Last executed consensus: " + tomLayer.getLastExec());
-        Epoch e = manager.getConsensus(tomLayer.getLastExec()).getLastEpoch();
-        //******* EDUARDO BEGIN **************//
-        if(e != null){
-            System.err.println("Last executed leader: " + tomLayer.lm.getCurrentLeader()/*lm.getLeader(r.getExecution().getId(),r.getNumber())*/);
-            System.err.println("State of the last executed epoch: "+e.toString());
-        }
-        //******* EDUARDO END **************//
-        System.err.println("Consensus in execution: " + tomLayer.getInExec());
-        if(tomLayer.getInExec() != -1) {
-            Epoch r2 = manager.getConsensus(tomLayer.getInExec()).getLastEpoch();
-            if(r2 != null) {
-                System.out.println("Consensus in execution leader: " + tomLayer.lm.getCurrentLeader()/*lm.getLeader(r2.getExecution().getId(),r.getNumber())*/);
-                System.err.println("State of the epoch in execution: "+r2.toString());
+        
+        SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss.SSS");
+        int lastCons = tomLayer.getLastExec();
+        int currentCons = tomLayer.getInExec();
+        Consensus c = null;
+        Epoch e = null;
+
+        System.err.println("---------- DEBUG INFO ----------\n");
+        System.err.println("Current time: " + sdf.format(new Date()));
+        System.err.println("Current leader: " + tomLayer.lm.getCurrentLeader());
+        System.err.println("Current regency: " + tomLayer.getSynchronizer().getLCManager().getLastReg());
+
+        System.err.println("\nLast finished consensus: " + (lastCons == -1 ? "None" : lastCons));
+        if(lastCons > -1) {
+            
+            c = manager.getConsensus(lastCons);
+            
+            for (TimestampValuePair rv : c.getWriteSet()) {
+                if  (rv.getValue() != null && rv.getValue().length > 0)
+                    rv.setHashedValue(md.digest(rv.getValue()));
+            }
+            
+            System.err.println("\n\t -- Consensus state: ETS=" + c.getEts() + " WriteSet=["+ c.getWriteSet()
+            + "] (VAL,TS)=["+c.getQuorumWrites() + "]");
+            
+            e = c.getLastEpoch();
+            if(e != null){
+                System.err.println("\n\t -- Epoch state: "+e.toString());
             }
         }
-        //System.err.println("Execution manager: "+ tomLayer.execManager);
-        //System.err.println("Server communication system queues: "+scs.toString());
-        //System.err.println("Pending requests: " +
-        //        tomLayer.clientsManager.getPendingRequests());
-        //System.err.println("Requests timers: " + tomLayer.requestsTimer);
+        System.err.println("\nConsensus in execution: " + (currentCons == -1 ? "None" : currentCons));
         
-        //System.out.println("Pending Requests: " + tomLayer.clientsManager.getPendingRequests());
-        System.err.println("---------- ---------- ----------");
+        c = null;
+        e = null;
+        if(currentCons > -1) {
+            
+            c = manager.getConsensus(currentCons);
+            
+            for (TimestampValuePair rv : c.getWriteSet()) {
+                if  (rv.getValue() != null && rv.getValue().length > 0)
+                    rv.setHashedValue(md.digest(rv.getValue()));
+            }
+            
+            System.err.println("\n\t -- Consensus state: ETS=" + c.getEts() + " WriteSet=["+ c.getWriteSet()
+            + "] (VAL,TS)=["+c.getQuorumWrites() + "]");
+            
+            e = c.getLastEpoch();
+            if(e != null) {
+                System.err.println("\n\t -- Epoch state: "+e.toString());
+            }
+        }
+
+        System.err.println("\n---------- ---------- ----------");
     }
 }
