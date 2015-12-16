@@ -280,7 +280,7 @@ public class ServiceReplica {
                         noop = false;
 
                         numRequests++;
-                        MessageContext msgCtx = new MessageContext(firstRequest.timestamp, request.numOfNonces, request.seed,
+                        MessageContext msgCtx = new MessageContext(request.getSender(), firstRequest.timestamp, request.numOfNonces, request.seed,
                                 regencies[consensusCount], leaders[consensusCount], consId[consensusCount], proofs[consensusCount], firstRequest, false);
                         if (requestCount + 1 == requestsFromConsensus.length) {
 
@@ -353,7 +353,7 @@ public class ServiceReplica {
                 System.out.println(" --- A consensus instance finished, but there were no commands to deliver to the application.");
                 System.out.println(" --- Notifying recoverable about a blank consensus.");
 
-                MessageContext msgCtx = new MessageContext(-1, 0, 0, regencies[consensusCount], leaders[consensusCount], consId[consensusCount], proofs[consensusCount], null, true);
+                MessageContext msgCtx = new MessageContext(-1, -1, 0, 0, regencies[consensusCount], leaders[consensusCount], consId[consensusCount], proofs[consensusCount], null, true);
                 msgCtx.setLastInBatch();
                 
                 this.recoverer.noOp(consId[consensusCount], msgCtx);

@@ -37,6 +37,7 @@ public class MessageContext implements Serializable {
     private final int leader;
     private final int consensusId;
     private final int numOfNonces;
+    private final int sender;
     private final long seed;
 
     private final CertifiedDecision proof;
@@ -49,9 +50,24 @@ public class MessageContext implements Serializable {
     
     private byte[] nonces;
     
-    public MessageContext(long timestamp, int numOfNonces, long seed, int regency, int leader, int consensusId, CertifiedDecision proof, TOMMessage firstInBatch, boolean noOp) {
+    /**
+     * Constructor 
+     * 
+     * @param sender
+     * @param timestamp
+     * @param numOfNonces
+     * @param seed
+     * @param regency
+     * @param leader
+     * @param consensusId
+     * @param proof
+     * @param firstInBatch
+     * @param noOp 
+     */
+    public MessageContext(int sender, long timestamp, int numOfNonces, long seed, int regency, int leader, int consensusId, CertifiedDecision proof, TOMMessage firstInBatch, boolean noOp) {
         this.nonces = null;
         
+        this.sender = sender;
         this.timestamp = timestamp;
         this.regency = regency;
         this.leader = leader;
@@ -61,6 +77,14 @@ public class MessageContext implements Serializable {
         this.proof = proof;
         this.firstInBatch = firstInBatch;
         this.noOp = noOp;
+    }
+
+    /**
+     * Returns the sender of the message
+     * @return The sender of the message
+     */
+    public int getSender() {
+        return sender;
     }
 
     /**

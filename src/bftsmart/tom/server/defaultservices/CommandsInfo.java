@@ -46,7 +46,7 @@ public class CommandsInfo implements Externalizable {
         if (msgCtx != null && msgCtx.length > 0) {
         	onlyNeeded = new MessageContext[msgCtx.length];
         	for(int i = 0; i < msgCtx.length; i++) {
-				MessageContext msg = new MessageContext(
+				MessageContext msg = new MessageContext(msgCtx[i].getSender(),
 						msgCtx[i].getTimestamp(), msgCtx[i].getNumOfNonces(),
                                                 msgCtx[i].getSeed(), msgCtx[i].getRegency(),
                                                 msgCtx[i].getLeader(), msgCtx[i].getConsensusId(),
