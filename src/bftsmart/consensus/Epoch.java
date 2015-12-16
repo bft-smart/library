@@ -15,16 +15,18 @@ limitations under the License.
 */
 package bftsmart.consensus;
 
-import bftsmart.consensus.messages.ConsensusMessage;
 import java.io.Serializable;
 import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
+
 import org.apache.commons.codec.binary.Base64;
 
+import bftsmart.consensus.messages.ConsensusMessage;
 import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.reconfiguration.views.View;
 import bftsmart.tom.core.messages.TOMMessage;
-import java.util.HashSet;
-import java.util.Set;
+
 
 /**
  * This class stands for a consensus epoch, as described in
@@ -33,10 +35,10 @@ import java.util.Set;
 public class Epoch implements Serializable {
 
     private static final long serialVersionUID = -2891450035863688295L;
-    private transient Consensus consensus; // Consensus where the epoch belongs to
+    private final transient Consensus consensus; // Consensus where the epoch belongs to
     
-    private int timestamp; // Epochs's timestamp
-    private int me; // Process ID
+    private final int timestamp; // Epochs's timestamp
+    private final int me; // Process ID
     private boolean[] writeSetted;
     private boolean[] acceptSetted;
     private byte[][] write; // WRITE values from other processes
@@ -55,6 +57,7 @@ public class Epoch implements Serializable {
 
     /**
      * Creates a new instance of Epoch for acceptors
+     * @param controller
      * @param parent Consensus to which this epoch belongs
      * @param timestamp Timestamp of the epoch
      */
@@ -62,7 +65,7 @@ public class Epoch implements Serializable {
         this.consensus = parent;
         this.timestamp = timestamp;
         this.controller = controller;
-        this.proof = new HashSet<ConsensusMessage>();
+        this.proof = new HashSet<>();
         //ExecutionManager manager = consensus.getManager();
 
         this.lastView = controller.getCurrentView();
@@ -355,26 +358,24 @@ public class Epoch implements Serializable {
     public String toString() {
         StringBuffer buffWrite = new StringBuffer(1024);
         StringBuffer buffAccept = new StringBuffer(1024);
-        StringBuffer buffDecide = new StringBuffer(1024);
 
-        buffWrite.append("W=(");
-        buffAccept.append("S=(");
-        buffDecide.append("D=(");
+        buffWrite.append("Writes=(");
+        buffAccept.append("Accepts=(");
 
         for (int i = 0; i < write.length - 1; i++) {
-            buffWrite.append(str(write[i]) + " [" + (write[i] != null ? write[i].length : 0) + " bytes] ,");
-            buffAccept.append(str(accept[i]) + " [" + (accept[i] != null ? accept[i].length : 0) + " bytes] ,");
+            buffWrite.append("[" + str(write[i]) + "], ");
+            buffAccept.append("[" + str(accept[i]) + "], ");
         }
 
-        buffWrite.append(str(write[write.length - 1]) + " [" + (write[write.length - 1] != null ? write[write.length - 1].length : 0) + " bytes])");
-        buffAccept.append(str(accept[accept.length - 1]) + " [" + (accept[accept.length - 1] != null ? accept[accept.length - 1].length : 0) + " bytes])");
+        buffWrite.append("[" + str(write[write.length - 1]) +"])");
+        buffAccept.append("[" + str(accept[accept.length - 1]) + "])");
 
-        return "cid=" + consensus.getId() + " ts=" + getTimestamp() + " " + buffWrite + " " + buffAccept + " " + buffDecide;
+        return "CID=" + consensus.getId() + " TS=" + getTimestamp() + " " + "Propose=[" + (propValueHash != null ? str(propValueHash) : null) + "] " + buffWrite + " " + buffAccept;
     }
 
     private String str(byte[] obj) {
         if(obj == null) {
-            return "*";
+            return "null";
         } else {
             return Base64.encodeBase64String(obj);
         }
