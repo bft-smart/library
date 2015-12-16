@@ -18,7 +18,6 @@ package bftsmart.tom.util;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Random;
-import java.util.Collections;
 
 import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.tom.core.messages.TOMMessage;
@@ -87,9 +86,6 @@ public final class BatchBuilder {
 		// Fill the array of bytes for the messages/signatures being batched
 		int i = 0;
                 
-                //Sort messages deterministically
-                Collections.sort(msgs);
-                
 		for (TOMMessage msg : msgs) {
 			//TOMMessage msg = msgs.next();
 			//Logger.println("(TOMLayer.run) adding req " + msg + " to PROPOSE");
@@ -115,9 +111,6 @@ public final class BatchBuilder {
 
 		// Fill the array of bytes for the messages/signatures being batched
 		int i = 0;
-                
-                //Sort messages deterministically
-                Collections.sort(msgs);
                 
 		for (TOMMessage msg : msgs) {
 			//TOMMessage msg = msgs.next();
