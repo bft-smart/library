@@ -35,7 +35,7 @@ public interface ApplicationState extends Serializable {
      * The consensus of the last batch of commands which the application was given
      * @return consensus of the last batch of commands which the application was given
      */
-    public int getLastEid();
+    public int getLastCID();
     
     /**
      * Retrieves the proof for the last consensus present in this object

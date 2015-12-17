@@ -65,7 +65,7 @@ public class LCManager {
     
     //data structures for info in stop, sync and catch-up messages
     private HashMap<Integer,HashSet<Integer>> stops;
-    private HashMap<Integer,HashSet<CertifiedDecision>> lastEids;
+    private HashMap<Integer,HashSet<CertifiedDecision>> lastCIDs;
     private HashMap<Integer,HashSet<SignedObject>> collects;
 
     //stuff from the TOM layer that this object needss
@@ -90,7 +90,7 @@ public class LCManager {
         this.currentLeader = 0;
 
         this.stops = new HashMap<Integer,HashSet<Integer>>();
-        this.lastEids = new HashMap<Integer, HashSet<CertifiedDecision>>();
+        this.lastCIDs = new HashMap<Integer, HashSet<CertifiedDecision>>();
         this.collects = new HashMap<Integer, HashSet<SignedObject>>();
 
         this.SVController = SVController;
@@ -265,58 +265,58 @@ public class LCManager {
     }
 
     /**
-     * Keep last eid from an incoming SYNC message
+     * Keep last CID from an incoming SYNC message
      * @param regency the current regency
-     * @param lastEid the last eid data
+     * @param lastCID the last CID data
      */
-    public void addLastEid(int regency, CertifiedDecision lastEid) {
+    public void addLastCID(int regency, CertifiedDecision lastCID) {
 
-        HashSet<CertifiedDecision> last = lastEids.get(regency);
+        HashSet<CertifiedDecision> last = lastCIDs.get(regency);
         if (last == null) last = new HashSet<CertifiedDecision>();
-        last.add(lastEid);
-        lastEids.put(regency, last);
+        last.add(lastCID);
+        lastCIDs.put(regency, last);
     }
 
     /**
-     * Discard last eid information up to the specified regency
+     * Discard last CID information up to the specified regency
      * @param regency Regency up to which to discard information
      */
-    public void removeLastEids(int regency) {
-        Integer[] keys = new Integer[lastEids.keySet().size()];
-        lastEids.keySet().toArray(keys);
+    public void removeLastCIDs(int regency) {
+        Integer[] keys = new Integer[lastCIDs.keySet().size()];
+        lastCIDs.keySet().toArray(keys);
 
         for (int i = 0; i < keys.length; i++) {
-            if (keys[i] <= regency) lastEids.remove(keys[i]);
+            if (keys[i] <= regency) lastCIDs.remove(keys[i]);
         }
     }
 
     /**
-     * Get the quantity of stored last eid information
+     * Get the quantity of stored last CID information
      * @param regency regency to be considered
-     * @return quantity of stored last eid  information for given regency
+     * @return quantity of stored last CID  information for given regency
      */
-    public int getLastEidsSize(int regency) {
-        HashSet<CertifiedDecision> last = lastEids.get(regency);
+    public int getLastCIDsSize(int regency) {
+        HashSet<CertifiedDecision> last = lastCIDs.get(regency);
         return last == null ? 0 : last.size();
     }
 
     /**
-     * Get the set of last eids related to a regency
-     * @param regency Regency for the last eid info
-     * @return a set of last eid data
+     * Get the set of last CIDs related to a regency
+     * @param regency Regency for the last CID info
+     * @return a set of last CID data
      */
-    public HashSet<CertifiedDecision> getLastEids(int regency) {
-        return lastEids.get(regency);
+    public HashSet<CertifiedDecision> getLastCIDs(int regency) {
+        return lastCIDs.get(regency);
     }
 
     /**
-     * Defines the set of last eids related to a regency
-     * @param regency Regency for the last eid info
-     * @param lasts a set of last eid data
+     * Defines the set of last CIDs related to a regency
+     * @param regency Regency for the last CID info
+     * @param lasts a set of last CID data
      */
-    public void setLastEids(int regency, HashSet<CertifiedDecision> lasts) {
+    public void setLastCIDs(int regency, HashSet<CertifiedDecision> lasts) {
 
-        lastEids.put(regency, lasts);
+        lastCIDs.put(regency, lasts);
     }
 
     /**
@@ -368,7 +368,7 @@ public class LCManager {
 
     /**
      * Defines the set of collects related to a regency
-     * @param regency Regency for the last eid info
+     * @param regency Regency for the last CID info
      * @param colls a set of collect data
      */
     public void setCollects(int regency, HashSet<SignedObject> colls) {
@@ -395,7 +395,7 @@ public class LCManager {
 
         for (CollectData c : collects) { // organize all existing timestamps and values separately
             
-            bftsmart.tom.util.Logger.println("(LCManager.sound) Context for replica "+c.getPid()+": EID["+c.getCid()+"] WRITESET["+c.getWriteSet()+"] (VALTS,VAL)[" + c.getQuorumWrites() +"]");
+            bftsmart.tom.util.Logger.println("(LCManager.sound) Context for replica "+c.getPid()+": CID["+c.getCid()+"] WRITESET["+c.getWriteSet()+"] (VALTS,VAL)[" + c.getQuorumWrites() +"]");
             
             timestamps.add(c.getQuorumWrites().getTimestamp()); //store timestamp received from a Byzatine quorum of WRITES
             
@@ -688,16 +688,16 @@ public class LCManager {
     /**
      * Fetchs a set of correctly signed and normalized collect data structures
      * @param regency the regency from which the collects were stored
-     * @param eid the eid to which to normalize the collects
+     * @param cid the CID to which to normalize the collects
      * @return a set of correctly signed and normalized collect data structures
      */
-    public HashSet<CollectData> selectCollects(int regency, int eid) {
+    public HashSet<CollectData> selectCollects(int regency, int cid) {
 
         HashSet<SignedObject> c = collects.get(regency);
 
         if (c == null) return null;
 
-        return normalizeCollects(getSignedCollects(c), eid, regency);
+        return normalizeCollects(getSignedCollects(c), cid, regency);
         
     }
 
@@ -705,14 +705,14 @@ public class LCManager {
      * Fetchs a set of correctly signed and normalized collect data structures from the
      * specified original set of collects
      * @param signedObjects original set of signed collects
-     * @param eid the eid to which to normalize the collects
+     * @param cid the CID to which to normalize the collects
      * @return a set of correctly signed and normalized collect data structures
      */
-    public HashSet<CollectData> selectCollects(HashSet<SignedObject> signedObjects, int eid, int regency) {
+    public HashSet<CollectData> selectCollects(HashSet<SignedObject> signedObjects, int cid, int regency) {
 
         if (signedObjects == null) return null;
 
-        return normalizeCollects(getSignedCollects(signedObjects), eid, regency);
+        return normalizeCollects(getSignedCollects(signedObjects), cid, regency);
 
     }
 
@@ -742,20 +742,20 @@ public class LCManager {
     }
 
     // Normalizes the set of collects. A set of collects is considered normalized if or when
-    // all collects are related to the same eid. This is important because not all replicas
-    // may be executing the same eid when tere is a leader change
-    private HashSet<CollectData> normalizeCollects(HashSet<CollectData> collects, int eid, int regency) {
+    // all collects are related to the same CID. This is important because not all replicas
+    // may be executing the same CID when tere is a leader change
+    private HashSet<CollectData> normalizeCollects(HashSet<CollectData> collects, int cid, int regency) {
 
         HashSet<CollectData> result = new HashSet<CollectData>();
 
         // if there are collects refering to other consensus instances, lets assume that they are still at timestamp zero of the consensus we want
         for (CollectData c : collects) {
 
-            if (c.getCid() == eid) {
+            if (c.getCid() == cid) {
                 result.add(c);
             }
             else {
-                result.add(new CollectData(c.getPid(), eid, regency, new TimestampValuePair(0, new byte[0]), new HashSet<TimestampValuePair>()));
+                result.add(new CollectData(c.getPid(), cid, regency, new TimestampValuePair(0, new byte[0]), new HashSet<TimestampValuePair>()));
             }
 
         }
@@ -776,15 +776,15 @@ public class LCManager {
     }
 
     /**
-     * Gets the highest valid last eid related to the given timestamp
+     * Gets the highest valid last CID related to the given timestamp
      * @param ts the timestamp
-     * @return -1 if there is no such eid, otherwise returns the highest valid last eid
+     * @return -1 if there is no such CID, otherwise returns the highest valid last CID
      */
-    public CertifiedDecision getHighestLastEid(int ts) {
+    public CertifiedDecision getHighestLastCID(int ts) {
 
         CertifiedDecision highest = new CertifiedDecision(-2, -2, null, null);
 
-        HashSet<CertifiedDecision> lasts = lastEids.get(ts);
+        HashSet<CertifiedDecision> lasts = lastCIDs.get(ts);
 
         if (lasts == null) return null;
        
@@ -804,7 +804,7 @@ public class LCManager {
     // verifies is a proof associated with a decided value is valid
     public boolean hasValidProof(CertifiedDecision led) {
         
-        if (led.getCID() == -1) return true; // If the last eid is -1 it means the replica
+        if (led.getCID() == -1) return true; // If the last CID is -1 it means the replica
                                              // did not complete any consensus and cannot have
                                              // any proof
         
@@ -889,14 +889,14 @@ public class LCManager {
     }
 
     /**
-     * Returns the value of the specified last eid for a given regency
+     * Returns the value of the specified last CID for a given regency
      * @param regency the related regency
-     * @param eid the last eid
-     * @return null if there is no such eid or is invalid, otherwise returns the value
+     * @param cid the last CID
+     * @return null if there is no such CID or is invalid, otherwise returns the value
      */
-    public byte[] getLastEidValue(int regency, int eid) {
+    public byte[] getLastCIDValue(int regency, int cid) {
 
-        HashSet<CertifiedDecision> lasts = lastEids.get(regency);
+        HashSet<CertifiedDecision> lasts = lastCIDs.get(regency);
 
         if (lasts == null) return null;
 
@@ -904,7 +904,7 @@ public class LCManager {
 
         for (CertifiedDecision l : lasts) {
 
-            if (l.getCID() == eid) {
+            if (l.getCID() == cid) {
 
                 //TODO: CHECK OF THE PROOF IS MISSING!!!!
                 result = l.getDecision();

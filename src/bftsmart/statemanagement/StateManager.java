@@ -27,9 +27,9 @@ import bftsmart.tom.core.TOMLayer;
  */
 public interface StateManager {
 
-    public void requestAppState(int eid);
+    public void requestAppState(int cid);
     
-    public void analyzeState(int eid);
+    public void analyzeState(int cid);
 
     public void stateTimeout();
     
@@ -45,9 +45,9 @@ public interface StateManager {
     
     public void currentConsensusIdReceived(SMMessage msg);
     
-    public void setLastEID(int lastEid);
+    public void setLastCID(int lastCID);
     
-    public int getLastEID();
+    public int getLastCID();
     
     public boolean isRetrievingState();
 }

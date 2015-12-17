@@ -263,7 +263,6 @@ public class ServiceReplica {
         int consensusCount = 0;
         List<TOMMessage> toBatch = new ArrayList<>();
         List<MessageContext> msgCtxts = new ArrayList<>();
-        //Set<Integer> appEids = new HashSet<Integer>();
         boolean noop = true;
 
         for (TOMMessage[] requestsFromConsensus : requests) {

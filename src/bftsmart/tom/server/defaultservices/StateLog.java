@@ -28,11 +28,11 @@ import bftsmart.tom.MessageContext;
 public class StateLog {
 
     private CommandsInfo[] messageBatches; // batches received since the last checkpoint.
-    private int lastCheckpointEid; // Execution ID for the last checkpoint
+    private int lastCheckpointCID; // Consensus ID for the last checkpoint
     private byte[] state; // State associated with the last checkpoint
     private byte[] stateHash; // Hash of the state associated with the last checkpoint
     private int position; // next position in the array of batches to be written
-    private int lastEid; // Execution ID for the last messages batch delivered to the application
+    private int lastCID; // Consensus ID for the last messages batch delivered to the application
 
     /**
      * Constructs a State log
@@ -43,11 +43,11 @@ public class StateLog {
     public StateLog(int k, byte[] initialState, byte[] initialHash) {
 
         this.messageBatches = new CommandsInfo[k - 1];
-        this.lastCheckpointEid = -1;
+        this.lastCheckpointCID = -1;
         this.state = initialState;
         this.stateHash = initialHash;
         this.position = 0;
-        this.lastEid = -1;
+        this.lastCID = -1;
     }
     
     /**
@@ -57,22 +57,22 @@ public class StateLog {
     public StateLog(int k) {
 
         this.messageBatches = new CommandsInfo[k - 1];
-        this.lastCheckpointEid = -1;
+        this.lastCheckpointCID = -1;
         this.state = null;
         this.stateHash = null;
         this.position = 0;
-        this.lastEid = -1;
+        this.lastCID = -1;
     }
 
     public StateLog(byte[] initialState, byte[] initialHash) {
-        this.lastCheckpointEid = -1;
+        this.lastCheckpointCID = -1;
         this.state = initialState;
         this.stateHash = initialHash;
-        this.lastEid = -1;
+        this.lastCID = -1;
 	}
     
     /**
-     * Sets the state associated with the last checkpoint, and updates the execution ID associated with it
+     * Sets the state associated with the last checkpoint, and updates the consensus ID associated with it
      * @param state State associated with the last checkpoint
      * @param stateHash
      * @param lastConsensusId
@@ -91,37 +91,37 @@ public class StateLog {
     }
 
     /**
-     * Sets the execution ID for the last checkpoint
-     * @param lastCheckpointEid Execution ID for the last checkpoint
+     * Sets the consensus ID for the last checkpoint
+     * @param lastCheckpointCID Consensus ID for the last checkpoint
      */
-    public void setLastCheckpointEid(int lastCheckpointEid) {
-        this.lastCheckpointEid = lastCheckpointEid;
+    public void setLastCheckpointCID(int lastCheckpointCID) {
+        this.lastCheckpointCID = lastCheckpointCID;
     }
 
     /**
-     * Retrieves the execution ID for the last checkpoint
-     * @return Execution ID for the last checkpoint, or -1 if none was obtained
+     * Retrieves the consensus ID for the last checkpoint
+     * @return Consensus ID for the last checkpoint, or -1 if none was obtained
      */
-    public int getLastCheckpointEid() {
+    public int getLastCheckpointCID() {
         
-        return lastCheckpointEid ;
+        return lastCheckpointCID ;
     }
 
     /**
-     * Sets the execution ID for the last messages batch delivered to the application
-     * @param lastEid the execution ID for the last messages batch delivered to the application
+     * Sets the consensus ID for the last messages batch delivered to the application
+     * @param lastCID the consensus ID for the last messages batch delivered to the application
      */
-    public void setLastEid(int lastEid) {
+    public void setLastCID(int lastCID) {
 
-       this.lastEid = lastEid;
+       this.lastCID = lastCID;
     }
 
     /**
-     * Retrieves the execution ID for the last messages batch delivered to the application
-     * @return Execution ID for the last messages batch delivered to the application
+     * Retrieves the consensus ID for the last messages batch delivered to the application
+     * @return Consensus ID for the last messages batch delivered to the application
      */
-    public int getLastEid() {
-        return lastEid;
+    public int getLastCID() {
+        return lastCID;
     }
 
     /**
@@ -153,17 +153,17 @@ public class StateLog {
             messageBatches[position] = new CommandsInfo(commands, msgCtx);
             position++;
         }
-        setLastEid(lastConsensusId);
+        setLastCID(lastConsensusId);
     }
 
     /**
-     * Returns a batch of messages, given its correspondent execution ID
-     * @param eid Execution ID associated with the batch to be fetched
-     * @return The batch of messages associated with the batch correspondent execution ID
+     * Returns a batch of messages, given its correspondent consensus ID
+     * @param cid Consensus ID associated with the batch to be fetched
+     * @return The batch of messages associated with the batch correspondent consensus ID
      */
-    public CommandsInfo getMessageBatch(int eid) {
-        if (eid > lastCheckpointEid && eid <= lastEid) {
-            return messageBatches[eid - lastCheckpointEid - 1];
+    public CommandsInfo getMessageBatch(int cid) {
+        if (cid > lastCheckpointCID && cid <= lastCID) {
+            return messageBatches[cid - lastCheckpointCID - 1];
         }
         else return null;
     }
@@ -185,22 +185,22 @@ public class StateLog {
     }
     /**
      * Constructs a TransferableState using this log information
-     * @param eid Execution ID correspondent to desired state
+     * @param cid Consensus ID correspondent to desired state
      * @param setState
      * @return TransferableState Object containing this log information
      */
-    public DefaultApplicationState getApplicationState(int eid, boolean setState) {
+    public DefaultApplicationState getApplicationState(int cid, boolean setState) {
 
-    	System.out.println("--- Eid requested: " + eid + ". Last checkpoint: " + lastCheckpointEid + ". Last EID: " + this.lastEid);
+    	System.out.println("--- CID requested: " + cid + ". Last checkpoint: " + lastCheckpointCID + ". Last CID: " + this.lastCID);
         CommandsInfo[] batches = null;
 
-        int lastEid = -1;
+        int lastCID = -1;
        
-        if (eid >= lastCheckpointEid && eid <= this.lastEid) {
+        if (cid >= lastCheckpointCID && cid <= this.lastCID) {
             
-    	System.out.println("--- Constructing ApplicationState up until EID " + eid);
+    	System.out.println("--- Constructing ApplicationState up until CID " + cid);
 
-            int size = eid - lastCheckpointEid ;
+            int size = cid - lastCheckpointCID ;
 
             if (size > 0) {
                 batches = new CommandsInfo[size];
@@ -208,8 +208,8 @@ public class StateLog {
                 for (int i = 0; i < size; i++)
                     batches[i] = messageBatches[i];
             }
-            lastEid = eid;
-            return new DefaultApplicationState(batches, lastCheckpointEid, lastEid, (setState ? state : null), stateHash);
+            lastCID = cid;
+            return new DefaultApplicationState(batches, lastCheckpointCID, lastCID, (setState ? state : null), stateHash);
 
         }
         else return null;
@@ -228,13 +228,13 @@ public class StateLog {
             }
         }
 
-        this.lastCheckpointEid = transState.getLastCheckpointEid();
+        this.lastCheckpointCID = transState.getLastCheckpointCID();
 
         this.state = transState.getState();
 
         this.stateHash = transState.getStateHash();
 
-        this.lastEid = transState.getLastEid();
+        this.lastCID = transState.getLastCID();
     }
 
 }

@@ -28,7 +28,7 @@ import bftsmart.communication.SystemMessage;
  */
 public class ConsensusMessage extends SystemMessage {
 
-    private int number; //execution ID for this message TODO: Shouldn't this be called 'eid'?
+    private int number; //consensus ID for this message
     private int epoch; // Epoch to which this message belongs to
     private int paxosType; // Message type
     private byte[] value = null; // Value used when message type is PROPOSE
@@ -44,7 +44,7 @@ public class ConsensusMessage extends SystemMessage {
      * Creates a consensus message. Used by the message factory to create a COLLECT or PROPOSE message
      * TODO: How about removing the modifier, to make it visible just within the package?
      * @param paxosType This should be MessageFactory.COLLECT or MessageFactory.PROPOSE
-     * @param id Consensus's execution ID
+     * @param id Consensus's ID
      * @param epoch Epoch timestamp
      * @param from This should be this process ID
      * @param value This should be null if its a COLLECT message, or the proposed value if it is a PROPOSE message
@@ -66,7 +66,7 @@ public class ConsensusMessage extends SystemMessage {
      * Creates a consensus message. Used by the message factory to create a FREEZE message
      * TODO: How about removing the modifier, to make it visible just within the package?
      * @param type This should be MessageFactory.FREEZE
-     * @param id Consensus's execution ID
+     * @param id Consensus's consensus ID
      * @param epoch Epoch timestamp
      * @param from This should be this process ID
      */
@@ -178,8 +178,8 @@ public class ConsensusMessage extends SystemMessage {
     }
 
     /**
-     * Returns the consensus execution ID of this message
-     * @return Consensus execution ID of this message
+     * Returns the consensus ID of this message
+     * @return Consensus ID of this message
      */
     public int getNumber() {
 

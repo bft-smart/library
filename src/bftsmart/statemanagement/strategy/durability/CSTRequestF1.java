@@ -38,8 +38,8 @@ public class CSTRequestF1 extends CSTRequest {
 	private int logLowerSize;
 	private InetSocketAddress address;
 	
-	public CSTRequestF1(int eid) {
-		super(eid);
+	public CSTRequestF1(int cid) {
+		super(cid);
 	}
 	
 //	public int getCkpPeriod() {
@@ -75,17 +75,17 @@ public class CSTRequestF1 extends CSTRequest {
 	 * just after the oldest) must send the checkpoint. The oldest must
 	 * send the log of the period between the middle checkpoint until the
 	 * checkpoint of the newest replica. The newest replica must send the
-	 * log from the begging to the eid requested.
+	 * log from the begging to the CID requested.
 	 */
 	public void defineReplicas(int[] otherReplicas, int globalCkpPeriod, int me) {
     	int N = otherReplicas.length + 1; // The total number of replicas is the others plus me 
     	ckpPeriod = globalCkpPeriod / N;
 //    	logLowerSkip = ckpPeriod;
     	logLowerSize = ckpPeriod;
-    	logUpperSize = (eid + 1) % ckpPeriod;
+    	logUpperSize = (cid + 1) % ckpPeriod;
     	
     	// position of the replica with the oldest checkpoint in the others array
-    	int oldestReplicaPosition = getOldest(otherReplicas, eid, globalCkpPeriod, me);
+    	int oldestReplicaPosition = getOldest(otherReplicas, cid, globalCkpPeriod, me);
     	
     	logLower = otherReplicas[oldestReplicaPosition];
     	checkpointReplica = otherReplicas[(oldestReplicaPosition + 1) % otherReplicas.length];
@@ -99,19 +99,19 @@ public class CSTRequestF1 extends CSTRequest {
 	 * is me, and therefore, it is not in the others array, it is returned the
 	 * replica with id immediate before me
 	 * @param others the other replicas in BFT-SMaRt
-	 * @param eid the eid that I am requesting
+	 * @param cid the CID that I am requesting
 	 * @param globalCheckpointPeriod the global checkpoint period in which all replicas
 	 * should perform the checkpoint
 	 * @param me my id
 	 * @return the position of the replica with the latest checkpoint in the others array
 	 */
-	private int getOldest(int[] others, int eid, int globalCheckpointPeriod, int me) {
+	private int getOldest(int[] others, int cid, int globalCheckpointPeriod, int me) {
 		int N = others.length + 1;
-		int oldestCkpReplica = (eid % globalCheckpointPeriod) / (globalCheckpointPeriod / N);
+		int oldestCkpReplica = (cid % globalCheckpointPeriod) / (globalCheckpointPeriod / N);
 		if(oldestCkpReplica == me) {
 			oldestCkpReplica = (oldestCkpReplica + 1) % N;
 		} else if((oldestCkpReplica + 3) % N == me) {
-	    	logUpperSize = ((eid + 1) % ckpPeriod) + ckpPeriod;
+	    	logUpperSize = ((cid + 1) % ckpPeriod) + ckpPeriod;
 		} else if((oldestCkpReplica + 2) % N == me) {
 	    	logLowerSize = 2 * ckpPeriod;
 		} else {

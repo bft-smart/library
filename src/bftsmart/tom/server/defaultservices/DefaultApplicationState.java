@@ -32,11 +32,11 @@ public class DefaultApplicationState implements ApplicationState {
 
     protected byte[] state; // State associated with the last checkpoint
     protected byte[] stateHash; // Hash of the state associated with the last checkpoint
-    protected int lastEid = -1; // Execution ID for the last messages batch delivered to the application
+    protected int lastCID = -1; // Consensus ID for the last messages batch delivered to the application
     protected boolean hasState; // indicates if the replica really had the requested state
 
     private CommandsInfo[] messageBatches; // batches received since the last checkpoint.
-    private int lastCheckpointEid; // Execution ID for the last checkpoint
+    private int lastCheckpointCID; // Consensus ID for the last checkpoint
     private byte[] logHash;
 
     /**
@@ -46,18 +46,18 @@ public class DefaultApplicationState implements ApplicationState {
      * @param state State associated with the last checkpoint
      * @param stateHash Hash of the state associated with the last checkpoint
      */
-    public DefaultApplicationState(CommandsInfo[] messageBatches, int lastCheckpointEid, int lastEid, byte[] state, byte[] stateHash) {
+    public DefaultApplicationState(CommandsInfo[] messageBatches, int lastCheckpointCID, int lastCID, byte[] state, byte[] stateHash) {
        
         this.messageBatches = messageBatches; // batches received since the last checkpoint.
-        this.lastCheckpointEid = lastCheckpointEid; // Execution ID for the last checkpoint
-        this.lastEid = lastEid; // Execution ID for the last messages batch delivered to the application
+        this.lastCheckpointCID = lastCheckpointCID; // Consensus ID for the last checkpoint
+        this.lastCID = lastCID; // Consensus ID for the last messages batch delivered to the application
         this.state = state; // State associated with the last checkpoint
         this.stateHash = stateHash;
         this.hasState = true;
     }
 
-    public DefaultApplicationState(CommandsInfo[] messageBatches, byte[] logHash, int lastCheckpointEid, int lastEid, byte[] state, byte[] stateHash) {
-    	this(messageBatches, lastCheckpointEid, lastEid, state, stateHash);
+    public DefaultApplicationState(CommandsInfo[] messageBatches, byte[] logHash, int lastCheckpointCID, int lastCID, byte[] state, byte[] stateHash) {
+    	this(messageBatches, lastCheckpointCID, lastCID, state, stateHash);
     	this.logHash = logHash;
     }
 
@@ -67,8 +67,8 @@ public class DefaultApplicationState implements ApplicationState {
      */
     public DefaultApplicationState() {
         this.messageBatches = null; // batches received since the last checkpoint.
-        this.lastCheckpointEid = -1; // Execution ID for the last checkpoint
-        this.lastEid = -1;
+        this.lastCheckpointCID = -1; // Consensus ID for the last checkpoint
+        this.lastCID = -1;
         this.state = null; // State associated with the last checkpoint
         this.stateHash = null;
         this.hasState = false;
@@ -96,12 +96,12 @@ public class DefaultApplicationState implements ApplicationState {
 
 
     /**
-     * Retrieves the execution ID for the last messages batch delivered to the application
-     * @return Execution ID for the last messages batch delivered to the application
+     * Retrieves the consensus ID for the last messages batch delivered to the application
+     * @return Consensus ID for the last messages batch delivered to the application
      */
     @Override
-    public int getLastEid() {
-        return lastEid;
+    public int getLastCID() {
+        return lastCID;
     }
     
     /**
@@ -110,7 +110,7 @@ public class DefaultApplicationState implements ApplicationState {
      */
     @Override
     public CertifiedDecision getLastProof() {
-        CommandsInfo ci = getMessageBatch(getLastEid());
+        CommandsInfo ci = getMessageBatch(getLastCID());
         return (ci != null ? ci.msgCtx[0].getProof() : null);
     }
 
@@ -153,23 +153,23 @@ public class DefaultApplicationState implements ApplicationState {
 
     /**
      * Retrieves the specified batch of messages
-     * @param eid Execution ID associated with the batch to be fetched
-     * @return The batch of messages associated with the batch correspondent execution ID
+     * @param cid Consensus ID associated with the batch to be fetched
+     * @return The batch of messages associated with the batch correspondent consensus ID
      */
-    public CommandsInfo getMessageBatch(int eid) {
-        if (messageBatches != null && eid >= lastCheckpointEid && eid <= lastEid) {
-            return messageBatches[eid - lastCheckpointEid - 1];
+    public CommandsInfo getMessageBatch(int cid) {
+        if (messageBatches != null && cid >= lastCheckpointCID && cid <= lastCID) {
+            return messageBatches[cid - lastCheckpointCID - 1];
         }
         else return null;
     }
 
     /**
-     * Retrieves the execution ID for the last checkpoint
-     * @return Execution ID for the last checkpoint, or -1 if no checkpoint was yet executed
+     * Retrieves the consensus ID for the last checkpoint
+     * @return Consensus ID for the last checkpoint, or -1 if no checkpoint was yet executed
      */
-    public int getLastCheckpointEid() {
+    public int getLastCheckpointCID() {
 
-        return lastCheckpointEid;
+        return lastCheckpointCID;
     }
 
 
@@ -211,8 +211,8 @@ public class DefaultApplicationState implements ApplicationState {
                 }
             }
             return (Arrays.equals(this.stateHash, tState.stateHash) &&
-                    tState.lastCheckpointEid == this.lastCheckpointEid &&
-                    tState.lastEid == this.lastEid && tState.hasState == this.hasState);
+                    tState.lastCheckpointCID == this.lastCheckpointCID &&
+                    tState.lastCID == this.lastCID && tState.hasState == this.hasState);
         }
         //System.out.println("[DefaultApplicationState] returing FALSE!");
         return false;
@@ -221,8 +221,8 @@ public class DefaultApplicationState implements ApplicationState {
     @Override
     public int hashCode() {
         int hash = 1;
-        hash = hash * 31 + this.lastCheckpointEid;
-        hash = hash * 31 + this.lastEid;
+        hash = hash * 31 + this.lastCheckpointCID;
+        hash = hash * 31 + this.lastCID;
         hash = hash * 31 + (this.hasState ? 1 : 0);
         if (this.stateHash != null) {
             for (int i = 0; i < this.stateHash.length; i++) hash = hash * 31 + (int) this.stateHash[i];

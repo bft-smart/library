@@ -88,7 +88,7 @@ public class DiskStateLog extends StateLog {
 				createLogFile();
 			writeCommandToDisk(command, consensusId);
 		}
-		setLastEid(consensusId);
+		setLastCID(consensusId);
 	}
 
 	private void writeCommandToDisk(CommandsInfo commandsInfo, int consensusId) {
@@ -181,23 +181,23 @@ public class DiskStateLog extends StateLog {
 	/**
 	 * Constructs a TransferableState using this log information
 	 * 
-	 * @param eid Execution ID correspondent to desired state
+	 * @param cid Consensus ID correspondent to desired state
          * @param sendState
 	 * @return TransferableState Object containing this log information
 	 */
         @Override
-	public DefaultApplicationState getApplicationState(int eid, boolean sendState) {
+	public DefaultApplicationState getApplicationState(int cid, boolean sendState) {
 //		readingState = true;
 		CommandsInfo[] batches = null;
 
-		int lastCheckpointEid = getLastCheckpointEid();
-		int lastEid = getLastEid();
-		System.out.println("LAST CKP EID = " + lastCheckpointEid);
-		System.out.println("EID = " + eid);
-		System.out.println("LAST EID = " + lastEid);
-		if (eid >= lastCheckpointEid && eid <= lastEid) {
+		int lastCheckpointCID = getLastCheckpointCID();
+		int lastCID = getLastCID();
+		System.out.println("LAST CKP CID = " + lastCheckpointCID);
+		System.out.println("CID = " + cid);
+		System.out.println("LAST CID = " + lastCID);
+		if (cid >= lastCheckpointCID && cid <= lastCID) {
 
-			int size = eid - lastCheckpointEid;
+			int size = cid - lastCheckpointCID;
 
 			FileRecoverer fr = new FileRecoverer(id, DEFAULT_DIR);
 
@@ -219,30 +219,30 @@ public class DiskStateLog extends StateLog {
 			System.out.println("--- FINISHED READING STATE");
 //			readingState = false;
 
-//			return new DefaultApplicationState((sendState ? batches : null), lastCheckpointEid,
-			return new DefaultApplicationState(batches, lastCheckpointEid,
-					eid, (sendState ? ckpState : null), ckpStateHash);
+//			return new DefaultApplicationState((sendState ? batches : null), lastCheckpointCID,
+			return new DefaultApplicationState(batches, lastCheckpointCID,
+					cid, (sendState ? ckpState : null), ckpStateHash);
 
 		}
 		return null;
 	}
 	
-	public void transferApplicationState(SocketChannel sChannel, int eid) {
+	public void transferApplicationState(SocketChannel sChannel, int cid) {
 		FileRecoverer fr = new FileRecoverer(id, DEFAULT_DIR);
 		fr.transferCkpState(sChannel, lastCkpPath);
-//		int lastCheckpointEid = getLastCheckpointEid();
-//		int lastEid = getLastEid();
-//		if (eid >= lastCheckpointEid && eid <= lastEid) {
-//			int size = eid - lastCheckpointEid;
+//		int lastCheckpointCID = getLastCheckpointCID();
+//		int lastCID = getLastCID();
+//		if (cid >= lastCheckpointCID && cid <= lastCID) {
+//			int size = cid - lastCheckpointCID;
 //			fr.transferLog(sChannel, size);
 //		}
 	}
 
-	public void setLastEid(int eid, int checkpointPeriod, int checkpointPortion) {
-		super.setLastEid(eid);
+	public void setLastCID(int cid, int checkpointPeriod, int checkpointPortion) {
+		super.setLastCID(cid);
 		// save the file pointer to retrieve log information later
-		if((eid % checkpointPeriod) % checkpointPortion == checkpointPortion -1) {
-			int ckpReplicaIndex = (((eid % checkpointPeriod) + 1) / checkpointPortion) -1;
+		if((cid % checkpointPeriod) % checkpointPortion == checkpointPortion -1) {
+			int ckpReplicaIndex = (((cid % checkpointPeriod) + 1) / checkpointPortion) -1;
 			try {
 				System.out.println(" --- Replica " + ckpReplicaIndex + " took checkpoint. My current log pointer is " + log.getFilePointer());
 				logPointers.put(ckpReplicaIndex, log.getFilePointer());
@@ -262,8 +262,8 @@ public class DiskStateLog extends StateLog {
 	 */
         @Override
 	public void update(DefaultApplicationState transState) {
-		newCheckpoint(transState.getState(), transState.getStateHash(), transState.getLastCheckpointEid());
-		setLastCheckpointEid(transState.getLastCheckpointEid());
+		newCheckpoint(transState.getState(), transState.getStateHash(), transState.getLastCheckpointCID());
+		setLastCheckpointCID(transState.getLastCheckpointCID());
 	}
 	
 	protected ApplicationState loadDurableState() {
@@ -282,10 +282,10 @@ public class DiskStateLog extends StateLog {
 		ApplicationState state = new DefaultApplicationState(log, ckpLastConsensusId,
 				logLastConsensusId, checkpoint, fr.getCkpStateHash());
 		if(logLastConsensusId > ckpLastConsensusId) {
-			super.setLastEid(logLastConsensusId);
+			super.setLastCID(logLastConsensusId);
 		} else
-			super.setLastEid(ckpLastConsensusId);
-		super.setLastCheckpointEid(ckpLastConsensusId);
+			super.setLastCID(ckpLastConsensusId);
+		super.setLastCheckpointCID(ckpLastConsensusId);
 		
 		return state;
 	}

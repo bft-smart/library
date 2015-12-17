@@ -44,8 +44,8 @@ public class CSTState implements ApplicationState {
     private final byte[] hashLogLower;
     private final byte[] hashCheckpoint;
 
-    private final int checkpointEid;
-    private final int lastEid;
+    private final int checkpointCID;
+    private final int lastCID;
 
     private final CommandsInfo[] logUpper;
     private final CommandsInfo[] logLower;
@@ -53,15 +53,15 @@ public class CSTState implements ApplicationState {
     private byte[] state;
 
     public CSTState(byte[] state, byte[] hashCheckpoint, CommandsInfo[] logLower, byte[] hashLogLower,
-                    CommandsInfo[] logUpper, byte[] hashLogUpper, int checkpointEid, int lastEid) {
+                    CommandsInfo[] logUpper, byte[] hashLogUpper, int checkpointCID, int lastCID) {
         setSerializedState(state);
         this.hashLogUpper = hashLogUpper;
         this.hashLogLower = hashLogLower;
         this.hashCheckpoint = hashCheckpoint;
         this.logUpper = logUpper;
         this.logLower = logLower;
-        this.checkpointEid = checkpointEid;
-        this.lastEid = lastEid;
+        this.checkpointCID = checkpointCID;
+        this.lastCID = lastCID;
     }
 
     @Override
@@ -85,8 +85,8 @@ public class CSTState implements ApplicationState {
     }
 
     @Override
-    public int getLastEid() {
-        return lastEid;
+    public int getLastCID() {
+        return lastCID;
     }
 
     /**
@@ -95,25 +95,25 @@ public class CSTState implements ApplicationState {
      */
     @Override
     public CertifiedDecision getLastProof() {
-        CommandsInfo ci = getMessageBatch(getLastEid());
+        CommandsInfo ci = getMessageBatch(getLastCID());
         return (ci != null ? ci.msgCtx[0].getProof() : null);
     }
 
-    public int getCheckpointEid() {
-        return checkpointEid;
+    public int getCheckpointCID() {
+        return checkpointCID;
     }
 
     /**
      * Retrieves the specified batch of messages
-     * @param eid Execution ID associated with the batch to be fetched
-     * @return The batch of messages associated with the batch correspondent execution ID
+     * @param cid Consensus ID associated with the batch to be fetched
+     * @return The batch of messages associated with the batch correspondent consensus ID
      */
-    public CommandsInfo getMessageBatch(int eid) {
-        if (eid >= checkpointEid && eid <= lastEid) {
+    public CommandsInfo getMessageBatch(int cid) {
+        if (cid >= checkpointCID && cid <= lastCID) {
             if(logLower != null) {
-                return logLower[eid - checkpointEid - 1];
+                return logLower[cid - checkpointCID - 1];
             } else if(logUpper != null) {
-                return logUpper[eid - checkpointEid - 1];
+                return logUpper[cid - checkpointCID - 1];
             } else {
                 return null;
             }

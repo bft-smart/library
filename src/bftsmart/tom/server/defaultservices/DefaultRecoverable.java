@@ -66,12 +66,12 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
 
     private byte[][] executeBatch(byte[][] commands, MessageContext[] msgCtxs, boolean noop) {
 
-        int eid = msgCtxs[msgCtxs.length-1].getConsensusId();
+        int cid = msgCtxs[msgCtxs.length-1].getConsensusId();
 
         // As the delivery thread may deliver several consensus at once it is necessary
         // to find if a checkpoint might be taken in the middle of the batch execution
-        int[] eids = consensusIds(msgCtxs);
-        int checkpointIndex = findCheckpointPosition(eids);
+        int[] cids = consensusIds(msgCtxs);
+        int checkpointIndex = findCheckpointPosition(cids);
 
         byte[][] replies = new byte[commands.length][];
 
@@ -110,7 +110,7 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
             byte[][] secondHalfReplies = new byte[secondHalf.length][];
 
             // execute the first half
-            eid = msgCtxs[checkpointIndex].getConsensusId();
+            cid = msgCtxs[checkpointIndex].getConsensusId();
 
             if (!noop) {
                 stateLock.lock();
@@ -118,23 +118,18 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
                 stateLock.unlock();
             }
 
-//	        if ((eid > 0) && ((eid % checkpointPeriod) == 0)) {
-            System.out.println("(DefaultRecoverable.executeBatch) Performing checkpoint for consensus " + eid);
+            System.out.println("(DefaultRecoverable.executeBatch) Performing checkpoint for consensus " + cid);
             stateLock.lock();
             byte[] snapshot = getSnapshot();
             stateLock.unlock();
-            saveState(snapshot, eid);
-//	        } else {
-//	            Logger.println("(DefaultRecoverable.executeBatch) Storing message batch in the state log for consensus " + eid);
-//	            saveCommands(firstHalf, firstHalfEids);
-//	        }
+            saveState(snapshot, cid);
 
             System.arraycopy(firstHalfReplies, 0, replies, 0, firstHalfReplies.length);
 
             // execute the second half if it exists
             if (secondHalf.length > 0) {
 //	        	System.out.println("----THERE IS A SECOND HALF----");
-                eid = msgCtxs[msgCtxs.length - 1].getConsensusId();
+                cid = msgCtxs[msgCtxs.length - 1].getConsensusId();
 
                 if (!noop) {
                     stateLock.lock();
@@ -142,7 +137,7 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
                     stateLock.unlock();
                 }
 
-                Logger.println("(DefaultRecoverable.executeBatch) Storing message batch in the state log for consensus " + eid);
+                Logger.println("(DefaultRecoverable.executeBatch) Storing message batch in the state log for consensus " + cid);
                 saveCommands(secondHalf, secondHalfMsgCtx);
 
                 System.arraycopy(secondHalfReplies, 0, replies, firstHalfReplies.length, secondHalfReplies.length);
@@ -150,8 +145,8 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
 
         }
 
-        if (eids != null && eids.length > 0) {
-            getStateManager().setLastEID(eids[eids.length - 1]);
+        if (cids != null && cids.length > 0) {
+            getStateManager().setLastCID(cids[cids.length - 1]);
         }
         return replies;
     }
@@ -169,20 +164,20 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
         return log;
     }
 
-    private void saveState(byte[] snapshot, int lastEid) {
+    private void saveState(byte[] snapshot, int lastCID) {
 
         StateLog thisLog = getLog();
 
         logLock.lock();
 
-        Logger.println("(TOMLayer.saveState) Saving state of EID " + lastEid);
+        Logger.println("(TOMLayer.saveState) Saving state of CID " + lastCID);
 
-        thisLog.newCheckpoint(snapshot, computeHash(snapshot), lastEid);
-        thisLog.setLastEid(lastEid);
-        thisLog.setLastCheckpointEid(lastEid);
+        thisLog.newCheckpoint(snapshot, computeHash(snapshot), lastCID);
+        thisLog.setLastCID(lastCID);
+        thisLog.setLastCheckpointCID(lastCID);
 
         logLock.unlock();
-        Logger.println("(TOMLayer.saveState) Finished saving state of EID " + lastEid);
+        Logger.println("(TOMLayer.saveState) Finished saving state of CID " + lastCID);
     }
 
     /**
@@ -200,19 +195,19 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
         }
         logLock.lock();
 
-        int eid = msgCtx[0].getConsensusId();
+        int cid = msgCtx[0].getConsensusId();
         int batchStart = 0;
         for (int i = 0; i <= msgCtx.length; i++) {
             if (i == msgCtx.length) { // the batch command contains only one command or it is the last position of the array
                 byte[][] batch = Arrays.copyOfRange(commands, batchStart, i);
                 MessageContext[] batchMsgCtx = Arrays.copyOfRange(msgCtx, batchStart, i);
-                log.addMessageBatch(batch, batchMsgCtx, eid);
+                log.addMessageBatch(batch, batchMsgCtx, cid);
             } else {
-                if (msgCtx[i].getConsensusId() > eid) { // saves commands when the eid changes or when it is the last batch
+                if (msgCtx[i].getConsensusId() > cid) { // saves commands when the cid changes or when it is the last batch
                     byte[][] batch = Arrays.copyOfRange(commands, batchStart, i);
                     MessageContext[] batchMsgCtx = Arrays.copyOfRange(msgCtx, batchStart, i);
-                    log.addMessageBatch(batch, batchMsgCtx, eid);
-                    eid = msgCtx[i].getConsensusId();
+                    log.addMessageBatch(batch, batchMsgCtx, cid);
+                    cid = msgCtx[i].getConsensusId();
                     batchStart = i;
                 }
             }
@@ -221,9 +216,9 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
     }
 
     @Override
-    public ApplicationState getState(int eid, boolean sendState) {
+    public ApplicationState getState(int cid, boolean sendState) {
         logLock.lock();
-        ApplicationState ret = (eid > -1 ? getLog().getApplicationState(eid, sendState) : new DefaultApplicationState());
+        ApplicationState ret = (cid > -1 ? getLog().getApplicationState(cid, sendState) : new DefaultApplicationState());
         
         // Only will send a state if I have a proof for the last logged decision/consensus
         //TODO: I should always make sure to have a log with proofs, since this is a result
@@ -237,19 +232,19 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
     @Override
     public int setState(ApplicationState recvState) {
 
-        int lastEid = -1;
+        int lastCID = -1;
         if (recvState instanceof DefaultApplicationState) {
 
             DefaultApplicationState state = (DefaultApplicationState) recvState;
 
-            int lastCheckpointEid = state.getLastCheckpointEid();
-            lastEid = state.getLastEid();
+            int lastCheckpointCID = state.getLastCheckpointCID();
+            lastCID = state.getLastCID();
 
-            System.out.println("(DefaultRecoverable.setState) I'm going to update myself from EID "
-                    + lastCheckpointEid + " to EID " + lastEid);
+            System.out.println("(DefaultRecoverable.setState) I'm going to update myself from CID "
+                    + lastCheckpointCID + " to CID " + lastCID);
             
-            bftsmart.tom.util.Logger.println("(DefaultRecoverable.setState) I'm going to update myself from EID "
-                    + lastCheckpointEid + " to EID " + lastEid);
+            bftsmart.tom.util.Logger.println("(DefaultRecoverable.setState) I'm going to update myself from CID "
+                    + lastCheckpointCID + " to CID " + lastCID);
 
             stateLock.lock();
             if (state.getSerializedState() != null) {
@@ -258,15 +253,15 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
                 installSnapshot(state.getSerializedState());
             }
 
-            for (int eid = lastCheckpointEid + 1; eid <= lastEid; eid++) {
+            for (int cid = lastCheckpointCID + 1; cid <= lastCID; cid++) {
                 try {
 
-                    bftsmart.tom.util.Logger.println("(DefaultRecoverable.setState) interpreting and verifying batched requests for eid " + eid);
-                    if (state.getMessageBatch(eid) == null) {
-                        System.out.println("(DefaultRecoverable.setState) " + eid + " NULO!!!");
+                    bftsmart.tom.util.Logger.println("(DefaultRecoverable.setState) interpreting and verifying batched requests for cid " + cid);
+                    if (state.getMessageBatch(cid) == null) {
+                        System.out.println("(DefaultRecoverable.setState) " + cid + " NULO!!!");
                     }
 
-                    CommandsInfo cmdInfo = state.getMessageBatch(eid); 
+                    CommandsInfo cmdInfo = state.getMessageBatch(cid); 
                     byte[][] commands = cmdInfo.commands; // take a batch
                     MessageContext[] msgCtx = cmdInfo.msgCtx;
                     
@@ -278,9 +273,9 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
                 } catch (Exception e) {
                     e.printStackTrace(System.err);
                     if (e instanceof ArrayIndexOutOfBoundsException) {
-                        System.out.println("Eid do ultimo checkpoint: " + state.getLastCheckpointEid());
-                        System.out.println("Eid do ultimo consenso: " + state.getLastEid());
-                        System.out.println("numero de mensagens supostamente no batch: " + (state.getLastEid() - state.getLastCheckpointEid() + 1));
+                        System.out.println("CID do ultimo checkpoint: " + state.getLastCheckpointCID());
+                        System.out.println("CID do ultimo consenso: " + state.getLastCID());
+                        System.out.println("numero de mensagens supostamente no batch: " + (state.getLastCID() - state.getLastCheckpointCID() + 1));
                         System.out.println("numero de mensagens realmente no batch: " + state.getMessageBatches().length);
                     }
                 }
@@ -290,7 +285,7 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
 
         }
         
-        return lastEid;
+        return lastCID;
     }
 
     /**
@@ -303,11 +298,11 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
      * @return the id of the consensus decision for each command
      */
     private int[] consensusIds(MessageContext[] ctxs) {
-        int[] eids = new int[ctxs.length];
+        int[] cids = new int[ctxs.length];
         for (int i = 0; i < ctxs.length; i++) {
-            eids[i] = ctxs[i].getConsensusId();
+            cids[i] = ctxs[i].getConsensusId();
         }
-        return eids;
+        return cids;
     }
 
     /**
@@ -325,20 +320,20 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
      * there is no replica taking a checkpoint during the period comprised by
      * this command batch, it is returned -1
      */
-    private int findCheckpointPosition(int[] eids) {
+    private int findCheckpointPosition(int[] cids) {
         if (checkpointPeriod < 1) {
             return -1;
         }
-        if (eids.length == 0) {
+        if (cids.length == 0) {
             throw new IllegalArgumentException();
         }
-        int firstEid = eids[0];
-        if ((firstEid + 1) % checkpointPeriod == 0) {
-            return eidPosition(eids, firstEid);
+        int firstCID = cids[0];
+        if ((firstCID + 1) % checkpointPeriod == 0) {
+            return cidPosition(cids, firstCID);
         } else {
-            int nextCkpIndex = (((firstEid / checkpointPeriod) + 1) * checkpointPeriod) - 1;
-            if (nextCkpIndex <= eids[eids.length - 1]) {
-                return eidPosition(eids, nextCkpIndex);
+            int nextCkpIndex = (((firstCID / checkpointPeriod) + 1) * checkpointPeriod) - 1;
+            if (nextCkpIndex <= cids[cids.length - 1]) {
+                return cidPosition(cids, nextCkpIndex);
             }
         }
         return -1;
@@ -352,16 +347,16 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
      *
      * @param msgCtx the message context of the commands executed by the
      * replica. There is one message context for each command
-     * @param eid the eid of the consensus where a replica took a checkpoint
-     * @return the higher position where the eid appears
+     * @param cid the CID of the consensus where a replica took a checkpoint
+     * @return the higher position where the CID appears
      */
-    private int eidPosition(int[] eids, int eid) {
+    private int cidPosition(int[] cids, int cid) {
         int index = -1;
-        if (eids[eids.length - 1] == eid) {
-            return eids.length - 1;
+        if (cids[cids.length - 1] == cid) {
+            return cids.length - 1;
         }
-        for (int i = 0; i < eids.length; i++) {
-            if (eids[i] > eid) {
+        for (int i = 0; i < cids.length; i++) {
+            if (cids[i] > cid) {
                 break;
             }
             index++;
@@ -384,9 +379,9 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
                 log = new DiskStateLog(replicaId, state, computeHash(state), isToLog, syncLog, syncCkp);
 
                 ApplicationState storedState = ((DiskStateLog) log).loadDurableState();
-                if (storedState.getLastEid() > 0) {
+                if (storedState.getLastCID() > 0) {
                     setState(storedState);
-                    getStateManager().setLastEID(storedState.getLastEid());
+                    getStateManager().setLastCID(storedState.getLastCID());
                 }
             } else {
                 log = new StateLog(checkpointPeriod, state, computeHash(state));

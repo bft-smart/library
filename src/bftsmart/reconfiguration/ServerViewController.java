@@ -141,14 +141,14 @@ public class ServerViewController extends ViewController {
         }
     }
 
-    public byte[] executeUpdates(int eid) {
+    public byte[] executeUpdates(int cid) {
 
 
-        List<Integer> jSet = new LinkedList<Integer>();
-        List<Integer> rSet = new LinkedList<Integer>();
+        List<Integer> jSet = new LinkedList<>();
+        List<Integer> rSet = new LinkedList<>();
         int f = -1;
         
-        List<String> jSetInfo = new LinkedList<String>();
+        List<String> jSetInfo = new LinkedList<>();
         
         
         for (int i = 0; i < updates.size(); i++) {
@@ -182,7 +182,7 @@ public class ServerViewController extends ViewController {
 
         }
         //ret = reconfigure(updates.get(i).getContent());
-        return reconfigure(jSetInfo, jSet, rSet, f, eid);
+        return reconfigure(jSetInfo, jSet, rSet, f, cid);
     }
 
     private boolean contains(int id, List<Integer> list) {
@@ -194,7 +194,7 @@ public class ServerViewController extends ViewController {
         return false;
     }
 
-    private byte[] reconfigure(List<String> jSetInfo, List<Integer> jSet, List<Integer> rSet, int f, int eid) {
+    private byte[] reconfigure(List<String> jSetInfo, List<Integer> jSet, List<Integer> rSet, int f, int cid) {
         //ReconfigureRequest request = (ReconfigureRequest) TOMUtil.getObject(req);
         // Hashtable<Integer, String> props = request.getProperties();
         // int f = Integer.valueOf(props.get(CHANGE_F));
@@ -230,7 +230,7 @@ public class ServerViewController extends ViewController {
         View newV = new View(currentView.getId() + 1, nextV, f,addresses);
 
         System.out.println("new view: " + newV);
-        System.out.println("installed on eid: " + eid);
+        System.out.println("installed on CID: " + cid);
         System.out.println("lastJoinSet: " + jSet);
 
         //TODO:Remove all information stored about each process in rSet
@@ -248,7 +248,7 @@ public class ServerViewController extends ViewController {
                 
         } 
         return TOMUtil.getBytes(new ReconfigureReply(newV, jSetInfo.toArray(new String[0]),
-                 eid, tomLayer.lm.getCurrentLeader()));
+                 cid, tomLayer.lm.getCurrentLeader()));
     }
 
     public TOMMessage[] clearUpdates() {

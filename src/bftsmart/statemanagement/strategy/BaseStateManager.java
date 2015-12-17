@@ -52,12 +52,12 @@ public abstract class BaseStateManager implements StateManager {
     protected HashMap<Integer, CertifiedDecision> senderProofs = null;
 
     protected boolean appStateOnly;
-    protected int waitingEid = -1;
-    protected int lastEid;
+    protected int waitingCID = -1;
+    protected int lastCID;
     protected ApplicationState state;
 
     protected boolean isInitializing = true;
-    private HashMap<Integer, Integer> senderEids = null;
+    private HashMap<Integer, Integer> senderCIDs = null;
 
     public BaseStateManager() {
         senderStates = new HashMap<>();
@@ -152,34 +152,34 @@ public abstract class BaseStateManager implements StateManager {
     }
 
     @Override
-    public void setLastEID(int eid) {
-        lastEid = eid;
+    public void setLastCID(int cid) {
+        lastCID = cid;
     }
 
     @Override
-    public int getLastEID() {
-        return lastEid;
+    public int getLastCID() {
+        return lastCID;
     }
 
     @Override
-    public void requestAppState(int eid) {
-        lastEid = eid + 1;
-        waitingEid = eid;
-        System.out.println("waitingeid is now " + eid);
+    public void requestAppState(int cid) {
+        lastCID = cid + 1;
+        waitingCID = cid;
+        System.out.println("waitingcid is now " + cid);
         appStateOnly = true;
         requestState();
     }
 
     @Override
-    public void analyzeState(int eid) {
+    public void analyzeState(int cid) {
         Logger.println("(TOMLayer.analyzeState) The state transfer protocol is enabled");
-        if (waitingEid == -1) {
+        if (waitingCID == -1) {
             Logger.println("(TOMLayer.analyzeState) I'm not waiting for any state, so I will keep record of this message");
-            if (tomLayer.execManager.isDecidable(eid)) {
-                System.out.println("BaseStateManager.analyzeState: I have now more than " + SVController.getCurrentViewF() + " messages for EID " + eid + " which are beyond EID " + lastEid);
-                lastEid = eid;
-                waitingEid = eid - 1;
-                System.out.println("analyzeState " + waitingEid);
+            if (tomLayer.execManager.isDecidable(cid)) {
+                System.out.println("BaseStateManager.analyzeState: I have now more than " + SVController.getCurrentViewF() + " messages for CID " + cid + " which are beyond CID " + lastCID);
+                lastCID = cid;
+                waitingCID = cid - 1;
+                System.out.println("analyzeState " + waitingCID);
                 requestState();
             }
         }
@@ -193,7 +193,7 @@ public abstract class BaseStateManager implements StateManager {
         if (isInitializing) {
             return true;
         }
-        return waitingEid > -1;
+        return waitingCID > -1;
     }
 
     @Override
@@ -201,13 +201,13 @@ public abstract class BaseStateManager implements StateManager {
         int me = SVController.getStaticConf().getProcessId();
         int[] target = SVController.getCurrentViewAcceptors();
 
-        SMMessage currentEid = new StandardSMMessage(me, -1, TOMUtil.SM_ASK_INITIAL, 0, null, null, 0, 0);
-        tomLayer.getCommunication().send(target, currentEid);
+        SMMessage currentCID = new StandardSMMessage(me, -1, TOMUtil.SM_ASK_INITIAL, 0, null, null, 0, 0);
+        tomLayer.getCommunication().send(target, currentCID);
 
         target = SVController.getCurrentViewOtherAcceptors();
 
         while (isInitializing) {
-            tomLayer.getCommunication().send(target, currentEid);
+            tomLayer.getCommunication().send(target, currentCID);
             try {
                 Thread.sleep(1000);
             } catch (InterruptedException e) {
@@ -220,37 +220,37 @@ public abstract class BaseStateManager implements StateManager {
     public void currentConsensusIdAsked(int sender) {
         int me = SVController.getStaticConf().getProcessId();
         int lastConsensusId = tomLayer.getLastExec();
-        SMMessage currentEidReply = new StandardSMMessage(me, lastConsensusId, TOMUtil.SM_REPLY_INITIAL, 0, null, null, 0, 0);
-        tomLayer.getCommunication().send(new int[]{sender}, currentEidReply);
+        SMMessage currentCIDReply = new StandardSMMessage(me, lastConsensusId, TOMUtil.SM_REPLY_INITIAL, 0, null, null, 0, 0);
+        tomLayer.getCommunication().send(new int[]{sender}, currentCIDReply);
     }
 
     @Override
     public synchronized void currentConsensusIdReceived(SMMessage smsg) {
-        if (!isInitializing || waitingEid > -1) {            
+        if (!isInitializing || waitingCID > -1) {            
             return;
         }
-        if (senderEids == null) {
-            senderEids = new HashMap<>();
+        if (senderCIDs == null) {
+            senderCIDs = new HashMap<>();
         }
-        senderEids.put(smsg.getSender(), smsg.getCID());
-        if (senderEids.size() >= SVController.getQuorum()) {
+        senderCIDs.put(smsg.getSender(), smsg.getCID());
+        if (senderCIDs.size() >= SVController.getQuorum()) {
 
-            HashMap<Integer, Integer> eids = new HashMap<>();
-            for (int id : senderEids.keySet()) {
+            HashMap<Integer, Integer> cids = new HashMap<>();
+            for (int id : senderCIDs.keySet()) {
                                 
-                int value = senderEids.get(id);
+                int value = senderCIDs.get(id);
                 
-                Integer count = eids.get(value);
+                Integer count = cids.get(value);
                 if (count == null) {
-                    eids.put(value, 0);
+                    cids.put(value, 0);
                 } else {
-                    eids.put(value, count + 1);
+                    cids.put(value, count + 1);
                 }
             }
-            for (int key : eids.keySet()) {
-                if (eids.get(key) >= SVController.getQuorum()) {
-                    if (key == lastEid) {
-                        System.out.println("QUORUM OF REPLICAS REPLIED WITH EID " + key);
+            for (int key : cids.keySet()) {
+                if (cids.get(key) >= SVController.getQuorum()) {
+                    if (key == lastCID) {
+                        System.out.println("QUORUM OF REPLICAS REPLIED WITH CID " + key);
                         dt.deliverLock();
                         isInitializing = false;
                         tomLayer.setLastExec(key);
@@ -259,10 +259,10 @@ public abstract class BaseStateManager implements StateManager {
                         break;
                     } else {
                         //ask for state
-                        System.out.println("QUORUM " + key + " DIFFERENT FROM MY EID " + lastEid + ". WILL ASK FOR STATE");
-                        lastEid = key + 1;
-                        if (waitingEid == -1) {
-                            waitingEid = key;
+                        System.out.println("QUORUM " + key + " DIFFERENT FROM MY CID " + lastCID + ". WILL ASK FOR STATE");
+                        lastCID = key + 1;
+                        if (waitingCID == -1) {
+                            waitingCID = key;
                             requestState();
                         }
                     }

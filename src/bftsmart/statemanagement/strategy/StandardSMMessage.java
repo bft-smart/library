@@ -32,8 +32,8 @@ public class StandardSMMessage extends SMMessage {
 
 	private int replica;
 
-    public StandardSMMessage(int sender, int eid, int type, int replica, ApplicationState state, View view, int regency, int leader) {
-    	super(sender, eid, type, state, view, regency, leader);
+    public StandardSMMessage(int sender, int cid, int type, int replica, ApplicationState state, View view, int regency, int leader) {
+    	super(sender, cid, type, state, view, regency, leader);
     	this.replica = replica;
     }
 	

@@ -70,7 +70,7 @@ public class BFTMapBatchServer extends DefaultRecoverable {
     	stateLock.lock();
     	ops += commands.length;
     	if(ops % 5000 == 0)
-    		System.out.println("OPS: " + ops + ", Eid: " + msgCtxs[0].getConsensusId());
+    		System.out.println("OPS: " + ops + ", CID: " + msgCtxs[0].getConsensusId());
     	try {
     		int index = 0;
         	for(byte[] command: commands) {

@@ -35,8 +35,8 @@ public class CSTRequestFGT1 extends CSTRequest {
 	 */
 	private int logSize;
 	
-	public CSTRequestFGT1(int eid) {
-		super(eid);
+	public CSTRequestFGT1(int cid) {
+		super(cid);
 	}
 	
 	public int getHashesReplica() {
@@ -54,12 +54,12 @@ public class CSTRequestFGT1 extends CSTRequest {
 	public void defineReplicas(int[] processes, int globalCkpPeriod, int replicaId) {
     	int N = processes.length;
     	int ckpPeriod = globalCkpPeriod / N;
-    	int logSize = (eid + 1) % ckpPeriod;
+    	int logSize = (cid + 1) % ckpPeriod;
     	
     	// Next replica that performed the checkpoint
     	// The last checkpoint replica plus all replicas minus one to get the imediate replica before the
     	// checkpoint
-    	int indexCkpReplica = (((getEid() - ckpPeriod) % globalCkpPeriod) / ckpPeriod) % N;
+    	int indexCkpReplica = (((getCID() - ckpPeriod) % globalCkpPeriod) / ckpPeriod) % N;
     	this.hashesReplica = processes[indexCkpReplica];
     	this.checkpointReplica = processes[(indexCkpReplica + (N - 1)) % N];
     	this.nbrHashesBeforeCkp = ckpPeriod;

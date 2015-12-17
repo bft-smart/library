@@ -137,16 +137,16 @@ public final class DeliveryThread extends Thread {
 
     public void update(ApplicationState state) {
        
-        int lastEid =  recoverer.setState(state);
+        int lastCID =  recoverer.setState(state);
 
         //set this decision as the last one from this replica
-        System.out.println("Setting last EID to " + lastEid);
-        tomLayer.setLastExec(lastEid);
+        System.out.println("Setting last CID to " + lastCID);
+        tomLayer.setLastExec(lastCID);
 
         //define the last stable consensus... the stable consensus can
         //be removed from the leaderManager and the executionManager
-        if (lastEid > 2) {
-            int stableConsensus = lastEid - 3;
+        if (lastCID > 2) {
+            int stableConsensus = lastCID - 3;
             tomLayer.execManager.removeOutOfContexts(stableConsensus);
         }
 
@@ -157,7 +157,7 @@ public final class DeliveryThread extends Thread {
         System.out.print("Current decided size: " + decided.size());
         decided.clear();
 
-        System.out.println("(DeliveryThread.update) All finished up to " + lastEid);
+        System.out.println("(DeliveryThread.update) All finished up to " + lastCID);
     }
 
     /**
@@ -231,9 +231,9 @@ public final class DeliveryThread extends Thread {
   					// be removed from the leaderManager and the executionManager
   					// TODO: Is this part necessary? If it is, can we put it
   					// inside setLastExec
-  					int eid = lastDecision.getConsensusId();
-  					if (eid > 2) {
-  						int stableConsensus = eid - 3;
+  					int cid = lastDecision.getConsensusId();
+  					if (cid > 2) {
+  						int stableConsensus = cid - 3;
 
   						tomLayer.lm.removeStableConsenusInfos(stableConsensus);
   						tomLayer.execManager.removeConsensus(stableConsensus);

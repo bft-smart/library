@@ -71,8 +71,8 @@ public class StandardStateManager extends BaseStateManager {
         //	changeReplica();
 
         state = null;
-        lastEid = -1;
-        waitingEid = -1;
+        lastCID = -1;
+        waitingCID = -1;
 
         appStateOnly = false;
     }
@@ -100,17 +100,17 @@ public class StandardStateManager extends BaseStateManager {
         changeReplica(); // always ask the complete state to a different replica
         
         SMMessage smsg = new StandardSMMessage(SVController.getStaticConf().getProcessId(),
-                waitingEid, TOMUtil.SM_REQUEST, replica, null, null, -1, -1);
+                waitingCID, TOMUtil.SM_REQUEST, replica, null, null, -1, -1);
         tomLayer.getCommunication().send(SVController.getCurrentViewOtherAcceptors(), smsg);
 
-        System.out.println("(StandardStateManager.requestState) I just sent a request to the other replicas for the state up to EID " + waitingEid);
+        System.out.println("(StandardStateManager.requestState) I just sent a request to the other replicas for the state up to CID " + waitingCID);
 
         TimerTask stateTask =  new TimerTask() {
             public void run() {
             	System.out.println("Timeout to retrieve state");
                 int[] myself = new int[1];
                 myself[0] = SVController.getStaticConf().getProcessId();
-                tomLayer.getCommunication().send(myself, new StandardSMMessage(-1, waitingEid, TOMUtil.TRIGGER_SM_LOCALLY, -1, null, null, -1, -1));
+                tomLayer.getCommunication().send(myself, new StandardSMMessage(-1, waitingCID, TOMUtil.TRIGGER_SM_LOCALLY, -1, null, null, -1, -1));
             }
         };
 
@@ -162,7 +162,7 @@ public class StandardStateManager extends BaseStateManager {
     public void SMReplyDeliver(SMMessage msg, boolean isBFT) {
         lockTimer.lock();
         if (SVController.getStaticConf().isStateTransferEnabled()) {
-            if (waitingEid != -1 && msg.getCID() == waitingEid) {
+            if (waitingCID != -1 && msg.getCID() == waitingCID) {
                 int currentRegency = -1;
                 int currentLeader = -1;
                 View currentView = null;
@@ -176,7 +176,7 @@ public class StandardStateManager extends BaseStateManager {
                     if (moreThan2F_Regencies(msg.getRegency())) currentRegency = msg.getRegency();
                     if (moreThan2F_Leaders(msg.getLeader())) currentLeader = msg.getLeader();
                     if (moreThan2F_Views(msg.getView())) currentView = msg.getView();
-                    if (moreThan2F_Proofs(waitingEid, this.tomLayer.getSynchronizer().getLCManager())) currentProof = msg.getState().getLastProof();
+                    if (moreThan2F_Proofs(waitingCID, this.tomLayer.getSynchronizer().getLCManager())) currentProof = msg.getState().getLastProof();
                     
                 } else {
                     currentLeader = tomLayer.lm.getCurrentLeader();
@@ -222,9 +222,9 @@ public class StandardStateManager extends BaseStateManager {
                         
                         if (currentProof != null && !appStateOnly) {
                             
-                            System.out.println("Installing proof for consensus " + waitingEid);
+                            System.out.println("Installing proof for consensus " + waitingCID);
 
-                            Consensus cons = execManager.getConsensus(waitingEid);
+                            Consensus cons = execManager.getConsensus(waitingCID);
                             Epoch e = null;
                             
                             for (ConsensusMessage cm : currentProof.getConsMessages()) {
@@ -256,10 +256,10 @@ public class StandardStateManager extends BaseStateManager {
                                 e.deserializedPropValue = tomLayer.checkProposedValue(currentProof.getDecision(), false);
                                  cons.decided(e, false);
                                  
-                                System.out.println("Successfully installed proof for consensus " + waitingEid);
+                                System.out.println("Successfully installed proof for consensus " + waitingCID);
 
                             } else {
-                                System.out.println("Failed to install proof for consensus " + waitingEid);
+                                System.out.println("Failed to install proof for consensus " + waitingCID);
 
                             }
 
@@ -272,13 +272,13 @@ public class StandardStateManager extends BaseStateManager {
                         //    tomLayer.requestsTimer.setTimeout(tomLayer.requestsTimer.getTimeout() * (currentRegency * 2));
                         
                         dt.deliverLock();
-                        waitingEid = -1;
+                        waitingCID = -1;
                         dt.update(state);
                         
                         if (!appStateOnly && execManager.stopped()) {
                             Queue<ConsensusMessage> stoppedMsgs = execManager.getStoppedMsgs();
                             for (ConsensusMessage stopped : stoppedMsgs) {
-                                if (stopped.getNumber() > state.getLastEid() /*msg.getEid()*/)
+                                if (stopped.getNumber() > state.getLastCID() /*msg.getCID()*/)
                                     execManager.addOutOfContextMessage(stopped);
                             }
                             execManager.clearStopped();
@@ -311,7 +311,7 @@ public class StandardStateManager extends BaseStateManager {
                         }
                     } else if (otherReplicaState == null && (SVController.getCurrentViewN() / 2) < getReplies()) {
                     	System.out.println("otherReplicaState == null && (SVController.getCurrentViewN() / 2) < getReplies()");
-                        waitingEid = -1;
+                        waitingCID = -1;
                         reset();
  
                         if (stateTimer != null) stateTimer.cancel();
@@ -333,7 +333,7 @@ public class StandardStateManager extends BaseStateManager {
                         Logger.println("(TOMLayer.SMReplyDeliver) Could not obtain the state, retrying");
                         reset();
                         if (stateTimer != null) stateTimer.cancel();
-                        waitingEid = -1;
+                        waitingCID = -1;
                         //requestState();
                     } else {
                         System.out.println(" -- State transfer not yet finished");
@@ -384,8 +384,8 @@ public class StandardStateManager extends BaseStateManager {
 	public void currentConsensusIdAsked(int sender) {
 		int me = SVController.getStaticConf().getProcessId();
                 int lastConsensusId = tomLayer.getLastExec();
-		SMMessage currentEid = new StandardSMMessage(me, lastConsensusId, TOMUtil.SM_REPLY_INITIAL, 0, null, null, 0, 0);
-		tomLayer.getCommunication().send(new int[]{sender}, currentEid);
+		SMMessage currentCID = new StandardSMMessage(me, lastConsensusId, TOMUtil.SM_REPLY_INITIAL, 0, null, null, 0, 0);
+		tomLayer.getCommunication().send(new int[]{sender}, currentCID);
 	}
 	
 }
