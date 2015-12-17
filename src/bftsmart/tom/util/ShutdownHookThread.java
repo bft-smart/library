@@ -53,18 +53,19 @@ public class ShutdownHookThread extends Thread {
     @Override
     public void run() {
         
+        StringBuffer buffer = new StringBuffer();
         SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss.SSS");
         int lastCons = tomLayer.getLastExec();
         int currentCons = tomLayer.getInExec();
         Consensus c = null;
         Epoch e = null;
 
-        System.err.println("---------- DEBUG INFO ----------\n");
-        System.err.println("Current time: " + sdf.format(new Date()));
-        System.err.println("Current leader: " + tomLayer.lm.getCurrentLeader());
-        System.err.println("Current regency: " + tomLayer.getSynchronizer().getLCManager().getLastReg());
+        buffer.append("\n---------- DEBUG INFO ----------\n");
+        buffer.append("\nCurrent time: " + sdf.format(new Date()));
+        buffer.append("\nCurrent leader: " + tomLayer.lm.getCurrentLeader());
+        buffer.append("\nCurrent regency: " + tomLayer.getSynchronizer().getLCManager().getLastReg());
 
-        System.err.println("\nLast finished consensus: " + (lastCons == -1 ? "None" : lastCons));
+        buffer.append("\n\nLast finished consensus: " + (lastCons == -1 ? "None" : lastCons));
         if(lastCons > -1) {
             
             c = manager.getConsensus(lastCons);
@@ -74,15 +75,15 @@ public class ShutdownHookThread extends Thread {
                     rv.setHashedValue(md.digest(rv.getValue()));
             }
             
-            System.err.println("\n\t -- Consensus state: ETS=" + c.getEts() + " WriteSet=["+ c.getWriteSet()
-            + "] (VAL,TS)=["+c.getQuorumWrites() + "]");
+            buffer.append("\n\n\t -- Consensus state: \n\n\t\tETS=" + c.getEts() + " \n\t\tWriteSet=["+ c.getWriteSet()
+            + "] \n\t\t(VAL,TS)=["+c.getQuorumWrites() + "]");
             
             e = c.getLastEpoch();
             if(e != null){
-                System.err.println("\n\t -- Epoch state: "+e.toString());
+                buffer.append("\n\n\t -- Epoch state: \n"+e.toString());
             }
         }
-        System.err.println("\nConsensus in execution: " + (currentCons == -1 ? "None" : currentCons));
+        buffer.append("\n\nConsensus in execution: " + (currentCons == -1 ? "None" : currentCons));
         
         c = null;
         e = null;
@@ -95,15 +96,17 @@ public class ShutdownHookThread extends Thread {
                     rv.setHashedValue(md.digest(rv.getValue()));
             }
             
-            System.err.println("\n\t -- Consensus state: ETS=" + c.getEts() + " WriteSet=["+ c.getWriteSet()
-            + "] (VAL,TS)=["+c.getQuorumWrites() + "]");
+            buffer.append("\n\n\t -- Consensus state: \n\n\t\tETS=" + c.getEts() + " \n\t\tWriteSet=["+ c.getWriteSet()
+            + "] \n\t\t(VAL,TS)=["+c.getQuorumWrites() + "]");
             
             e = c.getLastEpoch();
             if(e != null) {
-                System.err.println("\n\t -- Epoch state: "+e.toString());
+                buffer.append("\n\n\t -- Epoch state: \n"+e.toString());
             }
         }
 
-        System.err.println("\n---------- ---------- ----------");
+        buffer.append("\n\n---------- ---------- ----------\n");
+        
+        System.out.println(buffer);
     }
 }

@@ -359,8 +359,8 @@ public class Epoch implements Serializable {
         StringBuffer buffWrite = new StringBuffer(1024);
         StringBuffer buffAccept = new StringBuffer(1024);
 
-        buffWrite.append("Writes=(");
-        buffAccept.append("Accepts=(");
+        buffWrite.append("\n\t\tWrites=(");
+        buffAccept.append("\n\t\tAccepts=(");
 
         for (int i = 0; i < write.length - 1; i++) {
             buffWrite.append("[" + str(write[i]) + "], ");
@@ -370,7 +370,7 @@ public class Epoch implements Serializable {
         buffWrite.append("[" + str(write[write.length - 1]) +"])");
         buffAccept.append("[" + str(accept[accept.length - 1]) + "])");
 
-        return "CID=" + consensus.getId() + " TS=" + getTimestamp() + " " + "Propose=[" + (propValueHash != null ? str(propValueHash) : null) + "] " + buffWrite + " " + buffAccept;
+        return "\n\t\tCID=" + consensus.getId() + " \n\t\tTS=" + getTimestamp() + " " + "\n\t\tPropose=[" + (propValueHash != null ? str(propValueHash) : null) + "] " + buffWrite + " " + buffAccept;
     }
 
     private String str(byte[] obj) {
