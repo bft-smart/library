@@ -229,5 +229,13 @@ public class MessageContext implements Serializable {
     public boolean isNoOp() {
         return noOp;
     }
+    
+    public TOMMessage recreateTOMMessage(byte[] content) {
+
+        TOMMessage ret = new TOMMessage(sender, session, sequence, operationId, content, viewID, type);
+        ret.serializedMessageSignature = signature;
+        
+        return ret;
+    }
 
 }
