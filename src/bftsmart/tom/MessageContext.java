@@ -234,6 +234,7 @@ public class MessageContext implements Serializable {
 
         TOMMessage ret = new TOMMessage(sender, session, sequence, operationId, content, viewID, type);
         ret.serializedMessageSignature = signature;
+        ret.serializedMessage = TOMMessage.messageToBytes(ret);
         
         return ret;
     }
