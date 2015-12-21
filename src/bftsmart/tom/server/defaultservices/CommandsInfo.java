@@ -46,13 +46,16 @@ public class CommandsInfo implements Externalizable {
         if (msgCtx != null && msgCtx.length > 0) {
         	onlyNeeded = new MessageContext[msgCtx.length];
         	for(int i = 0; i < msgCtx.length; i++) {
-				MessageContext msg = new MessageContext(msgCtx[i].getSender(),
-						msgCtx[i].getTimestamp(), msgCtx[i].getNumOfNonces(),
-                                                msgCtx[i].getSeed(), msgCtx[i].getRegency(),
-                                                msgCtx[i].getLeader(), msgCtx[i].getConsensusId(),
-                                                msgCtx[i].getProof(), msgCtx[i].getFirstInBatch(),
-                                                msgCtx[i].isNoOp());
-				onlyNeeded[i] = msg;
+                    MessageContext msg = new MessageContext(msgCtx[i].getSender(),
+                            msgCtx[i].getViewID(), msgCtx[i].getType(),
+                            msgCtx[i].getSession(), msgCtx[i].getSequence(),
+                            msgCtx[i].getOperationId(), msgCtx[i].getReplyServer(),
+                            msgCtx[i].getSignature(), msgCtx[i].getTimestamp(),
+                            msgCtx[i].getNumOfNonces(),  msgCtx[i].getSeed(),
+                            msgCtx[i].getRegency(), msgCtx[i].getLeader(),
+                            msgCtx[i].getConsensusId(), msgCtx[i].getProof(),
+                            msgCtx[i].getFirstInBatch(), msgCtx[i].isNoOp());
+                    onlyNeeded[i] = msg;
         	}
         }
         this.msgCtx = onlyNeeded;

@@ -16,6 +16,7 @@ limitations under the License.
 package bftsmart.tom;
 
 import bftsmart.tom.core.messages.TOMMessage;
+import bftsmart.tom.core.messages.TOMMessageType;
 import bftsmart.tom.leaderchange.CertifiedDecision;
 
 import java.io.Serializable;
@@ -30,18 +31,27 @@ import java.util.Random;
  */
 public class MessageContext implements Serializable {
 	
-	private static final long serialVersionUID = -3757195646384786213L;
-	
+    private static final long serialVersionUID = -3757195646384786213L;
+
+    // Client info
+    private final int sender;
+    private final int viewID;
+    private final TOMMessageType type;
+    private final int session;
+    private final int sequence;
+    private final int operationId;
+    private final int replyServer;
+    private final  byte[] signature;
+    
+    // Consensus info
     private final long timestamp;
     private final int regency;
     private final int leader;
     private final int consensusId;
     private final int numOfNonces;
-    private final int sender;
     private final long seed;
-
     private final CertifiedDecision proof;
-            
+                
     private final TOMMessage firstInBatch; //to be replaced by a statistics class
     private boolean lastInBatch; // indicates that the command is the last in the batch. Used for logging
     private final boolean noOp;
@@ -54,6 +64,13 @@ public class MessageContext implements Serializable {
      * Constructor 
      * 
      * @param sender
+     * @param viewID
+     * @param type
+     * @param session
+     * @param sequence
+     * @param operationId
+     * @param replyServer
+     * @param signature
      * @param timestamp
      * @param numOfNonces
      * @param seed
@@ -64,21 +81,66 @@ public class MessageContext implements Serializable {
      * @param firstInBatch
      * @param noOp 
      */
-    public MessageContext(int sender, long timestamp, int numOfNonces, long seed, int regency, int leader, int consensusId, CertifiedDecision proof, TOMMessage firstInBatch, boolean noOp) {
-        this.nonces = null;
+    public MessageContext(int sender, int viewID, TOMMessageType type,
+            int session, int sequence, int operationId, int replyServer, byte[] signature,
+            long timestamp, int numOfNonces, long seed, int regency, int leader, int consensusId,
+            CertifiedDecision proof, TOMMessage firstInBatch, boolean noOp) {
         
+        this.nonces = null;
+               
         this.sender = sender;
+        this.viewID = viewID;
+        this.type = type;
+        this.session = session;
+        this.sequence = sequence;
+        this.operationId = operationId;
+        this.replyServer = replyServer;
+        this.signature = signature;
+        
         this.timestamp = timestamp;
         this.regency = regency;
         this.leader = leader;
         this.consensusId = consensusId;
         this.numOfNonces = numOfNonces;
         this.seed = seed;
+        
         this.proof = proof;
         this.firstInBatch = firstInBatch;
         this.noOp = noOp;
     }
 
+    public static long getSerialVersionUID() {
+        return serialVersionUID;
+    }
+
+    public int getViewID() {
+        return viewID;
+    }
+
+    public TOMMessageType getType() {
+        return type;
+    }
+
+    public int getSession() {
+        return session;
+    }
+
+    public int getSequence() {
+        return sequence;
+    }
+
+    public int getOperationId() {
+        return operationId;
+    }
+    
+    public int getReplyServer() {
+        return replyServer;
+    }
+    
+    public byte[] getSignature() {
+        return signature;
+    }
+    
     /**
      * Returns the sender of the message
      * @return The sender of the message

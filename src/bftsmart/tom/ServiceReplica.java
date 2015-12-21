@@ -279,8 +279,12 @@ public class ServiceReplica {
                         noop = false;
 
                         numRequests++;
-                        MessageContext msgCtx = new MessageContext(request.getSender(), firstRequest.timestamp, request.numOfNonces, request.seed,
-                                regencies[consensusCount], leaders[consensusCount], consId[consensusCount], proofs[consensusCount], firstRequest, false);
+                        MessageContext msgCtx = new MessageContext(request.getSender(), request.getViewID(),
+                                request.getReqType(), request.getSession(), request.getSequence(), request.getOperationId(),
+                                request.getReplyServer(), request.serializedMessageSignature, firstRequest.timestamp,
+                                request.numOfNonces, request.seed, regencies[consensusCount], leaders[consensusCount],
+                                consId[consensusCount], proofs[consensusCount], firstRequest, false);
+                        
                         if (requestCount + 1 == requestsFromConsensus.length) {
 
                             msgCtx.setLastInBatch();
@@ -339,7 +343,8 @@ public class ServiceReplica {
                 } else if (request.getViewID() < SVController.getCurrentViewId()) { // message sender had an old view, resend the message to
                                                                                     // him (but only if it came from consensus an not state transfer)
                     
-                    tomLayer.getCommunication().send(new int[]{request.getSender()}, new TOMMessage(SVController.getStaticConf().getProcessId(), request.getSession(), request.getSequence(), TOMUtil.getBytes(SVController.getCurrentView()), SVController.getCurrentViewId()));
+                    tomLayer.getCommunication().send(new int[]{request.getSender()}, new TOMMessage(SVController.getStaticConf().getProcessId(),
+                            request.getSession(), request.getSequence(), TOMUtil.getBytes(SVController.getCurrentView()), SVController.getCurrentViewId()));
                 }
                 requestCount++;
             }
@@ -352,7 +357,9 @@ public class ServiceReplica {
                 System.out.println(" --- A consensus instance finished, but there were no commands to deliver to the application.");
                 System.out.println(" --- Notifying recoverable about a blank consensus.");
 
-                MessageContext msgCtx = new MessageContext(-1, -1, 0, 0, regencies[consensusCount], leaders[consensusCount], consId[consensusCount], proofs[consensusCount], null, true);
+                MessageContext msgCtx = new MessageContext(-1, -1, null, -1, -1, -1, -1, null, // Since it is a noop, there is no need to pass info about the client...
+                        -1, 0, 0, regencies[consensusCount], leaders[consensusCount], consId[consensusCount], proofs[consensusCount], //... but there is still need to pass info about the consensus
+                        null, true); // there is no command that is the first of the batch, since it is a noop
                 msgCtx.setLastInBatch();
                 
                 this.recoverer.noOp(consId[consensusCount], msgCtx);
