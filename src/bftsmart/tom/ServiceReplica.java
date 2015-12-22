@@ -295,7 +295,7 @@ public class ServiceReplica {
                             // a Recoverable object. It is useful to allow the application to create a log and
                             // store the proof associated with decisions (which are needed by replicas
                             // that are asking for a state transfer). 
-                            if (this.recoverer != null) this.recoverer.Op(consId[consensusCount], request.getContent(), msgCtx);
+                            if (this.recoverer != null) this.recoverer.Op(msgCtx.getConsensusId(), request.getContent(), msgCtx);
 
                             // deliver requests and contexts to the executor later
                             msgCtxts.add(msgCtx);
@@ -306,7 +306,7 @@ public class ServiceReplica {
                             // a Recoverable object. It is useful to allow the application to create a log and
                             // store the proof associated with decisions (which are needed by replicas
                             // that are asking for a state transfer). 
-                            if (this.recoverer != null) this.recoverer.Op(consId[consensusCount], request.getContent(), msgCtx);
+                            if (this.recoverer != null) this.recoverer.Op(msgCtx.getConsensusId(), request.getContent(), msgCtx);
                             
                             // This is used to deliver the requests to the application and obtain a reply to deliver
                             //to the clients. The raw decision is passed to the application in the line above.
@@ -323,7 +323,7 @@ public class ServiceReplica {
                             // a Recoverable object. It is useful to allow the application to create a log and
                             // store the proof associated with decisions (which are needed by replicas
                             // that are asking for a state transfer). 
-                            if (this.recoverer != null) this.recoverer.Op(consId[consensusCount], request.getContent(), msgCtx);
+                            if (this.recoverer != null) this.recoverer.Op(msgCtx.getConsensusId(), request.getContent(), msgCtx);
 
                             // This is used to deliver the requests to the application and obtain a reply to deliver
                             //to the clients. The raw decision is passed to the application in the line above.
@@ -364,7 +364,7 @@ public class ServiceReplica {
                         null, true); // there is no command that is the first of the batch, since it is a noop
                 msgCtx.setLastInBatch();
                 
-                this.recoverer.noOp(consId[consensusCount], msgCtx);
+                this.recoverer.noOp(msgCtx.getConsensusId(), msgCtx);
             }
             
             consensusCount++;
