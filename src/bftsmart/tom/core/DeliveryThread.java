@@ -40,22 +40,22 @@ import bftsmart.tom.util.Logger;
  */
 public final class DeliveryThread extends Thread {
 
-    private LinkedBlockingQueue<Decision> decided = new LinkedBlockingQueue<>(); // decided from consensus
-    private TOMLayer tomLayer; // TOM layer
-    private ServiceReplica receiver; // Object that receives requests from clients
-    private Recoverable recoverer; // Object that uses state transfer
-    private ServerViewController controller;
-    private Lock decidedLock = new ReentrantLock();
-    private Condition notEmptyQueue = decidedLock.newCondition();
+    private final LinkedBlockingQueue<Decision> decided; 
+    private final TOMLayer tomLayer; // TOM layer
+    private final ServiceReplica receiver; // Object that receives requests from clients
+    private final Recoverable recoverer; // Object that uses state transfer
+    private final ServerViewController controller;
+    private final Lock decidedLock = new ReentrantLock();
+    private final Condition notEmptyQueue = decidedLock.newCondition();
 
     /**
      * Creates a new instance of DeliveryThread
      * @param tomLayer TOM layer
      * @param receiver Object that receives requests from clients
-     * @param conf TOM configuration
      */
     public DeliveryThread(TOMLayer tomLayer, ServiceReplica receiver, Recoverable recoverer, ServerViewController controller) {
         super("Delivery Thread");
+        this.decided = new LinkedBlockingQueue<>();
 
         this.tomLayer = tomLayer;
         this.receiver = receiver;
@@ -84,10 +84,10 @@ public final class DeliveryThread extends Thread {
             tomLayer.setInExec(-1);
         } //else if (tomLayer.controller.getStaticConf().getProcessId() == 0) System.exit(0);
         try {
-        	decidedLock.lock();
+            decidedLock.lock();
             decided.put(dec);
             
-			// clean the ordered messages from the pending buffer
+            // clean the ordered messages from the pending buffer
             TOMMessage[] requests = extractMessagesFromDecision(dec);
 			tomLayer.clientsManager.requestsOrdered(requests);
             
