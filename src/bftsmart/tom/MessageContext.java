@@ -230,6 +230,12 @@ public class MessageContext implements Serializable {
         return noOp;
     }
     
+    /**
+     * Generates a TOMMessage for its associated requests using the new info that it now supports since the previous commit.
+     * It is assumed that the byte array passed to this method is the serialized request associated to the original TOMMessage.
+     * @param content Serialized request associated to the original TOMMessage.
+     * @return A TOMMessage object that is equal to the original object issued by the client
+     */
     public TOMMessage recreateTOMMessage(byte[] content) {
 
         TOMMessage ret = new TOMMessage(sender, session, sequence, operationId, content, viewID, type);
