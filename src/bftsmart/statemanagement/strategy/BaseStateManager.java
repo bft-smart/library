@@ -71,19 +71,19 @@ public abstract class BaseStateManager implements StateManager {
         return senderStates.size();
     }
 
-    protected boolean moreThanF_Replies() {
+    protected boolean enoughReplies() {
         return senderStates.size() > SVController.getCurrentViewF();
     }
 
-    protected boolean moreThan2F_Regencies(int regency) {
+    protected boolean enoughRegencies(int regency) {
         return senderRegencies.size() > SVController.getQuorum();
     }
 
-    protected boolean moreThan2F_Leaders(int leader) {
+    protected boolean enoughLeaders(int leader) {
         return senderLeaders.size() > SVController.getQuorum();
     }
 
-    protected boolean moreThan2F_Views(View view) {
+    protected boolean enoughViews(View view) {
         Collection<View> views = senderViews.values();
         int counter = 0;
         for (View v : views) {
@@ -119,7 +119,7 @@ public abstract class BaseStateManager implements StateManager {
         return id;
     }
         
-    protected boolean moreThan2F_Proofs(int cid, LCManager lc) {
+    protected boolean enoughProofs(int cid, LCManager lc) {
         
         int counter = 0;
         for (CertifiedDecision led : senderProofs.values()) {

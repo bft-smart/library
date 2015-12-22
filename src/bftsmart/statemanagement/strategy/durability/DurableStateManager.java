@@ -193,18 +193,18 @@ public class DurableStateManager extends BaseStateManager {
 					senderLeaders.put(reply.getSender(), reply.getLeader());
 					senderViews.put(reply.getSender(), reply.getView());
                                         senderProofs.put(msg.getSender(), msg.getState().getCertifiedDecision(SVController));
-                                        if (moreThan2F_Regencies(reply.getRegency()))
+                                        if (enoughRegencies(reply.getRegency()))
 						currentRegency = reply.getRegency();
-					if (moreThan2F_Leaders(reply.getLeader()))
+					if (enoughLeaders(reply.getLeader()))
 						currentLeader = reply.getLeader();
-					if (moreThan2F_Views(reply.getView())) {
+					if (enoughViews(reply.getView())) {
 						currentView = reply.getView();
 						if (!currentView.isMember(SVController.getStaticConf()
 								.getProcessId())) {
 							System.out.println("Not a member!");
 						}
 					}                                        
-                                        if (moreThan2F_Proofs(waitingCID, this.tomLayer.getSynchronizer().getLCManager())) currentProof = msg.getState().getCertifiedDecision(SVController);
+                                        if (enoughProofs(waitingCID, this.tomLayer.getSynchronizer().getLCManager())) currentProof = msg.getState().getCertifiedDecision(SVController);
 
 				} else {
 					currentLeader = tomLayer.lm.getCurrentLeader();

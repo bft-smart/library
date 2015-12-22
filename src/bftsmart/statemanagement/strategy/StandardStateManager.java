@@ -173,10 +173,10 @@ public class StandardStateManager extends BaseStateManager {
                 	senderLeaders.put(msg.getSender(), msg.getLeader());
                 	senderViews.put(msg.getSender(), msg.getView());
                         senderProofs.put(msg.getSender(), msg.getState().getCertifiedDecision(SVController));
-                    if (moreThan2F_Regencies(msg.getRegency())) currentRegency = msg.getRegency();
-                    if (moreThan2F_Leaders(msg.getLeader())) currentLeader = msg.getLeader();
-                    if (moreThan2F_Views(msg.getView())) currentView = msg.getView();
-                    if (moreThan2F_Proofs(waitingCID, this.tomLayer.getSynchronizer().getLCManager())) currentProof = msg.getState().getCertifiedDecision(SVController);
+                    if (enoughRegencies(msg.getRegency())) currentRegency = msg.getRegency();
+                    if (enoughLeaders(msg.getLeader())) currentLeader = msg.getLeader();
+                    if (enoughViews(msg.getView())) currentView = msg.getView();
+                    if (enoughProofs(waitingCID, this.tomLayer.getSynchronizer().getLCManager())) currentProof = msg.getState().getCertifiedDecision(SVController);
                     
                 } else {
                     currentLeader = tomLayer.lm.getCurrentLeader();
@@ -193,7 +193,7 @@ public class StandardStateManager extends BaseStateManager {
                 senderStates.put(msg.getSender(), msg.getState());
 
                 System.out.println("Verifying more than F replies");
-                if (moreThanF_Replies()) {
+                if (enoughReplies()) {
                     System.out.println("More than F confirmed");
                     ApplicationState otherReplicaState = getOtherReplicaState();
                     System.out.println("State != null: " + (state != null) + ", recvState != null: " + (otherReplicaState != null));
