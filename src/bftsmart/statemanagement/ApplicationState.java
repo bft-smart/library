@@ -39,11 +39,11 @@ public interface ApplicationState extends Serializable {
     public int getLastCID();
     
     /**
-     * Retrieves the proof for the last consensus present in this object
+     * Retrieves the certified decision for the last consensus present in this object
      * @param controller
-     * @return The last consensus present in this object
+     * @return The certified decision for the last consensus present in this object
      */
-    public CertifiedDecision getLastProof(ServerViewController controller);
+    public CertifiedDecision getCertifiedDecision(ServerViewController controller);
 
     /**
      * Indicates if the sender replica had the state requested by the recovering replica

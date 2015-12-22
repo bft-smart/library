@@ -100,11 +100,12 @@ public class CSTState implements ApplicationState {
     }
 
     /**
-     * Retrieves the proof for the last consensus present in this object
-     * @return The last consensus present in this object
+     * Retrieves the certified decision for the last consensus present in this object
+     * @param controller
+     * @return The certified decision for the last consensus present in this object
      */
     @Override
-    public CertifiedDecision getLastProof(ServerViewController controller) {
+    public CertifiedDecision getCertifiedDecision(ServerViewController controller) {
         CommandsInfo ci = getMessageBatch(getLastCID());
         if (ci != null && ci.msgCtx[0].getProof() != null) { // do I have a proof for the consensus?
             
