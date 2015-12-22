@@ -34,6 +34,14 @@ public class ReplicaContext {
         this.cs = cs;
         this.SVController = SVController;
     }
+
+    /**
+     * Returns the controller of the replica's view
+     * @return The controller of the replica's view
+     */
+    public ServerViewController getSVController() {
+        return SVController;
+    }
     
     //TODO: implement a method that allow the replica to send a message with
     //total order to all other replicas
