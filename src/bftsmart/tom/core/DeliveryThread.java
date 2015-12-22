@@ -233,7 +233,6 @@ public final class DeliveryThread extends Thread {
                     if (cid > 2) {
                         int stableConsensus = cid - 3;
 
-                        tomLayer.lm.removeStableConsenusInfos(stableConsensus);
                         tomLayer.execManager.removeConsensus(stableConsensus);
                     }
                 }

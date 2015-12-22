@@ -419,10 +419,6 @@ public final class Acceptor {
         if (epoch.getConsensus().getDecision().firstMessageProposed != null)
             epoch.getConsensus().getDecision().firstMessageProposed.decisionTime = System.nanoTime();
 
-        leaderModule.decided(epoch.getConsensus().getId(),
-                tomLayer.lm.getCurrentLeader()/*leaderModule.getLeader(epoch.getConsensus().getId(),
-                epoch.getNumber())*/);
-
         epoch.getConsensus().decided(epoch, true);
     }
 }
