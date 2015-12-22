@@ -23,7 +23,6 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 import bftsmart.consensus.Decision;
-import bftsmart.consensus.messages.ConsensusMessage;
 import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.statemanagement.ApplicationState;
 import bftsmart.tom.MessageContext;
@@ -34,8 +33,6 @@ import bftsmart.tom.leaderchange.CertifiedDecision;
 import bftsmart.tom.server.Recoverable;
 import bftsmart.tom.util.BatchReader;
 import bftsmart.tom.util.Logger;
-import java.util.HashSet;
-import java.util.Set;
 
 /**
  * This class implements a thread which will deliver totally ordered requests to the application
@@ -43,7 +40,7 @@ import java.util.Set;
  */
 public final class DeliveryThread extends Thread {
 
-    private LinkedBlockingQueue<Decision> decided = new LinkedBlockingQueue<Decision>(); // decided from consensus
+    private LinkedBlockingQueue<Decision> decided = new LinkedBlockingQueue<>(); // decided from consensus
     private TOMLayer tomLayer; // TOM layer
     private ServiceReplica receiver; // Object that receives requests from clients
     private Recoverable recoverer; // Object that uses state transfer
@@ -120,9 +117,10 @@ public final class DeliveryThread extends Thread {
 
     public void deliverLock() {
     	// release the delivery lock to avoid blocking on state transfer
-		decidedLock.lock();
-		notEmptyQueue.signalAll();
-		decidedLock.unlock();
+        decidedLock.lock();
+        
+        notEmptyQueue.signalAll();
+        decidedLock.unlock();
     	
         deliverLock.lock();
     }
@@ -167,103 +165,103 @@ public final class DeliveryThread extends Thread {
     @Override
     public void run() {
         while (true) {
-  			/** THIS IS JOAO'S CODE, TO HANDLE STATE TRANSFER */
-  			deliverLock();
-  			while (tomLayer.isRetrievingState()) {
-  				System.out.println("(DeliveryThread.run) Retrieving State.");
-  				canDeliver.awaitUninterruptibly();
-  				System.out.println("(DeliveryThread.run) canDeliver released.");
-  			}
-  			try {
-  				ArrayList<Decision> decisions = new ArrayList<Decision>();
-  				decidedLock.lock();
-  				if(decided.isEmpty()) {
-  					notEmptyQueue.await();
-  				}
-  				decided.drainTo(decisions);
-  				decidedLock.unlock();
-  				if (decisions.size() > 0) {
-  					TOMMessage[][] requests = new TOMMessage[decisions.size()][];
-					int[] consensusIds = new int[requests.length];
-                                        int[] leadersIds = new int[requests.length];
-                                        int[] regenciesIds = new int[requests.length];
-                                        CertifiedDecision[] proofs;
-                                        proofs = new CertifiedDecision[requests.length];
-  					int count = 0;
-  					for (Decision d : decisions) {
-  						requests[count] = extractMessagesFromDecision(d);
-						consensusIds[count] = d.getConsensusId();
-                                                leadersIds[count] = d.getLeader();
-                                                regenciesIds[count] = d.getRegency();
-                                                
-                                                CertifiedDecision led = new CertifiedDecision(this.controller.getStaticConf().getProcessId(),
-                                                        d.getConsensusId(), d.getValue(), d.getDecisionEpoch().proof);
-                                                proofs[count] = led;
-                                                
-  						// cons.firstMessageProposed contains the performance counters
-  						if (requests[count][0].equals(d.firstMessageProposed)) {
-  	                    	long time = requests[count][0].timestamp;
-  							requests[count][0] = d.firstMessageProposed;
-  	                        requests[count][0].timestamp = time;
-  						}
-  						
-  						count++;
-  					}
+            /** THIS IS JOAO'S CODE, TO HANDLE STATE TRANSFER */
+            deliverLock();
+            while (tomLayer.isRetrievingState()) {
+                System.out.println("(DeliveryThread.run) Retrieving State.");
+                canDeliver.awaitUninterruptibly();
+                System.out.println("(DeliveryThread.run) canDeliver released.");
+            }
+            try {
+                ArrayList<Decision> decisions = new ArrayList<Decision>();
+                decidedLock.lock();
+                if(decided.isEmpty()) {
+                    notEmptyQueue.await();
+                }
+                decided.drainTo(decisions);
+                decidedLock.unlock();
+                if (decisions.size() > 0) {
+                    TOMMessage[][] requests = new TOMMessage[decisions.size()][];
+                    int[] consensusIds = new int[requests.length];
+                    int[] leadersIds = new int[requests.length];
+                    int[] regenciesIds = new int[requests.length];
+                    CertifiedDecision[] proofs;
+                    proofs = new CertifiedDecision[requests.length];
+                    int count = 0;
+                    for (Decision d : decisions) {
+                        requests[count] = extractMessagesFromDecision(d);
+                        consensusIds[count] = d.getConsensusId();
+                        leadersIds[count] = d.getLeader();
+                        regenciesIds[count] = d.getRegency();
 
-  					Decision lastDecision = decisions.get(decisions.size() - 1);
+                        CertifiedDecision led = new CertifiedDecision(this.controller.getStaticConf().getProcessId(),
+                                d.getConsensusId(), d.getValue(), d.getDecisionEpoch().proof);
+                        proofs[count] = led;
 
-  					if (requests != null && requests.length > 0) {
-  						deliverMessages(consensusIds, regenciesIds, leadersIds, proofs, requests);
+                        // cons.firstMessageProposed contains the performance counters
+                        if (requests[count][0].equals(d.firstMessageProposed)) {
+                            long time = requests[count][0].timestamp;
+                            requests[count][0] = d.firstMessageProposed;
+                            requests[count][0].timestamp = time;
+                        }
 
-  						// ******* EDUARDO BEGIN ***********//
-  						if (controller.hasUpdates()) {
-  							processReconfigMessages(lastDecision.getConsensusId());
+                        count++;
+                    }
 
-  							// set the consensus associated to the last decision as the last executed
-  							tomLayer.setLastExec(lastDecision.getConsensusId());
-  							// define that end of this execution
-  							tomLayer.setInExec(-1);
-  							// ******* EDUARDO END **************//
-  						}
-  					}
+                    Decision lastDecision = decisions.get(decisions.size() - 1);
 
-  					// define the last stable consensus... the stable consensus can
-  					// be removed from the leaderManager and the executionManager
-  					// TODO: Is this part necessary? If it is, can we put it
-  					// inside setLastExec
-  					int cid = lastDecision.getConsensusId();
-  					if (cid > 2) {
-  						int stableConsensus = cid - 3;
+                    if (requests != null && requests.length > 0) {
+                        deliverMessages(consensusIds, regenciesIds, leadersIds, proofs, requests);
 
-  						tomLayer.lm.removeStableConsenusInfos(stableConsensus);
-  						tomLayer.execManager.removeConsensus(stableConsensus);
-  					}
-  				}
-  			} catch (Exception e) {
-  				e.printStackTrace(System.err);
-  			}
+                        // ******* EDUARDO BEGIN ***********//
+                        if (controller.hasUpdates()) {
+                            processReconfigMessages(lastDecision.getConsensusId());
 
-  			/** THIS IS JOAO'S CODE, TO HANDLE STATE TRANSFER */
-  			deliverUnlock();
-  			/******************************************************************/
-  		}
+                            // set the consensus associated to the last decision as the last executed
+                            tomLayer.setLastExec(lastDecision.getConsensusId());
+                            // define that end of this execution
+                            tomLayer.setInExec(-1);
+                            // ******* EDUARDO END **************//
+                        }
+                    }
+
+                    // define the last stable consensus... the stable consensus can
+                    // be removed from the leaderManager and the executionManager
+                    // TODO: Is this part necessary? If it is, can we put it
+                    // inside setLastExec
+                    int cid = lastDecision.getConsensusId();
+                    if (cid > 2) {
+                        int stableConsensus = cid - 3;
+
+                        tomLayer.lm.removeStableConsenusInfos(stableConsensus);
+                        tomLayer.execManager.removeConsensus(stableConsensus);
+                    }
+                }
+            } catch (Exception e) {
+                    e.printStackTrace(System.err);
+            }
+
+            /** THIS IS JOAO'S CODE, TO HANDLE STATE TRANSFER */
+            deliverUnlock();
+            /******************************************************************/
+        }
     }
     
     private TOMMessage[] extractMessagesFromDecision(Decision dec) {
     	TOMMessage[] requests = (TOMMessage[]) dec.getDeserializedValue();
     	if (requests == null) {
-    		// there are no cached deserialized requests
-    		// this may happen if this batch proposal was not verified
-    		// TODO: this condition is possible?
+            // there are no cached deserialized requests
+            // this may happen if this batch proposal was not verified
+            // TODO: this condition is possible?
 
-    		Logger.println("(DeliveryThread.run) interpreting and verifying batched requests.");
+            Logger.println("(DeliveryThread.run) interpreting and verifying batched requests.");
 
-    		// obtain an array of requests from the decisions obtained
-    		BatchReader batchReader = new BatchReader(dec.getValue(),
-    				controller.getStaticConf().getUseSignatures() == 1);
-    		requests = batchReader.deserialiseRequests(controller);
+            // obtain an array of requests from the decisions obtained
+            BatchReader batchReader = new BatchReader(dec.getValue(),
+                            controller.getStaticConf().getUseSignatures() == 1);
+            requests = batchReader.deserialiseRequests(controller);
     	} else {
-    		Logger.println("(DeliveryThread.run) using cached requests from the propose.");
+            Logger.println("(DeliveryThread.run) using cached requests from the propose.");
     	}
 
     	return requests;
