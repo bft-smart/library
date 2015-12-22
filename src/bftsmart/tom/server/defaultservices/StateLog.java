@@ -33,14 +33,16 @@ public class StateLog {
     private byte[] stateHash; // Hash of the state associated with the last checkpoint
     private int position; // next position in the array of batches to be written
     private int lastCID; // Consensus ID for the last messages batch delivered to the application
+    private int id; //replica ID
 
     /**
      * Constructs a State log
-     * @param k The chekpoint period
+     * @param id
+     * @param k The checkpoint period
      * @param initialState
      * @param initialHash
      */
-    public StateLog(int k, byte[] initialState, byte[] initialHash) {
+    public StateLog(int id, int k, byte[] initialState, byte[] initialHash) {
 
         this.messageBatches = new CommandsInfo[k - 1];
         this.lastCheckpointCID = -1;
@@ -48,13 +50,15 @@ public class StateLog {
         this.stateHash = initialHash;
         this.position = 0;
         this.lastCID = -1;
+        this.id = id;
     }
     
     /**
      * Constructs a State log
-     * @param k The chekpoint period
+     * @param id
+     * @param k The checkpoint period
      */
-    public StateLog(int k) {
+    public StateLog(int id, int k) {
 
         this.messageBatches = new CommandsInfo[k - 1];
         this.lastCheckpointCID = -1;
@@ -62,14 +66,16 @@ public class StateLog {
         this.stateHash = null;
         this.position = 0;
         this.lastCID = -1;
+        this.id = id;
     }
 
-    public StateLog(byte[] initialState, byte[] initialHash) {
+    public StateLog(int id, byte[] initialState, byte[] initialHash) {
         this.lastCheckpointCID = -1;
         this.state = initialState;
         this.stateHash = initialHash;
         this.lastCID = -1;
-	}
+        this.id = id;
+    }
     
     /**
      * Sets the state associated with the last checkpoint, and updates the consensus ID associated with it
@@ -209,7 +215,7 @@ public class StateLog {
                     batches[i] = messageBatches[i];
             }
             lastCID = cid;
-            return new DefaultApplicationState(batches, lastCheckpointCID, lastCID, (setState ? state : null), stateHash);
+            return new DefaultApplicationState(batches, lastCheckpointCID, lastCID, (setState ? state : null), stateHash, this.id);
 
         }
         else return null;

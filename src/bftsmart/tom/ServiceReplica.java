@@ -283,7 +283,7 @@ public class ServiceReplica {
                                 request.getReqType(), request.getSession(), request.getSequence(), request.getOperationId(),
                                 request.getReplyServer(), request.serializedMessageSignature, firstRequest.timestamp,
                                 request.numOfNonces, request.seed, regencies[consensusCount], leaders[consensusCount],
-                                consId[consensusCount], proofs[consensusCount], firstRequest, false);
+                                consId[consensusCount], proofs[consensusCount].getConsMessages(), firstRequest, false);
                         
                         if (requestCount + 1 == requestsFromConsensus.length) {
 
@@ -358,7 +358,7 @@ public class ServiceReplica {
                 System.out.println(" --- Notifying recoverable about a blank consensus.");
 
                 MessageContext msgCtx = new MessageContext(-1, -1, null, -1, -1, -1, -1, null, // Since it is a noop, there is no need to pass info about the client...
-                        -1, 0, 0, regencies[consensusCount], leaders[consensusCount], consId[consensusCount], proofs[consensusCount], //... but there is still need to pass info about the consensus
+                        -1, 0, 0, regencies[consensusCount], leaders[consensusCount], consId[consensusCount], proofs[consensusCount].getConsMessages(), //... but there is still need to pass info about the consensus
                         null, true); // there is no command that is the first of the batch, since it is a noop
                 msgCtx.setLastInBatch();
                 

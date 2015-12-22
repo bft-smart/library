@@ -24,6 +24,7 @@ import java.util.Arrays;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Level;
 
+import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.reconfiguration.util.TOMConfiguration;
 import bftsmart.statemanagement.ApplicationState;
 import bftsmart.statemanagement.StateManager;
@@ -46,6 +47,7 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
     private ReentrantLock hashLock = new ReentrantLock();
     private ReentrantLock stateLock = new ReentrantLock();
     private TOMConfiguration config;
+    private ServerViewController controller;
     private MessageDigest md;
     private StateLog log;
     private StateManager stateManager;
@@ -223,7 +225,7 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
         // Only will send a state if I have a proof for the last logged decision/consensus
         //TODO: I should always make sure to have a log with proofs, since this is a result
         // of not storing anything after a checkpoint and before logging more requests        
-        if (ret == null || (config.isBFT() && ret.getLastProof() == null)) ret = new DefaultApplicationState();
+        if (ret == null || (config.isBFT() && ret.getLastProof(this.controller) == null)) ret = new DefaultApplicationState();
         
         logLock.unlock();
         return ret;
@@ -368,6 +370,7 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
     @Override
     public void setReplicaContext(ReplicaContext replicaContext) {
         this.config = replicaContext.getStaticConfiguration();
+        this.controller = replicaContext.getSVController();
         if (log == null) {
             checkpointPeriod = config.getCheckpointPeriod();
             byte[] state = getSnapshot();
@@ -384,7 +387,7 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
                     getStateManager().setLastCID(storedState.getLastCID());
                 }
             } else {
-                log = new StateLog(checkpointPeriod, state, computeHash(state));
+                log = new StateLog(this.config.getProcessId(), checkpointPeriod, state, computeHash(state));
             }
         }
         getStateManager().askCurrentConsensusId();

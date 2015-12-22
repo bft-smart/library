@@ -15,9 +15,16 @@ limitations under the License.
 */
 package bftsmart.statemanagement.strategy.durability;
 
+import bftsmart.consensus.messages.ConsensusMessage;
+import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.statemanagement.ApplicationState;
+import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.leaderchange.CertifiedDecision;
 import bftsmart.tom.server.defaultservices.CommandsInfo;
+import bftsmart.tom.util.BatchBuilder;
+
+import java.util.LinkedList;
+import java.util.Set;
 
 /**
  * Stores the data used to transfer the state to a recovering replica.
@@ -52,8 +59,10 @@ public class CSTState implements ApplicationState {
 
     private byte[] state;
 
+    private final int pid;
+    
     public CSTState(byte[] state, byte[] hashCheckpoint, CommandsInfo[] logLower, byte[] hashLogLower,
-                    CommandsInfo[] logUpper, byte[] hashLogUpper, int checkpointCID, int lastCID) {
+                    CommandsInfo[] logUpper, byte[] hashLogUpper, int checkpointCID, int lastCID, int pid) {
         setSerializedState(state);
         this.hashLogUpper = hashLogUpper;
         this.hashLogLower = hashLogLower;
@@ -62,6 +71,7 @@ public class CSTState implements ApplicationState {
         this.logLower = logLower;
         this.checkpointCID = checkpointCID;
         this.lastCID = lastCID;
+        this.pid = pid;
     }
 
     @Override
@@ -94,9 +104,29 @@ public class CSTState implements ApplicationState {
      * @return The last consensus present in this object
      */
     @Override
-    public CertifiedDecision getLastProof() {
+    public CertifiedDecision getLastProof(ServerViewController controller) {
         CommandsInfo ci = getMessageBatch(getLastCID());
-        return (ci != null ? ci.msgCtx[0].getProof() : null);
+        if (ci != null && ci.msgCtx[0].getProof() != null) { // do I have a proof for the consensus?
+            
+            Set<ConsensusMessage> proof = ci.msgCtx[0].getProof();
+            LinkedList<TOMMessage> requests = new LinkedList<>();
+            
+            //Recreate all TOMMessages ordered in the consensus
+            for (int i = 0; i < ci.commands.length; i++) {
+                
+                requests.add(ci.msgCtx[i].recreateTOMMessage(ci.commands[i]));
+                
+            }
+            
+            //Serialize the TOMMessages to re-create the proposed value
+            BatchBuilder bb = new BatchBuilder(0);
+            byte[] value = bb.makeBatch(requests, ci.msgCtx[0].getNumOfNonces(),
+                    ci.msgCtx[0].getSeed(), ci.msgCtx[0].getTimestamp(), controller);
+            
+            //Assemble and return the certified decision
+            return new CertifiedDecision(pid, getLastCID(), value, proof);
+        }
+        else return null; // there was no proof for the consensus
     }
 
     public int getCheckpointCID() {

@@ -15,17 +15,18 @@ limitations under the License.
 */
 package bftsmart.tom;
 
+import bftsmart.consensus.messages.ConsensusMessage;
 import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.core.messages.TOMMessageType;
-import bftsmart.tom.leaderchange.CertifiedDecision;
 
 import java.io.Serializable;
 import java.util.Random;
+import java.util.Set;
 
 /**
  * This class represents the whole context of a request ordered in the system.
- * It stores all informations regarding the message sent and the consensus
- * execution that ordered it.
+ * It stores all informations regarding the message sent by the client, as well as
+ * the consensus instance in which it was ordered.
  * 
  * @author alysson
  */
@@ -50,7 +51,7 @@ public class MessageContext implements Serializable {
     private final int consensusId;
     private final int numOfNonces;
     private final long seed;
-    private final CertifiedDecision proof;
+    private final Set<ConsensusMessage> proof;
                 
     private final TOMMessage firstInBatch; //to be replaced by a statistics class
     private boolean lastInBatch; // indicates that the command is the last in the batch. Used for logging
@@ -84,7 +85,7 @@ public class MessageContext implements Serializable {
     public MessageContext(int sender, int viewID, TOMMessageType type,
             int session, int sequence, int operationId, int replyServer, byte[] signature,
             long timestamp, int numOfNonces, long seed, int regency, int leader, int consensusId,
-            CertifiedDecision proof, TOMMessage firstInBatch, boolean noOp) {
+            Set<ConsensusMessage> proof, TOMMessage firstInBatch, boolean noOp) {
         
         this.nonces = null;
                
@@ -200,7 +201,7 @@ public class MessageContext implements Serializable {
      * 
      * @return the proof for the consensus
      */
-    public CertifiedDecision getProof() {
+    public Set<ConsensusMessage> getProof() {
         return proof;
     }
     

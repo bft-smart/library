@@ -15,6 +15,7 @@ limitations under the License.
 */
 package bftsmart.statemanagement;
 
+import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.tom.leaderchange.CertifiedDecision;
 
 import java.io.Serializable;
@@ -39,9 +40,10 @@ public interface ApplicationState extends Serializable {
     
     /**
      * Retrieves the proof for the last consensus present in this object
+     * @param controller
      * @return The last consensus present in this object
      */
-    public CertifiedDecision getLastProof();
+    public CertifiedDecision getLastProof(ServerViewController controller);
 
     /**
      * Indicates if the sender replica had the state requested by the recovering replica

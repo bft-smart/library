@@ -56,7 +56,7 @@ public class DurableStateLog extends StateLog {
 	
 	public DurableStateLog(int id, byte[] initialState, byte[] initialHash,
 			boolean isToLog, boolean syncLog, boolean syncCkp) {
-		super(initialState, initialHash);
+		super(id, initialState, initialHash);
 		this.id = id;
 		this.isToLog = isToLog;
 		this.syncLog = syncLog;
@@ -207,14 +207,14 @@ public class DurableStateLog extends StateLog {
 	    		byte[] logUpperBytes = TOMUtil.getBytes(logUpper);
 	    		System.out.println(logUpper.length + " Log upper bytes size: " + logUpperBytes.length);
 	    		byte[] logUpperHash = TOMUtil.computeHash(logUpperBytes);
-	    		CSTState cstState = new CSTState(ckpState, null, null, logLowerHash, null, logUpperHash, lastCheckpointCID, lastCID);
+	    		CSTState cstState = new CSTState(ckpState, null, null, logLowerHash, null, logUpperHash, lastCheckpointCID, lastCID, this.id);
 	    		return cstState;
 			} else if(id == requestF1.getLogLower()) {
 				// This replica is expected to send the lower part of the log
 	    		System.out.print("--- sending lower log: " + requestF1.getLogLowerSize() + " from " + logPointers.get(requestF1.getCheckpointReplica())) ;
 	    		CommandsInfo[] logLower = fr.getLogState(logPointers.get(requestF1.getCheckpointReplica()), 0, requestF1.getLogLowerSize(), logPath);
 	    		System.out.println(" " + TOMUtil.getBytes(logLower).length + " bytes");
-	    		CSTState cstState = new CSTState(null, null, logLower, null, null, null, lastCheckpointCID, lastCID);
+	    		CSTState cstState = new CSTState(null, null, logLower, null, null, null, lastCheckpointCID, lastCID, this.id);
 	    		return cstState;
 			} else {
 				// This replica is expected to send the upper part of the log plus the hash for its checkpoint
@@ -228,7 +228,7 @@ public class DurableStateLog extends StateLog {
 	    		System.out.println(" " + TOMUtil.getBytes(logUpper).length + " bytes");
 	    		System.out.println("--- State size: " + ckpState.length + " Current state Hash: " + ckpHash);
 	    		int lastCIDInState = lastCheckpointCID + requestF1.getLogUpperSize();
-	    		CSTState cstState = new CSTState(null, ckpHash, null, null, logUpper, null, lastCheckpointCID, lastCIDInState);
+	    		CSTState cstState = new CSTState(null, ckpHash, null, null, logUpper, null, lastCheckpointCID, lastCIDInState, this.id);
 	    		return cstState;
 			}
 		}
@@ -305,7 +305,7 @@ public class DurableStateLog extends StateLog {
 		int ckpLastConsensusId = fr.getCkpLastConsensusId();
 		int logLastConsensusId = fr.getLogLastConsensusId();
 		CSTState cstState = new CSTState(checkpoint, fr.getCkpStateHash(), log, null,
-				null, null, ckpLastConsensusId, logLastConsensusId);
+				null, null, ckpLastConsensusId, logLastConsensusId, this.id);
 		if(logLastConsensusId > ckpLastConsensusId) {
 			super.setLastCID(logLastConsensusId);
 		} else

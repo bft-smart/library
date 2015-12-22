@@ -192,7 +192,7 @@ public class DurableStateManager extends BaseStateManager {
 					senderRegencies.put(reply.getSender(), reply.getRegency());
 					senderLeaders.put(reply.getSender(), reply.getLeader());
 					senderViews.put(reply.getSender(), reply.getView());
-                                        senderProofs.put(msg.getSender(), msg.getState().getLastProof());
+                                        senderProofs.put(msg.getSender(), msg.getState().getLastProof(SVController));
                                         if (moreThan2F_Regencies(reply.getRegency()))
 						currentRegency = reply.getRegency();
 					if (moreThan2F_Leaders(reply.getLeader()))
@@ -204,7 +204,7 @@ public class DurableStateManager extends BaseStateManager {
 							System.out.println("Not a member!");
 						}
 					}                                        
-                                        if (moreThan2F_Proofs(waitingCID, this.tomLayer.getSynchronizer().getLCManager())) currentProof = msg.getState().getLastProof();
+                                        if (moreThan2F_Proofs(waitingCID, this.tomLayer.getSynchronizer().getLCManager())) currentProof = msg.getState().getLastProof(SVController);
 
 				} else {
 					currentLeader = tomLayer.lm.getCurrentLeader();
@@ -280,7 +280,7 @@ public class DurableStateManager extends BaseStateManager {
 					CSTState statePlusLower = new CSTState(stateCkp.getSerializedState(),
 							TOMUtil.getBytes(stateCkp.getSerializedState()),
 							stateLower.getLogLower(), stateCkp.getHashLogLower(), null, null,
-							stateCkp.getCheckpointCID(), stateUpper.getCheckpointCID());
+							stateCkp.getCheckpointCID(), stateUpper.getCheckpointCID(), SVController.getStaticConf().getProcessId());
 
 					if (haveState) { // validate checkpoint
 						System.out.println("validating checkpoint!!!");

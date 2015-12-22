@@ -49,7 +49,7 @@ public class DiskStateLog extends StateLog {
 	
 	public DiskStateLog(int id, byte[] initialState, byte[] initialHash,
 			boolean isToLog, boolean syncLog, boolean syncCkp) {
-		super(initialState, initialHash);
+		super(id, initialState, initialHash);
 		this.id = id;
 		this.isToLog = isToLog;
 		this.syncLog = syncLog;
@@ -221,7 +221,7 @@ public class DiskStateLog extends StateLog {
 
 //			return new DefaultApplicationState((sendState ? batches : null), lastCheckpointCID,
 			return new DefaultApplicationState(batches, lastCheckpointCID,
-					cid, (sendState ? ckpState : null), ckpStateHash);
+					cid, (sendState ? ckpState : null), ckpStateHash, this.id);
 
 		}
 		return null;
@@ -280,7 +280,7 @@ public class DiskStateLog extends StateLog {
 		int logLastConsensusId = fr.getLogLastConsensusId();
 		System.out.println("log last consensus di: " + logLastConsensusId);
 		ApplicationState state = new DefaultApplicationState(log, ckpLastConsensusId,
-				logLastConsensusId, checkpoint, fr.getCkpStateHash());
+				logLastConsensusId, checkpoint, fr.getCkpStateHash(), this.id);
 		if(logLastConsensusId > ckpLastConsensusId) {
 			super.setLastCID(logLastConsensusId);
 		} else

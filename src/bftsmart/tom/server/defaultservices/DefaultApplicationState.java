@@ -15,10 +15,16 @@ limitations under the License.
 */
 package bftsmart.tom.server.defaultservices;
 
+import bftsmart.consensus.messages.ConsensusMessage;
+import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.statemanagement.ApplicationState;
+import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.leaderchange.CertifiedDecision;
+import bftsmart.tom.util.BatchBuilder;
 
 import java.util.Arrays;
+import java.util.LinkedList;
+import java.util.Set;
 /**
  * This class represents a state transfered from a replica to another. The state associated with the last
  * checkpoint together with all the batches of messages received do far, comprises the sender's
@@ -38,6 +44,8 @@ public class DefaultApplicationState implements ApplicationState {
     private CommandsInfo[] messageBatches; // batches received since the last checkpoint.
     private int lastCheckpointCID; // Consensus ID for the last checkpoint
     private byte[] logHash;
+    
+    private int pid;
 
     /**
      * Constructs a TansferableState
@@ -46,7 +54,7 @@ public class DefaultApplicationState implements ApplicationState {
      * @param state State associated with the last checkpoint
      * @param stateHash Hash of the state associated with the last checkpoint
      */
-    public DefaultApplicationState(CommandsInfo[] messageBatches, int lastCheckpointCID, int lastCID, byte[] state, byte[] stateHash) {
+    public DefaultApplicationState(CommandsInfo[] messageBatches, int lastCheckpointCID, int lastCID, byte[] state, byte[] stateHash, int pid) {
        
         this.messageBatches = messageBatches; // batches received since the last checkpoint.
         this.lastCheckpointCID = lastCheckpointCID; // Consensus ID for the last checkpoint
@@ -54,10 +62,11 @@ public class DefaultApplicationState implements ApplicationState {
         this.state = state; // State associated with the last checkpoint
         this.stateHash = stateHash;
         this.hasState = true;
+        this.pid = pid;
     }
 
-    public DefaultApplicationState(CommandsInfo[] messageBatches, byte[] logHash, int lastCheckpointCID, int lastCID, byte[] state, byte[] stateHash) {
-    	this(messageBatches, lastCheckpointCID, lastCID, state, stateHash);
+    public DefaultApplicationState(CommandsInfo[] messageBatches, byte[] logHash, int lastCheckpointCID, int lastCID, byte[] state, byte[] stateHash, int pid) {
+    	this(messageBatches, lastCheckpointCID, lastCID, state, stateHash, pid);
     	this.logHash = logHash;
     }
 
@@ -72,6 +81,7 @@ public class DefaultApplicationState implements ApplicationState {
         this.state = null; // State associated with the last checkpoint
         this.stateHash = null;
         this.hasState = false;
+        this.pid = -1;
     }
     
     
@@ -109,9 +119,29 @@ public class DefaultApplicationState implements ApplicationState {
      * @return The last consensus present in this object
      */
     @Override
-    public CertifiedDecision getLastProof() {
+    public CertifiedDecision getLastProof(ServerViewController controller) {
         CommandsInfo ci = getMessageBatch(getLastCID());
-        return (ci != null ? ci.msgCtx[0].getProof() : null);
+        if (ci != null && ci.msgCtx[0].getProof() != null) { // do I have a proof for the consensus?
+            
+            Set<ConsensusMessage> proof = ci.msgCtx[0].getProof();
+            LinkedList<TOMMessage> requests = new LinkedList<>();
+            
+            //Recreate all TOMMessages ordered in the consensus
+            for (int i = 0; i < ci.commands.length; i++) {
+                
+                requests.add(ci.msgCtx[i].recreateTOMMessage(ci.commands[i]));
+                
+            }
+            
+            //Serialize the TOMMessages to re-create the proposed value
+            BatchBuilder bb = new BatchBuilder(0);
+            byte[] value = bb.makeBatch(requests, ci.msgCtx[0].getNumOfNonces(),
+                    ci.msgCtx[0].getSeed(), ci.msgCtx[0].getTimestamp(), controller);
+            
+            //Assemble and return the certified decision
+            return new CertifiedDecision(pid, getLastCID(), value, proof);
+        }
+        else return null; // there was no proof for the consensus
     }
 
     /**

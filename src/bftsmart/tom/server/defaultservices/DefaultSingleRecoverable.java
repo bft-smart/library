@@ -23,6 +23,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Level;
 import java.util.Arrays;
 
+import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.reconfiguration.util.TOMConfiguration;
 import bftsmart.statemanagement.ApplicationState;
 import bftsmart.statemanagement.StateManager;
@@ -40,9 +41,10 @@ import bftsmart.tom.util.Logger;
  */
 public abstract class DefaultSingleRecoverable implements Recoverable, SingleExecutable {
     
-	protected ReplicaContext replicaContext;
+    protected ReplicaContext replicaContext;
     private TOMConfiguration config;
-	private int checkpointPeriod;
+    private ServerViewController controller;
+    private int checkpointPeriod;
 
     private ReentrantLock logLock = new ReentrantLock();
     private ReentrantLock hashLock = new ReentrantLock();
@@ -174,7 +176,7 @@ public abstract class DefaultSingleRecoverable implements Recoverable, SingleExe
         // Only will send a state if I have a proof for the last logged decision/consensus
         //TODO: I should always make sure to have a log with proofs, since this is a result
         // of not storing anything after a checkpoint and before logging more requests        
-        if (ret == null || (config.isBFT() && ret.getLastProof() == null)) ret = new DefaultApplicationState();
+        if (ret == null || (config.isBFT() && ret.getLastProof(this.controller) == null)) ret = new DefaultApplicationState();
 
         System.out.println("Getting log until CID " + cid + ", null: " + (ret == null));
         logLock.unlock();
@@ -238,45 +240,47 @@ public abstract class DefaultSingleRecoverable implements Recoverable, SingleExe
         return lastCID;
     }
 
-        @Override
-        public void setReplicaContext(ReplicaContext replicaContext) {
-            this.replicaContext = replicaContext;
-            this.config = replicaContext.getStaticConfiguration();
-            if (log == null) {
-                checkpointPeriod = config.getCheckpointPeriod();
-                byte[] state = getSnapshot();
-                if (config.isToLog() && config.logToDisk()) {
-                    int replicaId = config.getProcessId();
-                    boolean isToLog = config.isToLog();
-                    boolean syncLog = config.isToWriteSyncLog();
-                    boolean syncCkp = config.isToWriteSyncCkp();
-                    log = new DiskStateLog(replicaId, state, computeHash(state), isToLog, syncLog, syncCkp);
+    @Override
+    public void setReplicaContext(ReplicaContext replicaContext) {
+        this.replicaContext = replicaContext;
+        this.config = replicaContext.getStaticConfiguration();
+        this.controller = replicaContext.getSVController();
 
-                    ApplicationState storedState = ((DiskStateLog) log).loadDurableState();
-                    if (storedState.getLastCID() > 0) {
-                        setState(storedState);
-                        getStateManager().setLastCID(storedState.getLastCID());
-                    }
-                } else {
-                    log = new StateLog(checkpointPeriod, state, computeHash(state));
+        if (log == null) {
+            checkpointPeriod = config.getCheckpointPeriod();
+            byte[] state = getSnapshot();
+            if (config.isToLog() && config.logToDisk()) {
+                int replicaId = config.getProcessId();
+                boolean isToLog = config.isToLog();
+                boolean syncLog = config.isToWriteSyncLog();
+                boolean syncCkp = config.isToWriteSyncCkp();
+                log = new DiskStateLog(replicaId, state, computeHash(state), isToLog, syncLog, syncCkp);
+
+                ApplicationState storedState = ((DiskStateLog) log).loadDurableState();
+                if (storedState.getLastCID() > 0) {
+                    setState(storedState);
+                    getStateManager().setLastCID(storedState.getLastCID());
                 }
+            } else {
+                log = new StateLog(this.config.getProcessId(), checkpointPeriod, state, computeHash(state));
             }
-            getStateManager().askCurrentConsensusId();
         }
-	/*@Override
-	public void setReplicaContext(ReplicaContext replicaCtx) {
-		this.replicaContext = replicaCtx;
-    	this.config = replicaCtx.getStaticConfiguration();
-	}*/
+        getStateManager().askCurrentConsensusId();
+    }
+    /*@Override
+    public void setReplicaContext(ReplicaContext replicaCtx) {
+            this.replicaContext = replicaCtx;
+    this.config = replicaCtx.getStaticConfiguration();
+    }*/
 
-	@Override
+    @Override
     public StateManager getStateManager() {
     	if(stateManager == null)
     		stateManager = new StandardStateManager();
     	return stateManager;
     }
 	
-	protected void initLog() {
+    protected void initLog() {
     	if(log == null) {
     		checkpointPeriod = config.getCheckpointPeriod();
             byte[] state = getSnapshot();
@@ -287,9 +291,9 @@ public abstract class DefaultSingleRecoverable implements Recoverable, SingleExe
             	boolean syncCkp = config.isToWriteSyncCkp();
             	log = new DiskStateLog(replicaId, state, computeHash(state), isToLog, syncLog, syncCkp);
             } else
-            	log = new StateLog(checkpointPeriod, state, computeHash(state));
+            	log = new StateLog(controller.getStaticConf().getProcessId(), checkpointPeriod, state, computeHash(state));
     	}
-	}
+    }
     
         
         
