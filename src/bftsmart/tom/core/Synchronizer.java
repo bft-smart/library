@@ -66,7 +66,6 @@ public class Synchronizer {
     private final ServerViewController controller;
     private final BatchBuilder bb;
     private final ServerCommunicationSystem communication;
-    private final LeaderModule lm;
     private final StateManager stateManager;
     private final Acceptor acceptor;
     private final MessageDigest md;
@@ -90,7 +89,6 @@ public class Synchronizer {
         this.controller = this.tom.controller;
         this.bb = this.tom.bb;
         this.communication = this.tom.getCommunication();
-        this.lm = this.tom.lm;
         this.stateManager = this.tom.stateManager;
         this.acceptor = this.tom.acceptor;
         this.md = this.tom.md;
@@ -555,7 +553,7 @@ public class Synchronizer {
             int in = tom.getInExec(); // cid to execute
             int last = tom.getLastExec(); // last cid decided
 
-            lm.setNewLeader(leader);
+            execManager.setNewLeader(leader);
 
             // If I am not the leader, I have to send a STOPDATA message to the elected leader
             if (leader != this.controller.getStaticConf().getProcessId()) {
@@ -705,7 +703,7 @@ public class Synchronizer {
                 }
 
                 for (LCMessage m : sync) {
-                    if (m.getSender() == lm.getCurrentLeader()) {
+                    if (m.getSender() == execManager.getCurrentLeader()) {
                         processSYNC(m.getPayload(), regency);
                         return; // makes no sense to continue, since there is only one SYNC message
                     }
@@ -875,7 +873,7 @@ public class Synchronizer {
 
                 // Am I the new leader, and am I expecting this messages?
                 if (regency == lcManager.getLastReg()
-                        && this.controller.getStaticConf().getProcessId() == lm.getCurrentLeader()/*(regency % this.reconfManager.getCurrentViewN())*/) {
+                        && this.controller.getStaticConf().getProcessId() == execManager.getCurrentLeader()/*(regency % this.reconfManager.getCurrentViewN())*/) {
 
                     Logger.println("(Synchronizer.deliverTimeoutRequest) I'm the new leader and I received a STOPDATA");
                     processSTOPDATA(msg, regency);
@@ -910,7 +908,7 @@ public class Synchronizer {
                 // I am (or was) waiting for this message, and did I received it from the new leader?
                 if ((isExpectedSync || // Expected case
                         (islateSync && !sentStopdata)) && // might happen if I timeout before receiving the SYNC
-                        (msg.getSender() == lm.getCurrentLeader())) {
+                        (msg.getSender() == execManager.getCurrentLeader())) {
 
                 //if (msg.getReg() == lcManager.getLastReg() &&
                 //		msg.getReg() == lcManager.getNextReg() && msg.getSender() == lm.getCurrentLeader()/*(regency % this.reconfManager.getCurrentViewN())*/) {

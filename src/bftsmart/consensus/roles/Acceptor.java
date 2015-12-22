@@ -24,7 +24,6 @@ import bftsmart.communication.ServerCommunicationSystem;
 import bftsmart.communication.server.ServerConnection;
 import bftsmart.consensus.Consensus;
 import bftsmart.tom.core.ExecutionManager;
-import bftsmart.tom.core.LeaderModule;
 import bftsmart.consensus.Epoch;
 import bftsmart.consensus.messages.MessageFactory;
 import bftsmart.consensus.messages.ConsensusMessage;
@@ -55,7 +54,6 @@ public final class Acceptor {
     private ExecutionManager executionManager; // Execution manager of consensus's executions
     private MessageFactory factory; // Factory for PaW messages
     private ServerCommunicationSystem communication; // Replicas comunication system
-    private LeaderModule leaderModule; // Manager for information about leaders
     private TOMLayer tomLayer; // TOM layer
     private ServerViewController controller;
     //private Cipher cipher;
@@ -65,15 +63,12 @@ public final class Acceptor {
      * Creates a new instance of Acceptor.
      * @param communication Replicas communication system
      * @param factory Message factory for PaW messages
-     * @param verifier Proof verifier
-     * @param conf TOM configuration
+     * @param controller
      */
-    public Acceptor(ServerCommunicationSystem communication, MessageFactory factory,
-                                LeaderModule lm, ServerViewController controller) {
+    public Acceptor(ServerCommunicationSystem communication, MessageFactory factory, ServerViewController controller) {
         this.communication = communication;
         this.me = controller.getStaticConf().getProcessId();
         this.factory = factory;
-        this.leaderModule = lm;
         this.controller = controller;
         try {
             //this.cipher = Cipher.getInstance("DES/ECB/PKCS5Padding");
@@ -157,7 +152,7 @@ public final class Acceptor {
         int ts = epoch.getConsensus().getEts();
         int ets = executionManager.getConsensus(msg.getNumber()).getEts();
     	Logger.println("(Acceptor.proposeReceived) PROPOSE for consensus " + cid);
-    	if (msg.getSender() == leaderModule.getCurrentLeader() // Is the replica the leader?
+    	if (msg.getSender() == executionManager.getCurrentLeader() // Is the replica the leader?
                 && epoch.getTimestamp() == 0 && ts == ets && ets == 0) { // Is all this in epoch 0?
     		executePropose(epoch, msg.getValue());
     	} else {

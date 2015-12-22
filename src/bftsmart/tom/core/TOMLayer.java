@@ -55,7 +55,6 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
     //other components used by the TOMLayer (they are never changed)
     public ExecutionManager execManager; // Execution manager
-    public LeaderModule lm; // Leader module
     public Acceptor acceptor; // Acceptor role of the PaW algorithm
     private ServerCommunicationSystem communication; // Communication system between replicas
     //private OutOfContextMessageThread ot; // Thread which manages messages that do not belong to the current consensus
@@ -104,15 +103,15 @@ public final class TOMLayer extends Thread implements RequestReceiver {
      *
      * @param manager Execution manager
      * @param receiver Object that receives requests from clients
-     * @param lm Leader module
+     * @param recoverer
      * @param a Acceptor role of the PaW algorithm
      * @param cs Communication system between replicas
      * @param controller Reconfiguration Manager
+     * @param verifier
      */
     public TOMLayer(ExecutionManager manager,
             ServiceReplica receiver,
             Recoverable recoverer,
-            LeaderModule lm,
             Acceptor a,
             ServerCommunicationSystem cs,
             ServerViewController controller,
@@ -121,7 +120,6 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         super("TOM Layer");
 
         this.execManager = manager;
-        this.lm = lm;
         this.acceptor = a;
         this.communication = cs;
         this.controller = controller;
@@ -334,10 +332,10 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
             // blocks until this replica learns to be the leader for the current epoch of the current consensus
             leaderLock.lock();
-            Logger.println("Next leader for CID=" + (getLastExec() + 1) + ": " + lm.getCurrentLeader());
+            Logger.println("Next leader for CID=" + (getLastExec() + 1) + ": " + execManager.getCurrentLeader());
 
             //******* EDUARDO BEGIN **************//
-            if (/*lm.getLeader(getLastExec() + 1, 0)*/lm.getCurrentLeader() != this.controller.getStaticConf().getProcessId()) {
+            if (execManager.getCurrentLeader() != this.controller.getStaticConf().getProcessId()) {
                 iAmLeader.awaitUninterruptibly();
                 //waitForPaxosToFinish();
             }
@@ -365,7 +363,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
             Logger.println("(TOMLayer.run) I can try to propose.");
 
-            if ((lm.getCurrentLeader() == this.controller.getStaticConf().getProcessId()) && //I'm the leader
+            if ((execManager.getCurrentLeader() == this.controller.getStaticConf().getProcessId()) && //I'm the leader
                     (clientsManager.havePendingRequests()) && //there are messages to be ordered
                     (getInExec() == -1)) { //there is no consensus in execution
 
@@ -411,7 +409,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
     public void decided(Decision dec) {
         
         dec.setRegency(syncher.getLCManager().getLastReg());
-        dec.setLeader(lm.getCurrentLeader());
+        dec.setLeader(execManager.getCurrentLeader());
         
         this.dt.delivery(dec); // Sends the decision to the delivery thread
     }
@@ -472,7 +470,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
     }
 
     public void forwardRequestToLeader(TOMMessage request) {
-        int leaderId = lm.getCurrentLeader();
+        int leaderId = execManager.getCurrentLeader();
         if (this.controller.isCurrentViewMember(leaderId)) {
             Logger.println("(TOMLayer.forwardRequestToLeader) forwarding " + request + " to " + leaderId);
             communication.send(new int[]{leaderId},

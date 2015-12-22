@@ -67,20 +67,26 @@ public final class ExecutionManager {
     private ReentrantLock stoppedMsgsLock = new ReentrantLock(); //lock for stopped messages
     private TOMLayer tomLayer; // TOM layer associated with this execution manager
     private int paxosHighMark; // Paxos high mark for consensus instances
+    
     /** THIS IS JOAO'S CODE, TO HANDLE THE STATE TRANSFER */
+    
     private int revivalHighMark; // Paxos high mark for consensus instances when this replica CID equals 0
     private int timeoutHighMark; // Paxos high mark for a timed-out replica
     
     private int lastRemovedCID = 0; // Addition to fix memory leak
-
+        
     /******************************************************************/
+    
+    // This is the new way of storing info about the leader,
+    // uncoupled from any consensus instance
+    private int currentLeader;
+    
     /**
      * Creates a new instance of ExecutionManager
      *
+     * @param controller
      * @param acceptor Acceptor role of the PaW algorithm
      * @param proposer Proposer role of the PaW algorithm
-     * @param acceptors Process ID's of all replicas, including this one
-     * @param f Maximum number of replicas that can be faulty
      * @param me This process ID
      */
     public ExecutionManager(ServerViewController controller, Acceptor acceptor,
@@ -97,8 +103,26 @@ public final class ExecutionManager {
         this.timeoutHighMark = this.controller.getStaticConf().getTimeoutHighMark();
         /******************************************************************/
         //******* EDUARDO END **************//
+        
+        currentLeader = 0; // initial leader is replica 0
+    }
+    
+    /**
+     * Set the current leader
+     * @param leader Current leader
+     */
+    public void setNewLeader (int leader) {
+            this.currentLeader = leader;
     }
 
+    /**
+     * Get the current leader
+     * @return Current leader
+     */
+    public int getCurrentLeader() {
+            return currentLeader;
+    }
+        
     /**
      * Sets the TOM layer associated with this execution manager
      * @param tom The TOM layer associated with this execution manager

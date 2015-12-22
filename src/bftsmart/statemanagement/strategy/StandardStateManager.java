@@ -151,7 +151,9 @@ public class StandardStateManager extends BaseStateManager {
             }
             int[] targets = { msg.getSender() };
             SMMessage smsg = new StandardSMMessage(SVController.getStaticConf().getProcessId(),
-                    msg.getCID(), TOMUtil.SM_REPLY, -1, thisState, SVController.getCurrentView(), tomLayer.getSynchronizer().getLCManager().getLastReg(), tomLayer.lm.getCurrentLeader());
+                    msg.getCID(), TOMUtil.SM_REPLY, -1, thisState, SVController.getCurrentView(),
+                    tomLayer.getSynchronizer().getLCManager().getLastReg(), tomLayer.execManager.getCurrentLeader());
+            
             System.out.println("Sending state");
             tomLayer.getCommunication().send(targets, smsg);
             System.out.println("Sent");
@@ -179,7 +181,7 @@ public class StandardStateManager extends BaseStateManager {
                     if (enoughProofs(waitingCID, this.tomLayer.getSynchronizer().getLCManager())) currentProof = msg.getState().getCertifiedDecision(SVController);
                     
                 } else {
-                    currentLeader = tomLayer.lm.getCurrentLeader();
+                    currentLeader = tomLayer.execManager.getCurrentLeader();
                     currentRegency = tomLayer.getSynchronizer().getLCManager().getLastReg();
                     currentView = SVController.getCurrentView();
                 }
@@ -218,7 +220,7 @@ public class StandardStateManager extends BaseStateManager {
                         tomLayer.getSynchronizer().getLCManager().setLastReg(currentRegency);
                         tomLayer.getSynchronizer().getLCManager().setNextReg(currentRegency);
                         tomLayer.getSynchronizer().getLCManager().setNewLeader(currentLeader);
-                        tomLayer.lm.setNewLeader(currentLeader);
+                        tomLayer.execManager.setNewLeader(currentLeader);
                         
                         if (currentProof != null && !appStateOnly) {
                             

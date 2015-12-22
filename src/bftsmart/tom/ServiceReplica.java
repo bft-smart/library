@@ -25,7 +25,6 @@ import java.util.logging.Logger;
 
 import bftsmart.communication.ServerCommunicationSystem;
 import bftsmart.tom.core.ExecutionManager;
-import bftsmart.tom.core.LeaderModule;
 import bftsmart.consensus.messages.MessageFactory;
 import bftsmart.consensus.roles.Acceptor;
 import bftsmart.consensus.roles.Proposer;
@@ -439,9 +438,7 @@ public class ServiceReplica {
         // Assemble the total order messaging layer
         MessageFactory messageFactory = new MessageFactory(id);
 
-        LeaderModule lm = new LeaderModule();
-
-        Acceptor acceptor = new Acceptor(cs, messageFactory, lm, SVController);
+        Acceptor acceptor = new Acceptor(cs, messageFactory, SVController);
         cs.setAcceptor(acceptor);
 
         Proposer proposer = new Proposer(cs, messageFactory, SVController);
@@ -450,7 +447,7 @@ public class ServiceReplica {
 
         acceptor.setExecutionManager(executionManager);
 
-        tomLayer = new TOMLayer(executionManager, this, recoverer, lm, acceptor, cs, SVController, verifier);
+        tomLayer = new TOMLayer(executionManager, this, recoverer, acceptor, cs, SVController, verifier);
 
         executionManager.setTOMLayer(tomLayer);
 
@@ -462,7 +459,7 @@ public class ServiceReplica {
         acceptor.setTOMLayer(tomLayer);
 
         if (SVController.getStaticConf().isShutdownHookEnabled()) {
-            Runtime.getRuntime().addShutdownHook(new ShutdownHookThread(cs, lm, acceptor, executionManager, tomLayer));
+            Runtime.getRuntime().addShutdownHook(new ShutdownHookThread(tomLayer));
         }
         tomLayer.start(); // start the layer execution
         tomStackCreated = true;

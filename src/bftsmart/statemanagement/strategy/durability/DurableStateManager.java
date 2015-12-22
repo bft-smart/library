@@ -155,7 +155,7 @@ public class DurableStateManager extends BaseStateManager {
 			CSTSMMessage reply = new CSTSMMessage(myId, msg.getCID(),
 					TOMUtil.SM_REPLY, cstConfig, null,
 					SVController.getCurrentView(), tomLayer.getSynchronizer().getLCManager().getLastReg(),
-					tomLayer.lm.getCurrentLeader());
+					tomLayer.execManager.getCurrentLeader());
 
 			StateSenderServer stateServer = new StateSenderServer(port);
 			stateServer.setRecoverable(dt.getRecoverer());
@@ -207,7 +207,7 @@ public class DurableStateManager extends BaseStateManager {
                                         if (enoughProofs(waitingCID, this.tomLayer.getSynchronizer().getLCManager())) currentProof = msg.getState().getCertifiedDecision(SVController);
 
 				} else {
-					currentLeader = tomLayer.lm.getCurrentLeader();
+					currentLeader = tomLayer.execManager.getCurrentLeader();
 					currentRegency = tomLayer.getSynchronizer().getLCManager().getLastReg();
 					currentView = SVController.getCurrentView();
 				}
@@ -307,7 +307,7 @@ public class DurableStateManager extends BaseStateManager {
 						tomLayer.getSynchronizer().getLCManager().setNextReg(currentRegency);
 						tomLayer.getSynchronizer().getLCManager().setNewLeader(currentLeader);
 
-						tomLayer.lm.setNewLeader(currentLeader);
+						tomLayer.execManager.setNewLeader(currentLeader);
 						
                                                 if (currentProof != null && !appStateOnly) {
 

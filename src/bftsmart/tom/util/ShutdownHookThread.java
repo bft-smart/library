@@ -18,7 +18,6 @@ package bftsmart.tom.util;
 import bftsmart.communication.ServerCommunicationSystem;
 import bftsmart.consensus.Consensus;
 import bftsmart.tom.core.ExecutionManager;
-import bftsmart.tom.core.LeaderModule;
 import bftsmart.consensus.Epoch;
 import bftsmart.consensus.TimestampValuePair;
 import bftsmart.consensus.roles.Acceptor;
@@ -33,19 +32,11 @@ import java.util.Date;
  */
 public class ShutdownHookThread extends Thread {
 
-    private final ServerCommunicationSystem scs;
-    private final LeaderModule lm;
-    private final Acceptor acceptor;
-    private final ExecutionManager manager;
     private final TOMLayer tomLayer;
     private final MessageDigest md;
 
-    public ShutdownHookThread(ServerCommunicationSystem scs, LeaderModule lm,
-            Acceptor acceptor, ExecutionManager manager, TOMLayer tomLayer) {
-        this.scs = scs;
-        this.lm = lm;
-        this.acceptor = acceptor;
-        this.manager = manager;
+    public ShutdownHookThread(TOMLayer tomLayer) {
+
         this.tomLayer = tomLayer;
         this.md = this.tomLayer.md;
     }
@@ -62,13 +53,13 @@ public class ShutdownHookThread extends Thread {
 
         buffer.append("\n---------- DEBUG INFO ----------\n");
         buffer.append("\nCurrent time: " + sdf.format(new Date()));
-        buffer.append("\nCurrent leader: " + tomLayer.lm.getCurrentLeader());
+        buffer.append("\nCurrent leader: " + tomLayer.execManager.getCurrentLeader());
         buffer.append("\nCurrent regency: " + tomLayer.getSynchronizer().getLCManager().getLastReg());
 
         buffer.append("\n\nLast finished consensus: " + (lastCons == -1 ? "None" : lastCons));
         if(lastCons > -1) {
             
-            c = manager.getConsensus(lastCons);
+            c = tomLayer.execManager.getConsensus(lastCons);
             
             for (TimestampValuePair rv : c.getWriteSet()) {
                 if  (rv.getValue() != null && rv.getValue().length > 0)
@@ -89,7 +80,7 @@ public class ShutdownHookThread extends Thread {
         e = null;
         if(currentCons > -1) {
             
-            c = manager.getConsensus(currentCons);
+            c = tomLayer.execManager.getConsensus(currentCons);
             
             for (TimestampValuePair rv : c.getWriteSet()) {
                 if  (rv.getValue() != null && rv.getValue().length > 0)

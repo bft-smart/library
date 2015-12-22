@@ -211,7 +211,7 @@ public class ServerViewController extends ViewController {
         for (int i = 0; i < currentView.getProcesses().length; i++) {
             if (!contains(currentView.getProcesses()[i], rSet)) {
                 nextV[p++] = currentView.getProcesses()[i];
-            } else if (tomLayer.lm.getCurrentLeader() == currentView.getProcesses()[i]) {
+            } else if (tomLayer.execManager.getCurrentLeader() == currentView.getProcesses()[i]) {
                 
                 forceLC = true;
  
@@ -248,7 +248,7 @@ public class ServerViewController extends ViewController {
                 
         } 
         return TOMUtil.getBytes(new ReconfigureReply(newV, jSetInfo.toArray(new String[0]),
-                 cid, tomLayer.lm.getCurrentLeader()));
+                 cid, tomLayer.execManager.getCurrentLeader()));
     }
 
     public TOMMessage[] clearUpdates() {
