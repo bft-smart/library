@@ -303,8 +303,8 @@ public abstract class DefaultSingleRecoverable implements Recoverable, SingleExe
     }
     
     @Override
-    public void Op(int CID, TOMMessage[] requests, MessageContext msgCtx) {
-        //The messages are logged within 'executeOrdered(...)' instead of in this method.
+    public void Op(int CID, byte[] requests, MessageContext msgCtx) {
+        //Requests are logged within 'executeOrdered(...)' instead of in this method.
     }
 
     @Override

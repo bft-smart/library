@@ -292,20 +292,22 @@ public class ServiceReplica {
                         request.deliveryTime = System.nanoTime();
                         if (executor instanceof BatchExecutable) {
                             
-                            // This is used to deliver the raw content decided by a consensus instance. It is
-                            // useful to allow the application to create a log and store the proof associated
-                            // with decisions (which are needed by replicas that are asking for a state transfer). 
-                            if (this.recoverer != null) this.recoverer.Op(consId[consensusCount], requestsFromConsensus, msgCtx);
+                            // This is used to deliver the content decided by a consensus instance directly to
+                            // a Recoverable object. It is useful to allow the application to create a log and
+                            // store the proof associated with decisions (which are needed by replicas
+                            // that are asking for a state transfer). 
+                            if (this.recoverer != null) this.recoverer.Op(consId[consensusCount], request.getContent(), msgCtx);
 
                             // deliver requests and contexts to the executor later
                             msgCtxts.add(msgCtx);
                             toBatch.add(request);
                         } else if (executor instanceof FIFOExecutable) {
                             
-                            // This is used to deliver the raw content decided by a consensus instance. It is
-                            // useful to allow the application to create a log and store the proof associated
-                            // with decisions (which are needed by replicas that are asking for a state transfer). 
-                            if (this.recoverer != null) this.recoverer.Op(consId[consensusCount], requestsFromConsensus, msgCtx);
+                            // This is used to deliver the content decided by a consensus instance directly to
+                            // a Recoverable object. It is useful to allow the application to create a log and
+                            // store the proof associated with decisions (which are needed by replicas
+                            // that are asking for a state transfer). 
+                            if (this.recoverer != null) this.recoverer.Op(consId[consensusCount], request.getContent(), msgCtx);
                             
                             // This is used to deliver the requests to the application and obtain a reply to deliver
                             //to the clients. The raw decision is passed to the application in the line above.
@@ -318,10 +320,11 @@ public class ServiceReplica {
                             replier.manageReply(request, msgCtx);
                         } else if (executor instanceof SingleExecutable) {
 
-                            // This is used to deliver the raw content decided by a consensus instance. It is
-                            // useful to allow the application to create a log and store the proof associated
-                            // with decisions (which are needed by replicas that are asking for a state transfer). 
-                            if (this.recoverer != null) this.recoverer.Op(consId[consensusCount], requestsFromConsensus, msgCtx);
+                            // This is used to deliver the content decided by a consensus instance directly to
+                            // a Recoverable object. It is useful to allow the application to create a log and
+                            // store the proof associated with decisions (which are needed by replicas
+                            // that are asking for a state transfer). 
+                            if (this.recoverer != null) this.recoverer.Op(consId[consensusCount], request.getContent(), msgCtx);
 
                             // This is used to deliver the requests to the application and obtain a reply to deliver
                             //to the clients. The raw decision is passed to the application in the line above.

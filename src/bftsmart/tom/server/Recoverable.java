@@ -57,22 +57,21 @@ public interface Recoverable {
     public StateManager getStateManager();
     
     /**
-     * This method is invoked by ServiceReplica to pass the raw information that was
+     * This method is invoked by ServiceReplica to pass information that was
      * decided in a particular consensus instance. This method is always invoked before
-     * invoking the executor. However, multiple invocations for the same consensus ID may
+     * the executor. However, multiple invocations for the same consensus ID may
      * occur, so developers must take this behavior into consideration when developing
      * their own logging and checkpointing. If there is no information to be passed to
      * the application, noOp(...) is invoked instead.
      * 
-     * @param CID the consensus instance ID
-     * @param requests The requests decided, in the form of the original TOMMessage objects
-     * @param msgCtx Message context associated with the consensus instance. Furthermore
-     * msgCtx.getConsensusId() will be equal to CID, and msgCtx.getProof().getDecision() is
-     * the serialized vector of requests present in the 'requests' parameter.
+     * @param CID the consensus instance ID associated with the request
+     * @param requests A request decided in CID
+     * @param msgCtx Message context associated with the client request and the consensus instance
+     * where it was ordered. msgCtx.getConsensusId() will be equal to CID.
      * 
      * 
      */
-    public void Op(int CID, TOMMessage[] requests, MessageContext msgCtx);
+    public void Op(int CID, byte[] requests, MessageContext msgCtx);
     
     /**
      * This method is invoked by ServiceReplica to indicate that a consensus instance

@@ -410,8 +410,8 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
     }
     
     @Override
-    public void Op(int CID, TOMMessage[] requests, MessageContext msgCtx) {
-        //The messages are logged within 'executeBatch(...)' instead of in this method.
+    public void Op(int CID, byte[] requests, MessageContext msgCtx) {
+        //Requests are logged within 'executeBatch(...)' instead of in this method.
     }
     
     @Override
