@@ -1,7 +1,7 @@
 BFT-SMaRt v1.0-beta
 ----------
 
-This package contains the BFT-SMaRt source code (src/), binary file (bin/), libraries needed (lib/), documentation (doc/), and configuration files (config/).
+This package contains the BFT-SMaRt source code (src/), binary file (bin/), libraries needed (lib/), documentation (doc/), running scripts (runscripts/) and configuration files (config/).
 BFT-SMaRt requires the Java Runtime Environment version 1.7 or later.
 
 ------------ Important notice for developers -------------
@@ -25,14 +25,14 @@ To run any demonstration you first need to configure BFT-SMaRt to define the pro
 You can run the counter demonstration by executing the following commands, from within the main folder:
 
 #Start the servers (4 replicas, to tolerate 1 fault)
-./smartrun.sh bftsmart.demo.counter.CounterServer 0
-./smartrun.sh bftsmart.demo.counter.CounterServer 1
-./smartrun.sh bftsmart.demo.counter.CounterServer 2
-./smartrun.sh bftsmart.demo.counter.CounterServer 3
+./runscripts/smartrun.sh bftsmart.demo.counter.CounterServer 0
+./runscripts/smartrun.sh bftsmart.demo.counter.CounterServer 1
+./runscripts/smartrun.sh bftsmart.demo.counter.CounterServer 2
+./runscripts/smartrun.sh bftsmart.demo.counter.CounterServer 3
 
 #Start a client
 
-./smartrun.sh bftsmart.demo.counter.CounterClient 1001 <increment> [<number of operations>]
+./runscripts/smartrun.sh bftsmart.demo.counter.CounterClient 1001 <increment> [<number of operations>]
 
 If <increment> equals 0 the request will be read-only. Default <number of operations> equals 1000.
 
@@ -56,14 +56,14 @@ The second, more advanced protocol can be used by extending the class bftsmart.t
 
 The library also implements a reconfiguration protocol, that you can use to add/remove replicas from the initial group. You can add/remove replicas on-the-fly by executing the following commands:
 
-./smartrun.sh bftsmart.reconfiguration.VMServices <smart id> <ip address> <port> (to add a replica to the group)
-./smartrun.sh bftsmart.reconfiguration.VMServices <smart id> (to remove a replica from the group)
+./runscripts/smartrun.sh bftsmart.reconfiguration.VMServices <smart id> <ip address> <port> (to add a replica to the group)
+./runscripts/smartrun.sh bftsmart.reconfiguration.VMServices <smart id> (to remove a replica from the group)
 
 You can run BFT-SMaRt in crash-faults only mode by setting the "system.bft" parameter in the configuration file to "false". This mode requires less replicas to execute, but will not withstand full Byzantine behavior from compromised replicas.
 
 If you need to generate public/private keys for more replicas or clients, you can use the following command:
 
-./smartrun.sh bftsmart.tom.util.RSAKeyPairGenerator <id>
+./runscripts/smartrun.sh bftsmart.tom.util.RSAKeyPairGenerator <id>
 
 Keys are stored in the config/keys folder. The command above creates key pairs both for clients and replicas.
 
