@@ -21,9 +21,9 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.Scanner;
+import java.math.BigInteger;
 
 import bftsmart.tom.MessageContext;
-import bftsmart.tom.ReplicaContext;
 import bftsmart.tom.ServiceReplica;
 import bftsmart.tom.server.defaultservices.DefaultRecoverable;
 
@@ -35,11 +35,8 @@ public final class RandomServer extends DefaultRecoverable {
 
     private int value = 0;
     private int iterations = 0;
-    /**********ISTO E CODIGO MARTELADO, PARA FAZER AVALIACOES **************/
     private int id = -1;
-    private long initialTime = -1;
-    private long currentTime = -1;
-    /***********************************************************************/
+    
     private ServiceReplica replica;
     
     public ServiceReplica getReplica() {
@@ -65,8 +62,8 @@ public final class RandomServer extends DefaultRecoverable {
         iterations++;
         try {
             DataInputStream input = new DataInputStream(new ByteArrayInputStream(command));
-            int argument = input.readInt();
-            int operator = input.readInt();
+            int operator = input.readInt();            
+            int argument = (new BigInteger(msgCtx.getNonces())).intValue() + 1;
 
             System.out.println("(" + id + ")[server] Argument: " + argument);
             switch (operator) {

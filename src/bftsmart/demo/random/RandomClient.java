@@ -40,23 +40,18 @@ public class RandomClient {
         ServiceProxy randomProxy = new ServiceProxy(id);
         Random generator = new Random(Long.parseLong(args[1]));
 
-        int i=0;
-        //sends 1000 requests to replicas and then terminates
         while(true){
 
-            int argument = generator.nextInt(10000) + 1;
             int operator = generator.nextInt(4);
 
             ByteArrayOutputStream out = new ByteArrayOutputStream(4);
-            new DataOutputStream(out).writeInt(argument);
             new DataOutputStream(out).writeInt(operator);
 
             byte[] reply = randomProxy.invokeOrdered(out.toByteArray());
             
             int newValue = new DataInputStream(new ByteArrayInputStream(reply)).readInt();
             System.out.println("(" + id + ") Current value: "+newValue);
-	    i++;
         }
-        //System.exit(0);
+
     }
 }
