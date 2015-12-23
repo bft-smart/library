@@ -95,9 +95,9 @@ public class CertifiedDecision implements Externalizable {
 
         if (obj instanceof CertifiedDecision) {
 
-            CertifiedDecision l = (CertifiedDecision) obj;
+            CertifiedDecision cDec = (CertifiedDecision) obj;
 
-            if (l.pid == pid) return true;
+            if (cDec.pid == pid) return true;
         }
 
         return false;

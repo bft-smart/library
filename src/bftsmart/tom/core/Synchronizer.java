@@ -712,7 +712,7 @@ public class Synchronizer {
             } else { // If leader, I will store information that I would send in a SYNC message
 
                 Logger.println("(Synchronizer.startSynchronization) I'm the leader for this new regency");
-                CertifiedDecision lastData = null;
+                CertifiedDecision lastDec = null;
                 CollectData collect = null;
 
                 Consensus cons = null;
@@ -728,11 +728,11 @@ public class Synchronizer {
                     byte[] decision = cons.getDecisionEpoch().propValue;
                     Set<ConsensusMessage> proof = cons.getDecisionEpoch().getProof();
 
-                    lastData = new CertifiedDecision(this.controller.getStaticConf().getProcessId(), last, decision, proof);
+                    lastDec = new CertifiedDecision(this.controller.getStaticConf().getProcessId(), last, decision, proof);
                     // TODO: WILL BE NECESSARY TO ADD A PROOF!!!??
 
                 } else {
-                    lastData = new CertifiedDecision(this.controller.getStaticConf().getProcessId(), last, null, null);
+                    lastDec = new CertifiedDecision(this.controller.getStaticConf().getProcessId(), last, null, null);
 
                     ////// THIS IS TO CATCH A BUG!!!!!
                     if (last > -1) {
@@ -755,7 +755,7 @@ public class Synchronizer {
                     }
                     
                 }
-                lcManager.addLastCID(regency, lastData);
+                lcManager.addLastCID(regency, lastDec);
 
                 if (in > -1) { // content of cid being executed
                     cons = execManager.getConsensus(in);

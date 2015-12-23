@@ -185,8 +185,8 @@ public final class DeliveryThread extends Thread {
                     int[] consensusIds = new int[requests.length];
                     int[] leadersIds = new int[requests.length];
                     int[] regenciesIds = new int[requests.length];
-                    CertifiedDecision[] proofs;
-                    proofs = new CertifiedDecision[requests.length];
+                    CertifiedDecision[] cDecs;
+                    cDecs = new CertifiedDecision[requests.length];
                     int count = 0;
                     for (Decision d : decisions) {
                         requests[count] = extractMessagesFromDecision(d);
@@ -194,9 +194,9 @@ public final class DeliveryThread extends Thread {
                         leadersIds[count] = d.getLeader();
                         regenciesIds[count] = d.getRegency();
 
-                        CertifiedDecision led = new CertifiedDecision(this.controller.getStaticConf().getProcessId(),
+                        CertifiedDecision cDec = new CertifiedDecision(this.controller.getStaticConf().getProcessId(),
                                 d.getConsensusId(), d.getValue(), d.getDecisionEpoch().proof);
-                        proofs[count] = led;
+                        cDecs[count] = cDec;
 
                         // cons.firstMessageProposed contains the performance counters
                         if (requests[count][0].equals(d.firstMessageProposed)) {
@@ -215,7 +215,7 @@ public final class DeliveryThread extends Thread {
                     Decision lastDecision = decisions.get(decisions.size() - 1);
 
                     if (requests != null && requests.length > 0) {
-                        deliverMessages(consensusIds, regenciesIds, leadersIds, proofs, requests);
+                        deliverMessages(consensusIds, regenciesIds, leadersIds, cDecs, requests);
 
                         // ******* EDUARDO BEGIN ***********//
                         if (controller.hasUpdates()) {
@@ -280,8 +280,8 @@ public final class DeliveryThread extends Thread {
         receiver.receiveReadonlyMessage(request, msgCtx);
     }
 
-    private void deliverMessages(int consId[], int regencies[], int leaders[], CertifiedDecision[] proofs, TOMMessage[][] requests) {
-        receiver.receiveMessages(consId, regencies, leaders, proofs, requests);
+    private void deliverMessages(int consId[], int regencies[], int leaders[], CertifiedDecision[] cDecs, TOMMessage[][] requests) {
+        receiver.receiveMessages(consId, regencies, leaders, cDecs, requests);
     }
 
     private void processReconfigMessages(int consId) {

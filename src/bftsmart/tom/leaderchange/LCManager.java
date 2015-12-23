@@ -802,14 +802,14 @@ public class LCManager {
     }
     
     // verifies is a proof associated with a decided value is valid
-    public boolean hasValidProof(CertifiedDecision led) {
+    public boolean hasValidProof(CertifiedDecision cDec) {
         
-        if (led.getCID() == -1) return true; // If the last CID is -1 it means the replica
+        if (cDec.getCID() == -1) return true; // If the last CID is -1 it means the replica
                                              // did not complete any consensus and cannot have
                                              // any proof
         
-        byte[] hashedValue = md.digest(led.getDecision());
-        Set<ConsensusMessage> ConsensusMessages = led.getConsMessages();
+        byte[] hashedValue = md.digest(cDec.getDecision());
+        Set<ConsensusMessage> ConsensusMessages = cDec.getConsMessages();
         int myId = tomLayer.controller.getStaticConf().getProcessId();
         int certificateCurrentView = (2*tomLayer.controller.getCurrentViewF()) + 1;
         int certificateLastView = -1;
@@ -854,7 +854,7 @@ public class LCManager {
             
                 if (recvMAC != null && myMAC != null && Arrays.equals(recvMAC, myMAC) &&
                         Arrays.equals(consMsg.getValue(), hashedValue) &&
-                        consMsg.getNumber() == led.getCID() && !alreadyCounted.contains(consMsg.getSender())) {
+                        consMsg.getNumber() == cDec.getCID() && !alreadyCounted.contains(consMsg.getSender())) {
                 
                     alreadyCounted.add(consMsg.getSender());
                     countValid++;
