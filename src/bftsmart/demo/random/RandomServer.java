@@ -95,7 +95,8 @@ public final class RandomServer extends DefaultRecoverable {
             }
             
             System.out.println("(" + id + ")[server] (" + iterations + " / " + 
-                    msgCtx.getConsensusId() + " / " + msgCtx.getRegency() + ") Current value: " + value);
+                    msgCtx.getConsensusId() + " / " + msgCtx.getRegency() + " / "
+                    + msgCtx.getLeader() +  ") Current value: " + value);
             
             ByteArrayOutputStream out = new ByteArrayOutputStream(4);
             new DataOutputStream(out).writeInt(value);
