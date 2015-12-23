@@ -201,8 +201,12 @@ public final class DeliveryThread extends Thread {
                         // cons.firstMessageProposed contains the performance counters
                         if (requests[count][0].equals(d.firstMessageProposed)) {
                             long time = requests[count][0].timestamp;
+                            long seed = requests[count][0].seed;
+                            int numOfNonces = requests[count][0].numOfNonces;
                             requests[count][0] = d.firstMessageProposed;
                             requests[count][0].timestamp = time;
+                            requests[count][0].seed = seed;
+                            requests[count][0].numOfNonces = numOfNonces;
                         }
 
                         count++;
