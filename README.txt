@@ -63,7 +63,7 @@ You can run BFT-SMaRt in crash-faults only mode by setting the "system.bft" para
 
 If you need to generate public/private keys for more replicas or clients, you can use the following command:
 
-./runscripts/smartrun.sh bftsmart.tom.util.RSAKeyPairGenerator <id>
+./runscripts/smartrun.sh bftsmart.tom.util.RSAKeyPairGenerator <id> <key size>
 
 Keys are stored in the config/keys folder. The command above creates key pairs both for clients and replicas.
 
