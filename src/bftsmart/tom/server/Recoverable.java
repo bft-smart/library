@@ -19,9 +19,10 @@ import bftsmart.statemanagement.ApplicationState;
 import bftsmart.statemanagement.StateManager;
 import bftsmart.tom.MessageContext;
 import bftsmart.tom.ReplicaContext;
-import bftsmart.tom.core.messages.TOMMessage;
 
 /**
+ * Classes that implement this interface should implement a state transfer protocol.
+ * Typically, classes should both implement this interface and one of the executables.
  * 
  * @author Marcel Santos
  *

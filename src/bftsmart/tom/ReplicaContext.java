@@ -21,8 +21,9 @@ import bftsmart.reconfiguration.util.TOMConfiguration;
 import bftsmart.reconfiguration.views.View;
 
 /**
- *
- * @author alysson
+ * This class contains information related to the replica.
+ * 
+ * @author Alysson Bessani
  */
 public class ReplicaContext {
     

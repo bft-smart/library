@@ -18,6 +18,7 @@ package bftsmart.tom.server;
 import bftsmart.tom.MessageContext;
 
 /**
+ * Executables that implement this interface will receive client requests individually.
  * 
  * @author Marcel Santos
  *

@@ -19,6 +19,9 @@ import bftsmart.tom.MessageContext;
 
 /**
  * 
+ * Executables that implement this interface will receive a batch of requests and
+ * deliver them to the application in a deterministic way.
+ * 
  * @author Marcel Santos
  *
  */

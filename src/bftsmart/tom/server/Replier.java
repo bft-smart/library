@@ -20,8 +20,10 @@ import bftsmart.tom.ReplicaContext;
 import bftsmart.tom.core.messages.TOMMessage;
 
 /**
- *
- * @author miguel
+ * Provides support for building custom reply management
+ * to be used in the ServiceReplica.
+ * 
+ * @author Miguel Garcia
  */
 public interface Replier {
     

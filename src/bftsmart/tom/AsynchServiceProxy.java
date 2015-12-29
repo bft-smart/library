@@ -9,8 +9,10 @@ import bftsmart.tom.util.Extractor;
 import java.util.Comparator;
 
 /**
+ * This class is an extension of 'ServiceProxy' that can waits for replies
+ * asynchronously.
  * 
- * @author anogueira
+ * @author Andre Nogueira
  *
  */
 public class AsynchServiceProxy extends ServiceProxy{

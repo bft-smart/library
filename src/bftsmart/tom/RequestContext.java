@@ -3,6 +3,9 @@ package bftsmart.tom;
 import bftsmart.communication.client.ReplyListener;
 import bftsmart.tom.core.messages.TOMMessageType;
 
+/**
+ * This class contains information related to a client request.
+ */
 public final class RequestContext{
 
 	private final int reqId;

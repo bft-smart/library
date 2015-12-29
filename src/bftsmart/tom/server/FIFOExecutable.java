@@ -18,8 +18,11 @@ package bftsmart.tom.server;
 import bftsmart.tom.MessageContext;
 
 /**
+ * 
+ * Executables that implement this interface will get requests
+ * delivered in FIFO order.
+ * 
  * @author Marcel Santos
- * Deliver messages in FIFO order
  *
  */
 public interface FIFOExecutable extends SingleExecutable {

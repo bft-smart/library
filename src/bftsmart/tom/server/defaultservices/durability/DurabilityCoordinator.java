@@ -29,7 +29,6 @@ import bftsmart.statemanagement.strategy.durability.CSTState;
 import bftsmart.statemanagement.strategy.durability.DurableStateManager;
 import bftsmart.tom.MessageContext;
 import bftsmart.tom.ReplicaContext;
-import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.server.BatchExecutable;
 import bftsmart.tom.server.Recoverable;
 import bftsmart.tom.server.defaultservices.CommandsInfo;

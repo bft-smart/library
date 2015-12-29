@@ -30,13 +30,13 @@ import bftsmart.statemanagement.StateManager;
 import bftsmart.statemanagement.strategy.StandardStateManager;
 import bftsmart.tom.MessageContext;
 import bftsmart.tom.ReplicaContext;
-import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.server.Recoverable;
 import bftsmart.tom.server.SingleExecutable;
 import bftsmart.tom.util.Logger;
 
 /**
- *
+ * This class provides a basic state transfer protocol using the interface
+ * 'SingleExecutable'.
  * @author Marcel Santos
  */
 public abstract class DefaultSingleRecoverable implements Recoverable, SingleExecutable {

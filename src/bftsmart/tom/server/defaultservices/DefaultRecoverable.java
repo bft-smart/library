@@ -31,13 +31,15 @@ import bftsmart.statemanagement.StateManager;
 import bftsmart.statemanagement.strategy.StandardStateManager;
 import bftsmart.tom.MessageContext;
 import bftsmart.tom.ReplicaContext;
-import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.server.BatchExecutable;
 import bftsmart.tom.server.Recoverable;
 import bftsmart.tom.util.Logger;
 
 /**
  *
+ * This class provides a basic state transfer protocol using the interface
+ * 'BatchExecutable'.
+ * 
  * @author Joao Sousa
  */
 public abstract class DefaultRecoverable implements Recoverable, BatchExecutable {
