@@ -104,7 +104,10 @@ public final class ExecutionManager {
         /******************************************************************/
         //******* EDUARDO END **************//
         
-        currentLeader = 0; // initial leader is replica 0
+        // Get initial leader
+        if (controller.getCurrentViewAcceptors().length > 0)
+            currentLeader = controller.getCurrentViewAcceptors()[0];
+        else currentLeader = 0;
     }
     
     /**
