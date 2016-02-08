@@ -29,7 +29,7 @@ public class ClientViewController extends ViewController {
         View cv = getViewStore().readView();
         if(cv == null){
             reconfigureTo(new View(0, getStaticConf().getInitialView(), 
-                getStaticConf().getF(), getInitAdddresses()));
+                getStaticConf().getF(), getInitAdddresses(), getStaticConf().isBFT(), getStaticConf().getDelta()));
         }else{
             reconfigureTo(cv);
         }
@@ -40,7 +40,7 @@ public class ClientViewController extends ViewController {
         View cv = getViewStore().readView();
         if(cv == null){
             reconfigureTo(new View(0, getStaticConf().getInitialView(), 
-                getStaticConf().getF(), getInitAdddresses()));
+                getStaticConf().getF(), getInitAdddresses(), getStaticConf().isBFT(), getStaticConf().getDelta()));
         }else{
             reconfigureTo(cv);
         }

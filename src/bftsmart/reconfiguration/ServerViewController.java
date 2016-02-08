@@ -37,12 +37,17 @@ public class ServerViewController extends ViewController {
     public static final int CHANGE_F = 2;
     
     private int quorumBFT; // ((n + f) / 2) replicas
-    private int quorumCFT; // (n / 2) replicas
+    private int quorumCFT; // Quorum para caso CFT
     private int[] otherProcesses;
     private int[] lastJoinStet;
     private List<TOMMessage> updates = new LinkedList<TOMMessage>();
     private TOMLayer tomLayer;
    // protected View initialView;
+    
+    private int overlayN;
+    private int overlayF;
+    private int overlayQ_BFT;
+    private int overlayQ_CFT;
     
     public ServerViewController(int procId) {
         this(procId,"");
@@ -60,7 +65,7 @@ public class ServerViewController extends ViewController {
             
             System.out.println("#Creating current view from configuration file");
             reconfigureTo(new View(0, getStaticConf().getInitialView(), 
-                getStaticConf().getF(), getInitAdddresses()));
+                getStaticConf().getF(), getInitAdddresses(), getStaticConf().isBFT(), getStaticConf().getDelta()));
         }else{
             System.out.println("#Using view stored on disk");
             reconfigureTo(cv);
@@ -227,7 +232,7 @@ public class ServerViewController extends ViewController {
         for(int i = 0 ;i < nextV.length ;i++)
         	addresses[i] = getStaticConf().getRemoteAddress(nextV[i]);
 
-        View newV = new View(currentView.getId() + 1, nextV, f,addresses);
+        View newV = new View(currentView.getId() + 1, nextV, f,addresses, getStaticConf().isBFT(), getStaticConf().getDelta());
 
         System.out.println("new view: " + newV);
         System.out.println("installed on CID: " + cid);
@@ -306,6 +311,11 @@ public class ServerViewController extends ViewController {
 
             this.quorumBFT = (int) Math.ceil((this.currentView.getN() + this.currentView.getF()) / 2);
             this.quorumCFT = (int) Math.ceil(this.currentView.getN() / 2);
+
+            this.overlayN = this.currentView.getOverlayN();
+            this.overlayF = this.currentView.getOverlayF();
+            this.overlayQ_BFT = (int) Math.ceil((this.overlayN + this.overlayF) / 2);
+            this.overlayQ_CFT = (int) Math.ceil(this.overlayN / 2);
         } else if (this.currentView != null && this.currentView.isMember(getStaticConf().getProcessId())) {
             //TODO: Left the system in newView -> LEAVE
             //CODE for LEAVE   
@@ -322,5 +332,9 @@ public class ServerViewController extends ViewController {
 
     public int getQuorum() {
         return getStaticConf().isBFT() ? quorumBFT : quorumCFT;
+    }
+
+    public int getOverlayQuorum() {
+        return getStaticConf().isBFT() ? overlayQ_BFT : overlayQ_CFT;
     }
 }

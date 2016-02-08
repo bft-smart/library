@@ -255,21 +255,34 @@ public final class Acceptor {
      * @param value Value sent in the message
      */
     private void computeWrite(int cid, Epoch epoch, byte[] value) {
-        int writeAccepted = epoch.countWrite(value);
+        //int writeAccepted = round.countWrite(value);
+        int writeWeigths = epoch.countWriteWeigths(value);
         
-        Logger.println("(Acceptor.computeWrite) I have " + writeAccepted +
-                " WRITEs for " + cid + "," + epoch.getTimestamp());
+        //Logger.println("(Acceptor.computeWrite) I have " + writeAccepted +
+        //        " WRITEs for " + eid + "," + round.getNumber());
 
-        if (writeAccepted > controller.getQuorum() && Arrays.equals(value, epoch.propValueHash)) {
-                        
-            if (!epoch.isAcceptSetted(me)) {
+        Logger.println("(Acceptor.computeWrite) I have " + writeWeigths +
+                " WRITEs weigths  and " + epoch.countWrite(value) + " WRITE messages for " + cid + "," + epoch.getTimestamp());
+
+        // code for classic quorums
+        //if (writeAccepted > controller.getQuorum() && Arrays.equals(value, round.propValueHash)) {
+        
+        //code for vote schemes
+        if (writeWeigths > controller.getOverlayQuorum() && Arrays.equals(value, epoch.propValueHash)) {              
+
+            //code for tentative execution
+            Logger.println("(Acceptor.computeWrite) Tentatively Deciding " + cid);
+            decide(epoch);
+            
+            //normal code for standard execution
+            /*if (!epoch.isAcceptSetted(me)) {
                 
-                Logger.println("(Acceptor.computeWrite) sending WRITE for " + cid);
+                //Logger.println("(Acceptor.computeWrite) sending WRITE for " + cid);
 
-                /**** LEADER CHANGE CODE! ******/
-                Logger.println("(Acceptor.computeWrite) Setting consensus " + cid + " QuorumWrite tiemstamp to " + epoch.getConsensus().getEts() + " and value " + Arrays.toString(value));
+                //////// LEADER CHANGE CODE! /////////////
+                Logger.println("(Acceptor.computeWrite) Setting EID's " + cid + " QuorumWrite tiemstamp to " + epoch.getConsensus().getEts() + " and value " + Arrays.toString(value));
                 epoch.getConsensus().setQuorumWrites(value);
-                /*****************************************/
+                //////////////////////////////////////////
                 
                 epoch.setAccept(me, value);
 
@@ -287,11 +300,12 @@ public final class Acceptor {
                 int[] targets = this.controller.getCurrentViewOtherAcceptors();
                 communication.getServersConn().send(targets, cm, true);
                 
-                //communication.send(this.reconfManager.getCurrentViewOtherAcceptors(),
-                        //factory.createStrong(cid, epoch.getNumber(), value));
+                communication.send(this.controller.getCurrentViewOtherAcceptors(),
+
+                        factory.createAccept(cid, epoch.getTimestamp(), value));
                 epoch.addToProof(cm);
                 computeAccept(cid, epoch, value);
-            }
+            */
         }
     }
 
@@ -396,12 +410,19 @@ public final class Acceptor {
      * @param epoch Epoch of the receives message
      * @param value Value sent in the message
      */
-    private void computeAccept(int cid, Epoch epoch, byte[] value) {
-        Logger.println("(Acceptor.computeAccept) I have " + epoch.countAccept(value) +
-                " ACCEPTs for " + cid + "," + epoch.getTimestamp());
+    private void computeAccept(int eid, Epoch epoch, byte[] value) {
+        //Logger.println("(Acceptor.computeAccept) I have " + round.countAccept(value) +
+        //        " ACCEPTs for " + eid + "," + round.getNumber());
 
-        if (epoch.countAccept(value) > controller.getQuorum() && !epoch.getConsensus().isDecided()) {
-            Logger.println("(Acceptor.computeAccept) Deciding " + cid);
+        Logger.println("(Acceptor.computeAccept) I have " + epoch.countAcceptWeigths(value) +
+                " ACCEPT weigths and " + epoch.countAccept(value) + " ACCEPT messages for " + eid + "," + epoch.getTimestamp());
+
+        //normal code, for classic quorums
+        //if (round.countAccept(value) > controller.getQuorum() && !round.getExecution().isDecided()) {
+        
+        //code for vote scheme
+        if (epoch.countAcceptWeigths(value) > controller.getOverlayQuorum() && !epoch.getConsensus().isDecided()) {
+            Logger.println("(Acceptor.computeAccept) Deciding " + eid);
             decide(epoch);
         }
     }
