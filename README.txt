@@ -1,7 +1,7 @@
 WHEAT 0.1-alpha
 ----------
 
-This branch contains the source code for WHEAT, an extension of BFT-SMART that implements the optimizations and vote assignment schemes described in [1]. It can be lanuched in the same way as the standard library.
+This branch contains the source code for WHEAT, an extension of BFT-SMART (based on version 1.0-beta) that implements the optimizations and vote assignment schemes described in [1]. It can be lanuched in the same way as the standard library.
 
 Example (for the counter demo):
 
