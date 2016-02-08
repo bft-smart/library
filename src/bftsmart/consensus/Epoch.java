@@ -88,7 +88,6 @@ public class Epoch implements Serializable {
             sumWeightsWrite = new double[n];
             sumWeightsAccept = new double[n];
         
-
             this.write = new byte[n][];
             this.accept = new byte[n][];
 

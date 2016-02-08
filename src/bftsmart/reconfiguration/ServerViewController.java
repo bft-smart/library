@@ -37,7 +37,7 @@ public class ServerViewController extends ViewController {
     public static final int CHANGE_F = 2;
     
     private int quorumBFT; // ((n + f) / 2) replicas
-    private int quorumCFT; // Quorum para caso CFT
+    private int quorumCFT; // (n / 2) replicas
     private int[] otherProcesses;
     private int[] lastJoinStet;
     private List<TOMMessage> updates = new LinkedList<TOMMessage>();
