@@ -87,8 +87,13 @@ public class StandardStateManager extends BaseStateManager {
             //pos = this.SVController.getCurrentViewPos(replica);
             //replica = this.SVController.getCurrentViewProcesses()[(pos + 1) % SVController.getCurrentViewN()];
             
-            pos = r.nextInt(processes.length);
-            replica = processes[pos];
+            if (processes != null && processes.length > 1) {
+                pos = r.nextInt(processes.length);
+                replica = processes[pos];
+            } else {
+                replica = 0;
+                break;
+            }
         } while (replica == SVController.getStaticConf().getProcessId());
     }
     
