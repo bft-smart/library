@@ -24,9 +24,9 @@
 
 
 fieldcount=1
-fieldlength=4096
+fieldlength=1024
 
-recordcount=250000
+recordcount=20000
 operationcount=0
 workload=com.yahoo.ycsb.workloads.CoreWorkload
 
