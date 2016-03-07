@@ -6,6 +6,7 @@ import bftsmart.communication.client.ReplyListener;
 import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.core.messages.TOMMessageType;
 import bftsmart.tom.util.Extractor;
+import bftsmart.tom.util.Logger;
 import java.util.Comparator;
 
 /**
@@ -86,7 +87,9 @@ public class AsynchServiceProxy extends ServiceProxy{
 	 */
     @Override
     public void replyReceived(TOMMessage reply) {
-		try {
+            Logger.println("Asynchronously received message from " + reply.getSender() + " with sequence number " + reply.getSequence());
+
+        try {
 			canReceiveLock.lock();
 
 			RequestContext requestContext = requestsContext.get(reply.getSequence());
@@ -95,12 +98,14 @@ public class AsynchServiceProxy extends ServiceProxy{
 				super.replyReceived(reply);
 				return;
 			}
-			
+
 			if ( contains(requestContext.getTargets(), reply.getSender()) && 
 					(reply.getSequence() == requestContext.getReqId()) &&
 					(reply.getReqType().compareTo(requestContext.getRequestType())) == 0 ) {
 				
-				ReplyListener replyListener = requestContext.getReplyListener();
+                            Logger.println("Deliverying message from " + reply.getSender() + " with sequence number " + reply.getSequence() + " to the listener");
+
+                            ReplyListener replyListener = requestContext.getReplyListener();
 
 				if (replyListener != null) {
 					requestContext.getReplyListener().replyReceived(requestContext, reply);

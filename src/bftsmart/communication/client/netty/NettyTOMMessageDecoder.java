@@ -199,6 +199,7 @@ public class NettyTOMMessageDecoder extends ByteToMessageDecoder {
                     }
                 }
             }
+            Logger.println("Decoded message from " + sm.getSender() + " with sequence number " + sm.getSequence());
             list.add(sm);
         } catch (Exception ex) {
             bftsmart.tom.util.Logger.println("Impossible to decode message: "+

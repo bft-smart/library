@@ -306,7 +306,9 @@ public class ServiceProxy extends TOMSender {
 	 */
 	@Override
 	public void replyReceived(TOMMessage reply) {
-		try {
+            Logger.println("Synchronously received message from " + reply.getSender() + " with sequence number " + reply.getSequence());
+
+                try {
 			canReceiveLock.lock();
 			if (reqId == -1) {//no message being expected
 				Logger.println("throwing out request: sender=" + reply.getSender() + " reqId=" + reply.getSequence());
@@ -379,7 +381,11 @@ public class ServiceProxy extends TOMSender {
 						}
 					}
 				}
-			}
+			} else {
+				Logger.println("Ignoring reply from " + reply.getSender()
+						+ " with reqId:" + reply.getSequence() + ". Currently wait reqId= " + reqId);
+                            
+                        }
 
 			// Critical section ends here. The semaphore can be released
 			canReceiveLock.unlock();
