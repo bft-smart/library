@@ -318,7 +318,7 @@ public class TOMConfiguration extends Configuration {
 
             s = (String) configs.remove("system.numrepliers");
             if (s == null) {
-                numRepliers = 1;
+                numRepliers = 0;
             } else {
                 numRepliers = Integer.parseInt(s);
             }
