@@ -6,6 +6,8 @@ import bftsmart.communication.client.ReplyListener;
 import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.core.messages.TOMMessageType;
 import bftsmart.tom.util.Extractor;
+import bftsmart.tom.util.Logger;
+import java.util.Arrays;
 import java.util.Comparator;
 
 /**
@@ -86,7 +88,9 @@ public class AsynchServiceProxy extends ServiceProxy{
 	 */
     @Override
     public void replyReceived(TOMMessage reply) {
-		try {
+            Logger.println("Asynchronously received reply from " + reply.getSender() + " with sequence number " + reply.getSequence());
+
+        try {
 			canReceiveLock.lock();
 
 			RequestContext requestContext = requestsContext.get(reply.getSequence());
@@ -95,12 +99,14 @@ public class AsynchServiceProxy extends ServiceProxy{
 				super.replyReceived(reply);
 				return;
 			}
-			
+
 			if ( contains(requestContext.getTargets(), reply.getSender()) && 
 					(reply.getSequence() == requestContext.getReqId()) &&
 					(reply.getReqType().compareTo(requestContext.getRequestType())) == 0 ) {
 				
-				ReplyListener replyListener = requestContext.getReplyListener();
+                            Logger.println("Deliverying message from " + reply.getSender() + " with sequence number " + reply.getSequence() + " to the listener");
+
+                            ReplyListener replyListener = requestContext.getReplyListener();
 
 				if (replyListener != null) {
 					requestContext.getReplyListener().replyReceived(requestContext, reply);
@@ -124,7 +130,10 @@ public class AsynchServiceProxy extends ServiceProxy{
      * @return
      */
 	private int invokeAsynch(byte[] request,int[] targets, ReplyListener replyListener, TOMMessageType reqType) {
-		RequestContext requestContext = null;
+
+            Logger.println("Asynchronously sending request to " + Arrays.toString(targets));
+
+            RequestContext requestContext = null;
 		
 		canSendLock.lock();
 
@@ -132,9 +141,10 @@ public class AsynchServiceProxy extends ServiceProxy{
 				reqType, targets, System.currentTimeMillis(), replyListener);
 
 		try {
-			sendMessageToTargets(request, requestContext.getReqId(), requestContext.getOperationId(), targets, reqType);
-
+                        Logger.println("Storing request context for " + requestContext.getReqId());
 			requestsContext.put(requestContext.getReqId(), requestContext);
+
+                        sendMessageToTargets(request, requestContext.getReqId(), requestContext.getOperationId(), targets, reqType);
 			
 		} finally {
 			canSendLock.unlock();

@@ -394,8 +394,10 @@ public class ServiceReplica {
                         replies[index], SVController.getCurrentViewId());
 
                 if (SVController.getStaticConf().getNumRepliers() > 0) {
+                    bftsmart.tom.util.Logger.println("(ServiceReplica.receiveMessages) sending reply to " + request.getSender() + " with sequence number " + request.getSequence() +" via ReplyManager");
                     repMan.send(request);
                 } else {
+                    bftsmart.tom.util.Logger.println("(ServiceReplica.receiveMessages) sending reply to " + request.getSender() + " with sequence number " + request.getSequence());
                     cs.send(new int[]{request.getSender()}, request.reply);
                 }
             }
