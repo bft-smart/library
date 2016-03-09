@@ -116,8 +116,7 @@ public abstract class DefaultSingleRecoverable implements Recoverable, SingleExe
     }
     
     private StateLog getLog() {
-        if(log == null)
-           	initLog();
+       	initLog();
     	return log;
     }
     
@@ -193,8 +192,7 @@ public abstract class DefaultSingleRecoverable implements Recoverable, SingleExe
             System.out.println("(DefaultSingleRecoverable.setState) last CID in state: " + state.getLastCID());
             
             logLock.lock();
-            if(log == null)
-            	initLog();
+            initLog();
             log.update(state);
             logLock.unlock();
             
@@ -280,7 +278,7 @@ public abstract class DefaultSingleRecoverable implements Recoverable, SingleExe
     	return stateManager;
     }
 	
-    protected void initLog() {
+    private void initLog() {
     	if(log == null) {
     		checkpointPeriod = config.getCheckpointPeriod();
             byte[] state = getSnapshot();

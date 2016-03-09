@@ -165,6 +165,7 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
     }
 
     private StateLog getLog() {
+        initLog();
         return log;
     }
 
@@ -253,6 +254,7 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
             stateLock.lock();
             if (state.getSerializedState() != null) {
                 System.out.println("The state is not null. Will install it");
+                initLog();
                 log.update(state);
                 installSnapshot(state.getSerializedState());
             }
@@ -369,10 +371,7 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
         return index;
     }
    
-    @Override
-    public void setReplicaContext(ReplicaContext replicaContext) {
-        this.config = replicaContext.getStaticConfiguration();
-        this.controller = replicaContext.getSVController();
+    private void initLog() {
         if (log == null) {
             checkpointPeriod = config.getCheckpointPeriod();
             byte[] state = getSnapshot();
@@ -392,6 +391,13 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
                 log = new StateLog(this.config.getProcessId(), checkpointPeriod, state, computeHash(state));
             }
         }
+    }
+    
+    @Override
+    public void setReplicaContext(ReplicaContext replicaContext) {
+        this.config = replicaContext.getStaticConfiguration();
+        this.controller = replicaContext.getSVController();
+        initLog();
         getStateManager().askCurrentConsensusId();
     }
 
