@@ -306,7 +306,7 @@ public class ServiceProxy extends TOMSender {
 	 */
 	@Override
 	public void replyReceived(TOMMessage reply) {
-            Logger.println("Synchronously received message from " + reply.getSender() + " with sequence number " + reply.getSequence());
+            Logger.println("Synchronously received reply from " + reply.getSender() + " with sequence number " + reply.getSequence());
 
                 try {
 			canReceiveLock.lock();
