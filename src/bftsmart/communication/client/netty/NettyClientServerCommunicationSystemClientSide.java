@@ -56,6 +56,7 @@ import bftsmart.reconfiguration.ClientViewController;
 import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.util.Logger;
 import bftsmart.tom.util.TOMUtil;
+import java.util.Arrays;
 
 /**
  *
@@ -310,6 +311,9 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 
 	@Override
 	public void send(boolean sign, int[] targets, TOMMessage sm) {
+            
+                Logger.println("Sending request from " + sm.getSender() + " with sequence number " + sm.getSequence() + " to " + Arrays.toString(targets));
+
 		if (sm.serializedMessage == null) {
 
 			//serialize message
