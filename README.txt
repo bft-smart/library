@@ -4,7 +4,7 @@ BFT-SMaRt v1.1-beta
 This package contains the BFT-SMaRt source code (src/), binary file (bin/), libraries needed (lib/), documentation (doc/), running scripts (runscripts/) and configuration files (config/).
 BFT-SMaRt requires the Java Runtime Environment version 1.7 or later.
 
----------------- Important notice ------------------------
+---------------- Important warning ------------------------
 
 This beta version of BFT-SMaRt offers the most stable execution via the class bftsmart.tom.server.defaultservices.DefaultRecoverable under Byzantine faults. Applications can also be implemented using 'bftsmart.tom.server.defaultservices.DefaultSingleRecoverable' and 'bftsmart.tom.server.defaultservices.durability.DurabilityCoordinator', but they are not as stable as 'DefaultRecoverable'. In future versions these classes will be properly tested and fixed.
 
@@ -19,6 +19,8 @@ To run any demonstration you first need to configure BFT-SMaRt to define the pro
 1 127.0.0.1 11010
 2 127.0.0.1 11020
 3 127.0.0.1 11030
+
+Important tip: Always provide IP addresses instead of hostnames. If a machine running a replica is not correctly configured, BFT-SMaRt may fail to obtain the proper IP address and use the loopback address instead (127.0.0.1). This phenomenom may prevent clients and/or replicas from successfully establishing a connection among them.
 
 2.) The system configurations also have to be specified (see 'config/system.config'). Most of the parameters are self explanatory.
 
