@@ -260,7 +260,10 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 			if (ncss.getChannel() == ctx.channel()) {
 				try {
 					// Configure the client.
-					EventLoopGroup workerGroup = new NioEventLoopGroup();
+					EventLoopGroup workerGroup = ctx.channel().eventLoop();
+					if( workerGroup == null){
+						workerGroup = new NioEventLoopGroup();
+					}
 
 					//try {
 					Bootstrap b = new Bootstrap();
