@@ -423,9 +423,9 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
     }
     
     @Override
-    public void noOp(int CID, MessageContext msgCtx) {
+    public void noOp(int CID, byte[][] operations, MessageContext[] msgCtxs) {
         
-        executeBatch(new byte[1][0], new MessageContext[]{msgCtx}, true);
+        executeBatch(operations, msgCtxs, true);
 
     }
     

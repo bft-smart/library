@@ -426,11 +426,11 @@ public abstract class DurabilityCoordinator implements Recoverable, BatchExecuta
         }
 
         @Override
-        public void noOp(int CID, MessageContext msgCtx) {
+    public void noOp(int CID, byte[][] operations, MessageContext[] msgCtxs) {
+        
+        executeBatch(operations, msgCtxs, true);
 
-            executeBatch(new byte[1][0], new MessageContext[]{msgCtx}, true);
-
-        }
+    }
         
         public abstract void installSnapshot(byte[] state);
         

@@ -84,9 +84,10 @@ public interface Recoverable {
      * logs used within the state transfer, but never deliver it to the application
      * 
      * @param CID the consensus instance where the aforementioned condition occurred
+     * @param operations Operations decided in CID
      * @param msgCtx Message context associated with the consensus instance. furthermore
      * msgCtx.getConsensusId() will be equal to CID.
      */
-    public void noOp(int CID, MessageContext msgCtx);
+    public void noOp(int CID, byte[][] operations, MessageContext msgCtx[]);
 	
 }
