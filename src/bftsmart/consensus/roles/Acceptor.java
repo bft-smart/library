@@ -271,11 +271,11 @@ public final class Acceptor {
         if (writeWeigths > controller.getOverlayQuorum() && Arrays.equals(value, epoch.propValueHash)) {              
 
             //code for tentative execution
-            Logger.println("(Acceptor.computeWrite) Tentatively Deciding " + cid);
-            decide(epoch);
+            //Logger.println("(Acceptor.computeWrite) Tentatively Deciding " + cid);
+            //decide(epoch);
             
             //normal code for standard execution
-            /*if (!epoch.isAcceptSetted(me)) {
+            if (!epoch.isAcceptSetted(me)) {
                 
                 //Logger.println("(Acceptor.computeWrite) sending WRITE for " + cid);
 
@@ -305,7 +305,7 @@ public final class Acceptor {
                         factory.createAccept(cid, epoch.getTimestamp(), value));
                 epoch.addToProof(cm);
                 computeAccept(cid, epoch, value);
-            }*/
+            }
         }
     }
 
