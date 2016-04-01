@@ -265,7 +265,7 @@ public final class Acceptor {
                 " WRITEs weigths  and " + epoch.countWrite(value) + " WRITE messages for " + cid + "," + epoch.getTimestamp());
 
         // code for classic quorums
-        //if (writeAccepted > controller.getQuorum() && Arrays.equals(value, round.propValueHash)) {
+        //if (writeAccepted > controller.getQuorum() && Arrays.equals(value, epoch.propValueHash)) {
         
         //code for vote schemes
         if (writeWeigths > controller.getOverlayQuorum() && Arrays.equals(value, epoch.propValueHash)) {              
@@ -305,7 +305,7 @@ public final class Acceptor {
                         factory.createAccept(cid, epoch.getTimestamp(), value));
                 epoch.addToProof(cm);
                 computeAccept(cid, epoch, value);
-            */
+            }*/
         }
     }
 
@@ -414,14 +414,15 @@ public final class Acceptor {
         //Logger.println("(Acceptor.computeAccept) I have " + round.countAccept(value) +
         //        " ACCEPTs for " + eid + "," + round.getNumber());
 
-        Logger.println("(Acceptor.computeAccept) I have " + epoch.countAcceptWeigths(value) +
+        long acceptWeights = epoch.countAcceptWeigths(value);
+        Logger.println("(Acceptor.computeAccept) I have " + acceptWeights +
                 " ACCEPT weigths and " + epoch.countAccept(value) + " ACCEPT messages for " + eid + "," + epoch.getTimestamp());
 
         //normal code, for classic quorums
         //if (round.countAccept(value) > controller.getQuorum() && !round.getExecution().isDecided()) {
         
         //code for vote scheme
-        if (epoch.countAcceptWeigths(value) > controller.getOverlayQuorum() && !epoch.getConsensus().isDecided()) {
+        if (acceptWeights > controller.getOverlayQuorum() && !epoch.getConsensus().isDecided()) {
             Logger.println("(Acceptor.computeAccept) Deciding " + eid);
             decide(epoch);
         }
