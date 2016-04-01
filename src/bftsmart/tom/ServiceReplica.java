@@ -359,12 +359,37 @@ public class ServiceReplica {
                 System.out.println(" --- A consensus instance finished, but there were no commands to deliver to the application.");
                 System.out.println(" --- Notifying recoverable about a blank consensus.");
 
-                MessageContext msgCtx = new MessageContext(-1, -1, null, -1, -1, -1, -1, null, // Since it is a noop, there is no need to pass info about the client...
-                        -1, 0, 0, regencies[consensusCount], leaders[consensusCount], consId[consensusCount], cDecs[consensusCount].getConsMessages(), //... but there is still need to pass info about the consensus
-                        null, true); // there is no command that is the first of the batch, since it is a noop
-                msgCtx.setLastInBatch();
+                byte[][] batch = null;
+                MessageContext[] msgCtx = null;
+                if (requestsFromConsensus.length > 0) {
+                    //Make new batch to deliver
+                    batch = new byte[requestsFromConsensus.length][];
+                    msgCtx = new MessageContext[requestsFromConsensus.length];
+
+                    //Put messages in the batch
+                    int line = 0;
+                    for (TOMMessage m : requestsFromConsensus) {
+                        batch[line] = m.getContent();
+
+                        msgCtx[line] = new MessageContext(m.getSender(), m.getViewID(),
+                            m.getReqType(), m.getSession(), m.getSequence(), m.getOperationId(),
+                            m.getReplyServer(), m.serializedMessageSignature, firstRequest.timestamp,
+                            m.numOfNonces, m.seed, regencies[consensusCount], leaders[consensusCount],
+                            consId[consensusCount], cDecs[consensusCount].getConsMessages(), firstRequest, true);
+                        msgCtx[line].setLastInBatch();
+                        
+                        line++;
+                    }
+                }
+
+                this.recoverer.noOp(consId[consensusCount], batch, msgCtx);
                 
-                this.recoverer.noOp(msgCtx.getConsensusId(), msgCtx);
+                //MessageContext msgCtx = new MessageContext(-1, -1, null, -1, -1, -1, -1, null, // Since it is a noop, there is no need to pass info about the client...
+                //        -1, 0, 0, regencies[consensusCount], leaders[consensusCount], consId[consensusCount], cDecs[consensusCount].getConsMessages(), //... but there is still need to pass info about the consensus
+                //        null, true); // there is no command that is the first of the batch, since it is a noop
+                //msgCtx.setLastInBatch();
+                
+                //this.recoverer.noOp(msgCtx.getConsensusId(), msgCtx);
             }
             
             consensusCount++;

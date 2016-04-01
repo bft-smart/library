@@ -306,9 +306,11 @@ public abstract class DefaultSingleRecoverable implements Recoverable, SingleExe
     }
 
     @Override
-    public void noOp(int CID, MessageContext msgCtx) {
+    public void noOp(int CID, byte[][] operations, MessageContext[] msgCtx) {
          
-        executeOrdered(new byte[0], msgCtx, true);
+        for (int i = 0; i < msgCtx.length; i++) {
+            executeOrdered(operations[i], msgCtx[i], true);
+        }
     }
     
     public abstract void installSnapshot(byte[] state);
