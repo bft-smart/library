@@ -873,7 +873,7 @@ public class LCManager {
                 }
    
             } else {
-                return false; // the proof is invalid
+                bftsmart.tom.util.Logger.println("(LCManager.hasValidProof) Proof is invalid");
             }
         }
         
