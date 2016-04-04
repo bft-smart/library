@@ -22,7 +22,9 @@ To run any demonstration you first need to configure BFT-SMaRt to define the pro
 
 Important tip #1: Always provide IP addresses instead of hostnames. If a machine running a replica is not correctly configured, BFT-SMaRt may fail to obtain the proper IP address and use the loopback address instead (127.0.0.1). This phenomenom may prevent clients and/or replicas from successfully establishing a connection among them.
 
-Important tip #2: If some (or all) replicas are deployed/executed within the same machine (127.0.0.1), 'config/hosts.config' cannot have sequencial port numbers (e.g., 10000, 10001, 10002, 10003). This is because each replica binds two ports: one to receive messages from clients (that are configured in 'config/hosts.config', as shown above) and other to receive message from the other replicas (chosen by getting the next port number). More generally, if replica R is assigned port number P, it will try to bind ports P (to received client requests) and P+1 (to communicate with other replicas). If this guideline is not enforced, replicas will be able to bind all ports that are needed.
+Important tip #2: If some (or all) replicas are deployed/executed within the same machine (127.0.0.1), 'config/hosts.config' cannot have sequencial port numbers (e.g., 10000, 10001, 10002, 10003). This is because each replica binds two ports: one to receive messages from clients (that are configured in 'config/hosts.config', as shown above) and other to receive message from the other replicas (chosen by getting the next port number). More generally, if replica R is assigned port number P, it will try to bind ports P (to received client requests) and P+1 (to communicate with other replicas). If this guideline is not enforced, replicas may not be able to bind all ports that are needed.
+
+Important tip #3: Clients requests should not be issued before all replicas have been properly initialized. Replicas are ready to process client requests when each one outputs '(DeliveryThread.run) canDeliver released.' in the console.
 
 2.) The system configurations also have to be specified (see 'config/system.config'). Most of the parameters are self explanatory.
 
@@ -34,7 +36,7 @@ You can run the counter demonstration by executing the following commands, from 
 ./runscripts/smartrun.sh bftsmart.demo.counter.CounterServer 2
 ./runscripts/smartrun.sh bftsmart.demo.counter.CounterServer 3
 
-Important tip #3: Never forget to delete the 'config/currentView' file after you modify 'config/hosts.config' or 'config/system.config'. If 'config/currentView' exists, BFT-SMaRt always fetches the group configuration from this file first. Otherwise, BFT-SMaRt fetches information from the other files and creates 'config/currentView' from scratch. Note that 'config/currentView' only stores information related to the group of replicas. You do not need to delete this file if, for instance, you want to enable the debugger or change the value of the request timeout.
+Important tip #4: Never forget to delete the 'config/currentView' file after you modify 'config/hosts.config' or 'config/system.config'. If 'config/currentView' exists, BFT-SMaRt always fetches the group configuration from this file first. Otherwise, BFT-SMaRt fetches information from the other files and creates 'config/currentView' from scratch. Note that 'config/currentView' only stores information related to the group of replicas. You do not need to delete this file if, for instance, you want to enable the debugger or change the value of the request timeout.
 
 #Start a client
 
@@ -52,7 +54,7 @@ These scripts can easily be adapted to execute other demos, such as:
   The server is 'bftmap.demo.bftmap.BFTMapServer' and the clients are 'BFTMapClient' for incremental inserts or 'BFTMapInteractiveClient' for a command line client. Parameters to run the BFTMap demo are displayed when attempts to start the servers and clients are made without parameters.
 - YCSB. You can run a Yahoo! Cloud Serving Benchmark with BFT-SMaRt by executing the './runscripts/startReplicaYCSB.sh' and './runscripts/ycsbClient.sh' scripts.
   
-Important tip #4: always make sure that each client uses a unique ID. Otherwise, clients may not be able to complete their operations.
+Important tip #5: always make sure that each client uses a unique ID. Otherwise, clients may not be able to complete their operations.
 
 ---------- State transfer protocol(s) --------------
 
@@ -60,7 +62,7 @@ BFT-SMaRt offers two state transfer protocols. The first is a basic protocol tha
 
 The second, more advanced protocol can be used by extending the class 'bftsmart.tom.server.defaultservices.durability.DurabilityCoordinator'. This protocol stores its logs to disk. To mitigate the latency of writing to disk, such tasks is done in batches and in parallel with the requests' execution. Additionally, the snapshots are taken at different points of the execution in different replicas.
 
-Important tip #5: regardless of the chosen protocol, developers must avoid using Java API objects like 'HashSet' or 'HashMap', and use 'TreeSet' or 'TreeMap' instead. This is because serialization of Hash* objects is not deterministic, i.e, it generates different results for equal objects. This will lead to problems after more than 'f' replicas used the state transfer protocol to recover from failures.
+Important tip #6: regardless of the chosen protocol, developers must avoid using Java API objects like 'HashSet' or 'HashMap', and use 'TreeSet' or 'TreeMap' instead. This is because serialization of Hash* objects is not deterministic, i.e, it generates different results for equal objects. This will lead to problems after more than 'f' replicas used the state transfer protocol to recover from failures.
 
 ----------- Group reconfiguration ------------------
 
@@ -69,7 +71,7 @@ The library also implements a reconfiguration protocol that can be used to add/r
 ./runscripts/smartrun.sh bftsmart.reconfiguration.VMServices <smart id> <ip address> <port> (to add a replica to the group)
 ./runscripts/smartrun.sh bftsmart.reconfiguration.VMServices <smart id> (to remove a replica from the group)
 
-Important tip #6: everytime you use the reconfiguration protocol, you must make sure that all replicas and the host where you invoke the above commands have the latest 'config/currentView' file. The current implementation of BFT-SMaRt does not provide any mechanism to distribute this file, so you will need to distribute it on your own (e.g., using the 'scp' command). You also need to make sure that any client that starts executing can read from the latest config/currentView file.
+Important tip #7: everytime you use the reconfiguration protocol, you must make sure that all replicas and the host where you invoke the above commands have the latest 'config/currentView' file. The current implementation of BFT-SMaRt does not provide any mechanism to distribute this file, so you will need to distribute it on your own (e.g., using the 'scp' command). You also need to make sure that any client that starts executing can read from the latest config/currentView file.
 
 ---------- BFT-SMaRt under crash faults ------------
 
