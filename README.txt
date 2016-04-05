@@ -36,7 +36,9 @@ You can run the counter demonstration by executing the following commands, from 
 ./runscripts/smartrun.sh bftsmart.demo.counter.CounterServer 2
 ./runscripts/smartrun.sh bftsmart.demo.counter.CounterServer 3
 
-Important tip #4: Never forget to delete the 'config/currentView' file after you modify 'config/hosts.config' or 'config/system.config'. If 'config/currentView' exists, BFT-SMaRt always fetches the group configuration from this file first. Otherwise, BFT-SMaRt fetches information from the other files and creates 'config/currentView' from scratch. Note that 'config/currentView' only stores information related to the group of replicas. You do not need to delete this file if, for instance, you want to enable the debugger or change the value of the request timeout.
+Important tip #4: If you are getting timeout messages, it is possible that the application you are running takes too long to process the requests or the network delay is too high and PROPOSE messages from the leader don't arrive in time, so replicas may start the leader change protocol. To prevent that, try to increase the 'system.totalordermulticast.timeout' parameter in 'config/system.config'.
+
+Important tip #5: Never forget to delete the 'config/currentView' file after you modify 'config/hosts.config' or 'config/system.config'. If 'config/currentView' exists, BFT-SMaRt always fetches the group configuration from this file first. Otherwise, BFT-SMaRt fetches information from the other files and creates 'config/currentView' from scratch. Note that 'config/currentView' only stores information related to the group of replicas. You do not need to delete this file if, for instance, you want to enable the debugger or change the value of the request timeout.
 
 #Start a client
 
@@ -44,7 +46,9 @@ Important tip #4: Never forget to delete the 'config/currentView' file after you
 
 If <increment> equals 0 the request will be read-only. Default <number of operations> equals 1000.
 
-You can use the './runscripts/runsmart.ba'" script in Windows, and the './runscripts/runsmart.sh' script in Linux.
+Important tip #6: always make sure that each client uses a unique ID. Otherwise, clients may not be able to complete their operations.
+
+You can use the './runscripts/runsmart.bat'" script in Windows, and the './runscripts/runsmart.sh' script in Linux.
 When running the script in Linux it is necessary to set the permissions to execute the script with the command 'chmod +x ./runscripts/runsmart.sh'.
 
 These scripts can easily be adapted to execute other demos, such as:
@@ -54,15 +58,13 @@ These scripts can easily be adapted to execute other demos, such as:
   The server is 'bftmap.demo.bftmap.BFTMapServer' and the clients are 'BFTMapClient' for incremental inserts or 'BFTMapInteractiveClient' for a command line client. Parameters to run the BFTMap demo are displayed when attempts to start the servers and clients are made without parameters.
 - YCSB. You can run a Yahoo! Cloud Serving Benchmark with BFT-SMaRt by executing the './runscripts/startReplicaYCSB.sh' and './runscripts/ycsbClient.sh' scripts.
   
-Important tip #5: always make sure that each client uses a unique ID. Otherwise, clients may not be able to complete their operations.
-
 ---------- State transfer protocol(s) --------------
 
 BFT-SMaRt offers two state transfer protocols. The first is a basic protocol that can be used by extending the class 'bftsmart.tom.server.defaultservices.DefaultRecoverable' that logs requests into memory and periodically takes snapshots of the application state.
 
 The second, more advanced protocol can be used by extending the class 'bftsmart.tom.server.defaultservices.durability.DurabilityCoordinator'. This protocol stores its logs to disk. To mitigate the latency of writing to disk, such tasks is done in batches and in parallel with the requests' execution. Additionally, the snapshots are taken at different points of the execution in different replicas.
 
-Important tip #6: regardless of the chosen protocol, developers must avoid using Java API objects like 'HashSet' or 'HashMap', and use 'TreeSet' or 'TreeMap' instead. This is because serialization of Hash* objects is not deterministic, i.e, it generates different results for equal objects. This will lead to problems after more than 'f' replicas used the state transfer protocol to recover from failures.
+Important tip #7: regardless of the chosen protocol, developers must avoid using Java API objects like 'HashSet' or 'HashMap', and use 'TreeSet' or 'TreeMap' instead. This is because serialization of Hash* objects is not deterministic, i.e, it generates different results for equal objects. This will lead to problems after more than 'f' replicas used the state transfer protocol to recover from failures.
 
 ----------- Group reconfiguration ------------------
 
@@ -71,7 +73,7 @@ The library also implements a reconfiguration protocol that can be used to add/r
 ./runscripts/smartrun.sh bftsmart.reconfiguration.VMServices <smart id> <ip address> <port> (to add a replica to the group)
 ./runscripts/smartrun.sh bftsmart.reconfiguration.VMServices <smart id> (to remove a replica from the group)
 
-Important tip #7: everytime you use the reconfiguration protocol, you must make sure that all replicas and the host where you invoke the above commands have the latest 'config/currentView' file. The current implementation of BFT-SMaRt does not provide any mechanism to distribute this file, so you will need to distribute it on your own (e.g., using the 'scp' command). You also need to make sure that any client that starts executing can read from the latest config/currentView file.
+Important tip #8: everytime you use the reconfiguration protocol, you must make sure that all replicas and the host where you invoke the above commands have the latest 'config/currentView' file. The current implementation of BFT-SMaRt does not provide any mechanism to distribute this file, so you will need to distribute it on your own (e.g., using the 'scp' command). You also need to make sure that any client that starts executing can read from the latest config/currentView file.
 
 ---------- BFT-SMaRt under crash faults ------------
 
