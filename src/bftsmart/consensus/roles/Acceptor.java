@@ -300,9 +300,8 @@ public final class Acceptor {
                 int[] targets = this.controller.getCurrentViewOtherAcceptors();
                 communication.getServersConn().send(targets, cm, true);
                 
-                communication.send(this.controller.getCurrentViewOtherAcceptors(),
-
-                        factory.createAccept(cid, epoch.getTimestamp(), value));
+                //communication.send(this.controller.getCurrentViewOtherAcceptors(),
+                //        factory.createAccept(cid, epoch.getTimestamp(), value));
                 epoch.addToProof(cm);
                 computeAccept(cid, epoch, value);
             }
