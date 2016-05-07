@@ -29,9 +29,8 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import bftsmart.tom.MessageContext;
-import bftsmart.tom.ReplicaContext;
 import bftsmart.tom.ServiceReplica;
-import bftsmart.tom.server.defaultservices.DefaultSingleRecoverable;
+import bftsmart.tom.server.defaultservices.DefaultRecoverable;
 
 
 /**
@@ -41,17 +40,16 @@ import bftsmart.tom.server.defaultservices.DefaultSingleRecoverable;
  * This class will create a ServiceReplica and will initialize
  * it with a implementation of Executable and Recoverable interfaces. 
  */
-public class BFTMapServer extends DefaultSingleRecoverable {
+public class BFTMapServer extends DefaultRecoverable {
 
     MapOfMaps tableMap = null;
-    //ServiceReplica replica = null;
-    //private ReplicaContext replicaContext;
+    ServiceReplica replica = null;
 
     //The constructor passes the id of the server to the super class
     public BFTMapServer(int id) {
         
         tableMap = new MapOfMaps();
-        new ServiceReplica(id, this, this);
+        replica = new ServiceReplica(id, this, this);
     }
 
     public static void main(String[] args){
@@ -64,7 +62,21 @@ public class BFTMapServer extends DefaultSingleRecoverable {
     
 
     @Override
-    public byte[] appExecuteOrdered(byte[] command, MessageContext msgCtx) {
+    public byte[][] appExecuteBatch(byte[][] commands, MessageContext[] msgCtxs) {
+        
+        
+        byte [][] replies = new byte[commands.length][];
+        for (int i = 0; i < commands.length; i++) {
+            if(msgCtxs != null && msgCtxs[i] != null) {
+            replies[i] = executeSingle(commands[i],msgCtxs[i]);
+            }
+            else executeSingle(commands[i],msgCtxs[i]);
+        }
+        
+        return replies;
+    }
+    
+    private byte[] executeSingle(byte[] command, MessageContext msgCtx) {
         try {
             ByteArrayInputStream in = new ByteArrayInputStream(command);
             ByteArrayOutputStream out = null;
@@ -95,6 +107,7 @@ public class BFTMapServer extends DefaultSingleRecoverable {
                     out = new ByteArrayOutputStream();
                     new DataOutputStream(out).writeBytes(value);
                     reply = out.toByteArray();
+                    out.close();
                     break;
                 case BFTMapRequestType.TAB_CREATE:
                     tableName = new DataInputStream(in).readUTF();
@@ -132,6 +145,7 @@ public class BFTMapServer extends DefaultSingleRecoverable {
                     out = new ByteArrayOutputStream();
                     new DataOutputStream(out).writeInt(size1);
                     reply = out.toByteArray();
+                    out.close();
                     break;
                 case BFTMapRequestType.GET:
                     tableName = new DataInputStream(in).readUTF();
@@ -144,6 +158,7 @@ public class BFTMapServer extends DefaultSingleRecoverable {
                     out = new ByteArrayOutputStream();
                     new DataOutputStream(out).writeBytes(value);
                     reply = out.toByteArray();
+                    out.close();
                     break;
                 case BFTMapRequestType.SIZE:
                     String tableName2 = new DataInputStream(in).readUTF();
@@ -151,31 +166,35 @@ public class BFTMapServer extends DefaultSingleRecoverable {
                     out = new ByteArrayOutputStream();
                     new DataOutputStream(out).writeInt(size);
                     reply = out.toByteArray();
+                    out.close();
                     break;
-	            case BFTMapRequestType.CHECK:
-	                tableName = new DataInputStream(in).readUTF();
-	                key = new DataInputStream(in).readUTF();
+                case BFTMapRequestType.CHECK:
+                    tableName = new DataInputStream(in).readUTF();
+                    key = new DataInputStream(in).readUTF();
 //	                System.out.println("Table Key received: " + key);
-	                valueBytes = tableMap.getEntry(tableName, key);
-	                boolean entryExists = valueBytes != null;
-	                out = new ByteArrayOutputStream();
-	                new DataOutputStream(out).writeBoolean(entryExists);
-	                reply = out.toByteArray();
-	                break;
-			    case BFTMapRequestType.TAB_CREATE_CHECK:
-			        tableName = new DataInputStream(in).readUTF();
+                    valueBytes = tableMap.getEntry(tableName, key);
+                    boolean entryExists = valueBytes != null;
+                    out = new ByteArrayOutputStream();
+                    new DataOutputStream(out).writeBoolean(entryExists);
+                    reply = out.toByteArray();
+                    out.close();
+                    break;
+                case BFTMapRequestType.TAB_CREATE_CHECK:
+                    tableName = new DataInputStream(in).readUTF();
 //			        System.out.println("Table of Table Key received: " + tableName);
-			        table = tableMap.getTable(tableName);
-			        boolean tableExists = (table != null);
-			        System.out.println("Table exists: " + tableExists);
-			        out = new ByteArrayOutputStream();
-			        new DataOutputStream(out).writeBoolean(tableExists);
-			        reply = out.toByteArray();
-			        break;
+                    table = tableMap.getTable(tableName);
+                    boolean tableExists = (table != null);
+                    System.out.println("Table exists: " + tableExists);
+                    out = new ByteArrayOutputStream();
+                    new DataOutputStream(out).writeBoolean(tableExists);
+                    reply = out.toByteArray();
+                    out.close();
+                    break;
             }
+            in.close();
             return reply;
         } catch (IOException ex) {
-            Logger.getLogger(BFTMapServer.class.getName()).log(Level.SEVERE, null, ex);
+            ex.printStackTrace();
             return null;
         }
     }
@@ -194,6 +213,7 @@ public class BFTMapServer extends DefaultSingleRecoverable {
                     out = new ByteArrayOutputStream();
                     new DataOutputStream(out).writeInt(size1);
                     reply = out.toByteArray();
+                    out.close();
                     break;
                 case BFTMapRequestType.GET:
                     String tableName = new DataInputStream(in).readUTF();
@@ -206,6 +226,7 @@ public class BFTMapServer extends DefaultSingleRecoverable {
                     out = new ByteArrayOutputStream();
                     new DataOutputStream(out).writeBytes(value);
                     reply = out.toByteArray();
+                    out.close();
                     break;
                 case BFTMapRequestType.SIZE:
                     String tableName2 = new DataInputStream(in).readUTF();
@@ -214,32 +235,35 @@ public class BFTMapServer extends DefaultSingleRecoverable {
                     out = new ByteArrayOutputStream();
                     new DataOutputStream(out).writeInt(size);
                     reply = out.toByteArray();
+                    out.close();
                     break;
-	            case BFTMapRequestType.CHECK:
-	                tableName = new DataInputStream(in).readUTF();
-	                key = new DataInputStream(in).readUTF();
+                case BFTMapRequestType.CHECK:
+                    tableName = new DataInputStream(in).readUTF();
+                    key = new DataInputStream(in).readUTF();
 //	                System.out.println("Table Key received: " + key);
-	                valueBytes = tableMap.getEntry(tableName, key);
-	                boolean entryExists = valueBytes != null;
-	                out = new ByteArrayOutputStream();
-	                new DataOutputStream(out).writeBoolean(entryExists);
-	                reply = out.toByteArray();
-	                break;
-			    case BFTMapRequestType.TAB_CREATE_CHECK:
-			        tableName = new DataInputStream(in).readUTF();
+                    valueBytes = tableMap.getEntry(tableName, key);
+                    boolean entryExists = valueBytes != null;
+                    out = new ByteArrayOutputStream();
+                    new DataOutputStream(out).writeBoolean(entryExists);
+                    reply = out.toByteArray();
+                    out.close();
+                    break;
+                case BFTMapRequestType.TAB_CREATE_CHECK:
+                    tableName = new DataInputStream(in).readUTF();
 //			        System.out.println("Table of Table Key received: " + tableName);
-			        Map<String, byte[]> table = tableMap.getTable(tableName);
-			        boolean tableExists = (table != null);
-			        System.out.println("Table exists: " + tableExists);
-			        out = new ByteArrayOutputStream();
-			        new DataOutputStream(out).writeBoolean(tableExists);
-			        reply = out.toByteArray();
-			        break;
+                    Map<String, byte[]> table = tableMap.getTable(tableName);
+                    boolean tableExists = (table != null);
+                    System.out.println("Table exists: " + tableExists);
+                    out = new ByteArrayOutputStream();
+                    new DataOutputStream(out).writeBoolean(tableExists);
+                    reply = out.toByteArray();
+                    out.close();
+                    break;
 	        }
 	        return reply;
 	    } catch (IOException ex) {
-	        Logger.getLogger(BFTMapServer.class.getName()).log(Level.SEVERE, null, ex);
-	        return null;
+                ex.printStackTrace();
+                return null;
 	    }
     }
 
@@ -255,13 +279,13 @@ public class BFTMapServer extends DefaultSingleRecoverable {
             bos.close();
             return bos.toByteArray();
         } catch (IOException ex) {
-            Logger.getLogger(BFTMapServer.class.getName()).log(Level.SEVERE, null, ex);
+            ex.printStackTrace();
             return new byte[0];
-        }   
+        }
     }
 
     @Override
-    public void installSnapshot(byte[] state) {
+    public void installSnapshot(byte[] state) {               
         try {
 
             // serialize to byte array and return
@@ -272,9 +296,9 @@ public class BFTMapServer extends DefaultSingleRecoverable {
             bis.close();
 
         } catch (ClassNotFoundException ex) {
-            Logger.getLogger(BFTMapServer.class.getName()).log(Level.SEVERE, null, ex);
+            ex.printStackTrace();
         } catch (IOException ex) {
-            Logger.getLogger(BFTMapServer.class.getName()).log(Level.SEVERE, null, ex);
+            ex.printStackTrace();
         }
     }
 
