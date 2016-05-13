@@ -55,24 +55,28 @@ public class RSAKeyLoader {
 	 * @throws Exception problems reading or parsing the key
 	 */
 	public PublicKey loadPublicKey(int id) throws Exception {
-		BufferedReader r = new BufferedReader(new FileReader(path + "publickey" + id));
+                FileReader f = new FileReader(path + "publickey" + id);
+		BufferedReader r = new BufferedReader(f);
 		String tmp = "";
 		String key = "";
 		while ((tmp = r.readLine()) != null) {
 			key = key + tmp;
 		}
+                f.close();
 		r.close();
 		PublicKey ret = getPublicKeyFromString(key);
 		return ret;
 	}
         
 	public PublicKey loadPublicKey() throws Exception {
-		BufferedReader r = new BufferedReader(new FileReader(path + "publickey" + this.id));
+                FileReader f = new FileReader(path + "publickey" + this.id);
+		BufferedReader r = new BufferedReader(f);
 		String tmp = "";
 		String key = "";
 		while ((tmp = r.readLine()) != null) {
 			key = key + tmp;
 		}
+                f.close();
 		r.close();
 		PublicKey ret = getPublicKeyFromString(key);
 		return ret;
@@ -86,13 +90,14 @@ public class RSAKeyLoader {
 	 */
 	public PrivateKey loadPrivateKey() throws Exception {
 		if (priKey == null) {
-			BufferedReader r = new BufferedReader(
-					new FileReader(path + "privatekey" + this.id));
+			FileReader f = new FileReader(path + "privatekey" + this.id);
+                        BufferedReader r = new BufferedReader(f);
 			String tmp = "";
 			String key = "";
 			while ((tmp = r.readLine()) != null) {
 				key = key + tmp;
 			}
+                        f.close();
 			r.close();
 			priKey = getPrivateKeyFromString(key);
 		}
