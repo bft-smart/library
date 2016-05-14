@@ -20,7 +20,7 @@ import java.util.Random;
 
 public class BFTMapClient {
 	
-	private static int VALUE_SIZE = 1024;
+	private static int VALUE_SIZE = 8;
 
 	public static void main(String[] args){
 		if(args.length < 1) {
@@ -74,8 +74,10 @@ public class BFTMapClient {
 
 	private static boolean insertValue(BFTMap bftMap, String nameTable, int index) throws Exception {
 		String key = "Key" + index;
+                byte[] valueBytes = null;
+                
 		Random rand = new Random();
-		byte[] valueBytes = new byte[VALUE_SIZE];
+                valueBytes = new byte[VALUE_SIZE];
 		rand.nextBytes(valueBytes);
 		byte[] resultBytes = bftMap.putEntry(nameTable, key, valueBytes);
 //		System.out.println("resultBytes" + resultBytes);
@@ -83,13 +85,6 @@ public class BFTMapClient {
 			return false;
 		return true;
 		
-	}
-
-	private static int getSizeTable(BFTMap bftMap, String tableName) throws Exception {
-		int res = bftMap.size1(tableName);
-		if(res == -1)
-			throw new Exception();
-		return  res;
 	}
 
 }
