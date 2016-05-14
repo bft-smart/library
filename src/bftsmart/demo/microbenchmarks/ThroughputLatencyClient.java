@@ -79,8 +79,7 @@ public class ThroughputLatencyClient {
             }
         }
 
-        
-        System.exit(0);
+        System.out.println("All clients done.");
     }
 
     static class Client extends Thread {
@@ -175,7 +174,7 @@ public class ThroughputLatencyClient {
                 System.out.println(this.id + " // Maximum time for " + numberOfOps / 2 + " executions (all samples) = " + st.getMax(false) / 1000 + " us ");
             }
             
-            //proxy.close();
+            proxy.close();
         }
     }
 }

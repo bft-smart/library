@@ -24,8 +24,7 @@ public class LVClient {
 
 	public static void main(String[] args) {
 		if (args.length < 2) {
-			System.out
-					.println("Usage: java BFTMapInteractiveClient <process id> <use readonly?>");
+			System.out.println("Usage: java BFTMapInteractiveClient <process id> <use readonly?>");
 			System.exit(-1);
 		}
 
