@@ -30,7 +30,7 @@ import java.util.logging.Logger;
 
 import bftsmart.tom.MessageContext;
 import bftsmart.tom.ServiceReplica;
-import bftsmart.tom.server.defaultservices.DefaultRecoverable;
+import bftsmart.tom.server.defaultservices.DefaultSingleRecoverable;
 
 
 /**
@@ -40,7 +40,7 @@ import bftsmart.tom.server.defaultservices.DefaultRecoverable;
  * This class will create a ServiceReplica and will initialize
  * it with a implementation of Executable and Recoverable interfaces. 
  */
-public class BFTMapServer extends DefaultRecoverable {
+public class BFTMapServer extends DefaultSingleRecoverable {
 
     MapOfMaps tableMap = null;
     ServiceReplica replica = null;
@@ -60,23 +60,8 @@ public class BFTMapServer extends DefaultRecoverable {
         new BFTMapServer(Integer.parseInt(args[0]));
     }
     
-
     @Override
-    public byte[][] appExecuteBatch(byte[][] commands, MessageContext[] msgCtxs) {
-        
-        
-        byte [][] replies = new byte[commands.length][];
-        for (int i = 0; i < commands.length; i++) {
-            if(msgCtxs != null && msgCtxs[i] != null) {
-            replies[i] = executeSingle(commands[i],msgCtxs[i]);
-            }
-            else executeSingle(commands[i],msgCtxs[i]);
-        }
-        
-        return replies;
-    }
-    
-    private byte[] executeSingle(byte[] command, MessageContext msgCtx) {
+    public byte[] appExecuteOrdered(byte[] command, MessageContext msgCtx) {
         try {
             ByteArrayInputStream in = new ByteArrayInputStream(command);
             ByteArrayOutputStream out = null;
