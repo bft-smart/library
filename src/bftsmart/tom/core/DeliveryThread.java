@@ -292,14 +292,18 @@ public final class DeliveryThread extends Thread {
         byte[] response = controller.executeUpdates(consId);
         TOMMessage[] dests = controller.clearUpdates();
 
-        for (int i = 0; i < dests.length; i++) {
-            tomLayer.getCommunication().send(new int[]{dests[i].getSender()},
-                    new TOMMessage(controller.getStaticConf().getProcessId(),
-                    dests[i].getSession(), dests[i].getSequence(), response,
-                    controller.getCurrentViewId(),TOMMessageType.RECONFIG));
-        }
+        if (controller.getCurrentView().isMember(receiver.getId())) {
+            for (int i = 0; i < dests.length; i++) {
+                tomLayer.getCommunication().send(new int[]{dests[i].getSender()},
+                        new TOMMessage(controller.getStaticConf().getProcessId(),
+                        dests[i].getSession(), dests[i].getSequence(), response,
+                        controller.getCurrentViewId(),TOMMessageType.RECONFIG));
+            }
 
-        tomLayer.getCommunication().updateServersConnections();
+            tomLayer.getCommunication().updateServersConnections();
+        } else {
+            receiver.restart();
+        }
     }
 
     public void shutdown() {
