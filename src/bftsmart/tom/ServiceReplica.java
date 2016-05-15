@@ -28,7 +28,6 @@ import bftsmart.tom.core.ExecutionManager;
 import bftsmart.consensus.messages.MessageFactory;
 import bftsmart.consensus.roles.Acceptor;
 import bftsmart.consensus.roles.Proposer;
-import bftsmart.reconfiguration.Reconfiguration;
 import bftsmart.reconfiguration.ReconfigureReply;
 import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.reconfiguration.VMMessage;
@@ -217,7 +216,7 @@ public class ServiceReplica {
             cs.send(new int[]{message.getSender()}, message.reply);
         }
     }
-
+    
     public void receiveMessages(int consId[], int regencies[], int leaders[], CertifiedDecision[] cDecs, TOMMessage[][] requests) {
         int numRequests = 0;
         int consensusCount = 0;
@@ -449,4 +448,7 @@ public class ServiceReplica {
         return replicaCtx;
     }
 
+    public int getId() {
+        return id;
+    }
 }
