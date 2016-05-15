@@ -123,10 +123,10 @@ public class ServiceReplica {
         this.executor = executor;
         this.recoverer = recoverer;
         this.replier = new DefaultReplier();
+        this.verifier = verifier;
         this.init();
         this.recoverer.setReplicaContext(replicaCtx);
         this.replier.setReplicaContext(replicaCtx);
-        this.verifier = verifier;
     }
 
     public void setReplyController(Replier replier) {
@@ -222,6 +222,14 @@ public class ServiceReplica {
         if (tomLayer != null) {   
             tomLayer.shutdown();
         }
+    }
+    
+    public void restart() {
+        shutdown();
+        tomStackCreated = false;
+        this.init();
+        this.recoverer.setReplicaContext(replicaCtx);
+        this.replier.setReplicaContext(replicaCtx);
     }
     
     public void receiveMessages(int consId[], int regencies[], int leaders[], CertifiedDecision[] cDecs, TOMMessage[][] requests) {
