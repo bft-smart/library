@@ -21,6 +21,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.logging.Level;
 
 import bftsmart.consensus.Decision;
 import bftsmart.reconfiguration.ServerViewController;
@@ -40,6 +41,7 @@ import bftsmart.tom.util.Logger;
  */
 public final class DeliveryThread extends Thread {
 
+    private boolean doWork = true;
     private final LinkedBlockingQueue<Decision> decided; 
     private final TOMLayer tomLayer; // TOM layer
     private final ServiceReplica receiver; // Object that receives requests from clients
@@ -164,7 +166,7 @@ public final class DeliveryThread extends Thread {
      */
     @Override
     public void run() {
-        while (true) {
+        while (doWork) {
             /** THIS IS JOAO'S CODE, TO HANDLE STATE TRANSFER */
             deliverLock();
             while (tomLayer.isRetrievingState()) {
@@ -248,6 +250,8 @@ public final class DeliveryThread extends Thread {
             deliverUnlock();
             /******************************************************************/
         }
+        java.util.logging.Logger.getLogger(DeliveryThread.class.getName()).log(Level.INFO, "DeliveryThread stopped.");
+
     }
     
     private TOMMessage[] extractMessagesFromDecision(Decision dec) {
@@ -298,4 +302,7 @@ public final class DeliveryThread extends Thread {
         tomLayer.getCommunication().updateServersConnections();
     }
 
+    public void shutdown() {
+        this.doWork = false;
+    }
 }

@@ -16,8 +16,8 @@ limitations under the License.
 package bftsmart.communication;
 
 import java.util.concurrent.LinkedBlockingQueue;
-
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
 
 import bftsmart.communication.client.CommunicationSystemServerSide;
 import bftsmart.communication.client.CommunicationSystemServerSideFactory;
@@ -36,6 +36,7 @@ import bftsmart.tom.util.Logger;
  */
 public class ServerCommunicationSystem extends Thread {
 
+    private boolean doWork = true;
     public final long MESSAGE_WAIT_TIME = 100;
     private LinkedBlockingQueue<SystemMessage> inQueue = null;//new LinkedBlockingQueue<SystemMessage>(IN_QUEUE_SIZE);
     protected MessageHandler messageHandler = new MessageHandler();
@@ -105,7 +106,7 @@ public class ServerCommunicationSystem extends Thread {
     public void run() {
         
         long count = 0;
-        while (true) {
+        while (doWork) {
             try {
                 if (count % 1000 == 0 && count > 0) {
                     Logger.println("(ServerCommunicationSystem.run) After " + count + " messages, inQueue size=" + inQueue.size());
@@ -124,6 +125,8 @@ public class ServerCommunicationSystem extends Thread {
                 e.printStackTrace(System.err);
             }
         }
+        java.util.logging.Logger.getLogger(ServerCommunicationSystem.class.getName()).log(Level.INFO, "ServerCommunicationSystem stopped.");
+
     }
 
     /**
@@ -154,5 +157,11 @@ public class ServerCommunicationSystem extends Thread {
     @Override
     public String toString() {
         return serversConn.toString();
+    }
+    
+    public void shutdown() {
+        this.doWork = false;
+        clientsConn.shutdown();
+        serversConn.shutdown();
     }
 }

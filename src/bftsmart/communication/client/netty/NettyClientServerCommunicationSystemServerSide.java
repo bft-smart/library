@@ -39,8 +39,9 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map.Entry;
 import java.util.Set;
-import java.util.concurrent.locks.ReentrantLock;
+import java.util.ArrayList;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.logging.Level;
 
 import javax.crypto.Mac;
 
@@ -64,6 +65,8 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 	private HashMap sessionTable;
 	private ReentrantReadWriteLock rl;
 	private ServerViewController controller;
+        private boolean closed = false;
+        private Channel mainChannel;
         
         // This locked seems to introduce a bottleneck and seems useless, but I cannot recall why I added it
 	//private ReentrantLock sendLock = new ReentrantLock();
@@ -111,6 +114,8 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 			System.out.println("#Using MACs = " + controller.getStaticConf().getUseMACs());
 			System.out.println("#Using Signatures = " + controller.getStaticConf().getUseSignatures());
 			//******* EDUARDO END **************//
+                        
+                        mainChannel = f.channel();
 
 		} catch (NoSuchAlgorithmException ex) {
 			ex.printStackTrace();
@@ -119,9 +124,41 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 		}
 	}
 
+        private void closeChannelAndEventLoop(Channel c) {
+                c.flush();
+                c.deregister();
+                c.close();
+                c.eventLoop().shutdownGracefully();
+        }
+        
+        @Override
+        public void shutdown() {
+            this.closed = true;
+
+            closeChannelAndEventLoop(mainChannel);
+                
+            rl.readLock().lock();
+            ArrayList<NettyClientServerSession> sessions = new ArrayList<>(sessionTable.values());
+            rl.readLock().unlock();
+            for (NettyClientServerSession ncss : sessions) {
+                
+                closeChannelAndEventLoop(ncss.getChannel());
+
+            }
+            
+            java.util.logging.Logger.getLogger(NettyClientServerCommunicationSystemServerSide.class.getName()).log(Level.INFO, "NettyClientServerCommunicationSystemServerSide is halting.");
+
+        }
+        
 	@Override
 	public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause){
-		if(cause instanceof ClosedChannelException)
+		
+                if (this.closed) {
+                    closeChannelAndEventLoop(ctx.channel());
+                    return;
+                }
+            
+                if(cause instanceof ClosedChannelException)
 			System.out.println("Connection with client closed.");
 		else if(cause instanceof ConnectException) {
 			System.out.println("Impossible to connect to client.");
@@ -131,8 +168,14 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 	}
 
 	@Override
-	protected void channelRead0(ChannelHandlerContext arg0, TOMMessage sm) throws Exception {
-		//delivers message to TOMLayer
+	protected void channelRead0(ChannelHandlerContext ctx, TOMMessage sm) throws Exception {
+
+                if (this.closed) {
+                    closeChannelAndEventLoop(ctx.channel());
+                    return;
+                }
+                            
+                //delivers message to TOMLayer
 		if (requestReceiver == null)
 			System.out.println("RECEIVER NULO!!!!!!!!!!!!");
 		else requestReceiver.requestReceived(sm);
@@ -140,12 +183,23 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 
 	@Override
 	public void channelActive(ChannelHandlerContext ctx) {
+            
+                if (this.closed) {
+                    closeChannelAndEventLoop(ctx.channel());
+                    return;
+                }
 		Logger.println("Session Created, active clients=" + sessionTable.size());
 		System.out.println("Session Created, active clients=" + sessionTable.size());
 	}
 
 	@Override
 	public void channelInactive(ChannelHandlerContext ctx) {
+            
+                if (this.closed) {
+                    closeChannelAndEventLoop(ctx.channel());
+                    return;
+                }
+                
 		rl.writeLock().lock();
 		try {
 			Set s = sessionTable.entrySet();

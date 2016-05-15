@@ -216,6 +216,13 @@ public class ServiceReplica {
             cs.send(new int[]{message.getSender()}, message.reply);
         }
     }
+        
+    public void shutdown() {
+        
+        if (tomLayer != null) {   
+            tomLayer.shutdown();
+        }
+    }
     
     public void receiveMessages(int consId[], int regencies[], int leaders[], CertifiedDecision[] cDecs, TOMMessage[][] requests) {
         int numRequests = 0;

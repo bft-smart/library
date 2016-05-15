@@ -20,6 +20,7 @@ import java.util.Iterator;
 import java.util.Set;
 import java.util.Map.Entry;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.logging.Level;
 
 import bftsmart.communication.ServerCommunicationSystem;
 import bftsmart.reconfiguration.ServerViewController;
@@ -359,5 +360,13 @@ public class ClientsManager {
 
     public ReentrantLock getClientsLock() {
         return clientsLock;
+    }
+    
+    public void clear() {
+        clientsLock.lock();
+        clientsData.clear();
+        clientsLock.unlock();
+        java.util.logging.Logger.getLogger(ClientsManager.class.getName()).log(Level.INFO, "ClientsManager cleared.");
+
     }
 }
