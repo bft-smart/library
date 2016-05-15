@@ -76,7 +76,6 @@ public class ServiceReplica {
     private ServerCommunicationSystem cs = null;
     private ReplyManager repMan = null;
     private ServerViewController SVController;
-    private boolean isToJoin = false;
     private ReentrantLock waitTTPJoinMsgLock = new ReentrantLock();
     private Condition canProceed = waitTTPJoinMsgLock.newCondition();
     private Executable executor = null;
@@ -120,23 +119,6 @@ public class ServiceReplica {
      * @param verifier Requests verifier
      */
     public ServiceReplica(int id, String configHome, Executable executor, Recoverable recoverer, RequestVerifier verifier) {
-        this(id, configHome, false, executor, recoverer, verifier);
-    }
-
-    /**
-     * Constructor
-     *
-     * @param id Replica ID
-     * @param isToJoin: if true, the replica tries to join the system, otherwise it waits for TTP message informing its join
-     * @param executor Executor
-     * @param recoverer Recoverer
-     */
-    public ServiceReplica(int id, boolean isToJoin, Executable executor, Recoverable recoverer) {
-        this(id, "", isToJoin, executor, recoverer, null);
-    }
-
-    public ServiceReplica(int id, String configHome, boolean isToJoin, Executable executor, Recoverable recoverer, RequestVerifier verifier) {
-        this.isToJoin = isToJoin;
         this.id = id;
         this.SVController = new ServerViewController(id, configHome);
         this.executor = executor;
@@ -166,37 +148,16 @@ public class ServiceReplica {
             initTOMLayer(); // initiaze the TOM layer
         } else {
             System.out.println("Not in current view: " + this.SVController.getCurrentView());
-            if (this.isToJoin) {
-                System.out.println("Sending join: " + this.SVController.getCurrentView());
-                
-                // Not in initial view. Will perform a join;
-                int port = this.SVController.getStaticConf().getServerToServerPort(id) - 1;
-                String ip = this.SVController.getStaticConf().getServerToServerRemoteAddress(id).getAddress().getHostAddress();
-                ReconfigureReply r = null;
-                Reconfiguration rec = new Reconfiguration(id);
-                do {
-                    rec.addServer(id, ip, port);
-                    r = rec.execute();
-                } while (!r.getView().isMember(id));
-                rec.close();
-                this.SVController.processJoinResult(r);
-
-                // initiaze the TOM layer
-                initTOMLayer();
-
-                this.cs.updateServersConnections();
-                this.cs.joinViewReceived();
-            } else {
-                
-                //Not in the initial view, just waiting for the view where the join has been executed
-                System.out.println("Waiting for the TTP: " + this.SVController.getCurrentView());
-                waitTTPJoinMsgLock.lock();
-                try {
-                    canProceed.awaitUninterruptibly();
-                } finally {
-                    waitTTPJoinMsgLock.unlock();
-                }
+            
+            //Not in the initial view, just waiting for the view where the join has been executed
+            System.out.println("Waiting for the TTP: " + this.SVController.getCurrentView());
+            waitTTPJoinMsgLock.lock();
+            try {
+                canProceed.awaitUninterruptibly();
+            } finally {
+                waitTTPJoinMsgLock.unlock();
             }
+            
 
         }
         initReplica();
@@ -429,22 +390,6 @@ public class ServiceReplica {
             //DEBUG
             bftsmart.tom.util.Logger.println("BATCHEXECUTOR END");
         }
-    }
-
-    /**
-     * This method makes the replica leave the group
-     */
-    public void leave() {
-        ReconfigureReply r = null;
-        Reconfiguration rec = new Reconfiguration(id);
-        do {
-            //System.out.println("while 1");
-            rec.removeServer(id);
-
-            r = rec.execute();
-        } while (r.getView().isMember(id));
-        rec.close();
-        this.cs.updateServersConnections();
     }
 
     /**
