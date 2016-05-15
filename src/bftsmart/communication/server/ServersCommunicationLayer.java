@@ -189,6 +189,12 @@ public class ServersCommunicationLayer extends Thread {
             }
         }
         //******* EDUARDO END **************//
+        try {
+            this.join(); // make sure the main socket gets closed
+            Thread.sleep(250); // give it time for the socket to get unbind
+        } catch (InterruptedException ex) {
+            Logger.getLogger(ServersCommunicationLayer.class.getName()).log(Level.SEVERE, null, ex);
+        }
     }
 
     //******* EDUARDO BEGIN **************//

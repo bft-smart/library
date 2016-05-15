@@ -148,7 +148,7 @@ public class RequestsTimer {
     }
     
     public void run_lc_protocol() {
-            
+        
         long t = (shortTimeout > -1 ? shortTimeout : timeout);
         
         //System.out.println("(RequestTimerTask.run) I SOULD NEVER RUN WHEN THERE IS NO TIMEOUT");
@@ -211,6 +211,13 @@ public class RequestsTimer {
 
     }   
     
+    public void stopAllSTOPs() {
+        Iterator stops = getTimers().iterator();
+        while (stops.hasNext()) {
+            stopSTOP((Integer) stops.next());
+        }
+    }
+    
     public void stopSTOP(int regency){
         
         Timer stopTimer = stopTimers.remove(regency);
@@ -226,6 +233,7 @@ public class RequestsTimer {
     
     public void shutdown() {
         timer.cancel();
+        stopAllSTOPs();
         java.util.logging.Logger.getLogger(RequestsTimer.class.getName()).log(Level.INFO, "RequestsTimer stopped.");
 
     }
