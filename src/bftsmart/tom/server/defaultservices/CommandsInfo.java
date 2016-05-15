@@ -17,7 +17,7 @@ package bftsmart.tom.server.defaultservices;
 
 import bftsmart.tom.MessageContext;
 
-import java.io.Externalizable;
+import java.io.Serializable;
 import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
@@ -27,7 +27,7 @@ import java.util.Arrays;
  *
  * @author Joao Sousa
  */
-public class CommandsInfo implements Externalizable {
+public class CommandsInfo implements Serializable {
 	
     private static final long serialVersionUID = 342711292879899682L;
 	
@@ -127,7 +127,10 @@ public class CommandsInfo implements Externalizable {
         return hash;
     }
 
-    @Override
+    //These methods were used when the class extended interface Externizable,
+    //but this was causing serialization problems when the batch of operations
+    //had very large commands. Using the Serializable interface, the issue was solved
+    /*@Override
     public void writeExternal(ObjectOutput out) throws IOException {
         
         if (commands != null) {
@@ -178,5 +181,5 @@ public class CommandsInfo implements Externalizable {
                 msgCtx[i] = (MessageContext) in.readObject();
             
         }
-    }
+    }*/
 }
