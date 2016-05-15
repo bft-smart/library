@@ -20,7 +20,7 @@ import java.util.Random;
 
 public class BFTMapClient {
 	
-	private static int VALUE_SIZE = 8;
+	private static int VALUE_SIZE = 1024;
 
 	public static void main(String[] args){
 		if(args.length < 1) {
