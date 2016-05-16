@@ -182,6 +182,9 @@ public final class DeliveryThread extends Thread {
                 }
                 decided.drainTo(decisions);
                 decidedLock.unlock();
+                
+                if (!doWork) break;
+                
                 if (decisions.size() > 0) {
                     TOMMessage[][] requests = new TOMMessage[decisions.size()][];
                     int[] consensusIds = new int[requests.length];
@@ -302,11 +305,27 @@ public final class DeliveryThread extends Thread {
 
             tomLayer.getCommunication().updateServersConnections();
         } else {
+            /*Thread t = new Thread() {
+
+                @Override
+                public void run() {
+                    if (receiver != null) {   
+                        receiver.restart();
+                    }        
+                }
+            };
+            t.start();*/
             receiver.restart();
         }
     }
 
     public void shutdown() {
         this.doWork = false;
+        
+        System.out.println("Shutting down delivery thread");
+        
+        decidedLock.lock();        
+        notEmptyQueue.signalAll();
+        decidedLock.unlock();
     }
 }

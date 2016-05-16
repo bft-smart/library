@@ -175,6 +175,9 @@ public class ServersCommunicationLayer extends Thread {
     }
 
     public void shutdown() {
+        
+        System.out.println("Shutting down replica sockets");
+        
         doWork = false;
 
         //******* EDUARDO BEGIN **************//
@@ -187,13 +190,6 @@ public class ServersCommunicationLayer extends Thread {
             if (me != activeServers[i]) {
                 getConnection(activeServers[i]).shutdown();
             }
-        }
-        //******* EDUARDO END **************//
-        try {
-            this.join(); // make sure the main socket gets closed
-            Thread.sleep(250); // give it time for the socket to get unbind
-        } catch (InterruptedException ex) {
-            Logger.getLogger(ServersCommunicationLayer.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
 

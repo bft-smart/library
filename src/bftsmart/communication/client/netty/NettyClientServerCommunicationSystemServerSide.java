@@ -133,6 +133,9 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
         
         @Override
         public void shutdown() {
+            
+            System.out.println("Shutting down Netty system");
+            
             this.closed = true;
 
             closeChannelAndEventLoop(mainChannel);

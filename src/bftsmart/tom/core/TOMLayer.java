@@ -529,6 +529,10 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         messagesLock.unlock();
     }
     
+    public DeliveryThread getDeliveryThread() {
+        return dt;
+    }
+    
     public void shutdown() {
         this.doWork = false;
         imAmTheLeader();
@@ -536,7 +540,10 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         setNoExec();
 
         if (this.requestsTimer != null) this.requestsTimer.shutdown();
-        if (this.clientsManager != null) this.clientsManager.clear();
+        if (this.clientsManager != null) {
+            this.clientsManager.clear();
+            this.clientsManager.getPendingRequests().clear();
+        }
         if (this.dt != null) this.dt.shutdown();
         if (this.communication != null) this.communication.shutdown();
  

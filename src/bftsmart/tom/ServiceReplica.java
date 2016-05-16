@@ -93,7 +93,7 @@ public class ServiceReplica {
      * @param recoverer Recoverer
      */
     public ServiceReplica(int id, Executable executor, Recoverable recoverer) {
-        this(id, "", executor, recoverer, null);
+        this(id, "", executor, recoverer, null, new DefaultReplier());
     }
 
     /**
@@ -105,9 +105,21 @@ public class ServiceReplica {
      * @param verifier Requests verifier
      */
     public ServiceReplica(int id, Executable executor, Recoverable recoverer, RequestVerifier verifier) {
-        this(id, "", executor, recoverer, verifier);
+        this(id, "", executor, recoverer, verifier, new DefaultReplier());
     }
-
+    
+    /**
+     * Constructor
+     * 
+     * @param id Replica ID
+     * @param executor Executor
+     * @param recoverer Recoverer
+     * @param verifier Requests verifier
+     * @param replier Replier
+     */
+    public ServiceReplica(int id, Executable executor, Recoverable recoverer, RequestVerifier verifier, Replier replier) {
+        this(id, "", executor, recoverer, verifier, replier);
+    }
     /**
      * Constructor
      *
@@ -116,13 +128,14 @@ public class ServiceReplica {
      * @param executor Executor
      * @param recoverer Recoverer
      * @param verifier Requests verifier
+     * @param replier Replier
      */
-    public ServiceReplica(int id, String configHome, Executable executor, Recoverable recoverer, RequestVerifier verifier) {
+    public ServiceReplica(int id, String configHome, Executable executor, Recoverable recoverer, RequestVerifier verifier, Replier replier) {
         this.id = id;
         this.SVController = new ServerViewController(id, configHome);
         this.executor = executor;
         this.recoverer = recoverer;
-        this.replier = new DefaultReplier();
+        this.replier = replier;
         this.verifier = verifier;
         this.init();
         this.recoverer.setReplicaContext(replicaCtx);
@@ -217,19 +230,74 @@ public class ServiceReplica {
         }
     }
         
-    public void shutdown() {
+    public void kill() {
         
-        if (tomLayer != null) {   
+        /*if (tomLayer != null) {   
             tomLayer.shutdown();
-        }
+        } */
+        
+        Thread t = new Thread() {
+
+            @Override
+            public void run() {
+                if (tomLayer != null) {   
+                    tomLayer.shutdown();
+                }     
+            }
+        };
+        t.start();
     }
-    
+        
     public void restart() {
-        shutdown();
+        /*kill();
+        
+        try {
+            cs.join();
+            cs.getServersConn().join();
+            tomLayer.join();
+            tomLayer.getDeliveryThread().join();
+            
+        } catch (InterruptedException ex) {
+            Logger.getLogger(ServiceReplica.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        
         tomStackCreated = false;
+        tomLayer = null;
+        cs = null;
+        
         this.init();
         this.recoverer.setReplicaContext(replicaCtx);
-        this.replier.setReplicaContext(replicaCtx);
+        this.replier.setReplicaContext(replicaCtx);*/
+        
+        Thread t = new Thread() {
+
+            @Override
+            public void run() {
+                if (tomLayer != null && cs != null) {   
+                    tomLayer.shutdown();
+
+                    try {
+                        cs.join();
+                        cs.getServersConn().join();
+                        tomLayer.join();
+                        tomLayer.getDeliveryThread().join();
+
+                    } catch (InterruptedException ex) {
+                        Logger.getLogger(ServiceReplica.class.getName()).log(Level.SEVERE, null, ex);
+                    }
+
+                    tomStackCreated = false;
+                    tomLayer = null;
+                    cs = null;
+
+                    init();
+                    recoverer.setReplicaContext(replicaCtx);
+                    replier.setReplicaContext(replicaCtx);
+                
+                }     
+            }
+        };
+        t.start();
     }
     
     public void receiveMessages(int consId[], int regencies[], int leaders[], CertifiedDecision[] cDecs, TOMMessage[][] requests) {
