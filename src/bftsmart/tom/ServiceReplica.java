@@ -230,11 +230,7 @@ public class ServiceReplica {
         }
     }
         
-    public void kill() {
-        
-        /*if (tomLayer != null) {   
-            tomLayer.shutdown();
-        } */
+    public void kill() {        
         
         Thread t = new Thread() {
 
@@ -248,27 +244,7 @@ public class ServiceReplica {
         t.start();
     }
         
-    public void restart() {
-        /*kill();
-        
-        try {
-            cs.join();
-            cs.getServersConn().join();
-            tomLayer.join();
-            tomLayer.getDeliveryThread().join();
-            
-        } catch (InterruptedException ex) {
-            Logger.getLogger(ServiceReplica.class.getName()).log(Level.SEVERE, null, ex);
-        }
-        
-        tomStackCreated = false;
-        tomLayer = null;
-        cs = null;
-        
-        this.init();
-        this.recoverer.setReplicaContext(replicaCtx);
-        this.replier.setReplicaContext(replicaCtx);*/
-        
+    public void restart() {        
         Thread t = new Thread() {
 
             @Override
