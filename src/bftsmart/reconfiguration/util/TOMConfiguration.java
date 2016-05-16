@@ -323,7 +323,7 @@ public class TOMConfiguration extends Configuration {
                 numRepliers = Integer.parseInt(s);
             }
             
-            rsaLoader = new RSAKeyLoader(processId, TOMConfiguration.configHome);
+            rsaLoader = new RSAKeyLoader(processId, TOMConfiguration.configHome, defaultKeys);
         } catch (Exception e) {
             e.printStackTrace(System.err);
         }

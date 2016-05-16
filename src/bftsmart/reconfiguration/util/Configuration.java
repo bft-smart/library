@@ -41,6 +41,7 @@ public class Configuration {
    
     protected static String hostsFileName = "";
 
+    protected boolean defaultKeys = false;
 
     public Configuration(int procId){
         processId = procId;
@@ -80,6 +81,13 @@ public class Configuration {
                 channelsBlocking = (s.equalsIgnoreCase("true"))?true:false;
             }
             
+            s = (String) configs.remove("system.communication.defaultkeys");
+            if(s == null){
+                defaultKeys = false;
+            }else{
+                defaultKeys = (s.equalsIgnoreCase("true"))?true:false;
+            }
+            
             s = (String) configs.remove("system.diffie-hellman.p");
             if (s == null) {
                 String pHexString = "FFFFFFFF FFFFFFFF C90FDAA2 2168C234 C4C6628B 80DC1CD1"
@@ -103,6 +111,10 @@ public class Configuration {
             System.err.println("Wrong system.config file format.");
             e.printStackTrace(System.out);
         }
+    }
+
+    public boolean useDefaultKeys() {
+        return defaultKeys;
     }
      
     public final boolean isHostSetted(int id){
