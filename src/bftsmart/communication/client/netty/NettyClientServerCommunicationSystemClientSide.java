@@ -99,7 +99,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
                     SecretKey authKey = fac.generateSecret(spec);
 
                     EventLoopGroup workerGroup = new NioEventLoopGroup();
-
+                    
                     //try {
                     Bootstrap b = new Bootstrap();
                     b.group(workerGroup);
@@ -227,19 +227,37 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
     }
 
     @Override
-    public void channelRead0(ChannelHandlerContext context, TOMMessage sm) throws Exception {
+    public void channelRead0(ChannelHandlerContext ctx, TOMMessage sm) throws Exception {
+        
+        if(closed){
+
+            closeChannelAndEventLoop(ctx.channel());
+            
+            return;
+        }
         trr.replyReceived(sm);
     }
 
     @Override
     public void channelActive(ChannelHandlerContext ctx) {
+        
+        if(closed){
+
+            closeChannelAndEventLoop(ctx.channel());
+            
+            return;
+        }
+        
         System.out.println("Channel active");
     }
 
     @Override
     public void channelInactive(ChannelHandlerContext ctx){
 
-        if (this.closed) {
+        if(closed){
+
+            closeChannelAndEventLoop(ctx.channel());
+            
             return;
         }
 
@@ -430,11 +448,8 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
         ArrayList<NettyClientServerSession> sessions = new ArrayList<>(sessionTable.values());
         rl.readLock().unlock();
         for (NettyClientServerSession ncss : sessions) {
-            Channel c = ncss.getChannel();
-            c.flush();
-            c.deregister();
-            c.close();
-            c.eventLoop().shutdownGracefully();
+            Channel c = ncss.getChannel();           
+            closeChannelAndEventLoop(c);
         }
     }
 
@@ -460,6 +475,12 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 
     @Override
     public void channelUnregistered(final ChannelHandlerContext ctx) throws Exception {
+        if(closed){
+            closeChannelAndEventLoop(ctx.channel());
+            
+            return;
+        }
+        
         final EventLoop loop = ctx.channel().eventLoop();
         loop.schedule(new Runnable() {
             @Override
@@ -469,4 +490,13 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
         },0,TimeUnit.SECONDS);
     }
 
+    private void closeChannelAndEventLoop(Channel c) {
+        
+            // once having an event in your handler (EchoServerHandler)
+            // Close the current channel
+            c.close();
+            // Then close the parent channel (the one attached to the bind)
+            if (c.parent() != null) c.parent().close();
+            c.eventLoop().shutdownGracefully();   
+    }
 }
