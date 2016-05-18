@@ -15,7 +15,6 @@ limitations under the License.
 */
 package bftsmart.statemanagement;
 
-import java.io.Externalizable;
 import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
@@ -29,7 +28,7 @@ import bftsmart.tom.util.TOMUtil;
  * 
  * @author Joao Sousa
  */
-public abstract class SMMessage extends SystemMessage implements Externalizable {
+public abstract class SMMessage extends SystemMessage {
 
     private ApplicationState state; // State log
     private View view;

@@ -36,6 +36,7 @@ import java.util.logging.Logger;
 import bftsmart.communication.SystemMessage;
 import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.tom.ServiceReplica;
+
 import javax.crypto.SecretKey;
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.PBEKeySpec;
@@ -174,6 +175,9 @@ public class ServersCommunicationLayer extends Thread {
     }
 
     public void shutdown() {
+        
+        System.out.println("Shutting down replica sockets");
+        
         doWork = false;
 
         //******* EDUARDO BEGIN **************//
@@ -187,7 +191,6 @@ public class ServersCommunicationLayer extends Thread {
                 getConnection(activeServers[i]).shutdown();
             }
         }
-        //******* EDUARDO END **************//
     }
 
     //******* EDUARDO BEGIN **************//
@@ -244,7 +247,7 @@ public class ServersCommunicationLayer extends Thread {
             Logger.getLogger(ServersCommunicationLayer.class.getName()).log(Level.SEVERE, null, ex);
         }
 
-        Logger.getLogger(ServersCommunicationLayer.class.getName()).log(Level.INFO, "Server communication layer stoped.");
+        Logger.getLogger(ServersCommunicationLayer.class.getName()).log(Level.INFO, "ServerCommunicationLayer stopped.");
     }
 
     //******* EDUARDO BEGIN **************//

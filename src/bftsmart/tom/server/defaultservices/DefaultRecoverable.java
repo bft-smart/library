@@ -191,7 +191,7 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
      * @param commands array of commands. Each command is an array of bytes
      * @param msgCtx
      */
-    public void saveCommands(byte[][] commands, MessageContext[] msgCtx) {
+    private void saveCommands(byte[][] commands, MessageContext[] msgCtx) {
         //if(!config.isToLog())
         //	return;        
         if (commands.length != msgCtx.length) {

@@ -22,14 +22,15 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.TreeSet;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.Hashtable;
+import java.util.Set;
+import java.util.logging.Level;
 
 import bftsmart.communication.ServerCommunicationSystem;
 import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.tom.core.TOMLayer;
 import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.util.TOMUtil;
-import java.util.Hashtable;
-import java.util.Set;
 
 /**
  * This thread serves as a manager for all timers of pending requests.
@@ -147,7 +148,7 @@ public class RequestsTimer {
     }
     
     public void run_lc_protocol() {
-            
+        
         long t = (shortTimeout > -1 ? shortTimeout : timeout);
         
         //System.out.println("(RequestTimerTask.run) I SOULD NEVER RUN WHEN THERE IS NO TIMEOUT");
@@ -210,6 +211,13 @@ public class RequestsTimer {
 
     }   
     
+    public void stopAllSTOPs() {
+        Iterator stops = getTimers().iterator();
+        while (stops.hasNext()) {
+            stopSTOP((Integer) stops.next());
+        }
+    }
+    
     public void stopSTOP(int regency){
         
         Timer stopTimer = stopTimers.remove(regency);
@@ -221,6 +229,13 @@ public class RequestsTimer {
         
         return ((Hashtable <Integer,Timer>) stopTimers.clone()).keySet();
         
+    }
+    
+    public void shutdown() {
+        timer.cancel();
+        stopAllSTOPs();
+        java.util.logging.Logger.getLogger(RequestsTimer.class.getName()).log(Level.INFO, "RequestsTimer stopped.");
+
     }
     
     class RequestTimerTask extends TimerTask {

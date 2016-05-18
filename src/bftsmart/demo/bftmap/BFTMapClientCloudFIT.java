@@ -28,9 +28,9 @@ public class BFTMapClientCloudFIT {
 
 
 	public static void main(String[] args) throws NumberFormatException	{
-		if(args.length < 4)
+		if(args.length < 3)
 		{
-			System.out.println("Usage: java KVClients <number clients> <process id base> <time for running (sec)");
+			System.out.println("Usage: java KVClients <number clients> <process id base> <time for running (sec)>");
 			System.exit(-1);
 		}
 

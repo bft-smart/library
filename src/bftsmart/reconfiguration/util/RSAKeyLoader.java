@@ -34,11 +34,32 @@ public class RSAKeyLoader {
 	private String path;
         private int id;
 	private PrivateKey priKey;
+        
+        private static String DEFAULT_UKEY = "MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCwuoTWbSFDnVjohwdZftoAwv3oCxUPnUiiNNH9\n" +
+            "\npXryEW8kSFRGVJ7zJCwxJnt3YZGnpPGxnC3hAI4XkG26hO7+TxkgaYmv5GbamL946uZISxv0aNX3\n" +
+            "\nYbaOf//MC6F8tShFfCnpWlj68FYulM5dC2OOOHaUJfofQhmXfsaEWU251wIDAQAB";
+        
+        
+        private static String DEFAULT_PKEY = "MIICdwIBADANBgkqhkiG9w0BAQEFAASCAmEwggJdAgEAAoGBALC6hNZtIUOdWOiHB1l+2gDC/egL\n" +
+            "\nFQ+dSKI00f2levIRbyRIVEZUnvMkLDEme3dhkaek8bGcLeEAjheQbbqE7v5PGSBpia/kZtqYv3jq\n" +
+            "\n5khLG/Ro1fdhto5//8wLoXy1KEV8KelaWPrwVi6Uzl0LY444dpQl+h9CGZd+xoRZTbnXAgMBAAEC\n" +
+            "\ngYAJaUVdrd4RnbV4XIh1qZ2uYLPowX5ToIqXqLxuB3vunCMRCZEDVcpJJGn+DBCTIO0CwnPkg26m\n" +
+            "\nBsOKWbSeNCoN5gOi5yd6Poe0D40ZmvHP1hMCQ9LYhwjLB3Aa+Cl5gYL074Qe/eJFqJaYjZApkeJU\n" +
+            "\nAy1HkXhM5OBW9grrXxg6YQJBAPTIni5fG5f2SYutkR2pUydZP4haKVabRkZr8nSHuClGDE2HzbNQ\n" +
+            "\njb17z5rRVxJCKMLb2HiPg7ZsUgGK/J1ri78CQQC405h45rL1mCIyZQCXcK/nQZTVi8UaaelKN/ub\n" +
+            "\nLQKtTGenJao/zoL+m39i+gGRkHWiG6HNaGFdOkRJmeeH+rfpAkEAn0fwDjKbDP4ZC0fM1uU4k7Ey\n" +
+            "\nczJgFdgCGY7ifMtXnZvUI5sL0fPH15W6GH7BzsK4LVvK92BDj6/aiOB80p6JlwJASjL4NSE4mwv2\n" +
+            "\nPpD5ydI9a/OSEqDIAjCerWMIKWXKe1P/EMU4MeFwCVLXsx523r9F2kyJinLrE4g+veWBY7+tcQJB\n" +
+            "\nAKCTm3tbbwLJnnPN46mAgrYb5+LFOmHyNtEDgjxEVrzpQaCChZici2YGY1jTBjb/De4jii8RXllA\n" +
+            "\ntUhBEsqyXDA=";
 	
+        private boolean defaultKeys;
+        
 	/** Creates a new instance of RSAKeyLoader */
-	public RSAKeyLoader(int id, String configHome) {
+	public RSAKeyLoader(int id, String configHome, boolean defaultKeys) {
             
                 this.id = id;
+                this.defaultKeys = defaultKeys;
 		if (configHome.equals("")) {
 			path = "config" + System.getProperty("file.separator") + "keys" +
 					System.getProperty("file.separator");
@@ -55,24 +76,38 @@ public class RSAKeyLoader {
 	 * @throws Exception problems reading or parsing the key
 	 */
 	public PublicKey loadPublicKey(int id) throws Exception {
-		BufferedReader r = new BufferedReader(new FileReader(path + "publickey" + id));
+            
+                if (defaultKeys) {
+                    return getPublicKeyFromString(RSAKeyLoader.DEFAULT_UKEY);
+                }
+                
+                FileReader f = new FileReader(path + "publickey" + id);
+		BufferedReader r = new BufferedReader(f);
 		String tmp = "";
 		String key = "";
 		while ((tmp = r.readLine()) != null) {
 			key = key + tmp;
 		}
+                f.close();
 		r.close();
 		PublicKey ret = getPublicKeyFromString(key);
 		return ret;
 	}
         
 	public PublicKey loadPublicKey() throws Exception {
-		BufferedReader r = new BufferedReader(new FileReader(path + "publickey" + this.id));
+            
+                if (defaultKeys) {                    
+                    return getPublicKeyFromString(RSAKeyLoader.DEFAULT_UKEY);
+                }
+                
+                FileReader f = new FileReader(path + "publickey" + this.id);
+		BufferedReader r = new BufferedReader(f);
 		String tmp = "";
 		String key = "";
 		while ((tmp = r.readLine()) != null) {
 			key = key + tmp;
 		}
+                f.close();
 		r.close();
 		PublicKey ret = getPublicKeyFromString(key);
 		return ret;
@@ -85,14 +120,20 @@ public class RSAKeyLoader {
 	 * @throws Exception problems reading or parsing the key
 	 */
 	public PrivateKey loadPrivateKey() throws Exception {
-		if (priKey == null) {
-			BufferedReader r = new BufferedReader(
-					new FileReader(path + "privatekey" + this.id));
+            
+                if (defaultKeys) {
+                    return getPrivateKeyFromString(RSAKeyLoader.DEFAULT_PKEY);
+                }
+                
+                if (priKey == null) {
+			FileReader f = new FileReader(path + "privatekey" + this.id);
+                        BufferedReader r = new BufferedReader(f);
 			String tmp = "";
 			String key = "";
 			while ((tmp = r.readLine()) != null) {
 				key = key + tmp;
 			}
+                        f.close();
 			r.close();
 			priKey = getPrivateKeyFromString(key);
 		}

@@ -25,4 +25,5 @@ import bftsmart.tom.core.messages.TOMMessage;
 public interface CommunicationSystemServerSide {   
    public void send(int[] targets, TOMMessage sm, boolean serializeClassHeaders);
    public void setRequestReceiver(RequestReceiver requestReceiver);
+   public void shutdown();
 }

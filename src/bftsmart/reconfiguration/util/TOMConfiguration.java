@@ -334,8 +334,7 @@ public class TOMConfiguration extends Configuration {
             } else {
                 delta = 0;
             }
-
-            rsaLoader = new RSAKeyLoader(processId, TOMConfiguration.configHome);
+            rsaLoader = new RSAKeyLoader(processId, TOMConfiguration.configHome, defaultKeys);
         } catch (Exception e) {
             e.printStackTrace(System.err);
         }

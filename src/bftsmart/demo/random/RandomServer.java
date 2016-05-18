@@ -20,7 +20,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.util.Scanner;
 import java.math.BigInteger;
 
 import bftsmart.tom.MessageContext;
@@ -50,11 +49,6 @@ public final class RandomServer extends DefaultRecoverable {
 
     public RandomServer(int id) {
     	replica = new ServiceReplica(id, this, this);
-        this.id = id;
-    }
-
-    public RandomServer(int id, boolean join) {
-    	replica = new ServiceReplica(id, join, this, this);
         this.id = id;
     }
 
@@ -132,18 +126,9 @@ public final class RandomServer extends DefaultRecoverable {
             System.out.println("Use: java RandomServer <processId>");
             System.exit(-1);
         }
-
-        RandomServer replica = null;
-        if(args.length > 1) {
-            replica = new RandomServer(Integer.parseInt(args[0]), Boolean.valueOf(args[1]));
-        }else{
-            replica = new RandomServer(Integer.parseInt(args[0]));
-        }
-
-        Scanner scan = new Scanner(System.in);
-        String ln = scan.nextLine();
-        if (ln != null) replica.getReplica().leave();
-        //new RandomServer(Integer.parseInt(args[0]));
+        
+        new RandomServer(Integer.parseInt(args[0]));
+        
     }
 
     public byte[] getState() {

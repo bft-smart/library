@@ -23,6 +23,7 @@ import java.security.Signature;
 import java.security.SignedObject;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.logging.Level;
 
 import bftsmart.clientsmanagement.ClientsManager;
 import bftsmart.clientsmanagement.RequestList;
@@ -53,6 +54,7 @@ import bftsmart.tom.util.Logger;
  */
 public final class TOMLayer extends Thread implements RequestReceiver {
 
+    private boolean doWork = true;
     //other components used by the TOMLayer (they are never changed)
     public ExecutionManager execManager; // Execution manager
     public Acceptor acceptor; // Acceptor role of the PaW algorithm
@@ -278,6 +280,9 @@ public final class TOMLayer extends Thread implements RequestReceiver {
      */
     @Override
     public void requestReceived(TOMMessage msg) {
+        
+        if (!doWork) return;
+        
         // check if this request is valid and add it to the client' pending requests list
         boolean readOnly = (msg.getReqType() == TOMMessageType.UNORDERED_REQUEST
                 || msg.getReqType() == TOMMessageType.UNORDERED_HASHED_REQUEST);
@@ -285,9 +290,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             dt.deliverUnordered(msg, syncher.getLCManager().getLastReg());
         } else {
             if (clientsManager.requestReceived(msg, true, communication)) {
-                messagesLock.lock();
-                haveMessages.signal();
-                messagesLock.unlock();
+                haveMessages();
             } else {
                 Logger.println("(TOMLayer.requestReceive) the received TOMMessage " + msg + " was discarded.");
             }
@@ -328,7 +331,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
     @Override
     public void run() {
         Logger.println("Running."); // TODO: can't this be outside of the loop?
-        while (true) {
+        while (doWork) {
 
             // blocks until this replica learns to be the leader for the current epoch of the current consensus
             leaderLock.lock();
@@ -341,6 +344,8 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             }
             //******* EDUARDO END **************//
             leaderLock.unlock();
+            
+            if (!doWork) break;
 
             // blocks until the current consensus finishes
             proposeLock.lock();
@@ -350,6 +355,8 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                 canPropose.awaitUninterruptibly();
             }
             proposeLock.unlock();
+            
+            if (!doWork) break;
 
             Logger.println("(TOMLayer.run) I'm the leader.");
 
@@ -359,6 +366,9 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                 haveMessages.awaitUninterruptibly();
             }
             messagesLock.unlock();
+            
+            if (!doWork) break;
+            
             Logger.println("(TOMLayer.run) There are messages to be ordered.");
 
             Logger.println("(TOMLayer.run) I can try to propose.");
@@ -398,6 +408,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                         createPropose(dec));
             }
         }
+        java.util.logging.Logger.getLogger(TOMLayer.class.getName()).log(Level.INFO, "TOMLayer stopped.");
     }
 
     /**
@@ -510,5 +521,31 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
     public Synchronizer getSynchronizer() {
         return syncher;
+    }
+   
+    private void haveMessages() {
+        messagesLock.lock();
+        haveMessages.signal();
+        messagesLock.unlock();
+    }
+    
+    public DeliveryThread getDeliveryThread() {
+        return dt;
+    }
+    
+    public void shutdown() {
+        this.doWork = false;
+        imAmTheLeader();
+        haveMessages();
+        setNoExec();
+
+        if (this.requestsTimer != null) this.requestsTimer.shutdown();
+        if (this.clientsManager != null) {
+            this.clientsManager.clear();
+            this.clientsManager.getPendingRequests().clear();
+        }
+        if (this.dt != null) this.dt.shutdown();
+        if (this.communication != null) this.communication.shutdown();
+ 
     }
 }

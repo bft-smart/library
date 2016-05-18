@@ -28,7 +28,6 @@ import bftsmart.tom.core.ExecutionManager;
 import bftsmart.consensus.messages.MessageFactory;
 import bftsmart.consensus.roles.Acceptor;
 import bftsmart.consensus.roles.Proposer;
-import bftsmart.reconfiguration.Reconfiguration;
 import bftsmart.reconfiguration.ReconfigureReply;
 import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.reconfiguration.VMMessage;
@@ -76,7 +75,6 @@ public class ServiceReplica {
     private ServerCommunicationSystem cs = null;
     private ReplyManager repMan = null;
     private ServerViewController SVController;
-    private boolean isToJoin = false;
     private ReentrantLock waitTTPJoinMsgLock = new ReentrantLock();
     private Condition canProceed = waitTTPJoinMsgLock.newCondition();
     private Executable executor = null;
@@ -95,7 +93,7 @@ public class ServiceReplica {
      * @param recoverer Recoverer
      */
     public ServiceReplica(int id, Executable executor, Recoverable recoverer) {
-        this(id, "", executor, recoverer, null);
+        this(id, "", executor, recoverer, null, new DefaultReplier());
     }
 
     /**
@@ -107,9 +105,21 @@ public class ServiceReplica {
      * @param verifier Requests verifier
      */
     public ServiceReplica(int id, Executable executor, Recoverable recoverer, RequestVerifier verifier) {
-        this(id, "", executor, recoverer, verifier);
+        this(id, "", executor, recoverer, verifier, new DefaultReplier());
     }
-
+    
+    /**
+     * Constructor
+     * 
+     * @param id Replica ID
+     * @param executor Executor
+     * @param recoverer Recoverer
+     * @param verifier Requests verifier
+     * @param replier Replier
+     */
+    public ServiceReplica(int id, Executable executor, Recoverable recoverer, RequestVerifier verifier, Replier replier) {
+        this(id, "", executor, recoverer, verifier, replier);
+    }
     /**
      * Constructor
      *
@@ -118,34 +128,18 @@ public class ServiceReplica {
      * @param executor Executor
      * @param recoverer Recoverer
      * @param verifier Requests verifier
+     * @param replier Replier
      */
-    public ServiceReplica(int id, String configHome, Executable executor, Recoverable recoverer, RequestVerifier verifier) {
-        this(id, configHome, false, executor, recoverer, verifier);
-    }
-
-    /**
-     * Constructor
-     *
-     * @param id Replica ID
-     * @param isToJoin: if true, the replica tries to join the system, otherwise it waits for TTP message informing its join
-     * @param executor Executor
-     * @param recoverer Recoverer
-     */
-    public ServiceReplica(int id, boolean isToJoin, Executable executor, Recoverable recoverer) {
-        this(id, "", isToJoin, executor, recoverer, null);
-    }
-
-    public ServiceReplica(int id, String configHome, boolean isToJoin, Executable executor, Recoverable recoverer, RequestVerifier verifier) {
-        this.isToJoin = isToJoin;
+    public ServiceReplica(int id, String configHome, Executable executor, Recoverable recoverer, RequestVerifier verifier, Replier replier) {
         this.id = id;
         this.SVController = new ServerViewController(id, configHome);
         this.executor = executor;
         this.recoverer = recoverer;
-        this.replier = new DefaultReplier();
+        this.replier = replier;
+        this.verifier = verifier;
         this.init();
         this.recoverer.setReplicaContext(replicaCtx);
         this.replier.setReplicaContext(replicaCtx);
-        this.verifier = verifier;
     }
 
     public void setReplyController(Replier replier) {
@@ -166,37 +160,16 @@ public class ServiceReplica {
             initTOMLayer(); // initiaze the TOM layer
         } else {
             System.out.println("Not in current view: " + this.SVController.getCurrentView());
-            if (this.isToJoin) {
-                System.out.println("Sending join: " + this.SVController.getCurrentView());
-                
-                // Not in initial view. Will perform a join;
-                int port = this.SVController.getStaticConf().getServerToServerPort(id) - 1;
-                String ip = this.SVController.getStaticConf().getServerToServerRemoteAddress(id).getAddress().getHostAddress();
-                ReconfigureReply r = null;
-                Reconfiguration rec = new Reconfiguration(id);
-                do {
-                    rec.addServer(id, ip, port);
-                    r = rec.execute();
-                } while (!r.getView().isMember(id));
-                rec.close();
-                this.SVController.processJoinResult(r);
-
-                // initiaze the TOM layer
-                initTOMLayer();
-
-                this.cs.updateServersConnections();
-                this.cs.joinViewReceived();
-            } else {
-                
-                //Not in the initial view, just waiting for the view where the join has been executed
-                System.out.println("Waiting for the TTP: " + this.SVController.getCurrentView());
-                waitTTPJoinMsgLock.lock();
-                try {
-                    canProceed.awaitUninterruptibly();
-                } finally {
-                    waitTTPJoinMsgLock.unlock();
-                }
+            
+            //Not in the initial view, just waiting for the view where the join has been executed
+            System.out.println("Waiting for the TTP: " + this.SVController.getCurrentView());
+            waitTTPJoinMsgLock.lock();
+            try {
+                canProceed.awaitUninterruptibly();
+            } finally {
+                waitTTPJoinMsgLock.unlock();
             }
+            
 
         }
         initReplica();
@@ -256,7 +229,53 @@ public class ServiceReplica {
             cs.send(new int[]{message.getSender()}, message.reply);
         }
     }
+        
+    public void kill() {        
+        
+        Thread t = new Thread() {
 
+            @Override
+            public void run() {
+                if (tomLayer != null) {   
+                    tomLayer.shutdown();
+                }     
+            }
+        };
+        t.start();
+    }
+        
+    public void restart() {        
+        Thread t = new Thread() {
+
+            @Override
+            public void run() {
+                if (tomLayer != null && cs != null) {   
+                    tomLayer.shutdown();
+
+                    try {
+                        cs.join();
+                        cs.getServersConn().join();
+                        tomLayer.join();
+                        tomLayer.getDeliveryThread().join();
+
+                    } catch (InterruptedException ex) {
+                        Logger.getLogger(ServiceReplica.class.getName()).log(Level.SEVERE, null, ex);
+                    }
+
+                    tomStackCreated = false;
+                    tomLayer = null;
+                    cs = null;
+
+                    init();
+                    recoverer.setReplicaContext(replicaCtx);
+                    replier.setReplicaContext(replicaCtx);
+                
+                }     
+            }
+        };
+        t.start();
+    }
+    
     public void receiveMessages(int consId[], int regencies[], int leaders[], CertifiedDecision[] cDecs, TOMMessage[][] requests) {
         int numRequests = 0;
         int consensusCount = 0;
@@ -432,22 +451,6 @@ public class ServiceReplica {
     }
 
     /**
-     * This method makes the replica leave the group
-     */
-    public void leave() {
-        ReconfigureReply r = null;
-        Reconfiguration rec = new Reconfiguration(id);
-        do {
-            //System.out.println("while 1");
-            rec.removeServer(id);
-
-            r = rec.execute();
-        } while (r.getView().isMember(id));
-        rec.close();
-        this.cs.updateServersConnections();
-    }
-
-    /**
      * This method initializes the object
      *
      * @param cs Server side communication System
@@ -504,4 +507,7 @@ public class ServiceReplica {
         return replicaCtx;
     }
 
+    public int getId() {
+        return id;
+    }
 }

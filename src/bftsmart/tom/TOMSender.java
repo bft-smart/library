@@ -26,11 +26,12 @@ import bftsmart.communication.client.ReplyReceiver;
 import bftsmart.reconfiguration.ClientViewController;
 import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.core.messages.TOMMessageType;
+import java.io.Closeable;
 
 /**
  * This class is used to multicast messages to replicas and receive replies.
  */
-public abstract class TOMSender implements ReplyReceiver {
+public abstract class TOMSender implements ReplyReceiver, Closeable, AutoCloseable {
 
 	private int me; // process id
 

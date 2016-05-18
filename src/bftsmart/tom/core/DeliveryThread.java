@@ -21,6 +21,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.logging.Level;
 
 import bftsmart.consensus.Decision;
 import bftsmart.reconfiguration.ServerViewController;
@@ -40,6 +41,7 @@ import bftsmart.tom.util.Logger;
  */
 public final class DeliveryThread extends Thread {
 
+    private boolean doWork = true;
     private final LinkedBlockingQueue<Decision> decided; 
     private final TOMLayer tomLayer; // TOM layer
     private final ServiceReplica receiver; // Object that receives requests from clients
@@ -164,7 +166,7 @@ public final class DeliveryThread extends Thread {
      */
     @Override
     public void run() {
-        while (true) {
+        while (doWork) {
             /** THIS IS JOAO'S CODE, TO HANDLE STATE TRANSFER */
             deliverLock();
             while (tomLayer.isRetrievingState()) {
@@ -180,6 +182,9 @@ public final class DeliveryThread extends Thread {
                 }
                 decided.drainTo(decisions);
                 decidedLock.unlock();
+                
+                if (!doWork) break;
+                
                 if (decisions.size() > 0) {
                     TOMMessage[][] requests = new TOMMessage[decisions.size()][];
                     int[] consensusIds = new int[requests.length];
@@ -248,6 +253,8 @@ public final class DeliveryThread extends Thread {
             deliverUnlock();
             /******************************************************************/
         }
+        java.util.logging.Logger.getLogger(DeliveryThread.class.getName()).log(Level.INFO, "DeliveryThread stopped.");
+
     }
     
     private TOMMessage[] extractMessagesFromDecision(Decision dec) {
@@ -288,14 +295,27 @@ public final class DeliveryThread extends Thread {
         byte[] response = controller.executeUpdates(consId);
         TOMMessage[] dests = controller.clearUpdates();
 
-        for (int i = 0; i < dests.length; i++) {
-            tomLayer.getCommunication().send(new int[]{dests[i].getSender()},
-                    new TOMMessage(controller.getStaticConf().getProcessId(),
-                    dests[i].getSession(), dests[i].getSequence(), response,
-                    controller.getCurrentViewId(),TOMMessageType.RECONFIG));
-        }
+        if (controller.getCurrentView().isMember(receiver.getId())) {
+            for (int i = 0; i < dests.length; i++) {
+                tomLayer.getCommunication().send(new int[]{dests[i].getSender()},
+                        new TOMMessage(controller.getStaticConf().getProcessId(),
+                        dests[i].getSession(), dests[i].getSequence(), response,
+                        controller.getCurrentViewId(),TOMMessageType.RECONFIG));
+            }
 
-        tomLayer.getCommunication().updateServersConnections();
+            tomLayer.getCommunication().updateServersConnections();
+        } else {
+            receiver.restart();
+        }
     }
 
+    public void shutdown() {
+        this.doWork = false;
+        
+        System.out.println("Shutting down delivery thread");
+        
+        decidedLock.lock();        
+        notEmptyQueue.signalAll();
+        decidedLock.unlock();
+    }
 }
