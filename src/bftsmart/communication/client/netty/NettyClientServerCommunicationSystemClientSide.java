@@ -503,6 +503,8 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
             c.close();
             // Then close the parent channel (the one attached to the bind)
             if (c.parent() != null) c.parent().close();
-            c.eventLoop().shutdownGracefully();            
+            //c.eventLoop().shutdownGracefully();
+            workerGroup.shutdownGracefully();
+
     }
 }
