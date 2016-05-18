@@ -77,10 +77,13 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
     private int signatureLength;
     private boolean closed = false;
 
+    private EventLoopGroup workerGroup;
+
     public NettyClientServerCommunicationSystemClientSide(int clientId, ClientViewController controller) {
         super();
 
         this.clientId = clientId;
+        this.workerGroup = new NioEventLoopGroup();
         try {           
             SecretKeyFactory fac = SecretKeyFactory.getInstance("PBEWithMD5AndDES");
 
@@ -98,7 +101,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
                     PBEKeySpec spec = new PBEKeySpec(str.toCharArray());
                     SecretKey authKey = fac.generateSecret(spec);
 
-                    EventLoopGroup workerGroup = new NioEventLoopGroup();
+                    //EventLoopGroup workerGroup = new NioEventLoopGroup();
                     
                     //try {
                     Bootstrap b = new Bootstrap();
@@ -163,8 +166,11 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
                     try {
                         // Configure the client.
 
-                        EventLoopGroup workerGroup = new NioEventLoopGroup();
-
+                        //EventLoopGroup workerGroup = new NioEventLoopGroup();
+                        if( workerGroup == null){
+                            workerGroup = new NioEventLoopGroup();
+                        }
+                        
                         //try {
                         Bootstrap b = new Bootstrap();
                         b.group(workerGroup);
@@ -276,7 +282,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
             if (ncss.getChannel() == ctx.channel()) {
                 try {
                     // Configure the client.
-                    EventLoopGroup workerGroup = ctx.channel().eventLoop();
+                    //EventLoopGroup workerGroup = ctx.channel().eventLoop();
                     if( workerGroup == null){
                         workerGroup = new NioEventLoopGroup();
                     }
@@ -497,6 +503,6 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
             c.close();
             // Then close the parent channel (the one attached to the bind)
             if (c.parent() != null) c.parent().close();
-            c.eventLoop().shutdownGracefully();   
+            c.eventLoop().shutdownGracefully();            
     }
 }
