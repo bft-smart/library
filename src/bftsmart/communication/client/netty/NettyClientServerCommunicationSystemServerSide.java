@@ -276,9 +276,54 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 					sm.destination = targets[i];
 					//send message
 					session.writeAndFlush(sm); // This used to invoke "await". Removed to avoid blockage and race condition.
+                                
+                                ///////TODO: replace this patch for a proper client preamble
+                                } else if (sm.getSequence() >= 0 && sm.getSequence() <= 5) {
+                                    
+                                        final int id = targets[i];
+                                        final TOMMessage msg = sm;
+                                        
+                                        Thread t = new Thread() {
+                                                                                        
+                                            public void run() {
+                                                
+                                                System.out.println("Received request from " + id + " before establishing Netty connection. Re-trying until connection is established");
+
+                                                NettyClientServerSession ncss = null;
+                                                while (ncss == null) {
+
+                                                    rl.readLock().lock();
+                                                    
+                                                    try {
+                                                        Thread.sleep(1000);
+                                                    } catch (InterruptedException ex) {
+                                                        java.util.logging.Logger.getLogger(NettyClientServerCommunicationSystemServerSide.class.getName()).log(Level.SEVERE, null, ex);
+                                                    }
+                                                    
+                                                    ncss = (NettyClientServerSession) sessionTable.get(id);
+                                                    if (ncss != null) {
+                                                            Channel session = ncss.getChannel();
+                                                            msg.destination = id;
+                                                            //send message
+                                                            session.writeAndFlush(msg);
+                                                    }
+
+                                                    rl.readLock().unlock();
+                                                    
+                                                }
+                                                 
+                                                System.out.println("Connection with " + id + " established!");
+
+                                                
+                                            }
+                                            
+                                        };
+                                        
+                                        t.start();
+                                        ///////////////////////////////////////////
 				} else {
-					System.out.println("!!!!!!!!NettyClientServerSession NULL !!!!!! sequence: " + sm.getSequence() + ", ID; " + targets[i]);
-				}
+                                    System.out.println("!!!!!!!!NettyClientServerSession NULL !!!!!! sequence: " + sm.getSequence() + ", ID; " + targets[i]);
+                                }
 			} finally {
 				//sendLock.unlock();
 				rl.readLock().unlock();

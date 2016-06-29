@@ -31,3 +31,4 @@ Feel free to contact us if you have any questions!
 
 References:
 [1] J. Sousa and A. Bessani // Separating the WHEAT from the Chaff: An Empirical Design for Geo-Replicated State Machines // SRDS'15
+
