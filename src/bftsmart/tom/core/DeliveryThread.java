@@ -170,9 +170,11 @@ public final class DeliveryThread extends Thread {
             /** THIS IS JOAO'S CODE, TO HANDLE STATE TRANSFER */
             deliverLock();
             while (tomLayer.isRetrievingState()) {
-                System.out.println("(DeliveryThread.run) Retrieving State.");
+                System.out.println("-- Retrieving State.");
                 canDeliver.awaitUninterruptibly();
-                System.out.println("(DeliveryThread.run) canDeliver released.");
+                
+                if (tomLayer.getLastExec() == -1)
+                    System.out.println("-- Ready to process operations.");
             }
             try {
                 ArrayList<Decision> decisions = new ArrayList<Decision>();
