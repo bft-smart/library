@@ -5,13 +5,13 @@ This branch contains the source code for WHEAT, an extension of BFT-SMART (based
 
 Example (for the counter demo):
 
-$ java -cp ./bin/WHEAT.jar:./lib/* bftsmart.demo.counter.CounterServer 0
-$ java -cp ./bin/WHEAT.jar:./lib/* bftsmart.demo.counter.CounterServer 1
-$ java -cp ./bin/WHEAT.jar:./lib/* bftsmart.demo.counter.CounterServer 2
-$ java -cp ./bin/WHEAT.jar:./lib/* bftsmart.demo.counter.CounterServer 3
-$ java -cp ./bin/WHEAT.jar:./lib/* bftsmart.demo.counter.CounterServer 4
+$ java -cp ./bin/*:./lib/* bftsmart.demo.counter.CounterServer 0
+$ java -cp ./bin/*:./lib/* bftsmart.demo.counter.CounterServer 1
+$ java -cp ./bin/*:./lib/* bftsmart.demo.counter.CounterServer 2
+$ java -cp ./bin/*:./lib/* bftsmart.demo.counter.CounterServer 3
+$ java -cp ./bin/*:./lib/* bftsmart.demo.counter.CounterServer 4
 
-$ java -cp ./bin/WHEAT.jar:./lib/* bftsmart.demo.counter.CounterClient 1001 10
+$ java -cp ./bin/*:./lib/* bftsmart.demo.counter.CounterClient 1001 10
 
 To configure the vote assigment scheme, it is necessary to:
 
