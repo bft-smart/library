@@ -257,24 +257,11 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
         System.out.println("Channel active");
     }
 
-    @Override
-    public void channelInactive(ChannelHandlerContext ctx){
-
-        if(closed){
-
-            closeChannelAndEventLoop(ctx.channel());
-            
-            return;
-        }
-
-        try {
-            //sleeps 10 seconds before trying to reconnect
-            Thread.sleep(10000);
-        } catch (InterruptedException ex) {
-            ex.printStackTrace();
-        }
+    public void reconnect(final ChannelHandlerContext ctx){
 
         rl.writeLock().lock();
+    	Logger.println("try to reconnect");
+
         //Iterator sessions = sessionTable.values().iterator();
 
         ArrayList<NettyClientServerSession> sessions = new ArrayList<NettyClientServerSession>(sessionTable.values());
@@ -317,8 +304,6 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
                     ex.printStackTrace();
                 }
             }
-
-
         }
 
         //closes all other channels to avoid messages being sent to only a subset of the replicas
@@ -476,28 +461,19 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
             }
         };					
         return channelInitializer;		
-
     }
 
     @Override
     public void channelUnregistered(final ChannelHandlerContext ctx) throws Exception {
-        if(closed){
-            closeChannelAndEventLoop(ctx.channel());
-            
-            return;
-        }
-        
-        final EventLoop loop = ctx.channel().eventLoop();
-        loop.schedule(new Runnable() {
-            @Override
-            public void run() {
-                channelInactive(ctx);
-            }
-        },0,TimeUnit.SECONDS);
+        scheduleReconnect(ctx,10);
+    }
+    
+    @Override
+    public void channelInactive(final ChannelHandlerContext ctx){
+        scheduleReconnect(ctx,10);
     }
 
     private void closeChannelAndEventLoop(Channel c) {
-        
             // once having an event in your handler (EchoServerHandler)
             // Close the current channel
             c.close();
@@ -505,6 +481,21 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
             if (c.parent() != null) c.parent().close();
             //c.eventLoop().shutdownGracefully();
             workerGroup.shutdownGracefully();
-
     }
+    
+    private void scheduleReconnect(final ChannelHandlerContext ctx, int time){
+        if(closed){
+            closeChannelAndEventLoop(ctx.channel());
+            return;
+        }
+        
+        final EventLoop loop = ctx.channel().eventLoop();
+        loop.schedule(new Runnable() {
+            @Override
+            public void run() {
+            	reconnect(ctx);
+            }
+        },time,TimeUnit.SECONDS);
+    }
+    
 }

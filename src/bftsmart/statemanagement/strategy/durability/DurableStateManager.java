@@ -12,7 +12,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
-*/
+ */
 package bftsmart.statemanagement.strategy.durability;
 
 import java.io.IOException;
@@ -71,7 +71,7 @@ public class DurableStateManager extends BaseStateManager {
 		state = null;
 		lastCID = 1;
 		waitingCID = -1;
-		
+
 		appStateOnly = false;
 	}
 
@@ -94,8 +94,8 @@ public class DurableStateManager extends BaseStateManager {
 				SVController.getCurrentViewOtherAcceptors(), cstMsg);
 
 		System.out
-				.println("(TOMLayer.requestState) I just sent a request to the other replicas for the state up to CID "
-						+ waitingCID);
+		.println("(TOMLayer.requestState) I just sent a request to the other replicas for the state up to CID "
+				+ waitingCID);
 
 		TimerTask stateTask = new TimerTask() {
 			public void run() {
@@ -174,10 +174,10 @@ public class DurableStateManager extends BaseStateManager {
 		if (SVController.getStaticConf().isStateTransferEnabled()) {
 			Logger.println("(TOMLayer.SMReplyDeliver) The state transfer protocol is enabled");
 			System.out
-					.println("(TOMLayer.SMReplyDeliver) I received a state reply for CID "
-							+ reply.getCID()
-							+ " from replica "
-							+ reply.getSender());
+			.println("(TOMLayer.SMReplyDeliver) I received a state reply for CID "
+					+ reply.getCID()
+					+ " from replica "
+					+ reply.getSender());
 
 			System.out.println("--- Received CID: " + reply.getCID()
 					+ ". Waiting " + waitingCID);
@@ -186,14 +186,14 @@ public class DurableStateManager extends BaseStateManager {
 				int currentRegency = -1;
 				int currentLeader = -1;
 				View currentView = null;
-                                CertifiedDecision currentProof = null;
+				//                                CertifiedDecision currentProof = null;
 
 				if (!appStateOnly) {
 					senderRegencies.put(reply.getSender(), reply.getRegency());
 					senderLeaders.put(reply.getSender(), reply.getLeader());
 					senderViews.put(reply.getSender(), reply.getView());
-                                        senderProofs.put(msg.getSender(), msg.getState().getCertifiedDecision(SVController));
-                                        if (enoughRegencies(reply.getRegency()))
+					//                                        senderProofs.put(msg.getSender(), msg.getState().getCertifiedDecision(SVController));
+					if (enoughRegencies(reply.getRegency()))
 						currentRegency = reply.getRegency();
 					if (enoughLeaders(reply.getLeader()))
 						currentLeader = reply.getLeader();
@@ -204,7 +204,7 @@ public class DurableStateManager extends BaseStateManager {
 							System.out.println("Not a member!");
 						}
 					}                                        
-                                        if (enoughProofs(waitingCID, this.tomLayer.getSynchronizer().getLCManager())) currentProof = msg.getState().getCertifiedDecision(SVController);
+					//                                        if (enoughProofs(waitingCID, this.tomLayer.getSynchronizer().getLCManager())) currentProof = msg.getState().getCertifiedDecision(SVController);
 
 				} else {
 					currentLeader = tomLayer.execManager.getCurrentLeader();
@@ -296,7 +296,7 @@ public class DurableStateManager extends BaseStateManager {
 					System.out.println("-- current leader: " + currentLeader);
 					System.out.println("-- current view: " + currentView);
 					if (currentRegency > -1 && currentLeader > -1
-							&& currentView != null && haveState && (!isBFT || currentProof != null || appStateOnly)) {
+							&& currentView != null && haveState && (!isBFT || /*currentProof != null ||*/ appStateOnly)) {
 						System.out.println("---- RECEIVED VALID STATE ----");
 
 						Logger.println("(TOMLayer.SMReplyDeliver) The state of those replies is good!");
@@ -308,58 +308,58 @@ public class DurableStateManager extends BaseStateManager {
 						tomLayer.getSynchronizer().getLCManager().setNewLeader(currentLeader);
 
 						tomLayer.execManager.setNewLeader(currentLeader);
-						
-                                                if (currentProof != null && !appStateOnly) {
 
-                                                    System.out.println("Installing proof for consensus " + waitingCID);
+//						if (currentProof != null && !appStateOnly) {
+//
+//							System.out.println("Installing proof for consensus " + waitingCID);
+//
+//							Consensus cons = execManager.getConsensus(waitingCID);
+//							Epoch e = null;
+//
+//							for (ConsensusMessage cm : currentProof.getConsMessages()) {
+//
+//								e = cons.getEpoch(cm.getEpoch(), true, SVController);
+//								if (e.getTimestamp() != cm.getEpoch()) {
+//
+//									System.out.println("Strange... proof contains messages from more than just one epoch");
+//									e = cons.getEpoch(cm.getEpoch(), true, SVController);
+//								}
+//								e.addToProof(cm);
+//
+//								if (cm.getType() == MessageFactory.ACCEPT) {
+//									e.setAccept(cm.getSender(), cm.getValue());
+//								}
+//
+//								else if (cm.getType() == MessageFactory.WRITE) {
+//									e.setWrite(cm.getSender(), cm.getValue());
+//								}
+//
+//							}
+//
+//
+//							if (e != null) {
+//
+//								byte[] hash = tomLayer.computeHash(currentProof.getDecision());
+//								e.propValueHash = hash;
+//								e.propValue = currentProof.getDecision();
+//								e.deserializedPropValue = tomLayer.checkProposedValue(currentProof.getDecision(), false);
+//								cons.decided(e, false);
+//
+//								System.out.println("Successfully installed proof for consensus " + waitingCID);
+//
+//							} else {
+//								System.out.println("Failed to install proof for consensus " + waitingCID);
+//
+//							}
+//
+//						}
 
-                                                    Consensus cons = execManager.getConsensus(waitingCID);
-                                                    Epoch e = null;
 
-                                                    for (ConsensusMessage cm : currentProof.getConsMessages()) {
+						// I might have timed out before invoking the state transfer, so
+						// stop my re-transmission of STOP messages for all regencies up to the current one
+						if (currentRegency > 0) tomLayer.getSynchronizer().removeSTOPretransmissions(currentRegency - 1);
 
-                                                        e = cons.getEpoch(cm.getEpoch(), true, SVController);
-                                                        if (e.getTimestamp() != cm.getEpoch()) {
-
-                                                            System.out.println("Strange... proof contains messages from more than just one epoch");
-                                                            e = cons.getEpoch(cm.getEpoch(), true, SVController);
-                                                        }
-                                                        e.addToProof(cm);
-
-                                                        if (cm.getType() == MessageFactory.ACCEPT) {
-                                                            e.setAccept(cm.getSender(), cm.getValue());
-                                                        }
-
-                                                        else if (cm.getType() == MessageFactory.WRITE) {
-                                                            e.setWrite(cm.getSender(), cm.getValue());
-                                                        }
-
-                                                    }
-
-
-                                                    if (e != null) {
-
-                                                        byte[] hash = tomLayer.computeHash(currentProof.getDecision());
-                                                        e.propValueHash = hash;
-                                                        e.propValue = currentProof.getDecision();
-                                                        e.deserializedPropValue = tomLayer.checkProposedValue(currentProof.getDecision(), false);
-                                                         cons.decided(e, false);
-
-                                                        System.out.println("Successfully installed proof for consensus " + waitingCID);
-
-                                                    } else {
-                                                        System.out.println("Failed to install proof for consensus " + waitingCID);
-
-                                                    }
-
-                                                }
-
-                                                
-                                                // I might have timed out before invoking the state transfer, so
-                                                // stop my re-transmission of STOP messages for all regencies up to the current one
-                                                if (currentRegency > 0) tomLayer.getSynchronizer().removeSTOPretransmissions(currentRegency - 1);
-                                                
-                                                System.out.print("trying to acquire deliverlock");
+						System.out.print("trying to acquire deliverlock");
 						dt.deliverLock();
 						System.out.println("acquired");
 
@@ -386,7 +386,7 @@ public class DurableStateManager extends BaseStateManager {
 							System.out.println("Installing current view!");
 							SVController.reconfigureTo(currentView);
 						}
-						
+
 						isInitializing = false;
 
 						dt.canDeliver();
@@ -438,5 +438,5 @@ public class DurableStateManager extends BaseStateManager {
 		}
 		lockTimer.unlock();
 	}
-	
+
 }
