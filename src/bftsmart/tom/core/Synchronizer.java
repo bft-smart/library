@@ -731,7 +731,7 @@ public class Synchronizer {
                     lastDec = new CertifiedDecision(this.controller.getStaticConf().getProcessId(), last, decision, proof);
                     // TODO: WILL BE NECESSARY TO ADD A PROOF!!!??
 
-                } else {
+                } else {                    
                     lastDec = new CertifiedDecision(this.controller.getStaticConf().getProcessId(), last, null, null);
 
                     ////// THIS IS TO CATCH A BUG!!!!!
@@ -1077,8 +1077,11 @@ public class Synchronizer {
         // install proof of the last decided consensus
         cons = execManager.getConsensus(lastHighestCID.getCID());
         e = null;
+                
+        Set<ConsensusMessage> consMsgs = lastHighestCID.getConsMessages();
+        if (consMsgs == null) consMsgs = new HashSet();
         
-        for (ConsensusMessage cm : lastHighestCID.getConsMessages()) {
+        for (ConsensusMessage cm : consMsgs) {
             
             if (e == null) e = cons.getEpoch(cm.getEpoch(), true, controller);
             if (e.getTimestamp() != cm.getEpoch()) {
