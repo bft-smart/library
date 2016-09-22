@@ -156,13 +156,13 @@ public class ServiceReplica {
         }
 
         if (this.SVController.isInCurrentView()) {
-            System.out.println("In current view: " + this.SVController.getCurrentView());
+            System.out.println("-- In current view: " + this.SVController.getCurrentView());
             initTOMLayer(); // initiaze the TOM layer
         } else {
-            System.out.println("Not in current view: " + this.SVController.getCurrentView());
+            System.out.println("-- Not in current view: " + this.SVController.getCurrentView());
             
             //Not in the initial view, just waiting for the view where the join has been executed
-            System.out.println("Waiting for the TTP: " + this.SVController.getCurrentView());
+            System.out.println("-- Waiting for the TTP: " + this.SVController.getCurrentView());
             waitTTPJoinMsgLock.lock();
             try {
                 canProceed.awaitUninterruptibly();

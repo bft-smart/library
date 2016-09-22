@@ -387,7 +387,7 @@ public class ServerConnection {
             BigInteger secretKey =
                     remoteDHPubKey.modPow(DHPrivKey, controller.getStaticConf().getDHP());
             
-           System.out.println("#Diffie-Hellman complete with " + remoteId);
+           System.out.println("-- Diffie-Hellman complete with " + remoteId);
             
             SecretKeyFactory fac = SecretKeyFactory.getInstance("PBEWithMD5AndDES");
             PBEKeySpec spec = new PBEKeySpec(secretKey.toString().toCharArray());

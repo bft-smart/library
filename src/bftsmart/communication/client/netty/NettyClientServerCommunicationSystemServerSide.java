@@ -105,14 +105,14 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 					controller.getStaticConf().getProcessId()),
 					controller.getStaticConf().getPort(controller.getStaticConf().getProcessId()))).sync(); 
 
-			System.out.println("#Bound to port " + controller.getStaticConf().getPort(controller.getStaticConf().getProcessId()));
-			System.out.println("#myId " + controller.getStaticConf().getProcessId());
-			System.out.println("#n " + controller.getCurrentViewN());
-			System.out.println("#f " + controller.getCurrentViewF());
-			System.out.println("#requestTimeout= " + controller.getStaticConf().getRequestTimeout());
-			System.out.println("#maxBatch= " + controller.getStaticConf().getMaxBatchSize());
-			System.out.println("#Using MACs = " + controller.getStaticConf().getUseMACs());
-			System.out.println("#Using Signatures = " + controller.getStaticConf().getUseSignatures());
+			System.out.println("-- ID = " + controller.getStaticConf().getProcessId());
+			System.out.println("-- N = " + controller.getCurrentViewN());
+			System.out.println("-- F = " + controller.getCurrentViewF());
+        		System.out.println("-- Port = " + controller.getStaticConf().getPort(controller.getStaticConf().getProcessId()));
+			System.out.println("-- requestTimeout = " + controller.getStaticConf().getRequestTimeout());
+			System.out.println("-- maxBatch = " + controller.getStaticConf().getMaxBatchSize());
+			if (controller.getStaticConf().getUseMACs() == 1) System.out.println("-- Using MACs");
+			if(controller.getStaticConf().getUseSignatures() == 1) System.out.println("-- Using Signatures");
 			//******* EDUARDO END **************//
                         
                         mainChannel = f.channel();

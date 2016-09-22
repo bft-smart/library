@@ -250,7 +250,7 @@ public abstract class BaseStateManager implements StateManager {
             for (int key : cids.keySet()) {
                 if (cids.get(key) >= SVController.getQuorum()) {
                     if (key == lastCID) {
-                        System.out.println("QUORUM OF REPLICAS REPLIED WITH CID " + key);
+                        System.out.println("-- Replica state is up to date");
                         dt.deliverLock();
                         isInitializing = false;
                         tomLayer.setLastExec(key);
@@ -259,7 +259,7 @@ public abstract class BaseStateManager implements StateManager {
                         break;
                     } else {
                         //ask for state
-                        System.out.println("QUORUM " + key + " DIFFERENT FROM MY CID " + lastCID + ". WILL ASK FOR STATE");
+                        System.out.println("-- Requesting state from other replicas");
                         lastCID = key + 1;
                         if (waitingCID == -1) {
                             waitingCID = key;
