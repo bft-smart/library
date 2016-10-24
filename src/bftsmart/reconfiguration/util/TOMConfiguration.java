@@ -56,6 +56,7 @@ public class TOMConfiguration extends Configuration {
 	private boolean syncCkp;
     private boolean isBFT;
     private int numRepliers;
+    private int numNettyWorkers;
     
     /** Creates a new instance of TOMConfiguration */
     public TOMConfiguration(int processId) {
@@ -322,6 +323,13 @@ public class TOMConfiguration extends Configuration {
             } else {
                 numRepliers = Integer.parseInt(s);
             }
+ 
+            s = (String) configs.remove("system.numnettyworkers");
+            if (s == null) {
+                numNettyWorkers = 0;
+            } else {
+                numNettyWorkers = Integer.parseInt(s);
+            }
             
             rsaLoader = new RSAKeyLoader(processId, TOMConfiguration.configHome, defaultKeys);
         } catch (Exception e) {
@@ -512,5 +520,9 @@ public class TOMConfiguration extends Configuration {
 
     public int getNumRepliers() {
         return numRepliers;
+    }
+    
+    public int getNumNettyWorkers() {
+        return numNettyWorkers;
     }
 }

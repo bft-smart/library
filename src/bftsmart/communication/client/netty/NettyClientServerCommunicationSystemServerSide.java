@@ -86,7 +86,12 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 			serverPipelineFactory = new NettyServerPipelineFactory(this, sessionTable, macDummy.getMacLength(), controller, rl, TOMUtil.getSignatureSize(controller));
 
 			EventLoopGroup bossGroup = new NioEventLoopGroup();
-			EventLoopGroup workerGroup = new NioEventLoopGroup();
+                        
+                        //If the numbers of workers are not specified by the configuration file,
+                        //the event group is created with the default number of threads, which
+                        //should be twice the number of cores available.
+                        int nWorkers = this.controller.getStaticConf().getNumNettyWorkers();
+			EventLoopGroup workerGroup = (nWorkers > 0 ? new NioEventLoopGroup(nWorkers) : new NioEventLoopGroup());
 
 			ServerBootstrap b = new ServerBootstrap(); 
 			b.group(bossGroup, workerGroup)
