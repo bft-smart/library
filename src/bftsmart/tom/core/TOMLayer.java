@@ -292,7 +292,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             if (clientsManager.requestReceived(msg, true, communication)) {
                 haveMessages();
             } else {
-                Logger.println("(TOMLayer.requestReceive) the received TOMMessage " + msg + " was discarded.");
+                Logger.println("(TOMLayer.requestReceived) the received TOMMessage " + msg + " was discarded.");
             }
         }
     }

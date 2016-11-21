@@ -219,6 +219,8 @@ public class ClientsManager {
      */
     public boolean requestReceived(TOMMessage request, boolean fromClient, ServerCommunicationSystem cs) {
         
+        Logger.println("(ClientsManager.requestReceived) Received TOMMessage from client " + request.getSender() + " with sequence number " + request.getSequence() + " for session " + request.getSession());
+        
         // if the content of the request is invalid, ignore it
         if (controller.getStaticConf().isBFT() && !verifier.isValidRequest(request.getContent())) return false;
         
