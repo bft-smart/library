@@ -289,6 +289,8 @@ public class ServiceReplica {
             int requestCount = 0;
             noop = true;
             for (TOMMessage request : requestsFromConsensus) {
+                
+                bftsmart.tom.util.Logger.println("(ServiceReplica.receiveMessages) Processing TOMMessage from client " + request.getSender() + " with sequence number " + request.getSequence() + " for session " + request.getSession() + " decided in consensus " + consId[consensusCount]);
 
                 if (request.getViewID() == SVController.getCurrentViewId()) {
 
@@ -310,6 +312,8 @@ public class ServiceReplica {
                         request.deliveryTime = System.nanoTime();
                         if (executor instanceof BatchExecutable) {
                             
+                            bftsmart.tom.util.Logger.println("(ServiceReplica.receiveMessages) Batching request from " + request.getSender());
+
                             // This is used to deliver the content decided by a consensus instance directly to
                             // a Recoverable object. It is useful to allow the application to create a log and
                             // store the proof associated with decisions (which are needed by replicas
@@ -321,6 +325,8 @@ public class ServiceReplica {
                             toBatch.add(request);
                         } else if (executor instanceof FIFOExecutable) {
                             
+                            bftsmart.tom.util.Logger.println("(ServiceReplica.receiveMessages) Delivering request from " + request.getSender() + " via FifoExecutable");
+
                             // This is used to deliver the content decided by a consensus instance directly to
                             // a Recoverable object. It is useful to allow the application to create a log and
                             // store the proof associated with decisions (which are needed by replicas
@@ -338,6 +344,8 @@ public class ServiceReplica {
                             replier.manageReply(request, msgCtx);
                         } else if (executor instanceof SingleExecutable) {
 
+                            bftsmart.tom.util.Logger.println("(ServiceReplica.receiveMessages) Delivering request from " + request.getSender() + " via SingleExecutable");
+
                             // This is used to deliver the content decided by a consensus instance directly to
                             // a Recoverable object. It is useful to allow the application to create a log and
                             // store the proof associated with decisions (which are needed by replicas
@@ -354,7 +362,7 @@ public class ServiceReplica {
                             bftsmart.tom.util.Logger.println("(ServiceReplica.receiveMessages) sending reply to " + request.getSender());
                             replier.manageReply(request, msgCtx);
                         } else {
-                            throw new UnsupportedOperationException("Interface not existent");
+                            throw new UnsupportedOperationException("Non-existent interface");
                         }
                     } else if (request.getReqType() == TOMMessageType.RECONFIG) {
                         SVController.enqueueUpdate(request);
@@ -375,6 +383,9 @@ public class ServiceReplica {
             // operation contained in the batch. The recoverer must be notified about this,
             // hence the invocation of "noop"
             if (noop && this.recoverer != null) {
+                
+                bftsmart.tom.util.Logger.println("(ServiceReplica.receiveMessages) Delivering a no-op to the recoverer");
+
                 System.out.println(" --- A consensus instance finished, but there were no commands to deliver to the application.");
                 System.out.println(" --- Notifying recoverable about a blank consensus.");
 
