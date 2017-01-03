@@ -27,7 +27,6 @@ import java.security.PublicKey;
 import java.security.Signature;
 import java.security.SignatureException;
 import java.util.Arrays;
-import java.util.concurrent.locks.ReentrantLock;
 
 import bftsmart.reconfiguration.ViewController;
 
@@ -50,20 +49,8 @@ public class TOMUtil {
     public static final int TRIGGER_LC_LOCALLY = 8;
     public static final int TRIGGER_SM_LOCALLY = 9;
     
-    //the signature engine used in the system and the signatureSize
-    private static Signature signatureEngine;
     private static int signatureSize = -1;
-
-    //the message digest engine used in the system
-    private static MessageDigest md = null;
-           
-    //lock to make signMessage and verifySignature reentrant
-    private static ReentrantLock lock = new ReentrantLock();
-
-    //private static Semaphore sem = new Semaphore(10, true);
-
-    //private static Storage st = new Storage(BENCHMARK_PERIOD);
-    //private static int count=0;
+    
     public static int getSignatureSize(ViewController controller) {
         if (signatureSize > 0) {
             return signatureSize;
@@ -124,12 +111,11 @@ public class TOMUtil {
      * @return the signature
      */
     public static byte[] signMessage(PrivateKey key, byte[] message) {
-        lock.lock();
+
         byte[] result = null;
         try {
-            if (signatureEngine == null) {
-                signatureEngine = Signature.getInstance("SHA1withRSA");
-            }
+
+            Signature signatureEngine = Signature.getInstance("SHA1withRSA");
 
             signatureEngine.initSign(key);
 
@@ -140,7 +126,6 @@ public class TOMUtil {
             e.printStackTrace();
         }
 
-        lock.unlock();
         return result;
     }
 
@@ -153,38 +138,19 @@ public class TOMUtil {
      * @return true if the signature is valid, false otherwise
      */
     public static boolean verifySignature(PublicKey key, byte[] message, byte[] signature) {
-        lock.lock();
+
         boolean result = false;
-        //long startTime = System.nanoTime();
+
         try {
-            if (signatureEngine == null) {
-                signatureEngine = Signature.getInstance("SHA1withRSA");
-            }
+            Signature signatureEngine = Signature.getInstance("SHA1withRSA");
 
             signatureEngine.initVerify(key);
 
             result = verifySignature(signatureEngine, message, signature);
-            /*
-            st.store(System.nanoTime()-startTime);
-            //statistics about signature execution time
-            count++;
-            if (count%BENCHMARK_PERIOD==0){                
-            System.out.println("#-- (TOMUtil) Signature verification benchmark:--");
-            System.out.println("#Average time for " + BENCHMARK_PERIOD + " signature verifications (-10%) = " + st.getAverage(true) / 1000 + " us ");
-            System.out.println("#Standard desviation for " + BENCHMARK_PERIOD + " signature verifications (-10%) = " + st.getDP(true) / 1000 + " us ");
-            System.out.println("#Average time for " + BENCHMARK_PERIOD + " signature verifications (all samples) = " + st.getAverage(false) / 1000 + " us ");
-            System.out.println("#Standard desviation for " + BENCHMARK_PERIOD + " signature verifications (all samples) = " + st.getDP(false) / 1000 + " us ");
-            System.out.println("#Maximum time for " + BENCHMARK_PERIOD + " signature verifications (-10%) = " + st.getMax(true) / 1000 + " us ");
-            System.out.println("#Maximum time for " + BENCHMARK_PERIOD + " signature verifications (all samples) = " + st.getMax(false) / 1000 + " us ");
-            count = 0;
-            st = new Storage(BENCHMARK_PERIOD);
-            }
-         */
         } catch (Exception e) {
             e.printStackTrace();
         }
 
-        lock.unlock();
         return result;
     }
 
@@ -198,12 +164,9 @@ public class TOMUtil {
      * @return true if the signature is valid, false otherwise
      */
     public static boolean verifySignature(Signature initializedSignatureEngine, byte[] message, byte[] signature) throws SignatureException {
-        //TODO: limit the amount of parallelization we can do to save some cores for other tasks
-        //maybe we can use a semaphore here initialized with the maximum number of parallel verifications:
-        //sem.acquire()
+
         initializedSignatureEngine.update(message);
         return initializedSignatureEngine.verify(signature);
-        //sem.release()
     }
 
     public static String byteArrayToString(byte[] b) {
@@ -213,7 +176,6 @@ public class TOMUtil {
         }
 
         return s;
-    //Logger.println(s);
     }
 
     public static boolean equalsHash(byte[] h1, byte[] h2) {
@@ -222,19 +184,16 @@ public class TOMUtil {
 
     public static final byte[] computeHash(byte[] data) {
         
-        lock.lock();
         byte[] result = null;
         
         try {
-            if (md == null) md = MessageDigest.getInstance("MD5");
+            MessageDigest md = MessageDigest.getInstance("MD5");
+            result = md.digest(data);
             
         } catch (NoSuchAlgorithmException e) {
-            // TODO Auto-generated catch block
             e.printStackTrace();
         } // TODO: shouldn't it be SHA?
-        
-        result = md.digest(data);
-        lock.unlock();
+                
         return result;
     }
     

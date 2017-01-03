@@ -56,6 +56,7 @@ public class TOMConfiguration extends Configuration {
 	private boolean syncCkp;
     private boolean isBFT;
     private int numRepliers;
+    private int numNettyWorkers;
     
         private int delta;
         private boolean useWeights;
@@ -325,6 +326,13 @@ public class TOMConfiguration extends Configuration {
             } else {
                 numRepliers = Integer.parseInt(s);
             }
+ 
+            s = (String) configs.remove("system.numnettyworkers");
+            if (s == null) {
+                numNettyWorkers = 0;
+            } else {
+                numNettyWorkers = Integer.parseInt(s);
+            }
             
             s = (String) configs.remove("system.useweights");
             useWeights = (s != null) ? Boolean.parseBoolean(s) : false;
@@ -524,8 +532,10 @@ public class TOMConfiguration extends Configuration {
     public int getNumRepliers() {
         return numRepliers;
     }
-
     public int getDelta() {
         return delta;
+    }
+    public int getNumNettyWorkers() {
+        return numNettyWorkers;
     }
 }

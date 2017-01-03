@@ -23,6 +23,14 @@ import java.util.logging.Logger;
 import bftsmart.tom.ServiceProxy;
 import bftsmart.tom.core.messages.TOMMessageType;
 import bftsmart.tom.util.Storage;
+import java.util.Collection;
+import java.util.LinkedList;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Example client that updates a BFT replicated service (a counter).
@@ -49,7 +57,7 @@ public class ThroughputLatencyClient {
         boolean verbose = Boolean.parseBoolean(args[6]);
         boolean dos = Boolean.parseBoolean(args[7]);
 
-        Client[] c = new Client[numThreads];
+        Client[] clients = new Client[numThreads];
         
         for(int i=0; i<numThreads; i++) {
             try {
@@ -59,25 +67,42 @@ public class ThroughputLatencyClient {
             }
             
             System.out.println("Launching client " + (initId+i));
-            c[i] = new ThroughputLatencyClient.Client(initId+i,numberOfOps,requestSize,interval,readOnly, verbose, dos);
-            //c[i].start();
+            clients[i] = new ThroughputLatencyClient.Client(initId+i,numberOfOps,requestSize,interval,readOnly, verbose, dos);
         }
 
-        for(int i=0; i<numThreads; i++) {
-
-            
-            c[i].start();
+        ExecutorService exec = Executors.newFixedThreadPool(clients.length);
+        Collection<Future<?>> tasks = new LinkedList();
+        
+        for (Client c : clients) {
+            tasks.add(exec.submit(c));
         }
         
+        // wait for tasks completion
+        for (Future<?> currTask : tasks) {
+            try {
+                currTask.get();
+            } catch (InterruptedException ex) {
+                Logger.getLogger(ThroughputLatencyClient.class.getName()).log(Level.SEVERE, null, ex);
+            } catch (ExecutionException ex) {
+                Logger.getLogger(ThroughputLatencyClient.class.getName()).log(Level.SEVERE, null, ex);
+            }
+
+        }
+    
+        exec.shutdown();
+        
+        /*for(int i=0; i<numThreads; i++) {
+            clients[i].start();
+        }
         
         for(int i=0; i<numThreads; i++) {
 
             try {
-                c[i].join();
+                clients[i].join();
             } catch (InterruptedException ex) {
                 ex.printStackTrace(System.err);
             }
-        }
+        }*/
 
         System.out.println("All clients done.");
     }

@@ -86,7 +86,12 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 			serverPipelineFactory = new NettyServerPipelineFactory(this, sessionTable, macDummy.getMacLength(), controller, rl, TOMUtil.getSignatureSize(controller));
 
 			EventLoopGroup bossGroup = new NioEventLoopGroup();
-			EventLoopGroup workerGroup = new NioEventLoopGroup();
+                        
+                        //If the numbers of workers are not specified by the configuration file,
+                        //the event group is created with the default number of threads, which
+                        //should be twice the number of cores available.
+                        int nWorkers = this.controller.getStaticConf().getNumNettyWorkers();
+			EventLoopGroup workerGroup = (nWorkers > 0 ? new NioEventLoopGroup(nWorkers) : new NioEventLoopGroup());
 
 			ServerBootstrap b = new ServerBootstrap(); 
 			b.group(bossGroup, workerGroup)
@@ -105,14 +110,14 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 					controller.getStaticConf().getProcessId()),
 					controller.getStaticConf().getPort(controller.getStaticConf().getProcessId()))).sync(); 
 
-			System.out.println("#Bound to port " + controller.getStaticConf().getPort(controller.getStaticConf().getProcessId()));
-			System.out.println("#myId " + controller.getStaticConf().getProcessId());
-			System.out.println("#n " + controller.getCurrentViewN());
-			System.out.println("#f " + controller.getCurrentViewF());
-			System.out.println("#requestTimeout= " + controller.getStaticConf().getRequestTimeout());
-			System.out.println("#maxBatch= " + controller.getStaticConf().getMaxBatchSize());
-			System.out.println("#Using MACs = " + controller.getStaticConf().getUseMACs());
-			System.out.println("#Using Signatures = " + controller.getStaticConf().getUseSignatures());
+			System.out.println("-- ID = " + controller.getStaticConf().getProcessId());
+			System.out.println("-- N = " + controller.getCurrentViewN());
+			System.out.println("-- F = " + controller.getCurrentViewF());
+        		System.out.println("-- Port = " + controller.getStaticConf().getPort(controller.getStaticConf().getProcessId()));
+			System.out.println("-- requestTimeout = " + controller.getStaticConf().getRequestTimeout());
+			System.out.println("-- maxBatch = " + controller.getStaticConf().getMaxBatchSize());
+			if (controller.getStaticConf().getUseMACs() == 1) System.out.println("-- Using MACs");
+			if(controller.getStaticConf().getUseSignatures() == 1) System.out.println("-- Using Signatures");
 			//******* EDUARDO END **************//
                         
                         mainChannel = f.channel();
