@@ -280,6 +280,7 @@ public final class DeliveryThread extends Thread {
     }
     
     protected void deliverUnordered(TOMMessage request, int regency) {
+
         MessageContext msgCtx = new MessageContext(request.getSender(), request.getViewID(), request.getReqType(),
                 request.getSession(), request.getSequence(), request.getOperationId(), request.getReplyServer(), request.serializedMessageSignature,
                 System.currentTimeMillis(), 0, 0, regency, -1, -1, null, null, false); // Since the request is unordered,

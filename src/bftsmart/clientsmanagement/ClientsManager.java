@@ -218,7 +218,7 @@ public class ClientsManager {
      * accounted
      */
     public boolean requestReceived(TOMMessage request, boolean fromClient, ServerCommunicationSystem cs) {
-        
+                
         // if the content of the request is invalid, ignore it
         if (controller.getStaticConf().isBFT() && !verifier.isValidRequest(request.getContent())) return false;
         

@@ -42,11 +42,15 @@ public class Storage {
         }
     }
     
-    public long getAverage(boolean limit){
+    public double getAverage(boolean limit){
+        long[] values = java.util.Arrays.copyOfRange(this.values, 0, count);
+
         return computeAverage(values,limit);
     }
     
     public double getDP(boolean limit){
+        long[] values = java.util.Arrays.copyOfRange(this.values, 0, count);
+
         return computeDP(values,limit);
     }
     
@@ -55,10 +59,11 @@ public class Storage {
     }
     
     public long getMax(boolean limit){
+        long[] values = java.util.Arrays.copyOfRange(this.values, 0, count);
         return computeMax(values,limit);
     }
     
-    private long computeAverage(long[] values, boolean percent){
+    private double computeAverage(long[] values, boolean percent){
         java.util.Arrays.sort(values);
         int limit = 0;
         if(percent){
@@ -68,7 +73,7 @@ public class Storage {
         for(int i = limit; i < values.length - limit;i++){
             count = count + values[i];
         }
-        return count/(values.length - 2*limit);
+        return (double) count/ (double) (values.length - 2*limit);
     }
     
     private long computeMax(long[] values, boolean percent){
@@ -96,18 +101,25 @@ public class Storage {
             limit = values.length/10;
         }
         long num = 0;
-        long med = computeAverage(values,percent);
+        double med = computeAverage(values,percent);
         long quad = 0;
         
         for(int i = limit; i < values.length - limit;i++){
             num++;
             quad = quad + values[i]*values[i]; //Math.pow(values[i],2);
         }
-        long var = (quad - (num*(med*med)))/(num-1);
+        double var = (quad - (num*(med*med)))/(num-1);
         ////br.ufsc.das.util.Logger.println("mim: "+values[limit]);
         ////br.ufsc.das.util.Logger.println("max: "+values[values.length-limit-1]);
-        return Math.sqrt((double)var);
+        return Math.sqrt(var);
     }
     
-    
+    public long getPercentile(double percentile) {
+        
+        long[] values = java.util.Arrays.copyOfRange(this.values, 0, count);
+        java.util.Arrays.sort(values);
+        
+        int index = (int) (percentile * values.length);
+        return values[index];
+    }
 }

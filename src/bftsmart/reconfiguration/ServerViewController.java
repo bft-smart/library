@@ -300,7 +300,7 @@ public class ServerViewController extends ViewController {
         this.currentView = newView;
         getViewStore().storeView(this.currentView);
         if (newView.isMember(getStaticConf().getProcessId())) {
-            //É membro da view atual
+            //membro da view atual
             otherProcesses = new int[currentView.getProcesses().length - 1];
             int c = 0;
             for (int i = 0; i < currentView.getProcesses().length; i++) {
