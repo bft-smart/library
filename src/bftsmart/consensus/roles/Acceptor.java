@@ -269,13 +269,14 @@ public final class Acceptor {
         
         //code for vote schemes
         if (writeWeigths > controller.getOverlayQuorum() && Arrays.equals(value, epoch.propValueHash)) {              
-
-            //code for tentative execution
-            //Logger.println("(Acceptor.computeWrite) Tentatively Deciding " + cid);
-            //decide(epoch);
             
-            //normal code for standard execution
-            if (!epoch.isAcceptSetted(me)) {
+            if (controller.getStaticConf().getTentative()) { //code for tentative execution
+            
+                Logger.println("(Acceptor.computeWrite) Tentatively Deciding " + cid);
+                decide(epoch);
+            }
+            else if (!epoch.isAcceptSetted(me)) { //code for standard execution
+
                 
                 //Logger.println("(Acceptor.computeWrite) sending WRITE for " + cid);
 

@@ -60,6 +60,7 @@ public class TOMConfiguration extends Configuration {
     
         private int delta;
         private boolean useWeights;
+        private boolean tentative;
         
     /** Creates a new instance of TOMConfiguration */
     public TOMConfiguration(int processId) {
@@ -342,6 +343,10 @@ public class TOMConfiguration extends Configuration {
             } else {
                 delta = 0;
             }
+            
+            s = (String) configs.remove("system.tentative");
+            tentative = (s != null) ? Boolean.parseBoolean(s) : false;
+            
             rsaLoader = new RSAKeyLoader(processId, TOMConfiguration.configHome, defaultKeys);
         } catch (Exception e) {
             e.printStackTrace(System.err);
@@ -535,6 +540,11 @@ public class TOMConfiguration extends Configuration {
     public int getDelta() {
         return delta;
     }
+    
+    public boolean getTentative() {
+        return tentative;
+    }
+    
     public int getNumNettyWorkers() {
         return numNettyWorkers;
     }
