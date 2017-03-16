@@ -135,7 +135,7 @@ public class ServiceReplica {
         this.SVController = new ServerViewController(id, configHome);
         this.executor = executor;
         this.recoverer = recoverer;
-        this.replier = replier;
+        this.replier = (replier != null ? replier : new DefaultReplier());
         this.verifier = verifier;
         this.init();
         this.recoverer.setReplicaContext(replicaCtx);
