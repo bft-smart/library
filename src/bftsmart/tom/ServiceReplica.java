@@ -453,7 +453,8 @@ public class ServiceReplica {
                     repMan.send(request);
                 } else {
                     bftsmart.tom.util.Logger.println("(ServiceReplica.receiveMessages) sending reply to " + request.getSender() + " with sequence number " + request.getSequence());
-                    cs.send(new int[]{request.getSender()}, request.reply);
+                    replier.manageReply(request, msgContexts[index]);
+                    //cs.send(new int[]{request.getSender()}, request.reply);
                 }
             }
             //DEBUG
