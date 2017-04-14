@@ -344,7 +344,7 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
         int i = 0;
         while (it.hasNext()) {
             
-            clients[0] = ((Integer) it.next()).intValue();
+            clients[i] = ((Integer) it.next()).intValue();
             i++;
         }
         
