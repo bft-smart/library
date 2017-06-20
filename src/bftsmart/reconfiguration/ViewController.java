@@ -32,38 +32,31 @@ public class ViewController {
     protected View currentView = null;
     private TOMConfiguration staticConf;
     private ViewStorage viewStore;
+    private String configHome = "";
 
     public ViewController(int procId) {
         this.staticConf = new TOMConfiguration(procId);
     }
 
-    
     public ViewController(int procId, String configHome) {
         this.staticConf = new TOMConfiguration(procId, configHome);
+        System.out.println("Current config home: " + this.configHome + "next config home" + configHome);
+        this.configHome = configHome;
     }
-
-    
     public final ViewStorage getViewStore() {
-        if (this.viewStore == null) {
-            String className = staticConf.getViewStoreClass();
-            try {
-                this.viewStore = (ViewStorage) Class.forName(className).newInstance();
-            } catch (Exception e) {
-                System.out.println("viewStore is null? " + viewStore == null
-                        + "configHome.isEmpty? " + configHome.isEmpty()
-                        + "lastView: " + lastView == null
-                        + "currentView: " + currentView == null);
-                if(configHome.isEmpty())
-                {
-                    this.viewStore = new DefaultViewStorage();
-                }
-                else
-                {
-                    this.viewStore = new DefaultViewStorage(configHome);
-                }
+        if(this.viewStore == null) {
+            System.out.println("viewStore is null? " + viewStore == null
+                    + " configHome.isEmpty? " + configHome.isEmpty()
+                    + " lastView: " + lastView
+                    + " currentView: " + currentView);
+            System.out.println("Config home in getViewStore: " + this.configHome);
+            if(this.configHome.isEmpty()) {
+                this.viewStore = new DefaultViewStorage();
+            } else {
+                this.viewStore = new DefaultViewStorage(this.configHome);
             }
-
         }
+
         return this.viewStore;
     }
 
