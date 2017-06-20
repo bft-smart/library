@@ -49,7 +49,18 @@ public class ViewController {
             try {
                 this.viewStore = (ViewStorage) Class.forName(className).newInstance();
             } catch (Exception e) {
-                this.viewStore = new DefaultViewStorage();
+                System.out.println("viewStore is null? " + viewStore == null
+                        + "configHome.isEmpty? " + configHome.isEmpty()
+                        + "lastView: " + lastView == null
+                        + "currentView: " + currentView == null);
+                if(configHome.isEmpty())
+                {
+                    this.viewStore = new DefaultViewStorage();
+                }
+                else
+                {
+                    this.viewStore = new DefaultViewStorage(configHome);
+                }
             }
 
         }
