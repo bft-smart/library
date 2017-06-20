@@ -91,7 +91,7 @@ public final class DeliveryThread extends Thread {
             
             // clean the ordered messages from the pending buffer
             TOMMessage[] requests = extractMessagesFromDecision(dec);
-			tomLayer.clientsManager.requestsOrdered(requests);
+            tomLayer.clientsManager.requestsOrdered(requests);
             
             notEmptyQueue.signalAll();
             decidedLock.unlock();

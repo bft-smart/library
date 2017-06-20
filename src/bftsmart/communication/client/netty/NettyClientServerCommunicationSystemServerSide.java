@@ -338,15 +338,19 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 
     @Override
     public int[] getClients() {
+        
+        rl.readLock().lock();
         Set s = sessionTable.keySet();
         int[] clients = new int[s.size()];
         Iterator it = s.iterator();
         int i = 0;
         while (it.hasNext()) {
             
-            clients[0] = ((Integer) it.next()).intValue();
+            clients[i] = ((Integer) it.next()).intValue();
             i++;
         }
+        
+        rl.readLock().unlock();
         
         return clients;
     }
