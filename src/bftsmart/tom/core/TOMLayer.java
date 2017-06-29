@@ -465,7 +465,6 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 					//notifies the client manager that this request was received and get
                     //the result of its validation
                     if (!clientsManager.requestReceived(requests[i], false)) {
-                        clientsManager.getClientsLock().unlock();
                         Logger.println("(TOMLayer.isProposedValueValid) finished, return=false");
                         System.out.println("failure in deserialize batch");
                         return null;

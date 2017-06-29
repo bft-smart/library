@@ -255,6 +255,7 @@ public class ClientsManager {
         if (clientData.getSession() != request.getSession()) {
             clientData.setSession(request.getSession());
             clientData.setLastMessageReceived(-1);
+            clientData.setLastMessageExecuted(-1);
             clientData.getOrderedRequests().clear();
             clientData.getPendingRequests().clear();
         }
@@ -287,24 +288,28 @@ public class ClientsManager {
             //I will not put this message on the pending requests list
             if (clientData.getLastMessageReceived() >= request.getSequence()) {
                 //I already have/had this message
+                if (clientData.getLastMessageExecuted() >= request.getSequence()) {
+                    // The request has already been executed.  Send reply if available.
+                    TOMMessage reply = clientData.getReply(request.getSequence());
+                    if (reply != null && cs != null) {
+                        if (reply.recvFromClient && fromClient) {
+                            System.out.println("[CACHE] re-send reply [Sender: " + reply.getSender() + ", sequence: " +
+                                    reply.getSequence() + ", session: " + reply.getSession() + "]");
+                            cs.send(new int[]{request.getSender()}, reply);
 
-                //send reply if it is available
-                TOMMessage reply = clientData.getReply(request.getSequence());
-                
-                if (reply != null && cs != null) {
-
-                    if (reply.recvFromClient && fromClient) {
-                        System.out.println("[CACHE] re-send reply [Sender: " + reply.getSender() + ", sequence: " + reply.getSequence()+", session: " + reply.getSession()+ "]");
-                        cs.send(new int[]{request.getSender()}, reply);
-
-                    } 
-                    
-                    else if (!reply.recvFromClient && fromClient) {
-                        reply.recvFromClient = true;
+                        } else if (!reply.recvFromClient && fromClient) {
+                            reply.recvFromClient = true;
+                        }
                     }
-                    
+                    if (fromClient) {
+                        accounted = true;
+                    } else {
+                        accounted = false;
+                    }
+                } else {
+                    // The request has not been executed yet.
+                    accounted = true;
                 }
-                accounted = true;
             } else {
                 //a too forward message... the client must be malicious
                 accounted = false;
