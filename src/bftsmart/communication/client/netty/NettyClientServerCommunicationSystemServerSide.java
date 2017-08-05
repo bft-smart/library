@@ -274,37 +274,37 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 		for (int i = 0; i < targets.length; i++) {
 			rl.readLock().lock();
 			//sendLock.lock();
-			try {       
+			try {
 				NettyClientServerSession ncss = (NettyClientServerSession) sessionTable.get(targets[i]);
 				if (ncss != null) {
 					Channel session = ncss.getChannel();
 					sm.destination = targets[i];
 					//send message
 					session.writeAndFlush(sm); // This used to invoke "await". Removed to avoid blockage and race condition.
-                                
+
                                 ///////TODO: replace this patch for a proper client preamble
                                 } else if (sm.getSequence() >= 0 && sm.getSequence() <= 5) {
-                                    
+
                                         final int id = targets[i];
                                         final TOMMessage msg = sm;
-                                        
+
                                         Thread t = new Thread() {
-                                                                                        
+
                                             public void run() {
-                                                
+
                                                 System.out.println("Received request from " + id + " before establishing Netty connection. Re-trying until connection is established");
 
                                                 NettyClientServerSession ncss = null;
                                                 while (ncss == null) {
 
                                                     rl.readLock().lock();
-                                                    
+
                                                     try {
                                                         Thread.sleep(1000);
                                                     } catch (InterruptedException ex) {
                                                         java.util.logging.Logger.getLogger(NettyClientServerCommunicationSystemServerSide.class.getName()).log(Level.SEVERE, null, ex);
                                                     }
-                                                    
+
                                                     ncss = (NettyClientServerSession) sessionTable.get(id);
                                                     if (ncss != null) {
                                                             Channel session = ncss.getChannel();
@@ -314,16 +314,16 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
                                                     }
 
                                                     rl.readLock().unlock();
-                                                    
+
                                                 }
-                                                 
+
                                                 System.out.println("Connection with " + id + " established!");
 
-                                                
+
                                             }
-                                            
+
                                         };
-                                        
+
                                         t.start();
                                         ///////////////////////////////////////////
 				} else {
