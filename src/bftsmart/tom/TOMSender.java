@@ -113,38 +113,10 @@ public abstract class TOMSender implements ReplyReceiver, Closeable, AutoCloseab
 		return opCounter.getAndIncrement();
 	}
 
-	//******* EDUARDO BEGIN **************//
-	/**
-	 * Multicast data to the group of replicas
-	 *
-	 * @param m Data to be multicast
-	 */
-	//public void TOMulticast(byte[] m) {
-	//    TOMulticast(new TOMMessage(me, session, generateRequestId(), m,
-	//            this.viewManager.getCurrentViewId()));
-	//}
-
-	/**
-	 * Multicast a TOMMessage to the group of replicas
-	 *
-	 * @param sm Message to be multicast
-	 */
 	public void TOMulticast(TOMMessage sm) {
 		cs.send(useSignatures, this.viewController.getCurrentViewProcesses(), sm);
 	}
 
-	/**
-	 * Multicast data to the group of replicas
-	 *
-	 * @param m Data to be multicast
-	 * @param reqId unique integer that identifies this request
-	 * @param reqType TOM_NORMAL, TOM_READONLY or TOM_RECONFIGURATION
-	 */
-	public void TOMulticast(byte[] m, int reqId, TOMMessageType reqType) {
-		cs.send(useSignatures, viewController.getCurrentViewProcesses(),
-				new TOMMessage(me, session, reqId, m, viewController.getCurrentViewId(),
-						reqType));
-	}
 
 	public void TOMulticast(byte[] m, int reqId, int operationId, TOMMessageType reqType) {
 		cs.send(useSignatures, viewController.getCurrentViewProcesses(),
@@ -152,13 +124,6 @@ public abstract class TOMSender implements ReplyReceiver, Closeable, AutoCloseab
 						reqType));
 	}
 
-	public void sendMessageToTargets(byte[] m, int reqId, int[] targets, TOMMessageType type) {
-		if(this.getViewManager().getStaticConf().isTheTTP()) {
-			type = TOMMessageType.ASK_STATUS;
-		}
-		cs.send(useSignatures, targets,
-				new TOMMessage(me, session, reqId, m, viewController.getCurrentViewId(), type));
-	}
 
 	public void sendMessageToTargets(byte[] m, int reqId, int operationId, int[] targets, TOMMessageType type) {
 		if(this.getViewManager().getStaticConf().isTheTTP()) {
@@ -171,19 +136,4 @@ public abstract class TOMSender implements ReplyReceiver, Closeable, AutoCloseab
 	public int getSession(){
 		return session;
 	}
-	/**
-	 * Create TOMMessage and sign it
-	 *
-	 * @param m Data to be included in TOMMessage
-	 *
-	 * @return TOMMessage with serializedMsg and serializedMsgSignature fields filled
-	 */
-	//public TOMMessage sign(byte[] m) {
-	//    TOMMessage tm = new TOMMessage(me, session, generateRequestId(), m,
-	//           this.viewManager.getCurrentViewId());
-	//    cs.sign(tm);
-	//    return tm;
-	//}
-
-	//******* EDUARDO END **************//
 }
