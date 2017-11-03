@@ -46,9 +46,6 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Set;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -334,7 +331,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
     @Override
     public void send(boolean sign, int[] targets, TOMMessage sm) {
 
-        listener.waitForChannels(); // wait for the previous transmission to complete
+        listener.waitForChannels(targets.length); // wait for the previous transmission to complete
         
         Logger.println("Sending request from " + sm.getSender() + " with sequence number " + sm.getSequence() + " to " + Arrays.toString(targets));
                 
@@ -378,7 +375,6 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
                 sm.signed = sign;
                 ChannelFuture f = channel.writeAndFlush(sm);
                                 
-                listener.addChanFuture(f);
                 f.addListener(listener);
                 
                 sent++;
@@ -519,8 +515,6 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
     
     private class SyncListener implements GenericFutureListener<ChannelFuture> {
             
-            private final Set<ChannelFuture> futures;
-
             private int remainingFutures;
             
             private final Lock futureLock;
@@ -528,61 +522,51 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
             
             public SyncListener() {
                 
-                this.futures = Collections.synchronizedSet(new HashSet<ChannelFuture>());
                 this.remainingFutures = 0;
 
                 this.futureLock = new ReentrantLock();
                 this.enoughCompleted = futureLock.newCondition();
             }
             
-            public void addChanFuture(ChannelFuture f) {
-               
-                this.futures.add(f);
-              
-            }
-            
-            
             @Override
             public void operationComplete(ChannelFuture f) {
                 
                 this.futureLock.lock();
 
-                if (this.futures.contains(f)) {
-                    this.remainingFutures--;
-                    this.futures.remove(f);
+                this.remainingFutures--;
 
+                if (this.remainingFutures <= 0) {
 
-                    if (this.remainingFutures <= controller.getCurrentViewF()) {
-                    //if (this.remainingFutures == 0) { // this would make the client wait for all replicas to receive the msg
-
-                        this.enoughCompleted.signalAll();
-                    }
-                
+                    this.enoughCompleted.signalAll();
                 }
+
+                Logger.println("(SyncListener.operationComplete) " + this.remainingFutures + " channel operations remaining to complete");
                 
                 this.futureLock.unlock();
               
             }
             
-            public void waitForChannels() {
+            public void waitForChannels(int n) {
                 
                 this.futureLock.lock();
-                if (this.remainingFutures > controller.getCurrentViewF()) {
-                //if (this.remainingFutures > 0) { // this would make the client wait for all replicas to receive the msg
+                if (this.remainingFutures > 0) {
+                    
+                    Logger.println("(SyncListener.waitForChannels)  There are still " + this.remainingFutures + " channel operations pending, waiting to complete");
                     
                     try {
-                        this.enoughCompleted.await();
+                        this.enoughCompleted.await(1000, TimeUnit.MILLISECONDS); // timeout if a malicous replica refuses to acknowledge the operation as completed
                     } catch (InterruptedException ex) {
                         java.util.logging.Logger.getLogger(NettyClientServerCommunicationSystemClientSide.class.getName()).log(Level.SEVERE, null, ex);
                     }
                     
                 }
                 
-                this.remainingFutures = controller.getCurrentViewN();
-                this.futures.clear();
-                    
+                    Logger.println("(SyncListener.waitForChannels)  All channel operations completed or timed out");
+
+                this.remainingFutures = n;
+                
                 this.futureLock.unlock();
             }
-
+            
         }
 }
