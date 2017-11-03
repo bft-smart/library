@@ -97,7 +97,6 @@ public class TOMUtil {
             bInp.close();
             return ret;
         } catch (Exception ex) {
-            ex.printStackTrace();
             return null;
         }
     }
