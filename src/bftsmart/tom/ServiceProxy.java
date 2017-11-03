@@ -290,7 +290,7 @@ public class ServiceProxy extends TOMSender {
 	}
 
 	//******* EDUARDO BEGIN **************//
-	private void reconfigureTo(View v) {
+	protected void reconfigureTo(View v) {
 		Logger.println("Installing a most up-to-date view with id=" + v.getId());
 		getViewManager().reconfigureTo(v);
 		getViewManager().getViewStore().storeView(v);
@@ -396,7 +396,7 @@ public class ServiceProxy extends TOMSender {
 		}
 	}
 
-	private int getReplyQuorum() {
+	protected int getReplyQuorum() {
 		if (getViewManager().getStaticConf().isBFT()) {
 			return (int) Math.ceil((getViewManager().getCurrentViewN()
 					+ getViewManager().getCurrentViewF()) / 2) + 1;
