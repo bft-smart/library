@@ -21,5 +21,15 @@ import bftsmart.tom.core.messages.TOMMessage;
 
 public interface ReplyListener {
 
+        /**
+         * Indicates that the proxy re-issued the request and the listener should re-initialize
+         */
+        public void reset();
+        
+        /**
+         * Used to deliver a reply from a replica
+         * @param context The context associated to the reply
+         * @param reply the TOMMessage including the reply
+         */
 	public void replyReceived(RequestContext context, TOMMessage reply);
 }

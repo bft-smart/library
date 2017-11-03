@@ -14,18 +14,20 @@ public final class RequestContext{
 	private final int [] targets;
 	private final long sendingTime;
 	private final ReplyListener replyListener;
-
+        private final byte[] request;
+        
 
 	public RequestContext(int reqId, int operationId, TOMMessageType requestType, int [] targets, 
-			long sendingTime, ReplyListener replyListener) {
+			long sendingTime, ReplyListener replyListener, byte[] request) {
 		this.reqId = reqId;
 		this.operationId = operationId;
 		this.requestType = requestType;
 		this.targets = targets;
 		this.sendingTime = sendingTime;
 		this.replyListener = replyListener;
+                this.request = request;
 	}
-	
+        
 	public final int getReqId() {
 		return reqId;
 	}
@@ -43,6 +45,9 @@ public final class RequestContext{
 	}
 	public int [] getTargets() {
 		return targets;
+	}
+        public byte [] getRequest() {
+		return request;
 	}
 }
 
