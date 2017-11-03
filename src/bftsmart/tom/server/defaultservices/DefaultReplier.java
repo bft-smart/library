@@ -45,9 +45,7 @@ public class DefaultReplier implements Replier{
 
                 this.replyLock.lock();
 
-                System.out.println("Context null, waiting...");
                 this.contextSetted.await();
-                System.out.println("Context setted!");
          
                 this.replyLock.unlock();
 
