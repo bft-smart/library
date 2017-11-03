@@ -21,16 +21,13 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import bftsmart.tom.ServiceProxy;
-import bftsmart.tom.core.messages.TOMMessageType;
 import bftsmart.tom.util.Storage;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Example client that updates a BFT replicated service (a counter).
@@ -42,20 +39,19 @@ public class ThroughputLatencyClient {
     
     @SuppressWarnings("static-access")
     public static void main(String[] args) throws IOException {
-        if (args.length < 8) {
-            System.out.println("Usage: ... ThroughputLatencyClient <num. threads> <process id> <number of operations> <request size> <interval> <read only?> <verbose?> <DoS?>");
+        if (args.length < 7) {
+            System.out.println("Usage: ... ThroughputLatencyClient <initial client id> <number of clients> <number of operations> <request size> <interval (ms)> <read only?> <verbose?>");
             System.exit(-1);
         }
 
-        int numThreads = Integer.parseInt(args[0]);
-        initId = Integer.parseInt(args[1]);
+        initId = Integer.parseInt(args[0]);
+        int numThreads = Integer.parseInt(args[1]);
 
         int numberOfOps = Integer.parseInt(args[2]);
         int requestSize = Integer.parseInt(args[3]);
         int interval = Integer.parseInt(args[4]);
         boolean readOnly = Boolean.parseBoolean(args[5]);
         boolean verbose = Boolean.parseBoolean(args[6]);
-        boolean dos = Boolean.parseBoolean(args[7]);
 
         Client[] clients = new Client[numThreads];
         
@@ -67,7 +63,7 @@ public class ThroughputLatencyClient {
             }
             
             System.out.println("Launching client " + (initId+i));
-            clients[i] = new ThroughputLatencyClient.Client(initId+i,numberOfOps,requestSize,interval,readOnly, verbose, dos);
+            clients[i] = new ThroughputLatencyClient.Client(initId+i,numberOfOps,requestSize,interval,readOnly, verbose);
         }
 
         ExecutorService exec = Executors.newFixedThreadPool(clients.length);
@@ -90,19 +86,6 @@ public class ThroughputLatencyClient {
         }
     
         exec.shutdown();
-        
-        /*for(int i=0; i<numThreads; i++) {
-            clients[i].start();
-        }
-        
-        for(int i=0; i<numThreads; i++) {
-
-            try {
-                clients[i].join();
-            } catch (InterruptedException ex) {
-                ex.printStackTrace(System.err);
-            }
-        }*/
 
         System.out.println("All clients done.");
     }
@@ -115,11 +98,10 @@ public class ThroughputLatencyClient {
         int interval;
         boolean readOnly;
         boolean verbose;
-        boolean dos;
         ServiceProxy proxy;
         byte[] request;
         
-        public Client(int id, int numberOfOps, int requestSize, int interval, boolean readOnly, boolean verbose, boolean dos) {
+        public Client(int id, int numberOfOps, int requestSize, int interval, boolean readOnly, boolean verbose) {
             super("Client "+id);
         
             this.id = id;
@@ -130,15 +112,9 @@ public class ThroughputLatencyClient {
             this.verbose = verbose;
             this.proxy = new ServiceProxy(id);
             this.request = new byte[this.requestSize];
-            this.dos = dos;
         }
 
         public void run() {
-            //ServiceProxy proxy = new ServiceProxy(id);
-            //proxy.setInvokeTimeout(1);
-
-            byte[] reply;
-            int reqId;
 
             System.out.println("Warm up...");
 
@@ -146,15 +122,12 @@ public class ThroughputLatencyClient {
             
             for (int i = 0; i < numberOfOps / 2; i++, req++) {
                 if (verbose) System.out.print("Sending req " + req + "...");
-                if (dos) {
-                    reqId = proxy.generateRequestId((readOnly) ? TOMMessageType.UNORDERED_REQUEST : TOMMessageType.ORDERED_REQUEST); 
-                    proxy.TOMulticast(request, reqId, (readOnly) ? TOMMessageType.UNORDERED_REQUEST : TOMMessageType.ORDERED_REQUEST); 
-                }
+
+                if(readOnly)
+                        proxy.invokeUnordered(request);
                 else
-                	if(readOnly)
-                		reply = proxy.invokeUnordered(request);
-                	else
-                		reply = proxy.invokeOrdered(request);
+                        proxy.invokeOrdered(request);
+                        
                 if (verbose) System.out.println(" sent!");
 
                 if (verbose && (req % 1000 == 0)) System.out.println(this.id + " // " + req + " operations sent!");
@@ -175,16 +148,12 @@ public class ThroughputLatencyClient {
             for (int i = 0; i < numberOfOps / 2; i++, req++) {
                 long last_send_instant = System.nanoTime();
                 if (verbose) System.out.print(this.id + " // Sending req " + req + "...");
-                if (dos) {
-                    reqId = proxy.generateRequestId((readOnly) ? TOMMessageType.UNORDERED_REQUEST : TOMMessageType.ORDERED_REQUEST); 
-                    proxy.TOMulticast(request, reqId, (readOnly) ? TOMMessageType.UNORDERED_REQUEST : TOMMessageType.ORDERED_REQUEST); 
 
-                }
+                if(readOnly)
+                        proxy.invokeUnordered(request);
                 else
-                	if(readOnly)
-                		reply = proxy.invokeUnordered(request);
-                	else
-                		reply = proxy.invokeOrdered(request);
+                        proxy.invokeOrdered(request);
+                        
                 if (verbose) System.out.println(this.id + " // sent!");
                 st.store(System.nanoTime() - last_send_instant);
 
