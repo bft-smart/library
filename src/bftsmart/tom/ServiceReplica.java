@@ -220,7 +220,7 @@ public class ServiceReplica {
         }
 
         // Generate the messages to send back to the clients
-        message.reply = new TOMMessage(id, message.getSession(), message.getSequence(),
+        message.reply = new TOMMessage(id, message.getSession(), message.getSequence(), message.getOperationId(),
                 response, SVController.getCurrentViewId(), message.getReqType());
 
         if (SVController.getStaticConf().getNumRepliers() > 0) {
@@ -339,7 +339,7 @@ public class ServiceReplica {
 
                             // Generate the messages to send back to the clients
                             request.reply = new TOMMessage(id, request.getSession(),
-                                    request.getSequence(), response, SVController.getCurrentViewId());
+                                    request.getSequence(), request.getOperationId(), response, SVController.getCurrentViewId(), request.getReqType());
                             bftsmart.tom.util.Logger.println("(ServiceReplica.receiveMessages) sending reply to " + request.getSender());
                             replier.manageReply(request, msgCtx);
                         } else if (executor instanceof SingleExecutable) {
@@ -358,7 +358,7 @@ public class ServiceReplica {
 
                             // Generate the messages to send back to the clients
                             request.reply = new TOMMessage(id, request.getSession(),
-                                    request.getSequence(), response, SVController.getCurrentViewId());
+                                    request.getSequence(), request.getOperationId(), response, SVController.getCurrentViewId(), request.getReqType());
                             bftsmart.tom.util.Logger.println("(ServiceReplica.receiveMessages) sending reply to " + request.getSender());
                             replier.manageReply(request, msgCtx);
                         } else {
@@ -373,7 +373,7 @@ public class ServiceReplica {
                                                                                     // him (but only if it came from consensus an not state transfer)
                     
                     tomLayer.getCommunication().send(new int[]{request.getSender()}, new TOMMessage(SVController.getStaticConf().getProcessId(),
-                            request.getSession(), request.getSequence(), TOMUtil.getBytes(SVController.getCurrentView()), SVController.getCurrentViewId()));
+                            request.getSession(), request.getSequence(), request.getOperationId(), TOMUtil.getBytes(SVController.getCurrentView()), SVController.getCurrentViewId(), request.getReqType()));
                 }
                 requestCount++;
             }
@@ -445,14 +445,14 @@ public class ServiceReplica {
             //Send the replies back to the client
             for (int index = 0; index < toBatch.size(); index++) {
                 TOMMessage request = toBatch.get(index);
-                request.reply = new TOMMessage(id, request.getSession(), request.getSequence(),
-                        replies[index], SVController.getCurrentViewId());
+                request.reply = new TOMMessage(id, request.getSession(), request.getSequence(), request.getOperationId(),
+                        replies[index], SVController.getCurrentViewId(), request.getReqType());
 
                 if (SVController.getStaticConf().getNumRepliers() > 0) {
-                    bftsmart.tom.util.Logger.println("(ServiceReplica.receiveMessages) sending reply to " + request.getSender() + " with sequence number " + request.getSequence() +" via ReplyManager");
+                    bftsmart.tom.util.Logger.println("(ServiceReplica.receiveMessages) sending reply to " + request.getSender() + " with sequence number " + request.getSequence() + " and operation ID " + request.getOperationId() +" via ReplyManager");
                     repMan.send(request);
                 } else {
-                    bftsmart.tom.util.Logger.println("(ServiceReplica.receiveMessages) sending reply to " + request.getSender() + " with sequence number " + request.getSequence());
+                    bftsmart.tom.util.Logger.println("(ServiceReplica.receiveMessages) sending reply to " + request.getSender() + " with sequence number " + request.getSequence() + " and operation ID " + request.getOperationId());
                     replier.manageReply(request, msgContexts[index]);
                     //cs.send(new int[]{request.getSender()}, request.reply);
                 }
