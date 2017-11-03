@@ -302,7 +302,7 @@ public final class DeliveryThread extends Thread {
             for (int i = 0; i < dests.length; i++) {
                 tomLayer.getCommunication().send(new int[]{dests[i].getSender()},
                         new TOMMessage(controller.getStaticConf().getProcessId(),
-                        dests[i].getSession(), dests[i].getSequence(), response,
+                        dests[i].getSession(), dests[i].getSequence(), dests[i].getOperationId(), response,
                         controller.getCurrentViewId(),TOMMessageType.RECONFIG));
             }
 

@@ -84,20 +84,6 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 	public TOMMessage() {
 	}
 
-
-	/**
-	 * Creates a new instance of TOMMessage
-	 *
-	 * @param sender ID of the process which sent the message
-	 * @param session Session id of the sender
-	 * @param sequence Sequence number defined by the client
-	 * @param content Content of the message
-	 * @param view ViewId of the message
-	 */
-	public TOMMessage(int sender, int session, int sequence, byte[] content, int view) {
-		this(sender,session,sequence,content, view, TOMMessageType.ORDERED_REQUEST);
-	}
-
 	/**
 	 * Creates a new instance of TOMMessage
 	 *
@@ -108,9 +94,9 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 	 * @param view ViewId of the message
 	 * @param type Type of the request
 	 */
-	public TOMMessage(int sender, int session, int sequence, byte[] content, int view, TOMMessageType type) {
-		this(sender, session, sequence, -1, content, view, type);
-	}
+	//public TOMMessage(int sender, int session, int sequence, byte[] content, int view, TOMMessageType type) {
+	//	this(sender, session, sequence, -1, content, view, type);
+	//}
 
 	/**
 	 * Creates a new instance of TOMMessage. This one has an operationId parameter
