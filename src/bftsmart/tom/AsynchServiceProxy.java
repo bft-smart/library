@@ -152,34 +152,32 @@ public class AsynchServiceProxy extends ServiceProxy {
                             if ((replies[i] != null) && (i != pos || getViewManager().getCurrentViewN() == 1)
                                     && (reply.getReqType() != TOMMessageType.ORDERED_REQUEST || Arrays.equals(replies[i].getContent(), reply.getContent()))) {
                                 sameContent++;
-
-                                if (sameContent >= replyQuorum) {
-
-                                    if (v.getId() > getViewManager().getCurrentViewId()) {
-
-                                        reconfigureTo(v);
-                                    }
-                                    
-                                    requestContext.getReplyListener().reset();
-                                                                        
-                                    Thread t = new Thread() {
-                                                                                
-                                        @Override
-                                        public void run() {
-                                            
-                                            int id = invokeAsynch(requestContext.getRequest(), requestContext.getTargets(), requestContext.getReplyListener(), TOMMessageType.ORDERED_REQUEST);
-
-                                            requestsAlias.put(reply.getOperationId(), id);
-                                        }
-                                        
-                                    };
-                                    
-                                    t.start();
-
-                                    
-
-                                }
                             }
+                        }
+                        
+                        if (sameContent >= replyQuorum) {
+
+                            if (v.getId() > getViewManager().getCurrentViewId()) {
+
+                                reconfigureTo(v);
+                            }
+
+                            requestContext.getReplyListener().reset();
+
+                            Thread t = new Thread() {
+
+                                @Override
+                                public void run() {
+
+                                    int id = invokeAsynch(requestContext.getRequest(), requestContext.getTargets(), requestContext.getReplyListener(), TOMMessageType.ORDERED_REQUEST);
+
+                                    requestsAlias.put(reply.getOperationId(), id);
+                                }
+
+                            };
+
+                            t.start();
+
                         }
                         
                         
