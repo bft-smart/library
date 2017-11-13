@@ -164,7 +164,7 @@ public class BFTListImpl extends DefaultRecoverable {
     
     @Override
     @SuppressWarnings("static-access")
-    public byte[][] appExecuteBatch(byte[][] commands, MessageContext[] msgCtxs) {
+    public byte[][] appExecuteBatch(byte[][] commands, MessageContext[] msgCtxs, boolean fromConsensus) {
         
         byte [][] replies = new byte[commands.length][];
         for (int i = 0; i < commands.length; i++) {

@@ -67,7 +67,7 @@ public final class ThroughputLatencyServer extends DefaultRecoverable{
     }
     
     @Override
-    public byte[][] appExecuteBatch(byte[][] commands, MessageContext[] msgCtxs) {
+    public byte[][] appExecuteBatch(byte[][] commands, MessageContext[] msgCtxs, boolean fromConsensus) {
         
         byte[][] replies = new byte[commands.length][];
         

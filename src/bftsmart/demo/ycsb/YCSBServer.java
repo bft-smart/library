@@ -56,7 +56,7 @@ public class YCSBServer extends DefaultRecoverable {
 	}
 
 	@Override
-	public byte[][] appExecuteBatch(byte[][] commands, MessageContext[] msgCtx) {
+	public byte[][] appExecuteBatch(byte[][] commands, MessageContext[] msgCtx, boolean fromConsensus) {
 		byte[][] replies = new byte[commands.length][];
 		int index = 0;
     	for(byte[] command: commands) {

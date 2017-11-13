@@ -84,7 +84,7 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
             if (!noop) {
 
                 stateLock.lock();
-                replies = appExecuteBatch(commands, msgCtxs);
+                replies = appExecuteBatch(commands, msgCtxs, true);
                 stateLock.unlock();
 
             }
@@ -118,7 +118,7 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
 
             if (!noop) {
                 stateLock.lock();
-                firstHalfReplies = appExecuteBatch(firstHalf, firstHalfMsgCtx);
+                firstHalfReplies = appExecuteBatch(firstHalf, firstHalfMsgCtx, true);
                 stateLock.unlock();
             }
 
@@ -137,7 +137,7 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
 
                 if (!noop) {
                     stateLock.lock();
-                    secondHalfReplies = appExecuteBatch(secondHalf, secondHalfMsgCtx);
+                    secondHalfReplies = appExecuteBatch(secondHalf, secondHalfMsgCtx, true);
                     stateLock.unlock();
                 }
 
@@ -274,7 +274,7 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
                     if (commands == null || msgCtx == null || msgCtx[0].isNoOp()) {
                         continue;
                     }                        
-                    appExecuteBatch(commands, msgCtx);
+                    appExecuteBatch(commands, msgCtx, false);
                     
                 } catch (Exception e) {
                     e.printStackTrace(System.err);
@@ -433,7 +433,7 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
     
     public abstract byte[] getSnapshot();
     
-    public abstract byte[][] appExecuteBatch(byte[][] commands, MessageContext[] msgCtxs);
+    public abstract byte[][] appExecuteBatch(byte[][] commands, MessageContext[] msgCtxs, boolean fromConsensus);
     
     public abstract byte[] appExecuteUnordered(byte[] command, MessageContext msgCtx);
 

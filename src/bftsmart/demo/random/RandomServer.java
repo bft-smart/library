@@ -180,7 +180,7 @@ public final class RandomServer extends DefaultRecoverable {
     }
 
     @Override
-    public byte[][] appExecuteBatch(byte[][] commands, MessageContext[] msgCtxs) {
+    public byte[][] appExecuteBatch(byte[][] commands, MessageContext[] msgCtxs, boolean fromConsensus) {
         byte [][] replies = new byte[commands.length][];
         for (int i = 0; i < commands.length; i++) {
             //replies[i] = execute(commands[i], (msgCtxs  != null ? msgCtxs[i] : null));

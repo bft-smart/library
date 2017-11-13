@@ -64,7 +64,7 @@ public class BFTMapBatchServer extends DefaultRecoverable {
     
 
     @Override
-    public byte[][] appExecuteBatch(byte[][] commands, MessageContext[] msgCtxs) {
+    public byte[][] appExecuteBatch(byte[][] commands, MessageContext[] msgCtxs, boolean fromConsensus) {
     	byte[][] replies = new byte[commands.length][];
     	stateLock.lock();
     	ops += commands.length;
