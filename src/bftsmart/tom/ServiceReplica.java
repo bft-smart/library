@@ -518,6 +518,11 @@ public class ServiceReplica {
     public final ReplicaContext getReplicaContext() {
         return replicaCtx;
     }
+    
+    public ServerCommunicationSystem getServerCommunicationSystem() {
+        
+        return cs;
+    }
 
     public int getId() {
         return id;
