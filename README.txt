@@ -91,7 +91,7 @@ Keys are stored in the 'config/keys' folder. The command above creates key pairs
 
 Finally, if you are interested in learning more about BFT-SMaRt, you can read:
 
-- The technical report at the handler: http://hdl.handle.net/10455/6897
+- The technical report at the handler: http://hdl.handle.net/10451/14170
 - The paper about its state machine protocol published in EDCC'12: http://ieeexplore.ieee.org/xpl/articleDetails.jsp?arnumber=6214759
 - The paper about its advanced state transfer protocol published in Usenix'13: https://www.usenix.org/conference/atc13/technical-sessions/presentation/bessani
 - The tool description published in DSN'14: http://ieeexplore.ieee.org/xpls/abs_all.jsp?arnumber=6903593&tag=1
