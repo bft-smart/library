@@ -224,10 +224,10 @@ public abstract class DefaultSingleRecoverable implements Recoverable, SingleExe
                 } catch (Exception e) {
                     e.printStackTrace(System.err);
                     if (e instanceof ArrayIndexOutOfBoundsException) {
-                        System.out.println("CID do ultimo checkpoint: " + state.getLastCheckpointCID());
-                        System.out.println("CID do ultimo consenso: " + state.getLastCID());
-                        System.out.println("numero de mensagens supostamente no batch: " + (state.getLastCID() - state.getLastCheckpointCID() + 1));
-                        System.out.println("numero de mensagens realmente no batch: " + state.getMessageBatches().length);
+                        System.out.println("Last checkpoint, last consensus ID (CID): " + state.getLastCheckpointCID());
+                        System.out.println("Last CID: " + state.getLastCID());
+                        System.out.println("number of messages expected to be in the batch: " + (state.getLastCID() - state.getLastCheckpointCID() + 1));
+                        System.out.println("number of messages in the batch: " + state.getMessageBatches().length);
                     }
                 }
             }
@@ -265,11 +265,6 @@ public abstract class DefaultSingleRecoverable implements Recoverable, SingleExe
         }
         getStateManager().askCurrentConsensusId();
     }
-    /*@Override
-    public void setReplicaContext(ReplicaContext replicaCtx) {
-            this.replicaContext = replicaCtx;
-    this.config = replicaCtx.getStaticConfiguration();
-    }*/
 
     @Override
     public StateManager getStateManager() {
@@ -292,9 +287,7 @@ public abstract class DefaultSingleRecoverable implements Recoverable, SingleExe
             	log = new StateLog(controller.getStaticConf().getProcessId(), checkpointPeriod, state, computeHash(state));
     	}
     }
-    
-        
-        
+          
     @Override
     public byte[] executeUnordered(byte[] command, MessageContext msgCtx) {
         return appExecuteUnordered(command, msgCtx);

@@ -170,7 +170,6 @@ public class ServiceReplica {
                 waitTTPJoinMsgLock.unlock();
             }
             
-
         }
         initReplica();
     }
@@ -200,9 +199,10 @@ public class ServiceReplica {
      * ordered to the replica and gather the reply to forward to the client
      *
      * @param message the request received from the delivery thread
+     * @param msgCtx the context for the message
      */
     public final void receiveReadonlyMessage(TOMMessage message, MessageContext msgCtx) {
-        byte[] response = null;
+        byte[] response;
 
         // This is used to deliver the requests to the application and obtain a reply to deliver
         //to the clients. The raw decision does not need to be delivered to the recoverable since
@@ -294,83 +294,84 @@ public class ServiceReplica {
 
                 if (request.getViewID() == SVController.getCurrentViewId()) {
 
-                    if (request.getReqType() == TOMMessageType.ORDERED_REQUEST) {
-
-                        noop = false;
-
-                        numRequests++;
-                        MessageContext msgCtx = new MessageContext(request.getSender(), request.getViewID(),
-                                request.getReqType(), request.getSession(), request.getSequence(), request.getOperationId(),
-                                request.getReplyServer(), request.serializedMessageSignature, firstRequest.timestamp,
-                                request.numOfNonces, request.seed, regencies[consensusCount], leaders[consensusCount],
-                                consId[consensusCount], cDecs[consensusCount].getConsMessages(), firstRequest, false);
-                        
-                        if (requestCount + 1 == requestsFromConsensus.length) {
-
-                            msgCtx.setLastInBatch();
-                        }
-                        request.deliveryTime = System.nanoTime();
-                        if (executor instanceof BatchExecutable) {
-                            
-                            bftsmart.tom.util.Logger.println("(ServiceReplica.receiveMessages) Batching request from " + request.getSender());
-
-                            // This is used to deliver the content decided by a consensus instance directly to
-                            // a Recoverable object. It is useful to allow the application to create a log and
-                            // store the proof associated with decisions (which are needed by replicas
-                            // that are asking for a state transfer). 
-                            if (this.recoverer != null) this.recoverer.Op(msgCtx.getConsensusId(), request.getContent(), msgCtx);
-
-                            // deliver requests and contexts to the executor later
-                            msgCtxts.add(msgCtx);
-                            toBatch.add(request);
-                        } else if (executor instanceof FIFOExecutable) {
-                            
-                            bftsmart.tom.util.Logger.println("(ServiceReplica.receiveMessages) Delivering request from " + request.getSender() + " via FifoExecutable");
-
-                            // This is used to deliver the content decided by a consensus instance directly to
-                            // a Recoverable object. It is useful to allow the application to create a log and
-                            // store the proof associated with decisions (which are needed by replicas
-                            // that are asking for a state transfer). 
-                            if (this.recoverer != null) this.recoverer.Op(msgCtx.getConsensusId(), request.getContent(), msgCtx);
-                            
-                            // This is used to deliver the requests to the application and obtain a reply to deliver
-                            //to the clients. The raw decision is passed to the application in the line above.
-                            byte[] response = ((FIFOExecutable) executor).executeOrderedFIFO(request.getContent(), msgCtx, request.getSender(), request.getOperationId());
-
-                            // Generate the messages to send back to the clients
-                            request.reply = new TOMMessage(id, request.getSession(),
-                                    request.getSequence(), request.getOperationId(), response, SVController.getCurrentViewId(), request.getReqType());
-                            bftsmart.tom.util.Logger.println("(ServiceReplica.receiveMessages) sending reply to " + request.getSender());
-                            replier.manageReply(request, msgCtx);
-                        } else if (executor instanceof SingleExecutable) {
-
-                            bftsmart.tom.util.Logger.println("(ServiceReplica.receiveMessages) Delivering request from " + request.getSender() + " via SingleExecutable");
-
-                            // This is used to deliver the content decided by a consensus instance directly to
-                            // a Recoverable object. It is useful to allow the application to create a log and
-                            // store the proof associated with decisions (which are needed by replicas
-                            // that are asking for a state transfer). 
-                            if (this.recoverer != null) this.recoverer.Op(msgCtx.getConsensusId(), request.getContent(), msgCtx);
-
-                            // This is used to deliver the requests to the application and obtain a reply to deliver
-                            //to the clients. The raw decision is passed to the application in the line above.
-                            byte[] response = ((SingleExecutable) executor).executeOrdered(request.getContent(), msgCtx);
-
-                            // Generate the messages to send back to the clients
-                            request.reply = new TOMMessage(id, request.getSession(),
-                                    request.getSequence(), request.getOperationId(), response, SVController.getCurrentViewId(), request.getReqType());
-                            bftsmart.tom.util.Logger.println("(ServiceReplica.receiveMessages) sending reply to " + request.getSender());
-                            replier.manageReply(request, msgCtx);
-                        } else {
-                            throw new UnsupportedOperationException("Non-existent interface");
-                        }
-                    } else if (request.getReqType() == TOMMessageType.RECONFIG) {
-                        SVController.enqueueUpdate(request);
-                    } else {
+                    if (null == request.getReqType()) {
                         throw new RuntimeException("Should never reach here!");
+                    } else switch (request.getReqType()) {
+                        case ORDERED_REQUEST:
+                            noop = false;
+                            numRequests++;
+                            MessageContext msgCtx = new MessageContext(request.getSender(), request.getViewID(),
+                                    request.getReqType(), request.getSession(), request.getSequence(), request.getOperationId(),
+                                    request.getReplyServer(), request.serializedMessageSignature, firstRequest.timestamp,
+                                    request.numOfNonces, request.seed, regencies[consensusCount], leaders[consensusCount],
+                                    consId[consensusCount], cDecs[consensusCount].getConsMessages(), firstRequest, false);
+                            if (requestCount + 1 == requestsFromConsensus.length) {
+                                
+                                msgCtx.setLastInBatch();
+                            }   request.deliveryTime = System.nanoTime();
+                            if (executor instanceof BatchExecutable) {
+                                
+                                bftsmart.tom.util.Logger.println("(ServiceReplica.receiveMessages) Batching request from " + request.getSender());
+                                
+                                // This is used to deliver the content decided by a consensus instance directly to
+                                // a Recoverable object. It is useful to allow the application to create a log and
+                                // store the proof associated with decisions (which are needed by replicas
+                                // that are asking for a state transfer).
+                                if (this.recoverer != null) this.recoverer.Op(msgCtx.getConsensusId(), request.getContent(), msgCtx);
+                                
+                                // deliver requests and contexts to the executor later
+                                msgCtxts.add(msgCtx);
+                                toBatch.add(request);
+                            } else if (executor instanceof FIFOExecutable) {
+                                
+                                bftsmart.tom.util.Logger.println("(ServiceReplica.receiveMessages) Delivering request from " + request.getSender() + " via FifoExecutable");
+                                
+                                // This is used to deliver the content decided by a consensus instance directly to
+                                // a Recoverable object. It is useful to allow the application to create a log and
+                                // store the proof associated with decisions (which are needed by replicas
+                                // that are asking for a state transfer).
+                                if (this.recoverer != null) this.recoverer.Op(msgCtx.getConsensusId(), request.getContent(), msgCtx);
+                                
+                                // This is used to deliver the requests to the application and obtain a reply to deliver
+                                //to the clients. The raw decision is passed to the application in the line above.
+                                byte[] response = ((FIFOExecutable) executor).executeOrderedFIFO(request.getContent(), msgCtx, request.getSender(), request.getOperationId());
+                                
+                                // Generate the messages to send back to the clients
+                                request.reply = new TOMMessage(id, request.getSession(),
+                                        request.getSequence(), request.getOperationId(), response, SVController.getCurrentViewId(), request.getReqType());
+                                bftsmart.tom.util.Logger.println("(ServiceReplica.receiveMessages) sending reply to " + request.getSender());
+                                replier.manageReply(request, msgCtx);
+                            } else if (executor instanceof SingleExecutable) {
+                                
+                                bftsmart.tom.util.Logger.println("(ServiceReplica.receiveMessages) Delivering request from " + request.getSender() + " via SingleExecutable");
+                                
+                                // This is used to deliver the content decided by a consensus instance directly to
+                                // a Recoverable object. It is useful to allow the application to create a log and
+                                // store the proof associated with decisions (which are needed by replicas
+                                // that are asking for a state transfer).
+                                if (this.recoverer != null) this.recoverer.Op(msgCtx.getConsensusId(), request.getContent(), msgCtx);
+                                
+                                // This is used to deliver the requests to the application and obtain a reply to deliver
+                                //to the clients. The raw decision is passed to the application in the line above.
+                                byte[] response = ((SingleExecutable) executor).executeOrdered(request.getContent(), msgCtx);
+                                
+                                // Generate the messages to send back to the clients
+                                request.reply = new TOMMessage(id, request.getSession(),
+                                        request.getSequence(), request.getOperationId(), response, SVController.getCurrentViewId(), request.getReqType());
+                                bftsmart.tom.util.Logger.println("(ServiceReplica.receiveMessages) sending reply to " + request.getSender());
+                                replier.manageReply(request, msgCtx);
+                            } else { //this code should never be executed
+                                throw new UnsupportedOperationException("Non-existent interface");
+                            }   break;
+                        case RECONFIG:
+                            SVController.enqueueUpdate(request);
+                            break;
+                        default: //this code should never be executed
+                            throw new RuntimeException("Should never reach here!");
                     }
-                } else if (request.getViewID() < SVController.getCurrentViewId()) { // message sender had an old view, resend the message to
-                                                                                    // him (but only if it came from consensus an not state transfer)
+                } else if (request.getViewID() < SVController.getCurrentViewId()) { 
+                    // message sender had an old view, resend the message to
+                    // him (but only if it came from consensus an not state transfer)
                     
                     tomLayer.getCommunication().send(new int[]{request.getSender()}, new TOMMessage(SVController.getStaticConf().getProcessId(),
                             request.getSession(), request.getSequence(), request.getOperationId(), TOMUtil.getBytes(SVController.getCurrentView()), SVController.getCurrentViewId(), request.getReqType()));

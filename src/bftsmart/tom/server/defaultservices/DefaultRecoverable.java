@@ -279,11 +279,11 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
                 } catch (Exception e) {
                     e.printStackTrace(System.err);
                     if (e instanceof ArrayIndexOutOfBoundsException) {
-                        System.out.println("CID do ultimo checkpoint: " + state.getLastCheckpointCID());
-                        System.out.println("CID do ultimo consenso: " + state.getLastCID());
-                        System.out.println("numero de mensagens supostamente no batch: " + (state.getLastCID() - state.getLastCheckpointCID() + 1));
-                        System.out.println("numero de mensagens realmente no batch: " + state.getMessageBatches().length);
-                    }
+                       System.out.println("Last checkpoint, last consensus ID (CID): " + state.getLastCheckpointCID());
+                        System.out.println("Last CID: " + state.getLastCID());
+                        System.out.println("number of messages expected to be in the batch: " + (state.getLastCID() - state.getLastCheckpointCID() + 1));
+                        System.out.println("number of messages in the batch: " + state.getMessageBatches().length);
+                     }
                 }
 
             }

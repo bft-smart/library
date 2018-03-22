@@ -67,7 +67,7 @@ public class ThroughputLatencyClient {
         }
 
         ExecutorService exec = Executors.newFixedThreadPool(clients.length);
-        Collection<Future<?>> tasks = new LinkedList();
+        Collection<Future<?>> tasks = new LinkedList<>();
         
         for (Client c : clients) {
             tasks.add(exec.submit(c));
@@ -77,9 +77,7 @@ public class ThroughputLatencyClient {
         for (Future<?> currTask : tasks) {
             try {
                 currTask.get();
-            } catch (InterruptedException ex) {
-                Logger.getLogger(ThroughputLatencyClient.class.getName()).log(Level.SEVERE, null, ex);
-            } catch (ExecutionException ex) {
+            } catch (InterruptedException | ExecutionException ex) {
                 Logger.getLogger(ThroughputLatencyClient.class.getName()).log(Level.SEVERE, null, ex);
             }
 

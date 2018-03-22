@@ -17,7 +17,7 @@ package bftsmart.demo.counter;
 
 import bftsmart.tom.MessageContext;
 import bftsmart.tom.ServiceReplica;
-import bftsmart.tom.server.defaultservices.DefaultRecoverable;
+import bftsmart.tom.server.defaultservices.DefaultSingleRecoverable;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
@@ -30,40 +30,25 @@ import java.io.ObjectOutputStream;
 
 /**
  * Example replica that implements a BFT replicated service (a counter).
- *
+ * If the increment > 0 the counter is incremented, otherwise, the counter
+ * value is read.
+ * 
+ * @author alysson
  */
 
-public final class CounterServer extends DefaultRecoverable  {
+public final class CounterServer extends DefaultSingleRecoverable  {
     
     private int counter = 0;
     private int iterations = 0;
     
-    ServiceReplica replica = null;
-
     public CounterServer(int id) {
-    	replica = new ServiceReplica(id, this, this);
+    	new ServiceReplica(id, this, this);
     }
-    
+            
     @Override
-    public byte[][] appExecuteBatch(byte[][] commands, MessageContext[] msgCtxs, boolean fromConsensus) {
-        
-        
-        byte [][] replies = new byte[commands.length][];
-        for (int i = 0; i < commands.length; i++) {
-            if(msgCtxs != null && msgCtxs[i] != null) {
-            replies[i] = executeSingle(commands[i],msgCtxs[i]);
-            }
-            else executeSingle(commands[i],null);
-        }
-        
-        return replies;
-    }
-        
-    @Override
-    public byte[] appExecuteUnordered(byte[] command, MessageContext msgCtx) {
-                
+    public byte[] appExecuteUnordered(byte[] command, MessageContext msgCtx) {         
         iterations++;
-        System.out.println("(" + iterations + ") Reading counter at value: " + counter);
+        System.out.println("(" + iterations + ") Counter current value: " + counter);
         try {
             ByteArrayOutputStream out = new ByteArrayOutputStream(4);
             new DataOutputStream(out).writeInt(counter);
@@ -73,24 +58,16 @@ public final class CounterServer extends DefaultRecoverable  {
             return new byte[0];
         }
     }
-    
-    private byte[] executeSingle(byte[] command, MessageContext msgCtx) {
+  
+    @Override
+    public byte[] appExecuteOrdered(byte[] command, MessageContext msgCtx) {
         iterations++;
         try {
             int increment = new DataInputStream(new ByteArrayInputStream(command)).readInt();
-            //System.out.println("read-only request: "+(msgCtx.getConsensusId() == -1));
             counter += increment;
             
-            if (msgCtx != null) {
-                if (msgCtx.getConsensusId() == -1) {
-                    System.out.println("(" + iterations + ") Counter was incremented: " + counter);
-                } else {
-                    System.out.println("(" + iterations + " / " + msgCtx.getConsensusId() + ") Counter was incremented: " + counter);
-                }
-            }
-            else {
-                System.out.println("(" + iterations + ") Counter was incremented: " + counter);
-            }
+            System.out.println("(" + iterations + ") Counter was incremented. Current value = " + counter);
+            
             ByteArrayOutputStream out = new ByteArrayOutputStream(4);
             new DataOutputStream(out).writeInt(counter);
             return out.toByteArray();
@@ -109,38 +86,38 @@ public final class CounterServer extends DefaultRecoverable  {
     }
 
     
-	@SuppressWarnings("unchecked")
-	@Override
-	public void installSnapshot(byte[] state) {
-		try {
-			System.out.println("setState called");
-			ByteArrayInputStream bis = new ByteArrayInputStream(state);
-			ObjectInput in = new ObjectInputStream(bis);
-			counter =  in.readInt();
-			in.close();
-			bis.close();
-		} catch (Exception e) {
-			System.err.println("[ERROR] Error deserializing state: "
-					+ e.getMessage());
-		}
-	}
+    @SuppressWarnings("unchecked")
+    @Override
+    public void installSnapshot(byte[] state) {
+        try {
+            System.out.println("setState called");
+            ByteArrayInputStream bis = new ByteArrayInputStream(state);
+            ObjectInput in = new ObjectInputStream(bis);
+            counter = in.readInt();
+            in.close();
+            bis.close();
+        } catch (IOException e) {
+            System.err.println("[ERROR] Error deserializing state: "
+                    + e.getMessage());
+        }
+    }
 
-	@Override
-	public byte[] getSnapshot() {
-		try {
-			System.out.println("getState called");
-			ByteArrayOutputStream bos = new ByteArrayOutputStream();
-			ObjectOutput out = new ObjectOutputStream(bos);
-			out.writeInt(counter);
-			out.flush();
-			bos.flush();
-			out.close();
-			bos.close();
-			return bos.toByteArray();
-		} catch (IOException ioe) {
-			System.err.println("[ERROR] Error serializing state: "
-					+ ioe.getMessage());
-			return "ERROR".getBytes();
-		}
-	}
+    @Override
+    public byte[] getSnapshot() {
+        try {
+            System.out.println("getState called");
+            ByteArrayOutputStream bos = new ByteArrayOutputStream();
+            ObjectOutput out = new ObjectOutputStream(bos);
+            out.writeInt(counter);
+            out.flush();
+            bos.flush();
+            out.close();
+            bos.close();
+            return bos.toByteArray();
+        } catch (IOException ioe) {
+            System.err.println("[ERROR] Error serializing state: "
+                    + ioe.getMessage());
+            return "ERROR".getBytes();
+        }
+    }
 }
