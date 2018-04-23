@@ -40,16 +40,10 @@ public class ViewController {
 
     public ViewController(int procId, String configHome) {
         this.staticConf = new TOMConfiguration(procId, configHome);
-        System.out.println("Current config home: " + this.configHome + "next config home" + configHome);
         this.configHome = configHome;
     }
     public final ViewStorage getViewStore() {
         if(this.viewStore == null) {
-            System.out.println("viewStore is null? " + viewStore == null
-                    + " configHome.isEmpty? " + configHome.isEmpty()
-                    + " lastView: " + lastView
-                    + " currentView: " + currentView);
-            System.out.println("Config home in getViewStore: " + this.configHome);
             if(this.configHome.isEmpty()) {
                 this.viewStore = new DefaultViewStorage();
             } else {
