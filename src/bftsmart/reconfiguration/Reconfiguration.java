@@ -45,12 +45,10 @@ public class Reconfiguration {
     
     public void connect(){
         if(proxy == null){
-            if (configHome != null)
-            {
+            if (configHome != null) {
                 proxy = new ServiceProxy(id, configHome);
             }
-            else
-            {
+            else {
                 proxy = new ServiceProxy(id);
             }
         }
