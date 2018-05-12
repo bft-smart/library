@@ -159,7 +159,7 @@ public class RequestsTimer {
         
         for (Iterator<TOMMessage> i = watched.iterator(); i.hasNext();) {
             TOMMessage request = i.next();
-            if ((request.receptionTime + System.currentTimeMillis()) > t) {
+            if (System.nanoTime() - request.receptionTime > t * 1000000) {
                 pendingRequests.add(request);
             } else {
                 break;
