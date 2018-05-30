@@ -38,6 +38,7 @@ import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.security.PrivateKey;
 import java.util.HashMap;
+import java.util.LinkedList;
 import javax.crypto.Mac;
 import javax.crypto.SecretKey;
 
@@ -227,6 +228,10 @@ public final class Acceptor {
                         computeAccept(cid, epoch, epoch.propValueHash);
                 }
                 executionManager.processOutOfContext(epoch.getConsensus());
+                
+            } else if (epoch.deserializedPropValue == null && !tomLayer.isChangingLeader()) { //force a leader change if the proposal is garbage
+                
+                tomLayer.getSynchronizer().triggerTimeout(new LinkedList<>());
             }
         } 
     }

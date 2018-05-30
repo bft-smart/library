@@ -331,7 +331,16 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
     @Override
     public void send(boolean sign, int[] targets, TOMMessage sm) {
 
-        listener.waitForChannels(targets.length); // wait for the previous transmission to complete
+        int quorum;
+        
+        if (controller.getStaticConf().isBFT()) {
+                quorum = (int) Math.ceil((controller.getCurrentViewN()
+                                + controller.getCurrentViewF()) / 2) + 1;
+        } else {
+                quorum = (int) Math.ceil((controller.getCurrentViewN()) / 2) + 1;
+        }
+        
+        listener.waitForChannels(quorum); // wait for the previous transmission to complete
         
         Logger.println("Sending request from " + sm.getSender() + " with sequence number " + sm.getSequence() + " to " + Arrays.toString(targets));
                 

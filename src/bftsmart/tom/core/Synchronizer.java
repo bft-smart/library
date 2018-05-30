@@ -153,10 +153,10 @@ public class Synchronizer {
                     System.out.println("(Synchronizer.triggerTimeout) Strange... did not include any request in my STOP message for regency " + regency);
                 }
 
-                byte[] payload = bos.toByteArray();
-
                 out.flush();
                 bos.flush();
+
+                byte[] payload = bos.toByteArray();
 
                 out.close();
                 bos.close();
@@ -367,6 +367,9 @@ public class Synchronizer {
                 BatchReader batchReader = new BatchReader(temp,
                         controller.getStaticConf().getUseSignatures() == 1);
                 requests = batchReader.deserialiseRequests(controller);
+            } else {
+                
+                requests = new TOMMessage[0];
             }
 
             ois.close();

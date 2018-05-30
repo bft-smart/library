@@ -434,15 +434,16 @@ public final class TOMLayer extends Thread implements RequestReceiver {
      * @return Valid messages contained in the proposed value
      */
     public TOMMessage[] checkProposedValue(byte[] proposedValue, boolean addToClientManager) {
-        Logger.println("(TOMLayer.isProposedValueValid) starting");
+        
+        try{
+            
+            Logger.println("(TOMLayer.isProposedValueValid) starting");
 
-        BatchReader batchReader = new BatchReader(proposedValue,
+            BatchReader batchReader = new BatchReader(proposedValue,
                 this.controller.getStaticConf().getUseSignatures() == 1);
 
-        TOMMessage[] requests = null;
+            TOMMessage[] requests = null;
 
-        try {
-			
             //deserialize the message
             //TODO: verify Timestamps and Nonces
             requests = batchReader.deserialiseRequests(this.controller);
@@ -468,15 +469,17 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                 }
             }
 
+            Logger.println("(TOMLayer.isProposedValueValid) finished, return=true");
+
+            return requests;
+        
         } catch (Exception e) {
-            e.printStackTrace();
-            clientsManager.getClientsLock().unlock();
             Logger.println("(TOMLayer.isProposedValueValid) finished, return=false");
+            e.printStackTrace();
+            if (Thread.holdsLock(clientsManager.getClientsLock())) clientsManager.getClientsLock().unlock();
+
             return null;
         }
-        Logger.println("(TOMLayer.isProposedValueValid) finished, return=true");
-
-        return requests;
     }
 
     public void forwardRequestToLeader(TOMMessage request) {
@@ -496,6 +499,12 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         return result;
     }
 
+    public boolean isChangingLeader() {
+        
+        return !requestsTimer.isEnabled();
+
+    }
+    
     public void setNoExec() {
         Logger.println("(TOMLayer.setNoExec) modifying inExec from " + this.inExecution + " to " + -1);
 
