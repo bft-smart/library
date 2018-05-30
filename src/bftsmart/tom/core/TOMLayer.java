@@ -151,13 +151,8 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         this.stateManager = recoverer.getStateManager();
         stateManager.init(this, dt);
         
-        this.verifier = (verifier != null) ? verifier : new RequestVerifier() {
-			@Override
-			public boolean isValidRequest(byte[] request) {
-				return true; // By default, never validate requests
-                        }
-		};
-
+        this.verifier = (verifier != null) ? verifier : ((request) -> true); // By default, never validate requests 
+		
         // I have a verifier, now create clients manager
         this.clientsManager = new ClientsManager(this.controller, requestsTimer, this.verifier);
 
@@ -456,7 +451,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             //requests are valid in accordance to the application semantics
             //and not an erroneous requests sent by a Byzantine leader.
             for (TOMMessage r : requests) {
-                if (controller.getStaticConf().isBFT() &&!verifier.isValidRequest(r.getContent())) return null;
+                if (controller.getStaticConf().isBFT() &&!verifier.isValidRequest(r)) return null;
             }
             
 

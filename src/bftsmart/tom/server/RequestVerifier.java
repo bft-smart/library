@@ -5,6 +5,8 @@
  */
 package bftsmart.tom.server;
 
+import bftsmart.tom.core.messages.TOMMessage;
+
 /**
  *
  * Classes that implement this interface are invoked within
@@ -18,6 +20,6 @@ package bftsmart.tom.server;
  */
 public interface RequestVerifier {
     
-    public boolean isValidRequest(byte[]request);
+    public boolean isValidRequest(TOMMessage request);
     
 }
