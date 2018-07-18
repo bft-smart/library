@@ -182,7 +182,13 @@ public final class DeliveryThread extends Thread {
                 if(decided.isEmpty()) {
                     notEmptyQueue.await();
                 }
-                decided.drainTo(decisions);
+                
+                if (controller.getStaticConf().getSameBatchSize()) {
+                    decided.drainTo(decisions, 1);
+                } else {
+                    decided.drainTo(decisions);
+                }
+                
                 decidedLock.unlock();
                 
                 if (!doWork) break;
