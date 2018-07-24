@@ -45,6 +45,9 @@ import bftsmart.tom.server.RequestVerifier;
 import bftsmart.tom.util.BatchBuilder;
 import bftsmart.tom.util.BatchReader;
 import bftsmart.tom.util.Logger;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * This class implements the state machine replication protocol described in
@@ -63,6 +66,9 @@ public final class TOMLayer extends Thread implements RequestReceiver {
     private DeliveryThread dt; // Thread which delivers total ordered messages to the appication
     public StateManager stateManager = null; // object which deals with the state transfer protocol
 
+    //thread pool used to paralelise verification of requests contained in a batch
+    private ExecutorService verifierExecutor = null;
+    
     /**
      * Manage timers for pending requests
      */
@@ -125,7 +131,13 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         this.acceptor = a;
         this.communication = cs;
         this.controller = controller;
-
+        
+        // use either the same number of Netty workers threads if specified in the configuration
+        // or use a many as the number of cores available
+        int nWorkers = this.controller.getStaticConf().getNumNettyWorkers();
+        nWorkers = nWorkers > 0 ? nWorkers : Runtime.getRuntime().availableProcessors();
+        this.verifierExecutor = Executors.newWorkStealingPool(nWorkers);
+        
         //do not create a timer manager if the timeout is 0
         if (this.controller.getStaticConf().getRequestTimeout() == 0) {
             this.requestsTimer = null;
@@ -275,7 +287,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
      */
     @Override
     public void requestReceived(TOMMessage msg) {
-        
+               
         if (!doWork) return;
         
         // check if this request is valid and add it to the client' pending requests list
@@ -431,13 +443,14 @@ public final class TOMLayer extends Thread implements RequestReceiver {
      * TODO: verify timestamps and nonces
      *
      * @param proposedValue the value being proposed
+     * @param addToClientManager add the requests to the client manager
      * @return Valid messages contained in the proposed value
      */
     public TOMMessage[] checkProposedValue(byte[] proposedValue, boolean addToClientManager) {
-        
+    
         try{
             
-            Logger.println("(TOMLayer.isProposedValueValid) starting");
+            Logger.println("(TOMLayer.checkProposedValue) starting");
 
             BatchReader batchReader = new BatchReader(proposedValue,
                 this.controller.getStaticConf().getUseSignatures() == 1);
@@ -448,33 +461,53 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             //TODO: verify Timestamps and Nonces
             requests = batchReader.deserialiseRequests(this.controller);
             
-            //enforce the "external validity" property, i.e, verify if the
-            //requests are valid in accordance to the application semantics
-            //and not an erroneous requests sent by a Byzantine leader.
-            for (TOMMessage r : requests) {
-                if (controller.getStaticConf().isBFT() &&!verifier.isValidRequest(r)) return null;
-            }
-            
-
             if (addToClientManager) {
+
+                //use parallelization to validate the request
+                final CountDownLatch latch = new CountDownLatch(requests.length);
+
+                for (TOMMessage request : requests) {
+                    
+                    verifierExecutor.submit(() -> {
+                        try {
+                            
+                            //notifies the client manager that this request was received and get
+                            //the result of its validation
+                            request.isValid = clientsManager.requestReceived(request, false);
+                            if (Thread.holdsLock(clientsManager.getClientsLock())) clientsManager.getClientsLock().unlock();
+                            
+                        }
+                        catch (Exception e) {
+                            
+                            Logger.println("(TOMLayer.checkProposedValue.VerifierThread) finished, return=false");
+                            e.printStackTrace();
+                            if (Thread.holdsLock(clientsManager.getClientsLock())) clientsManager.getClientsLock().unlock();
+                            
+                        }
+                        
+                        latch.countDown();
+                    });
+                }
+                
+                latch.await();
+                
                 for (int i = 0; i < requests.length; i++) {
-					//notifies the client manager that this request was received and get
-                    //the result of its validation
-                    if (!clientsManager.requestReceived(requests[i], false)) {
-                        clientsManager.getClientsLock().unlock();
-                        Logger.println("(TOMLayer.isProposedValueValid) finished, return=false");
-                        System.out.println("failure in deserialize batch");
+                    
+                    if (requests[i].isValid == false) {
+                        
+                        Logger.println("(TOMLayer.checkProposedValue.VerifierThread) finished, return=false");
+                        System.out.println("failure in deserializing batch");
                         return null;
                     }
                 }
             }
-
-            Logger.println("(TOMLayer.isProposedValueValid) finished, return=true");
+            
+            Logger.println("(TOMLayer.checkProposedValue) finished, return=true");
 
             return requests;
         
         } catch (Exception e) {
-            Logger.println("(TOMLayer.isProposedValueValid) finished, return=false");
+            Logger.println("(TOMLayer.checkProposedValue) finished, return=false");
             e.printStackTrace();
             if (Thread.holdsLock(clientsManager.getClientsLock())) clientsManager.getClientsLock().unlock();
 

@@ -59,16 +59,6 @@ import bftsmart.tom.util.TOMUtil;
  */
 public class ServiceReplica {
 
-    class MessageContextPair {
-
-        TOMMessage message;
-        MessageContext msgCtx;
-
-        MessageContextPair(TOMMessage message, MessageContext msgCtx) {
-            this.message = message;
-            this.msgCtx = msgCtx;
-        }
-    }
     // replica ID
     private int id;
     // Server side comunication system
@@ -504,10 +494,11 @@ public class ServiceReplica {
         if (SVController.getStaticConf().isShutdownHookEnabled()) {
             Runtime.getRuntime().addShutdownHook(new ShutdownHookThread(tomLayer));
         }
+        replicaCtx = new ReplicaContext(cs, SVController);
+
         tomLayer.start(); // start the layer execution
         tomStackCreated = true;
 
-        replicaCtx = new ReplicaContext(cs, SVController);
     }
 
     /**
