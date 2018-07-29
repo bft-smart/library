@@ -53,6 +53,8 @@ import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.util.Logger;
 import bftsmart.tom.util.TOMUtil;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 
 /**
  *
@@ -106,8 +108,9 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 			})	.childOption(ChannelOption.SO_KEEPALIVE, true).childOption(ChannelOption.TCP_NODELAY, true);
 
 			// Bind and start to accept incoming connections.
-			ChannelFuture f = b.bind(new InetSocketAddress(controller.getStaticConf().getHost(
-					controller.getStaticConf().getProcessId()),
+                        String address = (!controller.getStaticConf().getNettyBindAddress().equals("") ?
+                                 controller.getStaticConf().getNettyBindAddress() : InetAddress.getLocalHost().getHostAddress());
+			ChannelFuture f = b.bind(new InetSocketAddress(address,
 					controller.getStaticConf().getPort(controller.getStaticConf().getProcessId()))).sync(); 
 
 			System.out.println("-- ID = " + controller.getStaticConf().getProcessId());
@@ -122,9 +125,7 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
                         
                         mainChannel = f.channel();
 
-		} catch (NoSuchAlgorithmException ex) {
-			ex.printStackTrace();
-		} catch (InterruptedException ex) {
+		} catch (NoSuchAlgorithmException | InterruptedException | UnknownHostException ex) {
 			ex.printStackTrace();
 		}
 	}

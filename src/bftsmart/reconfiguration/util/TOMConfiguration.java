@@ -20,6 +20,7 @@ import java.security.PublicKey;
 import java.util.StringTokenizer;
 
 import bftsmart.tom.util.Logger;
+import java.util.regex.Pattern;
 
 public class TOMConfiguration extends Configuration {
 
@@ -58,6 +59,7 @@ public class TOMConfiguration extends Configuration {
     private int numRepliers;
     private int numNettyWorkers;
     private boolean sameBatchSize;
+    private String nettyBindAddress;
     
     /** Creates a new instance of TOMConfiguration */
     public TOMConfiguration(int processId) {
@@ -332,6 +334,16 @@ public class TOMConfiguration extends Configuration {
                 numNettyWorkers = Integer.parseInt(s);
             }
             
+            s = (String) configs.remove("system.communication.nettybindaddress");
+            
+            Pattern pattern = Pattern.compile("^(([01]?\\d\\d?|2[0-4]\\d|25[0-5])\\.){3}([01]?\\d\\d?|2[0-4]\\d|25[0-5])$");
+
+            if (s == null || !pattern.matcher(s).matches()) {
+                nettyBindAddress = "";
+            } else {
+                nettyBindAddress = s;
+            }
+            
             s = (String) configs.remove("system.samebatchsize");
             if (s != null) {
                     sameBatchSize = Boolean.parseBoolean(s);
@@ -536,5 +548,9 @@ public class TOMConfiguration extends Configuration {
     
     public boolean getSameBatchSize() {
         return sameBatchSize;
+    }
+    
+    public String getNettyBindAddress() {
+        return nettyBindAddress;
     }
 }
