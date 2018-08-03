@@ -54,6 +54,8 @@ import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.util.Logger;
 import bftsmart.tom.util.TOMUtil;
 import java.net.InetAddress;
+import java.net.NetworkInterface;
+import java.net.SocketException;
 import java.net.UnknownHostException;
 
 /**
@@ -107,10 +109,28 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 				}
 			})	.childOption(ChannelOption.SO_KEEPALIVE, true).childOption(ChannelOption.TCP_NODELAY, true);
 
-			// Bind and start to accept incoming connections.
-                        String address = (!controller.getStaticConf().getNettyBindAddress().equals("") ?
-                                 controller.getStaticConf().getNettyBindAddress() : InetAddress.getLocalHost().getHostAddress());
-			ChannelFuture f = b.bind(new InetSocketAddress(address,
+                        String myAddress;
+                        if (controller.getStaticConf().getNettyBindAddress().equals("")) {
+                            
+                            myAddress = InetAddress.getLocalHost().getHostAddress();
+                            
+                            String confAddress =
+                                    controller.getStaticConf().getRemoteAddress(controller.getStaticConf().getProcessId()).getAddress().getHostAddress();
+                            
+                            //If Netty binds to the loopback address, clients will not be able to connect to replicas.
+                            //To solve that issue, we bind to the address supplied in config/hosts.config instead.
+                            if (InetAddress.getLoopbackAddress().getHostAddress().equals(myAddress) && !myAddress.equals(confAddress)) {
+                                
+                                myAddress = confAddress;
+                            }
+                            
+                            
+                        } else {
+                            
+                            myAddress = controller.getStaticConf().getNettyBindAddress();
+                        }
+
+			ChannelFuture f = b.bind(new InetSocketAddress(myAddress,
 					controller.getStaticConf().getPort(controller.getStaticConf().getProcessId()))).sync(); 
 
 			System.out.println("-- ID = " + controller.getStaticConf().getProcessId());
@@ -121,6 +141,7 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 			System.out.println("-- maxBatch = " + controller.getStaticConf().getMaxBatchSize());
 			if (controller.getStaticConf().getUseMACs() == 1) System.out.println("-- Using MACs");
 			if(controller.getStaticConf().getUseSignatures() == 1) System.out.println("-- Using Signatures");
+                        System.out.println("-- Netty binded to host " + myAddress);
 			//******* EDUARDO END **************//
                         
                         mainChannel = f.channel();
