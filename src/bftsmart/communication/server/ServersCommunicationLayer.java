@@ -36,6 +36,7 @@ import java.util.logging.Logger;
 import bftsmart.communication.SystemMessage;
 import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.tom.ServiceReplica;
+import java.net.InetAddress;
 
 import javax.crypto.SecretKey;
 import javax.crypto.SecretKeyFactory;
@@ -80,8 +81,39 @@ public class ServersCommunicationLayer extends Thread {
             }
         }
 
-        serverSocket = new ServerSocket(controller.getStaticConf().getServerToServerPort(
-                controller.getStaticConf().getProcessId()));
+        String myAddress;
+        String confAddress =
+                    controller.getStaticConf().getRemoteAddress(controller.getStaticConf().getProcessId()).getAddress().getHostAddress();
+        
+        if (InetAddress.getLoopbackAddress().getHostAddress().equals(confAddress)) {
+                            
+            myAddress = InetAddress.getLoopbackAddress().getHostAddress();
+
+            }
+
+        else if (controller.getStaticConf().getBindAddress().equals("")) {
+
+            myAddress = InetAddress.getLocalHost().getHostAddress();
+
+            //If the replica binds to the loopback address, clients will not be able to connect to replicas.
+            //To solve that issue, we bind to the address supplied in config/hosts.config instead.
+            if (InetAddress.getLoopbackAddress().getHostAddress().equals(myAddress) && !myAddress.equals(confAddress)) {
+
+                myAddress = confAddress;
+            }
+
+
+        } else {
+
+            myAddress = controller.getStaticConf().getBindAddress();
+        }
+        
+        int myPort = controller.getStaticConf().getServerToServerPort(controller.getStaticConf().getProcessId());
+                        
+        serverSocket = new ServerSocket(myPort, 50, InetAddress.getByName(myAddress));
+
+        /*serverSocket = new ServerSocket(controller.getStaticConf().getServerToServerPort(
+                controller.getStaticConf().getProcessId()));*/
 
         SecretKeyFactory fac = SecretKeyFactory.getInstance("PBEWithMD5AndDES");
         PBEKeySpec spec = new PBEKeySpec(PASSWORD.toCharArray());

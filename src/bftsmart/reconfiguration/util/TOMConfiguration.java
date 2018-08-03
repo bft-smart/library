@@ -59,7 +59,7 @@ public class TOMConfiguration extends Configuration {
     private int numRepliers;
     private int numNettyWorkers;
     private boolean sameBatchSize;
-    private String nettyBindAddress;
+    private String bindAddress;
     
     /** Creates a new instance of TOMConfiguration */
     public TOMConfiguration(int processId) {
@@ -334,14 +334,14 @@ public class TOMConfiguration extends Configuration {
                 numNettyWorkers = Integer.parseInt(s);
             }
             
-            s = (String) configs.remove("system.communication.nettybindaddress");
+            s = (String) configs.remove("system.communication.bindaddress");
             
             Pattern pattern = Pattern.compile("^(([01]?\\d\\d?|2[0-4]\\d|25[0-5])\\.){3}([01]?\\d\\d?|2[0-4]\\d|25[0-5])$");
 
             if (s == null || !pattern.matcher(s).matches()) {
-                nettyBindAddress = "";
+                bindAddress = "";
             } else {
-                nettyBindAddress = s;
+                bindAddress = s;
             }
             
             s = (String) configs.remove("system.samebatchsize");
@@ -550,7 +550,7 @@ public class TOMConfiguration extends Configuration {
         return sameBatchSize;
     }
     
-    public String getNettyBindAddress() {
-        return nettyBindAddress;
+    public String getBindAddress() {
+        return bindAddress;
     }
 }

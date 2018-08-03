@@ -110,13 +110,19 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 			})	.childOption(ChannelOption.SO_KEEPALIVE, true).childOption(ChannelOption.TCP_NODELAY, true);
 
                         String myAddress;
-                        if (controller.getStaticConf().getNettyBindAddress().equals("")) {
+                        String confAddress =
+                                    controller.getStaticConf().getRemoteAddress(controller.getStaticConf().getProcessId()).getAddress().getHostAddress();
+                        
+                        if (InetAddress.getLoopbackAddress().getHostAddress().equals(confAddress)) {
+                            
+                            myAddress = InetAddress.getLoopbackAddress().getHostAddress();
+                            
+                        }
+                        
+                        else if (controller.getStaticConf().getBindAddress().equals("")) {
                             
                             myAddress = InetAddress.getLocalHost().getHostAddress();
-                            
-                            String confAddress =
-                                    controller.getStaticConf().getRemoteAddress(controller.getStaticConf().getProcessId()).getAddress().getHostAddress();
-                            
+                              
                             //If Netty binds to the loopback address, clients will not be able to connect to replicas.
                             //To solve that issue, we bind to the address supplied in config/hosts.config instead.
                             if (InetAddress.getLoopbackAddress().getHostAddress().equals(myAddress) && !myAddress.equals(confAddress)) {
@@ -127,11 +133,12 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
                             
                         } else {
                             
-                            myAddress = controller.getStaticConf().getNettyBindAddress();
+                            myAddress = controller.getStaticConf().getBindAddress();
                         }
+                        
+                        int myPort = controller.getStaticConf().getPort(controller.getStaticConf().getProcessId());
 
-			ChannelFuture f = b.bind(new InetSocketAddress(myAddress,
-					controller.getStaticConf().getPort(controller.getStaticConf().getProcessId()))).sync(); 
+			ChannelFuture f = b.bind(new InetSocketAddress(myAddress, myPort)).sync(); 
 
 			System.out.println("-- ID = " + controller.getStaticConf().getProcessId());
 			System.out.println("-- N = " + controller.getCurrentViewN());
@@ -141,7 +148,7 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 			System.out.println("-- maxBatch = " + controller.getStaticConf().getMaxBatchSize());
 			if (controller.getStaticConf().getUseMACs() == 1) System.out.println("-- Using MACs");
 			if(controller.getStaticConf().getUseSignatures() == 1) System.out.println("-- Using Signatures");
-                        System.out.println("-- Netty binded to host " + myAddress);
+                        System.out.println("-- Binded replica to " + myAddress);
 			//******* EDUARDO END **************//
                         
                         mainChannel = f.channel();
