@@ -30,9 +30,13 @@ import java.util.Arrays;
 
 import bftsmart.reconfiguration.ViewController;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class TOMUtil {
 
     //private static final int BENCHMARK_PERIOD = 10000;
+    private static Logger logger = LoggerFactory.getLogger(TOMUtil.class);
 
     //some message types
     public static final int RR_REQUEST = 0;
@@ -78,7 +82,7 @@ public class TOMUtil {
             obOut.close();
             bOut.close();
         } catch (IOException ex) {
-            ex.printStackTrace();
+            logger.error("Failed to serialize object",ex);
             return null;
         }
 
@@ -122,7 +126,7 @@ public class TOMUtil {
 
             result = signatureEngine.sign();
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("Failed to sign message",e);
         }
 
         return result;
@@ -147,7 +151,7 @@ public class TOMUtil {
 
             result = verifySignature(signatureEngine, message, signature);
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("Failed to verify signature",e);
         }
 
         return result;
@@ -190,7 +194,7 @@ public class TOMUtil {
             result = md.digest(data);
             
         } catch (NoSuchAlgorithmException e) {
-            e.printStackTrace();
+            logger.error("Failed to compute hash",e);
         } // TODO: shouldn't it be SHA?
                 
         return result;

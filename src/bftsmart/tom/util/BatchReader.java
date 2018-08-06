@@ -22,6 +22,7 @@ import java.util.Random;
 
 import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.tom.core.messages.TOMMessage;
+import org.slf4j.LoggerFactory;
 
 /**
  * Batch format: N_MESSAGES(int) + N_MESSAGES*[MSGSIZE(int),MSG(byte)] +
@@ -89,7 +90,7 @@ public final class BatchReader {
                 requests[i] = tm;
 
             } catch (Exception e) {
-                e.printStackTrace(System.out);
+                LoggerFactory.getLogger(this.getClass()).error("Failed to deserialize batch",e);
             }
         }
         return requests;

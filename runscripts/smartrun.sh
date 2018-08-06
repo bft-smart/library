@@ -12,4 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-java -cp bin/*:lib/* $1 $2 $3 $4 $5 $6 $7 $8 $9
+java -Dlogback.configurationFile="./config/logback.xml" -cp bin/*:lib/* $@

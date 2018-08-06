@@ -90,7 +90,6 @@ public final class CounterServer extends DefaultSingleRecoverable  {
     @Override
     public void installSnapshot(byte[] state) {
         try {
-            System.out.println("setState called");
             ByteArrayInputStream bis = new ByteArrayInputStream(state);
             ObjectInput in = new ObjectInputStream(bis);
             counter = in.readInt();
@@ -105,7 +104,6 @@ public final class CounterServer extends DefaultSingleRecoverable  {
     @Override
     public byte[] getSnapshot() {
         try {
-            System.out.println("getState called");
             ByteArrayOutputStream bos = new ByteArrayOutputStream();
             ObjectOutput out = new ObjectOutputStream(bos);
             out.writeInt(counter);

@@ -24,7 +24,6 @@ import bftsmart.tom.core.TOMLayer;
 import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.core.messages.ForwardedMessage;
 import bftsmart.tom.leaderchange.LCMessage;
-import bftsmart.tom.util.Logger;
 import bftsmart.tom.util.TOMUtil;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -35,12 +34,16 @@ import java.util.Arrays;
 import java.util.HashMap;
 import javax.crypto.Mac;
 import javax.crypto.SecretKey;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
 
 /**
  *
  * @author edualchieri
  */
 public class MessageHandler {
+
+    private Logger logger = LoggerFactory.getLogger(this.getClass());
 
     private Acceptor acceptor;
     private TOMLayer tomLayer;
@@ -52,7 +55,7 @@ public class MessageHandler {
             //this.cipher = Cipher.getInstance("DES/ECB/PKCS5Padding");
             this.mac = Mac.getInstance(ServerConnection.MAC_ALGORITHM);
         } catch (NoSuchAlgorithmException /*| NoSuchPaddingException*/ ex) {
-            ex.printStackTrace();
+            logger.error("Failed to create MAC engine",ex);
         }
     }
     public void setAcceptor(Acceptor acceptor) {
@@ -86,7 +89,7 @@ public class MessageHandler {
                 try {
                     new ObjectOutputStream(bOut).writeObject(cm);
                 } catch (IOException ex) {
-                    ex.printStackTrace();
+                    logger.error("Failed to serialize consensus message",ex);
                 }
 
                 byte[] data = bOut.toByteArray();
@@ -103,18 +106,16 @@ public class MessageHandler {
                     this.mac.init(key);                   
                     myMAC = this.mac.doFinal(data);
                 } catch (/*IllegalBlockSizeException | BadPaddingException |*/ InvalidKeyException ex) {
-                    ex.printStackTrace();
+                    logger.error("Failed to generate MAC",ex);
                 }
                 
                 if (recvMAC != null && myMAC != null && Arrays.equals(recvMAC, myMAC))
                     acceptor.deliver(consMsg);
                 else {
-                    Logger.println("(MessageHandler.processData) WARNING: invalid MAC from " + sm.getSender());
-                    System.out.println("(MessageHandler.processData) WARNING: invalid MAC from " + sm.getSender());
+                    logger.warn("Invalid MAC from " + sm.getSender());
                 }
             } else {
-                System.out.println("(MessageHandler.processData) Discarding unauthenticated message from " + sm.getSender());
-                Logger.println("(MessageHandler.processData) Discarding unauthenticated message from " + sm.getSender());
+                logger.warn("Discarding unauthenticated message from " + sm.getSender());
             }
 
         } else {
@@ -140,7 +141,7 @@ public class MessageHandler {
 	                        break;
 	                }
 	
-	                System.out.println("(MessageHandler.processData) LC_MSG received: type " + type + ", regency " + lcMsg.getReg() + ", (replica " + lcMsg.getSender() + ")");
+	                logger.info("LC_MSG received: type " + type + ", regency " + lcMsg.getReg() + ", (replica " + lcMsg.getSender() + ")");
 	                if (lcMsg.TRIGGER_LC_LOCALLY) tomLayer.requestsTimer.run_lc_protocol();
 	                else tomLayer.getSynchronizer().deliverTimeoutRequest(lcMsg);
 	            /**************************************************************/
@@ -172,10 +173,10 @@ public class MessageHandler {
 	                }
 	            /******************************************************************/
 	            } else {
-	            	System.out.println("UNKNOWN MESSAGE TYPE: " + sm);
+	            	logger.warn("UNKNOWN MESSAGE TYPE: " + sm);
 	            }
 	        } else {
-	            System.out.println("(MessageHandler.processData) Discarding unauthenticated message from " + sm.getSender());
+	            logger.warn("Discarding unauthenticated message from " + sm.getSender());
 	        }
         }
     }

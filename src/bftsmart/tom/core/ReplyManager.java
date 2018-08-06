@@ -5,16 +5,16 @@
 package bftsmart.tom.core;
 
 import bftsmart.communication.ServerCommunicationSystem;
-import bftsmart.communication.SystemMessage;
 import bftsmart.tom.core.messages.TOMMessage;
 import java.util.LinkedList;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
+import org.slf4j.LoggerFactory;
 
 
 /**
  *
- * @author snake
+ * @author joao
  */
 public class ReplyManager {
     
@@ -71,7 +71,7 @@ class ReplyThread extends Thread {
                 }
                 cs.getClientsConn().send(new int[] {msg.getSender()}, msg.reply, false);
             } catch (InterruptedException ex) {
-                ex.printStackTrace();
+                LoggerFactory.getLogger(this.getClass()).error("Could not retrieve reply from queue",ex);
             }
 
         }

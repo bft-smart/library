@@ -26,6 +26,7 @@ import java.io.IOException;
 
 import bftsmart.communication.SystemMessage;
 import bftsmart.tom.util.DebugInfo;
+import org.slf4j.LoggerFactory;
 
 /**
  * This class represents a total ordered message
@@ -296,7 +297,7 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 		 try{
 			 m.rExternal(dis);
 		 }catch(Exception e) {
-			 System.out.println("error on bytesToMessage " + e);
+			 LoggerFactory.getLogger(TOMMessage.class).error("Failed to deserialize TOMMessage",e);
 			 return null;
 		 }
 

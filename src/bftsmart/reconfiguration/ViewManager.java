@@ -24,11 +24,12 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Scanner;
 import java.util.StringTokenizer;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 import bftsmart.communication.server.ServerConnection;
 import bftsmart.reconfiguration.views.View;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  *
@@ -36,6 +37,8 @@ import bftsmart.reconfiguration.views.View;
  */
 public class ViewManager {
 
+    private Logger logger = LoggerFactory.getLogger(this.getClass());
+    
     private int id;
     private Reconfiguration rec = null;
     //private Hashtable<Integer, ServerConnection> connections = new Hashtable<Integer, ServerConnection>();
@@ -85,7 +88,7 @@ public class ViewManager {
             rd.close();
             return -1;
         } catch (Exception e) {
-            e.printStackTrace(System.out);
+            logger.error("Could not load ID", e);
             return -1;
         }
     }
@@ -108,7 +111,7 @@ public class ViewManager {
         connect();
         ReconfigureReply r = rec.execute();
         View v = r.getView();
-        System.out.println("New view f: " + v.getF());
+        logger.info("New view f: " + v.getF());
 
         VMMessage msg = new VMMessage(id, r);
 
@@ -130,7 +133,7 @@ public class ViewManager {
         try {
             new ObjectOutputStream(bOut).writeObject(sm);
         } catch (IOException ex) {
-            Logger.getLogger(ServerConnection.class.getName()).log(Level.SEVERE, null, ex);
+            logger.error("Could not serialize message", ex);
         }
 
         byte[] data = bOut.toByteArray();
@@ -143,7 +146,7 @@ public class ViewManager {
                 }
             } catch (InterruptedException ex) {
                // ex.printStackTrace();
-                System.err.println(ex);
+                logger.error("Failed to send data to target", ex);
             }
         }
         //br.ufsc.das.tom.util.Logger.println("(ServersCommunicationLayer.send) Finished sending messages to replicas");

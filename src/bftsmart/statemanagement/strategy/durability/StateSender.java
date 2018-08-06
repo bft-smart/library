@@ -22,8 +22,13 @@ import java.net.Socket;
 
 import bftsmart.statemanagement.ApplicationState;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class StateSender implements Runnable {
 
+        private Logger logger = LoggerFactory.getLogger(this.getClass());
+    
 	private final Socket socket;
 	private ApplicationState state;
 	
@@ -40,14 +45,14 @@ public class StateSender implements Runnable {
 		try {
 			OutputStream os = socket.getOutputStream();
 			ObjectOutputStream oos = new ObjectOutputStream(os);
-			System.out.print("--- Sending state in different socket");
+			logger.debug("Sending state in different socket");
 			oos.writeObject(state);
-			System.out.print("--- Sent state in different socket");
+			logger.debug("Sent state in different socket");
 			oos.close();
 			socket.close();
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
-			e.printStackTrace();
+			logger.error("Could not send state",e);
 		}
 	}
 

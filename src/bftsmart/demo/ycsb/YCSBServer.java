@@ -155,7 +155,6 @@ public class YCSBServer extends DefaultRecoverable {
     @Override
     public void installSnapshot(byte[] state) {
         try {
-            System.out.println("setState called");
             ByteArrayInputStream bis = new ByteArrayInputStream(state);
             ObjectInput in = new ObjectInputStream(bis);
             mTables = (TreeMap<String, YCSBTable>) in.readObject();
@@ -170,7 +169,6 @@ public class YCSBServer extends DefaultRecoverable {
     @Override
     public byte[] getSnapshot() {
         try {
-            System.out.println("getState called");
             ByteArrayOutputStream bos = new ByteArrayOutputStream();
             ObjectOutput out = new ObjectOutputStream(bos);
             out.writeObject(mTables);

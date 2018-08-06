@@ -5,11 +5,13 @@ import bftsmart.reconfiguration.views.View;
 import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.core.messages.TOMMessageType;
 import bftsmart.tom.util.Extractor;
-import bftsmart.tom.util.Logger;
 import bftsmart.tom.util.TOMUtil;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * This class is an extension of 'ServiceProxy' that can waits for replies
@@ -19,6 +21,8 @@ import java.util.HashMap;
  *
  */
 public class AsynchServiceProxy extends ServiceProxy {
+    
+    private Logger logger = LoggerFactory.getLogger(this.getClass());
 
     /**
      *
@@ -110,7 +114,7 @@ public class AsynchServiceProxy extends ServiceProxy {
      */
     @Override
     public void replyReceived(TOMMessage reply) {
-        Logger.println("Asynchronously received reply from " + reply.getSender() + " with sequence number " + reply.getSequence() + " and operation ID " + reply.getOperationId());
+        logger.debug("Asynchronously received reply from " + reply.getSender() + " with sequence number " + reply.getSequence() + " and operation ID " + reply.getOperationId());
 
         try {
             canReceiveLock.lock();
@@ -127,7 +131,7 @@ public class AsynchServiceProxy extends ServiceProxy {
                     //&& (reply.getOperationId() == requestContext.getOperationId())
                     && (reply.getReqType().compareTo(requestContext.getRequestType())) == 0) {
 
-                Logger.println("Deliverying message from " + reply.getSender() + " with sequence number " + reply.getSequence() + " and operation ID " + reply.getOperationId() + " to the listener");
+                logger.debug("Deliverying message from " + reply.getSender() + " with sequence number " + reply.getSequence() + " and operation ID " + reply.getOperationId() + " to the listener");
 
                 ReplyListener replyListener = requestContext.getReplyListener();
                 
@@ -188,7 +192,7 @@ public class AsynchServiceProxy extends ServiceProxy {
                 }
             }
         } catch (Exception ex) {
-            ex.printStackTrace();
+            logger.error("Error processing received request",ex);
         } finally {
             canReceiveLock.unlock();
         }
@@ -204,7 +208,7 @@ public class AsynchServiceProxy extends ServiceProxy {
      */
     private int invokeAsynch(byte[] request, int[] targets, ReplyListener replyListener, TOMMessageType reqType) {
 
-        Logger.println("Asynchronously sending request to " + Arrays.toString(targets));
+        logger.debug("Asynchronously sending request to " + Arrays.toString(targets));
 
         RequestContext requestContext = null;
 
@@ -214,7 +218,7 @@ public class AsynchServiceProxy extends ServiceProxy {
                 reqType, targets, System.currentTimeMillis(), replyListener, request);
 
         try {
-            Logger.println("Storing request context for " + requestContext.getOperationId());
+            logger.debug("Storing request context for " + requestContext.getOperationId());
             requestsContext.put(requestContext.getOperationId(), requestContext);
             requestsReplies.put(requestContext.getOperationId(), new TOMMessage[super.getViewManager().getCurrentViewN()]);
 

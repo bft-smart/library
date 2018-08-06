@@ -22,8 +22,7 @@ import bftsmart.tom.server.Replier;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  *
@@ -50,7 +49,7 @@ public class DefaultReplier implements Replier{
                 this.replyLock.unlock();
 
             } catch (InterruptedException ex) {
-                Logger.getLogger(DefaultReplier.class.getName()).log(Level.SEVERE, null, ex);
+                LoggerFactory.getLogger(this.getClass()).error("Interruption while waiting/aquiring condition", ex);
             }
         }
         

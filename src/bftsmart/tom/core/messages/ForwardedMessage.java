@@ -20,7 +20,6 @@ import java.io.ObjectInput;
 import java.io.ObjectOutput;
 
 import bftsmart.communication.SystemMessage;
-import bftsmart.tom.core.messages.TOMMessage;
 
 
 

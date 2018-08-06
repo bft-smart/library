@@ -17,9 +17,6 @@ package bftsmart.demo.microbenchmarks;
 
 import java.io.IOException;
 
-import java.util.logging.Level;
-import java.util.logging.Logger;
-
 import bftsmart.tom.ServiceProxy;
 import bftsmart.tom.util.Storage;
 import java.util.Collection;
@@ -59,7 +56,8 @@ public class ThroughputLatencyClient {
             try {
                 Thread.sleep(100);
             } catch (InterruptedException ex) {
-                Logger.getLogger(ThroughputLatencyClient.class.getName()).log(Level.SEVERE, null, ex);
+                
+                ex.printStackTrace();
             }
             
             System.out.println("Launching client " + (initId+i));
@@ -78,7 +76,8 @@ public class ThroughputLatencyClient {
             try {
                 currTask.get();
             } catch (InterruptedException | ExecutionException ex) {
-                Logger.getLogger(ThroughputLatencyClient.class.getName()).log(Level.SEVERE, null, ex);
+                
+                ex.printStackTrace();
             }
 
         }

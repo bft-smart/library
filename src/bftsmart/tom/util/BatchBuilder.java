@@ -22,6 +22,9 @@ import java.util.Random;
 import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.tom.core.messages.TOMMessage;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * Batch format: TIMESTAMP(long) + N_NONCES(int) + SEED(long) +
  *               N_MESSAGES(int) + N_MESSAGES*[MSGSIZE(int),MSG(byte),SIG(byte)] +
@@ -31,6 +34,8 @@ import bftsmart.tom.core.messages.TOMMessage;
  *
  */
 public final class BatchBuilder {
+    
+        private Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	private Random rnd;
 
@@ -88,7 +93,7 @@ public final class BatchBuilder {
                 
 		for (TOMMessage msg : msgs) {
 			//TOMMessage msg = msgs.next();
-			Logger.println("(BatchBuilder.makeBatch) adding request from client " + msg.getSender() + " with sequence number " + msg.getSequence() + " for session " + msg.getSession() + " to PROPOSE");
+			logger.debug("Adding request from client " + msg.getSender() + " with sequence number " + msg.getSequence() + " for session " + msg.getSession() + " to PROPOSE");
 			messages[i] = msg.serializedMessage;
 			signatures[i] = msg.serializedMessageSignature;
 

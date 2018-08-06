@@ -16,6 +16,7 @@ limitations under the License.
 package bftsmart.consensus;
 
 import bftsmart.tom.core.messages.TOMMessage;
+import org.slf4j.LoggerFactory;
 
 /**
  *
@@ -128,9 +129,11 @@ public class Decision {
         while (decisionEpoch == null &&
                 decisionEpoch.deserializedPropValue == null) {
             try {
-                System.out.println("waiting for propose for consensus" + cid);
+                LoggerFactory.getLogger(this.getClass()).info("waiting for propose for consensus " + cid);
                 Thread.sleep(1);
             } catch (InterruptedException ie) {
+                
+                LoggerFactory.getLogger(this.getClass()).error("Interruption during sleep",ie);
             }
         }
     }

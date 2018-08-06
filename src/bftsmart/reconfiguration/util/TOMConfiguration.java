@@ -19,10 +19,14 @@ import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.util.StringTokenizer;
 
-import bftsmart.tom.util.Logger;
 import java.util.regex.Pattern;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class TOMConfiguration extends Configuration {
+    
+    private Logger logger = LoggerFactory.getLogger(this.getClass());
 
     protected int n;
     protected int f;
@@ -39,7 +43,6 @@ public class TOMConfiguration extends Configuration {
     protected boolean shutdownHookEnabled;
     protected boolean useSenderThread;
     protected RSAKeyLoader rsaLoader;
-    private int debug;
     private int numNIOThreads;
     private int useMACs;
     private int useSignatures;
@@ -143,18 +146,6 @@ public class TOMConfiguration extends Configuration {
                 maxBatchSize = 100;
             } else {
                 maxBatchSize = Integer.parseInt(s);
-            }
-
-            s = (String) configs.remove("system.debug");
-            if (s == null) {
-                Logger.debug = false;
-            } else {
-                debug = Integer.parseInt(s);
-                if (debug == 0) {
-                    Logger.debug = false;
-                } else {
-                    Logger.debug = true;
-                }
             }
 
             s = (String) configs.remove("system.totalordermulticast.replayVerificationTime");
@@ -353,7 +344,7 @@ public class TOMConfiguration extends Configuration {
             
             rsaLoader = new RSAKeyLoader(processId, TOMConfiguration.configHome, defaultKeys);
         } catch (Exception e) {
-            e.printStackTrace(System.err);
+            logger.error("Could not parse system configuration file",e);
         }
 
     }
@@ -508,7 +499,7 @@ public class TOMConfiguration extends Configuration {
         try {
             return rsaLoader.loadPublicKey();
         } catch (Exception e) {
-            e.printStackTrace(System.err);
+            logger.error("Could not load public key",e);
             return null;
         }
 
@@ -518,7 +509,7 @@ public class TOMConfiguration extends Configuration {
         try {
             return rsaLoader.loadPublicKey(id);
         } catch (Exception e) {
-            e.printStackTrace(System.err);
+            logger.error("Could not load public key",e);
             return null;
         }
 
@@ -528,7 +519,7 @@ public class TOMConfiguration extends Configuration {
         try {
             return rsaLoader.loadPrivateKey();
         } catch (Exception e) {
-            e.printStackTrace(System.err);
+            logger.error("Could not load private key",e);
             return null;
         }
     }

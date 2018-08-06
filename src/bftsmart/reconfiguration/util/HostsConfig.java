@@ -17,14 +17,15 @@ package bftsmart.reconfiguration.util;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.net.InetSocketAddress;
-import java.util.Hashtable;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Set;
 import java.util.StringTokenizer;
+import org.slf4j.LoggerFactory;
 
 public class HostsConfig {
     
-    private Hashtable servers = new Hashtable();
+    private HashMap<Integer,Config> servers = new HashMap<>();
     
     
     /** Creates a new instance of ServersConfig */
@@ -64,7 +65,7 @@ public class HostsConfig {
             fr.close();
             rd.close();
         }catch(Exception e){
-            e.printStackTrace(System.out);
+            LoggerFactory.getLogger(this.getClass()).error("Could not load configuration file",e);
         }
     }
     

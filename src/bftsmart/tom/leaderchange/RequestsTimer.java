@@ -22,9 +22,8 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.TreeSet;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import java.util.Hashtable;
+import java.util.HashMap;
 import java.util.Set;
-import java.util.logging.Level;
 
 import bftsmart.communication.ServerCommunicationSystem;
 import bftsmart.reconfiguration.ServerViewController;
@@ -32,11 +31,16 @@ import bftsmart.tom.core.TOMLayer;
 import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.util.TOMUtil;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * This thread serves as a manager for all timers of pending requests.
  *
  */
 public class RequestsTimer {
+    
+    private Logger logger = LoggerFactory.getLogger(this.getClass());
 
     private Timer timer = new Timer("request timer");
     private RequestTimerTask rtTask = null;
@@ -51,7 +55,7 @@ public class RequestsTimer {
     private ServerCommunicationSystem communication; // Communication system between replicas
     private ServerViewController controller; // Reconfiguration manager
     
-    private Hashtable <Integer, Timer> stopTimers = new Hashtable<>();
+    private HashMap <Integer, Timer> stopTimers = new HashMap<>();
     
     //private Storage st1 = new Storage(100000);
     //private Storage st2 = new Storage(10000);
@@ -181,7 +185,7 @@ public class RequestsTimer {
             }
 
             if (!pendingRequests.isEmpty()) {
-                System.out.println("Timeout for messages: " + pendingRequests);
+                logger.info("Timeout for messages: " + pendingRequests);
                 //Logger.debug = true;
                 //tomLayer.requestTimeout(pendingRequests);
                 //if (reconfManager.getStaticConf().getProcessId() == 4) Logger.debug = true;
@@ -227,14 +231,14 @@ public class RequestsTimer {
     
     public Set<Integer> getTimers() {
         
-        return ((Hashtable <Integer,Timer>) stopTimers.clone()).keySet();
+        return ((HashMap <Integer,Timer>) stopTimers.clone()).keySet();
         
     }
     
     public void shutdown() {
         timer.cancel();
         stopAllSTOPs();
-        java.util.logging.Logger.getLogger(RequestsTimer.class.getName()).log(Level.INFO, "RequestsTimer stopped.");
+        LoggerFactory.getLogger(this.getClass()).info("RequestsTimer stopped.");
 
     }
     
@@ -270,7 +274,7 @@ public class RequestsTimer {
          */
         public void run() {
 
-                System.out.println("(SendStopTask.run) Re-transmitting STOP message to install regency " + stop.getReg());
+                logger.info("Re-transmitting STOP message to install regency " + stop.getReg());
                 communication.send(controller.getCurrentViewOtherAcceptors(),this.stop);
 
                 setSTOP(stop.getReg(), stop); //repeat

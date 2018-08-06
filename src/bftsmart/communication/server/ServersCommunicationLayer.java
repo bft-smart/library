@@ -23,35 +23,38 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
-import java.util.Hashtable;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 import bftsmart.communication.SystemMessage;
 import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.tom.ServiceReplica;
 import java.net.InetAddress;
+import java.util.HashMap;
 
 import javax.crypto.SecretKey;
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.PBEKeySpec;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  *
  * @author alysson
  */
 public class ServersCommunicationLayer extends Thread {
+    
+    private Logger logger = LoggerFactory.getLogger(this.getClass());
+
 
     private ServerViewController controller;
     private LinkedBlockingQueue<SystemMessage> inQueue;
-    private Hashtable<Integer, ServerConnection> connections = new Hashtable<Integer, ServerConnection>();
+    private HashMap<Integer, ServerConnection> connections = new HashMap<>();
     private ServerSocket serverSocket;
     private int me;
     private boolean doWork = true;
@@ -183,7 +186,7 @@ public class ServersCommunicationLayer extends Thread {
         try {
             new ObjectOutputStream(bOut).writeObject(sm);
         } catch (IOException ex) {
-            Logger.getLogger(ServerConnection.class.getName()).log(Level.SEVERE, null, ex);
+            logger.error("Failed to serialize message", ex);
         }
 
         byte[] data = bOut.toByteArray();
@@ -201,14 +204,14 @@ public class ServersCommunicationLayer extends Thread {
                     //******* EDUARDO END **************//
                 }
             } catch (InterruptedException ex) {
-                ex.printStackTrace();
+                logger.error("Interruption while inserting message into inqueue",ex);
             }
         }
     }
 
     public void shutdown() {
         
-        System.out.println("Shutting down replica sockets");
+        logger.info("Shutting down replica sockets");
         
         doWork = false;
 
@@ -233,7 +236,7 @@ public class ServersCommunicationLayer extends Thread {
             try {
                 establishConnection(pc.s, pc.remoteId);
             } catch (Exception e) {
-                e.printStackTrace();
+                logger.error("Failed to estabilish connection to " + pc.remoteId,e);
             }
         }
 
@@ -267,19 +270,20 @@ public class ServersCommunicationLayer extends Thread {
                 //******* EDUARDO END **************//
 
             } catch (SocketTimeoutException ex) {
-            //timeout on the accept... do nothing
+            
+                logger.debug("Server socket timed out, retrying");
             } catch (IOException ex) {
-                Logger.getLogger(ServersCommunicationLayer.class.getName()).log(Level.SEVERE, null, ex);
+                logger.error("Problem during thread execution", ex);
             }
         }
 
         try {
             serverSocket.close();
         } catch (IOException ex) {
-            Logger.getLogger(ServersCommunicationLayer.class.getName()).log(Level.SEVERE, null, ex);
+            logger.error("Failed to close server socket", ex);
         }
 
-        Logger.getLogger(ServersCommunicationLayer.class.getName()).log(Level.INFO, "ServerCommunicationLayer stopped.");
+        logger.info("ServerCommunicationLayer stopped.");
     }
 
     //******* EDUARDO BEGIN **************//
@@ -308,7 +312,8 @@ public class ServersCommunicationLayer extends Thread {
         try {
             socket.setTcpNoDelay(true);
         } catch (SocketException ex) {
-            Logger.getLogger(ServersCommunicationLayer.class.getName()).log(Level.SEVERE, null, ex);
+            
+            LoggerFactory.getLogger(ServersCommunicationLayer.class).error("Failed to set TCPNODELAY", ex);
         }
     }
 

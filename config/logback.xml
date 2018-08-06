@@ -1,0 +1,47 @@
+<configuration debug="false"> 
+
+  <!-- Logging to console -->
+  <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender"> 
+    
+    <encoder>
+      <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+    </encoder>
+  </appender>
+
+  <!-- Logging to console wih minimal output -->
+  <appender name="MIN-STDOUT" class="ch.qos.logback.core.ConsoleAppender"> 
+    
+    <encoder>
+      <pattern> -- %msg%n</pattern>
+    </encoder>
+  </appender>
+
+  <!-- https://logback.qos.ch/manual/appenders.html#AsyncAppender
+  http://blog.takipi.com/how-to-instantly-improve-your-java-logging-with-7-logback-tweaks/
+   -->
+  <appender name="ASYNC" class="ch.qos.logback.classic.AsyncAppender">
+    <appender-ref ref="STDOUT" />
+    <queueSize>1000</queueSize>
+  </appender>
+
+
+  <root level="INFO">
+    <!-- To use async logging use ref="ASYNC" instead -->
+
+  </root>
+  
+  <logger name="bftsmart" level="INFO">
+
+    <appender-ref ref="MIN-STDOUT" />
+    <!--  <appender-ref ref="STDOUT" /> -->
+
+  </logger>
+
+  <logger name="io.netty" level="OFF">
+
+    <appender-ref ref="MIN-STDOUT" />
+   <!--  <appender-ref ref="STDOUT" /> -->
+
+  </logger>
+
+</configuration>

@@ -22,11 +22,14 @@ import java.util.Iterator;
 import java.util.concurrent.locks.ReentrantLock;
 
 import bftsmart.tom.core.messages.TOMMessage;
-import bftsmart.tom.util.Logger;
 import bftsmart.tom.util.TOMUtil;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class ClientData {
+    
+    private Logger logger = LoggerFactory.getLogger(this.getClass());
 
     ReentrantLock clientLock = new ReentrantLock();
 
@@ -59,9 +62,9 @@ public class ClientData {
             try {
                 signatureVerificator = Signature.getInstance("SHA1withRSA");
                 signatureVerificator.initVerify(publicKey);
-                Logger.println("Signature verifier initialized for client "+clientId);
+                logger.debug("Signature verifier initialized for client "+clientId);
             } catch (Exception ex) {
-                ex.printStackTrace();
+                logger.error("Failed to create client data object",ex);
             }
         }
     }
@@ -115,7 +118,7 @@ public class ClientData {
             try {
                 return TOMUtil.verifySignature(signatureVerificator, message, signature);
             } catch (SignatureException ex) {
-                System.err.println("Error in processing client "+clientId+" signature: "+ex.getMessage());
+                logger.error("Failed to verify signature", ex);
             }
         }
         return false;

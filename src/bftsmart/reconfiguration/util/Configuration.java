@@ -19,9 +19,10 @@ import java.io.BufferedReader;
 import java.io.FileReader;
 import java.math.BigInteger;
 import java.net.InetSocketAddress;
-import java.util.Hashtable;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.StringTokenizer;
+import org.slf4j.LoggerFactory;
 
 public class Configuration {
     
@@ -108,8 +109,7 @@ public class Configuration {
             }
             
         }catch(Exception e){
-            System.err.println("Wrong system.config file format.");
-            e.printStackTrace(System.out);
+            LoggerFactory.getLogger(this.getClass()).error("Wrong system.config file format.");
         }
     }
 
@@ -202,7 +202,7 @@ public class Configuration {
     }
     
     private void loadConfig(){
-        configs = new Hashtable<String, String>();
+        configs = new HashMap<>();
         try{
             if(configHome == null || configHome.equals("")){
                 configHome="config";
@@ -223,7 +223,7 @@ public class Configuration {
             fr.close();
             rd.close();
         }catch(Exception e){
-            e.printStackTrace(System.out);
+            LoggerFactory.getLogger(this.getClass()).error("Could not load configuration",e);
         }
     }
 }

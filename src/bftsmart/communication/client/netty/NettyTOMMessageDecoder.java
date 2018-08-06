@@ -31,17 +31,20 @@ import javax.crypto.SecretKey;
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.PBEKeySpec;
 
-import org.slf4j.LoggerFactory;
-
 import bftsmart.reconfiguration.ViewController;
 import bftsmart.tom.core.messages.TOMMessage;
-import bftsmart.tom.util.Logger;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  *
  * @author Paulo Sousa
  */
 public class NettyTOMMessageDecoder extends ByteToMessageDecoder {
+    
+    private Logger logger = LoggerFactory.getLogger(this.getClass());
+
 
     /**
      * number of measures used to calculate statistics
@@ -68,9 +71,6 @@ public class NettyTOMMessageDecoder extends ByteToMessageDecoder {
      //******* EDUARDO END **************//
     
     private boolean useMAC;
-
-    private org.slf4j.Logger logger = LoggerFactory.getLogger(NettyTOMMessageDecoder.class);
-
     
     public NettyTOMMessageDecoder(boolean isClient, Map sessionTable, int macLength, ViewController controller, ReentrantReadWriteLock rl, int signatureLength, boolean useMAC) {
         this.isClient = isClient;
@@ -81,7 +81,7 @@ public class NettyTOMMessageDecoder extends ByteToMessageDecoder {
         this.rl = rl;
         this.signatureSize = signatureLength;
         this.useMAC = useMAC;
-        bftsmart.tom.util.Logger.println("new NettyTOMMessageDecoder!!, isClient=" + isClient);
+        logger.debug("new NettyTOMMessageDecoder!!, isClient=" + isClient);
     }
 
     @Override
@@ -155,7 +155,7 @@ public class NettyTOMMessageDecoder extends ByteToMessageDecoder {
                 //verify MAC
                 if (useMAC) {
                     if (!verifyMAC(sm.getSender(), data, digest)) {
-                        System.out.println("MAC error: message discarded");
+                        logger.error("MAC error: message discarded");
                         return;
                     }
                 }
@@ -166,14 +166,14 @@ public class NettyTOMMessageDecoder extends ByteToMessageDecoder {
                     rl.readLock().unlock();
                     if (useMAC) {
                         if (!verifyMAC(sm.getSender(), data, digest)) {
-                            Logger.println("MAC error: message discarded");
+                            logger.debug("MAC error: message discarded");
                             return;
                         }
                     }
                 } else {
                     //creates MAC/publick key stuff if it's the first message received from the client
-                    bftsmart.tom.util.Logger.println("Creating MAC/public key stuff, first message from client" + sm.getSender());
-                    bftsmart.tom.util.Logger.println("sessionTable size=" + sessionTable.size());
+                    logger.debug("Creating MAC/public key stuff, first message from client" + sm.getSender());
+                    logger.debug("sessionTable size=" + sessionTable.size());
 
                     rl.readLock().unlock();
                     
@@ -191,20 +191,19 @@ public class NettyTOMMessageDecoder extends ByteToMessageDecoder {
                     rl.writeLock().lock();
 //                    logger.info("PUT INTO SESSIONTABLE - [client id]:"+sm.getSender()+" [channel]: "+cs.getChannel());
                     sessionTable.put(sm.getSender(), cs);
-                    bftsmart.tom.util.Logger.println("#active clients " + sessionTable.size());
+                    logger.debug("active clients " + sessionTable.size());
                     rl.writeLock().unlock();
                     if (useMAC && !verifyMAC(sm.getSender(), data, digest)) {
-                        Logger.println("MAC error: message discarded");
+                        logger.debug("MAC error: message discarded");
                         return;
                     }
                 }
             }
-            Logger.println("Decoded reply from " + sm.getSender() + " with sequence number " + sm.getSequence());
+            logger.debug("Decoded reply from " + sm.getSender() + " with sequence number " + sm.getSequence());
             list.add(sm);
         } catch (Exception ex) {
-            bftsmart.tom.util.Logger.println("Impossible to decode message: "+
-                    ex.getMessage());
-            ex.printStackTrace();
+            
+            logger.error("Failed to decode TOMMessage", ex);
         }
         return;
     }

@@ -22,7 +22,6 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 
 import bftsmart.tom.ServiceProxy;
-import bftsmart.tom.util.Logger;
 
 /**
  * Example client that updates a BFT replicated service (a counter).
@@ -40,8 +39,6 @@ public class CounterClient {
         }
 
         ServiceProxy counterProxy = new ServiceProxy(Integer.parseInt(args[0]));
-
-        Logger.debug = false;
         
         try {
 

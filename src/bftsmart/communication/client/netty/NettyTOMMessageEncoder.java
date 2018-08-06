@@ -20,7 +20,6 @@ import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToByteEncoder;
 
-import java.nio.channels.Channels;
 import java.util.Map;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -28,8 +27,13 @@ import javax.crypto.Mac;
 
 import bftsmart.tom.core.messages.TOMMessage;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 
 public class NettyTOMMessageEncoder extends MessageToByteEncoder<TOMMessage> {
+    
+    private Logger logger = LoggerFactory.getLogger(this.getClass());
     
     private boolean isClient;
     private Map sessionTable;
@@ -58,13 +62,13 @@ public class NettyTOMMessageEncoder extends MessageToByteEncoder<TOMMessage> {
             //signature was already produced before            
             signatureData = sm.serializedMessageSignature;
             if (signatureData.length != signatureLength)
-                System.out.println("WARNING: message signature has size "+signatureData.length+" and should have "+signatureLength);
+                logger.warn("Message signature has size "+signatureData.length+" and should have "+signatureLength);
         }
         
         if (useMAC) {
             macData = produceMAC(sm.destination, msgData, sm.getSender());
             if(macData == null) {
-            	System.out.println("uses MAC and the MAC returned is null. Won't write to channel");
+            	logger.warn("Uses MAC and the MAC returned is null. Won't write to channel");
             	return;
             }
         }
@@ -92,7 +96,7 @@ public class NettyTOMMessageEncoder extends MessageToByteEncoder<TOMMessage> {
     byte[] produceMAC(int id, byte[] data, int me) {
         NettyClientServerSession session = (NettyClientServerSession)sessionTable.get(id);
         if(session == null) {
-        	System.out.println("NettyTOMMessageEncoder.produceMAC(). session for client " + id + " is null");
+        	logger.warn("Session for client " + id + " is null");
         	return null;
         }
         Mac macSend = session.getMacSend();

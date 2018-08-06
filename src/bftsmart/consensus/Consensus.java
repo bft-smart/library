@@ -23,8 +23,8 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import bftsmart.tom.core.ExecutionManager;
 import bftsmart.reconfiguration.ServerViewController;
-import bftsmart.tom.util.Logger;
-
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 /**
@@ -32,6 +32,8 @@ import bftsmart.tom.util.Logger;
  * for the Byzantine fault model described in Cachin's 'Yet Another Visit to Paxos' (April 2011)
  */
 public class Consensus {
+
+    private Logger logger = LoggerFactory.getLogger(this.getClass());
 
     private ExecutionManager manager; // Execution manager for this replica's consensus instances
 
@@ -312,7 +314,7 @@ public class Consensus {
             decisionEpoch = epoch.getTimestamp();
             decision.setDecisionEpoch(epoch);
             if (deliver) {
-                Logger.println("(Consensus.decided) Delivering decision from consensus " + getId() + " to the TOMLayer/DeliveryThread");
+                logger.debug("Delivering decision from consensus " + getId() + " to the TOMLayer/DeliveryThread");
                 manager.getTOMLayer().decided(decision);
             }
         }

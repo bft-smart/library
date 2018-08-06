@@ -23,7 +23,12 @@ import bftsmart.statemanagement.ApplicationState;
 import bftsmart.tom.server.Recoverable;
 import bftsmart.tom.server.defaultservices.durability.DurabilityCoordinator;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class StateSenderServer implements Runnable {
+    
+     private Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	private ServerSocket server;
 	private ApplicationState state;
@@ -49,7 +54,7 @@ public class StateSenderServer implements Runnable {
 			server = new ServerSocket(port);
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
-			e.printStackTrace();
+			logger.error("Could not open server socket",e);
 		}
 	}
 
@@ -62,7 +67,7 @@ public class StateSenderServer implements Runnable {
 			sender.setState(state);
 			new Thread(sender).start();
 		} catch (IOException e) {
-			e.printStackTrace();
+			logger.error("Problem executing StateSenderServer thread",e);
 		}
 	}
 
