@@ -27,8 +27,16 @@ public class Reconfiguration {
 
     private ReconfigureRequest request;
     private ServiceProxy proxy;
+    private String configHome;
     private int id;
-    
+
+    public Reconfiguration(int id, String configHome) {
+        this.id = id;
+        this.configHome = configHome;
+        //proxy = new ServiceProxy(id);
+        //request = new ReconfigureRequest(id);
+    }
+
     public Reconfiguration(int id) {
         this.id = id;
          //proxy = new ServiceProxy(id);
@@ -37,7 +45,12 @@ public class Reconfiguration {
     
     public void connect(){
         if(proxy == null){
-            proxy = new ServiceProxy(id);
+            if (configHome != null) {
+                proxy = new ServiceProxy(id, configHome);
+            }
+            else {
+                proxy = new ServiceProxy(id);
+            }
         }
     }
     
