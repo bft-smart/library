@@ -23,6 +23,7 @@ import java.security.KeyFactory;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.security.cert.CertificateException;
 import java.security.spec.EncodedKeySpec;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.PKCS8EncodedKeySpec;
@@ -79,7 +80,7 @@ public class RSAKeyLoader implements KeyLoader {
 	 * @return the PublicKey loaded from config/keys/publickey<id>
 	 * @throws Exception problems reading or parsing the key
 	 */
-	public PublicKey loadPublicKey(int id) throws IOException, NoSuchAlgorithmException, InvalidKeySpecException {
+	public PublicKey loadPublicKey(int id) throws IOException, NoSuchAlgorithmException, InvalidKeySpecException, CertificateException {
             
                 if (defaultKeys) {
                     return getPublicKeyFromString(RSAKeyLoader.DEFAULT_UKEY);
@@ -98,7 +99,7 @@ public class RSAKeyLoader implements KeyLoader {
 		return ret;
 	}
         
-	public PublicKey loadPublicKey() throws IOException, NoSuchAlgorithmException, InvalidKeySpecException {
+	public PublicKey loadPublicKey() throws IOException, NoSuchAlgorithmException, InvalidKeySpecException, CertificateException {
             
                 if (defaultKeys) {                    
                     return getPublicKeyFromString(RSAKeyLoader.DEFAULT_UKEY);
