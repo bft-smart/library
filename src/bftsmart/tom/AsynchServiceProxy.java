@@ -5,6 +5,7 @@ import bftsmart.reconfiguration.views.View;
 import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.core.messages.TOMMessageType;
 import bftsmart.tom.util.Extractor;
+import bftsmart.tom.util.KeyLoader;
 import bftsmart.tom.util.TOMUtil;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -50,9 +51,15 @@ public class AsynchServiceProxy extends ServiceProxy {
         init();
     }
 
+    public AsynchServiceProxy(int processId, String configHome, KeyLoader loader) {
+        super(processId, configHome, loader);
+        init();
+    }
+    
     public AsynchServiceProxy(int processId, String configHome,
-            Comparator<byte[]> replyComparator, Extractor replyExtractor) {
-        super(processId, configHome, replyComparator, replyExtractor);
+            Comparator<byte[]> replyComparator, Extractor replyExtractor, KeyLoader loader) {
+        
+        super(processId, configHome, replyComparator, replyExtractor, loader);
         init();
     }
 

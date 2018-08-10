@@ -15,12 +15,16 @@ limitations under the License.
 */
 package bftsmart.reconfiguration.util;
 
+import bftsmart.tom.util.KeyLoader;
 import java.io.BufferedReader;
 import java.io.FileReader;
+import java.io.IOException;
 import java.security.KeyFactory;
+import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.spec.EncodedKeySpec;
+import java.security.spec.InvalidKeySpecException;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 import org.apache.commons.codec.binary.Base64;
@@ -29,7 +33,7 @@ import org.apache.commons.codec.binary.Base64;
  * Used to load JCA public and private keys from conf/keys/publickey<id> and
  * conf/keys/privatekey<id>
  */
-public class RSAKeyLoader {
+public class RSAKeyLoader implements KeyLoader {
 
 	private String path;
         private int id;
@@ -75,7 +79,7 @@ public class RSAKeyLoader {
 	 * @return the PublicKey loaded from config/keys/publickey<id>
 	 * @throws Exception problems reading or parsing the key
 	 */
-	public PublicKey loadPublicKey(int id) throws Exception {
+	public PublicKey loadPublicKey(int id) throws IOException, NoSuchAlgorithmException, InvalidKeySpecException {
             
                 if (defaultKeys) {
                     return getPublicKeyFromString(RSAKeyLoader.DEFAULT_UKEY);
@@ -94,7 +98,7 @@ public class RSAKeyLoader {
 		return ret;
 	}
         
-	public PublicKey loadPublicKey() throws Exception {
+	public PublicKey loadPublicKey() throws IOException, NoSuchAlgorithmException, InvalidKeySpecException {
             
                 if (defaultKeys) {                    
                     return getPublicKeyFromString(RSAKeyLoader.DEFAULT_UKEY);
@@ -119,7 +123,7 @@ public class RSAKeyLoader {
 	 * @return the PrivateKey loaded from config/keys/publickey<conf.getProcessId()>
 	 * @throws Exception problems reading or parsing the key
 	 */
-	public PrivateKey loadPrivateKey() throws Exception {
+	public PrivateKey loadPrivateKey() throws IOException, NoSuchAlgorithmException, InvalidKeySpecException {
             
                 if (defaultKeys) {
                     return getPrivateKeyFromString(RSAKeyLoader.DEFAULT_PKEY);
@@ -141,14 +145,14 @@ public class RSAKeyLoader {
 	}
 
 	//utility methods for going from string to public/private key
-	private PrivateKey getPrivateKeyFromString(String key) throws Exception {
+	private PrivateKey getPrivateKeyFromString(String key) throws NoSuchAlgorithmException, InvalidKeySpecException {
 		KeyFactory keyFactory = KeyFactory.getInstance("RSA");
 		EncodedKeySpec privateKeySpec = new PKCS8EncodedKeySpec(Base64.decodeBase64(key));
 		PrivateKey privateKey = keyFactory.generatePrivate(privateKeySpec);
 		return privateKey;
 	}
 
-	private PublicKey getPublicKeyFromString(String key) throws Exception {
+	private PublicKey getPublicKeyFromString(String key) throws NoSuchAlgorithmException, InvalidKeySpecException {
 		KeyFactory keyFactory = KeyFactory.getInstance("RSA");
 		EncodedKeySpec publicKeySpec = new X509EncodedKeySpec(Base64.decodeBase64(key));
 		PublicKey publicKey = keyFactory.generatePublic(publicKeySpec);

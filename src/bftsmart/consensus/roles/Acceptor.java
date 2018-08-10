@@ -340,9 +340,9 @@ public final class Acceptor {
         //consensus instance, and so their MAC will be outdated and useless)
         if (hasReconf) {
 
-            PrivateKey RSAprivKey = controller.getStaticConf().getRSAPrivateKey();
+            PrivateKey privKey = controller.getStaticConf().getPrivateKey();
 
-            byte[] signature = TOMUtil.signMessage(RSAprivKey, data);
+            byte[] signature = TOMUtil.signMessage(privKey, data);
 
             cm.setProof(signature);
 

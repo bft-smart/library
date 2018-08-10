@@ -15,8 +15,7 @@ limitations under the License.
 */
 package bftsmart.reconfiguration.util;
 
-import java.security.PrivateKey;
-import java.security.PublicKey;
+import bftsmart.tom.util.KeyLoader;
 import java.util.StringTokenizer;
 
 import java.util.regex.Pattern;
@@ -42,7 +41,6 @@ public class TOMConfiguration extends Configuration {
     protected int outQueueSize;
     protected boolean shutdownHookEnabled;
     protected boolean useSenderThread;
-    protected RSAKeyLoader rsaLoader;
     private int numNIOThreads;
     private int useMACs;
     private int useSignatures;
@@ -65,19 +63,15 @@ public class TOMConfiguration extends Configuration {
     private String bindAddress;
     
     /** Creates a new instance of TOMConfiguration */
-    public TOMConfiguration(int processId) {
-        super(processId);
+    public TOMConfiguration(int processId, KeyLoader loader) {
+        super(processId, loader);
     }
 
     /** Creates a new instance of TOMConfiguration */
-    public TOMConfiguration(int processId, String configHome) {
-        super(processId, configHome);
+    public TOMConfiguration(int processId, String configHome, KeyLoader loader) {
+        super(processId, configHome, loader);
     }
 
-    /** Creates a new instance of TOMConfiguration */
-    public TOMConfiguration(int processId, String configHome, String hostsFileName) {
-        super(processId, configHome, hostsFileName);
-    }
 
     @Override
     protected void init() {
@@ -342,7 +336,6 @@ public class TOMConfiguration extends Configuration {
                     sameBatchSize = false;
             }
             
-            rsaLoader = new RSAKeyLoader(processId, TOMConfiguration.configHome, defaultKeys);
         } catch (Exception e) {
             logger.error("Could not parse system configuration file",e);
         }
@@ -493,35 +486,6 @@ public class TOMConfiguration extends Configuration {
      */
     public int getUseControlFlow() {
         return useControlFlow;
-    }
-
-    public PublicKey getRSAPublicKey() {
-        try {
-            return rsaLoader.loadPublicKey();
-        } catch (Exception e) {
-            logger.error("Could not load public key",e);
-            return null;
-        }
-
-    }
-
-    public PublicKey getRSAPublicKey(int id) {
-        try {
-            return rsaLoader.loadPublicKey(id);
-        } catch (Exception e) {
-            logger.error("Could not load public key",e);
-            return null;
-        }
-
-    }
-    
-    public PrivateKey getRSAPrivateKey() {
-        try {
-            return rsaLoader.loadPrivateKey();
-        } catch (Exception e) {
-            logger.error("Could not load private key",e);
-            return null;
-        }
     }
 
     public boolean isBFT(){

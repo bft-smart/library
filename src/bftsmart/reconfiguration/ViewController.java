@@ -21,6 +21,7 @@ import bftsmart.reconfiguration.util.TOMConfiguration;
 import bftsmart.reconfiguration.views.DefaultViewStorage;
 import bftsmart.reconfiguration.views.View;
 import bftsmart.reconfiguration.views.ViewStorage;
+import bftsmart.tom.util.KeyLoader;
 
 /**
  *
@@ -33,13 +34,13 @@ public class ViewController {
     private TOMConfiguration staticConf;
     private ViewStorage viewStore;
 
-    public ViewController(int procId) {
-        this.staticConf = new TOMConfiguration(procId);
+    public ViewController(int procId, KeyLoader loader) {
+        this.staticConf = new TOMConfiguration(procId, loader);
     }
 
     
-    public ViewController(int procId, String configHome) {
-        this.staticConf = new TOMConfiguration(procId, configHome);
+    public ViewController(int procId, String configHome, KeyLoader loader) {
+        this.staticConf = new TOMConfiguration(procId, configHome, loader);
     }
 
     

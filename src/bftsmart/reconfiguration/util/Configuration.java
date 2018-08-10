@@ -15,16 +15,23 @@ limitations under the License.
 */
 package bftsmart.reconfiguration.util;
 
+import bftsmart.tom.util.KeyLoader;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.math.BigInteger;
 import java.net.InetSocketAddress;
+import java.security.PrivateKey;
+import java.security.PublicKey;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.StringTokenizer;
+
 import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
 
 public class Configuration {
+    
+    private Logger logger = LoggerFactory.getLogger(this.getClass());
     
     protected int processId;
     protected boolean channelsBlocking;
@@ -33,6 +40,7 @@ public class Configuration {
     protected int autoConnectLimit;
     protected Map<String, String> configs;
     protected HostsConfig hosts;
+    protected KeyLoader keyLoader;
            
     private String hmacAlgorithm = "HmacSha1";
     private int hmacSize = 160;
@@ -44,21 +52,16 @@ public class Configuration {
 
     protected boolean defaultKeys = false;
 
-    public Configuration(int procId){
+    public Configuration(int procId, KeyLoader loader){
         processId = procId;
+        keyLoader = loader;
         init();
     }
     
-    public Configuration(int processId, String configHomeParam){
-        this.processId = processId;
+    public Configuration(int procId, String configHomeParam, KeyLoader loader){
+        processId = procId;
         configHome = configHomeParam;
-        init();
-    }
-
-     public Configuration(int processId, String configHomeParam, String hostsFileNameParam){
-        this.processId = processId;
-        configHome = configHomeParam;
-        hostsFileName = hostsFileNameParam;
+        keyLoader = loader;
         init();
     }
     
@@ -108,6 +111,8 @@ public class Configuration {
                 DH_G = new BigInteger(s);
             }
             
+            if (keyLoader == null) keyLoader = new RSAKeyLoader(processId, TOMConfiguration.configHome, defaultKeys);
+
         }catch(Exception e){
             LoggerFactory.getLogger(this.getClass()).error("Wrong system.config file format.");
         }
@@ -199,6 +204,35 @@ public class Configuration {
   
     public final void addHostInfo(int id, String host, int port){
         this.hosts.add(id,host,port);
+    }
+    
+    public PublicKey getPublicKey() {
+        try {
+            return keyLoader.loadPublicKey();
+        } catch (Exception e) {
+            logger.error("Could not load public key",e);
+            return null;
+        }
+
+    }
+
+    public PublicKey getPublicKey(int id) {
+        try {
+            return keyLoader.loadPublicKey(id);
+        } catch (Exception e) {
+            logger.error("Could not load public key",e);
+            return null;
+        }
+
+    }
+    
+    public PrivateKey getPrivateKey() {
+        try {
+            return keyLoader.loadPrivateKey();
+        } catch (Exception e) {
+            logger.error("Could not load private key",e);
+            return null;
+        }
     }
     
     private void loadConfig(){

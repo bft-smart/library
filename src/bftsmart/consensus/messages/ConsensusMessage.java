@@ -33,7 +33,7 @@ public class ConsensusMessage extends SystemMessage {
     private int paxosType; // Message type
     private byte[] value = null; // Value used when message type is PROPOSE
     private Object proof; // Proof used when message type is COLLECT
-                              // Can be either a MAC vector or a RSA signature
+                              // Can be either a MAC vector or a signature
 
     /**
      * Creates a consensus message. Not used. TODO: How about making it private?

@@ -43,6 +43,7 @@ import bftsmart.tom.server.RequestVerifier;
 import bftsmart.tom.server.SingleExecutable;
 
 import bftsmart.tom.server.defaultservices.DefaultReplier;
+import bftsmart.tom.util.KeyLoader;
 import bftsmart.tom.util.ShutdownHookThread;
 import bftsmart.tom.util.TOMUtil;
 
@@ -86,7 +87,7 @@ public class ServiceReplica {
      * @param recoverer Recoverer
      */
     public ServiceReplica(int id, Executable executor, Recoverable recoverer) {
-        this(id, "", executor, recoverer, null, new DefaultReplier());
+        this(id, "", executor, recoverer, null, new DefaultReplier(), null);
     }
 
     /**
@@ -98,7 +99,7 @@ public class ServiceReplica {
      * @param verifier Requests verifier
      */
     public ServiceReplica(int id, Executable executor, Recoverable recoverer, RequestVerifier verifier) {
-        this(id, "", executor, recoverer, verifier, new DefaultReplier());
+        this(id, "", executor, recoverer, verifier, new DefaultReplier(), null);
     }
     
     /**
@@ -111,7 +112,11 @@ public class ServiceReplica {
      * @param replier Replier
      */
     public ServiceReplica(int id, Executable executor, Recoverable recoverer, RequestVerifier verifier, Replier replier) {
-        this(id, "", executor, recoverer, verifier, replier);
+        this(id, "", executor, recoverer, verifier, replier, null);
+    }
+    
+    public ServiceReplica(int id, Executable executor, Recoverable recoverer, RequestVerifier verifier, Replier replier, KeyLoader loader) {
+        this(id, "", executor, recoverer, verifier, replier, loader);
     }
     /**
      * Constructor
@@ -123,9 +128,9 @@ public class ServiceReplica {
      * @param verifier Requests verifier
      * @param replier Replier
      */
-    public ServiceReplica(int id, String configHome, Executable executor, Recoverable recoverer, RequestVerifier verifier, Replier replier) {
+    public ServiceReplica(int id, String configHome, Executable executor, Recoverable recoverer, RequestVerifier verifier, Replier replier, KeyLoader loader) {
         this.id = id;
-        this.SVController = new ServerViewController(id, configHome);
+        this.SVController = new ServerViewController(id, configHome, loader);
         this.executor = executor;
         this.recoverer = recoverer;
         this.replier = (replier != null ? replier : new DefaultReplier());

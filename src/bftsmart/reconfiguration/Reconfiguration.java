@@ -64,7 +64,7 @@ public class Reconfiguration {
     }
     
     public ReconfigureReply execute(){
-        byte[] signature = TOMUtil.signMessage(proxy.getViewManager().getStaticConf().getRSAPrivateKey(),
+        byte[] signature = TOMUtil.signMessage(proxy.getViewManager().getStaticConf().getPrivateKey(),
                                                                             request.toString().getBytes());
         request.setSignature(signature);
         byte[] reply = proxy.invoke(TOMUtil.getBytes(request), TOMMessageType.RECONFIG);

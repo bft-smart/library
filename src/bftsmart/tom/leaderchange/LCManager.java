@@ -816,7 +816,7 @@ public class LCManager {
         if (tomLayer.controller.getLastView() != null) certificateLastView = (2*tomLayer.controller.getLastView().getF()) + 1;
         int countValid = 0;
         SecretKey secretKey = null;
-        PublicKey pubRSAKey = null;
+        PublicKey pubKey = null;
         
         HashSet<Integer> alreadyCounted = new HashSet<>(); //stores replica IDs that were already counted
             
@@ -862,11 +862,11 @@ public class LCManager {
             } else if (consMsg.getProof() instanceof byte[]) { // certificate is made of signatures
                 
                 logger.debug("Proof made of Signatures");
-                pubRSAKey = SVController.getStaticConf().getRSAPublicKey(consMsg.getSender());
+                pubKey = SVController.getStaticConf().getPublicKey(consMsg.getSender());
                    
                 byte[] signature = (byte[]) consMsg.getProof();
                             
-                if (TOMUtil.verifySignature(pubRSAKey, data, signature) && !alreadyCounted.contains(consMsg.getSender())) {
+                if (TOMUtil.verifySignature(pubKey, data, signature) && !alreadyCounted.contains(consMsg.getSender())) {
                     
                     alreadyCounted.add(consMsg.getSender());
                     countValid++;
@@ -881,11 +881,11 @@ public class LCManager {
         // otherwise, use certificate for the current view
         // To understand why this is important, check the comments in Acceptor.computeWrite()
                 
-        if (certificateLastView != -1 && pubRSAKey != null)
+        if (certificateLastView != -1 && pubKey != null)
             logger.debug("Computing certificate based on previous view");
         
         //return countValid >= certificateCurrentView;
-        return countValid >=  (certificateLastView != -1 && pubRSAKey != null ? certificateLastView : certificateCurrentView);
+        return countValid >=  (certificateLastView != -1 && pubKey != null ? certificateLastView : certificateCurrentView);
     }
 
     /**

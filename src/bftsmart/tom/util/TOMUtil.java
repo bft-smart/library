@@ -60,7 +60,7 @@ public class TOMUtil {
             return signatureSize;
         }
 
-        byte[] signature = signMessage(controller.getStaticConf().getRSAPrivateKey(),
+        byte[] signature = signMessage(controller.getStaticConf().getPrivateKey(),
                 "a".getBytes());
 
         if (signature != null) {

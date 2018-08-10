@@ -27,6 +27,7 @@ import java.util.StringTokenizer;
 
 import bftsmart.communication.server.ServerConnection;
 import bftsmart.reconfiguration.views.View;
+import bftsmart.tom.util.KeyLoader;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,13 +48,13 @@ public class ViewManager {
     //in the system will execute the reconfiguration request
     private List<Integer> addIds = new LinkedList<Integer>();
 
-    public ViewManager() {
-        this("");
+    public ViewManager(KeyLoader loader) {
+        this("", loader);
     }
 
-    public ViewManager(String configHome) {
+    public ViewManager(String configHome, KeyLoader loader) {
         this.id = loadID(configHome);
-        this.controller = new ServerViewController(id, configHome);
+        this.controller = new ServerViewController(id, configHome, loader);
         this.rec = new Reconfiguration(id);
     }
 
@@ -155,45 +156,4 @@ public class ViewManager {
     public void close() {
         rec.close();
     }
-
-    public static void main(String[] args) {
-
-        ViewManager viewManager = null;
-
-        if (args.length > 0) {
-            viewManager = new ViewManager(args[0]);
-        } else {
-            viewManager = new ViewManager("");
-        }
-        
-        Scanner scan = new Scanner(System.in);
-        String str = null;
-        do {
-            str = scan.nextLine();
-            String cmd = "";
-            int arg = -1;
-            try {
-                StringTokenizer token = new StringTokenizer(str);
-                cmd = token.nextToken();
-                arg = Integer.parseInt(token.nextToken());
-            } catch (Exception e) {
-            }
-
-            if (arg >= 0) {
-                if (cmd.equals("add")) {
-
-                    int port = (arg * 10) + 11000;
-                    viewManager.addServer(arg, "127.0.0.1", port);
-                } else if (cmd.equals("rem")) {
-                    viewManager.removeServer(arg);
-                }
-
-                viewManager.executeUpdates();
-            }
-
-        } while (!str.equals("exit"));
-        viewManager.close();
-        System.exit(0);
-    }
-    
 }

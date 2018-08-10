@@ -364,7 +364,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
         //produce signature
         if (sign && sm.serializedMessageSignature == null) {
             sm.serializedMessageSignature = signMessage(
-                    controller.getStaticConf().getRSAPrivateKey(), sm.serializedMessage);
+                    controller.getStaticConf().getPrivateKey(), sm.serializedMessage);
         }
                 
         int sent = 0;
@@ -418,7 +418,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 
         //******* EDUARDO BEGIN **************//
         //produce signature
-        byte[] data2 = signMessage(controller.getStaticConf().getRSAPrivateKey(), data);
+        byte[] data2 = signMessage(controller.getStaticConf().getPrivateKey(), data);
         //******* EDUARDO END **************//
 
         sm.serializedMessageSignature = data2;

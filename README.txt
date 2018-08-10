@@ -70,8 +70,8 @@ Important tip #7: regardless of the chosen protocol, developers must avoid using
 
 The library also implements a reconfiguration protocol that can be used to add/remove replicas from the initial group. You can add/remove replicas on-the-fly by executing the following commands:
 
-./runscripts/smartrun.sh bftsmart.reconfiguration.VMServices <smart id> <ip address> <port> (to add a replica to the group)
-./runscripts/smartrun.sh bftsmart.reconfiguration.VMServices <smart id> (to remove a replica from the group)
+./runscripts/smartrun.sh bftsmart.reconfiguration.util.DefaultVMServices <smart id> <ip address> <port> (to add a replica to the group)
+./runscripts/smartrun.sh bftsmart.reconfiguration.util.DefaultVMServices <smart id> (to remove a replica from the group)
 
 Important tip #8: everytime you use the reconfiguration protocol, you must make sure that all replicas and the host where you invoke the above commands have the latest 'config/currentView' file. The current implementation of BFT-SMaRt does not provide any mechanism to distribute this file, so you will need to distribute it on your own (e.g., using the 'scp' command). You also need to make sure that any client that starts executing can read from the latest config/currentView file.
 

@@ -24,6 +24,7 @@ import java.util.StringTokenizer;
 import bftsmart.reconfiguration.views.View;
 import bftsmart.tom.core.TOMLayer;
 import bftsmart.tom.core.messages.TOMMessage;
+import bftsmart.tom.util.KeyLoader;
 import bftsmart.tom.util.TOMUtil;
 
 import org.slf4j.Logger;
@@ -49,8 +50,8 @@ public class ServerViewController extends ViewController {
     private TOMLayer tomLayer;
    // protected View initialView;
     
-    public ServerViewController(int procId) {
-        this(procId,"");
+    public ServerViewController(int procId, KeyLoader loader) {
+        this(procId,"", loader);
         /*super(procId);
         initialView = new View(0, getStaticConf().getInitialView(), 
                 getStaticConf().getF(), getInitAdddresses());
@@ -58,8 +59,8 @@ public class ServerViewController extends ViewController {
         reconfigureTo(initialView);*/
     }
 
-    public ServerViewController(int procId, String configHome) {
-        super(procId, configHome);
+    public ServerViewController(int procId, String configHome, KeyLoader loader) {
+        super(procId, configHome, loader);
         View cv = getViewStore().readView();
         if(cv == null){
             
@@ -107,7 +108,7 @@ public class ServerViewController extends ViewController {
 
     public void enqueueUpdate(TOMMessage up) {
         ReconfigureRequest request = (ReconfigureRequest) TOMUtil.getObject(up.getContent());
-        if (TOMUtil.verifySignature(getStaticConf().getRSAPublicKey(request.getSender()),
+        if (TOMUtil.verifySignature(getStaticConf().getPublicKey(request.getSender()),
                 request.toString().getBytes(), request.getSignature())) {
             if (request.getSender() == getStaticConf().getTTPId()) {
                 this.updates.add(up);

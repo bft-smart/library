@@ -332,11 +332,11 @@ public class ServerConnection {
             //DataInputStream dis = new DataInputStream(socket.getInputStream());
             //}
             
-            //Derive DH private key from replica's own RSA private key
+            //Derive DH private key from replica's own private key
             
-            PrivateKey RSAprivKey = controller.getStaticConf().getRSAPrivateKey();
+            PrivateKey privKey = controller.getStaticConf().getPrivateKey();
             BigInteger DHPrivKey =
-                    new BigInteger(RSAprivKey.getEncoded());
+                    new BigInteger(privKey.getEncoded());
             
             //Create DH public key
             BigInteger myDHPubKey =
@@ -345,7 +345,7 @@ public class ServerConnection {
             //turn it into a byte array
             byte[] bytes = myDHPubKey.toByteArray();
             
-            byte[] signature = TOMUtil.signMessage(RSAprivKey, bytes);
+            byte[] signature = TOMUtil.signMessage(privKey, bytes);
             
             //send my DH public key and signature
             socketOutStream.writeInt(bytes.length);
@@ -376,9 +376,9 @@ public class ServerConnection {
             byte[] remote_Signature = bytes;
             
             //verify signature
-            PublicKey remoteRSAPubkey = controller.getStaticConf().getRSAPublicKey(remoteId);
+            PublicKey remotePubkey = controller.getStaticConf().getPublicKey(remoteId);
             
-            if (!TOMUtil.verifySignature(remoteRSAPubkey, remote_Bytes, remote_Signature)) {
+            if (!TOMUtil.verifySignature(remotePubkey, remote_Bytes, remote_Signature)) {
                 
                 logger.warn(remoteId + " sent an invalid signature!");
                 shutdown();
