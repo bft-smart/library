@@ -43,6 +43,7 @@ import bftsmart.tom.server.Recoverable;
 import bftsmart.tom.server.RequestVerifier;
 import bftsmart.tom.util.BatchBuilder;
 import bftsmart.tom.util.BatchReader;
+import bftsmart.tom.util.TOMUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -136,13 +137,13 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         }
 
         try {
-            this.md = MessageDigest.getInstance("MD5"); // TODO: shouldn't it be SHA?
+            this.md = TOMUtil.getHashEngine();
         } catch (Exception e) {
             logger.error("Failed to get message digest engine",e);
         }
 
         try {
-            this.engine = Signature.getInstance("SHA1withRSA");
+            this.engine = TOMUtil.getSigEngine();
         } catch (Exception e) {
             logger.error("Failed to get signature engine",e);
         }

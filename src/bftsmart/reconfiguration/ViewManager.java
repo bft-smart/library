@@ -28,6 +28,7 @@ import java.util.StringTokenizer;
 import bftsmart.communication.server.ServerConnection;
 import bftsmart.reconfiguration.views.View;
 import bftsmart.tom.util.KeyLoader;
+import java.security.Provider;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,13 +49,13 @@ public class ViewManager {
     //in the system will execute the reconfiguration request
     private List<Integer> addIds = new LinkedList<Integer>();
 
-    public ViewManager(KeyLoader loader) {
-        this("", loader);
+    public ViewManager(KeyLoader loader, Provider provider) {
+        this("", loader, provider);
     }
 
-    public ViewManager(String configHome, KeyLoader loader) {
+    public ViewManager(String configHome, KeyLoader loader, Provider provider) {
         this.id = loadID(configHome);
-        this.controller = new ServerViewController(id, configHome, loader);
+        this.controller = new ServerViewController(id, configHome, loader, provider);
         this.rec = new Reconfiguration(id);
     }
 

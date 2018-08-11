@@ -18,6 +18,7 @@ package bftsmart.reconfiguration;
 import java.net.InetSocketAddress;
 import bftsmart.reconfiguration.views.View;
 import bftsmart.tom.util.KeyLoader;
+import java.security.Provider;
 
 /**
  *
@@ -25,8 +26,8 @@ import bftsmart.tom.util.KeyLoader;
  */
 public class ClientViewController extends ViewController {
 
-    public ClientViewController(int procId, KeyLoader loader) {
-        super(procId, loader);
+    public ClientViewController(int procId, KeyLoader loader, Provider provider) {
+        super(procId, loader, provider);
         View cv = getViewStore().readView();
         if(cv == null){
             reconfigureTo(new View(0, getStaticConf().getInitialView(), 
@@ -36,8 +37,8 @@ public class ClientViewController extends ViewController {
         }
     }
 
-    public ClientViewController(int procId, String configHome, KeyLoader loader) {
-        super(procId, configHome, loader);
+    public ClientViewController(int procId, String configHome, KeyLoader loader, Provider provider) {
+        super(procId, configHome, loader, provider);
         View cv = getViewStore().readView();
         if(cv == null){
             reconfigureTo(new View(0, getStaticConf().getInitialView(), 

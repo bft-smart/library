@@ -28,6 +28,7 @@ import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.core.messages.TOMMessageType;
 import bftsmart.tom.util.KeyLoader;
 import java.io.Closeable;
+import java.security.Provider;
 
 /**
  * This class is used to multicast messages to replicas and receive replies.
@@ -74,13 +75,13 @@ public abstract class TOMSender implements ReplyReceiver, Closeable, AutoCloseab
 	 *
 	 * @param processId ID of the process
 	 */
-	public void init(int processId, KeyLoader loader) {
-		this.viewController = new ClientViewController(processId, loader);
+	public void init(int processId, KeyLoader loader, Provider provider) {
+		this.viewController = new ClientViewController(processId, loader, provider);
 		startsCS(processId);
 	}
 
-	public void init(int processId, String configHome, KeyLoader loader) {
-		this.viewController = new ClientViewController(processId,configHome, loader);
+	public void init(int processId, String configHome, KeyLoader loader, Provider provider) {
+		this.viewController = new ClientViewController(processId,configHome, loader, provider);
 		startsCS(processId);
 	}
 

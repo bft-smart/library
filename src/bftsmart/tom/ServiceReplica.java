@@ -46,6 +46,7 @@ import bftsmart.tom.server.defaultservices.DefaultReplier;
 import bftsmart.tom.util.KeyLoader;
 import bftsmart.tom.util.ShutdownHookThread;
 import bftsmart.tom.util.TOMUtil;
+import java.security.Provider;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -87,7 +88,7 @@ public class ServiceReplica {
      * @param recoverer Recoverer
      */
     public ServiceReplica(int id, Executable executor, Recoverable recoverer) {
-        this(id, "", executor, recoverer, null, new DefaultReplier(), null);
+        this(id, "", executor, recoverer, null, new DefaultReplier(), null, null);
     }
 
     /**
@@ -99,7 +100,7 @@ public class ServiceReplica {
      * @param verifier Requests verifier
      */
     public ServiceReplica(int id, Executable executor, Recoverable recoverer, RequestVerifier verifier) {
-        this(id, "", executor, recoverer, verifier, new DefaultReplier(), null);
+        this(id, "", executor, recoverer, verifier, new DefaultReplier(), null, null);
     }
     
     /**
@@ -112,11 +113,11 @@ public class ServiceReplica {
      * @param replier Replier
      */
     public ServiceReplica(int id, Executable executor, Recoverable recoverer, RequestVerifier verifier, Replier replier) {
-        this(id, "", executor, recoverer, verifier, replier, null);
+        this(id, "", executor, recoverer, verifier, replier, null, null);
     }
     
-    public ServiceReplica(int id, Executable executor, Recoverable recoverer, RequestVerifier verifier, Replier replier, KeyLoader loader) {
-        this(id, "", executor, recoverer, verifier, replier, loader);
+    public ServiceReplica(int id, Executable executor, Recoverable recoverer, RequestVerifier verifier, Replier replier, KeyLoader loader, Provider provider) {
+        this(id, "", executor, recoverer, verifier, replier, loader, provider);
     }
     /**
      * Constructor
@@ -128,9 +129,9 @@ public class ServiceReplica {
      * @param verifier Requests verifier
      * @param replier Replier
      */
-    public ServiceReplica(int id, String configHome, Executable executor, Recoverable recoverer, RequestVerifier verifier, Replier replier, KeyLoader loader) {
+    public ServiceReplica(int id, String configHome, Executable executor, Recoverable recoverer, RequestVerifier verifier, Replier replier, KeyLoader loader, Provider provider) {
         this.id = id;
-        this.SVController = new ServerViewController(id, configHome, loader);
+        this.SVController = new ServerViewController(id, configHome, loader, provider);
         this.executor = executor;
         this.recoverer = recoverer;
         this.replier = (replier != null ? replier : new DefaultReplier());

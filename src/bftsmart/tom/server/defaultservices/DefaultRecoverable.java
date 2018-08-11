@@ -32,6 +32,7 @@ import bftsmart.tom.MessageContext;
 import bftsmart.tom.ReplicaContext;
 import bftsmart.tom.server.BatchExecutable;
 import bftsmart.tom.server.Recoverable;
+import bftsmart.tom.util.TOMUtil;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,7 +61,7 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
     public DefaultRecoverable() {
 
         try {
-            md = MessageDigest.getInstance("MD5"); // TODO: shouldn't it be SHA?
+            md = TOMUtil.getHashEngine();
         } catch (NoSuchAlgorithmException ex) {
             LoggerFactory.getLogger(this.getClass()).error("Failed to create DefaultRecoverable", ex);
         }

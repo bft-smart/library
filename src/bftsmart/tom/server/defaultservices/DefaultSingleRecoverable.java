@@ -31,6 +31,7 @@ import bftsmart.tom.MessageContext;
 import bftsmart.tom.ReplicaContext;
 import bftsmart.tom.server.Recoverable;
 import bftsmart.tom.server.SingleExecutable;
+import bftsmart.tom.util.TOMUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -63,7 +64,7 @@ public abstract class DefaultSingleRecoverable implements Recoverable, SingleExe
     public DefaultSingleRecoverable() {
 
         try {
-            md = MessageDigest.getInstance("MD5"); // TODO: shouldn't it be SHA?
+            md = TOMUtil.getHashEngine();
         } catch (NoSuchAlgorithmException ex) {
             logger.error("Failed to get message digest engine", ex);
         }

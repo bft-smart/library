@@ -95,7 +95,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
         this.clientId = clientId;
         this.workerGroup = new NioEventLoopGroup();
         try {           
-            SecretKeyFactory fac = SecretKeyFactory.getInstance("PBEWithMD5AndDES");
+            SecretKeyFactory fac = TOMUtil.getSecretFactory();
 
             this.controller = controller;
             this.listener = new SyncListener();
@@ -131,9 +131,9 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
                     //******* EDUARDO BEGIN **************//
 
                     //creates MAC stuff
-                    Mac macSend = Mac.getInstance(controller.getStaticConf().getHmacAlgorithm());
+                    Mac macSend = TOMUtil.getMacFactory();
                     macSend.init(authKey);
-                    Mac macReceive = Mac.getInstance(controller.getStaticConf().getHmacAlgorithm());
+                    Mac macReceive = TOMUtil.getMacFactory();
                     macReceive.init(authKey);
                     NettyClientServerSession cs = new NettyClientServerSession(future.channel(), macSend, macReceive, currV[i]);
                     sessionTable.put(currV[i], cs);
@@ -174,7 +174,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
                     rl.readLock().unlock();
                     rl.writeLock().lock();
 
-                    SecretKeyFactory fac = SecretKeyFactory.getInstance("PBEWithMD5AndDES");
+                    SecretKeyFactory fac = TOMUtil.getSecretFactory();
                     try {
                         // Configure the client.
 
@@ -201,9 +201,9 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
                         SecretKey authKey = fac.generateSecret(spec);
 
                         //creates MAC stuff
-                        Mac macSend = Mac.getInstance(controller.getStaticConf().getHmacAlgorithm());
+                        Mac macSend = TOMUtil.getMacFactory();
                         macSend.init(authKey);
-                        Mac macReceive = Mac.getInstance(controller.getStaticConf().getHmacAlgorithm());
+                        Mac macReceive = TOMUtil.getMacFactory();
                         macReceive.init(authKey);
                         NettyClientServerSession cs = new NettyClientServerSession(future.channel(), macSend, macReceive, currV[i]);
                         sessionTable.put(currV[i], cs);
@@ -428,7 +428,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
         //long startTime = System.nanoTime();
         try {
             if (signatureEngine == null) {
-                    signatureEngine = Signature.getInstance("SHA1withRSA");
+                    signatureEngine = TOMUtil.getSigEngine();
             }
             byte[] result = null;
 
@@ -459,7 +459,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 
     private ChannelInitializer getChannelInitializer() throws NoSuchAlgorithmException{
 
-        Mac macDummy = Mac.getInstance(controller.getStaticConf().getHmacAlgorithm());
+        Mac macDummy = TOMUtil.getMacFactory();
 
         final NettyClientPipelineFactory nettyClientPipelineFactory = new NettyClientPipelineFactory(this, sessionTable,
                     macDummy.getMacLength(), controller, rl, signatureLength);

@@ -83,7 +83,7 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 			rl = new ReentrantReadWriteLock();
 
 			//Configure the server.
-			Mac macDummy = Mac.getInstance(controller.getStaticConf().getHmacAlgorithm());
+			Mac macDummy = TOMUtil.getMacFactory();
 
 			serverPipelineFactory = new NettyServerPipelineFactory(this, sessionTable, macDummy.getMacLength(), controller, rl, TOMUtil.getSignatureSize(controller));
 

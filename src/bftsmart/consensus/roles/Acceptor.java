@@ -76,9 +76,7 @@ public final class Acceptor {
         this.factory = factory;
         this.controller = controller;
         try {
-            //this.cipher = Cipher.getInstance("DES/ECB/PKCS5Padding");
-            //this.cipher = Cipher.getInstance(ServerConnection.MAC_ALGORITHM);
-            this.mac = Mac.getInstance(ServerConnection.MAC_ALGORITHM);
+            this.mac = TOMUtil.getMacFactory();
         } catch (NoSuchAlgorithmException /*| NoSuchPaddingException*/ ex) {
             logger.error("Failed to get MAC engine",ex);
         }

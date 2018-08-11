@@ -29,6 +29,7 @@ import bftsmart.tom.core.messages.TOMMessageType;
 import bftsmart.tom.util.Extractor;
 import bftsmart.tom.util.KeyLoader;
 import bftsmart.tom.util.TOMUtil;
+import java.security.Provider;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -68,7 +69,7 @@ public class ServiceProxy extends TOMSender {
 	 * @see bellow
 	 */
 	public ServiceProxy(int processId) {
-		this(processId, null, null, null, null);
+		this(processId, null, null, null, null, null);
 	}
 
 	/**
@@ -77,11 +78,11 @@ public class ServiceProxy extends TOMSender {
 	 * @see bellow
 	 */
 	public ServiceProxy(int processId, String configHome) {
-		this(processId, configHome, null, null, null);
+		this(processId, configHome, null, null, null, null);
 	}
 
-        public ServiceProxy(int processId, String configHome, KeyLoader loader) {
-		this(processId, configHome, null, null, loader);
+        public ServiceProxy(int processId, String configHome, KeyLoader loader, Provider provider) {
+		this(processId, configHome, null, null, loader, provider);
 	}
         
 	/**
@@ -95,11 +96,11 @@ public class ServiceProxy extends TOMSender {
 	 *                       quorum of replies
 	 */
 	public ServiceProxy(int processId, String configHome,
-			Comparator<byte[]> replyComparator, Extractor replyExtractor, KeyLoader loader) {
+			Comparator<byte[]> replyComparator, Extractor replyExtractor, KeyLoader loader, Provider provider) {
 		if (configHome == null) {
-			init(processId, loader);
+			init(processId, loader, provider);
 		} else {
-			init(processId, configHome, loader);
+			init(processId, configHome, loader, provider);
 		}
 
 		replies = new TOMMessage[getViewManager().getCurrentViewN()];

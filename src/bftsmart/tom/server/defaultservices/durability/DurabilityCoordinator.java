@@ -71,7 +71,7 @@ public abstract class DurabilityCoordinator implements Recoverable, BatchExecuta
 
 	public DurabilityCoordinator() {
 		try {
-			md = MessageDigest.getInstance("MD5"); // TODO: shouldn't it be SHA?
+			md = TOMUtil.getHashEngine();
 		} catch (NoSuchAlgorithmException ex) {
 			logger.error("Failed to get message digest object", ex);
 		}

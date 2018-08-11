@@ -16,6 +16,7 @@ limitations under the License.
 package bftsmart.reconfiguration;
 
 import bftsmart.tom.util.KeyLoader;
+import java.security.Provider;
 
 /**
  *
@@ -25,10 +26,11 @@ import bftsmart.tom.util.KeyLoader;
 public abstract class VMServices {
     
     public abstract KeyLoader getKeyLoader();
+    public abstract Provider getProvider();
     
     public void addServer(int id, String ipAddress, int port) {
         
-        ViewManager viewManager = new ViewManager(getKeyLoader());
+        ViewManager viewManager = new ViewManager(getKeyLoader(), getProvider());
         
         viewManager.addServer(id, ipAddress,port);
         
@@ -38,7 +40,7 @@ public abstract class VMServices {
     
     public void removeServer (int id) {
         
-        ViewManager viewManager = new ViewManager(getKeyLoader());
+        ViewManager viewManager = new ViewManager(getKeyLoader(), getProvider());
         
         viewManager.removeServer(id);
         

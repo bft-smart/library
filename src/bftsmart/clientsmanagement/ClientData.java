@@ -60,7 +60,7 @@ public class ClientData {
         this.clientId = clientId;
         if(publicKey != null) {
             try {
-                signatureVerificator = Signature.getInstance("SHA1withRSA");
+                signatureVerificator = TOMUtil.getSigEngine();
                 signatureVerificator.initVerify(publicKey);
                 logger.debug("Signature verifier initialized for client "+clientId);
             } catch (Exception ex) {

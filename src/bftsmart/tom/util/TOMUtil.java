@@ -29,6 +29,11 @@ import java.security.SignatureException;
 import java.util.Arrays;
 
 import bftsmart.reconfiguration.ViewController;
+import bftsmart.reconfiguration.util.Configuration;
+import java.security.Provider;
+import javax.crypto.Mac;
+import javax.crypto.SecretKeyFactory;
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,6 +59,27 @@ public class TOMUtil {
     public static final int TRIGGER_SM_LOCALLY = 9;
     
     private static int signatureSize = -1;
+    private static boolean init = false;
+    
+    private static Provider provider = new BouncyCastleProvider();
+    
+    private static String hmacAlgorithm = Configuration.DEFAULT_HMAC;
+    private static String secretAlgorithm = Configuration.DEFAULT_SECRETKEY;
+    private static String sigAlgorithm = Configuration.DEFAULT_SIGNATURE;
+    private static String hashAlgorithm = Configuration.DEFAULT_HASH;
+
+    public static void init(Provider provider, String hmacAlgorithm, String secretAlgorithm, String sigAlgorithm, String hashAlgorithm) {
+     
+        if (!TOMUtil.init) {
+   
+            TOMUtil.hmacAlgorithm = hmacAlgorithm;
+            TOMUtil.sigAlgorithm = sigAlgorithm;
+            TOMUtil.secretAlgorithm = secretAlgorithm;
+            TOMUtil.hashAlgorithm = hashAlgorithm;
+        
+            TOMUtil.init = true;
+        }
+    }    
     
     public static int getSignatureSize(ViewController controller) {
         if (signatureSize > 0) {
@@ -117,8 +143,8 @@ public class TOMUtil {
 
         byte[] result = null;
         try {
-
-            Signature signatureEngine = Signature.getInstance("SHA1withRSA");
+            
+            Signature signatureEngine = getSigEngine();
 
             signatureEngine.initSign(key);
 
@@ -143,9 +169,9 @@ public class TOMUtil {
     public static boolean verifySignature(PublicKey key, byte[] message, byte[] signature) {
 
         boolean result = false;
-
+        
         try {
-            Signature signatureEngine = Signature.getInstance("SHA1withRSA");
+            Signature signatureEngine = getSigEngine();
 
             signatureEngine.initVerify(key);
 
@@ -190,7 +216,7 @@ public class TOMUtil {
         byte[] result = null;
         
         try {
-            MessageDigest md = MessageDigest.getInstance("MD5");
+            MessageDigest md = getHashEngine();
             result = md.digest(data);
             
         } catch (NoSuchAlgorithmException e) {
@@ -200,4 +226,23 @@ public class TOMUtil {
         return result;
     }
     
+    public static Signature getSigEngine() throws NoSuchAlgorithmException {
+        
+        return Signature.getInstance(TOMUtil.sigAlgorithm, TOMUtil.provider);
+    }
+    
+    public static MessageDigest getHashEngine() throws NoSuchAlgorithmException {
+        
+        return MessageDigest.getInstance(TOMUtil.hashAlgorithm, TOMUtil.provider);
+    }
+    
+    public static SecretKeyFactory getSecretFactory() throws NoSuchAlgorithmException {
+        
+        return SecretKeyFactory.getInstance(TOMUtil.secretAlgorithm, TOMUtil.provider);
+    }
+    
+    public static Mac getMacFactory() throws NoSuchAlgorithmException {
+        
+        return Mac.getInstance(TOMUtil.hmacAlgorithm, TOMUtil.provider);
+    }
 }

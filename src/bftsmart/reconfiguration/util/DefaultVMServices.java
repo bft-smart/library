@@ -7,6 +7,7 @@ package bftsmart.reconfiguration.util;
 
 import bftsmart.reconfiguration.VMServices;
 import bftsmart.tom.util.KeyLoader;
+import java.security.Provider;
 
 /**
  *
@@ -19,6 +20,10 @@ public class DefaultVMServices extends VMServices {
         return null; // this will make te library create the default RSA key loader
     }
     
+    @Override
+    public Provider getProvider() {
+        return null; // this will make the library fetch the default provider
+    }
     
     public static void main(String[] args) throws InterruptedException {
 

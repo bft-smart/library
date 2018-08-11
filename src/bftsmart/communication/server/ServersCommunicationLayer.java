@@ -33,6 +33,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import bftsmart.communication.SystemMessage;
 import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.tom.ServiceReplica;
+import bftsmart.tom.util.TOMUtil;
 import java.net.InetAddress;
 import java.util.HashMap;
 
@@ -118,7 +119,7 @@ public class ServersCommunicationLayer extends Thread {
         /*serverSocket = new ServerSocket(controller.getStaticConf().getServerToServerPort(
                 controller.getStaticConf().getProcessId()));*/
 
-        SecretKeyFactory fac = SecretKeyFactory.getInstance("PBEWithMD5AndDES");
+        SecretKeyFactory fac = TOMUtil.getSecretFactory();
         PBEKeySpec spec = new PBEKeySpec(PASSWORD.toCharArray());
         selfPwd = fac.generateSecret(spec);
 

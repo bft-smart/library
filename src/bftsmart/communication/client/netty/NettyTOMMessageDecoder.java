@@ -33,6 +33,7 @@ import javax.crypto.spec.PBEKeySpec;
 
 import bftsmart.reconfiguration.ViewController;
 import bftsmart.tom.core.messages.TOMMessage;
+import bftsmart.tom.util.TOMUtil;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -177,14 +178,14 @@ public class NettyTOMMessageDecoder extends ByteToMessageDecoder {
 
                     rl.readLock().unlock();
                     
-                    SecretKeyFactory fac = SecretKeyFactory.getInstance("PBEWithMD5AndDES");
+                    SecretKeyFactory fac = TOMUtil.getSecretFactory();
                     String str = sm.getSender() + ":" + this.controller.getStaticConf().getProcessId();                                        
                     PBEKeySpec spec = new PBEKeySpec(str.toCharArray());
                     SecretKey authKey = fac.generateSecret(spec);
             
-                    Mac macSend = Mac.getInstance(controller.getStaticConf().getHmacAlgorithm());
+                    Mac macSend = TOMUtil.getMacFactory();
                     macSend.init(authKey);
-                    Mac macReceive = Mac.getInstance(controller.getStaticConf().getHmacAlgorithm());
+                    Mac macReceive = TOMUtil.getMacFactory();
                     macReceive.init(authKey);
                     NettyClientServerSession cs = new NettyClientServerSession(context.channel(), macSend, macReceive, sm.getSender());
                                        

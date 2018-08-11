@@ -26,6 +26,7 @@ import bftsmart.tom.core.TOMLayer;
 import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.util.KeyLoader;
 import bftsmart.tom.util.TOMUtil;
+import java.security.Provider;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,8 +51,8 @@ public class ServerViewController extends ViewController {
     private TOMLayer tomLayer;
    // protected View initialView;
     
-    public ServerViewController(int procId, KeyLoader loader) {
-        this(procId,"", loader);
+    public ServerViewController(int procId, KeyLoader loader, Provider provider) {
+        this(procId,"", loader, provider);
         /*super(procId);
         initialView = new View(0, getStaticConf().getInitialView(), 
                 getStaticConf().getF(), getInitAdddresses());
@@ -59,8 +60,8 @@ public class ServerViewController extends ViewController {
         reconfigureTo(initialView);*/
     }
 
-    public ServerViewController(int procId, String configHome, KeyLoader loader) {
-        super(procId, configHome, loader);
+    public ServerViewController(int procId, String configHome, KeyLoader loader, Provider provider) {
+        super(procId, configHome, loader, provider);
         View cv = getViewStore().readView();
         if(cv == null){
             

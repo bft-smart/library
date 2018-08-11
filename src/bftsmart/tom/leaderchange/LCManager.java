@@ -91,17 +91,15 @@ public class LCManager {
         this.nextreg = 0;
         this.currentLeader = 0;
 
-        this.stops = new HashMap<Integer,HashSet<Integer>>();
-        this.lastCIDs = new HashMap<Integer, HashSet<CertifiedDecision>>();
-        this.collects = new HashMap<Integer, HashSet<SignedObject>>();
+        this.stops = new HashMap<>();
+        this.lastCIDs = new HashMap<>();
+        this.collects = new HashMap<>();
 
         this.SVController = SVController;
         this.md = md;
 
         try {
-            //this.cipher = Cipher.getInstance("DES/ECB/PKCS5Padding");
-            //this.cipher = Cipher.getInstance(ServerConnection.MAC_ALGORITHM);
-            this.mac = Mac.getInstance(ServerConnection.MAC_ALGORITHM);
+            this.mac = TOMUtil.getMacFactory();
         } catch (NoSuchAlgorithmException /*| NoSuchPaddingException*/ ex) {
             logger.error("Could not instantiate MAC algorithm",ex);
         }

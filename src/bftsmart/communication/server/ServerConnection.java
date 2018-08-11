@@ -59,7 +59,7 @@ public class ServerConnection {
     private Logger logger = LoggerFactory.getLogger(this.getClass());
 
 
-    public static final String MAC_ALGORITHM = "HmacMD5";
+    //public static final String MAC_ALGORITHM = "HmacMD5";
     private static final long POOL_TIME = 5000;
     //private static final int SEND_QUEUE_SIZE = 50;
     private ServerViewController controller;
@@ -393,15 +393,15 @@ public class ServerConnection {
             
             logger.info("Diffie-Hellman complete with " + remoteId);
             
-            SecretKeyFactory fac = SecretKeyFactory.getInstance("PBEWithMD5AndDES");
+            SecretKeyFactory fac = TOMUtil.getSecretFactory();
             PBEKeySpec spec = new PBEKeySpec(secretKey.toString().toCharArray());
             
             //PBEKeySpec spec = new PBEKeySpec(PASSWORD.toCharArray());
             authKey = fac.generateSecret(spec);
 
-            macSend = Mac.getInstance(MAC_ALGORITHM);
+            macSend = TOMUtil.getMacFactory();
             macSend.init(authKey);
-            macReceive = Mac.getInstance(MAC_ALGORITHM);
+            macReceive = TOMUtil.getMacFactory();
             macReceive.init(authKey);
             macSize = macSend.getMacLength();
         } catch (Exception ex) {
@@ -484,7 +484,7 @@ public class ServerConnection {
         public void run() {
             byte[] receivedMac = null;
             try {
-                receivedMac = new byte[Mac.getInstance(MAC_ALGORITHM).getMacLength()];
+                receivedMac = new byte[TOMUtil.getMacFactory().getMacLength()];
             } catch (NoSuchAlgorithmException ex) {
                 logger.error("Failed to get MAC vector object",ex);
             }
@@ -565,7 +565,7 @@ public class ServerConnection {
         public void run() {
             byte[] receivedMac = null;
             try {
-                receivedMac = new byte[Mac.getInstance(MAC_ALGORITHM).getMacLength()];
+                receivedMac = new byte[TOMUtil.getMacFactory().getMacLength()];
             } catch (NoSuchAlgorithmException ex) {
             }
 

@@ -52,8 +52,7 @@ public class MessageHandler {
     
     public MessageHandler() {
         try {
-            //this.cipher = Cipher.getInstance("DES/ECB/PKCS5Padding");
-            this.mac = Mac.getInstance(ServerConnection.MAC_ALGORITHM);
+            this.mac = TOMUtil.getMacFactory();
         } catch (NoSuchAlgorithmException /*| NoSuchPaddingException*/ ex) {
             logger.error("Failed to create MAC engine",ex);
         }
