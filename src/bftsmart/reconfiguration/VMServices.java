@@ -23,14 +23,29 @@ import java.security.Provider;
  * @author Andre Nogueira
  */
 
-public abstract class VMServices {
+public class VMServices {
     
-    public abstract KeyLoader getKeyLoader();
-    public abstract Provider getProvider();
+    private KeyLoader keyLoader;
+    private Provider provider;
+    private String configDir;
+    
+    public VMServices() { // for the default keyloader and provider
+        
+        keyLoader = null;
+        provider = null;
+        configDir = "";
+    }
+    
+    public VMServices(KeyLoader keyLoader, Provider provider, String configDir) {
+        
+        this.keyLoader = keyLoader;
+        this.provider = provider;
+        this.configDir = configDir;
+    }
     
     public void addServer(int id, String ipAddress, int port) {
         
-        ViewManager viewManager = new ViewManager(getKeyLoader(), getProvider());
+        ViewManager viewManager = new ViewManager(configDir, keyLoader, provider);
         
         viewManager.addServer(id, ipAddress,port);
         
@@ -40,7 +55,7 @@ public abstract class VMServices {
     
     public void removeServer (int id) {
         
-        ViewManager viewManager = new ViewManager(getKeyLoader(), getProvider());
+        ViewManager viewManager = new ViewManager(keyLoader, provider);
         
         viewManager.removeServer(id);
         

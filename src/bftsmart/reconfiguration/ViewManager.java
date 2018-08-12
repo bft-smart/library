@@ -56,7 +56,7 @@ public class ViewManager {
     public ViewManager(String configHome, KeyLoader loader, Provider provider) {
         this.id = loadID(configHome);
         this.controller = new ServerViewController(id, configHome, loader, provider);
-        this.rec = new Reconfiguration(id);
+        this.rec = new Reconfiguration(id, configHome, loader, provider);
     }
 
     public void connect(){

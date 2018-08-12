@@ -14,16 +14,6 @@ import java.security.Provider;
  * @author joao
  */
 public class DefaultVMServices extends VMServices {
-
-    @Override
-    public KeyLoader getKeyLoader() {
-        return null; // this will make te library create the default RSA key loader
-    }
-    
-    @Override
-    public Provider getProvider() {
-        return null; // this will make the library fetch the default provider
-    }
     
     public static void main(String[] args) throws InterruptedException {
 

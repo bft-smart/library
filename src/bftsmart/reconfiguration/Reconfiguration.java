@@ -17,7 +17,9 @@ package bftsmart.reconfiguration;
 
 import bftsmart.tom.ServiceProxy;
 import bftsmart.tom.core.messages.TOMMessageType;
+import bftsmart.tom.util.KeyLoader;
 import bftsmart.tom.util.TOMUtil;
+import java.security.Provider;
 
 /**
  *
@@ -29,15 +31,23 @@ public class Reconfiguration {
     private ServiceProxy proxy;
     private int id;
     
-    public Reconfiguration(int id) {
+    private KeyLoader keyLoader;
+    private Provider provider;
+    private String configDir;
+    
+    public Reconfiguration(int id, String configDir, KeyLoader loader, Provider provider) {
         this.id = id;
+        
+        this.keyLoader = loader;
+        this.provider = provider;
+        this.configDir = configDir;
          //proxy = new ServiceProxy(id);
         //request = new ReconfigureRequest(id);
     }
     
     public void connect(){
         if(proxy == null){
-            proxy = new ServiceProxy(id);
+            proxy = new ServiceProxy(id, configDir, null, null, keyLoader, provider);
         }
     }
     
