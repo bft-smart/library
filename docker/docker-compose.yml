@@ -1,0 +1,13 @@
+
+version: "3"
+services:
+  bft_service:
+    image: bft-smart:BFT_Full-v3
+    deploy:
+      replicas: 4
+      #restart_policy:
+        #condition: on-failure
+networks:
+        - webnet
+networks:
+      webnet:
