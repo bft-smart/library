@@ -12,4 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-java -Dlogback.configurationFile="./config/logback.xml" -cp bin/*:lib/* $@
+#java -Dlogback.configurationFile="../config/logback.xml" -cp ../bin/*:../lib/* $@
+
+java -Dlogback.configurationFile="./config/logback.xml" -cp ./bin/BFT-SMaRt.jar:./lib/* $@
+ 

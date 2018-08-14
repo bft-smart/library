@@ -43,11 +43,11 @@ public class VMServices {
         this.configDir = configDir;
     }
     
-    public void addServer(int id, String ipAddress, int port) {
+    public void addServer(int id, String ipAddress, int port, int portRR) {
         
         ViewManager viewManager = new ViewManager(configDir, keyLoader, provider);
         
-        viewManager.addServer(id, ipAddress,port);
+        viewManager.addServer(id, ipAddress, port, portRR);
         
         execute(viewManager);
 

@@ -54,11 +54,12 @@ public class HostsConfig {
             while((line = rd.readLine()) != null){
                 if(!line.startsWith("#")){
                     StringTokenizer str = new StringTokenizer(line," ");
-                    if(str.countTokens() > 2){
+                    if(str.countTokens() == 4){
                         int id = Integer.valueOf(str.nextToken());
                         String host = str.nextToken();
                         int port = Integer.valueOf(str.nextToken());
-                        this.servers.put(id, new Config(id,host,port));
+                        int portRR = Integer.valueOf(str.nextToken());
+                        this.servers.put(id, new Config(id, host, port, portRR));
                     }
                 }
             }
@@ -69,9 +70,9 @@ public class HostsConfig {
         }
     }
     
-    public void add(int id, String host, int port){
+    public void add(int id, String host, int port, int portRR){
         if(this.servers.get(id) == null){
-            this.servers.put(id, new Config(id,host,port));
+            this.servers.put(id, new Config(id, host, port, portRR));
         }
     }
     
@@ -91,7 +92,7 @@ public class HostsConfig {
     public InetSocketAddress getServerToServerRemoteAddress(int id){
         Config c = (Config) this.servers.get(id);
         if(c != null){
-            return new InetSocketAddress(c.host,c.port+1);
+            return new InetSocketAddress(c.host,c.portRR);
         }
         return null;
     }
@@ -108,7 +109,7 @@ public class HostsConfig {
      public int getServerToServerPort(int id){
         Config c = (Config) this.servers.get(id);
         if(c != null){
-            return c.port+1;
+            return c.portRR;
         }
         return -1;
     }
@@ -156,11 +157,13 @@ public class HostsConfig {
         public int id;
         public String host;
         public int port;
+        public int portRR;
         
-        public Config(int id, String host, int port){
+        public Config(int id, String host, int port, int portRR){
             this.id = id;
             this.host = host;
             this.port = port;
+            this.portRR = portRR;
         }
     }
 }

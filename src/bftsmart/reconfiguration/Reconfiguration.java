@@ -51,8 +51,13 @@ public class Reconfiguration {
         }
     }
     
-    public void addServer(int id, String ip, int port){
-        this.setReconfiguration(ServerViewController.ADD_SERVER, id + ":" + ip + ":" + port);
+    public void addServer(int id, String ip, int port, int portRR){
+        this.setReconfiguration(
+        			ServerViewController.ADD_SERVER, 
+        			id + ":" + 
+        			ip + ":" + 
+        			port + ":" + 
+        			portRR);
     }
     
     public void removeServer(int id){
@@ -61,7 +66,7 @@ public class Reconfiguration {
     
 
     public void setF(int f){
-      this.setReconfiguration(ServerViewController.CHANGE_F,String.valueOf(f));  
+      this.setReconfiguration(ServerViewController.CHANGE_F, String.valueOf(f));  
     }
     
     
@@ -74,8 +79,7 @@ public class Reconfiguration {
     }
     
     public ReconfigureReply execute(){
-        byte[] signature = TOMUtil.signMessage(proxy.getViewManager().getStaticConf().getPrivateKey(),
-                                                                            request.toString().getBytes());
+        byte[] signature = TOMUtil.signMessage(proxy.getViewManager().getStaticConf().getPrivateKey(), request.toString().getBytes());
         request.setSignature(signature);
         byte[] reply = proxy.invoke(TOMUtil.getBytes(request), TOMMessageType.RECONFIG);
         request = null;

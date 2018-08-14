@@ -95,9 +95,9 @@ public class ViewManager {
         }
     }
 
-    public void addServer(int id, String ip, int port) {
-        this.controller.getStaticConf().addHostInfo(id, ip, port);
-        rec.addServer(id, ip, port);
+    public void addServer(int id, String ip, int port, int portRR) {
+        this.controller.getStaticConf().addHostInfo(id, ip, port, portRR);
+        rec.addServer(id, ip, port, portRR);
         addIds.add(id);
     }
 

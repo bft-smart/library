@@ -66,8 +66,7 @@ public class ServerViewController extends ViewController {
         if(cv == null){
             
             logger.info("Creating current view from configuration file");
-            reconfigureTo(new View(0, getStaticConf().getInitialView(), 
-                getStaticConf().getF(), getInitAdddresses()));
+            reconfigureTo(new View(0, getStaticConf().getInitialView(),  getStaticConf().getF(), getInitAdddresses()));
         }else{
             logger.info("Using view stored on disk");
             reconfigureTo(cv);
@@ -78,6 +77,7 @@ public class ServerViewController extends ViewController {
     private InetSocketAddress[] getInitAdddresses() {
 
         int nextV[] = getStaticConf().getInitialView();
+        
         InetSocketAddress[] addresses = new InetSocketAddress[nextV.length];
         for (int i = 0; i < nextV.length; i++) {
             addresses[i] = getStaticConf().getRemoteAddress(nextV[i]);
@@ -175,7 +175,8 @@ public class ServerViewController extends ViewController {
                             jSet.add(id);
                             String host = str.nextToken();
                             int port = Integer.valueOf(str.nextToken());
-                            this.getStaticConf().addHostInfo(id, host, port);
+                            int portRR = Integer.valueOf(str.nextToken());
+                            this.getStaticConf().addHostInfo(id, host, port, portRR);
                         }
                     }
                 } else if (key == REMOVE_SERVER) {
@@ -292,7 +293,8 @@ public class ServerViewController extends ViewController {
              this.lastJoinStet[i] = id;
              String host = str.nextToken();
              int port = Integer.valueOf(str.nextToken());
-             this.getStaticConf().addHostInfo(id, host, port);
+             int portRR = Integer.valueOf(str.nextToken());
+             this.getStaticConf().addHostInfo(id, host, port, portRR);
         }
     }
 

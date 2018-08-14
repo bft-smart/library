@@ -15,8 +15,6 @@ limitations under the License.
 */
 package bftsmart.reconfiguration.util;
 
-import bftsmart.tom.util.KeyLoader;
-import bftsmart.tom.util.TOMUtil;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.math.BigInteger;
@@ -24,14 +22,16 @@ import java.net.InetSocketAddress;
 import java.security.PrivateKey;
 import java.security.Provider;
 import java.security.PublicKey;
-import java.security.Security;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.StringTokenizer;
-import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
-import org.slf4j.LoggerFactory;
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import bftsmart.tom.util.KeyLoader;
+import bftsmart.tom.util.TOMUtil;
 
 public class Configuration {
     
@@ -256,8 +256,8 @@ public class Configuration {
     }
     
   
-    public final void addHostInfo(int id, String host, int port){
-        this.hosts.add(id,host,port);
+    public final void addHostInfo(int id, String host, int port, int portRR){
+        this.hosts.add(id, host, port, portRR);
     }
     
     public PublicKey getPublicKey() {

@@ -21,7 +21,6 @@ import java.util.HashMap;
 
 import org.junit.Test;
 
-import bftsmart.demo.bftmap.BFTMap;
 import bftsmart.TestFixture;
 
 /**

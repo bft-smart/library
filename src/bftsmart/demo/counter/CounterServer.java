@@ -28,6 +28,10 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutput;
 import java.io.ObjectOutputStream;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+
 /**
  * Example replica that implements a BFT replicated service (a counter).
  * If the increment > 0 the counter is incremented, otherwise, the counter
@@ -41,6 +45,8 @@ public final class CounterServer extends DefaultSingleRecoverable  {
     private int counter = 0;
     private int iterations = 0;
     
+    private static final Logger log = LoggerFactory.getLogger(CounterServer.class);
+    
     public CounterServer(int id) {
     	new ServiceReplica(id, this, this);
     }
@@ -48,13 +54,13 @@ public final class CounterServer extends DefaultSingleRecoverable  {
     @Override
     public byte[] appExecuteUnordered(byte[] command, MessageContext msgCtx) {         
         iterations++;
-        System.out.println("(" + iterations + ") Counter current value: " + counter);
+        log.debug("({}) Reading counter at value: {} ", iterations, counter);
         try {
             ByteArrayOutputStream out = new ByteArrayOutputStream(4);
             new DataOutputStream(out).writeInt(counter);
             return out.toByteArray();
         } catch (IOException ex) {
-            System.err.println("Invalid request received!");
+            log.error("Invalid request received!");
             return new byte[0];
         }
     }
@@ -66,23 +72,15 @@ public final class CounterServer extends DefaultSingleRecoverable  {
             int increment = new DataInputStream(new ByteArrayInputStream(command)).readInt();
             counter += increment;
             
-            System.out.println("(" + iterations + ") Counter was incremented. Current value = " + counter);
+            log.debug("({}) Counter was incremented. Current value = {}" , iterations , counter);
             
             ByteArrayOutputStream out = new ByteArrayOutputStream(4);
             new DataOutputStream(out).writeInt(counter);
             return out.toByteArray();
         } catch (IOException ex) {
-            System.err.println("Invalid request received!");
+        	log.error("Invalid request received!");
             return new byte[0];
         }
-    }
-
-    public static void main(String[] args){
-        if(args.length < 1) {
-            System.out.println("Use: java CounterServer <processId>");
-            System.exit(-1);
-        }      
-        new CounterServer(Integer.parseInt(args[0]));
     }
 
     
@@ -96,8 +94,7 @@ public final class CounterServer extends DefaultSingleRecoverable  {
             in.close();
             bis.close();
         } catch (IOException e) {
-            System.err.println("[ERROR] Error deserializing state: "
-                    + e.getMessage());
+            log.error("Error deserializing state: {}", e.getMessage());
         }
     }
 
@@ -113,9 +110,19 @@ public final class CounterServer extends DefaultSingleRecoverable  {
             bos.close();
             return bos.toByteArray();
         } catch (IOException ioe) {
-            System.err.println("[ERROR] Error serializing state: "
-                    + ioe.getMessage());
+        	log.error("Error serializing state. {}", ioe.getMessage());
             return "ERROR".getBytes();
         }
     }
+    
+    public static void main(String[] args){
+        
+    	if(args.length != 1) {
+            log.info("Usage: java CounterServer <processId>");
+            System.exit(-1);
+        }      
+        new CounterServer(Integer.parseInt(args[0]));
+    }
+
+    
 }
