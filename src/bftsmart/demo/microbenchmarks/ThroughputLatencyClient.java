@@ -52,9 +52,11 @@ public class ThroughputLatencyClient {
 
         Client[] clients = new Client[numThreads];
         
+        System.out.println("Number of threads:  " + numThreads);
+        
         for(int i=0; i<numThreads; i++) {
             try {
-                Thread.sleep(100);
+                Thread.sleep(180);
             } catch (InterruptedException ex) {
                 
                 ex.printStackTrace();
@@ -117,7 +119,7 @@ public class ThroughputLatencyClient {
 
             int req = 0;
             
-            for (int i = 0; i < numberOfOps / 2; i++, req++) {
+            for (int i = 0; i < numberOfOps / 10; i++, req++) {
                 if (verbose) System.out.print("Sending req " + req + "...");
 
                 if(readOnly)

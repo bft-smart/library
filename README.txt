@@ -1,14 +1,14 @@
 BFT-SMaRt branch:master
 ----------
 
-This package contains the BFT-SMaRt source code (src/), binary file (bin/), libraries needed (lib/), documentation (doc/), running scripts (runscripts/) 
-and configuration files (config/).
+This package contains the BFT-SMaRt source code (src/), binary file (bin/), libraries needed (lib/), documentation (doc/), 
+running scripts (runscripts/) and configuration files (config/).
 BFT-SMaRt requires the Java Runtime Environment version 1.7 or later.
 
 ---------------- Important warning ------------------------
 
-This beta version of BFT-SMaRt offers the most stable execution via the class bftsmart.tom.server.defaultservices.DefaultRecoverable under Byzantine faults. 
-Applications can also be implemented using 'bftsmart.tom.server.defaultservices.DefaultSingleRecoverable' 
+This beta version of BFT-SMaRt offers the most stable execution via the class bftsmart.tom.server.defaultservices.DefaultRecoverable 
+under Byzantine faults. Applications can also be implemented using 'bftsmart.tom.server.defaultservices.DefaultSingleRecoverable' 
 and 'bftsmart.tom.server.defaultservices.durability.DurabilityCoordinator', but they are not as stable as 'DefaultRecoverable'. 
 In future versions these classes will be properly tested and fixed.
 
@@ -49,8 +49,8 @@ bash runscripts/smartrun.sh bftsmart.demo.counter.CounterServer 2
 bash runscripts/smartrun.sh bftsmart.demo.counter.CounterServer 3
 
 Important tip #4: If you are getting timeout messages, it is possible that the application you are running takes too long to process the 
-requests or the network delay is too high and PROPOSE messages from the leader don't arrive in time, so replicas may start the leader change protocol. 
-To prevent that, try to increase the 'system.totalordermulticast.timeout' parameter in 'config/system.config'.
+requests or the network delay is too high and PROPOSE messages from the leader don't arrive in time, so replicas may start the leader 
+change protocol. To prevent that, try to increase the 'system.totalordermulticast.timeout' parameter in 'config/system.config'.
 
 Important tip #5: Never forget to delete the 'config/currentView' file after you modify 'config/hosts.config' or 'config/system.config'. 
 If 'config/currentView' exists, BFT-SMaRt always fetches the group configuration from this file first. Otherwise, 
@@ -67,8 +67,8 @@ If <increment> equals 0 the request will be read-only. Default <number of operat
 Important tip #6: always make sure that each client uses a unique ID. Otherwise, clients may not be able to complete their operations.
 
 You can use the './runscripts/runsmart.bat'" script in Windows, and the './runscripts/runsmart.sh' script in Linux.
-When running the script in Linux it is necessary to set the permissions to execute the script with the command 'chmod +x ./runscripts/runsmart.sh' or
-call passing the script as a bash parameter $bash ./runscripts/runsmart.sh. 
+When running the script in Linux it is necessary to set the permissions to execute the script with 
+the command 'chmod +x ./runscripts/runsmart.sh' or call passing the script as a bash parameter 'bash ./runscripts/runsmart.sh ...'. 
 
 These scripts can easily be adapted to execute other demos, such as:
 
