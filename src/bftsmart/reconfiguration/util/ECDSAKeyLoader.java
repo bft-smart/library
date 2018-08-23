@@ -104,12 +104,13 @@ public class ECDSAKeyLoader implements KeyLoader {
 	  //  System.out.println (keyPair.getPrivate().getAlgorithm());	    
 	  //  System.out.println("" + keyPair.getPublic());
 	    
-	    /*System.out.println("\n###############################################" 
+		System.out.println("Signature Algorithm: " + keyPair.getPrivate().getAlgorithm());	
+	    System.out.println("\n###############################################" 
 				+ "\nKeyLoader parameters:" 
 				+ "\n\t Replica ID: " + this.id
 				+ "\n\t DefaultKeys: " + this.defaultKeys 
 				+ "\n\t Signature Algorithm: " + keyPair.getPrivate().getAlgorithm()
-				+ "\n" + "###############################################");*/
+				+ "\n" + "###############################################");
 
 	}
 
