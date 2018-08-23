@@ -22,7 +22,11 @@ import java.io.ObjectOutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
+import java.net.SocketImpl;
+import java.net.SocketImplFactory;
 import java.net.SocketTimeoutException;
+import java.security.KeyManagementException;
+import java.security.NoSuchAlgorithmException;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -34,12 +38,19 @@ import bftsmart.communication.SystemMessage;
 import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.tom.ServiceReplica;
 import bftsmart.tom.util.TOMUtil;
+import jdk.net.Sockets;
+
 import java.net.InetAddress;
 import java.util.HashMap;
 
 import javax.crypto.SecretKey;
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.PBEKeySpec;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLServerSocket;
+import javax.net.ssl.SSLServerSocketFactory;
+import javax.net.ssl.SSLSocket;
+import javax.net.ssl.SSLSocketFactory;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,7 +67,8 @@ public class ServersCommunicationLayer extends Thread {
     private ServerViewController controller;
     private LinkedBlockingQueue<SystemMessage> inQueue;
     private HashMap<Integer, ServerConnection> connections = new HashMap<>();
-    private ServerSocket serverSocket;
+   // private SSLSocket socketSSL;
+    private SSLServerSocket serverSocketSSL;
     private int me;
     private boolean doWork = true;
     private Lock connectionsLock = new ReentrantLock();
@@ -105,28 +117,39 @@ public class ServersCommunicationLayer extends Thread {
 
                 myAddress = confAddress;
             }
-
-
         } else {
 
             myAddress = controller.getStaticConf().getBindAddress();
         }
         
         int myPort = controller.getStaticConf().getServerToServerPort(controller.getStaticConf().getProcessId());
-                        
-        serverSocket = new ServerSocket(myPort, 50, InetAddress.getByName(myAddress));
-
-        /*serverSocket = new ServerSocket(controller.getStaticConf().getServerToServerPort(
-                controller.getStaticConf().getProcessId()));*/
-
+          
+        //Note that the standard TLS protocol version names used in the JDK are:
+        // SSLv3, TLSv1, TLSv1.1 and TLSv1.2.
+        SSLContext context = SSLContext.getInstance("SSLv3");        
+        
+        context.init(null,null,null);
+        SSLServerSocketFactory serverSocketFactory = context.getServerSocketFactory();
+        System.out.println("Creating server socket factory on port: "+ myPort);
+        this.serverSocketSSL = (SSLServerSocket)serverSocketFactory.createServerSocket(myPort, 100, InetAddress.getByName(myAddress));
+        
+        serverSocketSSL.setEnabledCipherSuites(serverSocketSSL.getSupportedCipherSuites());       
+        serverSocketSSL.setSoTimeout(10000);
+        serverSocketSSL.setEnableSessionCreation(true);
+        serverSocketSSL.setReuseAddress(true);
+        
+        /*String [] ciphers = serverSocketSSL.getSupportedCipherSuites();
+        for (int i = 0; i < ciphers.length; i++) {
+			System.out.println("Cipher: " + ciphers[i]);
+		}*/
+        
         SecretKeyFactory fac = TOMUtil.getSecretFactory();
         PBEKeySpec spec = new PBEKeySpec(PASSWORD.toCharArray());
         selfPwd = fac.generateSecret(spec);
-
-        serverSocket.setSoTimeout(10000);
-        serverSocket.setReuseAddress(true);
-
+        
         start();
+        
+        
     }
 
     public SecretKey getSecretKey(int id) {
@@ -198,7 +221,8 @@ public class ServersCommunicationLayer extends Thread {
                     sm.authenticated = true;
                     inQueue.put(sm);
                 } else {
-                    //System.out.println("Going to send message to: "+i);
+                    //logger.info("Going to send a message to replica: {}", i);
+                    //logger.info("Going to send a message to replica: {}, data:\n{} ", i, data);
                     //******* EDUARDO BEGIN **************//
                     //connections[i].send(data);
                     getConnection(i).send(data, useMAC);
@@ -249,37 +273,43 @@ public class ServersCommunicationLayer extends Thread {
 
     @Override
     public void run() {
+    	
         while (doWork) {
             try {
 
-                //System.out.println("Waiting for server connections");
-
-                Socket newSocket = serverSocket.accept();
-
-                ServersCommunicationLayer.setSocketOptions(newSocket);
+                //System.out.println("Waiting for connections.");
+            	
+            	SSLSocket newSocket = (SSLSocket)serverSocketSSL.accept();            	
+            	ServersCommunicationLayer.setSSLSocketOptions(newSocket);
+            	 
                 int remoteId = new DataInputStream(newSocket.getInputStream()).readInt();
-
+                
+                //System.out.println("Received dataInputStream from remoteID: " + remoteId);
+                
                 //******* EDUARDO BEGIN **************//
-                if (!this.controller.isInCurrentView() &&
-                     (this.controller.getStaticConf().getTTPId() != remoteId)) {
+                if (!this.controller.isInCurrentView() && 
+                		(this.controller.getStaticConf().getTTPId() != remoteId)) {
                     waitViewLock.lock();
                     pendingConn.add(new PendingConnection(newSocket, remoteId));
                     waitViewLock.unlock();
                 } else {
+                	System.out.println("Trying establish connection with replica: " + remoteId);	
                     establishConnection(newSocket, remoteId);
                 }
                 //******* EDUARDO END **************//
 
-            } catch (SocketTimeoutException ex) {
-            
+            } catch (SocketTimeoutException ex) {            
                 logger.debug("Server socket timed out, retrying");
-            } catch (IOException ex) {
+            }
+            catch(javax.net.ssl.SSLHandshakeException sslex ) {
+            	sslex.printStackTrace();
+            }
+            catch (IOException ex) {
                 logger.error("Problem during thread execution", ex);
             }
         }
-
         try {
-            serverSocket.close();
+            serverSocketSSL.close();
         } catch (IOException ex) {
             logger.error("Failed to close server socket", ex);
         }
@@ -288,7 +318,7 @@ public class ServersCommunicationLayer extends Thread {
     }
 
     //******* EDUARDO BEGIN **************//
-    private void establishConnection(Socket newSocket, int remoteId) throws IOException {
+   /* private void establishConnection(Socket newSocket, int remoteId) throws IOException {
         if ((this.controller.getStaticConf().getTTPId() == remoteId) || this.controller.isCurrentViewMember(remoteId)) {
             connectionsLock.lock();
             //System.out.println("Vai se conectar com: "+remoteId);
@@ -306,10 +336,43 @@ public class ServersCommunicationLayer extends Thread {
             //System.out.println("Closing connection of: "+remoteId);
             newSocket.close();
         }
-    }
+    }*/
     //******* EDUARDO END **************//
+    
+    
 
-    public static void setSocketOptions(Socket socket) {
+   /* public static void setSocketOptions(Socket socket) {
+        try {
+            socket.setTcpNoDelay(true);
+        } catch (SocketException ex) {
+            
+            LoggerFactory.getLogger(ServersCommunicationLayer.class).error("Failed to set TCPNODELAY", ex);
+        }
+    }*/
+    
+    // Tulio SSL Socket. ## BEGIN
+    private void establishConnection(SSLSocket newSocket, int remoteId) throws IOException {
+        
+    	if ((this.controller.getStaticConf().getTTPId() == remoteId) 
+    			|| this.controller.isCurrentViewMember(remoteId)) {
+            connectionsLock.lock();
+            if (this.connections.get(remoteId) == null) { //This must never happen!!!
+                //first time that this connection is being established
+                //System.out.println("THIS DOES NOT HAPPEN....."+remoteId);
+                this.connections.put(remoteId, new ServerConnection(controller, newSocket, remoteId, inQueue, replica));
+            } else {
+                //reconnection
+            	System.out.println("ReConnecting with: "+remoteId);
+                this.connections.get(remoteId).reconnect(newSocket);
+            }
+            connectionsLock.unlock();
+
+        } else {
+            System.out.println("Closing connection of: "+remoteId);
+            newSocket.close();
+        }
+    }
+    public static void setSSLSocketOptions(SSLSocket socket) {
         try {
             socket.setTcpNoDelay(true);
         } catch (SocketException ex) {
@@ -317,7 +380,8 @@ public class ServersCommunicationLayer extends Thread {
             LoggerFactory.getLogger(ServersCommunicationLayer.class).error("Failed to set TCPNODELAY", ex);
         }
     }
-
+    // Tulio SSL Socket	## END
+    
     @Override
     public String toString() {
         String str = "inQueue=" + inQueue.toString();
@@ -341,8 +405,7 @@ public class ServersCommunicationLayer extends Thread {
     // as a server may accept connections only after learning the current view,
     // i.e., after receiving the response to the join*************//
     // This is for avoiding that the server accepts connectsion from everywhere
-    public class PendingConnection {
-
+    /*public class PendingConnection {
         public Socket s;
         public int remoteId;
 
@@ -350,7 +413,20 @@ public class ServersCommunicationLayer extends Thread {
             this.s = s;
             this.remoteId = remoteId;
         }
-    }
+    }*/
 
     //******* EDUARDO END **************//
+    
+    //******* Tulio BEGIN: same as above with SSL.
+    public class PendingConnection {
+        public SSLSocket s;
+        public int remoteId;
+
+        public PendingConnection(SSLSocket s, int remoteId) {
+            this.s = s;
+            this.remoteId = remoteId;
+        }
+    }
+    //******* Tulio END **************//
+    
 }

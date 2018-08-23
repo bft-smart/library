@@ -22,6 +22,8 @@ import java.net.InetSocketAddress;
 import java.security.PrivateKey;
 import java.security.Provider;
 import java.security.PublicKey;
+import java.security.Security;
+import java.security.spec.EllipticCurve;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.StringTokenizer;
@@ -50,7 +52,7 @@ public class Configuration {
     
     public static final String DEFAULT_HMAC = "HmacSHA512";
     public static final String DEFAULT_SECRETKEY = "PBEWithSHA1AndDES";
-    public static final String DEFAULT_SIGNATURE = "SHA512withRSA";
+    public static final String DEFAULT_SIGNATURE = "SHA512withECDSA";    
     public static final String DEFAULT_HASH = "SHA-512";
             
     private String hmacAlgorithm;
@@ -154,12 +156,18 @@ public class Configuration {
                 DH_G = new BigInteger(s);
             }
             
-            if (keyLoader == null) keyLoader = new RSAKeyLoader(processId, TOMConfiguration.configHome, defaultKeys, signatureAlgorithm);
-            if (provider == null) provider = new BouncyCastleProvider();
+            
+            //if (keyLoader == null) keyLoader = new RSAKeyLoader(processId, TOMConfiguration.configHome, defaultKeys, signatureAlgorithm);
+            if (keyLoader == null) keyLoader = new ECDSAKeyLoader(processId, TOMConfiguration.configHome, defaultKeys, signatureAlgorithm);
+            
+            //if (provider == null) provider = new BouncyCastleProvider();
+            
+            
             
             TOMUtil.init(provider, hmacAlgorithm, secretKeyAlgorithm, keyLoader.getSignatureAlgorithm(), hashAlgorithm);
 
         }catch(Exception e){
+        	e.printStackTrace();
             LoggerFactory.getLogger(this.getClass()).error("Wrong system.config file format.");
         }
     }
@@ -301,7 +309,7 @@ public class Configuration {
                 configHome="config";
             }
             String sep = System.getProperty("file.separator");
-            String path =  configHome+sep+"system.config";;
+            String path =  configHome+sep+"system.config";
             FileReader fr = new FileReader(path);
             BufferedReader rd = new BufferedReader(fr);
             String line = null;

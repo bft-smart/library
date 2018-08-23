@@ -24,6 +24,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.security.Security;
 import java.security.Signature;
 import java.security.SignatureException;
 import java.util.Arrays;
@@ -71,7 +72,6 @@ public class TOMUtil {
     public static void init(Provider provider, String hmacAlgorithm, String secretAlgorithm, String sigAlgorithm, String hashAlgorithm) {
      
         if (!TOMUtil.init) {
-   
             TOMUtil.hmacAlgorithm = hmacAlgorithm;
             TOMUtil.sigAlgorithm = sigAlgorithm;
             TOMUtil.secretAlgorithm = secretAlgorithm;

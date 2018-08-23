@@ -33,6 +33,8 @@ import javax.crypto.Mac;
 import javax.crypto.SecretKey;
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.PBEKeySpec;
+import javax.net.ssl.SSLSocket;
+import javax.net.ssl.SSLSocketFactory;
 
 import bftsmart.communication.SystemMessage;
 import bftsmart.reconfiguration.ServerViewController;
@@ -42,8 +44,10 @@ import bftsmart.tom.util.TOMUtil;
 import java.math.BigInteger;
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.security.Security;
 import java.util.HashSet;
 
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -63,7 +67,8 @@ public class ServerConnection {
     private static final long POOL_TIME = 5000;
     //private static final int SEND_QUEUE_SIZE = 50;
     private ServerViewController controller;
-    private Socket socket;
+    //private Socket socket;
+    private SSLSocket socketSSL;
     private DataOutputStream socketOutStream = null;
     private DataInputStream socketInStream = null;
     private int remoteId;
@@ -81,12 +86,13 @@ public class ServerConnection {
     private Lock sendLock;
     private boolean doWork = true;
 
-    public ServerConnection(ServerViewController controller, Socket socket, int remoteId,
+    public ServerConnection(ServerViewController controller, SSLSocket socketSSL, int remoteId,
             LinkedBlockingQueue<SystemMessage> inQueue, ServiceReplica replica) {
 
         this.controller = controller;
 
-        this.socket = socket;
+        //this.socket = socket;
+        this.socketSSL = socketSSL;
 
         this.remoteId = remoteId;
 
@@ -99,25 +105,36 @@ public class ServerConnection {
         if (isToConnect()) {
             //I have to connect to the remote server
             try {
-                this.socket = new Socket(this.controller.getStaticConf().getHost(remoteId),
+            	// SSL Socket.
+            	SSLSocketFactory factory = (SSLSocketFactory)SSLSocketFactory.getDefault();
+            	this.socketSSL = (SSLSocket)factory.createSocket(
+                		this.controller.getStaticConf().getHost(remoteId),
                         this.controller.getStaticConf().getServerToServerPort(remoteId));
-                ServersCommunicationLayer.setSocketOptions(this.socket);
-                new DataOutputStream(this.socket.getOutputStream()).writeInt(this.controller.getStaticConf().getProcessId());
+                   
+            	this.socketSSL.setEnabledCipherSuites(this.socketSSL.getSupportedCipherSuites());
+
+                ServersCommunicationLayer.setSSLSocketOptions(this.socketSSL);                
+                new DataOutputStream(this.socketSSL.getOutputStream()).writeInt(this.controller.getStaticConf().getProcessId());
+                
+                /*this.socket = new Socket(
+        		this.controller.getStaticConf().getHost(remoteId),
+                this.controller.getStaticConf().getServerToServerPort(remoteId));*/
+
 
             } catch (UnknownHostException ex) {
-                logger.error("Failed to connect to replica",ex);
+                logger.error("Failed to connect to replica", ex);
             } catch (IOException ex) {
-                logger.error("Failed to connect to replica",ex);
+                logger.error("Failed to connect to replica", ex);
             }
         }
         //else I have to wait a connection from the remote server
 
-        if (this.socket != null) {
+        if (this.socketSSL != null) {
             try {
-                socketOutStream = new DataOutputStream(this.socket.getOutputStream());
-                socketInStream = new DataInputStream(this.socket.getInputStream());
+                socketOutStream = new DataOutputStream(this.socketSSL.getOutputStream());
+                socketInStream = new DataInputStream(this.socketSSL.getInputStream());
             } catch (IOException ex) {
-                logger.error("Error creating connection to "+remoteId,ex);
+                logger.error("Error creating connection to "+remoteId, ex);
             }
         }
                
@@ -185,7 +202,7 @@ public class ServerConnection {
         boolean abort = false;
         do {
             if (abort) return; // if there is a need to reconnect, abort this method
-            if (socket != null && socketOutStream != null) {
+            if (socketSSL != null && socketOutStream != null) {
                 try {
                     //do an extra copy of the data to be sent, but on a single out stream write
                     byte[] mac = (useMAC && this.controller.getStaticConf().getUseMACs() == 1)?macSend.doFinal(messageData):null;
@@ -273,25 +290,36 @@ public class ServerConnection {
      * @param newSocket socket created when this server accepted the connection
      * (only used if processId is less than remoteId)
      */
-    protected void reconnect(Socket newSocket) {
+    protected void reconnect(SSLSocket newSocket) {
         
         connectLock.lock();
 
-        if (socket == null || !socket.isConnected()) {
+        if (socketSSL == null || !socketSSL.isConnected()) {
 
             try {
 
                 //******* EDUARDO BEGIN **************//
                 if (isToConnect()) {
 
-                    socket = new Socket(this.controller.getStaticConf().getHost(remoteId),
+                    /*socketSSL = new SSLSocket(this.controller.getStaticConf().getHost(remoteId),
                             this.controller.getStaticConf().getServerToServerPort(remoteId));
-                    ServersCommunicationLayer.setSocketOptions(socket);
-                    new DataOutputStream(socket.getOutputStream()).writeInt(this.controller.getStaticConf().getProcessId());
+                    ServersCommunicationLayer.setSSLSocketOptions(socketSSL);
+                    new DataOutputStream(socket.getOutputStream()).writeInt(this.controller.getStaticConf().getProcessId());*/
+                    
+                	SSLSocketFactory factory = (SSLSocketFactory)SSLSocketFactory.getDefault();
+                	this.socketSSL = (SSLSocket)factory.createSocket(
+                    		this.controller.getStaticConf().getHost(remoteId),
+                            this.controller.getStaticConf().getServerToServerPort(remoteId));
+                       
+                	this.socketSSL.setEnabledCipherSuites(this.socketSSL.getSupportedCipherSuites());
+
+                    ServersCommunicationLayer.setSSLSocketOptions(this.socketSSL);                
+                    new DataOutputStream(this.socketSSL.getOutputStream()).writeInt(this.controller.getStaticConf().getProcessId());
+                    
 
                 //******* EDUARDO END **************//
                 } else {
-                    socket = newSocket;
+                    socketSSL = newSocket;
                 }
             } catch (UnknownHostException ex) {
                 logger.error("Failed to connect to replica",ex);
@@ -301,10 +329,10 @@ public class ServerConnection {
                 //ex.printStackTrace();
             }
 
-            if (socket != null) {
+            if (socketSSL != null) {
                 try {
-                    socketOutStream = new DataOutputStream(socket.getOutputStream());
-                    socketInStream = new DataInputStream(socket.getInputStream());
+                    socketOutStream = new DataOutputStream(socketSSL.getOutputStream());
+                    socketInStream = new DataInputStream(socketSSL.getInputStream());
                     
                     authKey = null;
                     authenticateAndEstablishAuthKey();
@@ -323,24 +351,15 @@ public class ServerConnection {
             return;
         }
 
+        Security.addProvider(new BouncyCastleProvider());
+        
         try {
-            //if (conf.getProcessId() > remoteId) {
-            // I asked for the connection, so I'm first on the auth protocol
-            //DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
-            //} else {
-            // I received a connection request, so I'm second on the auth protocol
-            //DataInputStream dis = new DataInputStream(socket.getInputStream());
-            //}
-            
-            //Derive DH private key from replica's own private key
             
             PrivateKey privKey = controller.getStaticConf().getPrivateKey();
-            BigInteger DHPrivKey =
-                    new BigInteger(privKey.getEncoded());
+            BigInteger DHPrivKey = new BigInteger(privKey.getEncoded());
             
             //Create DH public key
-            BigInteger myDHPubKey =
-                    controller.getStaticConf().getDHG().modPow(DHPrivKey, controller.getStaticConf().getDHP());
+            BigInteger myDHPubKey = controller.getStaticConf().getDHG().modPow(DHPrivKey, controller.getStaticConf().getDHP());
             
             //turn it into a byte array
             byte[] bytes = myDHPubKey.toByteArray();
@@ -410,17 +429,17 @@ public class ServerConnection {
     }
 
     private void closeSocket() {
-        if (socket != null) {
+        if (socketSSL != null) {
             try {
                 socketOutStream.flush();
-                socket.close();
+                socketSSL.close();
             } catch (IOException ex) {
                 logger.debug("Error closing socket to "+remoteId);
             } catch (NullPointerException npe) {
             	logger.debug("Socket already closed");
             }
 
-            socket = null;
+            socketSSL = null;
             socketOutStream = null;
             socketInStream = null;
         }
@@ -490,7 +509,7 @@ public class ServerConnection {
             }
 
             while (doWork) {
-                if (socket != null && socketInStream != null) {
+                if (socketSSL != null && socketInStream != null) {
                     try {
                         //read data length
                         int dataLength = socketInStream.readInt();
@@ -570,7 +589,7 @@ public class ServerConnection {
             }
 
             while (doWork) {
-                if (socket != null && socketInStream != null) {
+                if (socketSSL != null && socketInStream != null) {
                     try {
                         //read data length
                         int dataLength = socketInStream.readInt();
