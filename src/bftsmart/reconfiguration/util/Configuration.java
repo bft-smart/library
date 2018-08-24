@@ -61,12 +61,11 @@ public class Configuration {
     private String hashAlgorithm;
 
     protected static String configHome = "";
-
    
     protected static String hostsFileName = "";
 
     protected boolean defaultKeys = false;
-
+    
     public Configuration(int procId, KeyLoader loader, Provider prov){
         processId = procId;
         keyLoader = loader;
@@ -156,12 +155,21 @@ public class Configuration {
                 DH_G = new BigInteger(s);
             }
             
+            if (keyLoader == null) {
+				switch (signatureAlgorithm) {
+				case "SHA512withRSA":
+					keyLoader = new RSAKeyLoader(processId, TOMConfiguration.configHome, defaultKeys, signatureAlgorithm);
+					break;
+				case "SHA512withECDSA":
+					keyLoader = new ECDSAKeyLoader(processId, TOMConfiguration.configHome, defaultKeys, signatureAlgorithm);
+					break;
+				default:
+					keyLoader = new ECDSAKeyLoader(processId, TOMConfiguration.configHome, defaultKeys, signatureAlgorithm);
+					break;
+				}
+			}
             
-            //if (keyLoader == null) keyLoader = new RSAKeyLoader(processId, TOMConfiguration.configHome, defaultKeys, signatureAlgorithm);
-            if (keyLoader == null) keyLoader = new ECDSAKeyLoader(processId, TOMConfiguration.configHome, defaultKeys, signatureAlgorithm);
-            
-            //if (provider == null) provider = new BouncyCastleProvider();
-            
+            if (provider == null) provider = new BouncyCastleProvider();
             
             
             TOMUtil.init(provider, hmacAlgorithm, secretKeyAlgorithm, keyLoader.getSignatureAlgorithm(), hashAlgorithm);

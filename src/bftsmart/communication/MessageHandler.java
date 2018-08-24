@@ -103,7 +103,7 @@ public class MessageHandler {
                 /*byte[] k = tomLayer.getCommunication().getServersConn().getSecretKey(paxosMsg.getSender()).getEncoded();
                 SecretKeySpec key = new SecretKeySpec(new String(k).substring(0, 8).getBytes(), "DES");*/
                 
-                SecretKey key = tomLayer.getCommunication().getServersConn().getSecretKey(consMsg.getSender());
+                SecretKey key = tomLayer.getCommunication().getSecretKey(consMsg.getSender());
                 try {
                     this.mac.init(key);                   
                     myMAC = this.mac.doFinal(data);

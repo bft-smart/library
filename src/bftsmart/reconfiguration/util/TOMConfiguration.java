@@ -63,6 +63,9 @@ public class TOMConfiguration extends Configuration {
     private boolean sameBatchSize;
     private String bindAddress;
     
+    private Boolean ssltls;
+    private String ssltlsProtocolVersion;
+    
     /** Creates a new instance of TOMConfiguration */
     public TOMConfiguration(int processId, KeyLoader loader, Provider provider) {
         super(processId, loader, provider);
@@ -337,6 +340,42 @@ public class TOMConfiguration extends Configuration {
                     sameBatchSize = false;
             }
             
+            
+            s = (String) configs.remove("system.ssltls");
+            if(s == null){
+                ssltls = true;
+            }else{
+                ssltls = (s.equalsIgnoreCase("true"))?true:false;
+			}
+
+			s = (String) configs.remove("system.ssltls.protocol_version");
+			if (s == null) {
+				ssltlsProtocolVersion = "TLSv1.2";				
+			} else {
+				switch (s) {
+				case "SSLv3":
+					ssltlsProtocolVersion = "SSLv3";
+					break;
+				case "TLSv1":
+					ssltlsProtocolVersion = "TLSv1";
+					break;
+				case "TLSv1.1":
+					ssltlsProtocolVersion = "TLSv1.1";
+					break;
+				case "TLSv1.2":
+					ssltlsProtocolVersion = "TLSv1.2";
+					break;
+				default:
+					System.out.println("Setting default SSL/TLS protocol version: TLSv1.2");
+					ssltlsProtocolVersion = "TLSv1.2";
+					break;
+				}
+			}
+			if(ssltls)
+				System.out.println("-- Setting SSL/TLS protocol version: " + ssltlsProtocolVersion);
+			else
+				System.out.println("-- No SSL/TLS protocol support.");
+            
         } catch (Exception e) {
             logger.error("Could not parse system configuration file",e);
         }
@@ -471,7 +510,6 @@ public class TOMConfiguration extends Configuration {
 	}
 
 	public boolean isToLogParallel() {
-		// TODO Auto-generated method stub
 		return parallelLog;
 	}
 
@@ -509,4 +547,11 @@ public class TOMConfiguration extends Configuration {
     public String getBindAddress() {
         return bindAddress;
     }
+
+	public String getSSLTLSProtocolVersion() {
+		return ssltlsProtocolVersion;
+	}
+	public boolean isSSLTLSEnabled() {
+		return ssltls;
+	}
 }

@@ -18,15 +18,21 @@ package bftsmart.communication;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
+import javax.crypto.SecretKey;
+import javax.crypto.SecretKeyFactory;
+import javax.crypto.spec.PBEKeySpec;
+
 import bftsmart.communication.client.CommunicationSystemServerSide;
 import bftsmart.communication.client.CommunicationSystemServerSideFactory;
 import bftsmart.communication.client.RequestReceiver;
 import bftsmart.communication.server.ServersCommunicationLayer;
+import bftsmart.communication.server.ServersCommunicationLayerSSLTLS;
 import bftsmart.consensus.roles.Acceptor;
 import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.tom.ServiceReplica;
 import bftsmart.tom.core.TOMLayer;
 import bftsmart.tom.core.messages.TOMMessage;
+import bftsmart.tom.util.TOMUtil;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,140 +43,167 @@ import org.slf4j.LoggerFactory;
  */
 public class ServerCommunicationSystem extends Thread {
 
-    private Logger logger = LoggerFactory.getLogger(this.getClass());
+	private Logger logger = LoggerFactory.getLogger(this.getClass());
 
-    private boolean doWork = true;
-    public final long MESSAGE_WAIT_TIME = 100;
-    private LinkedBlockingQueue<SystemMessage> inQueue = null;//new LinkedBlockingQueue<SystemMessage>(IN_QUEUE_SIZE);
-    protected MessageHandler messageHandler;
-    private ServersCommunicationLayer serversConn;
-    private CommunicationSystemServerSide clientsConn;
-    private ServerViewController controller;
+	private boolean doWork = true;
+	public final long MESSAGE_WAIT_TIME = 100;
+	private LinkedBlockingQueue<SystemMessage> inQueue = null;// new LinkedBlockingQueue<SystemMessage>(IN_QUEUE_SIZE);
+	protected MessageHandler messageHandler;
+	private ServersCommunicationLayer serversConn;
+	private ServersCommunicationLayerSSLTLS serversConnSSLTLS;
 
-    /**
-     * Creates a new instance of ServerCommunicationSystem
-     */
-    public ServerCommunicationSystem(ServerViewController controller, ServiceReplica replica) throws Exception {
-        super("Server CS");
+	private CommunicationSystemServerSide clientsConn;
+	private ServerViewController controller;
 
-        this.controller = controller;
-        
-        messageHandler = new MessageHandler();
+	/**
+	 * Creates a new instance of ServerCommunicationSystem
+	 */
+	public ServerCommunicationSystem(ServerViewController controller, ServiceReplica replica) throws Exception {
+		super("Server CS");
 
-        inQueue = new LinkedBlockingQueue<SystemMessage>(controller.getStaticConf().getInQueueSize());
+		this.controller = controller;
 
-        //create a new conf, with updated port number for servers
-        //TOMConfiguration serversConf = new TOMConfiguration(conf.getProcessId(),
-        //      Configuration.getHomeDir(), "hosts.config");
+		messageHandler = new MessageHandler();
 
-        //serversConf.increasePortNumber();
+		inQueue = new LinkedBlockingQueue<SystemMessage>(controller.getStaticConf().getInQueueSize());
 
-        serversConn = new ServersCommunicationLayer(controller, inQueue, replica);
+		if (controller.getStaticConf().isSSLTLSEnabled()) {
+			serversConnSSLTLS = new ServersCommunicationLayerSSLTLS(controller, inQueue, replica);
+		} else {
+			serversConn = new ServersCommunicationLayer(controller, inQueue, replica);
+		}
 
-        //******* EDUARDO BEGIN **************//
-       // if (manager.isInCurrentView() || manager.isInInitView()) {
-            clientsConn = CommunicationSystemServerSideFactory.getCommunicationSystemServerSide(controller);
-       // }
-        //******* EDUARDO END **************//
-        //start();
-    }
+		// ******* EDUARDO BEGIN **************//
+		// if (manager.isInCurrentView() || manager.isInInitView()) {
+		clientsConn = CommunicationSystemServerSideFactory.getCommunicationSystemServerSide(controller);
+		// }
+		// ******* EDUARDO END **************//
+		// start();
+	}
 
-    //******* EDUARDO BEGIN **************//
-    public void joinViewReceived() {
-        serversConn.joinViewReceived();
-    }
+	// ******* EDUARDO BEGIN **************//
+	public void joinViewReceived() {
+		if (controller.getStaticConf().isSSLTLSEnabled())
+			serversConnSSLTLS.joinViewReceived();
+		else
+			serversConn.joinViewReceived();
+	}
 
-    public void updateServersConnections() {
-        this.serversConn.updateConnections();
-        if (clientsConn == null) {
-            clientsConn = CommunicationSystemServerSideFactory.getCommunicationSystemServerSide(controller);
-        }
+	public void updateServersConnections() {
+		if (controller.getStaticConf().isSSLTLSEnabled())
+			this.serversConnSSLTLS.updateConnections();
+		else
+			this.serversConn.updateConnections();
 
-    }
+		if (clientsConn == null) {
+			clientsConn = CommunicationSystemServerSideFactory.getCommunicationSystemServerSide(controller);
+		}
 
-    //******* EDUARDO END **************//
-    public void setAcceptor(Acceptor acceptor) {
-        messageHandler.setAcceptor(acceptor);
-    }
+	}
 
-    public void setTOMLayer(TOMLayer tomLayer) {
-        messageHandler.setTOMLayer(tomLayer);
-    }
+	// ******* EDUARDO END **************//
+	public void setAcceptor(Acceptor acceptor) {
+		messageHandler.setAcceptor(acceptor);
+	}
 
-    public void setRequestReceiver(RequestReceiver requestReceiver) {
-        if (clientsConn == null) {
-            clientsConn = CommunicationSystemServerSideFactory.getCommunicationSystemServerSide(controller);
-        }
-        clientsConn.setRequestReceiver(requestReceiver);
-    }
+	public void setTOMLayer(TOMLayer tomLayer) {
+		messageHandler.setTOMLayer(tomLayer);
+	}
 
-    /**
-     * Thread method responsible for receiving messages sent by other servers.
-     */
-    @Override
-    public void run() {
-        
-        long count = 0;
-        while (doWork) {
-            try {
-                if (count % 1000 == 0 && count > 0) {
-                    logger.debug("After " + count + " messages, inQueue size=" + inQueue.size());
-                }
+	public void setRequestReceiver(RequestReceiver requestReceiver) {
+		if (clientsConn == null) {
+			clientsConn = CommunicationSystemServerSideFactory.getCommunicationSystemServerSide(controller);
+		}
+		clientsConn.setRequestReceiver(requestReceiver);
+	}
 
-                SystemMessage sm = inQueue.poll(MESSAGE_WAIT_TIME, TimeUnit.MILLISECONDS);
+	/**
+	 * Thread method responsible for receiving messages sent by other servers.
+	 */
+	@Override
+	public void run() {
 
-                if (sm != null) {
-                    logger.debug("<-------receiving---------- " + sm);
-                    messageHandler.processData(sm);
-                    count++;
-                } else {                
-                    messageHandler.verifyPending();               
-                }
-            } catch (InterruptedException e) {
-                
-                logger.error("Error processing message",e);
-            }
-        }
-        logger.info("ServerCommunicationSystem stopped.");
+		long count = 0;
+		while (doWork) {
+			try {
+				if (count % 1000 == 0 && count > 0) {
+					logger.debug("After " + count + " messages, inQueue size=" + inQueue.size());
+				}
 
-    }
+				SystemMessage sm = inQueue.poll(MESSAGE_WAIT_TIME, TimeUnit.MILLISECONDS);
 
-    /**
-     * Send a message to target processes. If the message is an instance of 
-     * TOMMessage, it is sent to the clients, otherwise it is set to the
-     * servers.
-     *
-     * @param targets the target receivers of the message
-     * @param sm the message to be sent
-     */
-    public void send(int[] targets, SystemMessage sm) {
-        if (sm instanceof TOMMessage) {
-            clientsConn.send(targets, (TOMMessage) sm, false);
-        } else {
-            logger.debug("--------sending----------> " + sm);
-            serversConn.send(targets, sm, true);
-        }
-    }
+				if (sm != null) {
+					logger.debug("<-------receiving---------- " + sm);
+					messageHandler.processData(sm);
+					count++;
+				} else {
+					messageHandler.verifyPending();
+				}
+			} catch (InterruptedException e) {
 
-    public ServersCommunicationLayer getServersConn() {
-        return serversConn;
-    }
-    
-    public CommunicationSystemServerSide getClientsConn() {
-        return clientsConn;
-    }
-    
-    @Override
-    public String toString() {
-        return serversConn.toString();
-    }
-    
-    public void shutdown() {
-        
-        logger.info("Shutting down communication layer");
-        
-        this.doWork = false;        
-        clientsConn.shutdown();
-        serversConn.shutdown();
-    }
+				logger.error("Error processing message", e);
+			}
+		}
+		logger.info("ServerCommunicationSystem stopped.");
+
+	}
+
+	/**
+	 * Send a message to target processes. If the message is an instance of
+	 * TOMMessage, it is sent to the clients, otherwise it is set to the servers.
+	 *
+	 * @param targets
+	 *            the target receivers of the message
+	 * @param sm
+	 *            the message to be sent
+	 */
+	public void send(int[] targets, SystemMessage sm) {
+		if (sm instanceof TOMMessage) {
+			clientsConn.send(targets, (TOMMessage) sm, false);
+		} else {
+			logger.debug("--------sending----------> " + sm);
+			if (controller.getStaticConf().isSSLTLSEnabled())
+				serversConnSSLTLS.send(targets, sm, true);
+			else
+				serversConn.send(targets, sm, true);
+		}
+	}
+
+	public ServersCommunicationLayer getServersConn() {
+		return serversConn;
+	}
+
+	public ServersCommunicationLayerSSLTLS getServersConnSSLTLS() {
+		return serversConnSSLTLS;
+	}
+
+	public CommunicationSystemServerSide getClientsConn() {
+		return clientsConn;
+	}
+
+	@Override
+	public String toString() {
+		return serversConn.toString();
+	}
+
+	public void shutdown() {
+
+		logger.info("Shutting down communication layer");
+
+		this.doWork = false;
+		clientsConn.shutdown();
+		if (controller.getStaticConf().isSSLTLSEnabled())
+			serversConnSSLTLS.shutdown();
+		else
+			serversConn.shutdown();
+	}
+
+	public SecretKey getSecretKey(int id) {
+		if (controller.getStaticConf().isSSLTLSEnabled())
+			return serversConnSSLTLS.getSecretKey(id);
+		else
+			return serversConn.getSecretKey(id);
+		
+	}
+
 }

@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2007-2013 Alysson Bessani, Eduardo Alchieri, Paulo Sousa, and the authors indicated in the @author tags
+Copyright (c) 2007-2013 Alysson Bessani, Eduardo Alchieri, Paulo Sousa, Tulio A. Ribeiro and the authors indicated in the @author tags
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,29 +19,16 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
-import java.net.ServerSocket;
-import java.net.Socket;
+import java.net.InetAddress;
 import java.net.SocketException;
-import java.net.SocketImpl;
-import java.net.SocketImplFactory;
 import java.net.SocketTimeoutException;
-import java.security.KeyManagementException;
-import java.security.NoSuchAlgorithmException;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
-
-import bftsmart.communication.SystemMessage;
-import bftsmart.reconfiguration.ServerViewController;
-import bftsmart.tom.ServiceReplica;
-import bftsmart.tom.util.TOMUtil;
-import jdk.net.Sockets;
-
-import java.net.InetAddress;
-import java.util.HashMap;
 
 import javax.crypto.SecretKey;
 import javax.crypto.SecretKeyFactory;
@@ -50,23 +37,29 @@ import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLServerSocket;
 import javax.net.ssl.SSLServerSocketFactory;
 import javax.net.ssl.SSLSocket;
-import javax.net.ssl.SSLSocketFactory;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import bftsmart.communication.SystemMessage;
+import bftsmart.reconfiguration.ServerViewController;
+import bftsmart.tom.ServiceReplica;
+import bftsmart.tom.util.TOMUtil;
 
 /**
  *
  * @author alysson
  */
-public class ServersCommunicationLayer extends Thread {
+public class ServersCommunicationLayerSSLTLS extends Thread {
 
 	private Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	private ServerViewController controller;
 	private LinkedBlockingQueue<SystemMessage> inQueue;
-	private HashMap<Integer, ServerConnection> connections = new HashMap<>();
-	private ServerSocket serverSocket;
+	private HashMap<Integer, ServerConnectionSSLTLS> connections = new HashMap<>();
+
+	private SSLServerSocket serverSocketSSL;
+	private String ssltlsProtocolVersion;
 
 	private int me;
 	private boolean doWork = true;
@@ -75,17 +68,18 @@ public class ServersCommunicationLayer extends Thread {
 	// private Condition canConnect = waitViewLock.newCondition();
 	private List<PendingConnection> pendingConn = new LinkedList<PendingConnection>();
 	private ServiceReplica replica;
+
 	private SecretKey selfPwd;
 	private static final String PASSWORD = "commsyst";
 
-	public ServersCommunicationLayer(ServerViewController controller, LinkedBlockingQueue<SystemMessage> inQueue,
+	public ServersCommunicationLayerSSLTLS(ServerViewController controller, LinkedBlockingQueue<SystemMessage> inQueue,
 			ServiceReplica replica) throws Exception {
 
 		this.controller = controller;
 		this.inQueue = inQueue;
 		this.me = controller.getStaticConf().getProcessId();
 		this.replica = replica;
-		
+		this.ssltlsProtocolVersion = controller.getStaticConf().getSSLTLSProtocolVersion();
 
 		// Try connecting if a member of the current view. Otherwise, wait until the
 		// Join has been processed!
@@ -126,9 +120,18 @@ public class ServersCommunicationLayer extends Thread {
 		}
 
 		int myPort = controller.getStaticConf().getServerToServerPort(controller.getStaticConf().getProcessId());
-		serverSocket = new ServerSocket(myPort, 100, InetAddress.getByName(myAddress));
-		serverSocket.setSoTimeout(10000);
-		serverSocket.setReuseAddress(true);
+
+		SSLContext context = SSLContext.getInstance(controller.getStaticConf().getSSLTLSProtocolVersion());
+		context.init(null, null, null);
+
+		SSLServerSocketFactory serverSocketFactory = context.getServerSocketFactory();
+		System.out.println("Creating server socket factory on port: " + myPort);
+		this.serverSocketSSL = (SSLServerSocket) serverSocketFactory.createServerSocket(myPort, 100, InetAddress.getByName(myAddress));
+
+		serverSocketSSL.setEnabledCipherSuites(serverSocketSSL.getSupportedCipherSuites());
+		serverSocketSSL.setSoTimeout(10000);
+		serverSocketSSL.setEnableSessionCreation(true);
+		serverSocketSSL.setReuseAddress(true);
 
 		SecretKeyFactory fac = TOMUtil.getSecretFactory();
 		PBEKeySpec spec = new PBEKeySpec(PASSWORD.toCharArray());
@@ -138,13 +141,7 @@ public class ServersCommunicationLayer extends Thread {
 
 	}
 
-	/*
-	 * public SecretKey getSecretKey(int id) { if (id ==
-	 * controller.getStaticConf().getProcessId()) return selfPwd; else return
-	 * connections.get(id).getSecretKey(); }
-	 */
-
-	// ******* EDUARDO BEGIN **************//
+		// ******* EDUARDO BEGIN **************//
 	public void updateConnections() {
 		connectionsLock.lock();
 
@@ -179,11 +176,11 @@ public class ServersCommunicationLayer extends Thread {
 		connectionsLock.unlock();
 	}
 
-	private ServerConnection getConnection(int remoteId) {
+	private ServerConnectionSSLTLS getConnection(int remoteId) {
 		connectionsLock.lock();
-		ServerConnection ret = this.connections.get(remoteId);
+		ServerConnectionSSLTLS ret = this.connections.get(remoteId);
 		if (ret == null) {
-			ret = new ServerConnection(controller, null, remoteId, this.inQueue, this.replica);
+			ret = new ServerConnectionSSLTLS(controller, null, remoteId, this.inQueue, this.replica);
 			this.connections.put(remoteId, ret);
 		}
 		connectionsLock.unlock();
@@ -263,8 +260,8 @@ public class ServersCommunicationLayer extends Thread {
 		while (doWork) {
 			try {
 				// System.out.println("Waiting for connections.");
-				Socket newSocket = (Socket) serverSocket.accept();
-				ServersCommunicationLayer.setSocketOptions(newSocket);
+				SSLSocket newSocket = (SSLSocket) serverSocketSSL.accept();
+				ServersCommunicationLayerSSLTLS.setSSLSocketOptions(newSocket);
 
 				int remoteId = new DataInputStream(newSocket.getInputStream()).readInt();
 
@@ -289,7 +286,7 @@ public class ServersCommunicationLayer extends Thread {
 		}
 
 		try {
-			serverSocket.close();
+			serverSocketSSL.close();
 		} catch (IOException ex) {
 			logger.error("Failed to close server socket", ex);
 		}
@@ -297,57 +294,29 @@ public class ServersCommunicationLayer extends Thread {
 		logger.info("ServerCommunicationLayer stopped.");
 	}
 
-	// ******* EDUARDO BEGIN **************//
-	/*
-	 * private void establishConnection(Socket newSocket, int remoteId) throws
-	 * IOException { if ((this.controller.getStaticConf().getTTPId() == remoteId) ||
-	 * this.controller.isCurrentViewMember(remoteId)) { connectionsLock.lock();
-	 * //System.out.println("Vai se conectar com: "+remoteId); if
-	 * (this.connections.get(remoteId) == null) { //This must never happen!!!
-	 * //first time that this connection is being established
-	 * //System.out.println("THIS DOES NOT HAPPEN....."+remoteId);
-	 * this.connections.put(remoteId, new ServerConnection(controller, newSocket,
-	 * remoteId, inQueue, replica)); } else { //reconnection
-	 * this.connections.get(remoteId).reconnect(newSocket); }
-	 * connectionsLock.unlock();
-	 * 
-	 * } else { //System.out.println("Closing connection of: "+remoteId);
-	 * newSocket.close(); } }
-	 */
-	// ******* EDUARDO END **************//
+	// Tulio SSL Socket. ## BEGIN
+	private void establishConnection(SSLSocket newSocket, int remoteId) throws IOException {
 
-	/*
-	 * public static void setSocketOptions(Socket socket) { try {
-	 * socket.setTcpNoDelay(true); } catch (SocketException ex) {
-	 * 
-	 * LoggerFactory.getLogger(ServersCommunicationLayer.class).
-	 * error("Failed to set TCPNODELAY", ex); } }
-	 */
+		if ((this.controller.getStaticConf().getTTPId() == remoteId) || this.controller.isCurrentViewMember(remoteId)) {
+			connectionsLock.lock();
+			if (this.connections.get(remoteId) == null) { // This must never happen!!!
+				// first time that this connection is being established
+				// System.out.println("THIS DOES NOT HAPPEN....."+remoteId);
+				this.connections.put(remoteId, new ServerConnectionSSLTLS(controller, newSocket, remoteId, inQueue, replica));
+			} else {
+				// reconnection
+				System.out.println("ReConnecting with: " + remoteId);
+				this.connections.get(remoteId).reconnect(newSocket);
+			}
+			connectionsLock.unlock();
 
-	   //******* EDUARDO BEGIN **************//
-    private void establishConnection(Socket newSocket, int remoteId) throws IOException {
-        if ((this.controller.getStaticConf().getTTPId() == remoteId) || this.controller.isCurrentViewMember(remoteId)) {
-            connectionsLock.lock();
-            //System.out.println("Vai se conectar com: "+remoteId);
-            if (this.connections.get(remoteId) == null) { //This must never happen!!!
-                //first time that this connection is being established
-                //System.out.println("THIS DOES NOT HAPPEN....."+remoteId);
-                this.connections.put(remoteId, new ServerConnection(controller, newSocket, remoteId, inQueue, replica));
-            } else {
-                //reconnection
-                this.connections.get(remoteId).reconnect(newSocket);
-            }
-            connectionsLock.unlock();
+		} else {
+			System.out.println("Closing connection of: " + remoteId);
+			newSocket.close();
+		}
+	}
 
-        } else {
-            //System.out.println("Closing connection of: "+remoteId);
-            newSocket.close();
-        }
-    }
-    //******* EDUARDO END **************//
-    
-  
-	public static void setSocketOptions(Socket socket) {
+	public static void setSSLSocketOptions(SSLSocket socket) {
 		try {
 			socket.setTcpNoDelay(true);
 		} catch (SocketException ex) {
@@ -355,7 +324,7 @@ public class ServersCommunicationLayer extends Thread {
 			LoggerFactory.getLogger(ServersCommunicationLayer.class).error("Failed to set TCPNODELAY", ex);
 		}
 	}
-	
+	// Tulio SSL Socket ## END
 
 	@Override
 	public String toString() {
@@ -375,26 +344,23 @@ public class ServersCommunicationLayer extends Thread {
 		return str;
 	}
 
-	// ******* EDUARDO BEGIN: List entry that stores pending connections,
-	// as a server may accept connections only after learning the current view,
-	// i.e., after receiving the response to the join*************//
-	// This is for avoiding that the server accepts connectsion from everywhere
+	// ******* Tulio BEGIN: same as above with SSL.
 	public class PendingConnection {
-		public Socket s;
+		public SSLSocket s;
 		public int remoteId;
 
-		public PendingConnection(Socket s, int remoteId) {
+		public PendingConnection(SSLSocket s, int remoteId) {
 			this.s = s;
 			this.remoteId = remoteId;
 		}
-	}
-	// ******* EDUARDO END **************//
-
+	}	
+	// ******* Tulio END **************//
 	public SecretKey getSecretKey(int id) {
 		if (id == controller.getStaticConf().getProcessId())
 			return selfPwd;
 		else
 			return connections.get(id).getSecretKey();
 	}
+	
 
 }

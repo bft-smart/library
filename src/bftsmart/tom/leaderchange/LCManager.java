@@ -842,7 +842,9 @@ public class LCManager {
 
                 byte[] myMAC = null;
                                 
-                secretKey = tomLayer.getCommunication().getServersConn().getSecretKey(consMsg.getSender());
+                
+                secretKey = tomLayer.getCommunication().getSecretKey(consMsg.getSender());
+                
                 try {
                     this.mac.init(secretKey);                   
                    myMAC = this.mac.doFinal(data);

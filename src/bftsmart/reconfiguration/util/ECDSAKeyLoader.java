@@ -63,7 +63,7 @@ public class ECDSAKeyLoader implements KeyLoader {
 
 	private KeyPair keyPair = null;
 
-	private static final String PRIV_KEY = "-----BEGIN EC PRIVATE KEY-----\n" + 
+	private static final String PRIV_KEY_521b = "-----BEGIN EC PRIVATE KEY-----\n" + 
 			"MIHcAgEBBEIBzxjh6rdpJ3nkuPzuvfWRWV2MzUJu1Ke0H04oeLRwLRXf/O7dKeh8\n" + 
 			"qAoYVFjk/1frbB+1NeXy9wqcRrFwA12hMOygBwYFK4EEACOhgYkDgYYABAGisA9t\n" + 
 			"ro3qToc5S3tCWlfjyoFECT+rOHY90jNBTx/hEKkD1blSE1JI3Og+O/pYuFMvdimw\n" + 
@@ -71,6 +71,18 @@ public class ECDSAKeyLoader implements KeyLoader {
 			"o6dT0wqyHCI/51UGLnw4QKsKV8YcFwU27yNqPYRnLg==\n" + 
 			"-----END EC PRIVATE KEY-----";
 	
+	private static final String PRIV_KEY_384b = "-----BEGIN EC PRIVATE KEY-----\n" + 
+			"MIGkAgEBBDA+dcBGMPWZBb8uqYgbcac+KMFginhas9XreiTpYbgPlzeINkCqxe+B\n" + 
+			"bwAephwASzmgBwYFK4EEACKhZANiAAQKRCyK0HNGv2MJl6vUax++4d5nAPAnILtQ\n" + 
+			"y9cOZAllLZoqvg6IrUAZeFeHPtSnQmJJikqSFzw98zImR9CJD6Lb72qHCWGlKET/\n" + 
+			"hWcGp90OLHgwxtxJ6nxpMxPAYetA9NY=\n" + 
+			"-----END EC PRIVATE KEY-----";	
+	
+	private static final String PRIV_KEY_256b = "-----BEGIN EC PRIVATE KEY-----\n" + 
+			"MHcCAQEEICMpf2ULckdRXAccLQtnN+1utW0rGQpvcZLl1qnJgovooAoGCCqGSM49\n" + 
+			"AwEHoUQDQgAEoVYDlQiWUl9tjULrYFkWgJTeV3LVmbw8YZ7KwhUvBFam4+wnF6hV\n" + 
+			"ADxIKpHwDJK7CjdZvFTPQRfRzetNNLazWw==\n" + 
+			"-----END EC PRIVATE KEY-----";
 	
 	/** Creates a new instance of ECDSAKeyLoader */
 	public ECDSAKeyLoader(int id, String configHome, boolean defaultKeys, String sigAlgorithm) {
@@ -87,7 +99,7 @@ public class ECDSAKeyLoader implements KeyLoader {
 		}
 
 		Security.addProvider(new BouncyCastleProvider());
-		Reader rdr = new StringReader (PRIV_KEY);
+		Reader rdr = new StringReader (PRIV_KEY_256b);
 	    Object parsed = null;
 		try {
 			parsed = new org.bouncycastle.openssl.PEMParser(rdr).readObject();
@@ -101,15 +113,14 @@ public class ECDSAKeyLoader implements KeyLoader {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-	  //  System.out.println (keyPair.getPrivate().getAlgorithm());	    
-	  //  System.out.println("" + keyPair.getPublic());
-	    
-		System.out.println("Signature Algorithm: " + keyPair.getPrivate().getAlgorithm());	
+
 	    System.out.println("\n###############################################" 
 				+ "\nKeyLoader parameters:" 
-				+ "\n\t Replica ID: " + this.id
+				+ "\n\t ID: " + this.id
 				+ "\n\t DefaultKeys: " + this.defaultKeys 
 				+ "\n\t Signature Algorithm: " + keyPair.getPrivate().getAlgorithm()
+				+ "\n\t Private Key Format: " + keyPair.getPrivate().getFormat()
+				+ "\n\t Public Key Format: " + keyPair.getPublic().getFormat()
 				+ "\n" + "###############################################");
 
 	}

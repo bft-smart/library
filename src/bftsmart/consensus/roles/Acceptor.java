@@ -292,7 +292,10 @@ public final class Acceptor {
                 insertProof(cm, epoch);
                 
                 int[] targets = this.controller.getCurrentViewOtherAcceptors();
-                communication.getServersConn().send(targets, cm, true);
+                if(controller.getStaticConf().isSSLTLSEnabled())
+                	communication.getServersConnSSLTLS().send(targets, cm, true);
+                else
+                	communication.getServersConn().send(targets, cm, true);
                 
                 //communication.send(this.reconfManager.getCurrentViewOtherAcceptors(),
                         //factory.createStrong(cid, epoch.getNumber(), value));
@@ -355,7 +358,7 @@ public final class Acceptor {
 
                     SecretKey key = null;
                     do {
-                        key = communication.getServersConn().getSecretKey(id);
+                        key = communication.getSecretKey(id);
                         if (key == null) {
                             logger.warn("I don't have yet a secret key with " + id + ". Retrying.");
                             Thread.sleep(1000);
