@@ -16,6 +16,7 @@ limitations under the License.
 package bftsmart.clientsmanagement;
 
 import java.security.PublicKey;
+import java.security.Security;
 import java.security.Signature;
 import java.security.SignatureException;
 import java.util.Iterator;
@@ -24,6 +25,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.util.TOMUtil;
 
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -57,6 +59,7 @@ public class ClientData {
      * @param publicKey client public key
      */
     public ClientData(int clientId, PublicKey publicKey) {
+    	
         this.clientId = clientId;
         if(publicKey != null) {
             try {

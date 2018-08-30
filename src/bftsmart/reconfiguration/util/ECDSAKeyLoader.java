@@ -99,21 +99,16 @@ public class ECDSAKeyLoader implements KeyLoader {
 		}
 
 		Security.addProvider(new BouncyCastleProvider());
+		
 		Reader rdr = new StringReader (PRIV_KEY_256b);
 	    Object parsed = null;
 		try {
 			parsed = new org.bouncycastle.openssl.PEMParser(rdr).readObject();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		try {
 			keyPair = new org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter().getKeyPair((org.bouncycastle.openssl.PEMKeyPair)parsed);
-		} catch (PEMException e) {
-			// TODO Auto-generated catch block
+		} catch (IOException  e) {
 			e.printStackTrace();
 		}
-
+		
 	    System.out.println("\n###############################################" 
 				+ "\nKeyLoader parameters:" 
 				+ "\n\t ID: " + this.id
@@ -136,7 +131,7 @@ public class ECDSAKeyLoader implements KeyLoader {
 			throws IOException, NoSuchAlgorithmException, InvalidKeySpecException, CertificateException {
 
 		if (defaultKeys) {
-			return this.keyPair.getPublic();
+			return keyPair.getPublic();
 		}
 
 		FileReader f = new FileReader(path + "publickey" + id);
@@ -202,11 +197,32 @@ public class ECDSAKeyLoader implements KeyLoader {
 
 	// utility methods for going from string to public/private key
 	private PrivateKey getPrivateKeyFromString(String key) throws NoSuchAlgorithmException, InvalidKeySpecException {
+			KeyFactory keyFactory = null;
+			try {
+				keyFactory = KeyFactory.getInstance("ECDSA", "BC");
+			} catch (NoSuchProviderException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+            EncodedKeySpec privateKeySpec = new PKCS8EncodedKeySpec(Base64.decodeBase64(key));
+            PrivateKey privateKey = keyFactory.generatePrivate(privateKeySpec);
 		return this.keyPair.getPrivate();
 	}
 
 	private PublicKey getPublicKeyFromString(String key) throws NoSuchAlgorithmException, InvalidKeySpecException {
-		return this.keyPair.getPublic();
+		
+		Security.addProvider(new BouncyCastleProvider()); 
+		X509EncodedKeySpec pubKeySpec = new X509EncodedKeySpec(this.keyPair.getPublic().getEncoded());
+		KeyFactory keyFactory = null;
+		try {
+			keyFactory = KeyFactory.getInstance("ECDSA", "BC");
+		} catch (NoSuchProviderException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		PublicKey pubKey = keyFactory.generatePublic(pubKeySpec);
+		return pubKey;
+		//return this.keyPair.getPublic();
 	}
 
 	@Override

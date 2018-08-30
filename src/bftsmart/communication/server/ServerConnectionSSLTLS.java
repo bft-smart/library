@@ -67,7 +67,6 @@ public class ServerConnectionSSLTLS {
     private static final long POOL_TIME = 5000;
     //private static final int SEND_QUEUE_SIZE = 50;
     private ServerViewController controller;
-    private Socket socket;
     private SSLSocket socketSSL;
     private DataOutputStream socketOutStream = null;
     private DataInputStream socketInStream = null;
@@ -92,7 +91,6 @@ public class ServerConnectionSSLTLS {
 
         this.controller = controller;
 
-        //this.socket = socket;
         this.socketSSL = socketSSL;
 
         this.remoteId = remoteId;
@@ -112,9 +110,19 @@ public class ServerConnectionSSLTLS {
                 		this.controller.getStaticConf().getHost(remoteId),
                         this.controller.getStaticConf().getServerToServerPort(remoteId));
                    
-            	this.socketSSL.setEnabledCipherSuites(this.socketSSL.getSupportedCipherSuites());
+            	
+            	String[] ciphers = new String[] { "TLS_RSA_WITH_NULL_SHA256",
+       				 "TLS_ECDHE_ECDSA_WITH_NULL_SHA",
+       				 "TLS_ECDHE_RSA_WITH_NULL_SHA",
+       				 "SSL_RSA_WITH_NULL_SHA",
+       				 "TLS_ECDH_ECDSA_WITH_NULL_SHA",
+       				 "TLS_ECDH_RSA_WITH_NULL_SHA",
+       				 "TLS_ECDH_anon_WITH_NULL_SHA",
+       				 "SSL_RSA_WITH_NULL_MD5" };
+            	this.socketSSL.setEnabledCipherSuites(ciphers);
+            	//this.socketSSL.setEnabledCipherSuites(this.socketSSL.getSupportedCipherSuites());
 
-                ServersCommunicationLayerSSLTLS.setSSLSocketOptions(this.socketSSL);                
+            	ServersCommunicationLayerSSLTLS.setSSLSocketOptions(this.socketSSL);                
                 new DataOutputStream(this.socketSSL.getOutputStream()).writeInt(this.controller.getStaticConf().getProcessId());
      
             } catch (UnknownHostException ex) {
@@ -300,18 +308,22 @@ public class ServerConnectionSSLTLS {
                 //******* EDUARDO BEGIN **************//
                 if (isToConnect()) {
 
-                    /*socketSSL = new SSLSocket(this.controller.getStaticConf().getHost(remoteId),
-                            this.controller.getStaticConf().getServerToServerPort(remoteId));
-                    ServersCommunicationLayer.setSSLSocketOptions(socketSSL);
-                    new DataOutputStream(socket.getOutputStream()).writeInt(this.controller.getStaticConf().getProcessId());*/
-                    
                 	SSLSocketFactory factory = (SSLSocketFactory)SSLSocketFactory.getDefault();
                 	this.socketSSL = (SSLSocket)factory.createSocket(
                     		this.controller.getStaticConf().getHost(remoteId),
                             this.controller.getStaticConf().getServerToServerPort(remoteId));
                        
-                	this.socketSSL.setEnabledCipherSuites(this.socketSSL.getSupportedCipherSuites());
-
+                	String[] ciphers = new String[] { "TLS_RSA_WITH_NULL_SHA256",
+              				 "TLS_ECDHE_ECDSA_WITH_NULL_SHA",
+              				 "TLS_ECDHE_RSA_WITH_NULL_SHA",
+              				 "SSL_RSA_WITH_NULL_SHA",
+              				 "TLS_ECDH_ECDSA_WITH_NULL_SHA",
+              				 "TLS_ECDH_RSA_WITH_NULL_SHA",
+              				 "TLS_ECDH_anon_WITH_NULL_SHA",
+              				 "SSL_RSA_WITH_NULL_MD5" };
+                   	this.socketSSL.setEnabledCipherSuites(ciphers);
+                	//this.socketSSL.setEnabledCipherSuites(this.socketSSL.getSupportedCipherSuites());
+                	
                     ServersCommunicationLayerSSLTLS.setSSLSocketOptions(this.socketSSL);                
                     new DataOutputStream(this.socketSSL.getOutputStream()).writeInt(this.controller.getStaticConf().getProcessId());
                     

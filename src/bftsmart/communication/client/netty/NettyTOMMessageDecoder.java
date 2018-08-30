@@ -82,7 +82,7 @@ public class NettyTOMMessageDecoder extends ByteToMessageDecoder {
         this.rl = rl;
         this.signatureSize = signatureLength;
         this.useMAC = useMAC;
-        logger.debug("new NettyTOMMessageDecoder!!, isClient=" + isClient);
+        logger.debug("new NettyTOMMessageDecoder!!, isClient=" + isClient);        
     }
 
     @Override
@@ -136,7 +136,11 @@ public class NettyTOMMessageDecoder extends ByteToMessageDecoder {
 
         DataInputStream dis = null;
         TOMMessage sm = null;
-
+        if(sessionTable == null)
+        {
+        	System.exit(1);
+        }
+        
         try {
             ByteArrayInputStream bais = new ByteArrayInputStream(data);
             dis = new DataInputStream(bais);
@@ -156,8 +160,10 @@ public class NettyTOMMessageDecoder extends ByteToMessageDecoder {
                 //verify MAC
                 if (useMAC) {
                     if (!verifyMAC(sm.getSender(), data, digest)) {
-                        logger.error("MAC error: message discarded");
+                        logger.error("MAC error: message discarded, is a client.");
                         return;
+                    }else {
+                    	logger.debug("MAC OK: message NOT discarded, is a client.");
                     }
                 }
             } else { /* it's a server */
@@ -167,8 +173,11 @@ public class NettyTOMMessageDecoder extends ByteToMessageDecoder {
                     rl.readLock().unlock();
                     if (useMAC) {
                         if (!verifyMAC(sm.getSender(), data, digest)) {
-                            logger.debug("MAC error: message discarded");
+                            logger.error("MAC error: message discarded, is a server.");
                             return;
+                        }
+                        else {
+                        	logger.debug("MAC OK: message NOT discarded, is a server.");
                         }
                     }
                 } else {
@@ -194,8 +203,9 @@ public class NettyTOMMessageDecoder extends ByteToMessageDecoder {
                     sessionTable.put(sm.getSender(), cs);
                     logger.debug("active clients " + sessionTable.size());
                     rl.writeLock().unlock();
+                    
                     if (useMAC && !verifyMAC(sm.getSender(), data, digest)) {
-                        logger.debug("MAC error: message discarded");
+                        logger.error("MAC error: message discarded");
                         return;
                     }
                 }

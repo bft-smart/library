@@ -22,43 +22,43 @@ import io.netty.handler.codec.MessageToByteEncoder;
 import java.util.Map;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-
 import bftsmart.reconfiguration.ClientViewController;
 
+public class NettyClientPipelineFactory {
 
-public class NettyClientPipelineFactory{
+	NettyClientServerCommunicationSystemClientSide ncs;
+	Map sessionTable;
+	int macLength;
+	int signatureLength;
 
-    NettyClientServerCommunicationSystemClientSide ncs;
-    Map sessionTable;
-    int macLength;
-    int signatureLength;
+	// ******* EDUARDO BEGIN **************//
+	ClientViewController controller;
+	// ******* EDUARDO END **************//
 
-    //******* EDUARDO BEGIN **************//
-    ClientViewController controller;
-    //******* EDUARDO END **************//
+	ReentrantReadWriteLock rl;
 
-    ReentrantReadWriteLock rl;
+	public NettyClientPipelineFactory(NettyClientServerCommunicationSystemClientSide ncs, Map sessionTable,
+			int macLength, ClientViewController controller, ReentrantReadWriteLock rl, int signatureLength) {
+		this.ncs = ncs;
+		this.sessionTable = sessionTable;
+		this.macLength = macLength;
+		this.signatureLength = signatureLength;
+		this.rl = rl;
+		this.controller = controller;
+	}
 
-    public NettyClientPipelineFactory(NettyClientServerCommunicationSystemClientSide ncs, Map sessionTable, int macLength, ClientViewController controller, ReentrantReadWriteLock rl, int signatureLength) {
-        this.ncs = ncs;
-        this.sessionTable = sessionTable;
-        this.macLength = macLength;
-        this.signatureLength = signatureLength;
-        this.rl = rl;
-        this.controller = controller;
-    }
+	public ByteToMessageDecoder getDecoder() {
+		return new NettyTOMMessageDecoder(true, sessionTable, macLength, controller, rl, signatureLength,
+				controller.getStaticConf().getUseMACs() == 1 ? true : false);
+	}
 
+	public MessageToByteEncoder getEncoder() {
+		return new NettyTOMMessageEncoder(true, sessionTable, macLength, rl, signatureLength,
+				controller.getStaticConf().getUseMACs() == 1 ? true : false);
+	}
 
-    public ByteToMessageDecoder getDecoder(){
-    	return new NettyTOMMessageDecoder(true, sessionTable, macLength,controller,rl,signatureLength,controller.getStaticConf().getUseMACs()==1?true:false);	
-    }
-    
-    public MessageToByteEncoder getEncoder(){
-    	return new NettyTOMMessageEncoder(true, sessionTable, macLength,rl, signatureLength, controller.getStaticConf().getUseMACs()==1?true:false);	
-    }
-    
-    public SimpleChannelInboundHandler getHandler(){
-    	return ncs;	
-    }
+	public SimpleChannelInboundHandler getHandler() {
+		return ncs;
+	}
 
 }

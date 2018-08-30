@@ -28,15 +28,9 @@ Important tip #1: Always provide IP addresses instead of hostnames. If a machine
 BFT-SMaRt may fail to obtain the proper IP address and use the loopback address instead (127.0.0.1). This phenomenom may prevent 
 clients and/or replicas from successfully establishing a connection among them.
 
-Important tip #2: If some (or all) replicas are deployed/executed within the same machine (127.0.0.1), 'config/hosts.config' 
-cannot have sequencial port numbers (e.g., 10000, 10001, 10002, 10003). This is because each replica binds two ports: 
-one to receive messages from clients (that are configured in 'config/hosts.config', as shown above) and other to receive message 
-from the other replicas (chosen by getting the next port number). More generally, if replica R is assigned port number P, 
-it will try to bind ports P (to received client requests) and P+1 (to communicate with other replicas). If this guideline is not enforced, 
-replicas may not be able to bind all ports that are needed.
-
-Important tip #3: Clients requests should not be issued before all replicas have been properly initialized. 
+Important tip #2: Clients requests should not be issued before all replicas have been properly initialized. 
 Replicas are ready to process client requests when each one outputs '(DeliveryThread.run) canDeliver released.' in the console.
+"Ready to process operations"
 
 2.) The system configurations also have to be specified (see 'config/system.config'). Most of the parameters are self explanatory.
 
@@ -48,11 +42,11 @@ bash runscripts/smartrun.sh bftsmart.demo.counter.CounterServer 1
 bash runscripts/smartrun.sh bftsmart.demo.counter.CounterServer 2
 bash runscripts/smartrun.sh bftsmart.demo.counter.CounterServer 3
 
-Important tip #4: If you are getting timeout messages, it is possible that the application you are running takes too long to process the 
+Important tip #3: If you are getting timeout messages, it is possible that the application you are running takes too long to process the 
 requests or the network delay is too high and PROPOSE messages from the leader don't arrive in time, so replicas may start the leader 
 change protocol. To prevent that, try to increase the 'system.totalordermulticast.timeout' parameter in 'config/system.config'.
 
-Important tip #5: Never forget to delete the 'config/currentView' file after you modify 'config/hosts.config' or 'config/system.config'. 
+Important tip #4: Never forget to delete the 'config/currentView' file after you modify 'config/hosts.config' or 'config/system.config'. 
 If 'config/currentView' exists, BFT-SMaRt always fetches the group configuration from this file first. Otherwise, 
 BFT-SMaRt fetches information from the other files and creates 'config/currentView' from scratch. Note that 'config/currentView' 
 only stores information related to the group of replicas. You do not need to delete this file if, for instance, you want to enable the debugger 

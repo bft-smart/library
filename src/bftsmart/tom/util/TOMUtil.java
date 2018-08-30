@@ -86,8 +86,7 @@ public class TOMUtil {
             return signatureSize;
         }
 
-        byte[] signature = signMessage(controller.getStaticConf().getPrivateKey(),
-                "a".getBytes());
+        byte[] signature = signMessage(controller.getStaticConf().getPrivateKey(), "a".getBytes());
 
         if (signature != null) {
             signatureSize = signature.length;
@@ -168,6 +167,8 @@ public class TOMUtil {
      */
     public static boolean verifySignature(PublicKey key, byte[] message, byte[] signature) {
 
+        Security.addProvider(new BouncyCastleProvider());
+
         boolean result = false;
         
         try {
@@ -193,9 +194,8 @@ public class TOMUtil {
      * @return true if the signature is valid, false otherwise
      */
     public static boolean verifySignature(Signature initializedSignatureEngine, byte[] message, byte[] signature) throws SignatureException {
-
-        initializedSignatureEngine.update(message);
-        return initializedSignatureEngine.verify(signature);
+    	initializedSignatureEngine.update(message);
+    	return initializedSignatureEngine.verify(signature);
     }
 
     public static String byteArrayToString(byte[] b) {
@@ -227,7 +227,7 @@ public class TOMUtil {
     }
     
     public static Signature getSigEngine() throws NoSuchAlgorithmException {
-        
+        Security.addProvider(new BouncyCastleProvider());
         return Signature.getInstance(TOMUtil.sigAlgorithm, TOMUtil.provider);
     }
     

@@ -64,9 +64,7 @@ public class ServerConnection {
     private Logger logger = LoggerFactory.getLogger(this.getClass());
 
 
-    //public static final String MAC_ALGORITHM = "HmacMD5";
     private static final long POOL_TIME = 5000;
-    //private static final int SEND_QUEUE_SIZE = 50;
     private ServerViewController controller;
     private Socket socket;    
     private DataOutputStream socketOutStream = null;
@@ -395,8 +393,6 @@ public class ServerConnection {
             
             SecretKeyFactory fac = TOMUtil.getSecretFactory();
             PBEKeySpec spec = new PBEKeySpec(secretKey.toString().toCharArray());
-            
-            //PBEKeySpec spec = new PBEKeySpec(PASSWORD.toCharArray());
             authKey = fac.generateSecret(spec);
 
             macSend = TOMUtil.getMacFactory();

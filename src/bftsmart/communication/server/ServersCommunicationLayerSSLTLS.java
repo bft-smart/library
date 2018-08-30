@@ -34,10 +34,12 @@ import javax.crypto.SecretKey;
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.PBEKeySpec;
 import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLParameters;
 import javax.net.ssl.SSLServerSocket;
 import javax.net.ssl.SSLServerSocketFactory;
 import javax.net.ssl.SSLSocket;
 
+import org.bouncycastle.jcajce.provider.asymmetric.ec.KeyFactorySpi.ECDSA;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -58,7 +60,7 @@ public class ServersCommunicationLayerSSLTLS extends Thread {
 	private LinkedBlockingQueue<SystemMessage> inQueue;
 	private HashMap<Integer, ServerConnectionSSLTLS> connections = new HashMap<>();
 
-	private SSLServerSocket serverSocketSSL;
+	private SSLServerSocket serverSocketSSLTLS;
 	private String ssltlsProtocolVersion;
 
 	private int me;
@@ -126,16 +128,42 @@ public class ServersCommunicationLayerSSLTLS extends Thread {
 
 		SSLServerSocketFactory serverSocketFactory = context.getServerSocketFactory();
 		System.out.println("Creating server socket factory on port: " + myPort);
-		this.serverSocketSSL = (SSLServerSocket) serverSocketFactory.createServerSocket(myPort, 100, InetAddress.getByName(myAddress));
+		this.serverSocketSSLTLS = (SSLServerSocket) serverSocketFactory.createServerSocket(myPort, 100, InetAddress.getByName(myAddress));
 
-		serverSocketSSL.setEnabledCipherSuites(serverSocketSSL.getSupportedCipherSuites());
-		serverSocketSSL.setSoTimeout(10000);
-		serverSocketSSL.setEnableSessionCreation(true);
-		serverSocketSSL.setReuseAddress(true);
+		 String[] ciphers = new String[] { "TLS_RSA_WITH_NULL_SHA256",
+				 "TLS_ECDHE_ECDSA_WITH_NULL_SHA",
+				 "TLS_ECDHE_RSA_WITH_NULL_SHA",
+				 "SSL_RSA_WITH_NULL_SHA",
+				 "TLS_ECDH_ECDSA_WITH_NULL_SHA",
+				 "TLS_ECDH_RSA_WITH_NULL_SHA",
+				 "TLS_ECDH_anon_WITH_NULL_SHA",
+				 "SSL_RSA_WITH_NULL_MD5" };		  
+		serverSocketSSLTLS.setEnabledCipherSuites(ciphers);
+		//serverSocketSSLTLS.setEnabledCipherSuites(serverSocketSSLTLS.getSupportedCipherSuites());
+		
+		/*String[] enabledCiphers = serverSocketSSLTLS.getSSLParameters().getCipherSuites();
+		for (int i = 0; i < enabledCiphers.length; i++) {
+			System.out.println(" ORDER? " + enabledCiphers[i]);			
+		}*/
+		
+		serverSocketSSLTLS.setSoTimeout(10000);
+		serverSocketSSLTLS.setEnableSessionCreation(true);
+		serverSocketSSLTLS.setReuseAddress(true);
+
+		/*String[] supportedCiphers = serverSocketSSLTLS.getSupportedCipherSuites();
+		for (int i = 0; i < supportedCiphers.length; i++) {
+			System.out.println("Supported Cipher: " + supportedCiphers[i]);
+		}*/
+		
+		/*String[] enabledCiphers = serverSocketSSLTLS.getSupportedCipherSuites();
+		for (int i = 0; i < enabledCiphers.length; i++) {
+			System.out.println("Enabled Cipher: " + enabledCiphers[i]);
+		}*/
 
 		SecretKeyFactory fac = TOMUtil.getSecretFactory();
 		PBEKeySpec spec = new PBEKeySpec(PASSWORD.toCharArray());
 		selfPwd = fac.generateSecret(spec);
+		 
 
 		start();
 
@@ -260,7 +288,7 @@ public class ServersCommunicationLayerSSLTLS extends Thread {
 		while (doWork) {
 			try {
 				// System.out.println("Waiting for connections.");
-				SSLSocket newSocket = (SSLSocket) serverSocketSSL.accept();
+				SSLSocket newSocket = (SSLSocket) serverSocketSSLTLS.accept();
 				ServersCommunicationLayerSSLTLS.setSSLSocketOptions(newSocket);
 
 				int remoteId = new DataInputStream(newSocket.getInputStream()).readInt();
@@ -286,7 +314,7 @@ public class ServersCommunicationLayerSSLTLS extends Thread {
 		}
 
 		try {
-			serverSocketSSL.close();
+			serverSocketSSLTLS.close();
 		} catch (IOException ex) {
 			logger.error("Failed to close server socket", ex);
 		}

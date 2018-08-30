@@ -28,69 +28,72 @@ import java.security.Signature;
 public class SignatureTest {
 
     public static void main(String[] args) throws Exception {
-        byte[] data = new byte[20];
+        String signatureInstance = "SHA512withRSA";
+        int keySize = 1024;
+        int iterations = 1000;
+        
+    	byte[] data = new byte[20];
         byte[] signature;
         Signature signEng;
         long start, end;
 
         KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
-        kpg.initialize(1024);
+        kpg.initialize(keySize);
         KeyPair kp = kpg.genKeyPair();
         PublicKey publicKey = kp.getPublic();
         PrivateKey privateKey = kp.getPrivate();
 
-        signEng = Signature.getInstance("SHA1withRSA");
+        signEng = Signature.getInstance(signatureInstance);
 
-        for(int i=0; i<1000; i++) {
-            signEng = Signature.getInstance("SHA1withRSA");
+        for(int i=0; i<iterations; i++) {
+            signEng = Signature.getInstance(signatureInstance);
             signEng.initSign(privateKey);
         }
         start = System.currentTimeMillis();
-        for(int i=0; i<1000; i++) {
-            signEng = Signature.getInstance("SHA1withRSA");
+        for(int i=0; i<iterations; i++) {
+            signEng = Signature.getInstance(signatureInstance);
             signEng.initSign(privateKey);
         }
         end = System.currentTimeMillis();
-        System.out.println("1000 init sign: "+(end-start)+"ms");
+        System.out.println("" + iterations + " init sign: "+(end-start)+"ms");
 
-        for(int i=0; i<1000; i++) {
+        for(int i=0; i<iterations; i++) {
             signEng.update(data);
             signature = signEng.sign();
         }
         start = System.currentTimeMillis();
-        for(int i=0; i<1000; i++) {
+        for(int i=0; i<iterations; i++) {
             signEng.update(data);
             signature = signEng.sign();
         }
         end = System.currentTimeMillis();
-        System.out.println("1000 sign: "+(end-start)+"ms");
+        System.out.println("" + iterations + " sign: "+(end-start)+"ms");
 
         signEng.update(data);
         signature = signEng.sign();
 
-        for(int i=0; i<1000; i++) {
-            signEng = Signature.getInstance("SHA1withRSA");
+        for(int i=0; i<iterations; i++) {
+            signEng = Signature.getInstance(signatureInstance);
             signEng.initVerify(publicKey);
         }
         start = System.currentTimeMillis();
-        for(int i=0; i<1000; i++) {
-            signEng = Signature.getInstance("SHA1withRSA");
+        for(int i=0; i<iterations; i++) {
+            signEng = Signature.getInstance(signatureInstance);
             signEng.initVerify(publicKey);
         }
         end = System.currentTimeMillis();
-        System.out.println("1000 init verify: "+(end-start)+"ms");
+        System.out.println("" + iterations+ " init verify: "+(end-start)+"ms");
 
-        for(int i=0; i<1000; i++) {
+        for(int i=0; i<iterations; i++) {
             signEng.update(data);
             signEng.verify(signature);
         }
         start = System.currentTimeMillis();
-        for(int i=0; i<1000; i++) {
+        for(int i=0; i<iterations; i++) {
             signEng.update(data);
             signEng.verify(signature);
         }
         end = System.currentTimeMillis();
-        System.out.println("1000 verify: "+(end-start)+"ms");
-    }
+        System.out.println("" + iterations + " verify: "+(end-start)+"ms");    }
 
 }

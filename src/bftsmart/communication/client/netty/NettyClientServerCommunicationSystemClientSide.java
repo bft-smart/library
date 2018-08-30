@@ -38,6 +38,7 @@ import java.nio.channels.ClosedChannelException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
+import java.security.Security;
 import java.security.Signature;
 import java.security.spec.InvalidKeySpecException;
 import java.util.ArrayList;
@@ -61,6 +62,7 @@ import bftsmart.reconfiguration.ClientViewController;
 import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.util.TOMUtil;
 
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -148,6 +150,8 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
                     }
 
                 } catch (java.lang.NullPointerException ex) {
+                		ex.printStackTrace();
+                		System.exit(1);
                         //What is this??? This is not possible!!!
                         logger.debug("Should fix the problem, and I think it has no other implications :-), "
                                         + "but we must make the servers store the view in a different place.");
@@ -363,8 +367,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 
         //produce signature
         if (sign && sm.serializedMessageSignature == null) {
-            sm.serializedMessageSignature = signMessage(
-                    controller.getStaticConf().getPrivateKey(), sm.serializedMessage);
+            sm.serializedMessageSignature = signMessage(controller.getStaticConf().getPrivateKey(), sm.serializedMessage);
         }
                 
         int sent = 0;
@@ -426,6 +429,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 
     public byte[] signMessage(PrivateKey key, byte[] message) {
         //long startTime = System.nanoTime();
+    	Security.addProvider(new BouncyCastleProvider());
         try {
             if (signatureEngine == null) {
                     signatureEngine = TOMUtil.getSigEngine();

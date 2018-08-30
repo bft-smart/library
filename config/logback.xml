@@ -31,7 +31,7 @@
   
   
   <logger name="bftsmart" level="INFO"> 
-  	<appender-ref ref="MIN-STDOUT" />
+  	<appender-ref ref="STDOUT" />
   	<!-- <appender-ref ref="MIN-STDOUT" /> -->
   </logger> 
   
@@ -40,6 +40,7 @@
   <logger name="bftsmart.demo.counter.CounterServer" level="INFO"></logger>
   <logger name="bftsmart.demo.counter.CounterClient" level="INFO"></logger>
   <logger name="bftsmart.demo.counter.CounterClientPoolThread" level="DEBUG"></logger>
+  
   
 
 </configuration>
