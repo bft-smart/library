@@ -172,6 +172,9 @@ public class ServiceProxy extends TOMSender {
 	 * @return The reply from the replicas related to request
 	 */
 	public byte[] invoke(byte[] request, TOMMessageType reqType) {
+            
+            try {
+                
 		canSendLock.lock();
 
 		// Clean all statefull data to prepare for receiving next replies
@@ -293,8 +296,12 @@ public class ServiceProxy extends TOMSender {
 		}
 		//******* EDUARDO END **************//
 
-		canSendLock.unlock();
 		return ret;
+        
+            } finally {
+                                    
+                canSendLock.unlock(); //always release lock
+            }
 	}
 
 	//******* EDUARDO BEGIN **************//
