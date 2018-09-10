@@ -15,7 +15,6 @@ limitations under the License.
 */
 package bftsmart.communication;
 
-import bftsmart.communication.server.ServerConnection;
 import bftsmart.consensus.messages.MessageFactory;
 import bftsmart.consensus.messages.ConsensusMessage;
 import bftsmart.consensus.roles.Acceptor;
@@ -47,7 +46,6 @@ public class MessageHandler {
 
     private Acceptor acceptor;
     private TOMLayer tomLayer;
-    //private Cipher cipher;
     private Mac mac;
     
     public MessageHandler() {
@@ -140,7 +138,9 @@ public class MessageHandler {
 	                        break;
 	                }
 	
-	                logger.info("LC_MSG received: type " + type + ", regency " + lcMsg.getReg() + ", (replica " + lcMsg.getSender() + ")");
+                        if (lcMsg.getReg() != -1 && lcMsg.getSender() != -1)
+                            logger.info("Received leader change message of type {} for regency {} from replica {}", type, lcMsg.getReg(), lcMsg.getSender());
+                        else logger.debug("Received leader change message from myself");
 	                if (lcMsg.TRIGGER_LC_LOCALLY) tomLayer.requestsTimer.run_lc_protocol();
 	                else tomLayer.getSynchronizer().deliverTimeoutRequest(lcMsg);
 	            /**************************************************************/

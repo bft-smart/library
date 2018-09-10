@@ -57,8 +57,10 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 	public transient int destination = -1; // message destination
 	public transient boolean signed = false; // is this message signed?
 
-	public transient long receptionTime;//the reception time of this message
-	public transient boolean timeout = false;//this message was timed out?
+	public transient long receptionTime;//the reception time of this message (nanoseconds)
+	public transient long receptionTimestamp;//the reception timestamp of this message (miliseconds)
+
+        public transient boolean timeout = false;//this message was timed out?
         
         public transient boolean recvFromClient = false; // Did the client already sent this message to me, or did it arrived in the batch?
 
@@ -219,7 +221,7 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 
 	@Override
 	public String toString() {
-		return "(" + sender + "," + sequence + "," + operationId + "," + session + ")";
+		return "[" + sender + ":" + session + ":" + sequence + "]";
 	}
 
 	public void wExternal(DataOutput out) throws IOException {

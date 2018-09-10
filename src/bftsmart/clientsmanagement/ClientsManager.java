@@ -223,6 +223,7 @@ public class ClientsManager {
         if (controller.getStaticConf().isBFT() && !verifier.isValidRequest(request)) return false;
         
         request.receptionTime = System.nanoTime();
+        request.receptionTimestamp = System.currentTimeMillis();
 
         int clientId = request.getSender();
         boolean accounted = false;
