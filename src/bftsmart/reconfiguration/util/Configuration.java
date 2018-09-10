@@ -24,7 +24,6 @@ import java.net.InetSocketAddress;
 import java.security.PrivateKey;
 import java.security.Provider;
 import java.security.PublicKey;
-import java.security.Security;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.StringTokenizer;
@@ -58,7 +57,7 @@ public class Configuration {
     private String signatureAlgorithm;
     private String hashAlgorithm;
 
-    protected static String configHome = "";
+    protected String configHome = "";
 
    
     protected static String hostsFileName = "";
@@ -79,7 +78,7 @@ public class Configuration {
         provider = prov;
         init();
     }
-    
+
     protected void init(){
         try{
             hosts = new HostsConfig(configHome, hostsFileName);
@@ -154,7 +153,7 @@ public class Configuration {
                 DH_G = new BigInteger(s);
             }
             
-            if (keyLoader == null) keyLoader = new RSAKeyLoader(processId, TOMConfiguration.configHome, defaultKeys, signatureAlgorithm);
+            if (keyLoader == null) keyLoader = new RSAKeyLoader(processId, configHome, defaultKeys, signatureAlgorithm);
             if (provider == null) provider = new BouncyCastleProvider();
             
             TOMUtil.init(provider, hmacAlgorithm, secretKeyAlgorithm, keyLoader.getSignatureAlgorithm(), hashAlgorithm);
@@ -163,7 +162,11 @@ public class Configuration {
             LoggerFactory.getLogger(this.getClass()).error("Wrong system.config file format.");
         }
     }
-
+    
+    public String getConfigHome() {
+        return configHome;
+    }
+    
     public boolean useDefaultKeys() {
         return defaultKeys;
     }
