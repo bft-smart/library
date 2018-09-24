@@ -300,7 +300,7 @@ public class ServiceProxy extends TOMSender {
         
             } finally {
                                     
-                canSendLock.unlock(); //always release lock
+                if (canSendLock.isHeldByCurrentThread()) canSendLock.unlock(); //always release lock
             }
 	}
 
