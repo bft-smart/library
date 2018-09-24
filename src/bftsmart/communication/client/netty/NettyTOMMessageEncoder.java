@@ -37,17 +37,14 @@ public class NettyTOMMessageEncoder extends MessageToByteEncoder<TOMMessage> {
     
     private boolean isClient;
     private Map sessionTable;
-    private int macLength;
-    private int signatureLength;
     private ReentrantReadWriteLock rl;
+    
     private boolean useMAC;
 
-    public NettyTOMMessageEncoder(boolean isClient, Map sessionTable, int macLength, ReentrantReadWriteLock rl, int signatureLength, boolean useMAC){
+    public NettyTOMMessageEncoder(boolean isClient, Map sessionTable, ReentrantReadWriteLock rl, boolean useMAC){
         this.isClient = isClient;
         this.sessionTable = sessionTable;
-        this.macLength = macLength;
         this.rl = rl;
-        this.signatureLength = signatureLength;
         this.useMAC = useMAC;
     }
 
@@ -61,35 +58,44 @@ public class NettyTOMMessageEncoder extends MessageToByteEncoder<TOMMessage> {
         if (sm.signed){
             //signature was already produced before            
             signatureData = sm.serializedMessageSignature;
-            if (signatureData.length != signatureLength)
-                logger.warn("Message signature has size "+signatureData.length+" and should have "+signatureLength);
         }
         
         if (useMAC) {
             macData = produceMAC(sm.destination, msgData, sm.getSender());
             if(macData == null) {
-            	logger.warn("Uses MAC and the MAC returned is null. Won't write to channel");
+            	logger.warn("Uses MAC and the returned MAC is null. Won't write to channel");
             	return;
             }
         }
 
-        int dataLength = 1+msgData.length+(macData==null?0:macData.length)+
-                (signatureData==null?0:signatureData.length);
-
-        //Logger.println("Sending message with "+dataLength+" bytes.");
+        int dataLength = Integer.BYTES + msgData.length +
+                (useMAC ? macData.length + Integer.BYTES : 0) +
+                Integer.BYTES + (signatureData != null ? signatureData.length : 0);
+        
         /* msg size */
         buffer.writeInt(dataLength);
-        /* control byte indicating if the message is signed or not */
-        buffer.writeByte(sm.signed==true?(byte)1:(byte)0);       
+        
         /* data to be sent */
+        buffer.writeInt(msgData.length);       
         buffer.writeBytes(msgData);
+        
          /* MAC */
-        if (useMAC)
-        	buffer.writeBytes(macData);
+        if (useMAC) {
+            
+            buffer.writeInt(macData.length);
+            buffer.writeBytes(macData);
+            
+        }
         /* signature */
-        if (signatureData != null)
-        	buffer.writeBytes(signatureData);
 
+        if (signatureData != null) {
+
+                buffer.writeInt(signatureData.length);
+                buffer.writeBytes(signatureData);
+        } else {
+                buffer.writeInt(0);
+        }
+        
         context.flush();
     }
 

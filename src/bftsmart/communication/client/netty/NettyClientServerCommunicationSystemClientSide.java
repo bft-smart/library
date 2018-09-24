@@ -82,7 +82,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
     private ReentrantReadWriteLock rl;
     //the signature engine used in the system
     private Signature signatureEngine;
-    private int signatureLength;
+    //private int signatureLength;
     private boolean closed = false;
 
     private EventLoopGroup workerGroup;
@@ -102,7 +102,6 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 
             //this.st = new Storage(BENCHMARK_PERIOD);
             this.rl = new ReentrantReadWriteLock();
-            signatureLength = TOMUtil.getSignatureSize(controller);
 
             ChannelFuture future = null;
             int[] currV = controller.getCurrentViewProcesses();
@@ -461,8 +460,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 
         Mac macDummy = TOMUtil.getMacFactory();
 
-        final NettyClientPipelineFactory nettyClientPipelineFactory = new NettyClientPipelineFactory(this, sessionTable,
-                    macDummy.getMacLength(), controller, rl, signatureLength);
+        final NettyClientPipelineFactory nettyClientPipelineFactory = new NettyClientPipelineFactory(this, sessionTable, controller, rl);
 
         ChannelInitializer channelInitializer = new ChannelInitializer<SocketChannel>() {
             @Override

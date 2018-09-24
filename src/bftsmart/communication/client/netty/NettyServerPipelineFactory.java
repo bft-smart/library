@@ -28,26 +28,22 @@ public class NettyServerPipelineFactory{
 
     NettyClientServerCommunicationSystemServerSide ncs;
     HashMap sessionTable;
-    int macLength;
-    int signatureLength;
     ServerViewController controller;
     ReentrantReadWriteLock rl;
 
-    public NettyServerPipelineFactory(NettyClientServerCommunicationSystemServerSide ncs, HashMap sessionTable, int macLength, ServerViewController controller, ReentrantReadWriteLock rl, int signatureLength) {
+    public NettyServerPipelineFactory(NettyClientServerCommunicationSystemServerSide ncs, HashMap sessionTable, ServerViewController controller, ReentrantReadWriteLock rl) {
         this.ncs = ncs;
         this.sessionTable = sessionTable;
-        this.macLength = macLength;
-        this.signatureLength = signatureLength;
         this.controller = controller;
         this.rl = rl;
     }
 
     public ByteToMessageDecoder getDecoder(){
-    	return new NettyTOMMessageDecoder(false, sessionTable,macLength,controller,rl,signatureLength,controller.getStaticConf().getUseMACs()==1?true:false);	
+    	return new NettyTOMMessageDecoder(false, sessionTable,controller,rl,controller.getStaticConf().getUseMACs()==1);	
     }
     
     public MessageToByteEncoder getEncoder(){
-    	return new NettyTOMMessageEncoder(false, sessionTable, macLength,rl,signatureLength, controller.getStaticConf().getUseMACs()==1?true:false);	
+    	return new NettyTOMMessageEncoder(false, sessionTable,rl, controller.getStaticConf().getUseMACs()==1);	
     }
     
     public SimpleChannelInboundHandler getHandler(){

@@ -68,10 +68,17 @@ public final class BatchReader {
             proposalBuffer.get(message);
 
             byte[] signature = null;
-            if(useSignatures){
-                signature = new byte[TOMUtil.getSignatureSize(controller)];
-                proposalBuffer.get(signature);
+            
+            if (useSignatures) {
+                
+                int sigSize = proposalBuffer.getInt();
+
+                if (sigSize > 0) {
+                    signature = new byte[sigSize];
+                    proposalBuffer.get(signature);
+                }
             }
+            
             //obtain the nonces to be delivered to the application
             byte[] nonces = new byte[numberOfNonces];
             if (nonces.length > 0) {

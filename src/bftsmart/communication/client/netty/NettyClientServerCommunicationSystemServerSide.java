@@ -85,7 +85,7 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 			//Configure the server.
 			Mac macDummy = TOMUtil.getMacFactory();
 
-			serverPipelineFactory = new NettyServerPipelineFactory(this, sessionTable, macDummy.getMacLength(), controller, rl, TOMUtil.getSignatureSize(controller));
+			serverPipelineFactory = new NettyServerPipelineFactory(this, sessionTable, controller, rl);
 
 			EventLoopGroup bossGroup = new NioEventLoopGroup();
                         

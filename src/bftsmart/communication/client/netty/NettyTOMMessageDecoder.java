@@ -54,8 +54,6 @@ public class NettyTOMMessageDecoder extends ByteToMessageDecoder {
     private boolean isClient;
     private Map sessionTable;
     //private Storage st;
-    private int macSize;
-    private int signatureSize;
     private ViewController controller;
     private boolean firstTime;
     private ReentrantReadWriteLock rl;
@@ -73,14 +71,12 @@ public class NettyTOMMessageDecoder extends ByteToMessageDecoder {
     
     private boolean useMAC;
     
-    public NettyTOMMessageDecoder(boolean isClient, Map sessionTable, int macLength, ViewController controller, ReentrantReadWriteLock rl, int signatureLength, boolean useMAC) {
+    public NettyTOMMessageDecoder(boolean isClient, Map sessionTable, ViewController controller, ReentrantReadWriteLock rl, boolean useMAC) {
         this.isClient = isClient;
         this.sessionTable = sessionTable;
-        this.macSize = macLength;
         this.controller = controller;
         this.firstTime = true;
         this.rl = rl;
-        this.signatureSize = signatureLength;
         this.useMAC = useMAC;
         logger.debug("new NettyTOMMessageDecoder!!, isClient=" + isClient);
     }
@@ -89,7 +85,7 @@ public class NettyTOMMessageDecoder extends ByteToMessageDecoder {
     protected void decode(ChannelHandlerContext context, ByteBuf buffer, List<Object> list) throws Exception  {
 
         // Wait until the length prefix is available.
-        if (buffer.readableBytes() < 4) {
+        if (buffer.readableBytes() < Integer.BYTES) {
             return;
         }
 
@@ -98,39 +94,31 @@ public class NettyTOMMessageDecoder extends ByteToMessageDecoder {
         //Logger.println("Receiving message with "+dataLength+" bytes.");
 
         // Wait until the whole data is available.
-        if (buffer.readableBytes() < dataLength + 4) {
+        if (buffer.readableBytes() < dataLength + Integer.BYTES) {
             return;
         }
 
         // Skip the length field because we know it already.
-        buffer.skipBytes(4);
+        buffer.skipBytes(Integer.BYTES);
 
-        int totalLength = dataLength - 1;
-
-        //read control byte indicating if message is signed
-        byte signed = buffer.readByte();
-
-        int authLength = 0;
-
-        if (signed == 1) {
-            authLength += signatureSize;
-        }
-        if (useMAC) {
-            authLength += macSize;
-        }
-
-        byte[] data = new byte[totalLength - authLength];
+        int size = buffer.readInt();
+        byte[] data = new byte[size];
         buffer.readBytes(data);
 
         byte[] digest = null;
         if (useMAC) {
-            digest = new byte[macSize];
+            
+            size = buffer.readInt();
+            digest = new byte[size];
             buffer.readBytes(digest);
         }
 
         byte[] signature = null;
-        if (signed == 1) {
-            signature = new byte[signatureSize];
+        size = buffer.readInt();            
+            
+        if (size > 0) {
+
+            signature = new byte[size];
             buffer.readBytes(signature);
         }
 
@@ -144,7 +132,7 @@ public class NettyTOMMessageDecoder extends ByteToMessageDecoder {
             sm.rExternal(dis);
             sm.serializedMessage = data;
 
-            if (signed == 1) {
+            if (signature != null) {
                 sm.serializedMessageSignature = signature;
                 sm.signed = true;
             }

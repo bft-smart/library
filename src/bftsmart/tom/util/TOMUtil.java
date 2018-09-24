@@ -28,7 +28,6 @@ import java.security.Signature;
 import java.security.SignatureException;
 import java.util.Arrays;
 
-import bftsmart.reconfiguration.ViewController;
 import bftsmart.reconfiguration.util.Configuration;
 import java.security.Provider;
 import javax.crypto.Mac;
@@ -80,21 +79,6 @@ public class TOMUtil {
             TOMUtil.init = true;
         }
     }    
-    
-    public static int getSignatureSize(ViewController controller) {
-        if (signatureSize > 0) {
-            return signatureSize;
-        }
-
-        byte[] signature = signMessage(controller.getStaticConf().getPrivateKey(),
-                "a".getBytes());
-
-        if (signature != null) {
-            signatureSize = signature.length;
-        }
-
-        return signatureSize;
-    }
     
     //******* EDUARDO BEGIN **************//
     public static byte[] getBytes(Object o) {
