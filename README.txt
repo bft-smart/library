@@ -30,7 +30,8 @@ Important tip #3: Clients requests should not be issued before all replicas have
 
 You can run the counter demonstration by executing the following commands, from within the main folder:
 
-#Start the servers (4 replicas, to tolerate 1 fault)
+(In four different consoles run the following commands)
+#Start the servers (4 replicas, to tolerate 1 fault):
 ./runscripts/smartrun.sh bftsmart.demo.counter.CounterServer 0
 ./runscripts/smartrun.sh bftsmart.demo.counter.CounterServer 1
 ./runscripts/smartrun.sh bftsmart.demo.counter.CounterServer 2
