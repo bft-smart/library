@@ -41,6 +41,8 @@ public class ClientData {
     private int lastMessageReceived = -1;
     private long lastMessageReceivedTime = 0;
 
+    private int lastMessageProposed = -1;
+
     private int lastMessageExecuted = -1;
 
     private RequestList pendingRequests = new RequestList();
@@ -103,6 +105,14 @@ public class ClientData {
 
     public int getLastMessageReceived() {
         return lastMessageReceived;
+    }
+    
+    public void setLastMessageProposed(int lastMessageProposed) {
+        this.lastMessageProposed = lastMessageProposed;
+    }
+
+    public int getLastMessageProposed() {
+        return lastMessageProposed;
     }
 
     public void setLastMessageReceivedTime(long lastMessageReceivedTime) {

@@ -389,7 +389,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                 if (controller.getCurrentViewN() == 1) {
 
                     logger.debug("Only one replica, bypassing consensus.");
-
+                    
                     byte[] value = createPropose(dec);
 
                     Consensus consensus = execManager.getConsensus(dec.getConsensusId());
@@ -406,8 +406,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                     continue;
 
                 }
-                execManager.getProposer().startConsensus(execId,
-                        createPropose(dec));
+                execManager.getProposer().startConsensus(execId, createPropose(dec));
             }
         }
         logger.info("TOMLayer stopped.");
@@ -464,7 +463,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 					//notifies the client manager that this request was received and get
                     //the result of its validation
                     if (!clientsManager.requestReceived(requests[i], false)) {
-                        clientsManager.getClientsLock().unlock();
+                        if (Thread.holdsLock(clientsManager.getClientsLock())) clientsManager.getClientsLock().unlock();
                         logger.warn("Request could not be added to the pending messages queue of its respective client");
                         return null;
                     }

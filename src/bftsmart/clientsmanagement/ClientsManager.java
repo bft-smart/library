@@ -219,20 +219,30 @@ public class ClientsManager {
      */
     public boolean requestReceived(TOMMessage request, boolean fromClient, ServerCommunicationSystem cs) {
                 
+        long receptionTime = System.nanoTime();
+        long receptionTimestamp = System.currentTimeMillis();
+        
         // if the content of the request is invalid, ignore it
         if (controller.getStaticConf().isBFT() && !verifier.isValidRequest(request)) return false;
         
-        request.receptionTime = System.nanoTime();
-        request.receptionTimestamp = System.currentTimeMillis();
-
         int clientId = request.getSender();
         boolean accounted = false;
 
-        //Logger.println("(ClientsManager.requestReceived) getting info about client "+clientId);
         ClientData clientData = getClientData(clientId);
         
-        //Logger.println("(ClientsManager.requestReceived) wait for lock for client "+clientData.getClientId());
         clientData.clientLock.lock();
+        
+        //Is this a leader replay attack?
+        if (!fromClient && clientData.getLastMessageProposed() >= request.getSequence()) {
+            
+            clientData.clientLock.unlock();
+            logger.warn("Detected a leader replay attack, rejecting request");
+            return false;
+        }
+                
+        request.receptionTime = receptionTime;
+        request.receptionTimestamp = receptionTimestamp;
+        
         /******* BEGIN CLIENTDATA CRITICAL SECTION ******/
         //Logger.println("(ClientsManager.requestReceived) lock for client "+clientData.getClientId()+" acquired");
 
@@ -256,6 +266,8 @@ public class ClientsManager {
         if (clientData.getSession() != request.getSession()) {
             clientData.setSession(request.getSession());
             clientData.setLastMessageReceived(-1);
+            clientData.setLastMessageExecuted(-1);
+            clientData.setLastMessageProposed(-1);
             clientData.getOrderedRequests().clear();
             clientData.getPendingRequests().clear();
         }
@@ -288,12 +300,12 @@ public class ClientsManager {
             //I will not put this message on the pending requests list
             if (clientData.getLastMessageReceived() >= request.getSequence()) {
                 //I already have/had this message
-
+                
                 //send reply if it is available
                 TOMMessage reply = clientData.getReply(request.getSequence());
                 
                 if (reply != null && cs != null) {
-
+                    
                     if (reply.recvFromClient && fromClient) {
                         logger.info("[CACHE] re-send reply [Sender: " + reply.getSender() + ", sequence: " + reply.getSequence()+", session: " + reply.getSession()+ "]");
                         cs.send(new int[]{request.getSender()}, reply);
@@ -313,6 +325,13 @@ public class ClientsManager {
         }
 
         /******* END CLIENTDATA CRITICAL SECTION ******/
+        
+        if (!fromClient && accounted) {
+            
+            logger.debug("Setting last proposed message for client {} to sequence #{}",request.getSender(), request.getSequence());
+            clientData.setLastMessageProposed(request.getSequence());
+        }
+        
         clientData.clientLock.unlock();
 
         return accounted;
