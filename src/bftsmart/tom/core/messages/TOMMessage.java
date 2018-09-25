@@ -340,8 +340,41 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 		 return EQUAL;
 	 }
 	 
+        @Override
 	 public Object clone() throws CloneNotSupportedException {
-			return super.clone();
+             
+                          
+                    TOMMessage clone = new TOMMessage(sender, session, sequence,
+                            operationId, content, viewID, type);
+
+                    clone.setReplyServer(replyServer);
+                    
+                    clone.acceptSentTime = this.acceptSentTime;
+                    clone.alreadyProposed = this.alreadyProposed;
+                    clone.authenticated = this.authenticated;
+                    clone.consensusStartTime = this.consensusStartTime;
+                    clone.decisionTime = this.decisionTime;
+                    clone.deliveryTime = this.deliveryTime;
+                    clone.destination = this.destination;
+                    clone.executedTime = this.executedTime;
+                    clone.info = this.info;
+                    clone.numOfNonces = this.numOfNonces;
+                    clone.proposeReceivedTime = this.proposeReceivedTime;
+                    clone.receptionTime = this.receptionTime;
+                    clone.receptionTimestamp = this.receptionTimestamp;
+                    clone.recvFromClient = this.recvFromClient;
+                    clone.reply = this.reply;
+                    clone.seed = this.seed;
+                    clone.serializedMessage = this.serializedMessage;
+                    clone.serializedMessageMAC = this.serializedMessageMAC;
+                    clone.serializedMessageSignature = this.serializedMessageSignature;
+                    clone.signed = this.signed;
+                    clone.timeout = this.timeout;
+                    clone.timestamp = this.timestamp;
+                    clone.writeSentTime = this.writeSentTime;
+
+                    return clone;
+                        
 		}
 
 

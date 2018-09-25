@@ -54,6 +54,7 @@ import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.util.TOMUtil;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.util.logging.Level;
 
 /**
  *
@@ -290,6 +291,16 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 		}
 
 		for (int i = 0; i < targets.length; i++) {
+                    
+                        // This is done to avoid a race condition with the writeAndFush method. Since the method is asynchronous,
+                        // each iteration of this loop could overwrite the destination of the previous one
+                        try {
+                            sm = (TOMMessage) sm.clone();
+                        } catch (CloneNotSupportedException ex) {
+                            logger.error("Failed to clone TOMMessage",ex);
+                            continue;
+                        }
+                    
 			rl.readLock().lock();
 			//sendLock.lock();
 			try {       

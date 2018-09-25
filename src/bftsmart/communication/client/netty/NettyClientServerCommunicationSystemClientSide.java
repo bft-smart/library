@@ -368,6 +368,16 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
                 
         int sent = 0;
         for (int i = targets.length - 1; i >= 0; i--) {
+            
+            // This is done to avoid a race condition with the writeAndFush method. Since the method is asynchronous,
+            // each iteration of this loop could overwrite the destination of the previous one
+            try {
+                sm = (TOMMessage) sm.clone();
+            } catch (CloneNotSupportedException e) {
+                logger.error("Failed to clone TOMMessage",e);
+                continue;
+            }
+            
             sm.destination = targets[i];
 
             rl.readLock().lock();
@@ -382,12 +392,6 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
                 sent++;
             } else {
                 logger.debug("Channel to " + targets[i] + " is not connected");
-            }
-
-            try {
-                sm = (TOMMessage) sm.clone();
-            } catch (CloneNotSupportedException e) {
-                logger.error("Failed to clone TOMMessage",e);
             }
         }
 
