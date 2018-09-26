@@ -64,13 +64,13 @@ public class TOMConfiguration extends Configuration {
     private String bindAddress;
     
     /** Creates a new instance of TOMConfiguration */
-    public TOMConfiguration(int processId, KeyLoader loader, Provider provider) {
-        super(processId, loader, provider);
+    public TOMConfiguration(int processId, KeyLoader loader) {
+        super(processId, loader);
     }
 
     /** Creates a new instance of TOMConfiguration */
-    public TOMConfiguration(int processId, String configHome, KeyLoader loader, Provider provider) {
-        super(processId, configHome, loader, provider);
+    public TOMConfiguration(int processId, String configHome, KeyLoader loader) {
+        super(processId, configHome, loader);
     }
 
 

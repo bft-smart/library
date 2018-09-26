@@ -49,14 +49,14 @@ public class ViewManager {
     //in the system will execute the reconfiguration request
     private List<Integer> addIds = new LinkedList<Integer>();
 
-    public ViewManager(KeyLoader loader, Provider provider) {
-        this("", loader, provider);
+    public ViewManager(KeyLoader loader) {
+        this("", loader);
     }
 
-    public ViewManager(String configHome, KeyLoader loader, Provider provider) {
+    public ViewManager(String configHome, KeyLoader loader) {
         this.id = loadID(configHome);
-        this.controller = new ServerViewController(id, configHome, loader, provider);
-        this.rec = new Reconfiguration(id, configHome, loader, provider);
+        this.controller = new ServerViewController(id, configHome, loader);
+        this.rec = new Reconfiguration(id, configHome, loader);
     }
 
     public void connect(){

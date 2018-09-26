@@ -22,12 +22,10 @@ import java.io.FileReader;
 import java.math.BigInteger;
 import java.net.InetSocketAddress;
 import java.security.PrivateKey;
-import java.security.Provider;
 import java.security.PublicKey;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.StringTokenizer;
-import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
 import org.slf4j.LoggerFactory;
 import org.slf4j.Logger;
@@ -43,20 +41,29 @@ public class Configuration {
     protected int autoConnectLimit;
     protected Map<String, String> configs;
     protected HostsConfig hosts;
-    protected KeyLoader keyLoader;
-    protected Provider provider;
-           
+    protected KeyLoader keyLoader;           
     
     public static final String DEFAULT_HMAC = "HmacSHA512";
-    public static final String DEFAULT_SECRETKEY = "PBKDF2WithHmacSHA512";
+    public static final String DEFAULT_SECRETKEY = "PBKDF2WithHmacSHA1";
     public static final String DEFAULT_SIGNATURE = "SHA512withRSA";
     public static final String DEFAULT_HASH = "SHA-512";
             
+
+    public static final String DEFAULT_HMAC_PROVIDER = "SunJCE";
+    public static final String DEFAULT_SECRETKEY_PROVIDER = "SunJCE";
+    public static final String DEFAULT_SIGNATURE_PROVIDER = "SunRsaSign";
+    public static final String DEFAULT_HASH_PROVIDER = "SUN";
+    
     private String hmacAlgorithm;
     private String secretKeyAlgorithm;
     private String signatureAlgorithm;
     private String hashAlgorithm;
 
+    private String hmacAlgorithmProvider;
+    private String secretKeyAlgorithmProvider;
+    private String signatureAlgorithmProvider;
+    private String hashAlgorithmProvider;
+    
     protected String configHome = "";
 
    
@@ -64,18 +71,16 @@ public class Configuration {
 
     protected boolean defaultKeys = false;
 
-    public Configuration(int procId, KeyLoader loader, Provider prov){
+    public Configuration(int procId, KeyLoader loader){
         processId = procId;
         keyLoader = loader;
-        provider = prov;
         init();
     }
     
-    public Configuration(int procId, String configHomeParam, KeyLoader loader, Provider prov){
+    public Configuration(int procId, String configHomeParam, KeyLoader loader){
         processId = procId;
         configHome = configHomeParam;
         keyLoader = loader;
-        provider = prov;
         init();
     }
 
@@ -127,6 +132,34 @@ public class Configuration {
                 hashAlgorithm = s;
             }
             
+            s = (String) configs.remove("system.communication.hmacAlgorithmProvider");
+            if(s == null){
+                hmacAlgorithmProvider = DEFAULT_HMAC_PROVIDER;
+            }else{
+                hmacAlgorithmProvider = s;
+            }
+            
+            s = (String) configs.remove("system.communication.secretKeyAlgorithmProvider");
+            if(s == null){
+                secretKeyAlgorithmProvider = DEFAULT_SECRETKEY_PROVIDER;
+            }else{
+                secretKeyAlgorithmProvider = s;
+            }
+            
+            s = (String) configs.remove("system.communication.signatureAlgorithmProvider");
+            if(s == null){
+                signatureAlgorithmProvider = DEFAULT_SIGNATURE_PROVIDER;
+            }else{
+                signatureAlgorithmProvider = s;
+            }
+            
+            s = (String) configs.remove("system.communication.hashAlgorithmProvider");
+            if(s == null){
+                hashAlgorithmProvider = DEFAULT_HASH_PROVIDER;
+            }else{
+                hashAlgorithmProvider = s;
+            }
+            
             s = (String) configs.remove("system.communication.defaultkeys");
             if(s == null){
                 defaultKeys = false;
@@ -154,9 +187,9 @@ public class Configuration {
             }
             
             if (keyLoader == null) keyLoader = new RSAKeyLoader(processId, configHome, defaultKeys, signatureAlgorithm);
-            if (provider == null) provider = new BouncyCastleProvider();
             
-            TOMUtil.init(provider, hmacAlgorithm, secretKeyAlgorithm, keyLoader.getSignatureAlgorithm(), hashAlgorithm);
+            TOMUtil.init(hmacAlgorithm, secretKeyAlgorithm, keyLoader.getSignatureAlgorithm(), hashAlgorithm,
+                    hmacAlgorithmProvider, secretKeyAlgorithmProvider, signatureAlgorithmProvider, hashAlgorithmProvider);
 
         }catch(Exception e){
             LoggerFactory.getLogger(this.getClass()).error("Wrong system.config file format.");
@@ -211,6 +244,22 @@ public class Configuration {
         return hashAlgorithm;
     }
 
+    public final String getHmacAlgorithmProvider() {
+        return hmacAlgorithmProvider;
+    }
+
+    public final String getSecretKeyAlgorithmProvider() {
+        return secretKeyAlgorithmProvider;
+    }
+    
+    public final String getSignatureAlgorithmProvider() {
+        return signatureAlgorithmProvider;
+    }
+    
+    public final String getHashAlgorithmProvider() {
+        return hashAlgorithmProvider;
+    }
+    
     public final String getProperty(String key){
         Object o = configs.get(key);
         if( o != null){
@@ -290,11 +339,6 @@ public class Configuration {
             logger.error("Could not load private key",e);
             return null;
         }
-    }
-    
-    public Provider getProvider() {
-        
-        return provider;
     }
     
     private void loadConfig(){

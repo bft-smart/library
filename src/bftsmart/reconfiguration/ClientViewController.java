@@ -26,8 +26,8 @@ import java.security.Provider;
  */
 public class ClientViewController extends ViewController {
 
-    public ClientViewController(int procId, KeyLoader loader, Provider provider) {
-        super(procId, loader, provider);
+    public ClientViewController(int procId, KeyLoader loader) {
+        super(procId, loader);
         View cv = getViewStore().readView();
         if(cv == null){
             reconfigureTo(new View(0, getStaticConf().getInitialView(), 
@@ -37,8 +37,8 @@ public class ClientViewController extends ViewController {
         }
     }
 
-    public ClientViewController(int procId, String configHome, KeyLoader loader, Provider provider) {
-        super(procId, configHome, loader, provider);
+    public ClientViewController(int procId, String configHome, KeyLoader loader) {
+        super(procId, configHome, loader);
         View cv = getViewStore().readView();
         if(cv == null){
             reconfigureTo(new View(0, getStaticConf().getInitialView(), 

@@ -394,7 +394,7 @@ public class ServerConnection {
             logger.info("Diffie-Hellman complete with " + remoteId);
             
             SecretKeyFactory fac = TOMUtil.getSecretFactory();
-            PBEKeySpec spec = new PBEKeySpec(secretKey.toString().toCharArray());
+            PBEKeySpec spec = TOMUtil.generateKeySpec(secretKey.toString().toCharArray());
             
             //PBEKeySpec spec = new PBEKeySpec(PASSWORD.toCharArray());
             authKey = fac.generateSecret(spec);

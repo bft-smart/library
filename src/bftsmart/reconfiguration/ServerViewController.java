@@ -51,8 +51,8 @@ public class ServerViewController extends ViewController {
     private TOMLayer tomLayer;
    // protected View initialView;
     
-    public ServerViewController(int procId, KeyLoader loader, Provider provider) {
-        this(procId,"", loader, provider);
+    public ServerViewController(int procId, KeyLoader loader) {
+        this(procId,"", loader);
         /*super(procId);
         initialView = new View(0, getStaticConf().getInitialView(), 
                 getStaticConf().getF(), getInitAdddresses());
@@ -60,8 +60,8 @@ public class ServerViewController extends ViewController {
         reconfigureTo(initialView);*/
     }
 
-    public ServerViewController(int procId, String configHome, KeyLoader loader, Provider provider) {
-        super(procId, configHome, loader, provider);
+    public ServerViewController(int procId, String configHome, KeyLoader loader) {
+        super(procId, configHome, loader);
         View cv = getViewStore().readView();
         if(cv == null){
             

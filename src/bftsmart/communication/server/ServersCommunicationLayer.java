@@ -35,6 +35,7 @@ import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.tom.ServiceReplica;
 import bftsmart.tom.util.TOMUtil;
 import java.net.InetAddress;
+import java.security.SecureRandom;
 import java.util.HashMap;
 
 import javax.crypto.SecretKey;
@@ -120,7 +121,7 @@ public class ServersCommunicationLayer extends Thread {
                 controller.getStaticConf().getProcessId()));*/
 
         SecretKeyFactory fac = TOMUtil.getSecretFactory();
-        PBEKeySpec spec = new PBEKeySpec(PASSWORD.toCharArray());
+        PBEKeySpec spec = TOMUtil.generateKeySpec(PASSWORD.toCharArray());
         selfPwd = fac.generateSecret(spec);
 
         serverSocket.setSoTimeout(10000);

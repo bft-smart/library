@@ -222,9 +222,6 @@ public class ClientsManager {
         long receptionTime = System.nanoTime();
         long receptionTimestamp = System.currentTimeMillis();
         
-        // if the content of the request is invalid, ignore it
-        if (controller.getStaticConf().isBFT() && !verifier.isValidRequest(request)) return false;
-        
         int clientId = request.getSender();
         boolean accounted = false;
 
@@ -276,10 +273,16 @@ public class ClientsManager {
                 (clientData.getLastMessageReceived() + 1 == request.getSequence()) || //message received is the expected
                 ((request.getSequence() > clientData.getLastMessageReceived()) && !fromClient)) {
 
-            //it is a new message and I have to verify it's signature
-            if (!request.signed
-                    || clientData.verifySignature(request.serializedMessage,
-                    request.serializedMessageSignature)) {
+            //enforce the "external validity" property, i.e, verify if the
+            //requests are valid in accordance to the application semantics
+            //and not an erroneous requests sent by a Byzantine leader.
+            boolean isValid = (!controller.getStaticConf().isBFT() || verifier.isValidRequest(request));
+
+            //it is a valid new message and I have to verify it's signature
+            if (isValid &&
+                    (!request.signed ||
+                    clientData.verifySignature(request.serializedMessage,
+                            request.serializedMessageSignature))) {
 
                 //I don't have the message but it is valid, I will
                 //insert it in the pending requests of this client

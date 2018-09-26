@@ -30,8 +30,12 @@ import java.util.Arrays;
 
 import bftsmart.reconfiguration.util.Configuration;
 import java.security.Provider;
+import java.security.SecureRandom;
+import java.security.Security;
+import java.util.Random;
 import javax.crypto.Mac;
 import javax.crypto.SecretKeyFactory;
+import javax.crypto.spec.PBEKeySpec;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
 import org.slf4j.Logger;
@@ -59,23 +63,37 @@ public class TOMUtil {
     
     private static int signatureSize = -1;
     private static boolean init = false;
-    
-    private static Provider provider = new BouncyCastleProvider();
-    
+        
     private static String hmacAlgorithm = Configuration.DEFAULT_HMAC;
     private static String secretAlgorithm = Configuration.DEFAULT_SECRETKEY;
     private static String sigAlgorithm = Configuration.DEFAULT_SIGNATURE;
     private static String hashAlgorithm = Configuration.DEFAULT_HASH;
+    
+    private static String hmacAlgorithmProvider = Configuration.DEFAULT_HMAC_PROVIDER;
+    private static String secretAlgorithmProvider = Configuration.DEFAULT_SECRETKEY_PROVIDER;
+    private static String sigAlgorithmProvider = Configuration.DEFAULT_SIGNATURE_PROVIDER;
+    private static String hashAlgorithmProvider = Configuration.DEFAULT_HASH_PROVIDER;
+    
+    private static final int SALT_SEED = 509;
+    private static final int SALT_BYTE_SIZE = 64; // 512 bits
+    private static final int HASH_BYTE_SIZE = 64; // 512 bits
+    private static final int PBE_ITERATIONS = 1000;  
 
-    public static void init(Provider provider, String hmacAlgorithm, String secretAlgorithm, String sigAlgorithm, String hashAlgorithm) {
+    public static void init(String hmacAlgorithm, String secretAlgorithm, String sigAlgorithm, String hashAlgorithm,
+            String hmacAlgorithmProvider, String secretAlgorithmProvider, String sigAlgorithmProvider, String hashAlgorithmProvider) {
      
         if (!TOMUtil.init) {
-   
+            
             TOMUtil.hmacAlgorithm = hmacAlgorithm;
             TOMUtil.sigAlgorithm = sigAlgorithm;
             TOMUtil.secretAlgorithm = secretAlgorithm;
             TOMUtil.hashAlgorithm = hashAlgorithm;
         
+            TOMUtil.hmacAlgorithmProvider = hmacAlgorithmProvider;
+            TOMUtil.sigAlgorithmProvider = sigAlgorithmProvider;
+            TOMUtil.secretAlgorithmProvider = secretAlgorithmProvider;
+            TOMUtil.hashAlgorithmProvider = hashAlgorithmProvider;
+            
             TOMUtil.init = true;
         }
     }    
@@ -212,21 +230,32 @@ public class TOMUtil {
     
     public static Signature getSigEngine() throws NoSuchAlgorithmException {
         
-        return Signature.getInstance(TOMUtil.sigAlgorithm, TOMUtil.provider);
+        return Signature.getInstance(TOMUtil.sigAlgorithm, Security.getProvider(TOMUtil.sigAlgorithmProvider));
     }
     
     public static MessageDigest getHashEngine() throws NoSuchAlgorithmException {
         
-        return MessageDigest.getInstance(TOMUtil.hashAlgorithm, TOMUtil.provider);
+        return MessageDigest.getInstance(TOMUtil.hashAlgorithm, Security.getProvider(TOMUtil.hashAlgorithmProvider));
     }
     
     public static SecretKeyFactory getSecretFactory() throws NoSuchAlgorithmException {
         
-        return SecretKeyFactory.getInstance(TOMUtil.secretAlgorithm, TOMUtil.provider);
+        return SecretKeyFactory.getInstance(TOMUtil.secretAlgorithm, Security.getProvider(TOMUtil.secretAlgorithmProvider));
     }
     
     public static Mac getMacFactory() throws NoSuchAlgorithmException {
         
-        return Mac.getInstance(TOMUtil.hmacAlgorithm, TOMUtil.provider);
+        return Mac.getInstance(TOMUtil.hmacAlgorithm, Security.getProvider(TOMUtil.hmacAlgorithmProvider));
+    }
+    
+    public static PBEKeySpec generateKeySpec(char[] password) throws NoSuchAlgorithmException {
+        
+        // generate salt
+        Random random = new Random(SALT_SEED);
+        byte salt[] = new byte[SALT_BYTE_SIZE];
+        random.nextBytes(salt);
+
+        return new PBEKeySpec(password, salt, PBE_ITERATIONS, HASH_BYTE_SIZE);
+        
     }
 }

@@ -168,7 +168,7 @@ public class NettyTOMMessageDecoder extends ByteToMessageDecoder {
                     
                     SecretKeyFactory fac = TOMUtil.getSecretFactory();
                     String str = sm.getSender() + ":" + this.controller.getStaticConf().getProcessId();                                        
-                    PBEKeySpec spec = new PBEKeySpec(str.toCharArray());
+                    PBEKeySpec spec = TOMUtil.generateKeySpec(str.toCharArray());
                     SecretKey authKey = fac.generateSecret(spec);
             
                     Mac macSend = TOMUtil.getMacFactory();

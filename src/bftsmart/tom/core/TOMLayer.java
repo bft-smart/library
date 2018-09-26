@@ -46,6 +46,9 @@ import bftsmart.tom.util.BatchReader;
 import bftsmart.tom.util.TOMUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * This class implements the state machine replication protocol described in
@@ -66,6 +69,9 @@ public final class TOMLayer extends Thread implements RequestReceiver {
     private DeliveryThread dt; // Thread which delivers total ordered messages to the appication
     public StateManager stateManager = null; // object which deals with the state transfer protocol
 
+    //thread pool used to paralelise verification of requests contained in a batch
+    private ExecutorService verifierExecutor = null;
+    
     /**
      * Manage timers for pending requests
      */
@@ -128,7 +134,13 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         this.acceptor = a;
         this.communication = cs;
         this.controller = controller;
-
+        
+        // use either the same number of Netty workers threads if specified in the configuration
+        // or use a many as the number of cores available
+        int nWorkers = this.controller.getStaticConf().getNumNettyWorkers();
+        nWorkers = nWorkers > 0 ? nWorkers : Runtime.getRuntime().availableProcessors();
+        this.verifierExecutor = Executors.newWorkStealingPool(nWorkers);
+        
         //do not create a timer manager if the timeout is 0
         if (this.controller.getStaticConf().getRequestTimeout() == 0) {
             this.requestsTimer = null;
@@ -278,7 +290,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
      */
     @Override
     public void requestReceived(TOMMessage msg) {
-        
+               
         if (!doWork) return;
         
         // check if this request is valid and add it to the client' pending requests list
@@ -433,10 +445,11 @@ public final class TOMLayer extends Thread implements RequestReceiver {
      * TODO: verify timestamps and nonces
      *
      * @param proposedValue the value being proposed
+     * @param addToClientManager add the requests to the client manager
      * @return Valid messages contained in the proposed value
      */
     public TOMMessage[] checkProposedValue(byte[] proposedValue, boolean addToClientManager) {
-        
+    
         try{
             
             logger.debug("Checking proposed value");
@@ -450,21 +463,40 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             //TODO: verify Timestamps and Nonces
             requests = batchReader.deserialiseRequests(this.controller);
             
-            //enforce the "external validity" property, i.e, verify if the
-            //requests are valid in accordance to the application semantics
-            //and not an erroneous requests sent by a Byzantine leader.
-            for (TOMMessage r : requests) {
-                if (controller.getStaticConf().isBFT() &&!verifier.isValidRequest(r)) return null;
-            }
-            
-
             if (addToClientManager) {
-                for (int i = 0; i < requests.length; i++) {
-					//notifies the client manager that this request was received and get
-                    //the result of its validation
-                    if (!clientsManager.requestReceived(requests[i], false)) {
-                        if (Thread.holdsLock(clientsManager.getClientsLock())) clientsManager.getClientsLock().unlock();
-                        logger.warn("Request could not be added to the pending messages queue of its respective client");
+
+                //use parallelization to validate the request
+                final CountDownLatch latch = new CountDownLatch(requests.length);
+
+                for (TOMMessage request : requests) {
+                    
+                    verifierExecutor.submit(() -> {
+                        try {
+                            
+                            //notifies the client manager that this request was received and get
+                            //the result of its validation
+                            request.isValid = clientsManager.requestReceived(request, false);
+                            if (Thread.holdsLock(clientsManager.getClientsLock())) clientsManager.getClientsLock().unlock();
+                            
+                        }
+                        catch (Exception e) {
+                            
+                            logger.error("Error while validating requests", e);
+                            if (Thread.holdsLock(clientsManager.getClientsLock())) clientsManager.getClientsLock().unlock();
+                            
+                        }
+                        
+                        latch.countDown();
+                    });
+                }
+                
+                latch.await();
+                
+                for (TOMMessage request : requests) {
+                    
+                    if (request.isValid == false) {
+                        
+                        logger.warn("Request {} could not be added to the pending messages queue of its respective client", request);
                         return null;
                     }
                 }

@@ -109,7 +109,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
                 try {
 
                     String str = this.clientId + ":" + currV[i];
-                    PBEKeySpec spec = new PBEKeySpec(str.toCharArray());
+                    PBEKeySpec spec = TOMUtil.generateKeySpec(str.toCharArray());
                     SecretKey authKey = fac.generateSecret(spec);
 
                     //EventLoopGroup workerGroup = new NioEventLoopGroup();
@@ -196,7 +196,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
                         ChannelFuture future =  b.connect(controller.getRemoteAddress(currV[i]));
 
                         String str = this.clientId + ":" + currV[i];
-                        PBEKeySpec spec = new PBEKeySpec(str.toCharArray());
+                        PBEKeySpec spec = TOMUtil.generateKeySpec(str.toCharArray());
                         SecretKey authKey = fac.generateSecret(spec);
 
                         //creates MAC stuff

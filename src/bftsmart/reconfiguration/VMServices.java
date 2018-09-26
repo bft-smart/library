@@ -26,26 +26,23 @@ import java.security.Provider;
 public class VMServices {
     
     private KeyLoader keyLoader;
-    private Provider provider;
     private String configDir;
     
     public VMServices() { // for the default keyloader and provider
         
         keyLoader = null;
-        provider = null;
         configDir = "";
     }
     
     public VMServices(KeyLoader keyLoader, Provider provider, String configDir) {
         
         this.keyLoader = keyLoader;
-        this.provider = provider;
         this.configDir = configDir;
     }
     
     public void addServer(int id, String ipAddress, int port) {
         
-        ViewManager viewManager = new ViewManager(configDir, keyLoader, provider);
+        ViewManager viewManager = new ViewManager(configDir, keyLoader);
         
         viewManager.addServer(id, ipAddress,port);
         
@@ -55,7 +52,7 @@ public class VMServices {
     
     public void removeServer (int id) {
         
-        ViewManager viewManager = new ViewManager(keyLoader, provider);
+        ViewManager viewManager = new ViewManager(keyLoader);
         
         viewManager.removeServer(id);
         
