@@ -41,9 +41,7 @@ public class ClientData {
     private int lastMessageReceived = -1;
     private long lastMessageReceivedTime = 0;
 
-    private int lastMessageProposed = -1;
-
-    private int lastMessageExecuted = -1;
+    private int lastMessageDelivered = -1;
 
     private RequestList pendingRequests = new RequestList();
     //anb: new code to deal with client requests that arrive after their execution
@@ -91,12 +89,12 @@ public class ClientData {
         return orderedRequests;
     }
 
-    public void setLastMessageExecuted(int lastMessageExecuted) {
-        this.lastMessageExecuted = lastMessageExecuted;
+    public void setLastMessageDelivered(int lastMessageDelivered) {
+        this.lastMessageDelivered = lastMessageDelivered;
     }
 
-    public int getLastMessageExecuted() {
-        return lastMessageExecuted;
+    public int getLastMessageDelivered() {
+        return lastMessageDelivered;
     }
 
     public void setLastMessageReceived(int lastMessageReceived) {
@@ -105,14 +103,6 @@ public class ClientData {
 
     public int getLastMessageReceived() {
         return lastMessageReceived;
-    }
-    
-    public void setLastMessageProposed(int lastMessageProposed) {
-        this.lastMessageProposed = lastMessageProposed;
-    }
-
-    public int getLastMessageProposed() {
-        return lastMessageProposed;
     }
 
     public void setLastMessageReceivedTime(long lastMessageReceivedTime) {
@@ -144,7 +134,7 @@ public class ClientData {
     }
 
     public boolean removeRequest(TOMMessage request) {
-	lastMessageExecuted = request.getSequence();
+	lastMessageDelivered = request.getSequence();
 	boolean result = pendingRequests.remove(request);
         //anb: new code to deal with client requests that arrive after their execution
         orderedRequests.addLast(request);

@@ -230,13 +230,14 @@ public class ClientsManager {
         clientData.clientLock.lock();
         
         //Is this a leader replay attack?
-        if (!fromClient && clientData.getLastMessageProposed() >= request.getSequence()) {
+        if (!fromClient && clientData.getSession() == request.getSession() &&
+                clientData.getLastMessageDelivered() >= request.getSequence()) {
             
             clientData.clientLock.unlock();
             logger.warn("Detected a leader replay attack, rejecting request");
             return false;
         }
-                
+
         request.receptionTime = receptionTime;
         request.receptionTimestamp = receptionTimestamp;
         
@@ -263,8 +264,7 @@ public class ClientsManager {
         if (clientData.getSession() != request.getSession()) {
             clientData.setSession(request.getSession());
             clientData.setLastMessageReceived(-1);
-            clientData.setLastMessageExecuted(-1);
-            clientData.setLastMessageProposed(-1);
+            clientData.setLastMessageDelivered(-1);
             clientData.getOrderedRequests().clear();
             clientData.getPendingRequests().clear();
         }
@@ -329,12 +329,6 @@ public class ClientsManager {
 
         /******* END CLIENTDATA CRITICAL SECTION ******/
         
-        if (!fromClient && accounted) {
-            
-            logger.debug("Setting last proposed message for client {} to sequence #{}",request.getSender(), request.getSequence());
-            clientData.setLastMessageProposed(request.getSequence());
-        }
-        
         clientData.clientLock.unlock();
 
         return accounted;
@@ -374,7 +368,7 @@ public class ClientsManager {
         if (!clientData.removeOrderedRequest(request)) {
             logger.debug("Request " + request + " does not exist in pending requests");
         }
-        clientData.setLastMessageExecuted(request.getSequence());
+        clientData.setLastMessageDelivered(request.getSequence());
 
         /******* END CLIENTDATA CRITICAL SECTION ******/
         clientData.clientLock.unlock();
