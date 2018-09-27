@@ -29,14 +29,11 @@ import java.security.SignatureException;
 import java.util.Arrays;
 
 import bftsmart.reconfiguration.util.Configuration;
-import java.security.Provider;
-import java.security.SecureRandom;
 import java.security.Security;
 import java.util.Random;
 import javax.crypto.Mac;
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.PBEKeySpec;
-import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
