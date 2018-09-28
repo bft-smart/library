@@ -21,8 +21,16 @@ import bftsmart.tom.core.messages.TOMMessage;
  * Provides support for building custom response extractors to be used in the
  * ServiceProxy.
  *
- * @author alysson
  */
 public interface Extractor {
+    
+    /**
+     * Extracts a reply given a set of replies from a set of replicas.
+     * 
+     * @param replies Set of replies from a set of replicas.
+     * @param sameContent Whether or not the replies are supposed to have the same content
+     * @param lastReceived Last reply received from the replicas. This is an index in relation to the `replies` parameter.
+     * @return 
+     */
     TOMMessage extractResponse(TOMMessage[] replies, int sameContent, int lastReceived);
 }

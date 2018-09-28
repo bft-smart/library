@@ -42,23 +42,28 @@ public class RSAKeyLoader implements KeyLoader {
 
     private String sigAlgorithm;
 
-    private static String DEFAULT_UKEY = "MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCwuoTWbSFDnVjohwdZftoAwv3oCxUPnUiiNNH9\n" +
-        "\npXryEW8kSFRGVJ7zJCwxJnt3YZGnpPGxnC3hAI4XkG26hO7+TxkgaYmv5GbamL946uZISxv0aNX3\n" +
-        "\nYbaOf//MC6F8tShFfCnpWlj68FYulM5dC2OOOHaUJfofQhmXfsaEWU251wIDAQAB";
+    private static String DEFAULT_UKEY = "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAokZC75w2IQLEyAgCpQqCDH3keTdHq+3lFOZJ"+
+            "PbAev4zq73umOB3bFdSVu0OpbTwV7Mo7CHGTrtB4oi/REvgL6xwL/DKJ7Y2/cAQ91l4ApgmtyX6d0ESsVWZzCg57zjaiwHzzVN57R8q4/h3Cc"+
+            "UxjDmCQtC9F4W83wm/sFvaTBovbkVQK5y2wBiQ3m+nFA9YWz+dgZy7wh4NJNbvnMpfhTBs73P64De6i2D/v2bjNJoke1mdSTM2+K9aSpwKBEe"+
+            "dtI/mkQqQvA/eCAPNNDidXAVCewfHONpRu4wc/ovjPG+6AlrqRSEYy+GtAndgyPFc8L+VXAMdAyIe8109gTz4+lwIDAQAB";
 
 
-    private static String DEFAULT_PKEY = "MIICdwIBADANBgkqhkiG9w0BAQEFAASCAmEwggJdAgEAAoGBALC6hNZtIUOdWOiHB1l+2gDC/egL\n" +
-        "\nFQ+dSKI00f2levIRbyRIVEZUnvMkLDEme3dhkaek8bGcLeEAjheQbbqE7v5PGSBpia/kZtqYv3jq\n" +
-        "\n5khLG/Ro1fdhto5//8wLoXy1KEV8KelaWPrwVi6Uzl0LY444dpQl+h9CGZd+xoRZTbnXAgMBAAEC\n" +
-        "\ngYAJaUVdrd4RnbV4XIh1qZ2uYLPowX5ToIqXqLxuB3vunCMRCZEDVcpJJGn+DBCTIO0CwnPkg26m\n" +
-        "\nBsOKWbSeNCoN5gOi5yd6Poe0D40ZmvHP1hMCQ9LYhwjLB3Aa+Cl5gYL074Qe/eJFqJaYjZApkeJU\n" +
-        "\nAy1HkXhM5OBW9grrXxg6YQJBAPTIni5fG5f2SYutkR2pUydZP4haKVabRkZr8nSHuClGDE2HzbNQ\n" +
-        "\njb17z5rRVxJCKMLb2HiPg7ZsUgGK/J1ri78CQQC405h45rL1mCIyZQCXcK/nQZTVi8UaaelKN/ub\n" +
-        "\nLQKtTGenJao/zoL+m39i+gGRkHWiG6HNaGFdOkRJmeeH+rfpAkEAn0fwDjKbDP4ZC0fM1uU4k7Ey\n" +
-        "\nczJgFdgCGY7ifMtXnZvUI5sL0fPH15W6GH7BzsK4LVvK92BDj6/aiOB80p6JlwJASjL4NSE4mwv2\n" +
-        "\nPpD5ydI9a/OSEqDIAjCerWMIKWXKe1P/EMU4MeFwCVLXsx523r9F2kyJinLrE4g+veWBY7+tcQJB\n" +
-        "\nAKCTm3tbbwLJnnPN46mAgrYb5+LFOmHyNtEDgjxEVrzpQaCChZici2YGY1jTBjb/De4jii8RXllA\n" +
-        "\ntUhBEsqyXDA=";
+    private static String DEFAULT_PKEY = "MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCiRkLvnDYhAsTICAKlCoIMfeR5N0e"+
+            "r7eUU5kk9sB6/jOrve6Y4HdsV1JW7Q6ltPBXsyjsIcZOu0HiiL9ES+AvrHAv8Montjb9wBD3WXgCmCa3Jfp3QRKxVZnMKDnvONqLAfPNU3nt"+
+            "Hyrj+HcJxTGMOYJC0L0XhbzfCb+wW9pMGi9uRVArnLbAGJDeb6cUD1hbP52BnLvCHg0k1u+cyl+FMGzvc/rgN7qLYP+/ZuM0miR7WZ1JMzb4"+
+            "r1pKnAoER520j+aRCpC8D94IA800OJ1cBUJ7B8c42lG7jBz+i+M8b7oCWupFIRjL4a0Cd2DI8Vzwv5VcAx0DIh7zXT2BPPj6XAgMBAAECggE"+
+            "AWzGdIEbrbHW/3KITymgzWY3OPgjA8HAK00nvUwmM3hz1UoxshxDQNF55nvmRV1/y+lVUA5TAZ/ekM5Enr79SA1iJq7tDJAsK0Iqxray6NJU"+
+            "v4xKS4Z4WMxAWCkrFbMfrgr01ijZVlazpdXWH9l/1Mvk1mO0QGnaEIXMAfI8pZP2CXL3oEIv+uhbPytdkwlCFtCgwLpteTbmX806i5R2NaeM"+
+            "S8JwGpI8bSL143Lxl1nR0w7X9+5LyXEFuOJRdy/qsso1/fqxFG/CXg3GCTJwWGsFWS2jEF0NVRAj/OOVlNp2smbvTRRXN+eRjAbc06R4aVlW"+
+            "9GwkMq0xaX4DIzVhWwQKBgQDZp+dRTqLXHkvPrqhEQOrrFS2mKmjnD1vFn1hBCGcezRfVcdY2zPumZvmFvUvdcHB+sOo7UHCTzKLeu61eI26"+
+            "qDmkSuATiyZuwp+rzjRzq9+lzdyq1ikP5XiCg/W5u0fXLFIbQ05o+T6Mp0DDXllKh0tKRFTP18FP3qcNEB3GwcQKBgQC+3LPo+EFXECZMTnZ"+
+            "YnYOd6c+0KCWFgbgtbqsBUe6uZe5jiwrCq8ypAWcZpYBlEEnX0lZVfavSZLx+CUJE6zcnuV4B9qPjCEJMS1UTMDo2DPAbiUlNo29i/hgZ30U"+
+            "hhcxeNcDxyV4LCwzeVXjSGoj6lpH912ckgE76aJf+izbjhwKBgADGGQtv9SJAqFJXs59yf6NQUvY5RmAz7MaaF207w2oXnpMSsYlGV0qzKQX"+
+            "xs1hZMv0wUdTeJ1hPLPEPx8EC7TzLilIXt2S7BMOvBSXShZzMPtc7QDqfADjdvc30uLTKKE6NhyEs72pzTAg1Bkdt8GNE5ZzAb4vbS+EgiGI"+
+            "wiJXxAoGBAI7kGwl6+ygcXh/Yyj9zxbru9mKRf+3g/St+ZCZ72a7Vf1ElIqw2BOYut6p6vpJrTG14+svMZ1v/sSLG+ccxNjzWSaw8o9vwLfq"+
+            "Cl7Hi9GHM8+IZuTiX+Gdrhk2wW0hKrIOHyOj78h1ga4T1Bpx94zmAitI5du3b5cURk2Gthi13AoGAYj6ygbie5vGSEi68/6dB7whHLsk2aqL"+
+            "9/8qe5CDGCPy43YhDXpHrJokHQ4xh3HR9QZuoEqV9oOYREVGjXYx4P1nUqKNMrbzXoypPczx+hNO22rJcu/flMmXGeC9q7tBbnuT6c8vKo3R"+
+            "Lvwp7KA+fDYCMsfbeBa66hOVweG262hM=";
 
     private boolean defaultKeys;
 
