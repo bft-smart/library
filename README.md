@@ -1,5 +1,4 @@
-BFT-SMaRt v1.1-beta
-----------
+BFT-SMaRt v1.2
 
 This package contains the BFT-SMaRt source code (src/), binary file (bin/), libraries needed (lib/), documentation (doc/), running scripts (runscripts/) and configuration files (config/).
 BFT-SMaRt requires the Java Runtime Environment version 1.7 or later.
