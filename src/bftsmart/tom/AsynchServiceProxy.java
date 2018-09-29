@@ -7,7 +7,6 @@ import bftsmart.tom.core.messages.TOMMessageType;
 import bftsmart.tom.util.Extractor;
 import bftsmart.tom.util.KeyLoader;
 import bftsmart.tom.util.TOMUtil;
-import java.security.Provider;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -19,44 +18,56 @@ import org.slf4j.LoggerFactory;
  * This class is an extension of 'ServiceProxy' that can waits for replies
  * asynchronously.
  *
- * @author Andre Nogueira
- *
  */
 public class AsynchServiceProxy extends ServiceProxy {
     
     private Logger logger = LoggerFactory.getLogger(this.getClass());
 
-    /**
-     *
-     */
     private HashMap<Integer, RequestContext> requestsContext;
     private HashMap<Integer, TOMMessage[]> requestsReplies;
     private HashMap<Integer, Integer> requestsAlias;
 
-    /**
+/**
+     * Constructor
      *
-     * @param processId Replica id
+     * @see bellow
      */
     public AsynchServiceProxy(int processId) {
         this(processId, null);
         init();
     }
 
-    /**
+/**
+     * Constructor
      *
-     * @param processId Replica id
-     * @param configHome Configuration folder
+     * @see bellow
      */
     public AsynchServiceProxy(int processId, String configHome) {
         super(processId, configHome);
         init();
     }
-
+    
+    /**
+     * Constructor
+     *
+     * @see bellow
+     */
     public AsynchServiceProxy(int processId, String configHome, KeyLoader loader) {
         super(processId, configHome, loader);
         init();
     }
     
+    /**
+     * Constructor
+     *
+     * @param processId Process id for this client (should be different from replicas)
+     * @param configHome Configuration directory for BFT-SMART
+     * @param replyComparator Used for comparing replies from different servers
+     *                        to extract one returned by f+1
+     * @param replyExtractor Used for extracting the response from the matching
+     *                       quorum of replies
+     * @param loader Used to load signature keys from disk
+     */
     public AsynchServiceProxy(int processId, String configHome,
             Comparator<byte[]> replyComparator, Extractor replyExtractor, KeyLoader loader) {
         
@@ -76,31 +87,31 @@ public class AsynchServiceProxy extends ServiceProxy {
         return (o != null && o instanceof View ? (View) o : null);
     }
     /**
-     *
-     * @param request
-     * @param replyListener
-     * @param reqType Request type
-     * @return
+     * @see bellow
      */
     public int invokeAsynchRequest(byte[] request, ReplyListener replyListener, TOMMessageType reqType) {
         return invokeAsynchRequest(request, super.getViewManager().getCurrentViewProcesses(), replyListener, reqType);
     }
 
     /**
-     *
-     * @param request
-     * @param targets
-     * @param replyListener
+     * This method asynchronously sends a request to the replicas.
+     * 
+     * @param request Request to be sent
+     * @param targets The IDs for the replicas to which to send the request
+     * @param replyListener Callback object that handles reception of replies
      * @param reqType Request type
-     * @return
+     * 
+     * @return A unique identification for the request
      */
     public int invokeAsynchRequest(byte[] request, int[] targets, ReplyListener replyListener, TOMMessageType reqType) {
         return invokeAsynch(request, targets, replyListener, reqType);
     }
 
     /**
-     *
-     * @param requestId Request
+     * Purges all information associated to the request.
+     * This should always be invoked once enough replies are received and processed by the ReplyListener callback.
+     * 
+     * @param requestId A unique identification for a previously sent request
      */
     public void cleanAsynchRequest(int requestId) {
 
@@ -118,7 +129,9 @@ public class AsynchServiceProxy extends ServiceProxy {
     }
 
     /**
+     * This is the method invoked by the client side communication system.
      *
+     * @param reply The reply delivered by the client side communication system
      */
     @Override
     public void replyReceived(TOMMessage reply) {
@@ -206,14 +219,6 @@ public class AsynchServiceProxy extends ServiceProxy {
         }
     }
 
-    /**
-     *
-     * @param request
-     * @param targets
-     * @param replyListener
-     * @param reqType
-     * @return
-     */
     private int invokeAsynch(byte[] request, int[] targets, ReplyListener replyListener, TOMMessageType reqType) {
 
         logger.debug("Asynchronously sending request to " + Arrays.toString(targets));

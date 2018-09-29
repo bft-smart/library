@@ -22,8 +22,6 @@ import bftsmart.tom.MessageContext;
  * Executables that implement this interface can received unordered client requests.
  * To support ordered requests, objects that implement this interface must also implement
  * either 'FIFOExecutable', 'BatchExecutable' or 'SingleExecutable'.
- * 
- * @author Marcel Santos
  *
  */
 public interface Executable {

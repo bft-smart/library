@@ -23,13 +23,15 @@ import bftsmart.tom.ReplicaContext;
 /**
  * Classes that implement this interface should implement a state transfer protocol.
  * Typically, classes should both implement this interface and one of the executables.
- * 
- * @author Marcel Santos
  *
  */
 public interface Recoverable {
 	
-	public void setReplicaContext(ReplicaContext replicaContext);
+    /**
+     * Sets the replica context
+     * @param replicaContext  The replica context
+     */
+    public void setReplicaContext(ReplicaContext replicaContext);
 	
     /**
      * 
