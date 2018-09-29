@@ -90,6 +90,6 @@ Finally, if you are interested in learning more about BFT-SMaRt, you can read:
 
 - The paper about its state machine protocol published in [EDCC'12](http://www.di.fc.ul.pt/~bessani/publications/edcc12-modsmart.pdf):
 - The paper about its advanced state transfer protocol published in [Usenix'13](http://www.di.fc.ul.pt/~bessani/publications/usenix13-dsmr.pdf):
-- The tool description published in [DSN'14)(http://www.di.fc.ul.pt/~bessani/publications/dsn14-bftsmart.pdf):
+- The tool description published in [DSN'14](http://www.di.fc.ul.pt/~bessani/publications/dsn14-bftsmart.pdf):
 
-Feel free to contact us if you have any questions!
+***Feel free to contact us if you have any questions!***
