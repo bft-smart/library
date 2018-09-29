@@ -3,7 +3,7 @@
 This package contains the BFT-SMaRt v1.2 source code (src/), jar file (bin/BFT-SMaRt.jar), libraries needed (lib/), documentation (doc/), running scripts (runscripts/) and configuration files (config/).
 BFT-SMaRt requires the Java Runtime Environment version 1.8 or later.
 
-**Important:** This distribution of BFT-SMaRt offers the most stable execution via the class bftsmart.tom.server.defaultservices.DefaultRecoverable under Byzantine faults. Applications can also be implemented using 'bftsmart.tom.server.defaultservices.DefaultSingleRecoverable' and 'bftsmart.tom.server.defaultservices.durability.DurabilityCoordinator', but they are not as stable as 'DefaultRecoverable'. In future versions these classes will be properly tested and fixed.
+**Important:** This distribution of BFT-SMaRt offers the most stable execution via the class `bftsmart.tom.server.defaultservices.DefaultRecoverable` under Byzantine faults. Applications can also be implemented using `bftsmart.tom.server.defaultservices.DefaultSingleRecoverable` and `bftsmart.tom.server.defaultservices.durability.DurabilityCoordinator`, but they are not as stable as 'DefaultRecoverable'. In future versions these classes will be properly tested and fixed.
 
 ## Quick start
 
@@ -41,9 +41,7 @@ You can run the counter demonstration by executing the following commands, from 
 
 **Important tip #5:** Never forget to delete the 'config/currentView' file after you modify 'config/hosts.config' or 'config/system.config'. If 'config/currentView' exists, BFT-SMaRt always fetches the group configuration from this file first. Otherwise, BFT-SMaRt fetches information from the other files and creates 'config/currentView' from scratch. Note that 'config/currentView' only stores information related to the group of replicas. You do not need to delete this file if, for instance, you want to enable the debugger or change the value of the request timeout.
 
-## Start a client
-
-The client can be launched a follows:
+Once all replicas are ready, the client can be launched a follows:
 
 ```
 ./runscripts/smartrun.sh bftsmart.demo.counter.CounterClient 1001 <increment> [<number of operations>]
