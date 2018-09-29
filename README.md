@@ -23,7 +23,7 @@ The servers must be specified in the configuration file (see `config/hosts.confi
 
 **Important tip #2:** If some (or all) replicas are deployed/executed within the same machine (127.0.0.1), 'config/hosts.config' cannot have sequencial port numbers (e.g., 10000, 10001, 10002, 10003). This is because each replica binds two ports: one to receive messages from clients (that are configured in 'config/hosts.config', as shown above) and other to receive message from the other replicas (chosen by getting the next port number). More generally, if replica R is assigned port number P, it will try to bind ports P (to received client requests) and P+1 (to communicate with other replicas). If this guideline is not enforced, replicas may not be able to bind all ports that are needed.
 
-**Important tip #3:** Clients requests should not be issued before all replicas have been properly initialized. Replicas are ready to process client requests when each one outputs '(DeliveryThread.run) canDeliver released.' in the console.
+**Important tip #3:** Clients requests should not be issued before all replicas have been properly initialized. Replicas are ready to process client requests when each one outputs `-- Ready to process operations` in the console.
 
 The system configurations also have to be specified (see`config/system.config`). Most of the parameters are self explanatory.
 
