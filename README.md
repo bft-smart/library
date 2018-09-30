@@ -90,7 +90,7 @@ Keys are stored in the `config/keys` folder. The command above creates key pairs
 
 ## Compiling
 
-Make sure that you have Ant installed and simply type `ant` in the main directory.
+Make sure that you have Ant installed and simply type `ant` in the main directory. The jar file is stored in the `bin/` directory.
 
 ## Additional information and publications
 
