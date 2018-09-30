@@ -88,6 +88,10 @@ If you need to generate public/private keys for more replicas or clients, you ca
 
 Keys are stored in the `config/keys` folder. The command above creates key pairs both for clients and replicas. Alternatively, you can set the `system.communication.defaultkeys` to `true` in the `config/system.config` file to forces all processes to use the same public/private keys pair and secret key. This is useful when deploying experiments and benchmarks, because it enables the programmer to avoid generating keys for all principals involved in the system. However, this must not be used in a real deployments.
 
+## Compiling
+
+Make sure that you have Ant installed and simply type `ant` in the main directory.
+
 ## Additional information and publications
 
 If you are interested in learning more about BFT-SMaRt, you can read:
