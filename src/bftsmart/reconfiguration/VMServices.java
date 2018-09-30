@@ -16,11 +16,9 @@ limitations under the License.
 package bftsmart.reconfiguration;
 
 import bftsmart.tom.util.KeyLoader;
-import java.security.Provider;
 
 /**
- *
- * @author Andre Nogueira
+ * This class is used by the trusted client to add and remove replicas from the group
  */
 
 public class VMServices {
@@ -28,18 +26,34 @@ public class VMServices {
     private KeyLoader keyLoader;
     private String configDir;
     
+    /**
+     * Constructor. It adopts the default RSA key loader and default configuration path.
+     */
     public VMServices() { // for the default keyloader and provider
         
         keyLoader = null;
         configDir = "";
     }
     
-    public VMServices(KeyLoader keyLoader, Provider provider, String configDir) {
+    /**
+     * Constructor.
+     * 
+     * @param keyLoader Key loader to use to fetch keys from disk
+     * @param configDir Configuration path
+     */
+    public VMServices(KeyLoader keyLoader, String configDir) {
         
         this.keyLoader = keyLoader;
         this.configDir = configDir;
     }
     
+    /**
+     * Adds a new server to the group
+     * 
+     * @param id ID of the server to be added (needs to match the value in config/hosts.config)
+     * @param ipAddress IP address of the server to be added (needs to match the value in config/hosts.config)
+     * @param port Port of the server to be added (needs to match the value in config/hosts.config)
+     */
     public void addServer(int id, String ipAddress, int port) {
         
         ViewManager viewManager = new ViewManager(configDir, keyLoader);
@@ -50,6 +64,11 @@ public class VMServices {
 
     }
     
+    /**
+     * Removes a server from the group
+     * 
+     * @param id ID of the server to be removed 
+     */
     public void removeServer (int id) {
         
         ViewManager viewManager = new ViewManager(keyLoader);
