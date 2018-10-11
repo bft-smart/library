@@ -15,6 +15,15 @@ limitations under the License.
 */
 package bftsmart.communication;
 
+import bftsmart.consensus.messages.MessageFactory;
+import bftsmart.consensus.messages.ConsensusMessage;
+import bftsmart.consensus.roles.Acceptor;
+import bftsmart.statemanagement.SMMessage;
+import bftsmart.tom.core.TOMLayer;
+import bftsmart.tom.core.messages.TOMMessage;
+import bftsmart.tom.core.messages.ForwardedMessage;
+import bftsmart.tom.leaderchange.LCMessage;
+import bftsmart.tom.util.TOMUtil;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
@@ -22,22 +31,10 @@ import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 import java.util.HashMap;
-
 import javax.crypto.Mac;
 import javax.crypto.SecretKey;
-
-import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import bftsmart.consensus.messages.ConsensusMessage;
-import bftsmart.consensus.messages.MessageFactory;
-import bftsmart.consensus.roles.Acceptor;
-import bftsmart.statemanagement.SMMessage;
-import bftsmart.tom.core.TOMLayer;
-import bftsmart.tom.core.messages.ForwardedMessage;
-import bftsmart.tom.core.messages.TOMMessage;
-import bftsmart.tom.leaderchange.LCMessage;
-import bftsmart.tom.util.TOMUtil;
+import org.slf4j.Logger;
 
 /**
  *
@@ -49,7 +46,6 @@ public class MessageHandler {
 
     private Acceptor acceptor;
     private TOMLayer tomLayer;
-    //private Cipher cipher;
     private Mac mac;
     
     public MessageHandler() {
@@ -103,7 +99,7 @@ public class MessageHandler {
                 /*byte[] k = tomLayer.getCommunication().getServersConn().getSecretKey(paxosMsg.getSender()).getEncoded();
                 SecretKeySpec key = new SecretKeySpec(new String(k).substring(0, 8).getBytes(), "DES");*/
                 
-                SecretKey key = tomLayer.getCommunication().getSecretKey(consMsg.getSender());
+                SecretKey key = tomLayer.getCommunication().getServersConn().getSecretKey(consMsg.getSender());
                 try {
                     this.mac.init(key);                   
                     myMAC = this.mac.doFinal(data);
@@ -143,7 +139,9 @@ public class MessageHandler {
 	                        break;
 	                }
 	
-	                logger.info("LC_MSG received: type " + type + ", regency " + lcMsg.getReg() + ", (replica " + lcMsg.getSender() + ")");
+                        if (lcMsg.getReg() != -1 && lcMsg.getSender() != -1)
+                            logger.info("Received leader change message of type {} for regency {} from replica {}", type, lcMsg.getReg(), lcMsg.getSender());
+                        else logger.debug("Received leader change message from myself");
 	                if (lcMsg.TRIGGER_LC_LOCALLY) tomLayer.requestsTimer.run_lc_protocol();
 	                else tomLayer.getSynchronizer().deliverTimeoutRequest(lcMsg);
 	            /**************************************************************/

@@ -32,22 +32,17 @@ public class Reconfiguration {
     private int id;
     
     private KeyLoader keyLoader;
-    private Provider provider;
     private String configDir;
     
-    public Reconfiguration(int id, String configDir, KeyLoader loader, Provider provider) {
-        this.id = id;
-        
+    public Reconfiguration(int id, String configDir, KeyLoader loader) {
+        this.id = id;        
         this.keyLoader = loader;
-        this.provider = provider;
         this.configDir = configDir;
-         //proxy = new ServiceProxy(id);
-        //request = new ReconfigureRequest(id);
     }
     
     public void connect(){
         if(proxy == null){
-            proxy = new ServiceProxy(id, configDir, null, null, keyLoader, provider);
+        	proxy = new ServiceProxy(id, configDir, null, null, keyLoader);
         }
     }
     

@@ -69,7 +69,7 @@ public class ServiceProxy extends TOMSender {
 	 * @see bellow
 	 */
 	public ServiceProxy(int processId) {
-		this(processId, null, null, null, null, null);
+		this(processId, null, null, null, null);
 	}
 
 	/**
@@ -78,11 +78,11 @@ public class ServiceProxy extends TOMSender {
 	 * @see bellow
 	 */
 	public ServiceProxy(int processId, String configHome) {
-		this(processId, configHome, null, null, null, null);
+		this(processId, configHome, null, null, null);
 	}
 
-    public ServiceProxy(int processId, String configHome, KeyLoader loader, Provider provider) {
-		this(processId, configHome, null, null, loader, provider);
+    public ServiceProxy(int processId, String configHome, KeyLoader loader) {
+		this(processId, configHome, null, null, loader);
 	}
         
 	/**
@@ -96,11 +96,11 @@ public class ServiceProxy extends TOMSender {
 	 *                       quorum of replies
 	 */
 	public ServiceProxy(int processId, String configHome,
-			Comparator<byte[]> replyComparator, Extractor replyExtractor, KeyLoader loader, Provider provider) {
+			Comparator<byte[]> replyComparator, Extractor replyExtractor, KeyLoader loader) {
 		if (configHome == null) {
-			init(processId, loader, provider);
+			init(processId, loader);
 		} else {
-			init(processId, configHome, loader, provider);
+			init(processId, configHome, loader);
 		}
 
 		replies = new TOMMessage[getViewManager().getCurrentViewN()];

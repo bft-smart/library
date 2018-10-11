@@ -326,8 +326,6 @@ public class ServerConnection {
         if (authKey != null || socketOutStream == null || socketInStream == null) {
             return;
         }
-
-        Security.addProvider(new BouncyCastleProvider());
         
         try {
             
@@ -389,7 +387,7 @@ public class ServerConnection {
             logger.info("Diffie-Hellman complete with " + remoteId);
             
             SecretKeyFactory fac = TOMUtil.getSecretFactory();
-            PBEKeySpec spec = new PBEKeySpec(secretKey.toString().toCharArray());
+            PBEKeySpec spec = TOMUtil.generateKeySpec(secretKey.toString().toCharArray());
             authKey = fac.generateSecret(spec);
 
             macSend = TOMUtil.getMacFactory();

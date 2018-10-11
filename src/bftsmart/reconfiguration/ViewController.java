@@ -35,13 +35,13 @@ public class ViewController {
     private TOMConfiguration staticConf;
     private ViewStorage viewStore;
 
-    public ViewController(int procId, KeyLoader loader, Provider provider) {
-        this.staticConf = new TOMConfiguration(procId, loader, provider);
+    public ViewController(int procId, KeyLoader loader) {
+        this.staticConf = new TOMConfiguration(procId, loader);
     }
 
     
-    public ViewController(int procId, String configHome, KeyLoader loader, Provider provider) {
-        this.staticConf = new TOMConfiguration(procId, configHome, loader, provider);
+    public ViewController(int procId, String configHome, KeyLoader loader) {
+        this.staticConf = new TOMConfiguration(procId, configHome, loader);
     }
 
     

@@ -52,15 +52,15 @@ public class AsynchServiceProxy extends ServiceProxy {
         init();
     }
 
-    public AsynchServiceProxy(int processId, String configHome, KeyLoader loader, Provider provider) {
-        super(processId, configHome, loader, provider);
+    public AsynchServiceProxy(int processId, String configHome, KeyLoader loader) {
+        super(processId, configHome, loader);
         init();
     }
     
     public AsynchServiceProxy(int processId, String configHome,
-            Comparator<byte[]> replyComparator, Extractor replyExtractor, KeyLoader loader, Provider provider) {
+            Comparator<byte[]> replyComparator, Extractor replyExtractor, KeyLoader loader) {
         
-        super(processId, configHome, replyComparator, replyExtractor, loader, provider);
+        super(processId, configHome, replyComparator, replyExtractor, loader);
         init();
     }
 

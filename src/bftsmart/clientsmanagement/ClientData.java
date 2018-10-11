@@ -15,19 +15,15 @@ limitations under the License.
 */
 package bftsmart.clientsmanagement;
 
-import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
-import java.security.Security;
 import java.security.Signature;
 import java.security.SignatureException;
 import java.util.Iterator;
 import java.util.concurrent.locks.ReentrantLock;
 
 import bftsmart.tom.core.messages.TOMMessage;
-import bftsmart.tom.util.KeyLoader;
 import bftsmart.tom.util.TOMUtil;
 
-import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,7 +41,7 @@ public class ClientData {
     private int lastMessageReceived = -1;
     private long lastMessageReceivedTime = 0;
 
-    private int lastMessageExecuted = -1;
+    private int lastMessageDelivered = -1;
 
     private RequestList pendingRequests = new RequestList();
     //anb: new code to deal with client requests that arrive after their execution
@@ -61,20 +57,15 @@ public class ClientData {
      * @param publicKey client public key
      */
     public ClientData(int clientId, PublicKey publicKey) {
-    	    	
         this.clientId = clientId;
         if(publicKey != null) {
             try {
-                signatureVerificator = TOMUtil.getSigEngine();                
+                signatureVerificator = TOMUtil.getSigEngine();
                 signatureVerificator.initVerify(publicKey);
-                logger.debug("Signature verifier initialized for clientId: "+clientId);
+                logger.debug("Signature verifier initialized for client "+clientId);
             } catch (Exception ex) {
                 logger.error("Failed to create client data object",ex);
             }
-           logger.trace("ClientID: {},\n PublicKey: {},\n SignatureAlgorithm: {}, \n Provider: {}", 
-        			new Object[] {clientId, publicKey.toString(), signatureVerificator.getAlgorithm(), 
-        					signatureVerificator.getProvider()});
-        	
         }
     }
 
@@ -98,12 +89,12 @@ public class ClientData {
         return orderedRequests;
     }
 
-    public void setLastMessageExecuted(int lastMessageExecuted) {
-        this.lastMessageExecuted = lastMessageExecuted;
+    public void setLastMessageDelivered(int lastMessageDelivered) {
+        this.lastMessageDelivered = lastMessageDelivered;
     }
 
-    public int getLastMessageExecuted() {
-        return lastMessageExecuted;
+    public int getLastMessageDelivered() {
+        return lastMessageDelivered;
     }
 
     public void setLastMessageReceived(int lastMessageReceived) {
@@ -122,33 +113,14 @@ public class ClientData {
         return lastMessageReceivedTime;
     }
 
-	public boolean verifySignature(byte[] message, byte[] signature) {
-
-		if (signatureVerificator != null) {
-			logger.trace("Veirifying Signature, ClientID: {} "
-    				+ "Algorithm: {}, "
-    				+ "Provider: {}", 
-    				new Object[]{
-    							clientId, 
-    							signatureVerificator.getAlgorithm(), 
-    							signatureVerificator.getProvider(),
-    					});
-			try {
-				signatureVerificator.update(message);
-        		boolean verify = signatureVerificator.verify(signature);
-        		logger.debug("Signature for clientID: {}, result: {}, Signature: {}", 
-        				clientId, 
-        				verify,
-        				signature);
-        		return verify;
-                //return TOMUtil.verifySignature(signatureVerificator, message, signature);
+    public boolean verifySignature(byte[] message, byte[] signature) {
+        if(signatureVerificator != null) {
+            try {
+                return TOMUtil.verifySignature(signatureVerificator, message, signature);
             } catch (SignatureException ex) {
-                logger.error("Failed to verify signature, clientID: {}", clientId);
-                ex.printStackTrace();
+                logger.error("Failed to verify signature", ex);
             }
         }
-		logger.debug("Signature for clientID: {}, result: {}, SignatureVerificator: {}", 
-				clientId, false, signatureVerificator);
         return false;
     }
 
@@ -162,7 +134,7 @@ public class ClientData {
     }
 
     public boolean removeRequest(TOMMessage request) {
-	lastMessageExecuted = request.getSequence();
+	lastMessageDelivered = request.getSequence();
 	boolean result = pendingRequests.remove(request);
         //anb: new code to deal with client requests that arrive after their execution
         orderedRequests.addLast(request);

@@ -33,53 +33,34 @@ public class NettyClientPipelineFactory {
 	
 	NettyClientServerCommunicationSystemClientSide ncs;
 	Map sessionTable;
-	int macLength;
-	int signatureLength;
 	
-	
-
 	// ******* EDUARDO BEGIN **************//
 	ClientViewController controller;
 	// ******* EDUARDO END **************//
 
 	ReentrantReadWriteLock rl;
 
-	public NettyClientPipelineFactory(NettyClientServerCommunicationSystemClientSide ncs, Map sessionTable,
-			int macLength, ClientViewController controller, ReentrantReadWriteLock rl, int signatureLength) {
+	public NettyClientPipelineFactory(NettyClientServerCommunicationSystemClientSide ncs, 
+				Map sessionTable,
+				ClientViewController controller, 
+				ReentrantReadWriteLock rl) {
 		this.ncs = ncs;
 		this.sessionTable = sessionTable;
-		this.macLength = macLength;
-		this.signatureLength = signatureLength;
+		
 		this.rl = rl;
 		this.controller = controller;
 		
-		logger.trace("\n\t ncs: {};"
-        		+ 	 "\n\t sessionTable: {};"
-        		+ 	 "\n\t macSize: {};"
-        		+ 	 "\n\t signatureLength: {};"
-        		+ 	 "\n\t rl: {};"
-        		+ 	 "\n\t controller: {};", 
-        		new Object[] {ncs, 
-        					  sessionTable.toString(),
-        					  macLength,
-        					  signatureLength, 
-        					  rl,
-        					  controller});
-		
 	}
 
-	public ByteToMessageDecoder getDecoder() {
-		return new NettyTOMMessageDecoder(true, sessionTable, macLength, controller, rl, signatureLength,
-				controller.getStaticConf().getUseMACs() == 1 ? true : false);
-	}
-
-	public MessageToByteEncoder getEncoder() {
-		return new NettyTOMMessageEncoder(true, sessionTable, macLength, rl, signatureLength,
-				controller.getStaticConf().getUseMACs() == 1 ? true : false);
-	}
-
-	public SimpleChannelInboundHandler getHandler() {
-		return ncs;
-	}
-
+	public ByteToMessageDecoder getDecoder(){
+    	return new NettyTOMMessageDecoder(true, sessionTable,controller,rl,controller.getStaticConf().getUseMACs()==1);	
+    }
+    
+    public MessageToByteEncoder getEncoder(){
+    	return new NettyTOMMessageEncoder(true, sessionTable,rl, controller.getStaticConf().getUseMACs()==1);	
+    }
+    
+    public SimpleChannelInboundHandler getHandler(){
+    	return ncs;	
+    }
 }

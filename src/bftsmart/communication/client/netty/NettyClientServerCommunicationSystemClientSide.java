@@ -38,7 +38,6 @@ import java.nio.channels.ClosedChannelException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
-import java.security.Security;
 import java.security.Signature;
 import java.security.spec.InvalidKeySpecException;
 import java.util.ArrayList;
@@ -62,7 +61,6 @@ import bftsmart.reconfiguration.ClientViewController;
 import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.util.TOMUtil;
 
-import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -84,7 +82,6 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
     private ReentrantReadWriteLock rl;
     //the signature engine used in the system
     private Signature signatureEngine;
-    private int signatureLength;
     private boolean closed = false;
 
     private EventLoopGroup workerGroup;
@@ -104,7 +101,6 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 
             //this.st = new Storage(BENCHMARK_PERIOD);
             this.rl = new ReentrantReadWriteLock();
-            signatureLength = TOMUtil.getSignatureSize(controller);
 
             ChannelFuture future = null;
             int[] currV = controller.getCurrentViewProcesses();
@@ -112,10 +108,9 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
                 try {
 
                     String str = this.clientId + ":" + currV[i];
-                    PBEKeySpec spec = new PBEKeySpec(str.toCharArray());
+                    PBEKeySpec spec = TOMUtil.generateKeySpec(str.toCharArray());
                     SecretKey authKey = fac.generateSecret(spec);
 
-                    //EventLoopGroup workerGroup = new NioEventLoopGroup();
                     
                     //try {
                     Bootstrap b = new Bootstrap();
@@ -151,8 +146,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 
                 } catch (java.lang.NullPointerException ex) {
                 		ex.printStackTrace();
-                		System.exit(1);
-                        //What is this??? This is not possible!!!
+                		//What is this??? This is not possible!!!
                         logger.debug("Should fix the problem, and I think it has no other implications :-), "
                                         + "but we must make the servers store the view in a different place.");
                 } catch (InvalidKeyException ex) {
@@ -182,7 +176,6 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
                     try {
                         // Configure the client.
 
-                        //EventLoopGroup workerGroup = new NioEventLoopGroup();
                         if( workerGroup == null){
                             workerGroup = new NioEventLoopGroup();
                         }
@@ -201,7 +194,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
                         ChannelFuture future =  b.connect(controller.getRemoteAddress(currV[i]));
 
                         String str = this.clientId + ":" + currV[i];
-                        PBEKeySpec spec = new PBEKeySpec(str.toCharArray());
+                        PBEKeySpec spec = TOMUtil.generateKeySpec(str.toCharArray());
                         SecretKey authKey = fac.generateSecret(spec);
 
                         //creates MAC stuff
@@ -374,8 +367,15 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
                 
         int sent = 0;
         for (int i = targets.length - 1; i >= 0; i--) {
+            
+            try {
+                sm = (TOMMessage) sm.clone();
+            } catch (CloneNotSupportedException e) {
+                logger.error("Failed to clone TOMMessage",e);
+                continue;
+            }
             sm.destination = targets[i];
-
+            
             rl.readLock().lock();
             Channel channel = ((NettyClientServerSession) sessionTable.get(targets[i])).getChannel();
             rl.readLock().unlock();
@@ -390,11 +390,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
                 logger.debug("Channel to " + targets[i] + " is not connected");
             }
 
-            try {
-                sm = (TOMMessage) sm.clone();
-            } catch (CloneNotSupportedException e) {
-                logger.error("Failed to clone TOMMessage",e);
-            }
+            
         }
 
         if (targets.length > controller.getCurrentViewF() && sent < controller.getCurrentViewF() + 1) {
@@ -467,8 +463,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 
         Mac macDummy = TOMUtil.getMacFactory();
 
-        final NettyClientPipelineFactory nettyClientPipelineFactory = new NettyClientPipelineFactory(this, sessionTable,
-                    macDummy.getMacLength(), controller, rl, signatureLength);
+        final NettyClientPipelineFactory nettyClientPipelineFactory = new NettyClientPipelineFactory(this, sessionTable, controller, rl);
 
         ChannelInitializer channelInitializer = new ChannelInitializer<SocketChannel>() {
             @Override

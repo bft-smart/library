@@ -75,13 +75,13 @@ public abstract class TOMSender implements ReplyReceiver, Closeable, AutoCloseab
 	 *
 	 * @param processId ID of the process
 	 */
-	public void init(int processId, KeyLoader loader, Provider provider) {
-		this.viewController = new ClientViewController(processId, loader, provider);
+	public void init(int processId, KeyLoader loader) {
+		this.viewController = new ClientViewController(processId, loader);
 		startsCS(processId);
 	}
 
-	public void init(int processId, String configHome, KeyLoader loader, Provider provider) {
-		this.viewController = new ClientViewController(processId, configHome, loader, provider);
+	public void init(int processId, String configHome, KeyLoader loader) {
+		this.viewController = new ClientViewController(processId, configHome, loader);
 		startsCS(processId);
 	}
 

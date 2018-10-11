@@ -114,7 +114,7 @@ public class ServerConnectionSSLTLS {
             	// SSL Socket.
             	SSLSocketFactory factory = (SSLSocketFactory)SSLSocketFactory.getDefault();
             	this.socketSSL = (SSLSocket)factory.createSocket(
-                		this.controller.getStaticConf().getHost(remoteId),
+            			this.controller.getStaticConf().getHost(remoteId),
                         this.controller.getStaticConf().getServerToServerPort(remoteId));
                    
             	
@@ -368,8 +368,6 @@ public class ServerConnectionSSLTLS {
         if (authKey != null || socketOutStream == null || socketInStream == null) {
             return;
         }
-
-        Security.addProvider(new BouncyCastleProvider());
         
         try {
             
@@ -431,9 +429,8 @@ public class ServerConnectionSSLTLS {
             logger.info("Diffie-Hellman complete with " + remoteId);
             
             SecretKeyFactory fac = TOMUtil.getSecretFactory();
-            PBEKeySpec spec = new PBEKeySpec(secretKey.toString().toCharArray());
+            PBEKeySpec spec = TOMUtil.generateKeySpec(secretKey.toString().toCharArray());
             
-            //PBEKeySpec spec = new PBEKeySpec(PASSWORD.toCharArray());
             authKey = fac.generateSecret(spec);
 
             macSend = TOMUtil.getMacFactory();

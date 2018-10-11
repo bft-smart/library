@@ -83,7 +83,7 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 			//Configure the server.
 			Mac macDummy = TOMUtil.getMacFactory();
 
-			serverPipelineFactory = new NettyServerPipelineFactory(this, sessionTable, macDummy.getMacLength(), controller, rl, TOMUtil.getSignatureSize(controller));
+			serverPipelineFactory = new NettyServerPipelineFactory(this, sessionTable, controller, rl);
 
 			EventLoopGroup bossGroup = new NioEventLoopGroup();
                         
@@ -144,10 +144,10 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 			logger.info("maxBatch = " + controller.getStaticConf().getMaxBatchSize());
 			if (controller.getStaticConf().getUseMACs() == 1) logger.info("Using MACs");
 			if(controller.getStaticConf().getUseSignatures() == 1) logger.info("Using Signatures");
-                        logger.info("Binded replica to IP address " + myAddress);
-                        //******* EDUARDO END **************//
-                        
-                        mainChannel = f.channel();
+			logger.info("Binded replica to IP address " + myAddress);
+            //******* EDUARDO END **************//
+            
+			mainChannel = f.channel();
 
 		} catch (NoSuchAlgorithmException | InterruptedException | UnknownHostException ex) {
 			logger.error("Failed to create Netty communication system",ex);
@@ -288,6 +288,15 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 		}
 
 		for (int i = 0; i < targets.length; i++) {
+	        // This is done to avoid a race condition with the writeAndFush method. Since the method is asynchronous,
+			// each iteration of this loop could overwrite the destination of the previous one
+			try {
+				sm = (TOMMessage) sm.clone();
+			} catch (CloneNotSupportedException ex) {
+				logger.error("Failed to clone TOMMessage",ex);
+			    continue;
+			}
+
 			rl.readLock().lock();
 			//sendLock.lock();
 			try {       

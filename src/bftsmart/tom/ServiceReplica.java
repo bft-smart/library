@@ -88,7 +88,7 @@ public class ServiceReplica {
      * @param recoverer Recoverer
      */
     public ServiceReplica(int id, Executable executor, Recoverable recoverer) {
-        this(id, "", executor, recoverer, null, new DefaultReplier(), null, null);
+        this(id, "", executor, recoverer, null, new DefaultReplier(), null);
     }
 
     /**
@@ -100,7 +100,7 @@ public class ServiceReplica {
      * @param verifier Requests verifier
      */
     public ServiceReplica(int id, Executable executor, Recoverable recoverer, RequestVerifier verifier) {
-        this(id, "", executor, recoverer, verifier, new DefaultReplier(), null, null);
+        this(id, "", executor, recoverer, verifier, new DefaultReplier(), null);
     }
     
     /**
@@ -113,11 +113,12 @@ public class ServiceReplica {
      * @param replier Replier
      */
     public ServiceReplica(int id, Executable executor, Recoverable recoverer, RequestVerifier verifier, Replier replier) {
-        this(id, "", executor, recoverer, verifier, replier, null, null);
+        this(id, "", executor, recoverer, verifier, replier, null);
     }
     
-    public ServiceReplica(int id, Executable executor, Recoverable recoverer, RequestVerifier verifier, Replier replier, KeyLoader loader, Provider provider) {
-        this(id, "", executor, recoverer, verifier, replier, loader, provider);
+    public ServiceReplica(int id, Executable executor, Recoverable recoverer, 
+    			RequestVerifier verifier, Replier replier, KeyLoader loader) {
+        this(id, "", executor, recoverer, verifier, replier, loader);
     }
     /**
      * Constructor
@@ -129,9 +130,10 @@ public class ServiceReplica {
      * @param verifier Requests verifier
      * @param replier Replier
      */
-    public ServiceReplica(int id, String configHome, Executable executor, Recoverable recoverer, RequestVerifier verifier, Replier replier, KeyLoader loader, Provider provider) {
+    public ServiceReplica(int id, String configHome, Executable executor, 
+    		Recoverable recoverer, RequestVerifier verifier, Replier replier, KeyLoader loader) {
         this.id = id;
-        this.SVController = new ServerViewController(id, configHome, loader, provider);
+        this.SVController = new ServerViewController(id, configHome, loader);
         this.executor = executor;
         this.recoverer = recoverer;
         this.replier = (replier != null ? replier : new DefaultReplier());

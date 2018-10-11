@@ -219,19 +219,28 @@ public class ClientsManager {
      */
     public boolean requestReceived(TOMMessage request, boolean fromClient, ServerCommunicationSystem cs) {
                 
-        // if the content of the request is invalid, ignore it
-        if (controller.getStaticConf().isBFT() && !verifier.isValidRequest(request)) return false;
+        long receptionTime = System.nanoTime();
+        long receptionTimestamp = System.currentTimeMillis();
         
-        request.receptionTime = System.nanoTime();
-
         int clientId = request.getSender();
         boolean accounted = false;
 
-        //Logger.println("(ClientsManager.requestReceived) getting info about client "+clientId);
         ClientData clientData = getClientData(clientId);
         
-        //Logger.println("(ClientsManager.requestReceived) wait for lock for client "+clientData.getClientId());
         clientData.clientLock.lock();
+        
+        //Is this a leader replay attack?
+        if (!fromClient && clientData.getSession() == request.getSession() &&
+                clientData.getLastMessageDelivered() >= request.getSequence()) {
+            
+            clientData.clientLock.unlock();
+            logger.warn("Detected a leader replay attack, rejecting request");
+            return false;
+        }
+
+        request.receptionTime = receptionTime;
+        request.receptionTimestamp = receptionTimestamp;
+        
         /******* BEGIN CLIENTDATA CRITICAL SECTION ******/
         //Logger.println("(ClientsManager.requestReceived) lock for client "+clientData.getClientId()+" acquired");
 
@@ -255,6 +264,7 @@ public class ClientsManager {
         if (clientData.getSession() != request.getSession()) {
             clientData.setSession(request.getSession());
             clientData.setLastMessageReceived(-1);
+            clientData.setLastMessageDelivered(-1);
             clientData.getOrderedRequests().clear();
             clientData.getPendingRequests().clear();
         }
@@ -263,9 +273,16 @@ public class ClientsManager {
                 (clientData.getLastMessageReceived() + 1 == request.getSequence()) || //message received is the expected
                 ((request.getSequence() > clientData.getLastMessageReceived()) && !fromClient)) {
 
-            //it is a new message and I have to verify it's signature
-        	boolean verifySignature = clientData.verifySignature(request.serializedMessage, request.serializedMessageSignature);
-            if (!request.signed || verifySignature){
+            //enforce the "external validity" property, i.e, verify if the
+            //requests are valid in accordance to the application semantics
+            //and not an erroneous requests sent by a Byzantine leader.
+            boolean isValid = (!controller.getStaticConf().isBFT() || verifier.isValidRequest(request));
+
+            //it is a valid new message and I have to verify it's signature
+            if (isValid &&
+                    (!request.signed ||
+                    clientData.verifySignature(request.serializedMessage,
+                            request.serializedMessageSignature))) {
 
                 //I don't have the message but it is valid, I will
                 //insert it in the pending requests of this client
@@ -281,24 +298,17 @@ public class ClientsManager {
                 }
 
                 accounted = true;
-                logger.debug("Request.signed: {}, verifySignature: {}", request.signed, verifySignature);
             }
-            else {
-            	logger.debug("ELSE: Request.signed: {}, verifySignature: {}", request.signed, verifySignature);       
-            	logger.trace("ELSE: request.serializedMessage:{}, request.serializedMessageSignature:{}", 
-            			request.serializedMessage, request.serializedMessageSignature);
-            }
-            
         } else {
             //I will not put this message on the pending requests list
             if (clientData.getLastMessageReceived() >= request.getSequence()) {
                 //I already have/had this message
-
+                
                 //send reply if it is available
                 TOMMessage reply = clientData.getReply(request.getSequence());
                 
                 if (reply != null && cs != null) {
-
+                    
                     if (reply.recvFromClient && fromClient) {
                         logger.info("[CACHE] re-send reply [Sender: " + reply.getSender() + ", sequence: " + reply.getSequence()+", session: " + reply.getSession()+ "]");
                         cs.send(new int[]{request.getSender()}, reply);
@@ -313,12 +323,12 @@ public class ClientsManager {
                 accounted = true;
             } else {
                 //a too forward message... the client must be malicious
-            	logger.debug("Too forward message, client must be malicious.");
                 accounted = false;
             }
         }
 
         /******* END CLIENTDATA CRITICAL SECTION ******/
+        
         clientData.clientLock.unlock();
 
         return accounted;
@@ -358,7 +368,7 @@ public class ClientsManager {
         if (!clientData.removeOrderedRequest(request)) {
             logger.debug("Request " + request + " does not exist in pending requests");
         }
-        clientData.setLastMessageExecuted(request.getSequence());
+        clientData.setLastMessageDelivered(request.getSequence());
 
         /******* END CLIENTDATA CRITICAL SECTION ******/
         clientData.clientLock.unlock();

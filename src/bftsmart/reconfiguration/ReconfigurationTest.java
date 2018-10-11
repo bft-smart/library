@@ -38,7 +38,7 @@ public class ReconfigurationTest {
         
         ReconfigureReply r = (ReconfigureReply)TOMUtil.getObject(reply);*/
         
-        Reconfiguration rec = new Reconfiguration(id, "", null, null);
+        Reconfiguration rec = new Reconfiguration(id, "", null);
         
         //rec.setReconfiguration(ReconfigurationManager.CHANGE_F,"1");
         rec.setF(2);

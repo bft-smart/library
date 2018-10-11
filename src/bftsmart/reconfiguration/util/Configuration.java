@@ -54,39 +54,49 @@ public class Configuration {
            
     
     public static final String DEFAULT_HMAC = "HmacSHA512";
-    public static final String DEFAULT_SECRETKEY = "PBEWithSHA1AndDESede";
+    public static final String DEFAULT_SECRETKEY = "PBKDF2WithHmacSHA1";
     public static final String DEFAULT_SIGNATURE = "SHA512withRSA";    
     public static final String DEFAULT_HASH = "SHA-512";
     
-    public static final String DEFAULT_PROVIDER = "SunJCE";
+    
+    public static final String DEFAULT_HMAC_PROVIDER = "SunJCE";
+    public static final String DEFAULT_SECRETKEY_PROVIDER = "SunJCE";
+    public static final String DEFAULT_SIGNATURE_PROVIDER = "SunRsaSign";
+    public static final String DEFAULT_HASH_PROVIDER = "SUN";
+    
+    public static final String DEFAULT_KEYLOADER = "RSA";
             
     private String hmacAlgorithm;
     private String secretKeyAlgorithm;
     private String signatureAlgorithm;
     private String hashAlgorithm;
     
-    private String selectedProvider;
+    private String hmacAlgorithmProvider;
+    private String secretKeyAlgorithmProvider;
+    private String signatureAlgorithmProvider;
+    private String hashAlgorithmProvider;
     
-    protected static String configHome = "";
+    private String defaultKeyLoader;
+
+    
+    protected String configHome = "";
    
     protected static String hostsFileName = "";
 
     protected boolean defaultKeys = false;
     
-    public Configuration(int procId, KeyLoader loader, Provider prov){
+    public Configuration(int procId, KeyLoader loader){
     	logger = LoggerFactory.getLogger(this.getClass());
         processId = procId;
         keyLoader = loader;
-        provider = prov;
         init();
     }
     
-    public Configuration(int procId, String configHomeParam, KeyLoader loader, Provider prov){
+    public Configuration(int procId, String configHomeParam, KeyLoader loader){
     	logger = LoggerFactory.getLogger(this.getClass());
         processId = procId;
         configHome = configHomeParam;
         keyLoader = loader;
-        provider = prov;
         init();
     }
     
@@ -138,7 +148,42 @@ public class Configuration {
             }else{
                 hashAlgorithm = s;
             }
-            
+
+			s = (String) configs.remove("system.communication.hmacAlgorithmProvider");
+			if (s == null) {
+				hmacAlgorithmProvider = DEFAULT_HMAC_PROVIDER;
+			} else {
+				hmacAlgorithmProvider = s;
+			}
+
+			s = (String) configs.remove("system.communication.secretKeyAlgorithmProvider");
+			if (s == null) {
+				secretKeyAlgorithmProvider = DEFAULT_SECRETKEY_PROVIDER;
+			} else {
+				secretKeyAlgorithmProvider = s;
+			}
+
+			s = (String) configs.remove("system.communication.signatureAlgorithmProvider");
+			if (s == null) {
+				signatureAlgorithmProvider = DEFAULT_SIGNATURE_PROVIDER;
+			} else {
+				signatureAlgorithmProvider = s;
+			}
+
+			s = (String) configs.remove("system.communication.hashAlgorithmProvider");
+			if (s == null) {
+				hashAlgorithmProvider = DEFAULT_HASH_PROVIDER;
+			} else {
+				hashAlgorithmProvider = s;
+			}
+			
+			s = (String) configs.remove("system.communication.defaultKeyLoader");
+			if (s == null) {
+				defaultKeyLoader = DEFAULT_KEYLOADER;
+			} else {
+				defaultKeyLoader = s;
+			}
+
             s = (String) configs.remove("system.communication.defaultkeys");
             if(s == null){
                 defaultKeys = false;
@@ -165,58 +210,35 @@ public class Configuration {
                 DH_G = new BigInteger(s);
             }
             
-            s = (String) configs.remove("system.communication.selectedProvider");
-            if(s == null){
-                selectedProvider = DEFAULT_PROVIDER;
-            }else{
-            	selectedProvider = s;
-            }
             
             if (keyLoader == null) {
-				switch (selectedProvider) {
-				case "SunRsaSign":
-					provider = new SunRsaSign();
-					Security.addProvider(new SunRsaSign());
-					keyLoader = new RSAKeyLoader(processId, TOMConfiguration.configHome, defaultKeys, signatureAlgorithm);
+				switch (defaultKeyLoader) {
+				case "RSA":
+					keyLoader = new RSAKeyLoader(processId, configHome, defaultKeys, signatureAlgorithm);
 					break;
-				case "BC":
-					provider = new BouncyCastleProvider();
-	            	Security.addProvider(new BouncyCastleProvider());
-					keyLoader = new ECDSAKeyLoader(processId, TOMConfiguration.configHome, defaultKeys, signatureAlgorithm);
+				case "ECDSA":
+					keyLoader = new ECDSAKeyLoader(processId, configHome, defaultKeys, signatureAlgorithm);
 					break;
 				case "SunEC":
-					provider = new SunEC();
-					Security.addProvider(new SunEC());
-					keyLoader = new SunECKeyLoader(processId, TOMConfiguration.configHome, defaultKeys, signatureAlgorithm);
+					keyLoader = new SunECKeyLoader(processId, configHome, defaultKeys, signatureAlgorithm);
 					break;
 				default:
-					provider = new SunEC();
-					Security.addProvider(new SunEC());
-					keyLoader = new SunECKeyLoader(processId, TOMConfiguration.configHome, defaultKeys, signatureAlgorithm);
+					keyLoader = new RSAKeyLoader(processId, configHome, defaultKeys, signatureAlgorithm);
 					break;
 				}
-				System.out.println("Selecting provider: "+ provider.getInfo());
             }
-            
-            if(provider == null) {
-            	provider = new BouncyCastleProvider();
-            	Security.addProvider(new SunEC());
-            	Security.addProvider(new BouncyCastleProvider());
-            	Security.addProvider(new SunJCE());
-            	//provider= new SunJCE();
-            	//provider = new SunEC();
-            	System.out.println("Selecting provider (null): "+ provider.getName());
-            	
-            }
-            
-            
-            
-            TOMUtil.init(provider, hmacAlgorithm, secretKeyAlgorithm, keyLoader.getSignatureAlgorithm(), hashAlgorithm);
+
+            TOMUtil.init(hmacAlgorithm, secretKeyAlgorithm, keyLoader.getSignatureAlgorithm(), hashAlgorithm,
+            		                    hmacAlgorithmProvider, secretKeyAlgorithmProvider, signatureAlgorithmProvider, hashAlgorithmProvider);
 
         }catch(Exception e){
         	e.printStackTrace();
             LoggerFactory.getLogger(this.getClass()).error("Wrong system.config file format.");
         }
+    }
+    
+    public String getConfigHome() {
+    	return configHome;
     }
 
     public boolean useDefaultKeys() {
@@ -229,7 +251,6 @@ public class Configuration {
         }
         return true;
     }
-    
     
     public final boolean useBlockingChannels(){
         return this.channelsBlocking;
@@ -263,6 +284,24 @@ public class Configuration {
         return hashAlgorithm;
     }
 
+    
+    public final String getHmacAlgorithmProvider() {
+        return hmacAlgorithmProvider;
+    }
+
+    public final String getSecretKeyAlgorithmProvider() {
+        return secretKeyAlgorithmProvider;
+    }
+    
+    public final String getSignatureAlgorithmProvider() {
+        return signatureAlgorithmProvider;
+    }
+    
+    public final String getHashAlgorithmProvider() {
+        return hashAlgorithmProvider;
+    }
+    
+    
     public final String getProperty(String key){
         Object o = configs.get(key);
         if( o != null){

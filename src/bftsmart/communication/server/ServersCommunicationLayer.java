@@ -131,7 +131,7 @@ public class ServersCommunicationLayer extends Thread {
 		serverSocket.setReuseAddress(true);
 
 		SecretKeyFactory fac = TOMUtil.getSecretFactory();
-		PBEKeySpec spec = new PBEKeySpec(PASSWORD.toCharArray());
+		PBEKeySpec spec = TOMUtil.generateKeySpec(PASSWORD.toCharArray());
 		selfPwd = fac.generateSecret(spec);
 
 		start();

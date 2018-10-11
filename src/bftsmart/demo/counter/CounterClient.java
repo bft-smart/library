@@ -50,8 +50,8 @@ public class CounterClient {
 		ServiceProxy counterProxy = new ServiceProxy(Integer.parseInt(args[0]));
 		
 		try {
-			log.trace("Waiting 2 seconds before issue operations.");
-			Thread.sleep(2000);
+			log.trace("Waiting 6 seconds before issue operations.");
+			Thread.sleep(6000);
 		} catch (InterruptedException e1) {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();

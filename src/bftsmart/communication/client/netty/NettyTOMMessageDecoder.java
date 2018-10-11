@@ -54,8 +54,6 @@ public class NettyTOMMessageDecoder extends ByteToMessageDecoder {
     private boolean isClient;
     private Map sessionTable;
     //private Storage st;
-    private int macSize;
-    private int signatureSize;
     private ViewController controller;
     private boolean firstTime;
     private ReentrantReadWriteLock rl;
@@ -73,14 +71,16 @@ public class NettyTOMMessageDecoder extends ByteToMessageDecoder {
     
     private boolean useMAC;
     
-    public NettyTOMMessageDecoder(boolean isClient, Map sessionTable, int macLength, ViewController controller, ReentrantReadWriteLock rl, int signatureLength, boolean useMAC) {
+    public NettyTOMMessageDecoder(boolean isClient, 
+    								Map sessionTable, 
+    								ViewController controller, 
+    								ReentrantReadWriteLock rl, 
+    								boolean useMAC) {
         this.isClient = isClient;
         this.sessionTable = sessionTable;
-        this.macSize = macLength;
         this.controller = controller;
         this.firstTime = true;
         this.rl = rl;
-        this.signatureSize = signatureLength;
         this.useMAC = useMAC;
         logger.debug("new NettyTOMMessageDecoder!!, isClient=" + isClient);
         logger.trace("\n\t isClient: {};"
@@ -93,11 +93,9 @@ public class NettyTOMMessageDecoder extends ByteToMessageDecoder {
         		+ 	 "\n\t useMAC: {};", 
         		new Object[] {isClient, 
         					  sessionTable.toString(),
-        					  macSize,
         					  controller, 
         					  firstTime, 
         					  rl,
-        					  signatureSize,
         					  useMAC});
     }
 
@@ -105,59 +103,43 @@ public class NettyTOMMessageDecoder extends ByteToMessageDecoder {
     protected void decode(ChannelHandlerContext context, ByteBuf buffer, List<Object> list) throws Exception  {
 
         // Wait until the length prefix is available.
-        if (buffer.readableBytes() < 4) {
+        if (buffer.readableBytes() < Integer.BYTES) {
             return;
         }
 
         int dataLength = buffer.getInt(buffer.readerIndex());
 
-        logger.debug("Receiving message with {} bytes.", dataLength);
+      //  logger.debug("Receiving message with {} bytes.", dataLength);
         
         // Wait until the whole data is available.
-        if (buffer.readableBytes() < dataLength + 4) {
+        if (buffer.readableBytes() < dataLength + Integer.BYTES) {
             return;
         }
-
+        
         // Skip the length field because we know it already.
-        buffer.skipBytes(4);
+        buffer.skipBytes(Integer.BYTES);
 
-        int totalLength = dataLength - 1;
-
-        //read control byte indicating if message is signed
-        byte signed = buffer.readByte();
-
-        int authLength = 0;
-
-        if (signed == 1) {
-            authLength += signatureSize;
-        }
-        if (useMAC) {
-            authLength += macSize;
-        }
-
-        byte[] data = new byte[totalLength - authLength];
+        int size = buffer.readInt();
+        byte[] data = new byte[size];
         buffer.readBytes(data);
-        logger.trace("Received message: SignatureSize: {}, MacSize: {}, \nData: {}", 
-        				new Object[] {signatureSize, macSize, data});
-
+        
         byte[] digest = null;
         if (useMAC) {
-            digest = new byte[macSize];
+        	size = buffer.readInt();
+            digest = new byte[size];
             buffer.readBytes(digest);
         }
 
         byte[] signature = null;
-        if (signed == 1) {
-            signature = new byte[signatureSize];
+        size = buffer.readInt();
+        
+        if (size > 0) {
+        	signature = new byte[size];
             buffer.readBytes(signature);
         }
 
         DataInputStream dis = null;
         TOMMessage sm = null;
-        if(sessionTable == null)
-        {
-        	System.exit(1);
-        }
         
         try {
             ByteArrayInputStream bais = new ByteArrayInputStream(data);
@@ -166,7 +148,7 @@ public class NettyTOMMessageDecoder extends ByteToMessageDecoder {
             sm.rExternal(dis);
             sm.serializedMessage = data;
 
-            if (signed == 1) {
+            if (signature != null) {
                 sm.serializedMessageSignature = signature;
                 sm.signed = true;
             }
@@ -180,8 +162,6 @@ public class NettyTOMMessageDecoder extends ByteToMessageDecoder {
                     if (!verifyMAC(sm.getSender(), data, digest)) {
                         logger.error("MAC error: message discarded, is a client.");
                         return;
-                    }else {
-                    	logger.debug("MAC OK: message NOT discarded, is a client.");
                     }
                 }
             } else { /* it's a server */
@@ -194,9 +174,6 @@ public class NettyTOMMessageDecoder extends ByteToMessageDecoder {
                             logger.error("MAC error: message discarded, is a server.");
                             return;
                         }
-                        else {
-                        	logger.debug("MAC OK: message NOT discarded, is a server.");
-                        }
                     }
                 } else {
                     //creates MAC/publick key stuff if it's the first message received from the client
@@ -207,7 +184,7 @@ public class NettyTOMMessageDecoder extends ByteToMessageDecoder {
                     
                     SecretKeyFactory fac = TOMUtil.getSecretFactory();
                     String str = sm.getSender() + ":" + this.controller.getStaticConf().getProcessId();                                        
-                    PBEKeySpec spec = new PBEKeySpec(str.toCharArray());
+                    PBEKeySpec spec = TOMUtil.generateKeySpec(str.toCharArray());
                     SecretKey authKey = fac.generateSecret(spec);
             
                     Mac macSend = TOMUtil.getMacFactory();
