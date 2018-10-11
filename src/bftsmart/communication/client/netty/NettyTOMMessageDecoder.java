@@ -82,7 +82,23 @@ public class NettyTOMMessageDecoder extends ByteToMessageDecoder {
         this.rl = rl;
         this.signatureSize = signatureLength;
         this.useMAC = useMAC;
-        logger.debug("new NettyTOMMessageDecoder!!, isClient=" + isClient);        
+        logger.debug("new NettyTOMMessageDecoder!!, isClient=" + isClient);
+        logger.trace("\n\t isClient: {};"
+        		+ 	 "\n\t sessionTable: {};"
+        		+ 	 "\n\t macSize: {};"
+        		+ 	 "\n\t controller: {};"
+        		+ 	 "\n\t firstTime: {};"
+        		+ 	 "\n\t rl: {};"
+        		+ 	 "\n\t signatureSize: {};"
+        		+ 	 "\n\t useMAC: {};", 
+        		new Object[] {isClient, 
+        					  sessionTable.toString(),
+        					  macSize,
+        					  controller, 
+        					  firstTime, 
+        					  rl,
+        					  signatureSize,
+        					  useMAC});
     }
 
     @Override
@@ -95,8 +111,8 @@ public class NettyTOMMessageDecoder extends ByteToMessageDecoder {
 
         int dataLength = buffer.getInt(buffer.readerIndex());
 
-        //Logger.println("Receiving message with "+dataLength+" bytes.");
-
+        logger.debug("Receiving message with {} bytes.", dataLength);
+        
         // Wait until the whole data is available.
         if (buffer.readableBytes() < dataLength + 4) {
             return;
@@ -121,6 +137,8 @@ public class NettyTOMMessageDecoder extends ByteToMessageDecoder {
 
         byte[] data = new byte[totalLength - authLength];
         buffer.readBytes(data);
+        logger.trace("Received message: SignatureSize: {}, MacSize: {}, \nData: {}", 
+        				new Object[] {signatureSize, macSize, data});
 
         byte[] digest = null;
         if (useMAC) {
@@ -212,8 +230,10 @@ public class NettyTOMMessageDecoder extends ByteToMessageDecoder {
             }
             logger.debug("Decoded reply from " + sm.getSender() + " with sequence number " + sm.getSequence());
             list.add(sm);
-        } catch (Exception ex) {
-            
+        }catch (java.io.EOFException eofe){
+        	
+        } 
+        catch (Exception ex) {            
             logger.error("Failed to decode TOMMessage", ex);
         }
         return;

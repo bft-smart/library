@@ -140,7 +140,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
                     NettyClientServerSession cs = new NettyClientServerSession(future.channel(), macSend, macReceive, currV[i]);
                     sessionTable.put(currV[i], cs);
 
-                    logger.info("Connecting to replica " + currV[i] + " at " + controller.getRemoteAddress(currV[i]));
+                    logger.debug("Connecting to replica " + currV[i] + " at " + controller.getRemoteAddress(currV[i]));
                     //******* EDUARDO END **************//
 
                     future.awaitUninterruptibly();
@@ -267,7 +267,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
             return;
         }
         
-        logger.info("Channel active");
+        logger.debug("Channel active");
     }
 
     public void reconnect(final ChannelHandlerContext ctx){
@@ -346,7 +346,9 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
         
         listener.waitForChannels(quorum); // wait for the previous transmission to complete
         
-        logger.debug("Sending request from " + sm.getSender() + " with sequence number " + sm.getSequence() + " to " + Arrays.toString(targets));
+        logger.trace("Sending request from " + sm.getSender() 
+        	+ " with sequence number " + sm.getSequence() 
+        	+ " to " + Arrays.toString(targets));
                 
         if (sm.serializedMessage == null) {
 
@@ -363,7 +365,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
             }
         }
 
-        //Logger.println("Sending message with "+sm.serializedMessage.length+" bytes of content.");
+        logger.trace("Sending message with "+sm.serializedMessage.length+" bytes of content.");
 
         //produce signature
         if (sign && sm.serializedMessageSignature == null) {
@@ -429,7 +431,6 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 
     public byte[] signMessage(PrivateKey key, byte[] message) {
         //long startTime = System.nanoTime();
-    	Security.addProvider(new BouncyCastleProvider());
         try {
             if (signatureEngine == null) {
                     signatureEngine = TOMUtil.getSigEngine();
@@ -439,11 +440,12 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
             signatureEngine.initSign(key);
             signatureEngine.update(message);
             result = signatureEngine.sign();
-
+            logger.trace("Signed a message for ClientID: {}", clientId);
             //st.store(System.nanoTime() - startTime);
             return result;
         } catch (Exception e) {
-            logger.error("Failed to sign message",e);
+            logger.error("Failed to sign message for ClientID: ", clientId);
+            e.printStackTrace();
             return null;
         }
     }
@@ -543,7 +545,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
                     this.enoughCompleted.signalAll();
                 }
 
-                logger.debug(this.remainingFutures + " channel operations remaining to complete");
+                logger.trace(this.remainingFutures + " channel operations remaining to complete");
                 
                 this.futureLock.unlock();
               
@@ -564,7 +566,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
                     
                 }
                 
-                    logger.debug("All channel operations completed or timed out");
+                    logger.trace("All channel operations completed or timed out");
 
                 this.remainingFutures = n;
                 

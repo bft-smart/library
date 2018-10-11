@@ -81,7 +81,7 @@ public class ServiceProxy extends TOMSender {
 		this(processId, configHome, null, null, null, null);
 	}
 
-        public ServiceProxy(int processId, String configHome, KeyLoader loader, Provider provider) {
+    public ServiceProxy(int processId, String configHome, KeyLoader loader, Provider provider) {
 		this(processId, configHome, null, null, loader, provider);
 	}
         

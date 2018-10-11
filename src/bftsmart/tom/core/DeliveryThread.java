@@ -177,7 +177,9 @@ public final class DeliveryThread extends Thread {
                 canDeliver.awaitUninterruptibly();
                 
                 if (tomLayer.getLastExec() == -1)
-                    logger.info("Ready to process operations");
+                    logger.info("\n\t\t################################"
+                    	      + "\n\t\t  Ready to process operations   "
+                    		  + "\n\t\t################################");
             }
             try {
                 ArrayList<Decision> decisions = new ArrayList<Decision>();

@@ -88,12 +88,15 @@ public class SignatureTest {
             signEng.update(data);
             signEng.verify(signature);
         }
+        boolean ok = false;
         start = System.currentTimeMillis();
         for(int i=0; i<iterations; i++) {
             signEng.update(data);
-            signEng.verify(signature);
+            ok = signEng.verify(signature);
         }
         end = System.currentTimeMillis();
-        System.out.println("" + iterations + " verify: "+(end-start)+"ms");    }
+        System.out.println("" + iterations + " verify: "+(end-start)+"ms " + ok);    
+        
+    }
 
 }

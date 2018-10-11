@@ -22,14 +22,21 @@ import io.netty.handler.codec.MessageToByteEncoder;
 import java.util.Map;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import bftsmart.reconfiguration.ClientViewController;
 
 public class NettyClientPipelineFactory {
 
+	private Logger logger = LoggerFactory.getLogger(this.getClass());
+	
 	NettyClientServerCommunicationSystemClientSide ncs;
 	Map sessionTable;
 	int macLength;
 	int signatureLength;
+	
+	
 
 	// ******* EDUARDO BEGIN **************//
 	ClientViewController controller;
@@ -45,6 +52,20 @@ public class NettyClientPipelineFactory {
 		this.signatureLength = signatureLength;
 		this.rl = rl;
 		this.controller = controller;
+		
+		logger.trace("\n\t ncs: {};"
+        		+ 	 "\n\t sessionTable: {};"
+        		+ 	 "\n\t macSize: {};"
+        		+ 	 "\n\t signatureLength: {};"
+        		+ 	 "\n\t rl: {};"
+        		+ 	 "\n\t controller: {};", 
+        		new Object[] {ncs, 
+        					  sessionTable.toString(),
+        					  macLength,
+        					  signatureLength, 
+        					  rl,
+        					  controller});
+		
 	}
 
 	public ByteToMessageDecoder getDecoder() {

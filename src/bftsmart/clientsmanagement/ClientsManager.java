@@ -264,9 +264,8 @@ public class ClientsManager {
                 ((request.getSequence() > clientData.getLastMessageReceived()) && !fromClient)) {
 
             //it is a new message and I have to verify it's signature
-            if (!request.signed
-                    || clientData.verifySignature(request.serializedMessage,
-                    request.serializedMessageSignature)) {
+        	boolean verifySignature = clientData.verifySignature(request.serializedMessage, request.serializedMessageSignature);
+            if (!request.signed || verifySignature){
 
                 //I don't have the message but it is valid, I will
                 //insert it in the pending requests of this client
@@ -282,7 +281,14 @@ public class ClientsManager {
                 }
 
                 accounted = true;
+                logger.debug("Request.signed: {}, verifySignature: {}", request.signed, verifySignature);
             }
+            else {
+            	logger.debug("ELSE: Request.signed: {}, verifySignature: {}", request.signed, verifySignature);       
+            	logger.trace("ELSE: request.serializedMessage:{}, request.serializedMessageSignature:{}", 
+            			request.serializedMessage, request.serializedMessageSignature);
+            }
+            
         } else {
             //I will not put this message on the pending requests list
             if (clientData.getLastMessageReceived() >= request.getSequence()) {
@@ -307,6 +313,7 @@ public class ClientsManager {
                 accounted = true;
             } else {
                 //a too forward message... the client must be malicious
+            	logger.debug("Too forward message, client must be malicious.");
                 accounted = false;
             }
         }

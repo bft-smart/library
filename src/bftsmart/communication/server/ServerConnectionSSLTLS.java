@@ -102,6 +102,13 @@ public class ServerConnectionSSLTLS {
         this.noMACs = new HashSet<Integer>();
         // Connect to the remote process or just wait for the connection?
         if (isToConnect()) {
+        	
+        	/*try {
+				Thread.sleep(2000);
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}*/
             //I have to connect to the remote server
             try {
             	// SSL Socket.

@@ -22,10 +22,15 @@ import io.netty.handler.codec.MessageToByteEncoder;
 import java.util.HashMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import bftsmart.reconfiguration.ServerViewController;
 
 public class NettyServerPipelineFactory {
 
+	private Logger logger = LoggerFactory.getLogger(this.getClass());
+	
 	NettyClientServerCommunicationSystemServerSide ncs;
 	HashMap sessionTable;
 	int macLength;
@@ -41,6 +46,20 @@ public class NettyServerPipelineFactory {
 		this.signatureLength = signatureLength;
 		this.controller = controller;
 		this.rl = rl;
+		
+		logger.trace("\n\t ncs: {};"
+        		+ 	 "\n\t sessionTable: {};"
+        		+ 	 "\n\t macSize: {};"
+        		+ 	 "\n\t signatureLength: {};"
+        		+ 	 "\n\t rl: {};"
+        		+ 	 "\n\t controller: {};", 
+        		new Object[] {ncs, 
+        					  sessionTable.toString(),
+        					  macLength,
+        					  signatureLength, 
+        					  rl,
+        					  controller});
+		
 	}
 
 	public ByteToMessageDecoder getDecoder() {

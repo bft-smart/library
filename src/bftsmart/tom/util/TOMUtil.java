@@ -20,8 +20,10 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.security.InvalidKeyException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.security.NoSuchProviderException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.Security;
@@ -76,6 +78,7 @@ public class TOMUtil {
             TOMUtil.sigAlgorithm = sigAlgorithm;
             TOMUtil.secretAlgorithm = secretAlgorithm;
             TOMUtil.hashAlgorithm = hashAlgorithm;
+            TOMUtil.provider = provider;
         
             TOMUtil.init = true;
         }
@@ -167,20 +170,50 @@ public class TOMUtil {
      */
     public static boolean verifySignature(PublicKey key, byte[] message, byte[] signature) {
 
-        Security.addProvider(new BouncyCastleProvider());
+		boolean result = false;
 
-        boolean result = false;
-        
-        try {
-            Signature signatureEngine = getSigEngine();
+		
+		//System.out.println("\n\t\t TRYING VERIFY SIGNATURE.... LINE 170");
+		/*try {
+			Signature ecdsaVerify = Signature.getInstance("SHA512withRSA");
+			ecdsaVerify.initVerify(key);
+			ecdsaVerify.update(message);
+			boolean resultSign = ecdsaVerify.verify(signature);
+			logger.trace("ResultSign of VerifySignature: {} ", resultSign);
+		} catch (SignatureException e) {
+			logger.error("Failed to verify signature: \nKey:{}", key);
+			e.printStackTrace();
+		} catch (InvalidKeyException e) {
+			logger.error("Invalid Key Exception: \nKey:{}", key);
+			e.printStackTrace();
+		} catch (NoSuchAlgorithmException e) {
+			logger.error("No Such Algoritm Exception: \nKey:{}", key);
+			e.printStackTrace();
+		}*/
+
+		try {
+			Signature signatureEngine = getSigEngine();
 
             signatureEngine.initVerify(key);
 
-            result = verifySignature(signatureEngine, message, signature);
-        } catch (Exception e) {
-            logger.error("Failed to verify signature",e);
-        }
+            //verifySignature(signatureEngine, message, signature);
+            signatureEngine.update(message);
+            result = signatureEngine.verify(signature);
 
+		} catch (SignatureException e) {
+			logger.error("Failed to verify signature.");
+			e.printStackTrace();
+        }
+        catch (InvalidKeyException e) {
+            logger.error("Invalid Key Exception.");
+            e.printStackTrace();
+        }
+        catch (NoSuchAlgorithmException e) {
+        	logger.error("No Such Algoritm Exception.");
+        	e.printStackTrace();
+		}
+
+		logger.debug("Result of VerifySignature: {}", result);
         return result;
     }
 
@@ -194,6 +227,23 @@ public class TOMUtil {
      * @return true if the signature is valid, false otherwise
      */
     public static boolean verifySignature(Signature initializedSignatureEngine, byte[] message, byte[] signature) throws SignatureException {
+    	/*logger.debug("Signature Algorithm: {}, "
+    			+ "Provider: {}" , initializedSignatureEngine.getAlgorithm(), initializedSignatureEngine.getProvider().getName());*/
+    	
+    	System.out.println("\n\t\t TRYING VERIFY SIGNATURE.... LINE 232");    	
+		/*try {
+			Signature ecdsaVerify = Signature.getInstance("SHA512withRSA");
+			ecdsaVerify.update(message);
+			boolean resultSign = ecdsaVerify.verify(signature);
+			logger.trace("ResultSign of VerifySignature: {} ", resultSign);
+		} catch (SignatureException e) {
+			logger.error("Failed to verify signature.");
+			e.printStackTrace();
+		} catch (NoSuchAlgorithmException e) {
+			logger.error("No Such Algoritm Exception.");
+			e.printStackTrace();
+		}*/
+		
     	initializedSignatureEngine.update(message);
     	return initializedSignatureEngine.verify(signature);
     }
@@ -227,7 +277,6 @@ public class TOMUtil {
     }
     
     public static Signature getSigEngine() throws NoSuchAlgorithmException {
-        Security.addProvider(new BouncyCastleProvider());
         return Signature.getInstance(TOMUtil.sigAlgorithm, TOMUtil.provider);
     }
     

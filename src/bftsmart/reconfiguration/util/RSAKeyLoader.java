@@ -77,7 +77,7 @@ public class RSAKeyLoader implements KeyLoader {
                                     System.getProperty("file.separator");
             }
             
-            try {
+            /*try {
 				System.out.println("\n###############################################" 
 						+ "\nKeyLoader parameters:" 
 						+ "\n\t ID: " + this.id
@@ -88,7 +88,7 @@ public class RSAKeyLoader implements KeyLoader {
 						+ "\n" + "###############################################");
 			} catch (NoSuchAlgorithmException | InvalidKeySpecException e) {
 				e.printStackTrace();
-			}
+			}*/
     }
     
     /**

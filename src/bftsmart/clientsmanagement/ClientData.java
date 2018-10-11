@@ -15,6 +15,7 @@ limitations under the License.
 */
 package bftsmart.clientsmanagement;
 
+import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
 import java.security.Security;
 import java.security.Signature;
@@ -23,6 +24,7 @@ import java.util.Iterator;
 import java.util.concurrent.locks.ReentrantLock;
 
 import bftsmart.tom.core.messages.TOMMessage;
+import bftsmart.tom.util.KeyLoader;
 import bftsmart.tom.util.TOMUtil;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
@@ -59,16 +61,20 @@ public class ClientData {
      * @param publicKey client public key
      */
     public ClientData(int clientId, PublicKey publicKey) {
-    	
+    	    	
         this.clientId = clientId;
         if(publicKey != null) {
             try {
-                signatureVerificator = TOMUtil.getSigEngine();
+                signatureVerificator = TOMUtil.getSigEngine();                
                 signatureVerificator.initVerify(publicKey);
-                logger.debug("Signature verifier initialized for client "+clientId);
+                logger.debug("Signature verifier initialized for clientId: "+clientId);
             } catch (Exception ex) {
                 logger.error("Failed to create client data object",ex);
             }
+           logger.trace("ClientID: {},\n PublicKey: {},\n SignatureAlgorithm: {}, \n Provider: {}", 
+        			new Object[] {clientId, publicKey.toString(), signatureVerificator.getAlgorithm(), 
+        					signatureVerificator.getProvider()});
+        	
         }
     }
 
@@ -116,14 +122,33 @@ public class ClientData {
         return lastMessageReceivedTime;
     }
 
-    public boolean verifySignature(byte[] message, byte[] signature) {
-        if(signatureVerificator != null) {
-            try {
-                return TOMUtil.verifySignature(signatureVerificator, message, signature);
+	public boolean verifySignature(byte[] message, byte[] signature) {
+
+		if (signatureVerificator != null) {
+			logger.trace("Veirifying Signature, ClientID: {} "
+    				+ "Algorithm: {}, "
+    				+ "Provider: {}", 
+    				new Object[]{
+    							clientId, 
+    							signatureVerificator.getAlgorithm(), 
+    							signatureVerificator.getProvider(),
+    					});
+			try {
+				signatureVerificator.update(message);
+        		boolean verify = signatureVerificator.verify(signature);
+        		logger.debug("Signature for clientID: {}, result: {}, Signature: {}", 
+        				clientId, 
+        				verify,
+        				signature);
+        		return verify;
+                //return TOMUtil.verifySignature(signatureVerificator, message, signature);
             } catch (SignatureException ex) {
-                logger.error("Failed to verify signature", ex);
+                logger.error("Failed to verify signature, clientID: {}", clientId);
+                ex.printStackTrace();
             }
         }
+		logger.debug("Signature for clientID: {}, result: {}, SignatureVerificator: {}", 
+				clientId, false, signatureVerificator);
         return false;
     }
 

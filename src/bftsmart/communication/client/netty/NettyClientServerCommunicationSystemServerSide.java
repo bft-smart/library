@@ -15,6 +15,31 @@ limitations under the License.
  */
 package bftsmart.communication.client.netty;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.UnknownHostException;
+import java.nio.channels.ClosedChannelException;
+import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map.Entry;
+import java.util.Set;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+
+import javax.crypto.Mac;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import bftsmart.communication.client.CommunicationSystemServerSide;
+import bftsmart.communication.client.RequestReceiver;
+import bftsmart.reconfiguration.ServerViewController;
+import bftsmart.tom.core.messages.TOMMessage;
+import bftsmart.tom.util.TOMUtil;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
@@ -27,33 +52,6 @@ import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
-
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.net.ConnectException;
-import java.net.InetSocketAddress;
-import java.nio.channels.ClosedChannelException;
-import java.security.NoSuchAlgorithmException;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map.Entry;
-import java.util.Set;
-import java.util.ArrayList;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
-
-import javax.crypto.Mac;
-
-import org.slf4j.LoggerFactory;
-import org.slf4j.Logger;
-
-import bftsmart.communication.client.CommunicationSystemServerSide;
-import bftsmart.communication.client.RequestReceiver;
-import bftsmart.reconfiguration.ServerViewController;
-import bftsmart.tom.core.messages.TOMMessage;
-import bftsmart.tom.util.TOMUtil;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
 
 /**
  *

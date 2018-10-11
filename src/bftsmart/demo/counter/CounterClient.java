@@ -48,6 +48,14 @@ public class CounterClient {
 		}
 
 		ServiceProxy counterProxy = new ServiceProxy(Integer.parseInt(args[0]));
+		
+		try {
+			log.trace("Waiting 2 seconds before issue operations.");
+			Thread.sleep(2000);
+		} catch (InterruptedException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
 
 		try {
 
@@ -70,14 +78,16 @@ public class CounterClient {
 					log.debug("Invocation: {}, returned value: {}", i, newValue);
 				} else {
 					log.error("Problem! Exiting.");
-					break;
+					//break;
 				}
 			}
 
 			long endTime = System.nanoTime();
 			long duration = (endTime - startTime) / 1000000 / 1000;
+			if(duration >0) {
 			double opsPerSecond = numberOfOps / duration;
-			log.info("Duration time: {}, operations per second: {}", duration, opsPerSecond);
+				log.info("Duration time: {}, operations per second: {}", duration, opsPerSecond);
+			}
 					
 			System.exit(0);
 

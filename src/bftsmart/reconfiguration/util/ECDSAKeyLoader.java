@@ -18,20 +18,15 @@ package bftsmart.reconfiguration.util;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
-import java.io.Reader;
-import java.io.StringReader;
-import java.math.BigInteger;
-import java.security.InvalidAlgorithmParameterException;
 import java.security.KeyFactory;
-import java.security.KeyPair;
-import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
-import java.security.SecureRandom;
 import java.security.Security;
 import java.security.cert.CertificateException;
+import java.security.interfaces.ECPublicKey;
+import java.security.spec.ECPublicKeySpec;
 import java.security.spec.EncodedKeySpec;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.PKCS8EncodedKeySpec;
@@ -39,11 +34,13 @@ import java.security.spec.X509EncodedKeySpec;
 
 import org.apache.commons.codec.binary.Base64;
 import org.bouncycastle.jce.ECNamedCurveTable;
+import org.bouncycastle.jce.ECPointUtil;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
-import org.bouncycastle.jce.spec.ECParameterSpec;
-import org.bouncycastle.math.ec.ECCurve;
-import org.bouncycastle.openssl.PEMException;
-import org.bouncycastle.util.encoders.Hex;
+import org.bouncycastle.jce.spec.ECNamedCurveParameterSpec;
+import org.bouncycastle.jce.spec.ECNamedCurveSpec;
+import org.bouncycastle.math.ec.ECPoint;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import bftsmart.tom.util.KeyLoader;
 
@@ -53,40 +50,22 @@ import bftsmart.tom.util.KeyLoader;
  */
 public class ECDSAKeyLoader implements KeyLoader {
 
+	private Logger logger = LoggerFactory.getLogger(this.getClass());
 	private String path;
 	private int id;
-	private PrivateKey priKey;
-	
+	private PrivateKey privateKey = null;
+
 	private String sigAlgorithm;
 
 	private boolean defaultKeys;
 
-	private KeyPair keyPair = null;
-
-	private static final String PRIV_KEY_521b = "-----BEGIN EC PRIVATE KEY-----\n" + 
-			"MIHcAgEBBEIBzxjh6rdpJ3nkuPzuvfWRWV2MzUJu1Ke0H04oeLRwLRXf/O7dKeh8\n" + 
-			"qAoYVFjk/1frbB+1NeXy9wqcRrFwA12hMOygBwYFK4EEACOhgYkDgYYABAGisA9t\n" + 
-			"ro3qToc5S3tCWlfjyoFECT+rOHY90jNBTx/hEKkD1blSE1JI3Og+O/pYuFMvdimw\n" + 
-			"Alyce0xGO70brMsoDAEfj/0s4hfwrFZYwkyhA0LocATpG0tuG+Y9bfVp+BqCQrZQ\n" + 
-			"o6dT0wqyHCI/51UGLnw4QKsKV8YcFwU27yNqPYRnLg==\n" + 
-			"-----END EC PRIVATE KEY-----";
-	
-	private static final String PRIV_KEY_384b = "-----BEGIN EC PRIVATE KEY-----\n" + 
-			"MIGkAgEBBDA+dcBGMPWZBb8uqYgbcac+KMFginhas9XreiTpYbgPlzeINkCqxe+B\n" + 
-			"bwAephwASzmgBwYFK4EEACKhZANiAAQKRCyK0HNGv2MJl6vUax++4d5nAPAnILtQ\n" + 
-			"y9cOZAllLZoqvg6IrUAZeFeHPtSnQmJJikqSFzw98zImR9CJD6Lb72qHCWGlKET/\n" + 
-			"hWcGp90OLHgwxtxJ6nxpMxPAYetA9NY=\n" + 
-			"-----END EC PRIVATE KEY-----";	
-	
-	private static final String PRIV_KEY_256b = "-----BEGIN EC PRIVATE KEY-----\n" + 
-			"MHcCAQEEICMpf2ULckdRXAccLQtnN+1utW0rGQpvcZLl1qnJgovooAoGCCqGSM49\n" + 
-			"AwEHoUQDQgAEoVYDlQiWUl9tjULrYFkWgJTeV3LVmbw8YZ7KwhUvBFam4+wnF6hV\n" + 
-			"ADxIKpHwDJK7CjdZvFTPQRfRzetNNLazWw==\n" + 
-			"-----END EC PRIVATE KEY-----";
+	//Bouncy Castle
+	private static final String PRIVATE_KEY = "MIGTAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBHkwdwIBAQQgMMpfKtHS5ZlgHDPj3TG41Y0t5r9NIzx7p4YPZxn5gBmgCgYIKoZIzj0DAQehRANCAAQkD2DTG37xnxtcMMLJMiUCyObUdVJE+rMM9WQ1Z3sjtIZchN8Xefr02Ag+giXGLej862qu3v4/fy6UGJNAHNx3";
+	private static final String PUBLIC_KEY = "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEJA9g0xt+8Z8bXDDCyTIlAsjm1HVSRPqzDPVkNWd7I7SGXITfF3n69NgIPoIlxi3o/Otqrt7+P38ulBiTQBzcdw==";
 	
 	/** Creates a new instance of ECDSAKeyLoader */
-	public ECDSAKeyLoader(int id, String configHome, boolean defaultKeys, String sigAlgorithm) {
 
+	public ECDSAKeyLoader(int id, String configHome, boolean defaultKeys, String sigAlgorithm) {
 		this.id = id;
 		this.defaultKeys = defaultKeys;
 		this.sigAlgorithm = sigAlgorithm;
@@ -97,27 +76,7 @@ public class ECDSAKeyLoader implements KeyLoader {
 			path = configHome + System.getProperty("file.separator") + "keysECDSA"
 					+ System.getProperty("file.separator");
 		}
-
-		Security.addProvider(new BouncyCastleProvider());
 		
-		Reader rdr = new StringReader (PRIV_KEY_256b);
-	    Object parsed = null;
-		try {
-			parsed = new org.bouncycastle.openssl.PEMParser(rdr).readObject();
-			keyPair = new org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter().getKeyPair((org.bouncycastle.openssl.PEMKeyPair)parsed);
-		} catch (IOException  e) {
-			e.printStackTrace();
-		}
-		
-	    System.out.println("\n###############################################" 
-				+ "\nKeyLoader parameters:" 
-				+ "\n\t ID: " + this.id
-				+ "\n\t DefaultKeys: " + this.defaultKeys 
-				+ "\n\t Signature Algorithm: " + keyPair.getPrivate().getAlgorithm()
-				+ "\n\t Private Key Format: " + keyPair.getPrivate().getFormat()
-				+ "\n\t Public Key Format: " + keyPair.getPublic().getFormat()
-				+ "\n" + "###############################################");
-
 	}
 
 	/**
@@ -131,7 +90,20 @@ public class ECDSAKeyLoader implements KeyLoader {
 			throws IOException, NoSuchAlgorithmException, InvalidKeySpecException, CertificateException {
 
 		if (defaultKeys) {
-			return keyPair.getPublic();
+			//logger.debug("Loading default PublicKey, id: {}", id);
+			try {
+				logger.trace("Signature Algorithm: {}, Format: {} ", getPublicKeyFromString(PUBLIC_KEY).getAlgorithm(),
+						getPublicKeyFromString(PUBLIC_KEY).getFormat());
+			} catch (NoSuchProviderException e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+			}
+			try {
+				return getPublicKeyFromString(PUBLIC_KEY);
+			} catch (NoSuchProviderException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 		}
 
 		FileReader f = new FileReader(path + "publickey" + id);
@@ -143,7 +115,16 @@ public class ECDSAKeyLoader implements KeyLoader {
 		}
 		f.close();
 		r.close();
-		PublicKey ret = getPublicKeyFromString(key);
+		PublicKey ret = null;
+		logger.debug("Loading PublicKey from file, id: {}", id);
+		try {
+			ret = getPublicKeyFromString(key);
+		} catch (NoSuchProviderException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		logger.trace("ID: {}, PublicKey Format: {}, PublicKey Algorithm: {} ",
+				new Object[] { id, ret.getFormat(), ret.getAlgorithm() });
 		return ret;
 	}
 
@@ -151,8 +132,22 @@ public class ECDSAKeyLoader implements KeyLoader {
 			throws IOException, NoSuchAlgorithmException, InvalidKeySpecException, CertificateException {
 
 		if (defaultKeys) {
-			return keyPair.getPublic();
+			//logger.debug("Loading my default PublicKey, this.id: {}", this.id);
+			try {
+				logger.trace("Signature Algorithm: {}, Format: {} ", getPublicKeyFromString(PUBLIC_KEY).getAlgorithm(),
+						getPublicKeyFromString(PUBLIC_KEY).getFormat());
+			} catch (NoSuchProviderException e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+			}
+
+			try {
+				return getPublicKeyFromString(PUBLIC_KEY);
+			} catch (NoSuchProviderException e) {
+				e.printStackTrace();
+			}
 		}
+		logger.debug("Loading PublicKey from file, this.id: {}", this.id);
 
 		FileReader f = new FileReader(path + "publickey" + this.id);
 		BufferedReader r = new BufferedReader(f);
@@ -163,8 +158,17 @@ public class ECDSAKeyLoader implements KeyLoader {
 		}
 		f.close();
 		r.close();
-		PublicKey ret = getPublicKeyFromString(key);
+		PublicKey ret = null;
+		try {
+			ret = getPublicKeyFromString(PUBLIC_KEY);
+		} catch (NoSuchProviderException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		logger.trace("ID: {}, PublicKey Format: {}, PublicKey Algorithm: {} ",
+				new Object[] { this.id, ret.getFormat(), ret.getAlgorithm() });
 		return ret;
+
 	}
 
 	/**
@@ -177,10 +181,16 @@ public class ECDSAKeyLoader implements KeyLoader {
 	public PrivateKey loadPrivateKey() throws IOException, NoSuchAlgorithmException, InvalidKeySpecException {
 
 		if (defaultKeys) {
-			return keyPair.getPrivate();
+			//logger.debug("Loading default PrivateKey, ID: {}", this.id);
+			try {
+				return getPrivateKeyFromString(PRIVATE_KEY);
+			} catch (NoSuchProviderException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 		}
 
-		if (priKey == null) {
+		if (privateKey == null) {
 			FileReader f = new FileReader(path + "privatekey" + this.id);
 			BufferedReader r = new BufferedReader(f);
 			String tmp = "";
@@ -190,44 +200,40 @@ public class ECDSAKeyLoader implements KeyLoader {
 			}
 			f.close();
 			r.close();
-			priKey = getPrivateKeyFromString(key);
+			logger.debug("Loading first time PrivateKey from file, this.id: {}, \nKey:{}", this.id, key);
+			try {
+				privateKey = getPrivateKeyFromString(key);
+				logger.trace("PrivateKey loaded for this.id: {}, PrivateKey Format: {}, PrivateKey Algorithm: {} ",
+						new Object[] { this.id, privateKey.getFormat(), privateKey.getAlgorithm() });
+			} catch (NoSuchProviderException e) {
+				e.printStackTrace();
+			}
 		}
-		return priKey;
+		logger.trace("Returning previous stored PrivateKey from file, this.id: {}", this.id);
+		return privateKey;
 	}
 
 	// utility methods for going from string to public/private key
-	private PrivateKey getPrivateKeyFromString(String key) throws NoSuchAlgorithmException, InvalidKeySpecException {
-			KeyFactory keyFactory = null;
-			try {
-				keyFactory = KeyFactory.getInstance("ECDSA", "BC");
-			} catch (NoSuchProviderException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-            EncodedKeySpec privateKeySpec = new PKCS8EncodedKeySpec(Base64.decodeBase64(key));
-            PrivateKey privateKey = keyFactory.generatePrivate(privateKeySpec);
-		return this.keyPair.getPrivate();
+	private PrivateKey getPrivateKeyFromString(String key)
+			throws NoSuchProviderException, NoSuchAlgorithmException, InvalidKeySpecException {
+
+		KeyFactory keyFactory = KeyFactory.getInstance("ECDSA", "BC");
+		EncodedKeySpec privateKeySpec = new PKCS8EncodedKeySpec(Base64.decodeBase64(key));
+		privateKey = keyFactory.generatePrivate(privateKeySpec);
+		return privateKey;
 	}
 
-	private PublicKey getPublicKeyFromString(String key) throws NoSuchAlgorithmException, InvalidKeySpecException {
-		
-		Security.addProvider(new BouncyCastleProvider()); 
-		X509EncodedKeySpec pubKeySpec = new X509EncodedKeySpec(this.keyPair.getPublic().getEncoded());
-		KeyFactory keyFactory = null;
-		try {
-			keyFactory = KeyFactory.getInstance("ECDSA", "BC");
-		} catch (NoSuchProviderException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		PublicKey pubKey = keyFactory.generatePublic(pubKeySpec);
-		return pubKey;
-		//return this.keyPair.getPublic();
+	private PublicKey getPublicKeyFromString(String key)
+			throws NoSuchProviderException, NoSuchAlgorithmException, InvalidKeySpecException, NoSuchProviderException {
+		KeyFactory keyFactory = KeyFactory.getInstance("ECDSA", "BC");
+		X509EncodedKeySpec pubKeySpec = new X509EncodedKeySpec(Base64.decodeBase64(key));
+		PublicKey publicKey = keyFactory.generatePublic(pubKeySpec);
+		return publicKey;
 	}
 
 	@Override
 	public String getSignatureAlgorithm() {
 		return this.sigAlgorithm;
 	}
-
+	
 }

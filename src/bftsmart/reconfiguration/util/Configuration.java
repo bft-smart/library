@@ -23,7 +23,6 @@ import java.security.PrivateKey;
 import java.security.Provider;
 import java.security.PublicKey;
 import java.security.Security;
-import java.security.spec.EllipticCurve;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.StringTokenizer;
@@ -32,12 +31,16 @@ import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.sun.crypto.provider.SunJCE;
+
 import bftsmart.tom.util.KeyLoader;
 import bftsmart.tom.util.TOMUtil;
+import sun.security.ec.SunEC;
+import sun.security.rsa.SunRsaSign;
 
 public class Configuration {
     
-    private Logger logger = LoggerFactory.getLogger(this.getClass());
+    private Logger logger;
     
     protected int processId;
     protected boolean channelsBlocking;
@@ -51,15 +54,19 @@ public class Configuration {
            
     
     public static final String DEFAULT_HMAC = "HmacSHA512";
-    public static final String DEFAULT_SECRETKEY = "PBEWithSHA1AndDES";
-    public static final String DEFAULT_SIGNATURE = "SHA512withECDSA";    
+    public static final String DEFAULT_SECRETKEY = "PBEWithSHA1AndDESede";
+    public static final String DEFAULT_SIGNATURE = "SHA512withRSA";    
     public static final String DEFAULT_HASH = "SHA-512";
+    
+    public static final String DEFAULT_PROVIDER = "SunJCE";
             
     private String hmacAlgorithm;
     private String secretKeyAlgorithm;
     private String signatureAlgorithm;
     private String hashAlgorithm;
-
+    
+    private String selectedProvider;
+    
     protected static String configHome = "";
    
     protected static String hostsFileName = "";
@@ -67,6 +74,7 @@ public class Configuration {
     protected boolean defaultKeys = false;
     
     public Configuration(int procId, KeyLoader loader, Provider prov){
+    	logger = LoggerFactory.getLogger(this.getClass());
         processId = procId;
         keyLoader = loader;
         provider = prov;
@@ -74,6 +82,7 @@ public class Configuration {
     }
     
     public Configuration(int procId, String configHomeParam, KeyLoader loader, Provider prov){
+    	logger = LoggerFactory.getLogger(this.getClass());
         processId = procId;
         configHome = configHomeParam;
         keyLoader = loader;
@@ -82,6 +91,7 @@ public class Configuration {
     }
     
     protected void init(){
+    	logger = LoggerFactory.getLogger(this.getClass());
         try{
             hosts = new HostsConfig(configHome, hostsFileName);
             
@@ -121,7 +131,7 @@ public class Configuration {
             }else{
                 signatureAlgorithm = s;
             }
-            
+           
             s = (String) configs.remove("system.communication.hashAlgorithm");
             if(s == null){
                 hashAlgorithm = DEFAULT_HASH;
@@ -155,21 +165,50 @@ public class Configuration {
                 DH_G = new BigInteger(s);
             }
             
+            s = (String) configs.remove("system.communication.selectedProvider");
+            if(s == null){
+                selectedProvider = DEFAULT_PROVIDER;
+            }else{
+            	selectedProvider = s;
+            }
+            
             if (keyLoader == null) {
-				switch (signatureAlgorithm) {
-				case "SHA512withRSA":
+				switch (selectedProvider) {
+				case "SunRsaSign":
+					provider = new SunRsaSign();
+					Security.addProvider(new SunRsaSign());
 					keyLoader = new RSAKeyLoader(processId, TOMConfiguration.configHome, defaultKeys, signatureAlgorithm);
 					break;
-				case "SHA512withECDSA":
+				case "BC":
+					provider = new BouncyCastleProvider();
+	            	Security.addProvider(new BouncyCastleProvider());
 					keyLoader = new ECDSAKeyLoader(processId, TOMConfiguration.configHome, defaultKeys, signatureAlgorithm);
+					break;
+				case "SunEC":
+					provider = new SunEC();
+					Security.addProvider(new SunEC());
+					keyLoader = new SunECKeyLoader(processId, TOMConfiguration.configHome, defaultKeys, signatureAlgorithm);
 					break;
 				default:
-					keyLoader = new ECDSAKeyLoader(processId, TOMConfiguration.configHome, defaultKeys, signatureAlgorithm);
+					provider = new SunEC();
+					Security.addProvider(new SunEC());
+					keyLoader = new SunECKeyLoader(processId, TOMConfiguration.configHome, defaultKeys, signatureAlgorithm);
 					break;
 				}
-			}
+				System.out.println("Selecting provider: "+ provider.getInfo());
+            }
             
-            if (provider == null) provider = new BouncyCastleProvider();
+            if(provider == null) {
+            	provider = new BouncyCastleProvider();
+            	Security.addProvider(new SunEC());
+            	Security.addProvider(new BouncyCastleProvider());
+            	Security.addProvider(new SunJCE());
+            	//provider= new SunJCE();
+            	//provider = new SunEC();
+            	System.out.println("Selecting provider (null): "+ provider.getName());
+            	
+            }
+            
             
             
             TOMUtil.init(provider, hmacAlgorithm, secretKeyAlgorithm, keyLoader.getSignatureAlgorithm(), hashAlgorithm);
@@ -276,7 +315,7 @@ public class Configuration {
         this.hosts.add(id, host, port, portRR);
     }
     
-    public PublicKey getPublicKey() {
+   public PublicKey getPublicKey() {
         try {
             return keyLoader.loadPublicKey();
         } catch (Exception e) {

@@ -292,7 +292,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             logger.debug("Received TOMMessage from client " + msg.getSender() + " with sequence number " + msg.getSequence() + " for session " + msg.getSession());
 
             if (clientsManager.requestReceived(msg, true, communication)) {
-                haveMessages();
+            	haveMessages();
             } else {
                 logger.warn("The received TOMMessage " + msg + " was discarded.");
             }
@@ -455,15 +455,15 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             //requests are valid in accordance to the application semantics
             //and not an erroneous requests sent by a Byzantine leader.
             for (TOMMessage r : requests) {
-                if (controller.getStaticConf().isBFT() &&!verifier.isValidRequest(r)) return null;
+                if (controller.getStaticConf().isBFT() && !verifier.isValidRequest(r)) return null;
             }
             
 
             if (addToClientManager) {
                 for (int i = 0; i < requests.length; i++) {
 					//notifies the client manager that this request was received and get
-                    //the result of its validation
-                    if (!clientsManager.requestReceived(requests[i], false)) {
+                    //the result of its validation                    
+                	if (!clientsManager.requestReceived(requests[i], false)) {                	                	
                         clientsManager.getClientsLock().unlock();
                         logger.warn("Request could not be added to the pending messages queue of its respective client");
                         return null;
@@ -471,7 +471,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                 }
             }
 
-            logger.debug("Successfully deserialized batch");
+            logger.debug("Successfully deserialized batch.");
 
             return requests;
         
