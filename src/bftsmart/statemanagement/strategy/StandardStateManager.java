@@ -36,6 +36,7 @@ import bftsmart.tom.util.TOMUtil;
 import bftsmart.consensus.Consensus;
 import bftsmart.consensus.Epoch;
 import bftsmart.tom.leaderchange.CertifiedDecision;
+import bftsmart.tom.server.defaultservices.DefaultApplicationState;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -380,13 +381,5 @@ public class StandardStateManager extends BaseStateManager {
         }
         return match;
     }
-
-	@Override
-	public void currentConsensusIdAsked(int sender) {
-		int me = SVController.getStaticConf().getProcessId();
-                int lastConsensusId = tomLayer.getLastExec();
-		SMMessage currentCID = new StandardSMMessage(me, lastConsensusId, TOMUtil.SM_REPLY_INITIAL, 0, null, null, 0, 0);
-		tomLayer.getCommunication().send(new int[]{sender}, currentCID);
-	}
 	
 }

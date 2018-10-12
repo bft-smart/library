@@ -32,6 +32,8 @@ import bftsmart.tom.core.TOMLayer;
 import bftsmart.tom.leaderchange.LCManager;
 import bftsmart.tom.leaderchange.CertifiedDecision;
 import bftsmart.tom.util.TOMUtil;
+import bftsmart.tom.server.defaultservices.DefaultApplicationState;
+import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -57,11 +59,12 @@ public abstract class BaseStateManager implements StateManager {
 
     protected boolean appStateOnly;
     protected int waitingCID = -1;
+    protected int queryID = -1;
     protected int lastCID;
     protected ApplicationState state;
 
     protected boolean isInitializing = true;
-    private HashMap<Integer, Integer> senderCIDs = null;
+    private Map<Integer, Map <Integer, Integer>> queries = new HashMap<>();
 
     public BaseStateManager() {
         senderStates = new HashMap<>();
@@ -222,15 +225,18 @@ public abstract class BaseStateManager implements StateManager {
     @Override
     public void askCurrentConsensusId() {
         int me = SVController.getStaticConf().getProcessId();
-        int[] target = SVController.getCurrentViewAcceptors();
-
-        SMMessage currentCID = new StandardSMMessage(me, -1, TOMUtil.SM_ASK_INITIAL, 0, null, null, 0, 0);
-        tomLayer.getCommunication().send(target, currentCID);
-
-        target = SVController.getCurrentViewOtherAcceptors();
-
+        int[] target = SVController.getCurrentViewOtherAcceptors();
+        SMMessage currentCID;
+        
         while (isInitializing) {
-            tomLayer.getCommunication().send(target, currentCID);
+            
+           logger.debug("Sending CID query with ID {} to replicas {}", queryID, target);
+            
+           queryID++;
+
+            currentCID = new StandardSMMessage(me, queryID, TOMUtil.SM_ASK_INITIAL, 0, null, null, 0, 0);
+            
+            tomLayer.getCommunication().send(target, currentCID);            
             try {
                 Thread.sleep(1000);
             } catch (InterruptedException e) {
@@ -240,52 +246,85 @@ public abstract class BaseStateManager implements StateManager {
     }
 
     @Override
-    public void currentConsensusIdAsked(int sender) {
+    public void currentConsensusIdAsked(int sender, int id) {
+        
+        logger.debug("Received CID query from {} with ID {}",sender,id);
+        
         int me = SVController.getStaticConf().getProcessId();
         int lastConsensusId = tomLayer.getLastExec();
-        SMMessage currentCIDReply = new StandardSMMessage(me, lastConsensusId, TOMUtil.SM_REPLY_INITIAL, 0, null, null, 0, 0);
+        
+        DefaultApplicationState state = new DefaultApplicationState(null, -1, lastConsensusId, null, null, -1);
+
+        SMMessage currentCIDReply = new StandardSMMessage(me, id, TOMUtil.SM_REPLY_INITIAL, 0, state, null, 0, 0);
         tomLayer.getCommunication().send(new int[]{sender}, currentCIDReply);
+
+        logger.debug("Sent CID reply to replica {} with ID {}",sender,id);
     }
 
     @Override
     public synchronized void currentConsensusIdReceived(SMMessage smsg) {
-        if (!isInitializing || waitingCID > -1) {            
+        
+        logger.debug("Received  CID reply from replica {} with ID {} (expecting ID {})",smsg.getSender(), smsg.getCID(), queryID);
+        
+        if (!isInitializing || waitingCID > -1 || queryID != smsg.getCID()) {
+
+            logger.debug("Ignoring CID query from {} with ID {}",smsg.getSender(), smsg.getCID());
+            
             return;
         }
-        if (senderCIDs == null) {
-            senderCIDs = new HashMap<>();
+
+        Map<Integer, Integer> replies = queries.get(queryID);
+        
+        if (replies == null) {
+            
+            replies = new HashMap<>();
+            queries.put(queryID, replies);
         }
-        senderCIDs.put(smsg.getSender(), smsg.getCID());
-        if (senderCIDs.size() >= SVController.getQuorum()) {
+        
+        replies.put(smsg.getSender(), smsg.getState().getLastCID());
+        
+        logger.debug("Received {} replies for query ID {}",replies.size(),queryID);
+        
+        if (replies.size() > SVController.getQuorum()) {
+            
+            logger.debug("Received quorum of replies for query ID {}", queryID);
 
             HashMap<Integer, Integer> cids = new HashMap<>();
-            for (int id : senderCIDs.keySet()) {
+            for (int id : replies.keySet()) {
                                 
-                int value = senderCIDs.get(id);
+                int value = replies.get(id);
                 
                 Integer count = cids.get(value);
                 if (count == null) {
-                    cids.put(value, 0);
+                    cids.put(value, 1);
                 } else {
                     cids.put(value, count + 1);
                 }
             }
-            for (int key : cids.keySet()) {
-                if (cids.get(key) >= SVController.getQuorum()) {
-                    if (key == lastCID) {
+            for (int cid : cids.keySet()) {
+                
+                logger.debug("CID {} came from {} replicas", cid, cids.get(cid));
+                
+                if (cids.get(cid) > SVController.getQuorum()) {
+                    
+                    logger.debug("There is a quorum for CID {}",cid);
+                    
+                    queries.clear();
+                    
+                    if (cid == lastCID) {
                         logger.info("Replica state is up to date");
                         dt.deliverLock();
                         isInitializing = false;
-                        tomLayer.setLastExec(key);
+                        tomLayer.setLastExec(cid);
                         dt.canDeliver();
                         dt.deliverUnlock();
                         break;
                     } else {
                         //ask for state
                         logger.info("Requesting state from other replicas");
-                        lastCID = key + 1;
+                        lastCID = cid + 1;
                         if (waitingCID == -1) {
-                            waitingCID = key;
+                            waitingCID = cid;
                             requestState();
                         }
                     }

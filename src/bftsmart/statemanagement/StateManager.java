@@ -41,7 +41,7 @@ public interface StateManager {
 
     public void askCurrentConsensusId();
     
-    public void currentConsensusIdAsked(int sender);
+    public void currentConsensusIdAsked(int sender, int id);
     
     public void currentConsensusIdReceived(SMMessage msg);
     
