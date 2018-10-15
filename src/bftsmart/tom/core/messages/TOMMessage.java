@@ -57,13 +57,14 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 	public transient int destination = -1; // message destination
 	public transient boolean signed = false; // is this message signed?
 
-	public transient long receptionTime;//the reception time of this message
+	public transient long receptionTime;//the reception time of this message (nanoseconds)
 	public transient long receptionTimestamp;//the reception timestamp of this message (miliseconds)
-	
-	public transient boolean timeout = false;//this message was timed out?
+
+        public transient boolean timeout = false;//this message was timed out?
         
         public transient boolean recvFromClient = false; // Did the client already sent this message to me, or did it arrived in the batch?
-
+        public transient boolean isValid = false; // Was this request already validated by the replica?
+        
 	//the bytes received from the client and its MAC and signature
 	public transient byte[] serializedMessage = null;
 	public transient byte[] serializedMessageSignature = null;
@@ -221,7 +222,7 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 
 	@Override
 	public String toString() {
-		return "(" + sender + "," + sequence + "," + operationId + "," + session + ")";
+		return "[" + sender + ":" + session + ":" + sequence + "]";
 	}
 
 	public void wExternal(DataOutput out) throws IOException {
@@ -340,8 +341,42 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 		 return EQUAL;
 	 }
 	 
+        @Override
 	 public Object clone() throws CloneNotSupportedException {
-			return super.clone();
+             
+                          
+                    TOMMessage clone = new TOMMessage(sender, session, sequence,
+                            operationId, content, viewID, type);
+
+                    clone.setReplyServer(replyServer);
+                    
+                    clone.acceptSentTime = this.acceptSentTime;
+                    clone.alreadyProposed = this.alreadyProposed;
+                    clone.authenticated = this.authenticated;
+                    clone.consensusStartTime = this.consensusStartTime;
+                    clone.decisionTime = this.decisionTime;
+                    clone.deliveryTime = this.deliveryTime;
+                    clone.destination = this.destination;
+                    clone.executedTime = this.executedTime;
+                    clone.info = this.info;
+                    clone.isValid = this.isValid;
+                    clone.numOfNonces = this.numOfNonces;
+                    clone.proposeReceivedTime = this.proposeReceivedTime;
+                    clone.receptionTime = this.receptionTime;
+                    clone.receptionTimestamp = this.receptionTimestamp;
+                    clone.recvFromClient = this.recvFromClient;
+                    clone.reply = this.reply;
+                    clone.seed = this.seed;
+                    clone.serializedMessage = this.serializedMessage;
+                    clone.serializedMessageMAC = this.serializedMessageMAC;
+                    clone.serializedMessageSignature = this.serializedMessageSignature;
+                    clone.signed = this.signed;
+                    clone.timeout = this.timeout;
+                    clone.timestamp = this.timestamp;
+                    clone.writeSentTime = this.writeSentTime;
+
+                    return clone;
+                        
 		}
 
 

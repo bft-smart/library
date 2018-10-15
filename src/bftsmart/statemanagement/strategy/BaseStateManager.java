@@ -80,11 +80,30 @@ public abstract class BaseStateManager implements StateManager {
     }
 
     protected boolean enoughRegencies(int regency) {
-        return senderRegencies.size() > SVController.getQuorum();
+        
+        Collection<Integer> regencies = senderRegencies.values();
+        int counter = 0;
+        for (int r : regencies) {
+            if (regency == r) {
+                counter++;
+            }
+        }
+        boolean result = counter > SVController.getQuorum();
+        return result;
     }
 
     protected boolean enoughLeaders(int leader) {
-        return senderLeaders.size() > SVController.getQuorum();
+                
+        Collection<Integer> leaders = senderLeaders.values();
+        int counter = 0;
+        for (int l : leaders) {
+            if (leader == l) {
+                counter++;
+            }
+        }
+        boolean result = counter > SVController.getQuorum();
+        return result;
+        
     }
 
     protected boolean enoughViews(View view) {

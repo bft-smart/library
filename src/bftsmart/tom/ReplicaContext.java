@@ -23,13 +23,18 @@ import bftsmart.reconfiguration.views.View;
 /**
  * This class contains information related to the replica.
  * 
- * @author Alysson Bessani
  */
 public class ReplicaContext {
     
     private ServerCommunicationSystem cs; // Server side comunication system
     private ServerViewController SVController;
 
+    /**
+     * Constructor
+     * 
+     * @param cs
+     * @param SVController 
+     */
     public ReplicaContext(ServerCommunicationSystem cs, 
                                  ServerViewController SVController) {
         this.cs = cs;
@@ -65,11 +70,11 @@ public class ReplicaContext {
         return SVController.getCurrentView();
     }
 
-	public ServerCommunicationSystem getServerCommunicationSystem() {
-		return cs;
-	}
-
-	public void setServerCommunicationSystem(ServerCommunicationSystem cs) {
-		this.cs = cs;
-	}
+    /**
+     * Returns the replica's communication system
+     * @return The replica's communication system
+     */
+    public ServerCommunicationSystem getServerCommunicationSystem() {
+            return cs;
+    }
 }

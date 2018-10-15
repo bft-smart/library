@@ -216,7 +216,8 @@ public class Configuration {
 				case "RSA":
 					keyLoader = new RSAKeyLoader(processId, configHome, defaultKeys, signatureAlgorithm);
 					break;
-				case "ECDSA":
+				case "BC":
+					Security.addProvider(new BouncyCastleProvider());
 					keyLoader = new ECDSAKeyLoader(processId, configHome, defaultKeys, signatureAlgorithm);
 					break;
 				case "SunEC":
@@ -227,9 +228,17 @@ public class Configuration {
 					break;
 				}
             }
+            
+            //System.out.println("Selected Signature Algorithm: " + keyLoader.getSignatureAlgorithm());
 
-            TOMUtil.init(hmacAlgorithm, secretKeyAlgorithm, keyLoader.getSignatureAlgorithm(), hashAlgorithm,
-            		                    hmacAlgorithmProvider, secretKeyAlgorithmProvider, signatureAlgorithmProvider, hashAlgorithmProvider);
+            TOMUtil.init(hmacAlgorithm, 
+            				secretKeyAlgorithm, 
+            				keyLoader.getSignatureAlgorithm(), 
+            				hashAlgorithm,
+            				hmacAlgorithmProvider, 
+            				secretKeyAlgorithmProvider, 
+            				signatureAlgorithmProvider, 
+            				hashAlgorithmProvider);
 
         }catch(Exception e){
         	e.printStackTrace();

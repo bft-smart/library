@@ -435,11 +435,35 @@ public abstract class DurabilityCoordinator implements Recoverable, BatchExecuta
 
     }
         
-        public abstract void installSnapshot(byte[] state);
+    /**
+     * Given a snapshot received from the state transfer protocol, install it
+     * @param state The serialized snapshot
+     */
+    public abstract void installSnapshot(byte[] state);
         
-	public abstract byte[] getSnapshot();
+    /**
+     * Returns a serialized snapshot of the application state
+     * @return A serialized snapshot of the application state
+     */
+    public abstract byte[] getSnapshot();
         
-	public abstract byte[][] appExecuteBatch(byte[][] commands, MessageContext[] msgCtxs);
+    /**
+     * Execute a batch of ordered requests
+     * 
+     * @param commands The batch of requests
+     * @param msgCtxs The context associated to each request
+     * 
+     * @return the respective replies for each request
+     */
+    public abstract byte[][] appExecuteBatch(byte[][] commands, MessageContext[] msgCtxs);
         
-        public abstract byte[] appExecuteUnordered(byte[] command, MessageContext msgCtx);
+    /**
+     * Execute an unordered request
+     * 
+     * @param command The unordered request
+     * @param msgCtx The context associated to the request
+     * 
+     * @return the reply for the request issued by the client
+     */
+    public abstract byte[] appExecuteUnordered(byte[] command, MessageContext msgCtx);
 }

@@ -46,10 +46,24 @@ public final class BatchBuilder {
 
         /** build buffer */
 	private byte[] createBatch(long timestamp, int numberOfNonces, long seed, int numberOfMessages, int totalMessagesSize,
-			boolean useSignatures, byte[][] messages, byte[][] signatures, ServerViewController controller) {
+			boolean useSignatures, byte[][] messages, byte[][] signatures) {
+            
+                int sigsSize = 0;
+                
+                if (useSignatures) {
+                    
+                    sigsSize = Integer.BYTES * numberOfMessages;
+                            
+                    for (byte[] sig : signatures) {
+
+                        sigsSize += sig.length;
+                    }
+                }
+                
 		int size = 20 + //timestamp 8, nonces 4, nummessages 4
 				(numberOfNonces > 0 ? 8 : 0) + //seed if needed
-				(numberOfMessages*(4+(useSignatures?TOMUtil.getSignatureSize(controller):0)))+ // msglength + signature for each msg
+				(Integer.BYTES * numberOfMessages) + // messages length
+                                sigsSize + // signatures size
 				totalMessagesSize; //size of all msges
 
 		ByteBuffer  proposalBuffer = ByteBuffer.allocate(size);
@@ -65,22 +79,27 @@ public final class BatchBuilder {
 		proposalBuffer.putInt(numberOfMessages);
 
 		for (int i = 0; i < numberOfMessages; i++) {
-			putMessage(proposalBuffer,messages[i], false, signatures[i]);
+			putMessage(proposalBuffer,messages[i], useSignatures, signatures[i]);
 		}
 
 		return proposalBuffer.array();
 	}
           
-	private void putMessage(ByteBuffer proposalBuffer, byte[] message, boolean isHash, byte[] signature) {
-		proposalBuffer.putInt(isHash?0:message.length);
+	private void putMessage(ByteBuffer proposalBuffer, byte[] message, boolean addSig, byte[] signature) {
+		proposalBuffer.putInt(message.length);
 		proposalBuffer.put(message);
 
-		if(signature != null) {
-			proposalBuffer.put(signature);
-		}
+                if (addSig) {
+                    if(signature != null) {
+                            proposalBuffer.putInt(signature.length);
+                            proposalBuffer.put(signature);
+                    } else {
+                        proposalBuffer.putInt(0);
+                    }
+                }
 	}
 
-	public byte[] makeBatch(List<TOMMessage> msgs, int numNounces, long timestamp, ServerViewController controller) {
+	public byte[] makeBatch(List<TOMMessage> msgs, int numNounces, long timestamp, boolean useSignatures) {
 
 		int numMsgs = msgs.size();
 		int totalMessageSize = 0; //total size of the messages being batched
@@ -103,10 +122,10 @@ public final class BatchBuilder {
 
 		// return the batch
 		return createBatch(timestamp, numNounces,rnd.nextLong(), numMsgs, totalMessageSize,
-				controller.getStaticConf().getUseSignatures() == 1, messages, signatures, controller);
+				useSignatures, messages, signatures);
 
 	}
-	public byte[] makeBatch(List<TOMMessage> msgs, int numNounces, long seed, long timestamp, ServerViewController controller) {
+	public byte[] makeBatch(List<TOMMessage> msgs, int numNounces, long seed, long timestamp, boolean useSignatures) {
 
 		int numMsgs = msgs.size();
 		int totalMessageSize = 0; //total size of the messages being batched
@@ -129,7 +148,7 @@ public final class BatchBuilder {
 
 		// return the batch
 		return createBatch(timestamp, numNounces,seed, numMsgs, totalMessageSize,
-				controller.getStaticConf().getUseSignatures() == 1, messages, signatures, controller);
+				useSignatures, messages, signatures);
 
 	}
 }

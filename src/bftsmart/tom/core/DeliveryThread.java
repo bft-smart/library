@@ -80,14 +80,7 @@ public final class DeliveryThread extends Thread {
      * @param dec Decision established from the consensus
      */
     public void delivery(Decision dec) {
-        if (!containsGoodReconfig(dec)) {
-
-            logger.debug("Decision from consensus " + dec.getConsensusId() + " does not contain good reconfiguration");
-            //set this decision as the last one from this replica
-            tomLayer.setLastExec(dec.getConsensusId());
-            //define that end of this execution
-            tomLayer.setInExec(-1);
-        } //else if (tomLayer.controller.getStaticConf().getProcessId() == 0) System.exit(0);
+        
         try {
             decidedLock.lock();
             decided.put(dec);
@@ -102,6 +95,15 @@ public final class DeliveryThread extends Thread {
         } catch (Exception e) {
             logger.error("Could not insert decision into decided queue",e);
         }
+        
+        if (!containsGoodReconfig(dec)) {
+
+            logger.debug("Decision from consensus " + dec.getConsensusId() + " does not contain good reconfiguration");
+            //set this decision as the last one from this replica
+            tomLayer.setLastExec(dec.getConsensusId());
+            //define that end of this execution
+            tomLayer.setInExec(-1);
+        } //else if (tomLayer.controller.getStaticConf().getProcessId() == 0) System.exit(0);
     }
 
     private boolean containsGoodReconfig(Decision dec) {
@@ -177,9 +179,9 @@ public final class DeliveryThread extends Thread {
                 canDeliver.awaitUninterruptibly();
                 
                 if (tomLayer.getLastExec() == -1)
-                    logger.info("\n\t\t################################"
-                    	      + "\n\t\t  Ready to process operations   "
-                    		  + "\n\t\t################################");
+                    logger.info("\n\t\t###################################"
+                    		  + "\n\t\t    Ready to process operations    "
+                    		  + "\n\t\t###################################");
             }
             try {
                 ArrayList<Decision> decisions = new ArrayList<Decision>();

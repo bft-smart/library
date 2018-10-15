@@ -153,9 +153,9 @@ public class ThroughputLatencyClient {
 					reply = proxy.invokeOrdered(request);
                         
 				
-				if (reply != null) {
+				/*if (reply != null) {
 					System.out.println("Client: "+this.id + " , req: "+i+ ", Reply != null.");
-				}
+				}*/
 					
                 if (verbose) System.out.println(this.id + " // sent!");
                 st.store(System.nanoTime() - last_send_instant);

@@ -77,14 +77,6 @@ public class RequestsTimer {
         this.shortTimeout = shortTimeout;
     }
     
-    public void setTimeout(long timeout) {
-        this.timeout = timeout;
-    }
-    
-    public long getTimeout() {
-        return timeout;
-    }
-    
     public void startTimer() {
         if (rtTask == null) {
             long t = (shortTimeout > -1 ? shortTimeout : timeout);
@@ -157,25 +149,33 @@ public class RequestsTimer {
         
         //System.out.println("(RequestTimerTask.run) I SOULD NEVER RUN WHEN THERE IS NO TIMEOUT");
 
-        LinkedList<TOMMessage> pendingRequests = new LinkedList<TOMMessage>();
+        LinkedList<TOMMessage> pendingRequests = new LinkedList<>();
 
-        rwLock.readLock().lock();
+        try {
         
-        for (Iterator<TOMMessage> i = watched.iterator(); i.hasNext();) {
-            TOMMessage request = i.next();
-            if ((request.receptionTime + System.currentTimeMillis()) > t) {
-                pendingRequests.add(request);
-            } else {
-                break;
+            rwLock.readLock().lock();
+        
+            for (Iterator<TOMMessage> i = watched.iterator(); i.hasNext();) {
+                TOMMessage request = i.next();
+                if ((System.currentTimeMillis() - request.receptionTimestamp ) > t) {
+                    pendingRequests.add(request);
+                }
             }
+            
+        } finally {
+            
+            rwLock.readLock().unlock();
         }
-
-        rwLock.readLock().unlock();
-                
+        
         if (!pendingRequests.isEmpty()) {
+            
+            logger.info("The following requests timed out: " + pendingRequests);
+            
             for (ListIterator<TOMMessage> li = pendingRequests.listIterator(); li.hasNext(); ) {
                 TOMMessage request = li.next();
                 if (!request.timeout) {
+                    
+                    logger.info("Forwarding requests {} to leader", request);
 
                     request.signed = request.serializedMessageSignature != null;
                     tomLayer.forwardRequestToLeader(request);
@@ -185,7 +185,7 @@ public class RequestsTimer {
             }
 
             if (!pendingRequests.isEmpty()) {
-                logger.info("Timeout for messages: " + pendingRequests);
+                logger.info("Attempting to start leader change for requests {}", pendingRequests);
                 //Logger.debug = true;
                 //tomLayer.requestTimeout(pendingRequests);
                 //if (reconfManager.getStaticConf().getProcessId() == 4) Logger.debug = true;
@@ -196,8 +196,11 @@ public class RequestsTimer {
                 timer.schedule(rtTask, t);
             }
         } else {
-            rtTask = null;
-            timer.purge();
+            
+            logger.debug("Timeout triggered with no expired requests");
+            
+            rtTask = new RequestTimerTask();
+            timer.schedule(rtTask, t);
         }
         
     }

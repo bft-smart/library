@@ -49,10 +49,10 @@ public class CounterClientPoolThread<T> {
 	public static void main(String[] args) throws IOException {
 		if (args.length != 4) {
 			log.error(
-					"Usage: java CounterClient <process id> <increment> <number of clients> [<number of operations>] \n "
+					"Usage: java CounterClientPoolThread <process id> <increment> <number of clients> [<number of operations>] \n "
 							+ "\t if <increment> equals 0 the request will be read-only \n"
 							+ "\t default <number of operations> equals 1000");
-			log.error("Example: bash runscripts/smartrun.sh bftsmart.demo.counter.CounterClient 1001 15 1 1000");
+			log.error("Example: bash runscripts/smartrun.sh bftsmart.demo.counter.CounterClientPoolThread 1001 1 5 1000");
 			System.exit(-1);
 		}
 

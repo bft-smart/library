@@ -37,18 +37,19 @@
   
   
   <!-- SPECIFIC CLASS LOGS -->
+  <!--
   <logger name="bftsmart.demo.counter.CounterServer" level="INFO"></logger>
-  <logger name="bftsmart.demo.counter.CounterClient" level="TRACE"></logger>
+  <logger name="bftsmart.demo.counter.CounterClient" level="INFO"></logger>
   <logger name="bftsmart.demo.counter.CounterClientPoolThread" level="DEBUG"></logger>
   
   <logger name="bftsmart.clientsmanagement.ClientData" level="TRACE"></logger>
-  <logger name="bftsmart.clientsmanagement.ClientsManager" level="TRACE"></logger>  
+  <logger name="bftsmart.clientsmanagement.ClientsManager" level="INFO"></logger>  
   <logger name="bftsmart.demo.microbenchmarks.ThroughputLatencyClient" level="DEBUG"></logger>  
   
   <logger name="bftsmart.reconfiguration.util.ECDSAKeyLoader" level="INFO"></logger>
   <logger name="bftsmart.reconfiguration.util.SunECKeyLoader" level="INFO"></logger>
   
-  <!--<logger name="bftsmart.tom.util.TOMUtil" level="TRACE"></logger>
+  <logger name="bftsmart.tom.util.TOMUtil" level="TRACE"></logger>
   <logger name="bftsmart.reconfiguration.util.Configuration" level="DEBUG"></logger>
   <logger name="bftsmart.communication.client.netty.NettyClientServerCommunicationSystemClientSide" level="TRACE"></logger>  
   <logger name="bftsmart.communication.client.netty.NettyClientServerCommunicationSystemServertSide" level="TRACE"></logger>

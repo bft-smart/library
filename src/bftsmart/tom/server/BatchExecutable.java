@@ -21,18 +21,16 @@ import bftsmart.tom.MessageContext;
  * 
  * Executables that implement this interface will receive a batch of requests and
  * deliver them to the application in a deterministic way.
- * 
- * @author Marcel Santos
  *
  */
 public interface BatchExecutable extends Executable {
 	
-	/**
-	 * Execute a batch of requests.
-	 * @param command
-	 * @param msgCtx
-	 * @return
-	 */
+    /**
+     * Execute a batch of requests.
+     * @param command The batch of requests
+     * @param msgCtx The context associated to each request
+     * @return
+     */
     public byte[][] executeBatch(byte[][] command, MessageContext[] msgCtx);
 
 }

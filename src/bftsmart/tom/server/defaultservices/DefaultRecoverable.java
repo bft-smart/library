@@ -58,6 +58,9 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
     private StateLog log;
     private StateManager stateManager;
 
+    /**
+     * Constructor
+     */
     public DefaultRecoverable() {
 
         try {
@@ -159,7 +162,7 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
         return replies;
     }
 
-    public final byte[] computeHash(byte[] data) {
+    private final byte[] computeHash(byte[] data) {
         byte[] ret = null;
         hashLock.lock();
         ret = md.digest(data);
@@ -410,9 +413,6 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
         return stateManager;
     }
 
-
-    
-    
     @Override
     public byte[] executeUnordered(byte[] command, MessageContext msgCtx) {
         return appExecuteUnordered(command, msgCtx);
@@ -430,12 +430,37 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
 
     }
     
+    /**
+     * Given a snapshot received from the state transfer protocol, install it
+     * @param state The serialized snapshot
+     */
     public abstract void installSnapshot(byte[] state);
     
+    /**
+     * Returns a serialized snapshot of the application state
+     * @return A serialized snapshot of the application state
+     */
     public abstract byte[] getSnapshot();
     
+    /**
+     * Execute a batch of ordered requests
+     * 
+     * @param commands The batch of requests
+     * @param msgCtxs The context associated to each request
+     * @param fromConsensus true if the request arrived from a consensus execution, false if it arrives from the state transfer protocol
+     * 
+     * @return the respective replies for each request
+     */
     public abstract byte[][] appExecuteBatch(byte[][] commands, MessageContext[] msgCtxs, boolean fromConsensus);
     
+    /**
+     * Execute an unordered request
+     * 
+     * @param command The unordered request
+     * @param msgCtx The context associated to the request
+     * 
+     * @return the reply for the request issued by the client
+     */
     public abstract byte[] appExecuteUnordered(byte[] command, MessageContext msgCtx);
 
 }

@@ -15,6 +15,7 @@ limitations under the License.
  */
 package bftsmart.tom;
 
+import bftsmart.tom.core.TOMSender;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Random;
@@ -81,7 +82,12 @@ public class ServiceProxy extends TOMSender {
 		this(processId, configHome, null, null, null);
 	}
 
-    public ServiceProxy(int processId, String configHome, KeyLoader loader) {
+	/**
+	 * Constructor
+	 *
+	 * @see bellow
+	 */
+        public ServiceProxy(int processId, String configHome, KeyLoader loader) {
 		this(processId, configHome, null, null, loader);
 	}
         
@@ -90,10 +96,11 @@ public class ServiceProxy extends TOMSender {
 	 *
 	 * @param processId Process id for this client (should be different from replicas)
 	 * @param configHome Configuration directory for BFT-SMART
-	 * @param replyComparator used for comparing replies from different servers
+	 * @param replyComparator Used for comparing replies from different servers
 	 *                        to extract one returned by f+1
-	 * @param replyExtractor used for extracting the response from the matching
+	 * @param replyExtractor Used for extracting the response from the matching
 	 *                       quorum of replies
+         * @param loader Used to load signature keys from disk
 	 */
 	public ServiceProxy(int processId, String configHome,
 			Comparator<byte[]> replyComparator, Extractor replyExtractor, KeyLoader loader) {
@@ -125,12 +132,18 @@ public class ServiceProxy extends TOMSender {
 	 * Get the amount of time (in seconds) that this proxy will wait for
 	 * servers replies before returning null.
 	 *
-	 * @return the invokeTimeout
+	 * @return the timeout value in seconds
 	 */
 	public int getInvokeTimeout() {
 		return invokeTimeout;
 	}
 
+        /**
+	 * Get the amount of time (in seconds) that this proxy will wait for
+	 * servers unordered hashed replies before returning null.
+         * 
+         * @return the timeout value in seconds
+         */
 	public int getInvokeUnorderedHashedTimeout() {
 		return invokeUnorderedHashedTimeout;
 	}
@@ -139,25 +152,57 @@ public class ServiceProxy extends TOMSender {
 	 * Set the amount of time (in seconds) that this proxy will wait for
 	 * servers replies before returning null.
 	 *
-	 * @param invokeTimeout the invokeTimeout to set
+	 * @param invokeTimeout the timeout value to set
 	 */
 	public void setInvokeTimeout(int invokeTimeout) {
 		this.invokeTimeout = invokeTimeout;
 	}
 
+        /**
+         * Set the amount of time (in seconds) that this proxy will wait for
+	 * servers unordered hashed replies before returning null.
+         * 
+         * @param timeout the timeout value to set
+         */
 	public void setInvokeUnorderedHashedTimeout(int timeout) {
 		this.invokeUnorderedHashedTimeout = timeout;
 	}
 
+        /**
+         * This method sends an ordered request to the replicas, and returns the related reply.
+	 * If the servers take more than invokeTimeout seconds the method returns null.
+	 * This method is thread-safe.
+         * 
+         * @param request to be sent
+         * @return The reply from the replicas related to request
+         */
 	public byte[] invokeOrdered(byte[] request) {
 		return invoke(request, TOMMessageType.ORDERED_REQUEST);
 	}
 
-	public byte[] invokeUnordered(byte[] request) {
+        /**
+         * This method sends an unordered request to the replicas, and returns the related reply.
+	 * If the servers take more than invokeTimeout seconds the method returns null.
+	 * This method is thread-safe.
+         * 
+         * @param request to be sent
+         * @return The reply from the replicas related to request
+         */
+        public byte[] invokeUnordered(byte[] request) {
 		return invoke(request, TOMMessageType.UNORDERED_REQUEST);
 	}
 
-	public byte[] invokeUnorderedHashed(byte[] request) {
+        /**
+         * This method sends an unordered request to the replicas, and returns the related reply.
+         * This method chooses randomly one replica to send the complete response, while the others
+         * only send a hash of that response.
+	 * If the servers take more than invokeTimeout seconds the method returns null.
+	 * This method is thread-safe.
+         * 
+         * @param request to be sent
+         * @return The reply from the replicas related to request
+         */
+        public byte[] invokeUnorderedHashed(byte[] request) {
 		return invoke(request, TOMMessageType.UNORDERED_HASHED_REQUEST);
 	}
 
@@ -167,11 +212,15 @@ public class ServiceProxy extends TOMSender {
 	 * This method is thread-safe.
 	 *
 	 * @param request Request to be sent
-	 * @param reqType TOM_NORMAL_REQUESTS for service requests, and other for
-	 *        reconfig requests.
+	 * @param reqType ORDERED_REQUEST/UNORDERED_REQUEST/UNORDERED_HASHED_REQUEST for normal requests, and RECONFIG for
+	 *        reconfiguration requests.
+         * 
 	 * @return The reply from the replicas related to request
 	 */
 	public byte[] invoke(byte[] request, TOMMessageType reqType) {
+            
+            try {
+                
 		canSendLock.lock();
 
 		// Clean all statefull data to prepare for receiving next replies
@@ -293,11 +342,18 @@ public class ServiceProxy extends TOMSender {
 		}
 		//******* EDUARDO END **************//
 
-		canSendLock.unlock();
 		return ret;
+        
+            } finally {
+                                    
+                if (canSendLock.isHeldByCurrentThread()) canSendLock.unlock(); //always release lock
+            }
 	}
 
 	//******* EDUARDO BEGIN **************//
+        /**
+         * @deprecated
+         */
 	protected void reconfigureTo(View v) {
 		logger.debug("Installing a most up-to-date view with id=" + v.getId());
 		getViewManager().reconfigureTo(v);
@@ -403,6 +459,11 @@ public class ServiceProxy extends TOMSender {
 		}
 	}
 
+        /**
+         * Retrieves the required quorum size for the amount of replies
+         * 
+         * @return The quorum size for the amount of replies
+         */
 	protected int getReplyQuorum() {
 		if (getViewManager().getStaticConf().isBFT()) {
 			return (int) Math.ceil((getViewManager().getCurrentViewN()

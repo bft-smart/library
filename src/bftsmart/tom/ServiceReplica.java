@@ -36,7 +36,6 @@ import bftsmart.tom.core.messages.TOMMessageType;
 import bftsmart.tom.leaderchange.CertifiedDecision;
 import bftsmart.tom.server.BatchExecutable;
 import bftsmart.tom.server.Executable;
-import bftsmart.tom.server.FIFOExecutable;
 import bftsmart.tom.server.Recoverable;
 import bftsmart.tom.server.Replier;
 import bftsmart.tom.server.RequestVerifier;
@@ -106,32 +105,32 @@ public class ServiceReplica {
     /**
      * Constructor
      * 
-     * @param id Replica ID
-     * @param executor Executor
-     * @param recoverer Recoverer
-     * @param verifier Requests verifier
-     * @param replier Replier
+     * @see bellow
      */
     public ServiceReplica(int id, Executable executor, Recoverable recoverer, RequestVerifier verifier, Replier replier) {
         this(id, "", executor, recoverer, verifier, replier, null);
     }
     
-    public ServiceReplica(int id, Executable executor, Recoverable recoverer, 
-    			RequestVerifier verifier, Replier replier, KeyLoader loader) {
+    /**
+     * Constructor
+     * 
+     * @see bellow
+     */
+    public ServiceReplica(int id, Executable executor, Recoverable recoverer, RequestVerifier verifier, Replier replier, KeyLoader loader, Provider provider) {
         this(id, "", executor, recoverer, verifier, replier, loader);
     }
     /**
      * Constructor
      *
-     * @param id Process ID
-     * @param configHome Configuration directory for JBP
-     * @param executor Executor
-     * @param recoverer Recoverer
-     * @param verifier Requests verifier
-     * @param replier Replier
+     * @param id Replica ID
+     * @param configHome Configuration directory for BFT-SMART
+     * @param executor The executor implementation
+     * @param recoverer The recoverer implementation
+     * @param verifier Requests Verifier
+     * @param replier Can be used to override the targets of the replies associated to each request.
+     * @param loader Used to load signature keys from disk
      */
-    public ServiceReplica(int id, String configHome, Executable executor, 
-    		Recoverable recoverer, RequestVerifier verifier, Replier replier, KeyLoader loader) {
+    public ServiceReplica(int id, String configHome, Executable executor, Recoverable recoverer, RequestVerifier verifier, Replier replier, KeyLoader loader) {
         this.id = id;
         this.SVController = new ServerViewController(id, configHome, loader);
         this.executor = executor;
@@ -141,10 +140,6 @@ public class ServiceReplica {
         this.init();
         this.recoverer.setReplicaContext(replicaCtx);
         this.replier.setReplicaContext(replicaCtx);
-    }
-
-    public void setReplyController(Replier replier) {
-        this.replier = replier;
     }
 
     // this method initializes the object
@@ -175,6 +170,10 @@ public class ServiceReplica {
         initReplica();
     }
 
+    /**
+     * 
+     * @deprecated 
+     */
     public void joinMsgReceived(VMMessage msg) {
         ReconfigureReply r = msg.getReply();
 
@@ -196,11 +195,7 @@ public class ServiceReplica {
     }
 
     /**
-     * This message delivers a readonly message, i.e., a message that was not
-     * ordered to the replica and gather the reply to forward to the client
-     *
-     * @param message the request received from the delivery thread
-     * @param msgCtx the context for the message
+     * @deprecated 
      */
     public final void receiveReadonlyMessage(TOMMessage message, MessageContext msgCtx) {
         byte[] response;
@@ -209,11 +204,7 @@ public class ServiceReplica {
         //to the clients. The raw decision does not need to be delivered to the recoverable since
         // it is not associated with any consensus instance, and therefore there is no need for
         //applications to log it or keep any proof.
-        if (executor instanceof FIFOExecutable) {
-            response = ((FIFOExecutable) executor).executeUnorderedFIFO(message.getContent(), msgCtx, message.getSender(), message.getOperationId());
-        } else {
-            response = executor.executeUnordered(message.getContent(), msgCtx);
-        }
+        response = executor.executeUnordered(message.getContent(), msgCtx);
 
         if (message.getReqType() == TOMMessageType.UNORDERED_HASHED_REQUEST
                 && message.getReplyServer() != this.id) {
@@ -231,6 +222,11 @@ public class ServiceReplica {
         }
     }
         
+    /**
+     * Stops the service execution at a replica. It will shutdown all threads, stop the requests' timer, and drop all enqueued requests,
+     * thus letting the ServiceReplica object be garbage-collected. From the perspective of the rest of the system, this is equivalent
+     * to a simple crash fault.
+     */
     public void kill() {        
         
         Thread t = new Thread() {
@@ -245,6 +241,10 @@ public class ServiceReplica {
         t.start();
     }
         
+    /**
+     * Cleans the object state and reboots execution. From the perspective of the rest of the system,
+     * this is equivalent to a rash followed by a recovery.
+     */
     public void restart() {        
         Thread t = new Thread() {
 
@@ -277,6 +277,10 @@ public class ServiceReplica {
         t.start();
     }
     
+    /**
+     * 
+     * @deprecated
+     */
     public void receiveMessages(int consId[], int regencies[], int leaders[], CertifiedDecision[] cDecs, TOMMessage[][] requests) {
         int numRequests = 0;
         int consensusCount = 0;
@@ -323,25 +327,6 @@ public class ServiceReplica {
                                 // deliver requests and contexts to the executor later
                                 msgCtxts.add(msgCtx);
                                 toBatch.add(request);
-                            } else if (executor instanceof FIFOExecutable) {
-                                
-                                logger.debug("Delivering request from " + request.getSender() + " via FifoExecutable");
-                                
-                                // This is used to deliver the content decided by a consensus instance directly to
-                                // a Recoverable object. It is useful to allow the application to create a log and
-                                // store the proof associated with decisions (which are needed by replicas
-                                // that are asking for a state transfer).
-                                if (this.recoverer != null) this.recoverer.Op(msgCtx.getConsensusId(), request.getContent(), msgCtx);
-                                
-                                // This is used to deliver the requests to the application and obtain a reply to deliver
-                                //to the clients. The raw decision is passed to the application in the line above.
-                                byte[] response = ((FIFOExecutable) executor).executeOrderedFIFO(request.getContent(), msgCtx, request.getSender(), request.getOperationId());
-                                
-                                // Generate the messages to send back to the clients
-                                request.reply = new TOMMessage(id, request.getSession(),
-                                        request.getSequence(), request.getOperationId(), response, SVController.getCurrentViewId(), request.getReqType());
-                                logger.debug("sending reply to " + request.getSender());
-                                replier.manageReply(request, msgCtx);
                             } else if (executor instanceof SingleExecutable) {
                                 
                                 logger.debug("Delivering request from " + request.getSender() + " via SingleExecutable");
@@ -505,10 +490,11 @@ public class ServiceReplica {
         if (SVController.getStaticConf().isShutdownHookEnabled()) {
             Runtime.getRuntime().addShutdownHook(new ShutdownHookThread(tomLayer));
         }
+        replicaCtx = new ReplicaContext(cs, SVController);
+
         tomLayer.start(); // start the layer execution
         tomStackCreated = true;
 
-        replicaCtx = new ReplicaContext(cs, SVController);
     }
 
     /**
@@ -521,11 +507,21 @@ public class ServiceReplica {
         return replicaCtx;
     }
     
+    
+    /**
+     * Obtains the current replica communication system.
+     * 
+     * @return The replica's communication system
+     */
     public ServerCommunicationSystem getServerCommunicationSystem() {
         
         return cs;
     }
 
+    /**
+     * Replica ID
+     * @return Replica ID
+     */
     public int getId() {
         return id;
     }

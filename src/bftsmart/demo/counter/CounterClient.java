@@ -39,7 +39,7 @@ public class CounterClient {
 	
 	
 	public static void main(String[] args) throws IOException {
-		if (args.length < 2) {
+		if (args.length < 3) {
 			log.error("Usage: java CounterClient <process id> <increment> [<number of operations>] \n "
 					+ "\t if <increment> equals 0 the request will be read-only \n"
 					+ "\t default <number of operations> equals 1000");
@@ -50,8 +50,8 @@ public class CounterClient {
 		ServiceProxy counterProxy = new ServiceProxy(Integer.parseInt(args[0]));
 		
 		try {
-			log.trace("Waiting 6 seconds before issue operations.");
-			Thread.sleep(6000);
+			log.trace("Waiting 2 seconds before issue operations.");
+			Thread.sleep(2000);
 		} catch (InterruptedException e1) {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();

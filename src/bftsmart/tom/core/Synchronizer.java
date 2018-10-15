@@ -150,7 +150,7 @@ public class Synchronizer {
 
 					//TODO: If this is null, then there was no timeout nor STOP messages.
                     //What to do?
-                    byte[] serialized = bb.makeBatch(messages, 0, 0, controller);
+                    byte[] serialized = bb.makeBatch(messages, 0, 0, controller.getStaticConf().getUseSignatures() == 1);
                     out.writeBoolean(true);
                     out.writeObject(serialized);
                 } else {
@@ -481,7 +481,7 @@ public class Synchronizer {
                     //TODO: If this is null, there was no timeout nor STOP messages.
                     //What shall be done then?
                     out.writeBoolean(true);
-                    byte[] serialized = bb.makeBatch(messages, 0, 0, controller);
+                    byte[] serialized = bb.makeBatch(messages, 0, 0, controller.getStaticConf().getUseSignatures() == 1);
                     out.writeObject(serialized);
                 } else {
                     out.writeBoolean(false);
