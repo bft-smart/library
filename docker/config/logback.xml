@@ -31,8 +31,8 @@
   
   
   <logger name="bftsmart" level="INFO"> 
-  	<appender-ref ref="STDOUT" />
-  	<!-- <appender-ref ref="MIN-STDOUT" /> -->
+  	<!-- <appender-ref ref="STDOUT" />-->
+  	<appender-ref ref="MIN-STDOUT" /> 
   </logger> 
   
   

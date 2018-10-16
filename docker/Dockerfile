@@ -8,8 +8,6 @@ ADD ./BFT-SMaRt.jar /opt/
 ADD ./config /opt/config/
 ADD ./lib /opt/lib/
 
-#ADD ./startReplicaClient.sh /opt/
-
 ADD ./provision.sh /opt/
 RUN ["bash","/opt/provision.sh"]
 

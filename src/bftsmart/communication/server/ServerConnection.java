@@ -107,7 +107,8 @@ public class ServerConnection {
                 new DataOutputStream(this.socket.getOutputStream()).writeInt(this.controller.getStaticConf().getProcessId());
 
             } catch (UnknownHostException ex) {
-                logger.error("Failed to connect to replica",ex);
+            	logger.error("Failed to connect to replica. Possible reason, replica is offline.");
+                //logger.error("Failed to connect to replica",ex);
             } catch (IOException ex) {
                 logger.error("Failed to connect to replica",ex);
             }
