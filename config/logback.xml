@@ -36,8 +36,14 @@
   </logger> 
   
   
+  
   <!-- SPECIFIC CLASS LOGS -->
+  
+  
   <!--
+  <logger name="bftsmart.tom.util.BatchBuilder" level="DEBUG"></logger>
+  
+  
   <logger name="bftsmart.demo.counter.CounterServer" level="INFO"></logger>
   <logger name="bftsmart.demo.counter.CounterClient" level="INFO"></logger>
   <logger name="bftsmart.demo.counter.CounterClientPoolThread" level="DEBUG"></logger>

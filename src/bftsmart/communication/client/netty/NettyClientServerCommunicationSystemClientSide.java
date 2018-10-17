@@ -233,8 +233,10 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
             logger.error("Connection with replica closed.",cause);
         } else if(cause instanceof ConnectException) {
             logger.error("Impossible to connect to replica.",cause);
-        } else {
-            logger.error("Replica disconnected.",cause);
+        } else if (cause instanceof IOException){
+            logger.error("Replica disconnected. Connection reset by peer (IOException).");
+        }else {
+        	logger.error("Closed Channel Exception.", cause);
         }
     }
 

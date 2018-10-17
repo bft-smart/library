@@ -58,7 +58,7 @@ public class TOMUtil {
     public static final int TRIGGER_LC_LOCALLY = 8;
     public static final int TRIGGER_SM_LOCALLY = 9;
     
-    private static int signatureSize = -1;
+    //private static int signatureSize = -1;
     private static boolean init = false;
         
     private static String hmacAlgorithm = Configuration.DEFAULT_HMAC;
@@ -173,8 +173,13 @@ public class TOMUtil {
             Signature signatureEngine = getSigEngine();
 
             signatureEngine.initVerify(key);
-
-            result = verifySignature(signatureEngine, message, signature);
+            
+            signatureEngine.update(message);
+            
+            result = signatureEngine.verify(signature);
+            
+            return result;
+            
         } catch (Exception e) {
             logger.error("Failed to verify signature",e);
         }

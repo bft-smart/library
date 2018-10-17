@@ -149,8 +149,17 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 				logger.info("Using MACs");
 			if (controller.getStaticConf().getUseSignatures() == 1)
 				logger.info("Using Signatures");
-			logger.info("Binded replica to IP address " + myAddress);
+			logger.info("Binded replica to IP address " + myAddress);			
 			// ******* EDUARDO END **************//
+			
+			/* Tulio Ribeiro*/
+			if (controller.getStaticConf().isSSLTLSEnabled()){
+				logger.info("SSL/TLS enabled, protocol version: {}", 
+						controller.getStaticConf().getSSLTLSProtocolVersion());
+			}else {
+				logger.info("SSL/TLS NOT enabled.");
+			}
+			/* Tulio Ribeiro END */
 
 			mainChannel = f.channel();
 

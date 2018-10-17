@@ -371,10 +371,6 @@ public class TOMConfiguration extends Configuration {
 					break;
 				}
 			}
-			if(ssltls)
-				System.out.println("-- Setting SSL/TLS protocol version: " + ssltlsProtocolVersion);
-			else
-				System.out.println("-- No SSL/TLS protocol support.");
             
         } catch (Exception e) {
             logger.error("Could not parse system configuration file",e);
@@ -481,7 +477,7 @@ public class TOMConfiguration extends Configuration {
     public int getUseMACs() {
         return useMACs;
     }
-
+    
     /**
      * Indicates the checkpoint period used when fetching the state from the application
      */
