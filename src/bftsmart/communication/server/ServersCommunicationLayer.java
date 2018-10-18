@@ -127,7 +127,7 @@ public class ServersCommunicationLayer extends Thread {
 
 		int myPort = controller.getStaticConf().getServerToServerPort(controller.getStaticConf().getProcessId());
 		serverSocket = new ServerSocket(myPort, 100, InetAddress.getByName(myAddress));
-		serverSocket.setSoTimeout(10000);
+		serverSocket.setSoTimeout(20000);
 		serverSocket.setReuseAddress(true);
 
 		SecretKeyFactory fac = TOMUtil.getSecretFactory();

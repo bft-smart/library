@@ -127,7 +127,6 @@ public class ServersCommunicationLayerSSLTLS extends Thread {
 		context.init(null, null, null);
 
 		SSLServerSocketFactory serverSocketFactory = context.getServerSocketFactory();
-		System.out.println("Creating server socket factory on port: " + myPort);
 		this.serverSocketSSLTLS = (SSLServerSocket) serverSocketFactory.createServerSocket(myPort, 100, InetAddress.getByName(myAddress));
 
 		 String[] ciphers = new String[] { "TLS_RSA_WITH_NULL_SHA256",
@@ -146,7 +145,7 @@ public class ServersCommunicationLayerSSLTLS extends Thread {
 			System.out.println(" ORDER? " + enabledCiphers[i]);			
 		}*/
 		
-		serverSocketSSLTLS.setSoTimeout(10000);
+		serverSocketSSLTLS.setSoTimeout(20000);
 		serverSocketSSLTLS.setEnableSessionCreation(true);
 		serverSocketSSLTLS.setReuseAddress(true);
 

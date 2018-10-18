@@ -156,7 +156,8 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 			logger.info("ID = " + controller.getStaticConf().getProcessId());
 			logger.info("N = " + controller.getCurrentViewN());
 			logger.info("F = " + controller.getCurrentViewF());
-			logger.info("Port = " + controller.getStaticConf().getPort(controller.getStaticConf().getProcessId()));
+			logger.info("Port (client <-> server) = " + controller.getStaticConf().getPort(controller.getStaticConf().getProcessId()));
+			logger.info("Port (server <-> server) = " + controller.getStaticConf().getServerToServerPort(controller.getStaticConf().getProcessId()));
 			logger.info("requestTimeout = " + controller.getStaticConf().getRequestTimeout());
 			logger.info("maxBatch = " + controller.getStaticConf().getMaxBatchSize());
 			if (controller.getStaticConf().getUseMACs())
