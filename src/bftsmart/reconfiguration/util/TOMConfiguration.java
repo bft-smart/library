@@ -43,8 +43,8 @@ public class TOMConfiguration extends Configuration {
     protected boolean shutdownHookEnabled;
     protected boolean useSenderThread;
     private int numNIOThreads;
-    private int useMACs;
-    private int useSignatures;
+    private boolean useMACs;
+    private boolean useSignatures;
     private boolean stateTransferEnabled;
     private int checkpointPeriod;
     private int globalCheckpointPeriod;
@@ -176,16 +176,16 @@ public class TOMConfiguration extends Configuration {
 
             s = (String) configs.remove("system.communication.useMACs");
             if (s == null) {
-                useMACs = 0;
+                useMACs = false;
             } else {
-                useMACs = Integer.parseInt(s);
+                useMACs = Boolean.parseBoolean(s);
             }
 
             s = (String) configs.remove("system.communication.useSignatures");
             if (s == null) {
-                useSignatures = 0;
+                useSignatures = false;
             } else {
-                useSignatures = Integer.parseInt(s);
+                useSignatures = Boolean.parseBoolean(s);
             }
 
             s = (String) configs.remove("system.totalordermulticast.state_transfer");
@@ -465,16 +465,16 @@ public class TOMConfiguration extends Configuration {
     }
 
     /**
-     * Indicates if signatures should be used (1) or not (0) to authenticate client requests
+     * Indicates if signatures should be used true or not false to authenticate client requests
      */
-    public int getUseSignatures() {
+    public boolean getUseSignatures() {
         return useSignatures;
     }
 
     /**
-     * Indicates if MACs should be used (1) or not (0) to authenticate client-server and server-server messages
+     * Indicates if MACs should be used true or not false to authenticate client-server and server-server messages
      */
-    public int getUseMACs() {
+    public boolean getUseMACs() {
         return useMACs;
     }
     

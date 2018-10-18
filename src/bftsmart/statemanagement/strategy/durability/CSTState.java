@@ -122,7 +122,8 @@ public class CSTState implements ApplicationState {
             //Serialize the TOMMessages to re-create the proposed value
             BatchBuilder bb = new BatchBuilder(0);
             byte[] value = bb.makeBatch(requests, ci.msgCtx[0].getNumOfNonces(),
-                    ci.msgCtx[0].getSeed(), ci.msgCtx[0].getTimestamp(), controller.getStaticConf().getUseSignatures() == 1);
+                    ci.msgCtx[0].getSeed(), ci.msgCtx[0].getTimestamp(), 
+                    controller.getStaticConf().getUseSignatures());
             
             //Assemble and return the certified decision
             return new CertifiedDecision(pid, getLastCID(), value, proof);

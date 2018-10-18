@@ -282,8 +282,7 @@ public final class DeliveryThread extends Thread {
             logger.debug("Interpreting and verifying batched requests.");
 
             // obtain an array of requests from the decisions obtained
-            BatchReader batchReader = new BatchReader(dec.getValue(),
-                            controller.getStaticConf().getUseSignatures() == 1);
+            BatchReader batchReader = new BatchReader(dec.getValue(), controller.getStaticConf().getUseSignatures());
             requests = batchReader.deserialiseRequests(controller);
     	} else {
             logger.debug("Using cached requests from the propose.");

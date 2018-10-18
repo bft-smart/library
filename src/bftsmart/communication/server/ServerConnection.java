@@ -61,7 +61,7 @@ public class ServerConnection {
     private Logger logger = LoggerFactory.getLogger(this.getClass());
 
 
-    private static final long POOL_TIME = 5000;
+    private static final long POOL_TIME = 2000;
     private ServerViewController controller;
     private Socket socket;    
     private DataOutputStream socketOutStream = null;
@@ -193,7 +193,7 @@ public class ServerConnection {
             if (socket != null && socketOutStream != null) {
                 try {
                     //do an extra copy of the data to be sent, but on a single out stream write
-                    byte[] mac = (useMAC && this.controller.getStaticConf().getUseMACs() == 1)?macSend.doFinal(messageData):null;
+                    byte[] mac = (useMAC && this.controller.getStaticConf().getUseMACs())?macSend.doFinal(messageData):null;
                     byte[] data = new byte[5 +messageData.length+((mac!=null)?mac.length:0)];
                     int value = messageData.length;
 
@@ -498,7 +498,7 @@ public class ServerConnection {
                         boolean result = true;
                         
                         byte hasMAC = socketInStream.readByte();
-                        if (controller.getStaticConf().getUseMACs() == 1 && hasMAC == 1) {
+                        if (controller.getStaticConf().getUseMACs() && hasMAC == 1) {
                             read = 0;
                             do {
                                 read += socketInStream.read(receivedMac, read, macSize - read);
@@ -509,7 +509,7 @@ public class ServerConnection {
 
                         if (result) {
                             SystemMessage sm = (SystemMessage) (new ObjectInputStream(new ByteArrayInputStream(data)).readObject());
-                            sm.authenticated = (controller.getStaticConf().getUseMACs() == 1 && hasMAC == 1);
+                            sm.authenticated = (controller.getStaticConf().getUseMACs()&& hasMAC == 1);
                             
                             if (sm.getSender() == remoteId) {
                                 if (!inQueue.offer(sm)) {
@@ -579,7 +579,7 @@ public class ServerConnection {
                         boolean result = true;
                         
                         byte hasMAC = socketInStream.readByte();
-                        if (controller.getStaticConf().getUseMACs() == 1 && hasMAC == 1) {
+                        if (controller.getStaticConf().getUseMACs() && hasMAC == 1) {
                             
                             read = 0;
                             do {

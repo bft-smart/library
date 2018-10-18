@@ -71,7 +71,7 @@ public class MessageHandler {
             
             ConsensusMessage consMsg = (ConsensusMessage) sm;
 
-            if (tomLayer.controller.getStaticConf().getUseMACs() == 0 || consMsg.authenticated || consMsg.getSender() == myId) 
+            if (tomLayer.controller.getStaticConf().getUseMACs() == false || consMsg.authenticated || consMsg.getSender() == myId) 
             	acceptor.deliver(consMsg);
             else if (consMsg.getType() == MessageFactory.ACCEPT && consMsg.getProof() != null) {
                                         
@@ -113,7 +113,7 @@ public class MessageHandler {
             }
 
         } else {
-        	if (tomLayer.controller.getStaticConf().getUseMACs() == 0 || sm.authenticated) {
+        	if (tomLayer.controller.getStaticConf().getUseMACs() == false || sm.authenticated) {
 	            /*** This is Joao's code, related to leader change */
 	            if (sm instanceof LCMessage) {
 	                LCMessage lcMsg = (LCMessage) sm;

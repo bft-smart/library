@@ -53,11 +53,11 @@ public class NettyClientPipelineFactory {
 	}
 
 	public ByteToMessageDecoder getDecoder(){
-    	return new NettyTOMMessageDecoder(true, sessionTable,controller,rl,controller.getStaticConf().getUseMACs()==1);	
+    	return new NettyTOMMessageDecoder(true, sessionTable,controller,rl,controller.getStaticConf().getUseMACs());	
     }
     
     public MessageToByteEncoder getEncoder(){
-    	return new NettyTOMMessageEncoder(true, sessionTable,rl, controller.getStaticConf().getUseMACs()==1);	
+    	return new NettyTOMMessageEncoder(true, sessionTable,rl, controller.getStaticConf().getUseMACs());	
     }
     
     public SimpleChannelInboundHandler getHandler(){

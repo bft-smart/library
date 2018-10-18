@@ -75,6 +75,13 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 	// private ReentrantLock sendLock = new ReentrantLock();
 	private NettyServerPipelineFactory serverPipelineFactory;
 
+	/* Tulio Ribeiro */
+	private static int tcpSendBufferSize = 4 * 1024 * 1024;
+	private static int bossThreads = 2; /* just listens and accepts on server socket; workers handle r/w I/O */
+	private static int connectionBacklog = 1024; /* pending connections boss thread will queue to accept */
+	private static int connectionTimeoutMsec = 60000; /* how long to allow TCP handshake to complete (default is 60ish secs) */
+	    /* Tulio Ribeiro */
+	    
 	public NettyClientServerCommunicationSystemServerSide(ServerViewController controller) {
 		try {
 
@@ -87,17 +94,25 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 
 			serverPipelineFactory = new NettyServerPipelineFactory(this, sessionTable, controller, rl);
 
-			EventLoopGroup bossGroup = new NioEventLoopGroup();
+			EventLoopGroup bossGroup = new NioEventLoopGroup(bossThreads);
 
 			// If the numbers of workers are not specified by the configuration file,
 			// the event group is created with the default number of threads, which
 			// should be twice the number of cores available.
-			int nWorkers = this.controller.getStaticConf().getNumNettyWorkers();
-			EventLoopGroup workerGroup = (nWorkers > 0 ? new NioEventLoopGroup(nWorkers) : new NioEventLoopGroup());
+			//int nWorkers = this.controller.getStaticConf().getNumNettyWorkers();
+			//EventLoopGroup workerGroup = (nWorkers > 0 ? new NioEventLoopGroup(nWorkers) : new NioEventLoopGroup());
+			EventLoopGroup workerGroup = new NioEventLoopGroup(Runtime.getRuntime().availableProcessors());
 
 			ServerBootstrap b = new ServerBootstrap();
-			b.group(bossGroup, workerGroup).channel(NioServerSocketChannel.class)
-					.childHandler(new ChannelInitializer<SocketChannel>() {
+			b.group(bossGroup, workerGroup)
+			.channel(NioServerSocketChannel.class)
+			.option(ChannelOption.SO_REUSEADDR, true)
+            .option(ChannelOption.SO_KEEPALIVE, true)
+            .option(ChannelOption.TCP_NODELAY, true)
+            .option(ChannelOption.SO_SNDBUF, tcpSendBufferSize)
+            .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, connectionTimeoutMsec)
+            .option(ChannelOption.SO_BACKLOG, connectionBacklog)
+			.childHandler(new ChannelInitializer<SocketChannel>() {
 						@Override
 						public void initChannel(SocketChannel ch) throws Exception {
 							ch.pipeline().addLast(serverPipelineFactory.getDecoder());
@@ -105,7 +120,6 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 							ch.pipeline().addLast(serverPipelineFactory.getHandler());
 						}
 					}).childOption(ChannelOption.SO_KEEPALIVE, true).childOption(ChannelOption.TCP_NODELAY, true);
-
 			String myAddress;
 			String confAddress = controller.getStaticConf().getRemoteAddress(controller.getStaticConf().getProcessId())
 					.getAddress().getHostAddress();
@@ -145,9 +159,9 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 			logger.info("Port = " + controller.getStaticConf().getPort(controller.getStaticConf().getProcessId()));
 			logger.info("requestTimeout = " + controller.getStaticConf().getRequestTimeout());
 			logger.info("maxBatch = " + controller.getStaticConf().getMaxBatchSize());
-			if (controller.getStaticConf().getUseMACs() == 1)
+			if (controller.getStaticConf().getUseMACs())
 				logger.info("Using MACs");
-			if (controller.getStaticConf().getUseSignatures() == 1)
+			if (controller.getStaticConf().getUseSignatures())
 				logger.info("Using Signatures");
 			logger.info("Binded replica to IP address " + myAddress);			
 			// ******* EDUARDO END **************//

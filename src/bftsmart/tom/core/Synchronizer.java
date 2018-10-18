@@ -150,7 +150,7 @@ public class Synchronizer {
 
 					//TODO: If this is null, then there was no timeout nor STOP messages.
                     //What to do?
-                    byte[] serialized = bb.makeBatch(messages, 0, 0, controller.getStaticConf().getUseSignatures() == 1);
+                    byte[] serialized = bb.makeBatch(messages, 0, 0, controller.getStaticConf().getUseSignatures());
                     out.writeBoolean(true);
                     out.writeObject(serialized);
                 } else {
@@ -360,8 +360,7 @@ public class Synchronizer {
                 // Store requests that the other replica did not manage to order
                 //TODO: The requests have to be verified!
                 byte[] temp = (byte[]) ois.readObject();
-                BatchReader batchReader = new BatchReader(temp,
-                        controller.getStaticConf().getUseSignatures() == 1);
+                BatchReader batchReader = new BatchReader(temp, controller.getStaticConf().getUseSignatures());
                 requests = batchReader.deserialiseRequests(controller);
             } else {
                 
@@ -481,7 +480,7 @@ public class Synchronizer {
                     //TODO: If this is null, there was no timeout nor STOP messages.
                     //What shall be done then?
                     out.writeBoolean(true);
-                    byte[] serialized = bb.makeBatch(messages, 0, 0, controller.getStaticConf().getUseSignatures() == 1);
+                    byte[] serialized = bb.makeBatch(messages, 0, 0, controller.getStaticConf().getUseSignatures());
                     out.writeObject(serialized);
                 } else {
                     out.writeBoolean(false);

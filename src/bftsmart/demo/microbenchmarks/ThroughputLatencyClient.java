@@ -25,6 +25,8 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Example client that updates a BFT replicated service (a counter).
@@ -54,7 +56,7 @@ public class ThroughputLatencyClient {
         
         for(int i=0; i<numThreads; i++) {
             try {
-                Thread.sleep(100);
+                Thread.sleep(60);
             } catch (InterruptedException ex) {
                 
                 ex.printStackTrace();
@@ -64,7 +66,19 @@ public class ThroughputLatencyClient {
             clients[i] = new ThroughputLatencyClient.Client(initId+i,numberOfOps,requestSize,interval,readOnly, verbose);
         }
 
-        ExecutorService exec = Executors.newFixedThreadPool(clients.length);
+        final ThreadGroup tg = new ThreadGroup("Client Group Threads");
+        ThreadFactory tf = new ThreadFactory() {
+            AtomicInteger id = new AtomicInteger();
+            
+            @Override
+            public Thread newThread(Runnable runnable) {
+                return new Thread(tg, runnable, 
+                                  "ClientThread_" + id.getAndIncrement());
+            }
+        };
+        
+        ExecutorService exec = Executors.newFixedThreadPool(clients.length, tf);
+        
         Collection<Future<?>> tasks = new LinkedList<>();
         
         for (Client c : clients) {

@@ -220,7 +220,7 @@ public class ServerConnectionSSLTLS {
             if (socketSSL != null && socketOutStream != null) {
                 try {
                     //do an extra copy of the data to be sent, but on a single out stream write
-                    byte[] mac = (useMAC && this.controller.getStaticConf().getUseMACs() == 1)?macSend.doFinal(messageData):null;
+                    byte[] mac = (useMAC && this.controller.getStaticConf().getUseMACs())?macSend.doFinal(messageData):null;
                     byte[] data = new byte[5 +messageData.length+((mac!=null)?mac.length:0)];
                     int value = messageData.length;
 
@@ -541,7 +541,7 @@ public class ServerConnectionSSLTLS {
                         boolean result = true;
                         
                         byte hasMAC = socketInStream.readByte();
-                        if (controller.getStaticConf().getUseMACs() == 1 && hasMAC == 1) {
+                        if (controller.getStaticConf().getUseMACs() && hasMAC == 1) {
                             read = 0;
                             do {
                                 read += socketInStream.read(receivedMac, read, macSize - read);
@@ -552,7 +552,7 @@ public class ServerConnectionSSLTLS {
 
                         if (result) {
                             SystemMessage sm = (SystemMessage) (new ObjectInputStream(new ByteArrayInputStream(data)).readObject());
-                            sm.authenticated = (controller.getStaticConf().getUseMACs() == 1 && hasMAC == 1);
+                            sm.authenticated = (controller.getStaticConf().getUseMACs() && hasMAC == 1);
                             
                             if (sm.getSender() == remoteId) {
                                 if (!inQueue.offer(sm)) {
@@ -622,7 +622,7 @@ public class ServerConnectionSSLTLS {
                         boolean result = true;
                         
                         byte hasMAC = socketInStream.readByte();
-                        if (controller.getStaticConf().getUseMACs() == 1 && hasMAC == 1) {
+                        if (controller.getStaticConf().getUseMACs() && hasMAC == 1) {
                             
                             read = 0;
                             do {

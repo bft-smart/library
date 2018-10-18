@@ -137,9 +137,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         
         // use either the same number of Netty workers threads if specified in the configuration
         // or use a many as the number of cores available
-        int nWorkers = this.controller.getStaticConf().getNumNettyWorkers();
-        nWorkers = nWorkers > 0 ? nWorkers : Runtime.getRuntime().availableProcessors();
-        this.verifierExecutor = Executors.newWorkStealingPool(nWorkers);
+        this.verifierExecutor = Executors.newWorkStealingPool(Runtime.getRuntime().availableProcessors());
         
         //do not create a timer manager if the timeout is 0
         if (this.controller.getStaticConf().getRequestTimeout() == 0) {
@@ -334,7 +332,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
         logger.debug("Creating a PROPOSE with " + numberOfMessages + " msgs");
 
-        return bb.makeBatch(pendingRequests, numberOfNonces, System.currentTimeMillis(), controller.getStaticConf().getUseSignatures() == 1);
+        return bb.makeBatch(pendingRequests, numberOfNonces, System.currentTimeMillis(), controller.getStaticConf().getUseSignatures());
     }
 
     /**
@@ -454,8 +452,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             
             logger.debug("Checking proposed value");
 
-            BatchReader batchReader = new BatchReader(proposedValue,
-                this.controller.getStaticConf().getUseSignatures() == 1);
+            BatchReader batchReader = new BatchReader(proposedValue, this.controller.getStaticConf().getUseSignatures());
 
             TOMMessage[] requests = null;
 
