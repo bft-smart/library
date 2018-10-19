@@ -127,7 +127,7 @@ public class ThroughputLatencyClient {
 
         public void run() {
 
-            System.out.println("Warm up... Client_" + this.id);
+            System.out.println("Warming up client " + this.id);
 
             int req = 0;
             

@@ -86,13 +86,20 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 
     private EventLoopGroup workerGroup;
     
+    /* Tulio Ribeiro */
+	private static int tcpSendBufferSize = 4 * 1024 * 1024;
+	private static int bossThreads = 2; /* listens and accepts on server socket; workers handle r/w I/O */
+	private static int connectionBacklog = 1024; /* pending connections boss thread will queue to accept */
+	private static int connectionTimeoutMsec = 60000; /* how long to allow TCP handshake to complete (default is 60ish secs) */
+	/* Tulio Ribeiro */
+    
     private SyncListener listener;
 
     public NettyClientServerCommunicationSystemClientSide(int clientId, ClientViewController controller) {
         super();
 
         this.clientId = clientId;
-        this.workerGroup = new NioEventLoopGroup();
+        this.workerGroup = new NioEventLoopGroup(Runtime.getRuntime().availableProcessors());
         try {           
             SecretKeyFactory fac = TOMUtil.getSecretFactory();
 
@@ -116,9 +123,12 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
                     Bootstrap b = new Bootstrap();
                     b.group(workerGroup);
                     b.channel(NioSocketChannel.class);
+                    
                     b.option(ChannelOption.SO_KEEPALIVE, true);
                     b.option(ChannelOption.TCP_NODELAY, true);
-                    b.option(ChannelOption.CONNECT_TIMEOUT_MILLIS,10000);
+                    b.option(ChannelOption.SO_SNDBUF, tcpSendBufferSize);
+                    b.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, connectionTimeoutMsec);
+                    b.option(ChannelOption.SO_BACKLOG, connectionBacklog);
 
                     b.handler(getChannelInitializer());
 

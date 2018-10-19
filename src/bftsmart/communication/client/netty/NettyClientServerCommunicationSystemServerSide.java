@@ -77,10 +77,10 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 
 	/* Tulio Ribeiro */
 	private static int tcpSendBufferSize = 4 * 1024 * 1024;
-	private static int bossThreads = 2; /* just listens and accepts on server socket; workers handle r/w I/O */
+	private static int bossThreads = 2; /* listens and accepts on server socket; workers handle r/w I/O */
 	private static int connectionBacklog = 1024; /* pending connections boss thread will queue to accept */
 	private static int connectionTimeoutMsec = 60000; /* how long to allow TCP handshake to complete (default is 60ish secs) */
-	    /* Tulio Ribeiro */
+	/* Tulio Ribeiro */
 	    
 	public NettyClientServerCommunicationSystemServerSide(ServerViewController controller) {
 		try {
@@ -119,7 +119,12 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 							ch.pipeline().addLast(serverPipelineFactory.getEncoder());
 							ch.pipeline().addLast(serverPipelineFactory.getHandler());
 						}
-					}).childOption(ChannelOption.SO_KEEPALIVE, true).childOption(ChannelOption.TCP_NODELAY, true);
+					})
+				.childOption(ChannelOption.SO_KEEPALIVE, true)
+				.childOption(ChannelOption.TCP_NODELAY, true)
+				.childOption(ChannelOption.SO_SNDBUF, tcpSendBufferSize)
+	            .childOption(ChannelOption.CONNECT_TIMEOUT_MILLIS, connectionTimeoutMsec)
+	            .childOption(ChannelOption.SO_BACKLOG, connectionBacklog);
 			String myAddress;
 			String confAddress = controller.getStaticConf().getRemoteAddress(controller.getStaticConf().getProcessId())
 					.getAddress().getHostAddress();

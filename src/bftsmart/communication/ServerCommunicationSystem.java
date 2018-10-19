@@ -59,7 +59,7 @@ public class ServerCommunicationSystem extends Thread {
 	 * Creates a new instance of ServerCommunicationSystem
 	 */
 	public ServerCommunicationSystem(ServerViewController controller, ServiceReplica replica) throws Exception {
-		super("Server CS");
+		super("Server Comm. System");
 
 		this.controller = controller;
 
