@@ -36,6 +36,8 @@ import javax.crypto.Mac;
 import javax.crypto.SecretKey;
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.PBEKeySpec;
+import javax.net.ssl.HandshakeCompletedEvent;
+import javax.net.ssl.HandshakeCompletedListener;
 import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;
 
@@ -82,6 +84,14 @@ public class ServerConnectionSSLTLS {
     private Lock sendLock;
     private boolean doWork = true;
 
+	String[] ciphers = new String[] { "TLS_RSA_WITH_NULL_SHA256",
+			 "TLS_ECDHE_ECDSA_WITH_NULL_SHA",
+			 "TLS_ECDHE_RSA_WITH_NULL_SHA",
+			 "SSL_RSA_WITH_NULL_SHA",
+			 "TLS_ECDH_ECDSA_WITH_NULL_SHA",
+			 "TLS_ECDH_RSA_WITH_NULL_SHA",
+			 "TLS_ECDH_anon_WITH_NULL_SHA",
+			 "SSL_RSA_WITH_NULL_MD5" };
     
     public ServerConnectionSSLTLS(ServerViewController controller, SSLSocket socketSSL, int remoteId,
             LinkedBlockingQueue<SystemMessage> inQueue, ServiceReplica replica) {
@@ -100,12 +110,6 @@ public class ServerConnectionSSLTLS {
         // Connect to the remote process or just wait for the connection?
         if (isToConnect()) {
         	
-        	/*try {
-				Thread.sleep(2000);
-			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}*/
             //I have to connect to the remote server
             try {
             	// SSL Socket.
@@ -113,18 +117,20 @@ public class ServerConnectionSSLTLS {
             	this.socketSSL = (SSLSocket)factory.createSocket(
             			this.controller.getStaticConf().getHost(remoteId),
                         this.controller.getStaticConf().getServerToServerPort(remoteId));
-                   
-            	
-            	String[] ciphers = new String[] { "TLS_RSA_WITH_NULL_SHA256",
-       				 "TLS_ECDHE_ECDSA_WITH_NULL_SHA",
-       				 "TLS_ECDHE_RSA_WITH_NULL_SHA",
-       				 "SSL_RSA_WITH_NULL_SHA",
-       				 "TLS_ECDH_ECDSA_WITH_NULL_SHA",
-       				 "TLS_ECDH_RSA_WITH_NULL_SHA",
-       				 "TLS_ECDH_anon_WITH_NULL_SHA",
-       				 "SSL_RSA_WITH_NULL_MD5" };
+
             	this.socketSSL.setEnabledCipherSuites(ciphers);
-            	//this.socketSSL.setEnabledCipherSuites(this.socketSSL.getSupportedCipherSuites());
+            	//this.socketSSL.setEnabledCipherSuites(this.socketSSL.getSupportedCipherSuites());           
+            	
+            	this.socketSSL.addHandshakeCompletedListener(new HandshakeCompletedListener() {
+					@Override
+					public void handshakeCompleted(HandshakeCompletedEvent event) {
+						logger.debug("SSL/TLS handshake complete (reConnected)!, Id:{}" + "  ## CipherSuite: {}, ",
+								remoteId, event.getCipherSuite());
+					}
+				});
+
+            	
+            	this.socketSSL.startHandshake();
 
             	ServersCommunicationLayerSSLTLS.setSSLSocketOptions(this.socketSSL);                
                 new DataOutputStream(this.socketSSL.getOutputStream()).writeInt(this.controller.getStaticConf().getProcessId());
@@ -263,33 +269,7 @@ public class ServerConnectionSSLTLS {
              if (this.controller.getStaticConf().getProcessId() > remoteId) {
                  ret = true;
              }
-                
-            /** JCS: I commented the code below to fix a bug, but I am not sure
-             whether its completely useless or not. The 'if' above was taken
-             from that same code (its the only part I understand why is necessary)
-             I keep the code commented just to be on the safe side*/
-            
-            /**
-            
-            boolean me = this.controller.isInLastJoinSet(this.controller.getStaticConf().getProcessId());
-            boolean remote = this.controller.isInLastJoinSet(remoteId);
-
-            //either both endpoints are old in the system (entered the system in a previous view),
-            //or both entered during the last reconfiguration
-            if ((me && remote) || (!me && !remote)) {
-                //in this case, the node with higher ID starts the connection
-                if (this.controller.getStaticConf().getProcessId() > remoteId) {
-                    ret = true;
-                }
-            //this process is the older one, and the other one entered in the last reconfiguration
-            } else if (!me && remote) {
-                ret = true;
-
-            } //else if (me && !remote) { //this process entered in the last reconfig and the other one is old
-                //ret=false; //not necessary, as ret already is false
-            //}
-              
-            */
+         
         }
         return ret;
     }
@@ -317,19 +297,10 @@ public class ServerConnectionSSLTLS {
                 	this.socketSSL = (SSLSocket)factory.createSocket(
                     		this.controller.getStaticConf().getHost(remoteId),
                             this.controller.getStaticConf().getServerToServerPort(remoteId));
-                       
-                	String[] ciphers = new String[] { "TLS_RSA_WITH_NULL_SHA256",
-              				 "TLS_ECDHE_ECDSA_WITH_NULL_SHA",
-              				 "TLS_ECDHE_RSA_WITH_NULL_SHA",
-              				 "SSL_RSA_WITH_NULL_SHA",
-              				 "TLS_ECDH_ECDSA_WITH_NULL_SHA",
-              				 "TLS_ECDH_RSA_WITH_NULL_SHA",
-              				 "TLS_ECDH_anon_WITH_NULL_SHA",
-              				 "SSL_RSA_WITH_NULL_MD5" };
-                   	this.socketSSL.setEnabledCipherSuites(ciphers);
-                	//this.socketSSL.setEnabledCipherSuites(this.socketSSL.getSupportedCipherSuites());
+                      
+                	logger.debug("Reconnecting with, replicaId:{}", remoteId);
                 	
-                    ServersCommunicationLayerSSLTLS.setSSLSocketOptions(this.socketSSL);                
+                	ServersCommunicationLayerSSLTLS.setSSLSocketOptions(this.socketSSL);                
                     new DataOutputStream(this.socketSSL.getOutputStream()).writeInt(this.controller.getStaticConf().getProcessId());
                     
 

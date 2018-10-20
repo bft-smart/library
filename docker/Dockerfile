@@ -1,4 +1,4 @@
-FROM ubuntu:latest
+FROM ubuntu:latestJava
 #FROM tulioribeiro/bft-smart:v1_f1
 
 # Set the working directory to /opt
@@ -9,6 +9,7 @@ ADD ./config /opt/config/
 ADD ./lib /opt/lib/
 
 ADD ./provision.sh /opt/
+
 RUN ["bash","/opt/provision.sh"]
 
 RUN echo "#!/bin/bash" > startRC.sh

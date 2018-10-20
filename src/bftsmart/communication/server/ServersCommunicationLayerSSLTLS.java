@@ -62,12 +62,14 @@ public class ServersCommunicationLayerSSLTLS extends Thread {
 
 	private SSLServerSocket serverSocketSSLTLS;
 	private String ssltlsProtocolVersion;
+	String[] ciphers = new String[] { "TLS_RSA_WITH_NULL_SHA256", "TLS_ECDHE_ECDSA_WITH_NULL_SHA",
+			"TLS_ECDHE_RSA_WITH_NULL_SHA", "SSL_RSA_WITH_NULL_SHA", "TLS_ECDH_ECDSA_WITH_NULL_SHA",
+			"TLS_ECDH_RSA_WITH_NULL_SHA", "TLS_ECDH_anon_WITH_NULL_SHA", "SSL_RSA_WITH_NULL_MD5" };
 
 	private int me;
 	private boolean doWork = true;
 	private Lock connectionsLock = new ReentrantLock();
 	private ReentrantLock waitViewLock = new ReentrantLock();
-	// private Condition canConnect = waitViewLock.newCondition();
 	private List<PendingConnection> pendingConn = new LinkedList<PendingConnection>();
 	private ServiceReplica replica;
 
@@ -82,17 +84,6 @@ public class ServersCommunicationLayerSSLTLS extends Thread {
 		this.me = controller.getStaticConf().getProcessId();
 		this.replica = replica;
 		this.ssltlsProtocolVersion = controller.getStaticConf().getSSLTLSProtocolVersion();
-
-		// Try connecting if a member of the current view. Otherwise, wait until the
-		// Join has been processed!
-		if (controller.isInCurrentView()) {
-			int[] initialV = controller.getCurrentViewAcceptors();
-			for (int i = 0; i < initialV.length; i++) {
-				if (initialV[i] != me) {
-					getConnection(initialV[i]);
-				}
-			}
-		}
 
 		String myAddress;
 		String confAddress = controller.getStaticConf().getRemoteAddress(controller.getStaticConf().getProcessId())
@@ -127,47 +118,37 @@ public class ServersCommunicationLayerSSLTLS extends Thread {
 		context.init(null, null, null);
 
 		SSLServerSocketFactory serverSocketFactory = context.getServerSocketFactory();
-		this.serverSocketSSLTLS = (SSLServerSocket) serverSocketFactory.createServerSocket(myPort, 100, InetAddress.getByName(myAddress));
+		this.serverSocketSSLTLS = (SSLServerSocket) serverSocketFactory.createServerSocket(myPort, 100,
+				InetAddress.getByName(myAddress));
 
-		 String[] ciphers = new String[] { "TLS_RSA_WITH_NULL_SHA256",
-				 "TLS_ECDHE_ECDSA_WITH_NULL_SHA",
-				 "TLS_ECDHE_RSA_WITH_NULL_SHA",
-				 "SSL_RSA_WITH_NULL_SHA",
-				 "TLS_ECDH_ECDSA_WITH_NULL_SHA",
-				 "TLS_ECDH_RSA_WITH_NULL_SHA",
-				 "TLS_ECDH_anon_WITH_NULL_SHA",
-				 "SSL_RSA_WITH_NULL_MD5" };		  
 		serverSocketSSLTLS.setEnabledCipherSuites(ciphers);
-		//serverSocketSSLTLS.setEnabledCipherSuites(serverSocketSSLTLS.getSupportedCipherSuites());
-		
-		/*String[] enabledCiphers = serverSocketSSLTLS.getSSLParameters().getCipherSuites();
-		for (int i = 0; i < enabledCiphers.length; i++) {
-			System.out.println(" ORDER? " + enabledCiphers[i]);			
-		}*/
-		
-		serverSocketSSLTLS.setSoTimeout(20000);
+
+		serverSocketSSLTLS.setSoTimeout(30000);
 		serverSocketSSLTLS.setEnableSessionCreation(true);
 		serverSocketSSLTLS.setReuseAddress(true);
-
-		/*String[] supportedCiphers = serverSocketSSLTLS.getSupportedCipherSuites();
-		for (int i = 0; i < supportedCiphers.length; i++) {
-			System.out.println("Supported Cipher: " + supportedCiphers[i]);
-		}*/
-		
-		/*String[] enabledCiphers = serverSocketSSLTLS.getSupportedCipherSuites();
-		for (int i = 0; i < enabledCiphers.length; i++) {
-			System.out.println("Enabled Cipher: " + enabledCiphers[i]);
-		}*/
+		serverSocketSSLTLS.setNeedClientAuth(true);
+		serverSocketSSLTLS.setWantClientAuth(true);
 
 		SecretKeyFactory fac = TOMUtil.getSecretFactory();
-        PBEKeySpec spec = TOMUtil.generateKeySpec(PASSWORD.toCharArray());
+		PBEKeySpec spec = TOMUtil.generateKeySpec(PASSWORD.toCharArray());
 		selfPwd = fac.generateSecret(spec);
-		 
+
+		// Try connecting if a member of the current view. Otherwise, wait until the
+		// Join has been processed!
+		if (controller.isInCurrentView()) {
+			int[] initialV = controller.getCurrentViewAcceptors();
+			for (int i = 0; i < initialV.length; i++) {
+				if (initialV[i] != me) {
+					getConnection(initialV[i]);
+				}
+			}
+		}
+
 		start();
 
 	}
 
-		// ******* EDUARDO BEGIN **************//
+	// ******* EDUARDO BEGIN **************//
 	public void updateConnections() {
 		connectionsLock.lock();
 
@@ -328,7 +309,8 @@ public class ServersCommunicationLayerSSLTLS extends Thread {
 			if (this.connections.get(remoteId) == null) { // This must never happen!!!
 				// first time that this connection is being established
 				// System.out.println("THIS DOES NOT HAPPEN....."+remoteId);
-				this.connections.put(remoteId, new ServerConnectionSSLTLS(controller, newSocket, remoteId, inQueue, replica));
+				this.connections.put(remoteId,
+						new ServerConnectionSSLTLS(controller, newSocket, remoteId, inQueue, replica));
 			} else {
 				// reconnection
 				System.out.println("ReConnecting with: " + remoteId);
@@ -379,7 +361,8 @@ public class ServersCommunicationLayerSSLTLS extends Thread {
 			this.s = s;
 			this.remoteId = remoteId;
 		}
-	}	
+	}
+
 	// ******* Tulio END **************//
 	public SecretKey getSecretKey(int id) {
 		if (id == controller.getStaticConf().getProcessId())
@@ -387,6 +370,5 @@ public class ServersCommunicationLayerSSLTLS extends Thread {
 		else
 			return connections.get(id).getSecretKey();
 	}
-	
 
 }
