@@ -124,7 +124,7 @@ public class ServerConnectionSSLTLS {
             	this.socketSSL.addHandshakeCompletedListener(new HandshakeCompletedListener() {
 					@Override
 					public void handshakeCompleted(HandshakeCompletedEvent event) {
-						logger.debug("SSL/TLS handshake complete (reConnected)!, Id:{}" + "  ## CipherSuite: {}, ",
+						logger.debug("SSL/TLS handshake complete (ServerConnectionSSLTLS)!, Id:{}" + "  ## CipherSuite: {}, ",
 								remoteId, event.getCipherSuite());
 					}
 				});
@@ -465,7 +465,8 @@ public class ServerConnectionSSLTLS {
                     //sendBytes(data, noMACs.contains(System.identityHashCode(data)));
                     int ref = System.identityHashCode(data);
                     boolean sendMAC = !noMACs.remove(ref);
-                    logger.debug((sendMAC ? "Sending" : "Not sending") + " MAC for data " + ref);
+                    logger.trace((sendMAC ? "Sending" : "Not sending") + " MAC for data " + ref);
+                    logger.debug("Sending data to, RemoteId:{}", remoteId);
                     sendBytes(data, sendMAC);
                 }
             }

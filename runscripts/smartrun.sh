@@ -13,6 +13,8 @@
 # limitations under the License.
 
 #java -Dlogback.configurationFile="../config/logback.xml" -cp ../bin/*:../lib/* $@
+#java -Dlogback.configurationFile="./config/logback.xml" -cp ./bin/BFT-SMaRt.jar:./lib/* $@
 
-java -Dlogback.configurationFile="./config/logback.xml" -cp ./bin/BFT-SMaRt.jar:./lib/* $@
+nice -20 java -Xms1024m -Xmx20480m -XX:+AggressiveOpts -XX:+AggressiveHeap -Dlogback.configurationFile="./config/logback.xml" -cp ./bin/BFT-SMaRt.jar:./lib/* $@
+
  
