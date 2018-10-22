@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2007-2013 Alysson Bessani, Eduardo Alchieri, Paulo Sousa, and the authors indicated in the @author tags
+Copyright (c) 2007-2013 Alysson Bessani, Eduardo Alchieri, Paulo Sousa, Tulio Ribeiro and the authors indicated in the @author tags
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -13,6 +13,18 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+
+
+/**
+ * Tulio Ribeiro.
+ * 
+ * Generate a KeyPair used by SSL/TLS connections. 
+ * 
+ * $keytool -genkey -keyalg EC -alias bftsmart -keypass MySeCreT_2hMOygBwY  -keystore ./ecKeyPair -dname "CN=BFT-SMaRT" 
+ * $keytool -importkeystore -srckeystore ./ecKeyPair -destkeystore ./ecKeyPair -deststoretype pkcs12
+ * 
+ */
+
 package bftsmart.communication.server;
 
 import java.io.ByteArrayInputStream;
@@ -76,6 +88,9 @@ public class ServerConnectionSSLTLS {
 	String[] ciphers = new String[] { "TLS_RSA_WITH_NULL_SHA256", "TLS_ECDHE_ECDSA_WITH_NULL_SHA",
 			"TLS_ECDHE_RSA_WITH_NULL_SHA", "SSL_RSA_WITH_NULL_SHA", "TLS_ECDH_ECDSA_WITH_NULL_SHA",
 			"TLS_ECDH_RSA_WITH_NULL_SHA", "TLS_ECDH_anon_WITH_NULL_SHA", "SSL_RSA_WITH_NULL_MD5" };
+	
+	private static final String SECRET = "MySeCreT_2hMOygBwY";
+	
 
 	public ServerConnectionSSLTLS(ServerViewController controller, SSLSocket socketSSL, int remoteId,
 			LinkedBlockingQueue<SystemMessage> inQueue, ServiceReplica replica) {
@@ -197,7 +212,7 @@ public class ServerConnectionSSLTLS {
 			}
 		} else {
 			sendLock.lock();
-			sendBytes(data, useMAC);
+			sendBytes(data);
 			sendLock.unlock();
 		}
 	}
@@ -206,7 +221,7 @@ public class ServerConnectionSSLTLS {
 	 * try to send a message through the socket if some problem is detected, a
 	 * reconnection is done
 	 */
-	private final void sendBytes(byte[] messageData, boolean useMAC) {
+	private final void sendBytes(byte[] messageData) {
 		boolean abort = false;
 		do {
 			if (abort)
@@ -382,12 +397,8 @@ public class ServerConnectionSSLTLS {
 				}
 
 				if (data != null) {
-					// sendBytes(data, noMACs.contains(System.identityHashCode(data)));
-					int ref = System.identityHashCode(data);
-					boolean sendMAC = !noMACs.remove(ref);
-					logger.trace((sendMAC ? "Sending" : "Not sending") + " MAC for data " + ref);
-					logger.debug("Sending data to, RemoteId:{}", remoteId);
-					sendBytes(data, sendMAC);
+					logger.trace("Sending data to, RemoteId:{}", remoteId);
+					sendBytes(data);
 				}
 			}
 
@@ -409,6 +420,7 @@ public class ServerConnectionSSLTLS {
 
 			while (doWork) {
 				if (socketSSL != null && socketInStream != null) {
+					
 					try {
 						// read data length
 						int dataLength = socketInStream.readInt();
@@ -422,7 +434,7 @@ public class ServerConnectionSSLTLS {
 
 						byte hasMAC = socketInStream.readByte();
 
-						logger.debug("Read: {}, HasMAC: {}", read, hasMAC);
+						logger.trace("Read: {}, HasMAC: {}", read, hasMAC);
 
 						SystemMessage sm = (SystemMessage) (new ObjectInputStream(new ByteArrayInputStream(data))
 								.readObject());

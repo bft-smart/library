@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2007-2013 Alysson Bessani, Eduardo Alchieri, Paulo Sousa, and the authors indicated in the @author tags
+Copyright (c) 2007-2013 Alysson Bessani, Eduardo Alchieri, Paulo Sousa, Tulio Ribeiro and the authors indicated in the @author tags
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -16,34 +16,34 @@ limitations under the License.
 package bftsmart.consensus.roles;
 
 
-import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
-import java.util.Arrays;
-
-import bftsmart.communication.ServerCommunicationSystem;
-import bftsmart.communication.ServerCommunicationSystem.ConnType;
-import bftsmart.communication.server.ServerConnection;
-import bftsmart.consensus.Consensus;
-import bftsmart.tom.core.ExecutionManager;
-import bftsmart.consensus.Epoch;
-import bftsmart.consensus.messages.MessageFactory;
-import bftsmart.consensus.messages.ConsensusMessage;
-import bftsmart.reconfiguration.ServerViewController;
-import bftsmart.tom.core.TOMLayer;
-import bftsmart.tom.core.messages.TOMMessage;
-import bftsmart.tom.core.messages.TOMMessageType;
-import bftsmart.tom.util.TOMUtil;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedList;
+
 import javax.crypto.Mac;
 import javax.crypto.SecretKey;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import bftsmart.communication.ServerCommunicationSystem;
+import bftsmart.communication.ServerCommunicationSystem.ConnType;
+import bftsmart.consensus.Consensus;
+import bftsmart.consensus.Epoch;
+import bftsmart.consensus.messages.ConsensusMessage;
+import bftsmart.consensus.messages.MessageFactory;
+import bftsmart.reconfiguration.ServerViewController;
+import bftsmart.tom.core.ExecutionManager;
+import bftsmart.tom.core.TOMLayer;
+import bftsmart.tom.core.messages.TOMMessage;
+import bftsmart.tom.core.messages.TOMMessageType;
+import bftsmart.tom.util.TOMUtil;
 
 /**
  * This class represents the acceptor role in the consensus protocol.
@@ -305,8 +305,6 @@ public final class AcceptorSSLTLS {
                 else
                 	communication.getServersConn().send(targets, cm, true);
                 
-                //communication.send(this.reconfManager.getCurrentViewOtherAcceptors(),
-                        //factory.createStrong(cid, epoch.getNumber(), value));
                 epoch.addToProof(cm);
                 computeAccept(cid, epoch, value);
             }

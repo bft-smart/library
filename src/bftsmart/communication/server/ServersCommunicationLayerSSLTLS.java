@@ -73,8 +73,8 @@ public class ServersCommunicationLayerSSLTLS extends Thread {
 	private List<PendingConnection> pendingConn = new LinkedList<PendingConnection>();
 	private ServiceReplica replica;
 
-	/*private SecretKey selfPwd;
-	private static final String PASSWORD = "commsyst";*/
+	private SecretKey selfPwd;
+	private static final String PASSWORD = "commsyst";
 
 	public ServersCommunicationLayerSSLTLS(ServerViewController controller, LinkedBlockingQueue<SystemMessage> inQueue,
 			ServiceReplica replica) throws Exception {
@@ -129,9 +129,9 @@ public class ServersCommunicationLayerSSLTLS extends Thread {
 		serverSocketSSLTLS.setNeedClientAuth(true);
 		serverSocketSSLTLS.setWantClientAuth(true);
 
-		/*SecretKeyFactory fac = TOMUtil.getSecretFactory();
+		SecretKeyFactory fac = TOMUtil.getSecretFactory();
 		PBEKeySpec spec = TOMUtil.generateKeySpec(PASSWORD.toCharArray());
-		selfPwd = fac.generateSecret(spec);*/
+		selfPwd = fac.generateSecret(spec);
 
 		// Try connecting if a member of the current view. Otherwise, wait until the
 		// Join has been processed!
@@ -366,7 +366,7 @@ public class ServersCommunicationLayerSSLTLS extends Thread {
 	// ******* Tulio END **************//
 	public SecretKey getSecretKey(int id) {
 		if (id == controller.getStaticConf().getProcessId())
-			return null;
+			return selfPwd;
 		else
 			return connections.get(id).getSecretKey();
 	}
