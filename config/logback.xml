@@ -39,7 +39,7 @@
   
   <!-- SPECIFIC CLASS LOGS -->
   
-  <logger name="bftsmart.consensus.roles.Acceptor" level="DEBUG"></logger>
+  <logger name="bftsmart.consensus.roles.AcceptorSSLTLS" level="DEBUG"></logger>
   <logger name="bftsmart.communication.server.ServerConnectionSSLTLS" level="DEBUG"></logger>
   <logger name="bftsmart.communication.server.ServersCommunicationLayerSSLTLS" level="DEBUG"></logger>
   

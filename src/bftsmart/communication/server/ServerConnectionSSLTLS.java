@@ -31,6 +31,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import javax.crypto.SecretKey;
 import javax.net.ssl.HandshakeCompletedEvent;
 import javax.net.ssl.HandshakeCompletedListener;
+import javax.net.ssl.SSLPeerUnverifiedException;
 import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;
 
@@ -161,6 +162,12 @@ public class ServerConnectionSSLTLS {
 		 * This is used to insert a proof at Acceptor (insertProof()) but, is it
 		 * necessary when using SSL/TLS
 		 */
+		try {
+			logger.info("PeerPrincipal Name: {}", socketSSL.getSession().getPeerPrincipal().getName());
+		} catch (SSLPeerUnverifiedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		return null;
 	}
 

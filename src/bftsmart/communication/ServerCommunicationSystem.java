@@ -29,6 +29,7 @@ import bftsmart.communication.client.RequestReceiver;
 import bftsmart.communication.server.ServersCommunicationLayer;
 import bftsmart.communication.server.ServersCommunicationLayerSSLTLS;
 import bftsmart.consensus.roles.Acceptor;
+import bftsmart.consensus.roles.AcceptorSSLTLS;
 import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.tom.ServiceReplica;
 import bftsmart.tom.core.TOMLayer;
@@ -46,6 +47,7 @@ public class ServerCommunicationSystem extends Thread {
 	public final long MESSAGE_WAIT_TIME = 100;
 	private LinkedBlockingQueue<SystemMessage> inQueue = null;// new LinkedBlockingQueue<SystemMessage>(IN_QUEUE_SIZE);
 	protected MessageHandler messageHandler;
+	protected MessageHandlerSSLTLS messageHandlerSSLTLS;
 	
 	private ServersCommunicationLayer serversConn;
 	private ServersCommunicationLayerSSLTLS serversConnSSLTLS;
@@ -62,15 +64,15 @@ public class ServerCommunicationSystem extends Thread {
 
 		this.controller = controller;
 
-		messageHandler = new MessageHandler();
-
-		inQueue = new LinkedBlockingQueue<SystemMessage>(controller.getStaticConf().getInQueueSize());
+				inQueue = new LinkedBlockingQueue<SystemMessage>(controller.getStaticConf().getInQueueSize());
 
 		if(this.controller.getStaticConf().isSSLTLSEnabled()){
 			serversConnSSLTLS = new ServersCommunicationLayerSSLTLS(controller, inQueue, replica);
+			messageHandlerSSLTLS = new MessageHandlerSSLTLS();
 			connType = ConnType.SSL_TLS;
 		} else {
 			serversConn = new ServersCommunicationLayer(controller, inQueue, replica);
+			messageHandler = new MessageHandler();
 			connType = ConnType.No_SSL_TLS;
 		}
 
@@ -103,12 +105,20 @@ public class ServerCommunicationSystem extends Thread {
 	}
 
 	// ******* EDUARDO END **************//
+	
 	public void setAcceptor(Acceptor acceptor) {
 		messageHandler.setAcceptor(acceptor);
 	}
 
+	public void setAcceptorSSLTLS(AcceptorSSLTLS acceptor) {
+		messageHandlerSSLTLS.setAcceptor(acceptor);
+	}
+	
 	public void setTOMLayer(TOMLayer tomLayer) {
-		messageHandler.setTOMLayer(tomLayer);
+		if(connType.equals(ConnType.SSL_TLS))
+			messageHandlerSSLTLS.setTOMLayer(tomLayer);
+		else
+			messageHandler.setTOMLayer(tomLayer);
 	}
 
 	public void setRequestReceiver(RequestReceiver requestReceiver) {
@@ -135,10 +145,16 @@ public class ServerCommunicationSystem extends Thread {
 
 				if (sm != null) {
 					logger.debug("<-------receiving---------- " + sm);
-					messageHandler.processData(sm);
+					if(connType.equals(ConnType.SSL_TLS))
+						messageHandlerSSLTLS.processData(sm);
+					else
+						messageHandler.processData(sm);
 					count++;
 				} else {
-					messageHandler.verifyPending();
+					if(connType.equals(ConnType.SSL_TLS))
+						messageHandlerSSLTLS.verifyPending();
+					else
+						messageHandler.verifyPending();
 				}
 			} catch (InterruptedException e) {
 

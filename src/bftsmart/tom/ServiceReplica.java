@@ -22,9 +22,11 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
 import bftsmart.communication.ServerCommunicationSystem;
+import bftsmart.communication.ServerCommunicationSystem.ConnType;
 import bftsmart.tom.core.ExecutionManager;
 import bftsmart.consensus.messages.MessageFactory;
 import bftsmart.consensus.roles.Acceptor;
+import bftsmart.consensus.roles.AcceptorSSLTLS;
 import bftsmart.consensus.roles.Proposer;
 import bftsmart.reconfiguration.ReconfigureReply;
 import bftsmart.reconfiguration.ServerViewController;
@@ -467,14 +469,26 @@ public class ServiceReplica {
         // Assemble the total order messaging layer
         MessageFactory messageFactory = new MessageFactory(id);
 
-        Acceptor acceptor = new Acceptor(cs, messageFactory, SVController);
-        cs.setAcceptor(acceptor);
+        Acceptor acceptor=null;
+        AcceptorSSLTLS acceptorSSLTLS=null;
+        
+        if(cs.getConnType() == ConnType.SSL_TLS) {
+        	acceptorSSLTLS = new AcceptorSSLTLS(cs, messageFactory, SVController);
+            cs.setAcceptorSSLTLS(acceptorSSLTLS);	
+        }else {
+        	acceptor = new Acceptor(cs, messageFactory, SVController);
+            cs.setAcceptor(acceptor);
+        }
+        
 
         Proposer proposer = new Proposer(cs, messageFactory, SVController);
 
         ExecutionManager executionManager = new ExecutionManager(SVController, acceptor, proposer, id);
 
-        acceptor.setExecutionManager(executionManager);
+        if(cs.getConnType() == ConnType.SSL_TLS) 
+        	acceptorSSLTLS.setExecutionManager(executionManager);
+        else
+        	acceptor.setExecutionManager(executionManager);
 
         tomLayer = new TOMLayer(executionManager, this, recoverer, acceptor, cs, SVController, verifier);
 
@@ -485,7 +499,10 @@ public class ServiceReplica {
         cs.setTOMLayer(tomLayer);
         cs.setRequestReceiver(tomLayer);
 
-        acceptor.setTOMLayer(tomLayer);
+        if(cs.getConnType() == ConnType.SSL_TLS)
+        	acceptorSSLTLS.setTOMLayer(tomLayer);
+        else
+        	acceptor.setTOMLayer(tomLayer);
 
         if (SVController.getStaticConf().isShutdownHookEnabled()) {
             Runtime.getRuntime().addShutdownHook(new ShutdownHookThread(tomLayer));
