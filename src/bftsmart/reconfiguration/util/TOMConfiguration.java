@@ -371,6 +371,15 @@ public class TOMConfiguration extends Configuration {
 					break;
 				}
 			}
+			
+			if(ssltls && useMACs) {
+				System.out.println("----------------------------------------------------\n"
+						+ "   Incompatible configuration options.\n"
+						+ "   When using SSL/TLS, useMACs is without effect.\n"
+						+ "   Setting system.communication.useMACs = false\n"
+						+ "----------------------------------------------------");
+				useMACs = false;
+			}
             
         } catch (Exception e) {
             logger.error("Could not parse system configuration file",e);

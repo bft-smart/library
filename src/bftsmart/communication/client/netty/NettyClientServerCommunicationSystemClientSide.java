@@ -87,10 +87,8 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
     private EventLoopGroup workerGroup;
     
     /* Tulio Ribeiro */
-	private static int tcpSendBufferSize = 4 * 1024 * 1024;
-	private static int bossThreads = 4; /* listens and accepts on server socket; workers handle r/w I/O */
-	private static int connectionBacklog = 2048; /* pending connections boss thread will queue to accept */
-	private static int connectionTimeoutMsec = 60000; /* how long to allow TCP handshake to complete (default is 60ish secs) */
+	private static int tcpSendBufferSize = 8 * 1024 * 1024;
+	private static int connectionTimeoutMsec = 60000; /* how long to allow TCP handshake to complete (60 seconds) */
 	/* Tulio Ribeiro */
     
     private SyncListener listener;
@@ -128,8 +126,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
                     b.option(ChannelOption.TCP_NODELAY, true);
                     b.option(ChannelOption.SO_SNDBUF, tcpSendBufferSize);
                     b.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, connectionTimeoutMsec);
-                    b.option(ChannelOption.SO_BACKLOG, connectionBacklog);
-
+                    
                     b.handler(getChannelInitializer());
 
                     // Start the client.

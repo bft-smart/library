@@ -46,8 +46,10 @@ public class ServerCommunicationSystem extends Thread {
 	public final long MESSAGE_WAIT_TIME = 100;
 	private LinkedBlockingQueue<SystemMessage> inQueue = null;// new LinkedBlockingQueue<SystemMessage>(IN_QUEUE_SIZE);
 	protected MessageHandler messageHandler;
+	
 	private ServersCommunicationLayer serversConn;
 	private ServersCommunicationLayerSSLTLS serversConnSSLTLS;
+	private ConnType connType;
 
 	private CommunicationSystemServerSide clientsConn;
 	private ServerViewController controller;
@@ -64,10 +66,12 @@ public class ServerCommunicationSystem extends Thread {
 
 		inQueue = new LinkedBlockingQueue<SystemMessage>(controller.getStaticConf().getInQueueSize());
 
-		if (controller.getStaticConf().isSSLTLSEnabled()) {
+		if(this.controller.getStaticConf().isSSLTLSEnabled()){
 			serversConnSSLTLS = new ServersCommunicationLayerSSLTLS(controller, inQueue, replica);
+			connType = ConnType.SSL_TLS;
 		} else {
 			serversConn = new ServersCommunicationLayer(controller, inQueue, replica);
+			connType = ConnType.No_SSL_TLS;
 		}
 
 		// ******* EDUARDO BEGIN **************//
@@ -77,17 +81,17 @@ public class ServerCommunicationSystem extends Thread {
 		// ******* EDUARDO END **************//
 		// start();
 	}
-
+	
 	// ******* EDUARDO BEGIN **************//
 	public void joinViewReceived() {
-		if (controller.getStaticConf().isSSLTLSEnabled())
+		if(connType.equals(ConnType.SSL_TLS))
 			serversConnSSLTLS.joinViewReceived();
 		else
 			serversConn.joinViewReceived();
 	}
 
 	public void updateServersConnections() {
-		if (controller.getStaticConf().isSSLTLSEnabled())
+		if(connType.equals(ConnType.SSL_TLS))
 			this.serversConnSSLTLS.updateConnections();
 		else
 			this.serversConn.updateConnections();
@@ -159,7 +163,7 @@ public class ServerCommunicationSystem extends Thread {
 			clientsConn.send(targets, (TOMMessage) sm, false);
 		} else {
 			logger.debug("--------sending----------> " + sm);
-			if (controller.getStaticConf().isSSLTLSEnabled())
+			if(connType.equals(ConnType.SSL_TLS))
 				serversConnSSLTLS.send(targets, sm, true);
 			else
 				serversConn.send(targets, sm, true);
@@ -189,18 +193,28 @@ public class ServerCommunicationSystem extends Thread {
 
 		this.doWork = false;
 		clientsConn.shutdown();
-		if (controller.getStaticConf().isSSLTLSEnabled())
+		if(connType.equals(ConnType.SSL_TLS))
 			serversConnSSLTLS.shutdown();
 		else
 			serversConn.shutdown();
 	}
 
 	public SecretKey getSecretKey(int id) {
-		if (controller.getStaticConf().isSSLTLSEnabled())
+		if(connType.equals(ConnType.SSL_TLS))
 			return serversConnSSLTLS.getSecretKey(id);
 		else
 			return serversConn.getSecretKey(id);
 		
 	}
+	
+	/* Tulio Ribeiro*/
+	public enum ConnType{
+		SSL_TLS, // Using SSL/TLS Channel.
+		No_SSL_TLS // Not Using SSL/TLS Channel. 	
+	}
+	public ConnType getConnType() {
+		return connType;
+	}
+	
 
 }

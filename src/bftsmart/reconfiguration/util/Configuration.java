@@ -229,7 +229,6 @@ public class Configuration {
 				}
             }
             
-            //System.out.println("Selected Signature Algorithm: " + keyLoader.getSignatureAlgorithm());
 
             TOMUtil.init(hmacAlgorithm, 
             				secretKeyAlgorithm, 

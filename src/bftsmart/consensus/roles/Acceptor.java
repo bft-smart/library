@@ -21,6 +21,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 
 import bftsmart.communication.ServerCommunicationSystem;
+import bftsmart.communication.ServerCommunicationSystem.ConnType;
 import bftsmart.communication.server.ServerConnection;
 import bftsmart.consensus.Consensus;
 import bftsmart.tom.core.ExecutionManager;
@@ -63,7 +64,7 @@ public final class Acceptor {
     private ServerViewController controller;
     //private Cipher cipher;
     private Mac mac;
-
+    
     /**
      * Creates a new instance of Acceptor.
      * @param communication Replicas communication system
@@ -75,11 +76,15 @@ public final class Acceptor {
         this.me = controller.getStaticConf().getProcessId();
         this.factory = factory;
         this.controller = controller;
-        try {
-            this.mac = TOMUtil.getMacFactory();
-        } catch (NoSuchAlgorithmException /*| NoSuchPaddingException*/ ex) {
-            logger.error("Failed to get MAC engine",ex);
-        }
+        
+		//if (communication.getConnType().equals(ConnType.No_SSL_TLS)) {
+			try {
+				this.mac = TOMUtil.getMacFactory();
+				logger.debug("Setting MAC with TOMUtil.getMacFactory(). ReplicaId: {}", me);
+			} catch (NoSuchAlgorithmException /* | NoSuchPaddingException */ ex) {
+				logger.error("Failed to get MAC engine", ex);
+			}
+		//}
     }
 
     public MessageFactory getFactory() {
@@ -347,7 +352,7 @@ public final class Acceptor {
 
             cm.setProof(signature);
 
-        } else { //... if not, we can use MAC vectores
+        } else { //... if not, we can use MAC vectors
             int[] processes = this.controller.getCurrentViewAcceptors();
 
             HashMap<Integer, byte[]> macVector = new HashMap<>();
@@ -367,12 +372,11 @@ public final class Acceptor {
                     } while (key == null);  // JCS: This loop is to solve a race condition where a
                                             // replica might have already been inserted in the view or
                                             // recovered after a crash, but it still did not concluded
-                                            // the diffie helman protocol. Not an elegant solution,
+                                            // the Diffie-Hellman protocol. Not an elegant solution,
                                             // but for now it will do
                     this.mac.init(key);
                     macVector.put(id, this.mac.doFinal(data));
-                } catch (InterruptedException ex) {
-                    
+                } catch (InterruptedException ex) {                    
                     logger.error("Interruption while sleeping", ex);
                 } catch (InvalidKeyException ex) {
 
