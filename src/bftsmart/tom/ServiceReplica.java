@@ -483,14 +483,23 @@ public class ServiceReplica {
 
         Proposer proposer = new Proposer(cs, messageFactory, SVController);
 
-        ExecutionManager executionManager = new ExecutionManager(SVController, acceptor, proposer, id);
+        ExecutionManager executionManager = null;
+        
+        if(cs.getConnType() == ConnType.SSL_TLS) 
+        	executionManager = new ExecutionManager(SVController, acceptorSSLTLS, proposer, id);
+        else
+        	executionManager = new ExecutionManager(SVController, acceptor, proposer, id);
 
         if(cs.getConnType() == ConnType.SSL_TLS) 
         	acceptorSSLTLS.setExecutionManager(executionManager);
         else
         	acceptor.setExecutionManager(executionManager);
 
-        tomLayer = new TOMLayer(executionManager, this, recoverer, acceptor, cs, SVController, verifier);
+        
+        if(cs.getConnType() == ConnType.SSL_TLS)
+        	tomLayer = new TOMLayer(executionManager, this, recoverer, acceptorSSLTLS, cs, SVController, verifier);
+        else 
+        	tomLayer = new TOMLayer(executionManager, this, recoverer, acceptor, cs, SVController, verifier);
 
         executionManager.setTOMLayer(tomLayer);
 

@@ -65,6 +65,8 @@ public class TOMConfiguration extends Configuration {
     
     private Boolean ssltls;
     private String ssltlsProtocolVersion;
+    private String keyStoreFile;
+    private String KeyManagerFactoryAlgorithm;
     
     /** Creates a new instance of TOMConfiguration */
     public TOMConfiguration(int processId, KeyLoader loader) {
@@ -341,13 +343,31 @@ public class TOMConfiguration extends Configuration {
             }
             
             
+            /**
+             * Tulio Ribeiro SSL TLS configuration parameters. 
+             */
             s = (String) configs.remove("system.ssltls");
             if(s == null){
                 ssltls = true;
             }else{
                 ssltls = (s.equalsIgnoreCase("true"))?true:false;
 			}
-
+            
+            s = (String) configs.remove("system.ssltls.key_store_file");
+            if(s == null){
+                keyStoreFile = "ecKeyPair.pkcs12";                        
+            }else{
+            	keyStoreFile = s;
+			}
+            
+            s = (String) configs.remove("ssl.KeyManagerFactory.algorithm");
+            if(s == null){
+                KeyManagerFactoryAlgorithm = "SunX509";
+            }else{
+            	KeyManagerFactoryAlgorithm = s;
+			}
+            
+            
 			s = (String) configs.remove("system.ssltls.protocol_version");
 			if (s == null) {
 				ssltlsProtocolVersion = "TLSv1.2";				
@@ -553,10 +573,19 @@ public class TOMConfiguration extends Configuration {
         return bindAddress;
     }
 
+    /**
+     * Tulio Ribeiro SSL/TLS getters.
+     * */
+    
+    
 	public String getSSLTLSProtocolVersion() {
 		return ssltlsProtocolVersion;
 	}
 	public boolean isSSLTLSEnabled() {
 		return ssltls;
 	}
+	public String getSSLTLSKeyStore() {
+		return keyStoreFile; 
+	}
+	
 }

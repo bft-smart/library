@@ -17,11 +17,23 @@ package bftsmart.communication.server;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.net.InetAddress;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
+import java.net.UnknownHostException;
+import java.security.KeyManagementException;
+import java.security.KeyStore;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
+import java.security.Security;
+import java.security.UnrecoverableKeyException;
+import java.security.cert.CertificateException;
+import java.security.spec.InvalidKeySpecException;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -33,11 +45,14 @@ import java.util.concurrent.locks.ReentrantLock;
 import javax.crypto.SecretKey;
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.PBEKeySpec;
+import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLParameters;
 import javax.net.ssl.SSLServerSocket;
 import javax.net.ssl.SSLServerSocketFactory;
 import javax.net.ssl.SSLSocket;
+import javax.net.ssl.SSLSocketFactory;
+import javax.net.ssl.TrustManagerFactory;
 
 import org.bouncycastle.jcajce.provider.asymmetric.ec.KeyFactorySpi.ECDSA;
 import org.slf4j.Logger;
@@ -52,6 +67,20 @@ import bftsmart.tom.util.TOMUtil;
  *
  * @author alysson
  */
+
+
+/**
+ * Tulio Ribeiro.
+ * 
+ * Generate a KeyPair used by SSL/TLS connections. 
+ * Note that keypass argument is equal to the variable SECRET.
+ * 
+ * The command generates the key secret. 
+ * $keytool -genkey -keyalg EC -alias bftsmart -keypass MySeCreT_2hMOygBwY  -keystore ./ecKeyPair -dname "CN=BFT-SMaRT" 
+ * $keytool -importkeystore -srckeystore ./ecKeyPair -destkeystore ./ecKeyPair -deststoretype pkcs12
+ * 
+ */
+
 public class ServersCommunicationLayerSSLTLS extends Thread {
 
 	private Logger logger = LoggerFactory.getLogger(this.getClass());
@@ -59,13 +88,7 @@ public class ServersCommunicationLayerSSLTLS extends Thread {
 	private ServerViewController controller;
 	private LinkedBlockingQueue<SystemMessage> inQueue;
 	private HashMap<Integer, ServerConnectionSSLTLS> connections = new HashMap<>();
-
-	private SSLServerSocket serverSocketSSLTLS;
-	private String ssltlsProtocolVersion;
-	String[] ciphers = new String[] { "TLS_RSA_WITH_NULL_SHA256", "TLS_ECDHE_ECDSA_WITH_NULL_SHA",
-			"TLS_ECDHE_RSA_WITH_NULL_SHA", "SSL_RSA_WITH_NULL_SHA", "TLS_ECDH_ECDSA_WITH_NULL_SHA",
-			"TLS_ECDH_RSA_WITH_NULL_SHA", "TLS_ECDH_anon_WITH_NULL_SHA", "SSL_RSA_WITH_NULL_MD5" };
-
+	
 	private int me;
 	private boolean doWork = true;
 	private Lock connectionsLock = new ReentrantLock();
@@ -73,11 +96,47 @@ public class ServersCommunicationLayerSSLTLS extends Thread {
 	private List<PendingConnection> pendingConn = new LinkedList<PendingConnection>();
 	private ServiceReplica replica;
 
+	
+	/**
+	 * Tulio Ribeiro
+	 */
+	
+	private KeyManagerFactory kmf;
+	private KeyStore ks;
+	private FileInputStream fis;
+	private TrustManagerFactory trustMgrFactory;
+	private SSLContext context;
+	private SSLServerSocketFactory serverSocketFactory;	
+	private static final String SECRET = "MySeCreT_2hMOygBwY";
 	private SecretKey selfPwd;
-	private static final String PASSWORD = "commsyst";
+	
+	
+	private SSLServerSocket serverSocketSSLTLS;
+	private String ssltlsProtocolVersion;
+	String[] ciphers = new String[] {	"TLS_RSA_WITH_NULL_SHA256", 
+			 							"TLS_ECDHE_ECDSA_WITH_NULL_SHA",
+			 							"TLS_ECDHE_RSA_WITH_NULL_SHA", 
+			 							"SSL_RSA_WITH_NULL_SHA", 
+			 							"TLS_ECDH_ECDSA_WITH_NULL_SHA",
+			 							"TLS_ECDH_RSA_WITH_NULL_SHA", 
+			 							"TLS_ECDH_anon_WITH_NULL_SHA", 
+			 							"SSL_RSA_WITH_NULL_MD5" };
 
-	public ServersCommunicationLayerSSLTLS(ServerViewController controller, LinkedBlockingQueue<SystemMessage> inQueue,
-			ServiceReplica replica) throws Exception {
+
+	
+
+	public ServersCommunicationLayerSSLTLS(
+				ServerViewController controller, 
+				LinkedBlockingQueue<SystemMessage> inQueue,
+				ServiceReplica replica) 
+					throws 
+						KeyStoreException, 
+						NoSuchAlgorithmException, 
+						CertificateException, 
+						IOException, 
+						UnrecoverableKeyException, 
+						KeyManagementException, 
+						InvalidKeySpecException  {
 
 		this.controller = controller;
 		this.inQueue = inQueue;
@@ -104,22 +163,38 @@ public class ServersCommunicationLayerSSLTLS extends Thread {
 			// To solve that issue, we bind to the address supplied in config/hosts.config
 			// instead.
 			if (InetAddress.getLoopbackAddress().getHostAddress().equals(myAddress) && !myAddress.equals(confAddress)) {
-
 				myAddress = confAddress;
 			}
 		} else {
-
 			myAddress = controller.getStaticConf().getBindAddress();
 		}
 
 		int myPort = controller.getStaticConf().getServerToServerPort(controller.getStaticConf().getProcessId());
 
-		SSLContext context = SSLContext.getInstance(controller.getStaticConf().getSSLTLSProtocolVersion());
-		context.init(null, null, null);
-
-		SSLServerSocketFactory serverSocketFactory = context.getServerSocketFactory();
-		this.serverSocketSSLTLS = (SSLServerSocket) serverSocketFactory.createServerSocket(myPort, 100,
-				InetAddress.getByName(myAddress));
+		FileInputStream fis = null;
+		try {
+			fis = new FileInputStream("config/keysSSL_TLS/ecKeyPair.pkcs12");
+			ks = KeyStore.getInstance(KeyStore.getDefaultType());
+			ks.load(fis, SECRET.toCharArray());
+		} finally {
+			if (fis != null) {
+				fis.close();
+			}
+		}
+		
+		String algorithm = Security.getProperty("ssl.KeyManagerFactory.algorithm");
+		kmf = KeyManagerFactory.getInstance(algorithm);
+		kmf.init(ks, SECRET.toCharArray());
+		
+		trustMgrFactory = TrustManagerFactory.getInstance(algorithm);
+		trustMgrFactory.init(ks);
+		
+		context = SSLContext.getInstance(this.ssltlsProtocolVersion);
+		context.init(kmf.getKeyManagers(), trustMgrFactory.getTrustManagers(), new SecureRandom());
+		
+		serverSocketFactory = context.getServerSocketFactory();
+		this.serverSocketSSLTLS = (SSLServerSocket) 
+					serverSocketFactory.createServerSocket(myPort, 100, InetAddress.getByName(myAddress));
 
 		serverSocketSSLTLS.setEnabledCipherSuites(ciphers);
 
@@ -128,11 +203,15 @@ public class ServersCommunicationLayerSSLTLS extends Thread {
 		serverSocketSSLTLS.setReuseAddress(true);
 		serverSocketSSLTLS.setNeedClientAuth(true);
 		serverSocketSSLTLS.setWantClientAuth(true);
+		
 
 		SecretKeyFactory fac = TOMUtil.getSecretFactory();
-		PBEKeySpec spec = TOMUtil.generateKeySpec(PASSWORD.toCharArray());
+		PBEKeySpec spec = TOMUtil.generateKeySpec(SECRET.toCharArray());
 		selfPwd = fac.generateSecret(spec);
-
+		
+		/*selfPwd = (SecretKey) ks.getKey("bftsmart", SECRET.toCharArray());
+		logger.debug("Selg Passwd: {} ", selfPwd);*/		
+		
 		// Try connecting if a member of the current view. Otherwise, wait until the
 		// Join has been processed!
 		if (controller.isInCurrentView()) {
@@ -183,11 +262,16 @@ public class ServersCommunicationLayerSSLTLS extends Thread {
 		connectionsLock.unlock();
 	}
 
-	private ServerConnectionSSLTLS getConnection(int remoteId) {
+	private ServerConnectionSSLTLS getConnection(int remoteId){
 		connectionsLock.lock();
 		ServerConnectionSSLTLS ret = this.connections.get(remoteId);
 		if (ret == null) {
-			ret = new ServerConnectionSSLTLS(controller, null, remoteId, this.inQueue, this.replica);
+			try {
+				ret = new ServerConnectionSSLTLS(controller, null, remoteId, this.inQueue, this.replica);
+			} catch (UnrecoverableKeyException | KeyManagementException | KeyStoreException | NoSuchAlgorithmException
+					| CertificateException e) {
+				e.printStackTrace();
+			}
 			this.connections.put(remoteId, ret);
 		}
 		connectionsLock.unlock();
@@ -309,8 +393,13 @@ public class ServersCommunicationLayerSSLTLS extends Thread {
 			if (this.connections.get(remoteId) == null) { // This must never happen!!!
 				// first time that this connection is being established
 				// System.out.println("THIS DOES NOT HAPPEN....."+remoteId);
-				this.connections.put(remoteId,
-						new ServerConnectionSSLTLS(controller, newSocket, remoteId, inQueue, replica));
+				try {
+					this.connections.put(remoteId,
+							new ServerConnectionSSLTLS(controller, newSocket, remoteId, inQueue, replica));
+				} catch (UnrecoverableKeyException | KeyManagementException | KeyStoreException
+						| NoSuchAlgorithmException | CertificateException e) {
+					e.printStackTrace();
+				}
 			} else {
 				// reconnection
 				System.out.println("ReConnecting with: " + remoteId);
@@ -365,8 +454,9 @@ public class ServersCommunicationLayerSSLTLS extends Thread {
 
 	// ******* Tulio END **************//
 	public SecretKey getSecretKey(int id) {
-		if (id == controller.getStaticConf().getProcessId())
+		if (id == controller.getStaticConf().getProcessId()) {
 			return selfPwd;
+		}
 		else
 			return connections.get(id).getSecretKey();
 	}

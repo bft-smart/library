@@ -32,6 +32,7 @@ import bftsmart.consensus.Decision;
 import bftsmart.consensus.Consensus;
 import bftsmart.consensus.Epoch;
 import bftsmart.consensus.roles.Acceptor;
+import bftsmart.consensus.roles.AcceptorSSLTLS;
 import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.statemanagement.StateManager;
 import bftsmart.tom.ServiceReplica;
@@ -64,12 +65,13 @@ public final class TOMLayer extends Thread implements RequestReceiver {
     //other components used by the TOMLayer (they are never changed)
     public ExecutionManager execManager; // Execution manager
     public Acceptor acceptor; // Acceptor role of the PaW algorithm
+    public AcceptorSSLTLS acceptorSSLTLS; // Acceptor role of the PaW algorithm
     private ServerCommunicationSystem communication; // Communication system between replicas
     //private OutOfContextMessageThread ot; // Thread which manages messages that do not belong to the current consensus
     private DeliveryThread dt; // Thread which delivers total ordered messages to the appication
     public StateManager stateManager = null; // object which deals with the state transfer protocol
 
-    //thread pool used to paralelise verification of requests contained in a batch
+    //thread pool used to parallelize verification of requests contained in a batch
     private ExecutorService verifierExecutor = null;
     
     /**
@@ -171,6 +173,70 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
         this.syncher = new Synchronizer(this); // create synchronizer
     }
+    
+    /**
+     * Creates a new instance of TOMulticastLayer
+     *
+     * @param manager Execution manager
+     * @param receiver Object that receives requests from clients
+     * @param recoverer
+     * @param a Acceptor role of the PaW algorithm
+     * @param cs Communication system between replicas
+     * @param controller Reconfiguration Manager
+     * @param verifier
+     */
+    public TOMLayer(ExecutionManager manager,
+            ServiceReplica receiver,
+            Recoverable recoverer,
+            AcceptorSSLTLS a,
+            ServerCommunicationSystem cs,
+            ServerViewController controller,
+            RequestVerifier verifier) {
+
+        super("TOM Layer");
+
+        this.execManager = manager;
+        this.acceptorSSLTLS = a;
+        this.communication = cs;
+        this.controller = controller;
+        
+        // use either the same number of Netty workers threads if specified in the configuration
+        // or use a many as the number of cores available
+        this.verifierExecutor = Executors.newWorkStealingPool(Runtime.getRuntime().availableProcessors());
+        
+        //do not create a timer manager if the timeout is 0
+        if (this.controller.getStaticConf().getRequestTimeout() == 0) {
+            this.requestsTimer = null;
+        } else {
+            this.requestsTimer = new RequestsTimer(this, communication, this.controller); // Create requests timers manager (a thread)
+        }
+
+        try {
+            this.md = TOMUtil.getHashEngine();
+        } catch (Exception e) {
+            logger.error("Failed to get message digest engine",e);
+        }
+
+        try {
+            this.engine = TOMUtil.getSigEngine();
+        } catch (Exception e) {
+            logger.error("Failed to get signature engine",e);
+        }
+
+        this.prk = this.controller.getStaticConf().getPrivateKey();
+        this.dt = new DeliveryThread(this, receiver, recoverer, this.controller); // Create delivery thread
+        this.dt.start();
+        this.stateManager = recoverer.getStateManager();
+        stateManager.init(this, dt);
+        
+        this.verifier = (verifier != null) ? verifier : ((request) -> true); // By default, never validate requests 
+		
+        // I have a verifier, now create clients manager
+        this.clientsManager = new ClientsManager(this.controller, requestsTimer, this.verifier);
+
+        this.syncher = new Synchronizer(this); // create synchronizer
+    }
+
 
     /**
      * Computes an hash for a TOM message

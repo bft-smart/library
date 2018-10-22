@@ -15,25 +15,26 @@ limitations under the License.
 */
 
 
-/**
- * Tulio Ribeiro.
- * 
- * Generate a KeyPair used by SSL/TLS connections. 
- * 
- * $keytool -genkey -keyalg EC -alias bftsmart -keypass MySeCreT_2hMOygBwY  -keystore ./ecKeyPair -dname "CN=BFT-SMaRT" 
- * $keytool -importkeystore -srckeystore ./ecKeyPair -destkeystore ./ecKeyPair -deststoretype pkcs12
- * 
- */
 
 package bftsmart.communication.server;
 
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.net.UnknownHostException;
+import java.security.KeyManagementException;
+import java.security.KeyStore;
+import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
+import java.security.Security;
+import java.security.UnrecoverableKeyException;
+import java.security.cert.CertificateException;
+import java.security.spec.InvalidKeySpecException;
 import java.util.HashSet;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -41,11 +42,16 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 import javax.crypto.SecretKey;
+import javax.crypto.SecretKeyFactory;
+import javax.crypto.spec.PBEKeySpec;
 import javax.net.ssl.HandshakeCompletedEvent;
 import javax.net.ssl.HandshakeCompletedListener;
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLPeerUnverifiedException;
 import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;
+import javax.net.ssl.TrustManagerFactory;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -85,15 +91,38 @@ public class ServerConnectionSSLTLS {
 	private Lock sendLock;
 	private boolean doWork = true;
 
-	String[] ciphers = new String[] { "TLS_RSA_WITH_NULL_SHA256", "TLS_ECDHE_ECDSA_WITH_NULL_SHA",
-			"TLS_ECDHE_RSA_WITH_NULL_SHA", "SSL_RSA_WITH_NULL_SHA", "TLS_ECDH_ECDSA_WITH_NULL_SHA",
-			"TLS_ECDH_RSA_WITH_NULL_SHA", "TLS_ECDH_anon_WITH_NULL_SHA", "SSL_RSA_WITH_NULL_MD5" };
 	
+	private KeyManagerFactory kmf;
+	private KeyStore ks = null;
+	private FileInputStream fis = null;
+	private TrustManagerFactory trustMgrFactory;
+	private SSLContext context;
+	private SSLSocketFactory socketFactory;	
 	private static final String SECRET = "MySeCreT_2hMOygBwY";
-	
 
-	public ServerConnectionSSLTLS(ServerViewController controller, SSLSocket socketSSL, int remoteId,
-			LinkedBlockingQueue<SystemMessage> inQueue, ServiceReplica replica) {
+	
+	
+	String[] ciphers = new String[] {"TLS_RSA_WITH_NULL_SHA256", 
+									 "TLS_ECDHE_ECDSA_WITH_NULL_SHA",
+									 "TLS_ECDHE_RSA_WITH_NULL_SHA", 
+									 "SSL_RSA_WITH_NULL_SHA", 
+									 "TLS_ECDH_ECDSA_WITH_NULL_SHA",
+									 "TLS_ECDH_RSA_WITH_NULL_SHA", 
+									 "TLS_ECDH_anon_WITH_NULL_SHA", 
+									 "SSL_RSA_WITH_NULL_MD5" };
+
+	public ServerConnectionSSLTLS(
+				ServerViewController controller, 
+				SSLSocket socketSSL, 
+				int remoteId,
+				LinkedBlockingQueue<SystemMessage> inQueue, 
+				ServiceReplica replica) 
+						throws 
+							KeyStoreException, 
+							NoSuchAlgorithmException, 
+							CertificateException, 
+							UnrecoverableKeyException, 
+							KeyManagementException {
 
 		this.controller = controller;
 
@@ -108,36 +137,12 @@ public class ServerConnectionSSLTLS {
 		this.noMACs = new HashSet<Integer>();
 		// Connect to the remote process or just wait for the connection?
 		if (isToConnect()) {
-
-			// I have to connect to the remote server
-			try {
-				// SSL Socket.
-				SSLSocketFactory factory = (SSLSocketFactory) SSLSocketFactory.getDefault();
-				this.socketSSL = (SSLSocket) factory.createSocket(this.controller.getStaticConf().getHost(remoteId),
-						this.controller.getStaticConf().getServerToServerPort(remoteId));
-
-				this.socketSSL.setEnabledCipherSuites(ciphers);
-
-				this.socketSSL.addHandshakeCompletedListener(new HandshakeCompletedListener() {
-					@Override
-					public void handshakeCompleted(HandshakeCompletedEvent event) {
-						logger.debug("SSL/TLS handshake complete (ServerConnectionSSLTLS)!, Id:{}"
-								+ "  ## CipherSuite: {}, ", remoteId, event.getCipherSuite());
-					}
-				});
-
-				this.socketSSL.startHandshake();
-
-				ServersCommunicationLayerSSLTLS.setSSLSocketOptions(this.socketSSL);
-				new DataOutputStream(this.socketSSL.getOutputStream())
-						.writeInt(this.controller.getStaticConf().getProcessId());
-
-			} catch (UnknownHostException ex) {
-				logger.error("Failed to connect to replica. Possible reason, replica is offline.");
-				// logger.error("Failed to connect to replica", ex);
-			} catch (IOException ex) {
-				logger.error("Failed to connect to replica", ex);
-			}
+				try {
+					ssltlsCreateConnection();
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
 		}
 		// else I have to wait a connection from the remote server
 
@@ -172,18 +177,20 @@ public class ServerConnectionSSLTLS {
 	}
 
 	public SecretKey getSecretKey() {
-		// return authKey;
-		/*
-		 * This is used to insert a proof at Acceptor (insertProof()) but, is it
-		 * necessary when using SSL/TLS
-		 */
 		try {
-			logger.info("PeerPrincipal Name: {}", socketSSL.getSession().getPeerPrincipal().getName());
-		} catch (SSLPeerUnverifiedException e) {
+			SecretKeyFactory fac = TOMUtil.getSecretFactory();
+			PBEKeySpec spec = TOMUtil.generateKeySpec(SECRET.toCharArray());
+			SecretKey sk = fac.generateSecret(spec); 
+			return sk;
+		} catch (NoSuchAlgorithmException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (InvalidKeySpecException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		return null;
+		
 	}
 
 	/**
@@ -202,11 +209,6 @@ public class ServerConnectionSSLTLS {
 	public final void send(byte[] data, boolean useMAC) throws InterruptedException {
 		if (useSenderThread) {
 			// only enqueue messages if there queue is not full
-			if (!useMAC) {
-				logger.debug("Not sending defaultMAC " + System.identityHashCode(data));
-				noMACs.add(System.identityHashCode(data));
-			}
-
 			if (!outQueue.offer(data)) {
 				logger.debug("Out queue for " + remoteId + " full (message discarded).");
 			}
@@ -292,44 +294,16 @@ public class ServerConnectionSSLTLS {
 
 		if (socketSSL == null || !socketSSL.isConnected()) {
 
-			try {
-
-				// ******* EDUARDO BEGIN **************//
 				if (isToConnect()) {
-
-					SSLSocketFactory factory = (SSLSocketFactory) SSLSocketFactory.getDefault();
-					this.socketSSL = (SSLSocket) factory.createSocket(this.controller.getStaticConf().getHost(remoteId),
-							this.controller.getStaticConf().getServerToServerPort(remoteId));
-
-					this.socketSSL.setEnabledCipherSuites(ciphers);
-
-					// logger.debug("Reconnecting with, replicaId:{}", remoteId);
-
-					this.socketSSL.addHandshakeCompletedListener(new HandshakeCompletedListener() {
-						@Override
-						public void handshakeCompleted(HandshakeCompletedEvent event) {
-							logger.debug("SSL/TLS handshake complete (ServerConnectionSSLTLS)!, Id:{}"
-									+ "  ## CipherSuite: {}, ", remoteId, event.getCipherSuite());
-						}
-					});
-
-					this.socketSSL.startHandshake();
-
-					ServersCommunicationLayerSSLTLS.setSSLSocketOptions(this.socketSSL);
-					new DataOutputStream(this.socketSSL.getOutputStream())
-							.writeInt(this.controller.getStaticConf().getProcessId());
-
-					// ******* EDUARDO END **************//
+					try {
+						ssltlsCreateConnection();
+					} catch (UnrecoverableKeyException | KeyManagementException | KeyStoreException
+							| NoSuchAlgorithmException | CertificateException | IOException e) {
+						e.printStackTrace();
+					}
 				} else {
 					socketSSL = newSocket;
 				}
-			} catch (UnknownHostException ex) {
-				logger.error("Failed to connect to replica", ex);
-			} catch (IOException ex) {
-
-				logger.error("Impossible to reconnect to replica " + remoteId + ": " + ex.getMessage());
-				// ex.printStackTrace();
-			}
 
 			if (socketSSL != null) {
 				try {
@@ -510,42 +484,9 @@ public class ServerConnectionSSLTLS {
 								.readObject());
 
 						if (sm.getSender() == remoteId) {
-							// System.out.println("Mensagem recebia de: "+remoteId);
-							/*
-							 * if (!inQueue.offer(sm)) { bftsmart.tom.util.Logger.
-							 * println("(ReceiverThread.run) in queue full (message from " + remoteId +
-							 * " discarded).");
-							 * System.out.println("(ReceiverThread.run) in queue full (message from " +
-							 * remoteId + " discarded)."); }
-							 */
 							this.replica.joinMsgReceived((VMMessage) sm);
 						}
 
-						/*
-						 * //read mac boolean result = true;
-						 * 
-						 * byte hasMAC = socketInStream.readByte(); if
-						 * (controller.getStaticConf().getUseMACs() && hasMAC == 1) {
-						 * 
-						 * read = 0; do { read += socketInStream.read(receivedMac, read, macSize -
-						 * read); } while (read < macSize);
-						 * 
-						 * result = Arrays.equals(macReceive.doFinal(data), receivedMac); }
-						 * 
-						 * if (result) { SystemMessage sm = (SystemMessage) (new ObjectInputStream(new
-						 * ByteArrayInputStream(data)).readObject());
-						 * 
-						 * if (sm.getSender() == remoteId) {
-						 * //System.out.println("Mensagem recebia de: "+remoteId); //if
-						 * (!inQueue.offer(sm)) { //bftsmart.tom.util.Logger.
-						 * println("(ReceiverThread.run) in queue full (message from " + remoteId +
-						 * " discarded).");
-						 * //System.out.println("(ReceiverThread.run) in queue full (message from " +
-						 * remoteId + " discarded)."); //} this.replica.joinMsgReceived((VMMessage) sm);
-						 * } } else { //TODO: violation of authentication... we should do something
-						 * logger.warn("Violation of authentication in message received from " +
-						 * remoteId); }
-						 */
 					} catch (ClassNotFoundException ex) {
 						logger.error("Failed to deserialize message", ex);
 					} catch (IOException ex) {
@@ -562,4 +503,70 @@ public class ServerConnectionSSLTLS {
 		}
 	}
 	// ******* EDUARDO END **************//
+	
+	
+	/**
+	 * Deal with the creation of SSL/TLS connection into only one method. 
+	 * @throws KeyStoreException 
+	 * @throws IOException 
+	 * @throws CertificateException 
+	 * @throws NoSuchAlgorithmException 
+	 * @throws UnrecoverableKeyException 
+	 * @throws KeyManagementException 
+	 * */
+	
+	public void ssltlsCreateConnection() 
+								throws  KeyStoreException, 
+										NoSuchAlgorithmException, 
+										CertificateException, 
+										IOException, 
+										UnrecoverableKeyException, 
+										KeyManagementException {
+	
+		String algorithm = Security.getProperty("ssl.KeyManagerFactory.algorithm");
+		try {
+			fis = new FileInputStream("config/keysSSL_TLS/" + this.controller.getStaticConf().getSSLTLSKeyStore() );
+			ks = KeyStore.getInstance(KeyStore.getDefaultType());
+			ks.load(fis, SECRET.toCharArray());
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		} finally {
+			if (fis != null) {
+				fis.close();
+			}
+		}
+		
+		kmf = KeyManagerFactory.getInstance(algorithm);				
+		kmf.init(ks, SECRET.toCharArray());
+		
+		trustMgrFactory = TrustManagerFactory.getInstance(algorithm);
+		trustMgrFactory.init(ks);
+		context = SSLContext.getInstance(this.controller.getStaticConf().getSSLTLSProtocolVersion());
+		context.init(kmf.getKeyManagers(), trustMgrFactory.getTrustManagers(), new SecureRandom());
+		socketFactory = context.getSocketFactory();
+		
+		//Create the connection.
+		this.socketSSL = (SSLSocket) socketFactory.createSocket(
+				this.controller.getStaticConf().getHost(remoteId),
+				this.controller.getStaticConf().getServerToServerPort(remoteId));
+
+		this.socketSSL.setEnabledCipherSuites(ciphers);
+
+		this.socketSSL.addHandshakeCompletedListener(new HandshakeCompletedListener() {
+			@Override
+			public void handshakeCompleted(HandshakeCompletedEvent event) {
+				logger.debug("SSL/TLS handshake complete (ServerConnectionSSLTLS)!, Id:{}"
+						+ "  ## CipherSuite: {}, ", remoteId, event.getCipherSuite());
+			}
+		});
+
+		this.socketSSL.startHandshake();
+
+		ServersCommunicationLayerSSLTLS.setSSLSocketOptions(this.socketSSL);
+		new DataOutputStream(this.socketSSL.getOutputStream())
+				.writeInt(this.controller.getStaticConf().getProcessId());
+
+		
+	}
+	
 }

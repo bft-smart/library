@@ -31,6 +31,7 @@ import bftsmart.consensus.Decision;
 import bftsmart.consensus.messages.MessageFactory;
 import bftsmart.consensus.messages.ConsensusMessage;
 import bftsmart.consensus.roles.Acceptor;
+import bftsmart.consensus.roles.AcceptorSSLTLS;
 import bftsmart.consensus.roles.Proposer;
 import bftsmart.reconfiguration.ServerViewController;
 
@@ -50,12 +51,8 @@ public final class ExecutionManager {
 
     private ServerViewController controller;
     private Acceptor acceptor; // Acceptor role of the PaW algorithm
+    private AcceptorSSLTLS acceptorSSLTLS; // Acceptor role of the PaW algorithm
     private Proposer proposer; // Proposer role of the PaW algorithm
-    //******* EDUARDO BEGIN: now these variables are all concentrated in the Reconfigurationmanager **************//
-    //private int me; // This process ID
-    //private int[] acceptors; // Process ID's of all replicas, including this one
-    //private int[] otherAcceptors; // Process ID's of all replicas, except this one
-    //******* EDUARDO END **************//
     private Map<Integer, Consensus> consensuses = new TreeMap<Integer, Consensus>(); // Consensuses
     private ReentrantLock consensusesLock = new ReentrantLock(); //lock for consensuses table
     // Paxos messages that were out of context (that didn't belong to the consensus that was/is is progress
@@ -92,11 +89,46 @@ public final class ExecutionManager {
      * @param proposer Proposer role of the PaW algorithm
      * @param me This process ID
      */
-    public ExecutionManager(ServerViewController controller, Acceptor acceptor,
-            Proposer proposer, int me) {
+    public ExecutionManager(
+    			ServerViewController controller, 
+    			Acceptor acceptor,
+    			Proposer proposer, 
+    			int me) {
         //******* EDUARDO BEGIN **************//
         this.controller = controller;
         this.acceptor = acceptor;
+        this.proposer = proposer;
+        //this.me = me;
+
+        this.paxosHighMark = this.controller.getStaticConf().getPaxosHighMark();
+        /** THIS IS JOAO'S CODE, TO HANDLE THE STATE TRANSFER */
+        this.revivalHighMark = this.controller.getStaticConf().getRevivalHighMark();
+        this.timeoutHighMark = this.controller.getStaticConf().getTimeoutHighMark();
+        /******************************************************************/
+        //******* EDUARDO END **************//
+        
+        // Get initial leader
+        if (controller.getCurrentViewAcceptors().length > 0)
+            currentLeader = controller.getCurrentViewAcceptors()[0];
+        else currentLeader = 0;
+    }
+    
+    /**
+     * Creates a new instance of ExecutionManager SSL/TLS
+     *
+     * @param controller
+     * @param acceptor Acceptor role of the PaW algorithm
+     * @param proposer Proposer role of the PaW algorithm
+     * @param me This process ID
+     */
+    public ExecutionManager(
+    			ServerViewController controller, 
+    			AcceptorSSLTLS acceptor,
+    			Proposer proposer, 
+    			int me) {
+        //******* EDUARDO BEGIN **************//
+        this.controller = controller;
+        this.acceptorSSLTLS = acceptor;
         this.proposer = proposer;
         //this.me = me;
 
@@ -202,7 +234,12 @@ public final class ExecutionManager {
         //process stopped messages
         while (!stoppedMsgs.isEmpty()) {
             ConsensusMessage pm = stoppedMsgs.remove();
-            if (pm.getNumber() > tomLayer.getLastExec()) acceptor.processMessage(pm);
+            if (pm.getNumber() > tomLayer.getLastExec()) {
+            	if(controller.getStaticConf().isSSLTLSEnabled())
+            		acceptorSSLTLS.processMessage(pm);
+            	else
+            		acceptor.processMessage(pm);
+            }
         }
         stoppedMsgsLock.unlock();
         logger.debug("Finished stopped messages processing");
@@ -438,7 +475,10 @@ public final class ExecutionManager {
         if (prop != null) {
             logger.debug("[Consensus " + consensus.getId()
                     + "] Processing out of context propose");
-            acceptor.processMessage(prop);
+            if(controller.getStaticConf().isSSLTLSEnabled())
+            	acceptorSSLTLS.processMessage(prop);	
+            else 
+            	acceptor.processMessage(prop);
         }
 
         /******* END OUTOFCONTEXT CRITICAL SECTION *******/
@@ -457,7 +497,10 @@ public final class ExecutionManager {
                     + " out of context messages.");
 
             for (Iterator<ConsensusMessage> i = messages.iterator(); i.hasNext();) {
-                acceptor.processMessage(i.next());
+            	if(controller.getStaticConf().isSSLTLSEnabled())
+            		acceptorSSLTLS.processMessage(i.next());
+            	else
+            		acceptor.processMessage(i.next());
                 if (consensus.isDecided()) {
                     logger.debug("Consensus "
                             + consensus.getId() + " decided.");
