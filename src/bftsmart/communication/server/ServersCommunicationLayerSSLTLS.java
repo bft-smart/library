@@ -75,10 +75,14 @@ import bftsmart.tom.util.TOMUtil;
  * Generate a KeyPair used by SSL/TLS connections. 
  * Note that keypass argument is equal to the variable SECRET.
  * 
- * The command generates the key secret. 
- * $keytool -genkey -keyalg EC -alias bftsmart -keypass MySeCreT_2hMOygBwY  -keystore ./ecKeyPair -dname "CN=BFT-SMaRT" 
+ * The command generates the secret key. 
+ * ##Elliptic Curve 
+ * $keytool -genkey -keyalg EC -alias bftsmartEC -keypass MySeCreT_2hMOygBwY  -keystore ./ecKeyPair -dname "CN=BFT-SMaRT" 
  * $keytool -importkeystore -srckeystore ./ecKeyPair -destkeystore ./ecKeyPair -deststoretype pkcs12
  * 
+ * ##RSA
+ * $keytool -genkey -keyalg RSA -keysize 2048 -alias bftsmartRSA -keypass MySeCreT_2hMOygBwY  -keystore ./RSA_KeyPair.jks -dname "CN=BFT-SMaRT"
+ * $keytool -importkeystore -srckeystore ./RSA_KeyPair.jks -destkeystore ./RSA_KeyPair.jks -deststoretype pkcs12
  */
 
 public class ServersCommunicationLayerSSLTLS extends Thread {
@@ -114,12 +118,12 @@ public class ServersCommunicationLayerSSLTLS extends Thread {
 	private SSLServerSocket serverSocketSSLTLS;
 	private String ssltlsProtocolVersion;
 	String[] ciphers = new String[] {	"TLS_RSA_WITH_NULL_SHA256", 
-			 							"TLS_ECDHE_ECDSA_WITH_NULL_SHA",
-			 							"TLS_ECDHE_RSA_WITH_NULL_SHA", 
+			 							//"TLS_ECDHE_ECDSA_WITH_NULL_SHA",
+			 							//"TLS_ECDHE_RSA_WITH_NULL_SHA", 
 			 							"SSL_RSA_WITH_NULL_SHA", 
-			 							"TLS_ECDH_ECDSA_WITH_NULL_SHA",
+			 							//"TLS_ECDH_ECDSA_WITH_NULL_SHA",
 			 							"TLS_ECDH_RSA_WITH_NULL_SHA", 
-			 							"TLS_ECDH_anon_WITH_NULL_SHA", 
+			 							//"TLS_ECDH_anon_WITH_NULL_SHA", 
 			 							"SSL_RSA_WITH_NULL_MD5" };
 
 
@@ -173,7 +177,7 @@ public class ServersCommunicationLayerSSLTLS extends Thread {
 
 		FileInputStream fis = null;
 		try {
-			fis = new FileInputStream("config/keysSSL_TLS/ecKeyPair.pkcs12");
+			fis = new FileInputStream("config/keysSSL_TLS/" + controller.getStaticConf().getSSLTLSKeyStore());
 			ks = KeyStore.getInstance(KeyStore.getDefaultType());
 			ks.load(fis, SECRET.toCharArray());
 		} finally {

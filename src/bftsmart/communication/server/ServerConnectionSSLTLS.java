@@ -103,13 +103,13 @@ public class ServerConnectionSSLTLS {
 	
 	
 	String[] ciphers = new String[] {"TLS_RSA_WITH_NULL_SHA256", 
-									 "TLS_ECDHE_ECDSA_WITH_NULL_SHA",
-									 "TLS_ECDHE_RSA_WITH_NULL_SHA", 
-									 "SSL_RSA_WITH_NULL_SHA", 
-									 "TLS_ECDH_ECDSA_WITH_NULL_SHA",
-									 "TLS_ECDH_RSA_WITH_NULL_SHA", 
-									 "TLS_ECDH_anon_WITH_NULL_SHA", 
-									 "SSL_RSA_WITH_NULL_MD5" };
+										//"TLS_ECDHE_ECDSA_WITH_NULL_SHA",
+										//"TLS_ECDHE_RSA_WITH_NULL_SHA", 
+										"SSL_RSA_WITH_NULL_SHA", 
+										//"TLS_ECDH_ECDSA_WITH_NULL_SHA",
+										"TLS_ECDH_RSA_WITH_NULL_SHA", 
+										//"TLS_ECDH_anon_WITH_NULL_SHA", 
+										"SSL_RSA_WITH_NULL_MD5" };
 
 	public ServerConnectionSSLTLS(
 				ServerViewController controller, 
