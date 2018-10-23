@@ -78,7 +78,7 @@ public class MessageHandlerSSLTLS {
             			|| consMsg.authenticated 
             			|| consMsg.getSender() == myId) 
             	acceptor.deliver(consMsg);
-           /* else if (consMsg.getType() == MessageFactory.ACCEPT && consMsg.getProof() != null) {
+            else if (consMsg.getType() == MessageFactory.ACCEPT && consMsg.getProof() != null) {
                                         
                 //We are going to verify the MAC vector at the algorithm level
                 HashMap<Integer, byte[]> macVector = (HashMap<Integer, byte[]>) consMsg.getProof();
@@ -113,7 +113,7 @@ public class MessageHandlerSSLTLS {
                 else {
                     logger.warn("Invalid MAC from " + sm.getSender());
                 }
-            }*/ else {
+            } else {
                 logger.warn("Discarding unauthenticated message from " + sm.getSender());
             }
 

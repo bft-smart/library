@@ -62,8 +62,7 @@ public final class AcceptorSSLTLS {
     private ServerCommunicationSystem communication; // Replicas comunication system
     private TOMLayer tomLayer; // TOM layer
     private ServerViewController controller;
-    //private Cipher cipher;
-    //private Mac mac;
+    private Mac mac;
     
     /**
      * Creates a new instance of Acceptor.
@@ -77,14 +76,13 @@ public final class AcceptorSSLTLS {
         this.factory = factory;
         this.controller = controller;
         
-		//if (communication.getConnType().equals(ConnType.No_SSL_TLS)) {
-		/*	try {
-				this.mac = TOMUtil.getMacFactory();
-				logger.debug("Setting MAC with TOMUtil.getMacFactory(). ReplicaId: {}", me);
-			} catch (NoSuchAlgorithmException ex) {
-				logger.error("Failed to get MAC engine", ex);
-			}*/
-		//}
+		try {
+			this.mac = TOMUtil.getMacFactory();
+			logger.debug("Setting MAC with TOMUtil.getMacFactory(). ReplicaId: {}", me);
+		} catch (NoSuchAlgorithmException ex) {
+			logger.error("Failed to get MAC engine", ex);
+		}
+
     }
 
     public MessageFactory getFactory() {
@@ -353,7 +351,7 @@ public final class AcceptorSSLTLS {
 
             cm.setProof(signature);
 
-        } /*else { //... if not, we can use MAC vectors
+        } else { //... if not, we can use MAC vectors
             int[] processes = this.controller.getCurrentViewAcceptors();
 
             HashMap<Integer, byte[]> macVector = new HashMap<>();
@@ -386,7 +384,7 @@ public final class AcceptorSSLTLS {
             }
 
             cm.setProof(macVector);
-        }*/
+        }
         
     }
     
