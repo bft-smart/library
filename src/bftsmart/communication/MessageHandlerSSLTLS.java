@@ -72,9 +72,13 @@ public class MessageHandlerSSLTLS {
             
             ConsensusMessage consMsg = (ConsensusMessage) sm;
 
-            if (tomLayer.controller.getStaticConf().getUseMACs() == false || consMsg.authenticated || consMsg.getSender() == myId) 
+            
+            // If using SSL / TLS, the MAC will be turned off (TLS protocols already does), so the else is unnecessary.  
+            if (tomLayer.controller.getStaticConf().getUseMACs() == false 
+            			|| consMsg.authenticated 
+            			|| consMsg.getSender() == myId) 
             	acceptor.deliver(consMsg);
-            else if (consMsg.getType() == MessageFactory.ACCEPT && consMsg.getProof() != null) {
+           /* else if (consMsg.getType() == MessageFactory.ACCEPT && consMsg.getProof() != null) {
                                         
                 //We are going to verify the MAC vector at the algorithm level
                 HashMap<Integer, byte[]> macVector = (HashMap<Integer, byte[]>) consMsg.getProof();
@@ -100,7 +104,7 @@ public class MessageHandlerSSLTLS {
                     //this.mac.init(key);
                 	this.mac.init(tomLayer.getCommunication().getServersConn().getSecretKey(consMsg.getSender()));
                     myMAC = this.mac.doFinal(data);
-                } catch (/*IllegalBlockSizeException | BadPaddingException |*/ InvalidKeyException ex) {
+                } catch (InvalidKeyException ex) {
                     logger.error("Failed to generate MAC",ex);
                 }
                 
@@ -109,7 +113,7 @@ public class MessageHandlerSSLTLS {
                 else {
                     logger.warn("Invalid MAC from " + sm.getSender());
                 }
-            } else {
+            }*/ else {
                 logger.warn("Discarding unauthenticated message from " + sm.getSender());
             }
 

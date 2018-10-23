@@ -15,15 +15,26 @@ limitations under the License.
 */
 package bftsmart.tom.leaderchange;
 
-import bftsmart.communication.server.ServerConnection;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.ObjectOutputStream;
+import java.security.InvalidKeyException;
 import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.security.PublicKey;
 import java.security.SignedObject;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
+
+import javax.crypto.Mac;
+import javax.crypto.SecretKey;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import bftsmart.consensus.TimestampValuePair;
 import bftsmart.consensus.messages.ConsensusMessage;
@@ -31,17 +42,6 @@ import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.tom.core.TOMLayer;
 import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.util.TOMUtil;
-import java.io.ByteArrayOutputStream;
-import java.io.ObjectOutputStream;
-import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
-import java.security.PublicKey;
-import java.util.LinkedList;
-import javax.crypto.Mac;
-import javax.crypto.SecretKey;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  *
@@ -820,8 +820,12 @@ public class LCManager {
             
         for (ConsensusMessage consMsg : ConsensusMessages) {
             
-            ConsensusMessage cm = new ConsensusMessage(consMsg.getType(),consMsg.getNumber(),
-                    consMsg.getEpoch(), consMsg.getSender(), consMsg.getValue());
+            ConsensusMessage cm = new ConsensusMessage(
+            		consMsg.getType(),
+            		consMsg.getNumber(),
+                    consMsg.getEpoch(), 
+                    consMsg.getSender(), 
+                    consMsg.getValue());
 
             ByteArrayOutputStream bOut = new ByteArrayOutputStream(248);
             try {
