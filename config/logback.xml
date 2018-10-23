@@ -39,13 +39,11 @@
   
   <!-- SPECIFIC CLASS LOGS -->
   
-  <!--
-  
   <logger name="bftsmart.communication.server.ServerConnectionSSLTLS" level="DEBUG"></logger>
   <logger name="bftsmart.communication.server.ServersCommunicationLayerSSLTLS" level="DEBUG"></logger>
   <logger name="bftsmart.communication.client.netty.NettyClientServerCommunicationSystemClientSide" level="DEBUG"></logger>
   
-  
+  <!--
   <logger name="bftsmart.consensus.roles.AcceptorSSLTLS" level="DEBUG"></logger>
   <logger name="bftsmart.tom.util.BatchBuilder" level="DEBUG"></logger>
   

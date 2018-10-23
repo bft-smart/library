@@ -81,8 +81,8 @@ import bftsmart.tom.util.TOMUtil;
  * $keytool -importkeystore -srckeystore ./ecKeyPair -destkeystore ./ecKeyPair -deststoretype pkcs12
  * 
  * ##RSA
- * $keytool -genkey -keyalg RSA -keysize 2048 -alias bftsmartRSA -keypass MySeCreT_2hMOygBwY  -keystore ./RSA_KeyPair.jks -dname "CN=BFT-SMaRT"
- * $keytool -importkeystore -srckeystore ./RSA_KeyPair.jks -destkeystore ./RSA_KeyPair.jks -deststoretype pkcs12
+ * $keytool -genkey -keyalg RSA -keysize 2048 -alias bftsmartRSA -keypass MySeCreT_2hMOygBwY  -keystore ./RSA_KeyPair_2048.pkcs12 -dname "CN=BFT-SMaRT"
+ * $keytool -importkeystore -srckeystore ./RSA_KeyPair_2048.pkcs12 -destkeystore ./RSA_KeyPair_2048.pkcs12 -deststoretype pkcs12
  */
 
 public class ServersCommunicationLayerSSLTLS extends Thread {
