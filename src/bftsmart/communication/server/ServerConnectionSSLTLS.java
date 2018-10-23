@@ -168,7 +168,22 @@ public class ServerConnectionSSLTLS {
 	}
 
 	public SecretKey getSecretKey() {
-		return secretKey;		
+		if(secretKey != null )
+			return secretKey;
+		else {
+			SecretKeyFactory fac;
+			PBEKeySpec spec;
+			try {
+				fac = TOMUtil.getSecretFactory();
+				spec = TOMUtil.generateKeySpec(SECRET.toCharArray());
+				secretKey = fac.generateSecret(spec); 
+			} catch (NoSuchAlgorithmException e) {
+				e.printStackTrace();
+			} catch (InvalidKeySpecException e) {
+				e.printStackTrace();
+			}
+		}
+		return secretKey;
 	}
 
 	/**
@@ -537,7 +552,7 @@ public class ServerConnectionSSLTLS {
 		this.socketSSL.addHandshakeCompletedListener(new HandshakeCompletedListener() {
 			@Override
 			public void handshakeCompleted(HandshakeCompletedEvent event) {
-				logger.info("SSL/TLS handshake complete!, Id:{}"+ "  ## CipherSuite: {}, ", remoteId, event.getCipherSuite());
+				logger.info("SSL/TLS handshake complete!, Id:{}"+ "  ## CipherSuite: {}.", remoteId, event.getCipherSuite());
 			}
 		});
 

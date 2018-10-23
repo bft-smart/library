@@ -344,7 +344,14 @@ public class TOMConfiguration extends Configuration {
             
             
             /**
-             * Tulio Ribeiro SSL TLS configuration parameters. 
+             * Tulio Ribeiro 
+             * 
+             * SSL/TLS configuration parameters.
+             * Default values: 
+             *  #	ssltls = true;
+             *  #	keyStoreFile = "EC_KeyPair_256.pkcs12";
+             *  #	enabledCiphers = new String[] {"TLS_RSA_WITH_NULL_SHA256", "TLS_ECDHE_ECDSA_WITH_NULL_SHA"};
+             *  #	ssltlsProtocolVersion = "TLSv1.2";
              */
             s = (String) configs.remove("system.ssltls");
             if(s == null){
@@ -355,7 +362,7 @@ public class TOMConfiguration extends Configuration {
             
             s = (String) configs.remove("system.ssltls.key_store_file");
             if(s == null){
-                keyStoreFile = "ecKeyPair.pkcs12";                        
+                keyStoreFile = "EC_KeyPair_256.pkcs12";                        
             }else{
             	keyStoreFile = s;
 			}
