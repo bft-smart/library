@@ -25,7 +25,6 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.ObjectInputStream;
-import java.net.UnknownHostException;
 import java.security.KeyManagementException;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
@@ -48,7 +47,6 @@ import javax.net.ssl.HandshakeCompletedEvent;
 import javax.net.ssl.HandshakeCompletedListener;
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLPeerUnverifiedException;
 import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;
 import javax.net.ssl.TrustManagerFactory;
@@ -99,17 +97,7 @@ public class ServerConnectionSSLTLS {
 	private SSLContext context;
 	private SSLSocketFactory socketFactory;	
 	private static final String SECRET = "MySeCreT_2hMOygBwY";
-
-	
-	
-	String[] ciphers = new String[] {"TLS_RSA_WITH_NULL_SHA256", 
-										//"TLS_ECDHE_ECDSA_WITH_NULL_SHA",
-										//"TLS_ECDHE_RSA_WITH_NULL_SHA", 
-										"SSL_RSA_WITH_NULL_SHA", 
-										//"TLS_ECDH_ECDSA_WITH_NULL_SHA",
-										"TLS_ECDH_RSA_WITH_NULL_SHA", 
-										//"TLS_ECDH_anon_WITH_NULL_SHA", 
-										"SSL_RSA_WITH_NULL_MD5" };
+	//private String[] ciphers;// = new String[] {"TLS_RSA_WITH_NULL_SHA256"}; // from config file now.
 
 	public ServerConnectionSSLTLS(
 				ServerViewController controller, 
@@ -550,13 +538,12 @@ public class ServerConnectionSSLTLS {
 				this.controller.getStaticConf().getHost(remoteId),
 				this.controller.getStaticConf().getServerToServerPort(remoteId));
 
-		this.socketSSL.setEnabledCipherSuites(ciphers);
+		this.socketSSL.setEnabledCipherSuites(this.controller.getStaticConf().getEnabledCiphers());
 
 		this.socketSSL.addHandshakeCompletedListener(new HandshakeCompletedListener() {
 			@Override
 			public void handshakeCompleted(HandshakeCompletedEvent event) {
-				logger.debug("SSL/TLS handshake complete (ServerConnectionSSLTLS)!, Id:{}"
-						+ "  ## CipherSuite: {}, ", remoteId, event.getCipherSuite());
+				logger.info("SSL/TLS handshake complete!, Id:{}"+ "  ## CipherSuite: {}, ", remoteId, event.getCipherSuite());
 			}
 		});
 

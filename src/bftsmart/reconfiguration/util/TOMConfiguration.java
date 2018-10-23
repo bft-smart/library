@@ -66,7 +66,7 @@ public class TOMConfiguration extends Configuration {
     private Boolean ssltls;
     private String ssltlsProtocolVersion;
     private String keyStoreFile;
-    private String KeyManagerFactoryAlgorithm;
+    private String [] enabledCiphers;
     
     /** Creates a new instance of TOMConfiguration */
     public TOMConfiguration(int processId, KeyLoader loader) {
@@ -360,13 +360,12 @@ public class TOMConfiguration extends Configuration {
             	keyStoreFile = s;
 			}
             
-            s = (String) configs.remove("ssl.KeyManagerFactory.algorithm");
+            s = (String) configs.remove("system.ssltls.enabled_ciphers");
             if(s == null){
-                KeyManagerFactoryAlgorithm = "SunX509";
+                enabledCiphers = new String[] {"TLS_RSA_WITH_NULL_SHA256"};
             }else{
-            	KeyManagerFactoryAlgorithm = s;
-			}
-            
+            	enabledCiphers = s.split(",");
+			}        
             
 			s = (String) configs.remove("system.ssltls.protocol_version");
 			if (s == null) {
@@ -586,6 +585,10 @@ public class TOMConfiguration extends Configuration {
 	}
 	public String getSSLTLSKeyStore() {
 		return keyStoreFile; 
+	}
+	
+	public String[] getEnabledCiphers() {
+		return enabledCiphers;
 	}
 	
 }

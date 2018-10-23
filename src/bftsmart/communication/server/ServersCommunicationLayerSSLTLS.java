@@ -102,7 +102,9 @@ public class ServersCommunicationLayerSSLTLS extends Thread {
 
 	
 	/**
-	 * Tulio Ribeiro
+	 * Tulio A. Ribeiro
+	 * 
+	 * SSL / TLS
 	 */
 	
 	private KeyManagerFactory kmf;
@@ -113,20 +115,9 @@ public class ServersCommunicationLayerSSLTLS extends Thread {
 	private SSLServerSocketFactory serverSocketFactory;	
 	private static final String SECRET = "MySeCreT_2hMOygBwY";
 	private SecretKey selfPwd;
-	
-	
 	private SSLServerSocket serverSocketSSLTLS;
 	private String ssltlsProtocolVersion;
-	String[] ciphers = new String[] {	"TLS_RSA_WITH_NULL_SHA256", 
-			 							//"TLS_ECDHE_ECDSA_WITH_NULL_SHA",
-			 							//"TLS_ECDHE_RSA_WITH_NULL_SHA", 
-			 							"SSL_RSA_WITH_NULL_SHA", 
-			 							//"TLS_ECDH_ECDSA_WITH_NULL_SHA",
-			 							"TLS_ECDH_RSA_WITH_NULL_SHA", 
-			 							//"TLS_ECDH_anon_WITH_NULL_SHA", 
-			 							"SSL_RSA_WITH_NULL_MD5" };
-
-
+	//private String[] ciphers;// = new String[] {"TLS_RSA_WITH_NULL_SHA256"}; // from config file now.
 	
 
 	public ServersCommunicationLayerSSLTLS(
@@ -200,7 +191,13 @@ public class ServersCommunicationLayerSSLTLS extends Thread {
 		this.serverSocketSSLTLS = (SSLServerSocket) 
 					serverSocketFactory.createServerSocket(myPort, 100, InetAddress.getByName(myAddress));
 
-		serverSocketSSLTLS.setEnabledCipherSuites(ciphers);
+		serverSocketSSLTLS.setEnabledCipherSuites(this.controller.getStaticConf().getEnabledCiphers());
+		
+		String [] ciphers = serverSocketFactory.getSupportedCipherSuites();
+		for (int i = 0; i < ciphers.length; i++) {
+			logger.trace("Supported Cipher: {} ", ciphers[i]);
+		}
+		
 
 		serverSocketSSLTLS.setSoTimeout(30000);
 		serverSocketSSLTLS.setEnableSessionCreation(true);
@@ -366,13 +363,13 @@ public class ServersCommunicationLayerSSLTLS extends Thread {
 					pendingConn.add(new PendingConnection(newSocket, remoteId));
 					waitViewLock.unlock();
 				} else {
-					System.out.println("Trying establish connection with replica: " + remoteId);
+					logger.debug("Trying establish connection with Replica: {}", remoteId);
 					establishConnection(newSocket, remoteId);
 				}
 				// ******* EDUARDO END **************//
 
 			} catch (SocketTimeoutException ex) {
-				logger.debug("Server socket timed out, retrying");
+				logger.trace("Server socket timed out, retrying");
 			} catch (javax.net.ssl.SSLHandshakeException sslex) {
 				sslex.printStackTrace();
 			} catch (IOException ex) {
@@ -406,13 +403,13 @@ public class ServersCommunicationLayerSSLTLS extends Thread {
 				}
 			} else {
 				// reconnection
-				System.out.println("ReConnecting with: " + remoteId);
+				logger.debug("ReConnecting with replica: {}", remoteId);
 				this.connections.get(remoteId).reconnect(newSocket);
 			}
 			connectionsLock.unlock();
 
 		} else {
-			System.out.println("Closing connection of: " + remoteId);
+			logger.debug("Closing connection with replica: {}", remoteId);
 			newSocket.close();
 		}
 	}
@@ -421,7 +418,6 @@ public class ServersCommunicationLayerSSLTLS extends Thread {
 		try {
 			socket.setTcpNoDelay(true);
 		} catch (SocketException ex) {
-
 			LoggerFactory.getLogger(ServersCommunicationLayer.class).error("Failed to set TCPNODELAY", ex);
 		}
 	}
