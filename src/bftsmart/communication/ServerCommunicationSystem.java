@@ -225,8 +225,8 @@ public class ServerCommunicationSystem extends Thread {
 	
 	/* Tulio Ribeiro*/
 	public enum ConnType{
-		SSL_TLS, // Using SSL/TLS Channel.
-		No_SSL_TLS // Not Using SSL/TLS Channel. 	
+		SSL_TLS, // Using SSL/TLS.
+		No_SSL_TLS // Not Using SSL/TLS. 	
 	}
 	public ConnType getConnType() {
 		return connType;

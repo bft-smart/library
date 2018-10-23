@@ -88,7 +88,7 @@ public class ServerConnectionSSLTLS {
 	/** Only used when there is no sender Thread */
 	private Lock sendLock;
 	private boolean doWork = true;
-
+	private SecretKey secretKey = null;
 	
 	private KeyManagerFactory kmf;
 	private KeyStore ks = null;
@@ -130,6 +130,9 @@ public class ServerConnectionSSLTLS {
 				} catch (IOException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
+				} catch (InvalidKeySpecException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
 				}
 		}
 		// else I have to wait a connection from the remote server
@@ -165,20 +168,7 @@ public class ServerConnectionSSLTLS {
 	}
 
 	public SecretKey getSecretKey() {
-		try {
-			SecretKeyFactory fac = TOMUtil.getSecretFactory();
-			PBEKeySpec spec = TOMUtil.generateKeySpec(SECRET.toCharArray());
-			SecretKey sk = fac.generateSecret(spec); 
-			return sk;
-		} catch (NoSuchAlgorithmException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (InvalidKeySpecException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		return null;
-		
+		return secretKey;		
 	}
 
 	/**
@@ -287,6 +277,9 @@ public class ServerConnectionSSLTLS {
 						ssltlsCreateConnection();
 					} catch (UnrecoverableKeyException | KeyManagementException | KeyStoreException
 							| NoSuchAlgorithmException | CertificateException | IOException e) {
+						e.printStackTrace();
+					} catch (InvalidKeySpecException e) {
+						// TODO Auto-generated catch block
 						e.printStackTrace();
 					}
 				} else {
@@ -501,6 +494,7 @@ public class ServerConnectionSSLTLS {
 	 * @throws NoSuchAlgorithmException 
 	 * @throws UnrecoverableKeyException 
 	 * @throws KeyManagementException 
+	 * @throws InvalidKeySpecException 
 	 * */
 	
 	public void ssltlsCreateConnection() 
@@ -509,7 +503,7 @@ public class ServerConnectionSSLTLS {
 										CertificateException, 
 										IOException, 
 										UnrecoverableKeyException, 
-										KeyManagementException {
+										KeyManagementException, InvalidKeySpecException {
 	
 		String algorithm = Security.getProperty("ssl.KeyManagerFactory.algorithm");
 		try {
@@ -549,6 +543,12 @@ public class ServerConnectionSSLTLS {
 
 		this.socketSSL.startHandshake();
 
+		
+		SecretKeyFactory fac = TOMUtil.getSecretFactory();
+		PBEKeySpec spec = TOMUtil.generateKeySpec(SECRET.toCharArray());
+		secretKey = fac.generateSecret(spec); 
+		
+		
 		ServersCommunicationLayerSSLTLS.setSSLSocketOptions(this.socketSSL);
 		new DataOutputStream(this.socketSSL.getOutputStream())
 				.writeInt(this.controller.getStaticConf().getProcessId());

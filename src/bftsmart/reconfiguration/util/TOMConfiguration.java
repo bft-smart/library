@@ -362,7 +362,7 @@ public class TOMConfiguration extends Configuration {
             
             s = (String) configs.remove("system.ssltls.enabled_ciphers");
             if(s == null){
-                enabledCiphers = new String[] {"TLS_RSA_WITH_NULL_SHA256"};
+                enabledCiphers = new String[] {"TLS_RSA_WITH_NULL_SHA256", "TLS_ECDHE_ECDSA_WITH_NULL_SHA"};
             }else{
             	enabledCiphers = s.split(",");
 			}        
