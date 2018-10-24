@@ -117,8 +117,6 @@ public class ServersCommunicationLayerSSLTLS extends Thread {
 	private SecretKey selfPwd;
 	private SSLServerSocket serverSocketSSLTLS;
 	private String ssltlsProtocolVersion;
-	//private String[] ciphers;// = new String[] {"TLS_RSA_WITH_NULL_SHA256"}; // from config file now.
-	
 
 	public ServersCommunicationLayerSSLTLS(
 				ServerViewController controller, 
@@ -209,9 +207,6 @@ public class ServersCommunicationLayerSSLTLS extends Thread {
 		SecretKeyFactory fac = TOMUtil.getSecretFactory();
 		PBEKeySpec spec = TOMUtil.generateKeySpec(SECRET.toCharArray());
 		selfPwd = fac.generateSecret(spec);
-		
-		/*selfPwd = (SecretKey) ks.getKey("bftsmart", SECRET.toCharArray());
-		logger.debug("Selg Passwd: {} ", selfPwd);*/		
 		
 		// Try connecting if a member of the current view. Otherwise, wait until the
 		// Join has been processed!
@@ -431,8 +426,6 @@ public class ServersCommunicationLayerSSLTLS extends Thread {
 
 		for (int i = 0; i < activeServers.length; i++) {
 
-			// for(int i=0; i<connections.length; i++) {
-			// if(connections[i] != null) {
 			if (me != activeServers[i]) {
 				str += ", connections[" + activeServers[i] + "]: outQueue=" + getConnection(activeServers[i]).outQueue;
 			}

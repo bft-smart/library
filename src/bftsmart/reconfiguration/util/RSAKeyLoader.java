@@ -76,19 +76,7 @@ public class RSAKeyLoader implements KeyLoader {
                     path = configHome + System.getProperty("file.separator") + "keysRSA" +
                                     System.getProperty("file.separator");
             }
-            
-            /*try {
-				System.out.println("\n###############################################" 
-						+ "\nKeyLoader parameters:" 
-						+ "\n\t ID: " + this.id
-						+ "\n\t DefaultKeys: " + this.defaultKeys 
-						+ "\n\t Signature Algorithm: " + this.sigAlgorithm
-						+ "\n\t Private Key Format: " + getPrivateKeyFromString(RSAKeyLoader.DEFAULT_PKEY).getFormat()
-						+ "\n\t Public Key Format: " + getPublicKeyFromString(RSAKeyLoader.DEFAULT_UKEY).getFormat()
-						+ "\n" + "###############################################");
-			} catch (NoSuchAlgorithmException | InvalidKeySpecException e) {
-				e.printStackTrace();
-			}*/
+      
     }
     
     /**

@@ -97,7 +97,6 @@ public class ServerConnectionSSLTLS {
 	private SSLContext context;
 	private SSLSocketFactory socketFactory;	
 	private static final String SECRET = "MySeCreT_2hMOygBwY";
-	//private String[] ciphers;// = new String[] {"TLS_RSA_WITH_NULL_SHA256"}; // from config file now.
 
 	public ServerConnectionSSLTLS(
 				ServerViewController controller, 
@@ -154,7 +153,6 @@ public class ServerConnectionSSLTLS {
 		} else {
 			sendLock = new ReentrantLock();
 		}
-		// authenticateAndEstablishAuthKey();
 
 		if (!this.controller.getStaticConf().isTheTTP()) {
 			if (this.controller.getStaticConf().getTTPId() == remoteId) {

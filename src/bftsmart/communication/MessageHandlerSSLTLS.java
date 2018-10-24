@@ -52,7 +52,7 @@ public class MessageHandlerSSLTLS {
     public MessageHandlerSSLTLS() {
         try {
             this.mac = TOMUtil.getMacFactory();
-        } catch (NoSuchAlgorithmException /*| NoSuchPaddingException*/ ex) {
+        } catch (NoSuchAlgorithmException ex) {
             logger.error("Failed to create MAC engine",ex);
         }
     }
