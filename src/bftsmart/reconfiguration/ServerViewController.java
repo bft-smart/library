@@ -63,8 +63,7 @@ public class ServerViewController extends ViewController {
     public ServerViewController(int procId, String configHome, KeyLoader loader) {
         super(procId, configHome, loader);
         View cv = getViewStore().readView();
-        if(cv == null){
-            
+        if(cv == null){            
             logger.info("Creating current view from configuration file");
             reconfigureTo(new View(0, getStaticConf().getInitialView(),  getStaticConf().getF(), getInitAdddresses()));
         }else{

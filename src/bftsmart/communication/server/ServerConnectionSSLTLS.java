@@ -103,14 +103,9 @@ public class ServerConnectionSSLTLS {
 				SSLSocket socketSSL, 
 				int remoteId,
 				LinkedBlockingQueue<SystemMessage> inQueue, 
-				ServiceReplica replica) 
-						throws 
-							KeyStoreException, 
-							NoSuchAlgorithmException, 
-							CertificateException, 
-							UnrecoverableKeyException, 
-							KeyManagementException {
-
+				ServiceReplica replica) {
+		
+		
 		this.controller = controller;
 
 		this.socketSSL = socketSSL;
@@ -124,15 +119,7 @@ public class ServerConnectionSSLTLS {
 		this.noMACs = new HashSet<Integer>();
 		// Connect to the remote process or just wait for the connection?
 		if (isToConnect()) {
-				try {
-					ssltlsCreateConnection();
-				} catch (IOException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				} catch (InvalidKeySpecException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
+			ssltlsCreateConnection();				
 		}
 		// else I have to wait a connection from the remote server
 
@@ -286,15 +273,7 @@ public class ServerConnectionSSLTLS {
 		if (socketSSL == null || !socketSSL.isConnected()) {
 
 				if (isToConnect()) {
-					try {
-						ssltlsCreateConnection();
-					} catch (UnrecoverableKeyException | KeyManagementException | KeyStoreException
-							| NoSuchAlgorithmException | CertificateException | IOException e) {
-						e.printStackTrace();
-					} catch (InvalidKeySpecException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
-					}
+					ssltlsCreateConnection();					
 				} else {
 					socketSSL = newSocket;
 				}
@@ -510,13 +489,7 @@ public class ServerConnectionSSLTLS {
 	 * @throws InvalidKeySpecException 
 	 * */
 	
-	public void ssltlsCreateConnection() 
-								throws  KeyStoreException, 
-										NoSuchAlgorithmException, 
-										CertificateException, 
-										IOException, 
-										UnrecoverableKeyException, 
-										KeyManagementException, InvalidKeySpecException {
+	public void ssltlsCreateConnection(){
 	
 		String algorithm = Security.getProperty("ssl.KeyManagerFactory.algorithm");
 		try {
@@ -525,12 +498,24 @@ public class ServerConnectionSSLTLS {
 			ks.load(fis, SECRET.toCharArray());
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
-		} finally {
-			if (fis != null) {
-				fis.close();
+		} catch (KeyStoreException e) {
+			e.printStackTrace();
+		} catch (NoSuchAlgorithmException e) {
+			e.printStackTrace();
+		} catch (CertificateException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}finally {
+			if (fis != null) {				
+				try {
+					fis.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
 			}
 		}
-		
+		try { 	
 		kmf = KeyManagerFactory.getInstance(algorithm);				
 		kmf.init(ks, SECRET.toCharArray());
 		
@@ -540,10 +525,24 @@ public class ServerConnectionSSLTLS {
 		context.init(kmf.getKeyManagers(), trustMgrFactory.getTrustManagers(), new SecureRandom());
 		socketFactory = context.getSocketFactory();
 		
+		}catch (KeyStoreException e) {
+			e.printStackTrace();
+		} catch (NoSuchAlgorithmException e) {
+			e.printStackTrace();
+		} catch (UnrecoverableKeyException e) {
+			e.printStackTrace();
+		} catch (KeyManagementException e) {
+			e.printStackTrace();
+		} 
 		//Create the connection.
-		this.socketSSL = (SSLSocket) socketFactory.createSocket(
-				this.controller.getStaticConf().getHost(remoteId),
-				this.controller.getStaticConf().getServerToServerPort(remoteId));
+		try {
+			this.socketSSL = (SSLSocket) socketFactory.createSocket(
+					this.controller.getStaticConf().getHost(remoteId),
+					this.controller.getStaticConf().getServerToServerPort(remoteId));
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 
 		this.socketSSL.setEnabledCipherSuites(this.controller.getStaticConf().getEnabledCiphers());
 
@@ -554,17 +553,35 @@ public class ServerConnectionSSLTLS {
 			}
 		});
 
-		this.socketSSL.startHandshake();
+		try {
+			this.socketSSL.startHandshake();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 
 		
-		SecretKeyFactory fac = TOMUtil.getSecretFactory();
-		PBEKeySpec spec = TOMUtil.generateKeySpec(SECRET.toCharArray());
-		secretKey = fac.generateSecret(spec); 
+		SecretKeyFactory fac;
+		PBEKeySpec spec;
+		try {
+			fac = TOMUtil.getSecretFactory();
+			spec = TOMUtil.generateKeySpec(SECRET.toCharArray());
+			secretKey = fac.generateSecret(spec);
+		} catch (NoSuchAlgorithmException e) {
+			e.printStackTrace();
+		} catch (InvalidKeySpecException e) {
+			e.printStackTrace();
+		} 
+		 
 		
 		
 		ServersCommunicationLayerSSLTLS.setSSLSocketOptions(this.socketSSL);
-		new DataOutputStream(this.socketSSL.getOutputStream())
-				.writeInt(this.controller.getStaticConf().getProcessId());
+		try {
+			new DataOutputStream(this.socketSSL.getOutputStream())
+					.writeInt(this.controller.getStaticConf().getProcessId());
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 
 		
 	}

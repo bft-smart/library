@@ -26,9 +26,16 @@ import java.util.Scanner;
 import java.util.StringTokenizer;
 
 import bftsmart.communication.server.ServerConnection;
+import bftsmart.communication.server.ServerConnectionSSLTLS;
 import bftsmart.reconfiguration.views.View;
 import bftsmart.tom.util.KeyLoader;
+
+import java.security.KeyManagementException;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
 import java.security.Provider;
+import java.security.UnrecoverableKeyException;
+import java.security.cert.CertificateException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -129,6 +136,11 @@ public class ViewManager {
          return new ServerConnection(controller, null, remoteId, null, null);
     }
 
+    //Tulio Ribeiro
+    private ServerConnectionSSLTLS getConnectionSSLTLS(int remoteId){
+    	return new ServerConnectionSSLTLS(controller, null, remoteId, null, null);
+    }
+
     public void sendResponse(Integer[] targets, VMMessage sm) {
         ByteArrayOutputStream bOut = new ByteArrayOutputStream();
 
@@ -144,7 +156,10 @@ public class ViewManager {
             //br.ufsc.das.tom.util.Logger.println("(ServersCommunicationLayer.send) Sending msg to replica "+i);
             try {
                 if (i.intValue() != id) {
-                    getConnection(i.intValue()).send(data, true);
+                	if(controller.getStaticConf().isSSLTLSEnabled())
+                		getConnectionSSLTLS(i.intValue()).send(data, true);
+                	else
+                		getConnection(i.intValue()).send(data, true);
                 }
             } catch (InterruptedException ex) {
                // ex.printStackTrace();

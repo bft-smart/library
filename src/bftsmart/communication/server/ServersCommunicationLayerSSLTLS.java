@@ -262,12 +262,7 @@ public class ServersCommunicationLayerSSLTLS extends Thread {
 		connectionsLock.lock();
 		ServerConnectionSSLTLS ret = this.connections.get(remoteId);
 		if (ret == null) {
-			try {
-				ret = new ServerConnectionSSLTLS(controller, null, remoteId, this.inQueue, this.replica);
-			} catch (UnrecoverableKeyException | KeyManagementException | KeyStoreException | NoSuchAlgorithmException
-					| CertificateException e) {
-				e.printStackTrace();
-			}
+			ret = new ServerConnectionSSLTLS(controller, null, remoteId, this.inQueue, this.replica);
 			this.connections.put(remoteId, ret);
 		}
 		connectionsLock.unlock();
@@ -389,13 +384,7 @@ public class ServersCommunicationLayerSSLTLS extends Thread {
 			if (this.connections.get(remoteId) == null) { // This must never happen!!!
 				// first time that this connection is being established
 				// System.out.println("THIS DOES NOT HAPPEN....."+remoteId);
-				try {
-					this.connections.put(remoteId,
-							new ServerConnectionSSLTLS(controller, newSocket, remoteId, inQueue, replica));
-				} catch (UnrecoverableKeyException | KeyManagementException | KeyStoreException
-						| NoSuchAlgorithmException | CertificateException e) {
-					e.printStackTrace();
-				}
+				this.connections.put(remoteId, new ServerConnectionSSLTLS(controller, newSocket, remoteId, inQueue, replica));
 			} else {
 				// reconnection
 				logger.debug("ReConnecting with replica: {}", remoteId);
