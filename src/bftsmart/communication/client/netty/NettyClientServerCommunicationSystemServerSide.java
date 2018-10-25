@@ -77,9 +77,9 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 
 	/* Tulio Ribeiro */
 	private static int tcpSendBufferSize = 8 * 1024 * 1024;
-	private static int bossThreads = 8; /* listens and accepts on server socket; workers handle r/w I/O */
-	private static int connectionBacklog = 2048; /* pending connections boss thread will queue to accept */
-	private static int connectionTimeoutMsec = 60000; /* how long to allow TCP handshake to complete (60 seconds) */
+	private static int bossThreads = 4; /* listens and accepts on server socket; workers handle r/w I/O */
+	private static int connectionBacklog = 1024; /* pending connections boss thread will queue to accept */
+	private static int connectionTimeoutMsec = 30000; /* how long to allow TCP handshake to complete (60 seconds) */
 	/* Tulio Ribeiro */
 	    
 	public NettyClientServerCommunicationSystemServerSide(ServerViewController controller) {
@@ -122,9 +122,10 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 					})
 				.childOption(ChannelOption.SO_KEEPALIVE, true)
 				.childOption(ChannelOption.TCP_NODELAY, true)
-				.childOption(ChannelOption.SO_SNDBUF, tcpSendBufferSize)
-	            .childOption(ChannelOption.CONNECT_TIMEOUT_MILLIS, connectionTimeoutMsec)
-	            .childOption(ChannelOption.SO_BACKLOG, connectionBacklog);
+				//.childOption(ChannelOption.SO_SNDBUF, tcpSendBufferSize)
+	            //.childOption(ChannelOption.CONNECT_TIMEOUT_MILLIS, connectionTimeoutMsec)
+	            //.childOption(ChannelOption.SO_BACKLOG, connectionBacklog)
+				;
 			String myAddress;
 			String confAddress = controller.getStaticConf().getRemoteAddress(controller.getStaticConf().getProcessId())
 					.getAddress().getHostAddress();
