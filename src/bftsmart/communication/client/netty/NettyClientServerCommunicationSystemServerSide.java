@@ -218,11 +218,13 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 			closeChannelAndEventLoop(ctx.channel());
 			return;
 		}
-
 		if (cause instanceof ClosedChannelException)
 			logger.info("Connection with client closed.");
+		else if (cause instanceof IOException) {
+			logger.error("Impossible to connect to client. (Connection reset by peer)");
+		}
 		else {
-			logger.error("Impossible to connect to client.", cause);
+			logger.error("Connection problem. Cause:{}", cause);
 		}
 	}
 

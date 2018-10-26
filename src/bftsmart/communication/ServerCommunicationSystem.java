@@ -175,6 +175,7 @@ public class ServerCommunicationSystem extends Thread {
 	 *            the message to be sent
 	 */
 	public void send(int[] targets, SystemMessage sm) {
+		
 		if (sm instanceof TOMMessage) {
 			clientsConn.send(targets, (TOMMessage) sm, false);
 		} else {

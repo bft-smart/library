@@ -43,6 +43,12 @@ public class ServerViewController extends ViewController {
     public static final int REMOVE_SERVER = 1;
     public static final int CHANGE_F = 2;
     
+    enum ACTION{
+    	ADD_SERVER, 	// Add a server.
+    	REMOVE_SERVER, 	// Remove a server.
+    	CHANGE_F		// Change fault tolerance. 
+    }
+    
     private int quorumBFT; // ((n + f) / 2) replicas
     private int quorumCFT; // (n / 2) replicas
     private int[] otherProcesses;

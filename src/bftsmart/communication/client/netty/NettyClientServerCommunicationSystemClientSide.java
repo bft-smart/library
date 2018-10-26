@@ -183,7 +183,10 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 			logger.error("Connection with replica closed.", cause);
 		} else if (cause instanceof ConnectException) {
 			logger.error("Impossible to connect to replica.", cause);
-		} else {
+		} else if (cause instanceof IOException){
+			logger.error("Replica disconnected. Connection reset by peer.");
+		}
+		else {
 			logger.error("Replica disconnected.", cause);
 		}
 	}
@@ -242,7 +245,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 
 					} else {
 						// This cleans an olde server from the session table
-						sessionTable.remove(ncss.getReplicaId());
+						sessionTable.remove(replicaId);
 					}
 				} catch (NoSuchAlgorithmException ex) {
 					logger.error("Failed to reconnect to replica", ex);

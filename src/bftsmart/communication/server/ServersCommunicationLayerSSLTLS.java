@@ -117,7 +117,13 @@ public class ServersCommunicationLayerSSLTLS extends Thread {
 	private SecretKey selfPwd;
 	private SSLServerSocket serverSocketSSLTLS;
 	private String ssltlsProtocolVersion;
-
+	
+	/* Tulio Ribeiro */
+	//private static int tcpSendBufferSize = 8 * 1024 * 1024;
+	private static int connectionTimeoutMsec = 10000; 
+	/* Tulio Ribeiro */
+	
+	
 	public ServersCommunicationLayerSSLTLS(
 				ServerViewController controller, 
 				LinkedBlockingQueue<SystemMessage> inQueue,
@@ -197,7 +203,8 @@ public class ServersCommunicationLayerSSLTLS extends Thread {
 		}
 		
 
-		serverSocketSSLTLS.setSoTimeout(30000);
+		serverSocketSSLTLS.setPerformancePreferences(0, 2, 1);
+		serverSocketSSLTLS.setSoTimeout(connectionTimeoutMsec);
 		serverSocketSSLTLS.setEnableSessionCreation(true);
 		serverSocketSSLTLS.setReuseAddress(true);
 		serverSocketSSLTLS.setNeedClientAuth(true);
@@ -379,7 +386,8 @@ public class ServersCommunicationLayerSSLTLS extends Thread {
 	// Tulio SSL Socket. ## BEGIN
 	private void establishConnection(SSLSocket newSocket, int remoteId) throws IOException {
 
-		if ((this.controller.getStaticConf().getTTPId() == remoteId) || this.controller.isCurrentViewMember(remoteId)) {
+		if ((this.controller.getStaticConf().getTTPId() == remoteId) 
+				|| this.controller.isCurrentViewMember(remoteId)) {
 			connectionsLock.lock();
 			if (this.connections.get(remoteId) == null) { // This must never happen!!!
 				// first time that this connection is being established

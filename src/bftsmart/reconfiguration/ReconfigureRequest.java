@@ -29,7 +29,7 @@ import java.util.Iterator;
 public class ReconfigureRequest implements Externalizable{
 
     private int sender;
-    private Hashtable<Integer,String> properties = new Hashtable<Integer,String>();
+    private Hashtable<Integer, String> properties = new Hashtable<Integer,String>();
     private byte[] signature;
     
     

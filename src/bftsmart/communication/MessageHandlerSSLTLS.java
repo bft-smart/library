@@ -73,7 +73,8 @@ public class MessageHandlerSSLTLS {
             ConsensusMessage consMsg = (ConsensusMessage) sm;
 
             
-            // If using SSL / TLS, the MAC will be turned off (TLS protocols already does), so the else is unnecessary.  
+            // If using SSL / TLS, the MAC will be turned off (TLS protocols already does), 
+            // so the else is unnecessary with SSL/TLS.  
             if (tomLayer.controller.getStaticConf().getUseMACs() == false 
             			|| consMsg.authenticated 
             			|| consMsg.getSender() == myId) 

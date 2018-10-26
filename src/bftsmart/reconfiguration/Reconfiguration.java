@@ -19,6 +19,8 @@ import bftsmart.tom.ServiceProxy;
 import bftsmart.tom.core.messages.TOMMessageType;
 import bftsmart.tom.util.KeyLoader;
 import bftsmart.tom.util.TOMUtil;
+import sun.util.logging.resources.logging;
+
 import java.security.Provider;
 
 /**
@@ -47,7 +49,7 @@ public class Reconfiguration {
     }
     
     public void addServer(int id, String ip, int port, int portRR){
-        this.setReconfiguration(
+    	this.setReconfiguration(
         			ServerViewController.ADD_SERVER, 
         			id + ":" + 
         			ip + ":" + 
@@ -66,6 +68,7 @@ public class Reconfiguration {
     
     
     public void setReconfiguration(int prop, String value){
+    	System.out.println("setReconfiguration: Prop: " +prop+ ", Value: "+ value);
         if(request == null){
             //request = new ReconfigureRequest(proxy.getViewManager().getStaticConf().getProcessId());
             request = new ReconfigureRequest(id);

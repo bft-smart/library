@@ -25,6 +25,8 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.ObjectInputStream;
+import java.net.SocketException;
+import java.net.UnknownHostException;
 import java.security.KeyManagementException;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
@@ -97,6 +99,10 @@ public class ServerConnectionSSLTLS {
 	private SSLContext context;
 	private SSLSocketFactory socketFactory;	
 	private static final String SECRET = "MySeCreT_2hMOygBwY";
+	
+	/* Tulio Ribeiro */
+	private static int connectionTimeoutMsec = 10000; 
+	/* Tulio Ribeiro */
 
 	public ServerConnectionSSLTLS(
 				ServerViewController controller, 
@@ -491,6 +497,18 @@ public class ServerConnectionSSLTLS {
 	
 	public void ssltlsCreateConnection(){
 	
+		SecretKeyFactory fac;
+		PBEKeySpec spec;
+		try {
+			fac = TOMUtil.getSecretFactory();
+			spec = TOMUtil.generateKeySpec(SECRET.toCharArray());
+			secretKey = fac.generateSecret(spec);
+		} catch (NoSuchAlgorithmException e) {
+			e.printStackTrace();
+		} catch (InvalidKeySpecException e) {
+			e.printStackTrace();
+		} 
+		
 		String algorithm = Security.getProperty("ssl.KeyManagerFactory.algorithm");
 		try {
 			fis = new FileInputStream("config/keysSSL_TLS/" + this.controller.getStaticConf().getSSLTLSKeyStore() );
@@ -539,51 +557,33 @@ public class ServerConnectionSSLTLS {
 			this.socketSSL = (SSLSocket) socketFactory.createSocket(
 					this.controller.getStaticConf().getHost(remoteId),
 					this.controller.getStaticConf().getServerToServerPort(remoteId));
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-
-		this.socketSSL.setEnabledCipherSuites(this.controller.getStaticConf().getEnabledCiphers());
-
-		this.socketSSL.addHandshakeCompletedListener(new HandshakeCompletedListener() {
-			@Override
-			public void handshakeCompleted(HandshakeCompletedEvent event) {
-				logger.info("SSL/TLS handshake complete!, Id:{}"+ "  ## CipherSuite: {}.", remoteId, event.getCipherSuite());
-			}
-		});
-
-		try {
-			this.socketSSL.startHandshake();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-
+			this.socketSSL.setKeepAlive(true);
+			this.socketSSL.setSoTimeout(connectionTimeoutMsec);
+			this.socketSSL.setTcpNoDelay(true);
+			this.socketSSL.setEnabledCipherSuites(this.controller.getStaticConf().getEnabledCiphers());
 		
-		SecretKeyFactory fac;
-		PBEKeySpec spec;
-		try {
-			fac = TOMUtil.getSecretFactory();
-			spec = TOMUtil.generateKeySpec(SECRET.toCharArray());
-			secretKey = fac.generateSecret(spec);
-		} catch (NoSuchAlgorithmException e) {
+			this.socketSSL.addHandshakeCompletedListener(new HandshakeCompletedListener() {
+				@Override
+				public void handshakeCompleted(HandshakeCompletedEvent event) {
+					logger.info("SSL/TLS handshake complete!, Id:{}"+ "  ## CipherSuite: {}.", remoteId, event.getCipherSuite());
+				}
+			});
+			
+			this.socketSSL.startHandshake();
+			
+			ServersCommunicationLayerSSLTLS.setSSLSocketOptions(this.socketSSL);
+			new DataOutputStream(this.socketSSL.getOutputStream()).writeInt(this.controller.getStaticConf().getProcessId());
+			
+			
+		} catch (SocketException e) {
+			logger.error("Connection refused (SocketException)");
+			//e.printStackTrace();		
+		} catch (UnknownHostException e) {
 			e.printStackTrace();
-		} catch (InvalidKeySpecException e) {
+		} catch (IOException e) {
 			e.printStackTrace();
 		} 
-		 
-		
-		
-		ServersCommunicationLayerSSLTLS.setSSLSocketOptions(this.socketSSL);
-		try {
-			new DataOutputStream(this.socketSSL.getOutputStream())
-					.writeInt(this.controller.getStaticConf().getProcessId());
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-
-		
+				
 	}
 	
 }
