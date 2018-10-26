@@ -89,18 +89,11 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 			sessionTable = new HashMap();
 			rl = new ReentrantReadWriteLock();
 
-			// Configure the server.
-			Mac macDummy = TOMUtil.getMacFactory();
+			// Configure the server.			
 
 			serverPipelineFactory = new NettyServerPipelineFactory(this, sessionTable, controller, rl);
 
 			EventLoopGroup bossGroup = new NioEventLoopGroup(bossThreads);
-
-			// If the numbers of workers are not specified by the configuration file,
-			// the event group is created with the default number of threads, which
-			// should be twice the number of cores available.
-			//int nWorkers = this.controller.getStaticConf().getNumNettyWorkers();
-			//EventLoopGroup workerGroup = (nWorkers > 0 ? new NioEventLoopGroup(nWorkers) : new NioEventLoopGroup());
 			EventLoopGroup workerGroup = new NioEventLoopGroup(Runtime.getRuntime().availableProcessors());
 
 			ServerBootstrap b = new ServerBootstrap();
@@ -184,7 +177,7 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 
 			mainChannel = f.channel();
 
-		} catch (NoSuchAlgorithmException | InterruptedException | UnknownHostException ex) {
+		} catch (InterruptedException | UnknownHostException ex) {
 			logger.error("Failed to create Netty communication system", ex);
 		}
 	}
@@ -250,7 +243,6 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 
 	@Override
 	public void channelActive(ChannelHandlerContext ctx) {
-
 		if (this.closed) {
 			closeChannelAndEventLoop(ctx.channel());
 			return;
@@ -260,7 +252,6 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 
 	@Override
 	public void channelInactive(ChannelHandlerContext ctx) {
-
 		if (this.closed) {
 			closeChannelAndEventLoop(ctx.channel());
 			return;
@@ -275,7 +266,7 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 				NettyClientServerSession value = (NettyClientServerSession) m.getValue();
 				if (ctx.channel().equals(value.getChannel())) {
 					int key = (Integer) m.getKey();
-					logger.info("Removing client channel with ID= " + key);
+					logger.debug("Removing client channel with ID= " + key);
 					sessionTable.remove(key);
 					logger.info("Active clients=" + sessionTable.size());
 					break;
