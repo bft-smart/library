@@ -24,8 +24,21 @@ import bftsmart.tom.RequestContext;
 import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.core.messages.TOMMessageType;
 import bftsmart.tom.util.Storage;
+import bftsmart.tom.util.TOMUtil;
+import java.nio.ByteBuffer;
+import java.security.InvalidKeyException;
+import java.security.KeyFactory;
+import java.security.NoSuchAlgorithmException;
+import java.security.NoSuchProviderException;
+import java.security.Security;
+import java.security.Signature;
+import java.security.SignatureException;
+import java.security.spec.InvalidKeySpecException;
+import java.security.spec.PKCS8EncodedKeySpec;
+import java.util.Base64;
 import java.util.Collection;
 import java.util.LinkedList;
+import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -40,8 +53,8 @@ public class AsyncLatencyClient {
     static int initId;
     
     public static void main(String[] args) throws IOException {
-        if (args.length < 7) {
-            System.out.println("Usage: java ...AsyncLatencyClient <initial client id> <number of clients> <number of operations> <request size> <interval (ms)> <read only?> <verbose?>");
+        if (args.length < 8) {
+            System.out.println("Usage: ... ThroughputLatencyClient <initial client id> <number of clients> <number of operations> <request size> <interval (ms)> <read only?> <verbose?> <nosig | default | ecdsa>");
             System.exit(-1);
         }
 
@@ -52,6 +65,17 @@ public class AsyncLatencyClient {
         int interval = Integer.parseInt(args[4]);
         boolean readOnly = Boolean.parseBoolean(args[5]);
         boolean verbose = Boolean.parseBoolean(args[6]);
+        String sign = args[7];
+        
+        int s = 0;
+        if (!sign.equalsIgnoreCase("nosig")) s++;
+        if (sign.equalsIgnoreCase("ecdsa")) s++;
+        
+        if (s == 2 && Security.getProvider("SunEC") == null) {
+            
+            System.out.println("Option 'ecdsa' requires SunEC provider to be available.");
+            System.exit(0);
+        }
         
         Client[] clients = new Client[numThreads];
 
@@ -63,7 +87,7 @@ public class AsyncLatencyClient {
             }
 
             System.out.println("Launching client " + (initId + i));
-            clients[i] = new AsyncLatencyClient.Client(initId + i, numberOfOps, requestSize, interval, readOnly, verbose);
+            clients[i] = new AsyncLatencyClient.Client(initId + i, numberOfOps, requestSize, interval, readOnly, verbose, s);
         }
         
         ExecutorService exec = Executors.newFixedThreadPool(clients.length);
@@ -94,21 +118,64 @@ public class AsyncLatencyClient {
         int id;
         AsynchServiceProxy serviceProxy;
         int numberOfOps;
+        int requestSize;
         int interval;
         byte[] request;
         TOMMessageType reqType;
         boolean verbose;
 
-        public Client(int id, int numberOfOps, int requestSize, int interval, boolean readOnly, boolean verbose) {
+        public Client(int id, int numberOfOps, int requestSize, int interval, boolean readOnly, boolean verbose, int sign) {
 
             this.id = id;
             this.serviceProxy = new AsynchServiceProxy(id);
 
             this.numberOfOps = numberOfOps;
+            this.requestSize = requestSize;
             this.interval = interval;
             this.request = new byte[requestSize];
             this.reqType = (readOnly ? TOMMessageType.UNORDERED_REQUEST : TOMMessageType.ORDERED_REQUEST);
             this.verbose = verbose;
+            this.request = new byte[this.requestSize];
+            
+            Random rand = new Random(System.nanoTime() + this.id);
+            rand.nextBytes(request);
+            
+            byte[] signature = new byte[0];
+            Signature eng;
+            
+            try {
+
+                if (sign > 0) {
+
+                    if (sign == 1) {
+                        eng = TOMUtil.getSigEngine();
+                        eng.initSign(serviceProxy.getViewManager().getStaticConf().getPrivateKey());
+                    } else {
+
+                        eng = Signature.getInstance("SHA256withECDSA", "SunEC");
+
+                        KeyFactory kf = KeyFactory.getInstance("EC", "SunEC");
+                        Base64.Decoder b64 = Base64.getDecoder();
+                        PKCS8EncodedKeySpec spec = new PKCS8EncodedKeySpec(b64.decode(ThroughputLatencyClient.privKey));
+                        eng.initSign(kf.generatePrivate(spec));
+
+                    }
+                    eng.update(request);
+                    signature = eng.sign();
+                }
+
+                ByteBuffer buffer = ByteBuffer.allocate(request.length + signature.length + (Integer.BYTES * 2));
+                buffer.putInt(request.length);
+                buffer.put(request);
+                buffer.putInt(signature.length);
+                buffer.put(signature);
+                this.request = buffer.array();
+
+
+            } catch (NoSuchAlgorithmException | SignatureException | NoSuchProviderException | InvalidKeyException | InvalidKeySpecException ex) {
+                ex.printStackTrace();
+                System.exit(0);
+            }
 
         }
 

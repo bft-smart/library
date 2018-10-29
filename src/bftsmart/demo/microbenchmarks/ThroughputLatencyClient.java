@@ -157,40 +157,39 @@ public class ThroughputLatencyClient {
             byte[] signature = new byte[0];
             Signature eng;
             
-                try {
-                                        
-                    if (sign > 0) {
-                        
-                        if (sign == 1) {
-                            eng = TOMUtil.getSigEngine();
-                            eng.initSign(proxy.getViewManager().getStaticConf().getPrivateKey());
-                        } else {
-                            
-                            eng = Signature.getInstance("SHA256withECDSA", "SunEC");
+            try {
 
-                            KeyFactory kf = KeyFactory.getInstance("EC", "SunEC");
-                            Base64.Decoder b64 = Base64.getDecoder();
-                            PKCS8EncodedKeySpec spec = new PKCS8EncodedKeySpec(b64.decode(ThroughputLatencyClient.privKey));
-                            eng.initSign(kf.generatePrivate(spec));
+                if (sign > 0) {
 
-                        }
-                        eng.update(request);
-                        signature = eng.sign();
+                    if (sign == 1) {
+                        eng = TOMUtil.getSigEngine();
+                        eng.initSign(proxy.getViewManager().getStaticConf().getPrivateKey());
+                    } else {
+
+                        eng = Signature.getInstance("SHA256withECDSA", "SunEC");
+
+                        KeyFactory kf = KeyFactory.getInstance("EC", "SunEC");
+                        Base64.Decoder b64 = Base64.getDecoder();
+                        PKCS8EncodedKeySpec spec = new PKCS8EncodedKeySpec(b64.decode(ThroughputLatencyClient.privKey));
+                        eng.initSign(kf.generatePrivate(spec));
+
                     }
-                    
-                    ByteBuffer buffer = ByteBuffer.allocate(request.length + signature.length + (Integer.BYTES * 2));
-                    buffer.putInt(request.length);
-                    buffer.put(request);
-                    buffer.putInt(signature.length);
-                    buffer.put(signature);
-                    this.request = buffer.array();
-
-
-                } catch (NoSuchAlgorithmException | SignatureException | NoSuchProviderException | InvalidKeyException | InvalidKeySpecException ex) {
-                    ex.printStackTrace();
-                    System.exit(0);
+                    eng.update(request);
+                    signature = eng.sign();
                 }
 
+                ByteBuffer buffer = ByteBuffer.allocate(request.length + signature.length + (Integer.BYTES * 2));
+                buffer.putInt(request.length);
+                buffer.put(request);
+                buffer.putInt(signature.length);
+                buffer.put(signature);
+                this.request = buffer.array();
+
+
+            } catch (NoSuchAlgorithmException | SignatureException | NoSuchProviderException | InvalidKeyException | InvalidKeySpecException ex) {
+                ex.printStackTrace();
+                System.exit(0);
+            }
             
         }
 
