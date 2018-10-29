@@ -111,7 +111,7 @@ public class ServerCommunicationSystem extends Thread {
 	}
 
 	public void setAcceptorSSLTLS(AcceptorSSLTLS acceptor) {
-		messageHandlerSSLTLS.setAcceptor(acceptor);
+		messageHandlerSSLTLS.setAcceptorSSLTLS(acceptor);
 	}
 	
 	public void setTOMLayer(TOMLayer tomLayer) {

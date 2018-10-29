@@ -18,13 +18,11 @@ package bftsmart.communication.server;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.net.InetAddress;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
-import java.net.UnknownHostException;
 import java.security.KeyManagementException;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
@@ -47,14 +45,11 @@ import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.PBEKeySpec;
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLParameters;
 import javax.net.ssl.SSLServerSocket;
 import javax.net.ssl.SSLServerSocketFactory;
 import javax.net.ssl.SSLSocket;
-import javax.net.ssl.SSLSocketFactory;
 import javax.net.ssl.TrustManagerFactory;
 
-import org.bouncycastle.jcajce.provider.asymmetric.ec.KeyFactorySpi.ECDSA;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -120,7 +115,7 @@ public class ServersCommunicationLayerSSLTLS extends Thread {
 	
 	/* Tulio Ribeiro */
 	//private static int tcpSendBufferSize = 8 * 1024 * 1024;
-	private static int connectionTimeoutMsec = 10000; 
+	//private static int connectionTimeoutMsec = 10000; 
 	/* Tulio Ribeiro */
 	
 	
@@ -204,11 +199,12 @@ public class ServersCommunicationLayerSSLTLS extends Thread {
 		
 
 		serverSocketSSLTLS.setPerformancePreferences(0, 2, 1);
-		serverSocketSSLTLS.setSoTimeout(connectionTimeoutMsec);
+		//serverSocketSSLTLS.setSoTimeout(connectionTimeoutMsec);
 		serverSocketSSLTLS.setEnableSessionCreation(true);
 		serverSocketSSLTLS.setReuseAddress(true);
 		serverSocketSSLTLS.setNeedClientAuth(true);
 		serverSocketSSLTLS.setWantClientAuth(true);
+		
 		
 
 		SecretKeyFactory fac = TOMUtil.getSecretFactory();

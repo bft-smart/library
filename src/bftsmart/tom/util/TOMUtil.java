@@ -23,6 +23,7 @@ import java.io.ObjectOutputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
+import java.security.Provider;
 import java.security.PublicKey;
 import java.security.Signature;
 import java.security.SignatureException;
@@ -35,6 +36,7 @@ import javax.crypto.Mac;
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.PBEKeySpec;
 
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -92,6 +94,12 @@ public class TOMUtil {
             TOMUtil.hashAlgorithmProvider = hashAlgorithmProvider;
             
             TOMUtil.init = true;
+            
+            if(TOMUtil.sigAlgorithmProvider.equals("BC")) {
+            	logger.info("Including BouncyCastle as Signature Provider.");
+            	Security.addProvider(new BouncyCastleProvider());
+            }
+            
         }
     }    
     
@@ -140,7 +148,7 @@ public class TOMUtil {
      */
     public static byte[] signMessage(PrivateKey key, byte[] message) {
 
-        byte[] result = null;
+        byte[] signature = null;
         try {
             
             Signature signatureEngine = getSigEngine();
@@ -149,12 +157,13 @@ public class TOMUtil {
 
             signatureEngine.update(message);
 
-            result = signatureEngine.sign();
+            signature = signatureEngine.sign();
+            
         } catch (Exception e) {
             logger.error("Failed to sign message",e);
         }
 
-        return result;
+        return signature;
     }
 
     /**
@@ -231,7 +240,7 @@ public class TOMUtil {
     }
     
     public static Signature getSigEngine() throws NoSuchAlgorithmException {
-        
+    	
         return Signature.getInstance(TOMUtil.sigAlgorithm, Security.getProvider(TOMUtil.sigAlgorithmProvider));
     }
     
@@ -260,4 +269,8 @@ public class TOMUtil {
         return new PBEKeySpec(password, salt, PBE_ITERATIONS, HASH_BYTE_SIZE);
         
     }
+    
+  /*  public static void addProvider(Provider provider) {
+    	Security.addProvider(provider);
+    } */
 }

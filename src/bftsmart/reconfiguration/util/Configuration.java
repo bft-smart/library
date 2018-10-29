@@ -50,7 +50,7 @@ public class Configuration {
     protected Map<String, String> configs;
     protected HostsConfig hosts;
     protected KeyLoader keyLoader;
-    protected Provider provider;
+    //protected Provider provider;
            
     
     public static final String DEFAULT_HMAC = "HmacSHA512";
@@ -216,8 +216,7 @@ public class Configuration {
 				case "RSA":
 					keyLoader = new RSAKeyLoader(processId, configHome, defaultKeys, signatureAlgorithm);
 					break;
-				case "BC":
-					Security.addProvider(new BouncyCastleProvider());
+				case "ECDSA":
 					keyLoader = new ECDSAKeyLoader(processId, configHome, defaultKeys, signatureAlgorithm);
 					break;
 				case "SunEC":
@@ -229,7 +228,6 @@ public class Configuration {
 				}
             }
             
-
             TOMUtil.init(hmacAlgorithm, 
             				secretKeyAlgorithm, 
             				keyLoader.getSignatureAlgorithm(), 
@@ -391,10 +389,10 @@ public class Configuration {
         }
     }
     
-    public Provider getProvider() {
+   /* public Provider getProvider() {
         
         return provider;
-    }
+    }    */
     
     private void loadConfig(){
         configs = new HashMap<>();

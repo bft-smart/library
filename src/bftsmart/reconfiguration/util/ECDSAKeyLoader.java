@@ -23,22 +23,13 @@ import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
-import java.security.Security;
 import java.security.cert.CertificateException;
-import java.security.interfaces.ECPublicKey;
-import java.security.spec.ECPublicKeySpec;
 import java.security.spec.EncodedKeySpec;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 
 import org.apache.commons.codec.binary.Base64;
-import org.bouncycastle.jce.ECNamedCurveTable;
-import org.bouncycastle.jce.ECPointUtil;
-import org.bouncycastle.jce.provider.BouncyCastleProvider;
-import org.bouncycastle.jce.spec.ECNamedCurveParameterSpec;
-import org.bouncycastle.jce.spec.ECNamedCurveSpec;
-import org.bouncycastle.math.ec.ECPoint;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

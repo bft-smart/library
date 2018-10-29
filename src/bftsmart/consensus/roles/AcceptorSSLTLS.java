@@ -320,9 +320,9 @@ public final class AcceptorSSLTLS {
 				ConsensusMessage cm = factory.createAccept(cid, epoch.getTimestamp(), value);
 
 				// Create a cryptographic proof for this ACCEPT message
-				logger.debug("Creating cryptographic proof for my ACCEPT message from consensus " + cid);
+				//logger.info("Creating cryptographic proof for my ACCEPT message from consensus " + cid);
 				
-				insertProof(cm, epoch);
+				insertProof2(cm, epoch);
 
 				int[] targets = this.controller.getCurrentViewOtherAcceptors();
 
@@ -348,7 +348,8 @@ public final class AcceptorSSLTLS {
 	 * @param epoch
 	 *            The epoch during in which the consensus message was created
 	 */
-	private void insertProof(ConsensusMessage cm, Epoch epoch) {
+	private void insertProof_OLD(ConsensusMessage cm, Epoch epoch) {
+		
 		ByteArrayOutputStream bOut = new ByteArrayOutputStream(248);
 		try {
 			new ObjectOutputStream(bOut).writeObject(cm);
@@ -363,21 +364,22 @@ public final class AcceptorSSLTLS {
 		boolean hasReconf = false;
 
 		for (TOMMessage msg : msgs) {
-			if (msg.getReqType() == TOMMessageType.RECONFIG && msg.getViewID() == controller.getCurrentViewId()) {
+			if (msg.getReqType() == TOMMessageType.RECONFIG 
+					&& msg.getViewID() == controller.getCurrentViewId()) {
 				hasReconf = true;
 				break; // no need to continue, exit the loop
 			}
 		}
 
+		logger.info("SIGNING ALL Accept messages before send. Blocking...");
+		
 		// If this consensus contains a reconfiguration request, we need to use
 		// signatures (there might be replicas that will not be part of the next
 		// consensus instance, and so their MAC will be outdated and useless)
 		if (hasReconf) {
 
 			PrivateKey privKey = controller.getStaticConf().getPrivateKey();
-
 			byte[] signature = TOMUtil.signMessage(privKey, data);
-
 			cm.setProof(signature);
 
 		} else { // ... if not, we can use MAC vectors
@@ -414,6 +416,89 @@ public final class AcceptorSSLTLS {
 
 			cm.setProof(macVector);
 		}
+
+	}
+	
+	private void insertProof2(ConsensusMessage cm, Epoch epoch) {
+		
+		ByteArrayOutputStream bOut = new ByteArrayOutputStream(248);
+		try {
+			new ObjectOutputStream(bOut).writeObject(cm);
+		} catch (IOException ex) {
+			logger.error("Failed to serialize consensus message", ex);
+		}
+
+		byte[] data = bOut.toByteArray();
+
+		// check if consensus contains reconfiguration request
+		/*TOMMessage[] msgs = epoch.deserializedPropValue;
+		boolean hasReconf = false;*/
+
+		/*for (TOMMessage msg : msgs) {
+			if (msg.getReqType() == TOMMessageType.RECONFIG 
+					&& msg.getViewID() == controller.getCurrentViewId()) {
+				hasReconf = true;
+				break; // no need to continue, exit the loop
+			}			
+		}*/
+
+		if (logger.isDebugEnabled()) {
+			TOMMessage[] msgs = epoch.deserializedPropValue;
+			for (TOMMessage msg : msgs) {
+				logger.debug("Received message, Sender:{}, ReqType:{}", msg.getSender(), msg.getReqType());
+
+			}
+		}
+		
+		
+		PrivateKey privKey = controller.getStaticConf().getPrivateKey();
+		byte[] signature = TOMUtil.signMessage(privKey, data);
+		cm.setProof(signature);
+				
+		// If this consensus contains a reconfiguration request, we need to use
+		// signatures (there might be replicas that will not be part of the next
+		// consensus instance, and so their MAC will be outdated and useless)
+		/*if (hasReconf) {
+
+			PrivateKey privKey = controller.getStaticConf().getPrivateKey();
+			byte[] signature = TOMUtil.signMessage(privKey, data);
+			cm.setProof(signature);
+
+		}*/
+		/* else { // ... if not, we can use MAC vectors
+			int[] processes = this.controller.getCurrentViewAcceptors();
+
+			HashMap<Integer, byte[]> macVector = new HashMap<>();
+
+			for (int id : processes) {
+
+				try {
+
+					SecretKey key = null;
+					do {
+						key = communication.getSecretKey(id);
+						if (key == null) {
+							logger.warn("I don't have yet a secret key with " + id + ". Retrying.");
+							Thread.sleep(1000);
+						}
+
+					} while (key == null); // JCS: This loop is to solve a race condition where a
+											// replica might have already been inserted in the view or
+											// recovered after a crash, but it still did not concluded
+											// the Diffie-Hellman protocol. Not an elegant solution,
+											// but for now it will do
+					this.mac.init(key);
+					macVector.put(id, this.mac.doFinal(data));
+				} catch (InterruptedException ex) {
+					logger.error("Interruption while sleeping", ex);
+				} catch (InvalidKeyException ex) {
+
+					logger.error("Failed to generate MAC vector", ex);
+				}
+			}
+
+			cm.setProof(macVector);
+		}*/
 
 	}
 

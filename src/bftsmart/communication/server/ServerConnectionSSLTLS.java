@@ -101,7 +101,7 @@ public class ServerConnectionSSLTLS {
 	private static final String SECRET = "MySeCreT_2hMOygBwY";
 	
 	/* Tulio Ribeiro */
-	private static int connectionTimeoutMsec = 10000; 
+	//private static int connectionTimeoutMsec = 10000; 
 	/* Tulio Ribeiro */
 
 	public ServerConnectionSSLTLS(
@@ -558,7 +558,7 @@ public class ServerConnectionSSLTLS {
 					this.controller.getStaticConf().getHost(remoteId),
 					this.controller.getStaticConf().getServerToServerPort(remoteId));
 			this.socketSSL.setKeepAlive(true);
-			this.socketSSL.setSoTimeout(connectionTimeoutMsec);
+			//this.socketSSL.setSoTimeout(connectionTimeoutMsec);
 			this.socketSSL.setTcpNoDelay(true);
 			this.socketSSL.setEnabledCipherSuites(this.controller.getStaticConf().getEnabledCiphers());
 		
