@@ -3,7 +3,6 @@
 	<classpathentry exported="true" kind="lib" path="lib/bcprov-jdk15on-160.jar"/>
 	<classpathentry exported="true" kind="lib" path="lib/bcpkix-jdk15on-160.jar"/>
 	<classpathentry kind="src" path="src"/>
-	<classpathentry exported="true" kind="lib" path="lib/jce-jdk13-160.jar"/>
 	<classpathentry exported="true" kind="lib" path="lib/commons-codec-1.5.jar"/>
 	<classpathentry exported="true" kind="lib" path="lib/core-0.1.4.jar"/>
 	<classpathentry exported="true" kind="lib" path="lib/netty-all-4.1.30.Final.jar" sourcepath="/home/worm/.m2/repository/io/netty/netty-all/4.1.30.Final/netty-all-4.1.30.Final-sources.jar"/>
