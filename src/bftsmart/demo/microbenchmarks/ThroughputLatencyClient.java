@@ -19,8 +19,21 @@ import java.io.IOException;
 
 import bftsmart.tom.ServiceProxy;
 import bftsmart.tom.util.Storage;
+import bftsmart.tom.util.TOMUtil;
+import java.nio.ByteBuffer;
+import java.security.InvalidKeyException;
+import java.security.KeyFactory;
+import java.security.NoSuchAlgorithmException;
+import java.security.NoSuchProviderException;
+import java.security.Security;
+import java.security.Signature;
+import java.security.SignatureException;
+import java.security.spec.InvalidKeySpecException;
+import java.security.spec.PKCS8EncodedKeySpec;
+import java.util.Base64;
 import java.util.Collection;
 import java.util.LinkedList;
+import java.util.Random;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -34,10 +47,27 @@ public class ThroughputLatencyClient {
 
     public static int initId = 0;
     
+    public static String privKey =  "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgXa3mln4anewXtqrM" +
+                                    "hMw6mfZhslkRa/j9P790ToKjlsihRANCAARnxLhXvU4EmnIwhVl3Bh0VcByQi2um" +
+                                    "9KsJ/QdCDjRZb1dKg447voj5SZ8SSZOUglc/v8DJFFJFTfygjwi+27gz";
+    
+    public static String pubKey =   "MIICNjCCAd2gAwIBAgIRAMnf9/dmV9RvCCVw9pZQUfUwCgYIKoZIzj0EAwIwgYEx" +
+                                    "CzAJBgNVBAYTAlVTMRMwEQYDVQQIEwpDYWxpZm9ybmlhMRYwFAYDVQQHEw1TYW4g" +
+                                    "RnJhbmNpc2NvMRkwFwYDVQQKExBvcmcxLmV4YW1wbGUuY29tMQwwCgYDVQQLEwND" +
+                                    "T1AxHDAaBgNVBAMTE2NhLm9yZzEuZXhhbXBsZS5jb20wHhcNMTcxMTEyMTM0MTEx" +
+                                    "WhcNMjcxMTEwMTM0MTExWjBpMQswCQYDVQQGEwJVUzETMBEGA1UECBMKQ2FsaWZv" +
+                                    "cm5pYTEWMBQGA1UEBxMNU2FuIEZyYW5jaXNjbzEMMAoGA1UECxMDQ09QMR8wHQYD" +
+                                    "VQQDExZwZWVyMC5vcmcxLmV4YW1wbGUuY29tMFkwEwYHKoZIzj0CAQYIKoZIzj0D" +
+                                    "AQcDQgAEZ8S4V71OBJpyMIVZdwYdFXAckItrpvSrCf0HQg40WW9XSoOOO76I+Umf" +
+                                    "EkmTlIJXP7/AyRRSRU38oI8Ivtu4M6NNMEswDgYDVR0PAQH/BAQDAgeAMAwGA1Ud" +
+                                    "EwEB/wQCMAAwKwYDVR0jBCQwIoAginORIhnPEFZUhXm6eWBkm7K7Zc8R4/z7LW4H" +
+                                    "ossDlCswCgYIKoZIzj0EAwIDRwAwRAIgVikIUZzgfuFsGLQHWJUVJCU7pDaETkaz" +
+                                    "PzFgsCiLxUACICgzJYlW7nvZxP7b6tbeu3t8mrhMXQs956mD4+BoKuNI";
+    
     @SuppressWarnings("static-access")
     public static void main(String[] args) throws IOException {
-        if (args.length < 7) {
-            System.out.println("Usage: ... ThroughputLatencyClient <initial client id> <number of clients> <number of operations> <request size> <interval (ms)> <read only?> <verbose?>");
+        if (args.length < 8) {
+            System.out.println("Usage: ... ThroughputLatencyClient <initial client id> <number of clients> <number of operations> <request size> <interval (ms)> <read only?> <verbose?> <nosig | default | ecdsa>");
             System.exit(-1);
         }
 
@@ -49,6 +79,17 @@ public class ThroughputLatencyClient {
         int interval = Integer.parseInt(args[4]);
         boolean readOnly = Boolean.parseBoolean(args[5]);
         boolean verbose = Boolean.parseBoolean(args[6]);
+        String sign = args[7];
+        
+        int s = 0;
+        if (!sign.equalsIgnoreCase("nosig")) s++;
+        if (sign.equalsIgnoreCase("ecdsa")) s++;
+        
+        if (s == 2 && Security.getProvider("SunEC") == null) {
+            
+            System.out.println("Option 'ecdsa' requires SunEC provider to be available.");
+            System.exit(0);
+        }
 
         Client[] clients = new Client[numThreads];
         
@@ -61,7 +102,7 @@ public class ThroughputLatencyClient {
             }
             
             System.out.println("Launching client " + (initId+i));
-            clients[i] = new ThroughputLatencyClient.Client(initId+i,numberOfOps,requestSize,interval,readOnly, verbose);
+            clients[i] = new ThroughputLatencyClient.Client(initId+i,numberOfOps,requestSize,interval,readOnly, verbose, s);
         }
 
         ExecutorService exec = Executors.newFixedThreadPool(clients.length);
@@ -98,7 +139,7 @@ public class ThroughputLatencyClient {
         ServiceProxy proxy;
         byte[] request;
         
-        public Client(int id, int numberOfOps, int requestSize, int interval, boolean readOnly, boolean verbose) {
+        public Client(int id, int numberOfOps, int requestSize, int interval, boolean readOnly, boolean verbose, int sign) {
             super("Client "+id);
         
             this.id = id;
@@ -109,10 +150,52 @@ public class ThroughputLatencyClient {
             this.verbose = verbose;
             this.proxy = new ServiceProxy(id);
             this.request = new byte[this.requestSize];
+            
+            Random rand = new Random(System.nanoTime() + this.id);
+            rand.nextBytes(request);
+                                
+            byte[] signature = new byte[0];
+            Signature eng;
+            
+                try {
+                                        
+                    if (sign > 0) {
+                        
+                        if (sign == 1) {
+                            eng = TOMUtil.getSigEngine();
+                            eng.initSign(proxy.getViewManager().getStaticConf().getPrivateKey());
+                        } else {
+                            
+                            eng = Signature.getInstance("SHA256withECDSA", "SunEC");
+
+                            KeyFactory kf = KeyFactory.getInstance("EC", "SunEC");
+                            Base64.Decoder b64 = Base64.getDecoder();
+                            PKCS8EncodedKeySpec spec = new PKCS8EncodedKeySpec(b64.decode(ThroughputLatencyClient.privKey));
+                            eng.initSign(kf.generatePrivate(spec));
+
+                        }
+                        eng.update(request);
+                        signature = eng.sign();
+                    }
+                    
+                    ByteBuffer buffer = ByteBuffer.allocate(request.length + signature.length + (Integer.BYTES * 2));
+                    buffer.putInt(request.length);
+                    buffer.put(request);
+                    buffer.putInt(signature.length);
+                    buffer.put(signature);
+                    this.request = buffer.array();
+
+
+                } catch (NoSuchAlgorithmException | SignatureException | NoSuchProviderException | InvalidKeyException | InvalidKeySpecException ex) {
+                    ex.printStackTrace();
+                    System.exit(0);
+                }
+
+            
         }
 
         public void run() {
-
+            
             System.out.println("Warm up...");
 
             int req = 0;

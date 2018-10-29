@@ -19,6 +19,28 @@ import bftsmart.tom.MessageContext;
 import bftsmart.tom.ServiceReplica;
 import bftsmart.tom.server.defaultservices.DefaultRecoverable;
 import bftsmart.tom.util.Storage;
+import bftsmart.tom.util.TOMUtil;
+import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.RandomAccessFile;
+import java.nio.ByteBuffer;
+import java.security.InvalidKeyException;
+import java.security.KeyFactory;
+import java.security.NoSuchAlgorithmException;
+import java.security.NoSuchProviderException;
+import java.security.Security;
+import java.security.Signature;
+import java.security.SignatureException;
+import java.security.cert.CertificateException;
+import java.security.cert.CertificateFactory;
+import java.security.spec.InvalidKeySpecException;
+import java.security.spec.PKCS8EncodedKeySpec;
+import java.security.spec.X509EncodedKeySpec;
+import java.util.Base64;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Simple server that just acknowledge the reception of a request.
@@ -26,9 +48,10 @@ import bftsmart.tom.util.Storage;
 public final class ThroughputLatencyServer extends DefaultRecoverable{
     
     private int interval;
-    private int replySize;
+    private byte[] reply;
     private float maxTp = -1;
     private boolean context;
+    private int signed;
     
     private byte[] state;
     
@@ -42,13 +65,23 @@ public final class ThroughputLatencyServer extends DefaultRecoverable{
     private Storage proposeLatency = null;
     private Storage writeLatency = null;
     private Storage acceptLatency = null;
+    
+    private Storage batchSize = null;
+    
     private ServiceReplica replica;
+    
+    private RandomAccessFile randomAccessFile = null;
 
-    public ThroughputLatencyServer(int id, int interval, int replySize, int stateSize, boolean context) {
+    public ThroughputLatencyServer(int id, int interval, int replySize, int stateSize, boolean context,  int signed, int write) {
 
         this.interval = interval;
-        this.replySize = replySize;
         this.context = context;
+        this.signed = signed;
+        
+        this.reply = new byte[replySize];
+        
+        for (int i = 0; i < replySize ;i++)
+            reply[i] = (byte) i;
         
         this.state = new byte[stateSize];
         
@@ -62,13 +95,36 @@ public final class ThroughputLatencyServer extends DefaultRecoverable{
         proposeLatency = new Storage(interval);
         writeLatency = new Storage(interval);
         acceptLatency = new Storage(interval);
-
+        
+        batchSize = new Storage(interval);
+        
+        if (write > 0) {
+            
+            try {
+                final File f = File.createTempFile("bft-"+id+"-", Long.toString(System.nanoTime()));
+                randomAccessFile = new RandomAccessFile(f, (write > 1 ? "rwd" : "rw"));
+                
+                Runtime.getRuntime().addShutdownHook(new Thread() {
+                    
+                    @Override
+                    public void run() {
+                        
+                        f.delete();
+                    }
+                });
+            } catch (IOException ex) {
+                ex.printStackTrace();
+                System.exit(0);
+            }
+        }
         replica = new ServiceReplica(id, this, this);
     }
     
     @Override
     public byte[][] appExecuteBatch(byte[][] commands, MessageContext[] msgCtxs, boolean fromConsensus) {
         
+        batchSize.store(commands.length);
+                
         byte[][] replies = new byte[commands.length][];
         
         for (int i = 0; i < commands.length; i++) {
@@ -85,7 +141,59 @@ public final class ThroughputLatencyServer extends DefaultRecoverable{
         return execute(command,msgCtx);
     }
     
-    public byte[] execute(byte[] command, MessageContext msgCtx) {        
+    public byte[] execute(byte[] command, MessageContext msgCtx) {
+        
+        ByteBuffer buffer = ByteBuffer.wrap(command);
+        int l = buffer.getInt();
+        byte[] request = new byte[l];
+        buffer.get(request);
+        l = buffer.getInt();
+        byte[] signature = new byte[l];
+        
+        buffer.get(signature);
+        Signature eng;
+        
+        try {
+            
+            if (signed > 0) {
+                
+                if (signed == 1) {
+                    
+                    eng = TOMUtil.getSigEngine();
+                    eng.initVerify(replica.getReplicaContext().getStaticConfiguration().getPublicKey());
+                } else {
+                
+                    eng = Signature.getInstance("SHA256withECDSA", "SunEC");
+                    Base64.Decoder b64 = Base64.getDecoder();
+                    CertificateFactory kf = CertificateFactory.getInstance("X.509");
+                
+                    byte[] cert = b64.decode(ThroughputLatencyClient.pubKey);
+                    InputStream certstream = new ByteArrayInputStream (cert);
+                
+                    eng.initVerify(kf.generateCertificate(certstream));
+                    
+                }
+                eng.update(request);
+                if (!eng.verify(signature)) {
+                    
+                    System.out.println("Client sent invalid signature!");
+                    System.exit(0);
+                }
+            }
+            
+            if (randomAccessFile != null) {
+                
+                randomAccessFile.seek(randomAccessFile.length());
+                randomAccessFile.write(request);
+            }
+        } catch (NoSuchAlgorithmException | InvalidKeyException | SignatureException | CertificateException | IOException ex) {
+            ex.printStackTrace();
+            System.exit(0);
+        } catch (NoSuchProviderException ex) {
+            ex.printStackTrace();
+            System.exit(0);
+        }
+        
         boolean readOnly = false;
         
         iterations++;
@@ -163,15 +271,18 @@ public final class ThroughputLatencyServer extends DefaultRecoverable{
             System.out.println("Accept latency = " + acceptLatency.getAverage(false) / 1000 + " (+/- "+ (long)acceptLatency.getDP(false) / 1000 +") us ");
             acceptLatency.reset();
             
+            System.out.println("Batch average size = " + batchSize.getAverage(false) + " (+/- "+ (long)batchSize.getDP(false) +") requests");
+            batchSize.reset();
+            
             throughputMeasurementStartTime = System.currentTimeMillis();
         }
 
-        return new byte[replySize];
+        return reply;
     }
 
     public static void main(String[] args){
-        if(args.length < 5) {
-            System.out.println("Usage: ... ThroughputLatencyServer <processId> <measurement interval> <reply size> <state size> <context?>");
+        if(args.length < 6) {
+            System.out.println("Usage: ... ThroughputLatencyServer <processId> <measurement interval> <reply size> <state size> <context?> <nosig | default | ecdsa> [rwd | rw]");
             System.exit(-1);
         }
 
@@ -180,8 +291,26 @@ public final class ThroughputLatencyServer extends DefaultRecoverable{
         int replySize = Integer.parseInt(args[2]);
         int stateSize = Integer.parseInt(args[3]);
         boolean context = Boolean.parseBoolean(args[4]);
+        String signed = args[5];
+        String write = args.length > 6 ? args[6] : "";
+        
+        int s = 0;
+        
+        if (!signed.equalsIgnoreCase("nosig")) s++;
+        if (signed.equalsIgnoreCase("ecdsa")) s++;
+        
+        if (s == 2 && Security.getProvider("SunEC") == null) {
+            
+            System.out.println("Option 'ecdsa' requires SunEC provider to be available.");
+            System.exit(0);
+        }
+        
+        int w = 0;
+        
+        if (!write.equalsIgnoreCase("")) w++;
+        if (write.equalsIgnoreCase("rwd")) w++;
 
-        new ThroughputLatencyServer(processId,interval,replySize, stateSize, context);        
+        new ThroughputLatencyServer(processId,interval,replySize, stateSize, context, s, w);        
     }
 
     @Override
