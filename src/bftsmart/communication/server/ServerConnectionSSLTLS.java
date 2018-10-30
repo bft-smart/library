@@ -14,8 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-
-
 package bftsmart.communication.server;
 
 import java.io.ByteArrayInputStream;
@@ -85,33 +83,27 @@ public class ServerConnectionSSLTLS {
 											// It uses the reference id for that same data
 	private LinkedBlockingQueue<SystemMessage> inQueue;
 
-
 	private Lock connectLock = new ReentrantLock();
 	/** Only used when there is no sender Thread */
 	private Lock sendLock;
 	private boolean doWork = true;
 	private SecretKey secretKey = null;
-	
+
 	private KeyManagerFactory kmf;
 	private KeyStore ks = null;
 	private FileInputStream fis = null;
 	private TrustManagerFactory trustMgrFactory;
 	private SSLContext context;
-	private SSLSocketFactory socketFactory;	
+	private SSLSocketFactory socketFactory;
 	private static final String SECRET = "MySeCreT_2hMOygBwY";
-	
+
 	/* Tulio Ribeiro */
-	//private static int connectionTimeoutMsec = 10000; 
+	// private static int connectionTimeoutMsec = 10000;
 	/* Tulio Ribeiro */
 
-	public ServerConnectionSSLTLS(
-				ServerViewController controller, 
-				SSLSocket socketSSL, 
-				int remoteId,
-				LinkedBlockingQueue<SystemMessage> inQueue, 
-				ServiceReplica replica) {
-		
-		
+	public ServerConnectionSSLTLS(ServerViewController controller, SSLSocket socketSSL, int remoteId,
+			LinkedBlockingQueue<SystemMessage> inQueue, ServiceReplica replica) {
+
 		this.controller = controller;
 
 		this.socketSSL = socketSSL;
@@ -125,7 +117,7 @@ public class ServerConnectionSSLTLS {
 		this.noMACs = new HashSet<Integer>();
 		// Connect to the remote process or just wait for the connection?
 		if (isToConnect()) {
-			ssltlsCreateConnection();				
+			ssltlsCreateConnection();
 		}
 		// else I have to wait a connection from the remote server
 
@@ -159,7 +151,7 @@ public class ServerConnectionSSLTLS {
 	}
 
 	public SecretKey getSecretKey() {
-		if(secretKey != null )
+		if (secretKey != null)
 			return secretKey;
 		else {
 			SecretKeyFactory fac;
@@ -167,7 +159,7 @@ public class ServerConnectionSSLTLS {
 			try {
 				fac = TOMUtil.getSecretFactory();
 				spec = TOMUtil.generateKeySpec(SECRET.toCharArray());
-				secretKey = fac.generateSecret(spec); 
+				secretKey = fac.generateSecret(spec);
 			} catch (NoSuchAlgorithmException e) {
 				e.printStackTrace();
 			} catch (InvalidKeySpecException e) {
@@ -218,11 +210,8 @@ public class ServerConnectionSSLTLS {
 					byte[] data = new byte[5 + messageData.length];// without MAC
 					int value = messageData.length;
 
-					System.arraycopy(new byte[] { 
-												(byte) (value >>> 24), 
-												(byte) (value >>> 16), 
-												(byte) (value >>> 8),
-												(byte) value }, 0, data, 0, 4);
+					System.arraycopy(new byte[] { (byte) (value >>> 24), (byte) (value >>> 16), (byte) (value >>> 8),
+							(byte) value }, 0, data, 0, 4);
 					System.arraycopy(messageData, 0, data, 4, messageData.length);
 					System.arraycopy(new byte[] { (byte) 0 }, 0, data, 4 + messageData.length, 1);
 
@@ -278,11 +267,11 @@ public class ServerConnectionSSLTLS {
 
 		if (socketSSL == null || !socketSSL.isConnected()) {
 
-				if (isToConnect()) {
-					ssltlsCreateConnection();					
-				} else {
-					socketSSL = newSocket;
-				}
+			if (isToConnect()) {
+				ssltlsCreateConnection();
+			} else {
+				socketSSL = newSocket;
+			}
 
 			if (socketSSL != null) {
 				try {
@@ -373,7 +362,7 @@ public class ServerConnectionSSLTLS {
 
 			while (doWork) {
 				if (socketSSL != null && socketInStream != null) {
-					
+
 					try {
 						// read data length
 						int dataLength = socketInStream.readInt();
@@ -482,21 +471,21 @@ public class ServerConnectionSSLTLS {
 		}
 	}
 	// ******* EDUARDO END **************//
-	
-	
+
 	/**
-	 * Deal with the creation of SSL/TLS connection into only one method. 
-	 * @throws KeyStoreException 
-	 * @throws IOException 
-	 * @throws CertificateException 
-	 * @throws NoSuchAlgorithmException 
-	 * @throws UnrecoverableKeyException 
-	 * @throws KeyManagementException 
-	 * @throws InvalidKeySpecException 
-	 * */
-	
-	public void ssltlsCreateConnection(){
-	
+	 * Deal with the creation of SSL/TLS connection.
+	 * 
+	 * @throws KeyStoreException
+	 * @throws IOException
+	 * @throws CertificateException
+	 * @throws NoSuchAlgorithmException
+	 * @throws UnrecoverableKeyException
+	 * @throws KeyManagementException
+	 * @throws InvalidKeySpecException
+	 */
+
+	public void ssltlsCreateConnection() {
+
 		SecretKeyFactory fac;
 		PBEKeySpec spec;
 		try {
@@ -507,11 +496,11 @@ public class ServerConnectionSSLTLS {
 			e.printStackTrace();
 		} catch (InvalidKeySpecException e) {
 			e.printStackTrace();
-		} 
-		
+		}
+
 		String algorithm = Security.getProperty("ssl.KeyManagerFactory.algorithm");
 		try {
-			fis = new FileInputStream("config/keysSSL_TLS/" + this.controller.getStaticConf().getSSLTLSKeyStore() );
+			fis = new FileInputStream("config/keysSSL_TLS/" + this.controller.getStaticConf().getSSLTLSKeyStore());
 			ks = KeyStore.getInstance(KeyStore.getDefaultType());
 			ks.load(fis, SECRET.toCharArray());
 		} catch (FileNotFoundException e) {
@@ -524,8 +513,8 @@ public class ServerConnectionSSLTLS {
 			e.printStackTrace();
 		} catch (IOException e) {
 			e.printStackTrace();
-		}finally {
-			if (fis != null) {				
+		} finally {
+			if (fis != null) {
 				try {
 					fis.close();
 				} catch (IOException e) {
@@ -533,17 +522,17 @@ public class ServerConnectionSSLTLS {
 				}
 			}
 		}
-		try { 	
-		kmf = KeyManagerFactory.getInstance(algorithm);				
-		kmf.init(ks, SECRET.toCharArray());
-		
-		trustMgrFactory = TrustManagerFactory.getInstance(algorithm);
-		trustMgrFactory.init(ks);
-		context = SSLContext.getInstance(this.controller.getStaticConf().getSSLTLSProtocolVersion());
-		context.init(kmf.getKeyManagers(), trustMgrFactory.getTrustManagers(), new SecureRandom());
-		socketFactory = context.getSocketFactory();
-		
-		}catch (KeyStoreException e) {
+		try {
+			kmf = KeyManagerFactory.getInstance(algorithm);
+			kmf.init(ks, SECRET.toCharArray());
+
+			trustMgrFactory = TrustManagerFactory.getInstance(algorithm);
+			trustMgrFactory.init(ks);
+			context = SSLContext.getInstance(this.controller.getStaticConf().getSSLTLSProtocolVersion());
+			context.init(kmf.getKeyManagers(), trustMgrFactory.getTrustManagers(), new SecureRandom());
+			socketFactory = context.getSocketFactory();
+
+		} catch (KeyStoreException e) {
 			e.printStackTrace();
 		} catch (NoSuchAlgorithmException e) {
 			e.printStackTrace();
@@ -551,39 +540,39 @@ public class ServerConnectionSSLTLS {
 			e.printStackTrace();
 		} catch (KeyManagementException e) {
 			e.printStackTrace();
-		} 
-		//Create the connection.
+		}
+		// Create the connection.
 		try {
-			this.socketSSL = (SSLSocket) socketFactory.createSocket(
-					this.controller.getStaticConf().getHost(remoteId),
+			this.socketSSL = (SSLSocket) socketFactory.createSocket(this.controller.getStaticConf().getHost(remoteId),
 					this.controller.getStaticConf().getServerToServerPort(remoteId));
 			this.socketSSL.setKeepAlive(true);
-			//this.socketSSL.setSoTimeout(connectionTimeoutMsec);
+			// this.socketSSL.setSoTimeout(connectionTimeoutMsec);
 			this.socketSSL.setTcpNoDelay(true);
 			this.socketSSL.setEnabledCipherSuites(this.controller.getStaticConf().getEnabledCiphers());
-		
+
 			this.socketSSL.addHandshakeCompletedListener(new HandshakeCompletedListener() {
 				@Override
 				public void handshakeCompleted(HandshakeCompletedEvent event) {
-					logger.info("SSL/TLS handshake complete!, Id:{}"+ "  ## CipherSuite: {}.", remoteId, event.getCipherSuite());
+					logger.info("SSL/TLS handshake complete!, Id:{}" + "  ## CipherSuite: {}.", remoteId,
+							event.getCipherSuite());
 				}
 			});
-			
+
 			this.socketSSL.startHandshake();
-			
+
 			ServersCommunicationLayerSSLTLS.setSSLSocketOptions(this.socketSSL);
-			new DataOutputStream(this.socketSSL.getOutputStream()).writeInt(this.controller.getStaticConf().getProcessId());
-			
-			
+			new DataOutputStream(this.socketSSL.getOutputStream())
+					.writeInt(this.controller.getStaticConf().getProcessId());
+
 		} catch (SocketException e) {
 			logger.error("Connection refused (SocketException)");
-			//e.printStackTrace();		
+			// e.printStackTrace();
 		} catch (UnknownHostException e) {
 			e.printStackTrace();
 		} catch (IOException e) {
 			e.printStackTrace();
-		} 
-				
+		}
+
 	}
-	
+
 }

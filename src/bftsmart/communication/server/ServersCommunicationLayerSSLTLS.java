@@ -63,21 +63,21 @@ import bftsmart.tom.util.TOMUtil;
  * @author alysson
  */
 
-
 /**
  * Tulio Ribeiro.
  * 
- * Generate a KeyPair used by SSL/TLS connections. 
- * Note that keypass argument is equal to the variable SECRET.
+ * Generate a KeyPair used by SSL/TLS connections. Note that keypass argument is
+ * equal to the variable SECRET.
  * 
- * The command generates the secret key. 
- * ##Elliptic Curve 
- * $keytool -genkey -keyalg EC -alias bftsmartEC -keypass MySeCreT_2hMOygBwY  -keystore ./ecKeyPair -dname "CN=BFT-SMaRT" 
- * $keytool -importkeystore -srckeystore ./ecKeyPair -destkeystore ./ecKeyPair -deststoretype pkcs12
+ * The command generates the secret key. ##Elliptic Curve $keytool -genkey
+ * -keyalg EC -alias bftsmartEC -keypass MySeCreT_2hMOygBwY -keystore
+ * ./ecKeyPair -dname "CN=BFT-SMaRT" $keytool -importkeystore -srckeystore
+ * ./ecKeyPair -destkeystore ./ecKeyPair -deststoretype pkcs12
  * 
- * ##RSA
- * $keytool -genkey -keyalg RSA -keysize 2048 -alias bftsmartRSA -keypass MySeCreT_2hMOygBwY  -keystore ./RSA_KeyPair_2048.pkcs12 -dname "CN=BFT-SMaRT"
- * $keytool -importkeystore -srckeystore ./RSA_KeyPair_2048.pkcs12 -destkeystore ./RSA_KeyPair_2048.pkcs12 -deststoretype pkcs12
+ * ##RSA $keytool -genkey -keyalg RSA -keysize 2048 -alias bftsmartRSA -keypass
+ * MySeCreT_2hMOygBwY -keystore ./RSA_KeyPair_2048.pkcs12 -dname "CN=BFT-SMaRT"
+ * $keytool -importkeystore -srckeystore ./RSA_KeyPair_2048.pkcs12 -destkeystore
+ * ./RSA_KeyPair_2048.pkcs12 -deststoretype pkcs12
  */
 
 public class ServersCommunicationLayerSSLTLS extends Thread {
@@ -87,7 +87,7 @@ public class ServersCommunicationLayerSSLTLS extends Thread {
 	private ServerViewController controller;
 	private LinkedBlockingQueue<SystemMessage> inQueue;
 	private HashMap<Integer, ServerConnectionSSLTLS> connections = new HashMap<>();
-	
+
 	private int me;
 	private boolean doWork = true;
 	private Lock connectionsLock = new ReentrantLock();
@@ -95,42 +95,31 @@ public class ServersCommunicationLayerSSLTLS extends Thread {
 	private List<PendingConnection> pendingConn = new LinkedList<PendingConnection>();
 	private ServiceReplica replica;
 
-	
 	/**
 	 * Tulio A. Ribeiro
 	 * 
 	 * SSL / TLS
 	 */
-	
+
 	private KeyManagerFactory kmf;
 	private KeyStore ks;
 	private FileInputStream fis;
 	private TrustManagerFactory trustMgrFactory;
 	private SSLContext context;
-	private SSLServerSocketFactory serverSocketFactory;	
+	private SSLServerSocketFactory serverSocketFactory;
 	private static final String SECRET = "MySeCreT_2hMOygBwY";
 	private SecretKey selfPwd;
 	private SSLServerSocket serverSocketSSLTLS;
 	private String ssltlsProtocolVersion;
-	
+
 	/* Tulio Ribeiro */
-	//private static int tcpSendBufferSize = 8 * 1024 * 1024;
-	//private static int connectionTimeoutMsec = 10000; 
+	// private static int tcpSendBufferSize = 8 * 1024 * 1024;
+	// private static int connectionTimeoutMsec = 10000;
 	/* Tulio Ribeiro */
-	
-	
-	public ServersCommunicationLayerSSLTLS(
-				ServerViewController controller, 
-				LinkedBlockingQueue<SystemMessage> inQueue,
-				ServiceReplica replica) 
-					throws 
-						KeyStoreException, 
-						NoSuchAlgorithmException, 
-						CertificateException, 
-						IOException, 
-						UnrecoverableKeyException, 
-						KeyManagementException, 
-						InvalidKeySpecException  {
+
+	public ServersCommunicationLayerSSLTLS(ServerViewController controller, LinkedBlockingQueue<SystemMessage> inQueue,
+			ServiceReplica replica) throws KeyStoreException, NoSuchAlgorithmException, CertificateException,
+			IOException, UnrecoverableKeyException, KeyManagementException, InvalidKeySpecException {
 
 		this.controller = controller;
 		this.inQueue = inQueue;
@@ -175,42 +164,39 @@ public class ServersCommunicationLayerSSLTLS extends Thread {
 				fis.close();
 			}
 		}
-		
+
 		String algorithm = Security.getProperty("ssl.KeyManagerFactory.algorithm");
 		kmf = KeyManagerFactory.getInstance(algorithm);
 		kmf.init(ks, SECRET.toCharArray());
-		
+
 		trustMgrFactory = TrustManagerFactory.getInstance(algorithm);
 		trustMgrFactory.init(ks);
-		
+
 		context = SSLContext.getInstance(this.ssltlsProtocolVersion);
 		context.init(kmf.getKeyManagers(), trustMgrFactory.getTrustManagers(), new SecureRandom());
-		
+
 		serverSocketFactory = context.getServerSocketFactory();
-		this.serverSocketSSLTLS = (SSLServerSocket) 
-					serverSocketFactory.createServerSocket(myPort, 100, InetAddress.getByName(myAddress));
+		this.serverSocketSSLTLS = (SSLServerSocket) serverSocketFactory.createServerSocket(myPort, 100,
+				InetAddress.getByName(myAddress));
 
 		serverSocketSSLTLS.setEnabledCipherSuites(this.controller.getStaticConf().getEnabledCiphers());
-		
-		String [] ciphers = serverSocketFactory.getSupportedCipherSuites();
+
+		String[] ciphers = serverSocketFactory.getSupportedCipherSuites();
 		for (int i = 0; i < ciphers.length; i++) {
 			logger.trace("Supported Cipher: {} ", ciphers[i]);
 		}
-		
 
 		serverSocketSSLTLS.setPerformancePreferences(0, 2, 1);
-		//serverSocketSSLTLS.setSoTimeout(connectionTimeoutMsec);
+		// serverSocketSSLTLS.setSoTimeout(connectionTimeoutMsec);
 		serverSocketSSLTLS.setEnableSessionCreation(true);
 		serverSocketSSLTLS.setReuseAddress(true);
 		serverSocketSSLTLS.setNeedClientAuth(true);
 		serverSocketSSLTLS.setWantClientAuth(true);
-		
-		
 
 		SecretKeyFactory fac = TOMUtil.getSecretFactory();
 		PBEKeySpec spec = TOMUtil.generateKeySpec(SECRET.toCharArray());
 		selfPwd = fac.generateSecret(spec);
-		
+
 		// Try connecting if a member of the current view. Otherwise, wait until the
 		// Join has been processed!
 		if (controller.isInCurrentView()) {
@@ -261,7 +247,7 @@ public class ServersCommunicationLayerSSLTLS extends Thread {
 		connectionsLock.unlock();
 	}
 
-	private ServerConnectionSSLTLS getConnection(int remoteId){
+	private ServerConnectionSSLTLS getConnection(int remoteId) {
 		connectionsLock.lock();
 		ServerConnectionSSLTLS ret = this.connections.get(remoteId);
 		if (ret == null) {
@@ -382,13 +368,13 @@ public class ServersCommunicationLayerSSLTLS extends Thread {
 	// Tulio SSL Socket. ## BEGIN
 	private void establishConnection(SSLSocket newSocket, int remoteId) throws IOException {
 
-		if ((this.controller.getStaticConf().getTTPId() == remoteId) 
-				|| this.controller.isCurrentViewMember(remoteId)) {
+		if ((this.controller.getStaticConf().getTTPId() == remoteId) || this.controller.isCurrentViewMember(remoteId)) {
 			connectionsLock.lock();
 			if (this.connections.get(remoteId) == null) { // This must never happen!!!
 				// first time that this connection is being established
 				// System.out.println("THIS DOES NOT HAPPEN....."+remoteId);
-				this.connections.put(remoteId, new ServerConnectionSSLTLS(controller, newSocket, remoteId, inQueue, replica));
+				this.connections.put(remoteId,
+						new ServerConnectionSSLTLS(controller, newSocket, remoteId, inQueue, replica));
 			} else {
 				// reconnection
 				logger.debug("ReConnecting with replica: {}", remoteId);
@@ -442,8 +428,7 @@ public class ServersCommunicationLayerSSLTLS extends Thread {
 	public SecretKey getSecretKey(int id) {
 		if (id == controller.getStaticConf().getProcessId()) {
 			return selfPwd;
-		}
-		else
+		} else
 			return connections.get(id).getSecretKey();
 	}
 
