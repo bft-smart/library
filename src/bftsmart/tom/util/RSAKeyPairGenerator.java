@@ -52,7 +52,7 @@ public class RSAKeyPairGenerator {
     }
     
     private void saveToFile(int id, PublicKey puk, PrivateKey prk) throws Exception {
-        String path = "config"+System.getProperty("file.separator")+"keys"+
+        String path = "config"+System.getProperty("file.separator")+"keysRSA"+
                 System.getProperty("file.separator");
         
         BufferedWriter w = new BufferedWriter(new FileWriter(path+"publickey"+id,false));
@@ -74,6 +74,7 @@ public class RSAKeyPairGenerator {
     }
 
     public static void main(String[] args){
+    	System.out.println("ID:" + args[0] + ", key size: "+ args[1] );
         try{
             new RSAKeyPairGenerator().run(Integer.parseInt(args[0]), Integer.parseInt(args[1]));
         }catch(Exception e){
