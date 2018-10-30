@@ -50,14 +50,20 @@ public class SunECKeyPairGenerator {
 	 * @throws Exception
 	 *             something goes wrong when writing the files
 	 */
-	public void run(int id, int size) throws Exception {
+	public void run(int id, String namedCurve) throws Exception {
 
 		Security.addProvider(new SunEC());
 
 		KeyPairGenerator kpg;
 		kpg = KeyPairGenerator.getInstance("EC", "SunEC");
 		ECGenParameterSpec ecsp;
-		ecsp = new ECGenParameterSpec("secp256r1");
+		/**
+		 * rfc8422 specifies to use this named curves:
+		 * secp256r1 (23), secp384r1 (24), secp521r1 (25)
+		 * the former are deprecated(1..22). 
+		 * See: https://tools.ietf.org/html/rfc8422#section-2
+		 */
+		ecsp = new ECGenParameterSpec(namedCurve);
 		kpg.initialize(ecsp);
 
 		KeyPair kp = kpg.genKeyPair();
@@ -90,9 +96,9 @@ public class SunECKeyPairGenerator {
 
 	public static void main(String[] args) {
 		try {
-			new SunECKeyPairGenerator().run(Integer.parseInt(args[0]), Integer.parseInt(args[1]));
+			new SunECKeyPairGenerator().run(Integer.parseInt(args[0]),args[1]);
 		} catch (Exception e) {
-			System.err.println("Use: SunECKeyPairGenerator <id> <key size 256|384|521>");
+			System.err.println("Usage: SunECKeyPairGenerator <id> <CurveName: secp256r1|secp384r1|secp521r1 (recommended by rfc8422)> ");
 			e.printStackTrace();
 		}
 	}

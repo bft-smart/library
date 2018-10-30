@@ -59,10 +59,19 @@ public class SunECKeyLoader implements KeyLoader {
 
 	private boolean defaultKeys;
 
-	//SunEC
-	private static final String PRIVATE_KEY = "MEECAQAwEwYHKoZIzj0CAQYIKoZIzj0DAQcEJzAlAgEBBCCzKihManx3ughKcT5x8mdNj9GFGxH1UvKVKm8LqbDlig==";
-	private static final String PUBLIC_KEY = "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEqDGm5E0cL8w427d/3NujzqZPYvLR+dd6ZzyZaCmE3u9lN5lSjh7ia3xpxW0R20Gv6dxitwLBy02PhXsUk21B1Q==";
+	//SunEC secp256r1
+	//private static final String PRIVATE_KEY = "MEECAQAwEwYHKoZIzj0CAQYIKoZIzj0DAQcEJzAlAgEBBCCzKihManx3ughKcT5x8mdNj9GFGxH1UvKVKm8LqbDlig==";
+	//private static final String PUBLIC_KEY = "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEqDGm5E0cL8w427d/3NujzqZPYvLR+dd6ZzyZaCmE3u9lN5lSjh7ia3xpxW0R20Gv6dxitwLBy02PhXsUk21B1Q==";
 
+	//SunEC secp384r1
+	private static final String PRIVATE_KEY = "ME4CAQAwEAYHKoZIzj0CAQYFK4EEACIENzA1AgEBBDAmegdlkADA/8rbG0CpuZdO1fnHOngWnBwOH04XFk0ZX/GNOTaYTtVMHuI/fuhALDk=";
+	private static final String PUBLIC_KEY = "MHYwEAYHKoZIzj0CAQYFK4EEACIDYgAEFFMlwova3OBpWS9YsZvjnQAuoLGwZjAGpNKFspZAskB2vTnkBOAmgm1I9UTM45rT5OzLPdrv9p+Ry76ZkEx7MK4s2eCj1U7RsLInZ1fFkgCleTDVYx/1JHBMf0wcscKR";
+
+	//SunEC secp521r1
+	//private static final String PRIVATE_KEY = "MF8CAQAwEAYHKoZIzj0CAQYFK4EEACMESDBGAgEBBEHwZjYqD8oGXmtwvYtJI2mezVcU9hSKQHWc/LirGP/+oqVbnJQ8Unz6toGE8+WDXVFnIr6u4mmmV47L4/78Tmnu+w==";
+	//private static final String PUBLIC_KEY = "MIGbMBAGByqGSM49AgEGBSuBBAAjA4GGAAQAUsovGsGwA3FFEfUOK01+UF1LFq2U7rIxzJYuW0/HVK18unQOkpFwezKzvwcYeS3hli2VHxHr6PJm2mVuh4MGtxYA4/2h46Dk5qMl5dX65723/4mq9sEHk9xQp0XtMfeeDyFGplNQYvtJ7OcqerOb3bhKcCFgoGGSFv8wwWjSI0NyiSU=";
+
+	
 	/** Creates a new instance of ECDSAKeyLoader */
 
 	public SunECKeyLoader(int id, String configHome, boolean defaultKeys, String sigAlgorithm) {
