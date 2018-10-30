@@ -321,6 +321,8 @@ public final class TOMLayer extends Thread implements RequestReceiver {
     public byte[] createPropose(Decision dec) {
         // Retrieve a set of pending requests from the clients manager
         RequestList pendingRequests = clientsManager.getPendingRequests();
+        
+        logger.debug("Number of pending requets to propose in consensus {}: {}", dec.getConsensusId(), pendingRequests.size());
 
         int numberOfMessages = pendingRequests.size(); // number of messages retrieved
         int numberOfNonces = this.controller.getStaticConf().getNumberOfNonces(); // ammount of nonces to be generated

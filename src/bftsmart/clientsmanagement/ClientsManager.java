@@ -88,15 +88,18 @@ public class ClientsManager {
      */
     public RequestList getPendingRequests() {
         RequestList allReq = new RequestList();
-
+        
         clientsLock.lock();
         /******* BEGIN CLIENTS CRITICAL SECTION ******/
         
         Set<Entry<Integer, ClientData>> clientsEntrySet = clientsData.entrySet();
+        logger.debug("Number of active clients: {}", clientsEntrySet.size());
         
         for (int i = 0; true; i++) {
             Iterator<Entry<Integer, ClientData>> it = clientsEntrySet.iterator();
             int noMoreMessages = 0;
+            
+            logger.debug("Fetching requests with internal index {}", i);
 
             while (it.hasNext()
                     && allReq.size() < controller.getStaticConf().getMaxBatchSize()
@@ -106,6 +109,9 @@ public class ClientsManager {
                 RequestList clientPendingRequests = clientData.getPendingRequests();
 
                 clientData.clientLock.lock();
+
+                logger.debug("Number of pending requests for client {}: {}.", clientData.getClientId(), clientPendingRequests.size());
+
                 /******* BEGIN CLIENTDATA CRITICAL SECTION ******/
                 TOMMessage request = (clientPendingRequests.size() > i) ? clientPendingRequests.get(i) : null;
 
@@ -114,6 +120,9 @@ public class ClientsManager {
 
                 if (request != null) {
                     if(!request.alreadyProposed) {
+                        
+                        logger.debug("Selected request with sequence number {} from client {}", request.getSequence(), request.getSender());
+                        
                         //this client have pending message
                         request.alreadyProposed = true;
                         allReq.addLast(request);
@@ -384,5 +393,10 @@ public class ClientsManager {
         clientsLock.unlock();
         logger.info("ClientsManager cleared.");
 
+    }
+    
+    public int numClients() {
+        
+        return clientsData.size();
     }
 }

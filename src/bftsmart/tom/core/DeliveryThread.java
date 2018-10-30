@@ -188,6 +188,8 @@ public final class DeliveryThread extends Thread {
                     notEmptyQueue.await();
                 }
                 
+                logger.debug("Current size of the decided queue: {}", decided.size());
+
                 if (controller.getStaticConf().getSameBatchSize()) {
                     decided.drainTo(decisions, 1);
                 } else {
@@ -331,5 +333,9 @@ public final class DeliveryThread extends Thread {
         decidedLock.lock();        
         notEmptyQueue.signalAll();
         decidedLock.unlock();
+    }
+    
+    public int size() {
+        return decided.size();
     }
 }
