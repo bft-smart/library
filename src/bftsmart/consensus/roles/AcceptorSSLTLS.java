@@ -170,7 +170,7 @@ public final class AcceptorSSLTLS {
 		int cid = epoch.getConsensus().getId();
 		int ts = epoch.getConsensus().getEts();
 		int ets = executionManager.getConsensus(msg.getNumber()).getEts();
-		logger.debug("PROPOSE for consensus " + cid);
+		logger.debug("PROPOSE received from:{}, for consensus cId:{}, I am:{}", msg.getSender(), cid, me);
 		if (msg.getSender() == executionManager.getCurrentLeader() // Is the replica the leader?
 				&& epoch.getTimestamp() == 0 && ts == ets && ets == 0) { // Is all this in epoch 0?
 			executePropose(epoch, msg.getValue());
@@ -199,7 +199,7 @@ public final class AcceptorSSLTLS {
 
 			/*** LEADER CHANGE CODE ********/
 			epoch.getConsensus().addWritten(value);
-			logger.debug("I have written value " + Arrays.toString(epoch.propValueHash) + " in consensus instance "
+			logger.trace("I have written value " + Arrays.toString(epoch.propValueHash) + " in consensus instance "
 					+ cid + " with timestamp " + epoch.getConsensus().getEts());
 			/*****************************************/
 
@@ -221,7 +221,7 @@ public final class AcceptorSSLTLS {
 				epoch.getConsensus().getDecision().firstMessageProposed.proposeReceivedTime = System.nanoTime();
 
 				if (controller.getStaticConf().isBFT()) {
-					logger.debug("Sending WRITE for " + cid);
+					logger.debug("Sending WRITE for cId:{}, I am:{}", cid, me);
 
 					epoch.setWrite(me, epoch.propValueHash);
 					epoch.getConsensus().getDecision().firstMessageProposed.writeSentTime = System.nanoTime();
@@ -231,11 +231,11 @@ public final class AcceptorSSLTLS {
 									   factory.createWrite(cid, epoch.getTimestamp(), epoch.propValueHash)
 									   );
 					
-					logger.debug("WRITE sent for " + cid);
+					logger.debug("WRITE sent for cId:{}, I am:{}", cid, me);
 
 					computeWrite(cid, epoch, epoch.propValueHash);
 
-					logger.debug("WRITE computed for " + cid);
+					logger.debug("WRITE computed for cId:{}, I am:{}", cid, me);
 
 				} else {
 					epoch.setAccept(me, epoch.propValueHash);
@@ -274,10 +274,10 @@ public final class AcceptorSSLTLS {
 	 * @param value
 	 *            Value sent in the message
 	 */
-	private void writeReceived(Epoch epoch, int a, byte[] value) {
+	private void writeReceived(Epoch epoch, int sender, byte[] value) {
 		int cid = epoch.getConsensus().getId();
-		logger.debug("WRITE from " + a + " for consensus " + cid);
-		epoch.setWrite(a, value);
+		logger.debug("WRITE received from:{}, for consensus cId:{}", sender, cid);
+		epoch.setWrite(sender, value);
 
 		computeWrite(cid, epoch, value);
 	}
@@ -302,7 +302,7 @@ public final class AcceptorSSLTLS {
 
 			if (!epoch.isAcceptSetted(me)) {
 
-				logger.debug("Sending WRITE for " + cid);
+				logger.debug("Sending WRITE for cId:{}, I am:{}",  cid, me);
 
 				/**** LEADER CHANGE CODE! ******/
 				logger.debug("Setting consensus " + cid + " QuorumWrite tiemstamp to " + epoch.getConsensus().getEts()
@@ -322,7 +322,7 @@ public final class AcceptorSSLTLS {
 				// Create a cryptographic proof for this ACCEPT message
 				//logger.info("Creating cryptographic proof for my ACCEPT message from consensus " + cid);
 				
-				insertProof2(cm, epoch);
+				insertProof(cm, epoch);
 
 				int[] targets = this.controller.getCurrentViewOtherAcceptors();
 
@@ -348,7 +348,7 @@ public final class AcceptorSSLTLS {
 	 * @param epoch
 	 *            The epoch during in which the consensus message was created
 	 */
-	private void insertProof_OLD(ConsensusMessage cm, Epoch epoch) {
+	/*private void insertProof_OLD(ConsensusMessage cm, Epoch epoch) {
 		
 		ByteArrayOutputStream bOut = new ByteArrayOutputStream(248);
 		try {
@@ -417,9 +417,9 @@ public final class AcceptorSSLTLS {
 			cm.setProof(macVector);
 		}
 
-	}
+	}*/
 	
-	private void insertProof2(ConsensusMessage cm, Epoch epoch) {
+	private void insertProof(ConsensusMessage cm, Epoch epoch) {
 		
 		ByteArrayOutputStream bOut = new ByteArrayOutputStream(248);
 		try {
@@ -450,55 +450,9 @@ public final class AcceptorSSLTLS {
 			}
 		}
 		
-		
 		PrivateKey privKey = controller.getStaticConf().getPrivateKey();
 		byte[] signature = TOMUtil.signMessage(privKey, data);
 		cm.setProof(signature);
-				
-		// If this consensus contains a reconfiguration request, we need to use
-		// signatures (there might be replicas that will not be part of the next
-		// consensus instance, and so their MAC will be outdated and useless)
-		/*if (hasReconf) {
-
-			PrivateKey privKey = controller.getStaticConf().getPrivateKey();
-			byte[] signature = TOMUtil.signMessage(privKey, data);
-			cm.setProof(signature);
-
-		}*/
-		/* else { // ... if not, we can use MAC vectors
-			int[] processes = this.controller.getCurrentViewAcceptors();
-
-			HashMap<Integer, byte[]> macVector = new HashMap<>();
-
-			for (int id : processes) {
-
-				try {
-
-					SecretKey key = null;
-					do {
-						key = communication.getSecretKey(id);
-						if (key == null) {
-							logger.warn("I don't have yet a secret key with " + id + ". Retrying.");
-							Thread.sleep(1000);
-						}
-
-					} while (key == null); // JCS: This loop is to solve a race condition where a
-											// replica might have already been inserted in the view or
-											// recovered after a crash, but it still did not concluded
-											// the Diffie-Hellman protocol. Not an elegant solution,
-											// but for now it will do
-					this.mac.init(key);
-					macVector.put(id, this.mac.doFinal(data));
-				} catch (InterruptedException ex) {
-					logger.error("Interruption while sleeping", ex);
-				} catch (InvalidKeyException ex) {
-
-					logger.error("Failed to generate MAC vector", ex);
-				}
-			}
-
-			cm.setProof(macVector);
-		}*/
 
 	}
 
@@ -514,7 +468,8 @@ public final class AcceptorSSLTLS {
 	 */
 	private void acceptReceived(Epoch epoch, ConsensusMessage msg) {
 		int cid = epoch.getConsensus().getId();
-		logger.debug("ACCEPT from " + msg.getSender() + " for consensus " + cid);
+		logger.debug("ACCEPT received from:{}, for consensus cId:{}", msg.getSender(), cid);
+		logger.debug("PAxos Message Type: {}", msg.getPaxosVerboseType());
 		epoch.setAccept(msg.getSender(), msg.getValue());
 		epoch.addToProof(msg);
 
@@ -530,7 +485,7 @@ public final class AcceptorSSLTLS {
 	 *            Value sent in the message
 	 */
 	private void computeAccept(int cid, Epoch epoch, byte[] value) {
-		logger.debug("I have " + epoch.countAccept(value) + " ACCEPTs for " + cid + "," + epoch.getTimestamp());
+		logger.debug("I have {} ACCEPTs for cId:{}, Timestamp:{} ", epoch.countAccept(value) , cid, epoch.getTimestamp());
 
 		if (epoch.countAccept(value) > controller.getQuorum() && !epoch.getConsensus().isDecided()) {
 			logger.debug("Deciding consensus " + cid);

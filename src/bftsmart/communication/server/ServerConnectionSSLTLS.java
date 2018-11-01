@@ -78,10 +78,10 @@ public class ServerConnectionSSLTLS {
 	private DataInputStream socketInStream = null;
 	private int remoteId;
 	private boolean useSenderThread;
+	private LinkedBlockingQueue<SystemMessage> inQueue;
 	protected LinkedBlockingQueue<byte[]> outQueue;// = new LinkedBlockingQueue<byte[]>(SEND_QUEUE_SIZE);
 	private HashSet<Integer> noMACs = null; // this is used to keep track of data to be sent without a MAC.
-											// It uses the reference id for that same data
-	private LinkedBlockingQueue<SystemMessage> inQueue;
+											// It uses the reference id for that same data	
 
 	private Lock connectLock = new ReentrantLock();
 	/** Only used when there is no sender Thread */
@@ -381,7 +381,7 @@ public class ServerConnectionSSLTLS {
 						SystemMessage sm = (SystemMessage) (new ObjectInputStream(new ByteArrayInputStream(data))
 								.readObject());
 
-						// The MAC verification it is done for the SSL/TLS protocol.
+						//The MAC verification it is done for the SSL/TLS protocol.
 						sm.authenticated = true;
 
 						if (sm.getSender() == remoteId) {

@@ -103,7 +103,6 @@ public class ServersCommunicationLayerSSLTLS extends Thread {
 
 	private KeyManagerFactory kmf;
 	private KeyStore ks;
-	private FileInputStream fis;
 	private TrustManagerFactory trustMgrFactory;
 	private SSLContext context;
 	private SSLServerSocketFactory serverSocketFactory;
@@ -274,12 +273,15 @@ public class ServersCommunicationLayerSSLTLS extends Thread {
 				if (i == me) {
 					sm.authenticated = true;
 					inQueue.put(sm);
+					logger.debug("Queueing (delivering) my own message, me:{}", i);
 				} else {
 					// logger.info("Going to send a message to replica: {}", i);
 					// logger.info("Going to send a message to replica: {}, data:\n{} ", i, data);
 					// ******* EDUARDO BEGIN **************//
 					// connections[i].send(data);
+					logger.debug("Sending message from:{} -> to:{}.",me,  i);
 					getConnection(i).send(data, useMAC);
+					
 					// ******* EDUARDO END **************//
 				}
 			} catch (InterruptedException ex) {
@@ -365,7 +367,7 @@ public class ServersCommunicationLayerSSLTLS extends Thread {
 		logger.info("ServerCommunicationLayer stopped.");
 	}
 
-	// Tulio SSL Socket. ## BEGIN
+
 	private void establishConnection(SSLSocket newSocket, int remoteId) throws IOException {
 
 		if ((this.controller.getStaticConf().getTTPId() == remoteId) || this.controller.isCurrentViewMember(remoteId)) {
@@ -395,7 +397,7 @@ public class ServersCommunicationLayerSSLTLS extends Thread {
 			LoggerFactory.getLogger(ServersCommunicationLayer.class).error("Failed to set TCPNODELAY", ex);
 		}
 	}
-	// Tulio SSL Socket ## END
+
 
 	@Override
 	public String toString() {
