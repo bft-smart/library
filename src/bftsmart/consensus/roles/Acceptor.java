@@ -135,17 +135,25 @@ public final class Acceptor {
 
         consensus.lock.lock();
         Epoch epoch = consensus.getEpoch(msg.getEpoch(), controller);       
-        switch (msg.getType()){
-            case MessageFactory.PROPOSE:{
-                    proposeReceived(epoch, msg);
-            }break;
-            case MessageFactory.WRITE:{
-                    writeReceived(epoch, msg.getSender(), msg.getValue());
-            }break;
-            case MessageFactory.ACCEPT:{
-                    acceptReceived(epoch, msg);
-            }
-        }
+        switch (msg.getType()) {
+		case MessageFactory.PROPOSE: {
+			/*logger.trace("Epoch on (RECEIVED PROPOSE): {}", epoch.toString());
+			logger.debug("Size of Consensus Message (PROPOSE), before process it. Size:{}.", sizeCM(msg));*/
+			proposeReceived(epoch, msg);
+		}
+			break;
+		case MessageFactory.WRITE: {
+			/*logger.trace("Epoch on (RECEIVED WRITE): {}", epoch.toString());
+			logger.debug("Size of Consensus Message (WRITE), before process it. Size:{}.", sizeCM(msg));*/
+			writeReceived(epoch, msg.getSender(), msg.getValue());
+		}
+			break;
+		case MessageFactory.ACCEPT: {
+			/*logger.trace("Epoch on (RECEIVED ACCEPT): {}", epoch.toString());
+			logger.trace("Size of Consensus Message (ACCEPT), before process it. Size:{}.", sizeCM(msg));*/
+			acceptReceived(epoch, msg);
+		}
+		}
         consensus.lock.unlock();
     }
 
@@ -176,7 +184,7 @@ public final class Acceptor {
      */
     private void executePropose(Epoch epoch, byte[] value) {
         int cid = epoch.getConsensus().getId();
-        logger.debug("Executing propose for " + cid + "," + epoch.getTimestamp());
+        logger.debug("Executing propose for cId:{}, Epoch Timestamp:{}", cid, epoch.getTimestamp());
 
         long consensusStartTime = System.nanoTime();
 
@@ -269,14 +277,13 @@ public final class Acceptor {
     private void computeWrite(int cid, Epoch epoch, byte[] value) {
         int writeAccepted = epoch.countWrite(value);
         
-        logger.debug("I have " + writeAccepted +
-                " WRITEs for " + cid + "," + epoch.getTimestamp());
+        logger.debug("I have {}, WRITE's for cId:{}, Epoch timestamp:{},",  writeAccepted , cid ,epoch.getTimestamp());
 
         if (writeAccepted > controller.getQuorum() && Arrays.equals(value, epoch.propValueHash)) {
                         
             if (!epoch.isAcceptSetted(me)) {
                 
-                logger.debug("Sending WRITE for " + cid);
+                logger.debug("Sending ACCEPT for " + cid);
 
                 /**** LEADER CHANGE CODE! ******/
                 logger.debug("Setting consensus " + cid + " QuorumWrite tiemstamp to " + epoch.getConsensus().getEts() + " and value " + Arrays.toString(value));
@@ -286,7 +293,6 @@ public final class Acceptor {
                 epoch.setAccept(me, value);
 
                 if(epoch.getConsensus().getDecision().firstMessageProposed!=null) {
-
                         epoch.getConsensus().getDecision().firstMessageProposed.acceptSentTime = System.nanoTime();
                 }
                         
@@ -298,12 +304,10 @@ public final class Acceptor {
                 
                 int[] targets = this.controller.getCurrentViewOtherAcceptors();
                 if(controller.getStaticConf().isSSLTLSEnabled())
-                	communication.getServersConnSSLTLS().send(targets, cm, true);
+                	communication.getServersConnSSLTLS().send(targets, cm);
                 else
                 	communication.getServersConn().send(targets, cm, true);
                 
-                //communication.send(this.reconfManager.getCurrentViewOtherAcceptors(),
-                        //factory.createStrong(cid, epoch.getNumber(), value));
                 epoch.addToProof(cm);
                 computeAccept(cid, epoch, value);
             }
@@ -357,6 +361,8 @@ public final class Acceptor {
 
             HashMap<Integer, byte[]> macVector = new HashMap<>();
 
+            //logger.trace("Size of Consensus Message (ACCEPT), before insertProof. Size:{}, Macs:{}", sizeCM(cm), macVector.size());
+            
             for (int id : processes) {
 
                 try {
@@ -383,8 +389,9 @@ public final class Acceptor {
                     logger.error("Failed to generate MAC vector", ex);
                 }
             }
-
+            
             cm.setProof(macVector);
+            //logger.trace("Size of Consensus Message (ACCEPT), after insertProof. Size:{}, Macs:{}", sizeCM(cm), macVector.size());
         }
         
     }
@@ -397,9 +404,9 @@ public final class Acceptor {
      */
     private void acceptReceived(Epoch epoch, ConsensusMessage msg) {
         int cid = epoch.getConsensus().getId();
-        logger.debug("ACCEPT from " + msg.getSender() + " for consensus " + cid);
         epoch.setAccept(msg.getSender(), msg.getValue());
         epoch.addToProof(msg);
+        logger.debug("ACCEPT received from replica:{}, for consensus cId:{}.", msg.getSender(), cid);
 
         computeAccept(cid, epoch, msg.getValue());
     }
@@ -411,11 +418,12 @@ public final class Acceptor {
      * @param value Value sent in the message
      */
     private void computeAccept(int cid, Epoch epoch, byte[] value) {
-        logger.debug("I have " + epoch.countAccept(value) +
-                " ACCEPTs for " + cid + "," + epoch.getTimestamp());
+    	logger.debug("I have {} ACCEPTs for cId:{}, Timestamp:{} ", epoch.countAccept(value), cid,
+				epoch.getTimestamp());
 
         if (epoch.countAccept(value) > controller.getQuorum() && !epoch.getConsensus().isDecided()) {
             logger.debug("Deciding consensus " + cid);
+            //logger.trace("Epoch: {}", epoch.toString());
             decide(epoch);
         }
     }
@@ -430,4 +438,17 @@ public final class Acceptor {
 
         epoch.getConsensus().decided(epoch, true);
     }
+    
+	private int sizeCM(ConsensusMessage cm) {
+		ByteArrayOutputStream bOut2 = new ByteArrayOutputStream(248);
+		try {
+			new ObjectOutputStream(bOut2).writeObject(cm);
+		} catch (IOException ex) {
+			logger.error("Failed to serialize consensus message", ex);
+		}
+		byte[] data2 = bOut2.toByteArray();
+
+		return data2.length;
+
+	}
 }

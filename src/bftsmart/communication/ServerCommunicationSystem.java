@@ -181,7 +181,7 @@ public class ServerCommunicationSystem extends Thread {
 		} else {
 			logger.debug("--> sending message from: {} -> {}" + sm.getSender(), targets);
 			if(connType.equals(ConnType.SSL_TLS))
-				serversConnSSLTLS.send(targets, sm, true);
+				serversConnSSLTLS.send(targets, sm);
 			else
 				serversConn.send(targets, sm, true);
 		}

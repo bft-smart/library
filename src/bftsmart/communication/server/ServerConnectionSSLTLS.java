@@ -182,7 +182,7 @@ public class ServerConnectionSSLTLS {
 	/**
 	 * Used to send packets to the remote server.
 	 */
-	public final void send(byte[] data, boolean useMAC) throws InterruptedException {
+	public final void send(byte[] data) throws InterruptedException {
 		if (useSenderThread) {
 			// only enqueue messages if there queue is not full
 			if (!outQueue.offer(data)) {

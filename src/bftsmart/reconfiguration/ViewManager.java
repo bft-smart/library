@@ -157,7 +157,7 @@ public class ViewManager {
             try {
                 if (i.intValue() != id) {
                 	if(controller.getStaticConf().isSSLTLSEnabled())
-                		getConnectionSSLTLS(i.intValue()).send(data, true);
+                		getConnectionSSLTLS(i.intValue()).send(data);
                 	else
                 		getConnection(i.intValue()).send(data, true);
                 }

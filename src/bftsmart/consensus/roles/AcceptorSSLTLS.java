@@ -18,16 +18,13 @@ package bftsmart.consensus.roles;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
-import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
-import java.security.SignedObject;
+import java.security.Signature;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedList;
-
-import javax.crypto.Mac;
-import javax.crypto.SecretKey;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingDeque;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,8 +38,6 @@ import bftsmart.consensus.messages.MessageFactory;
 import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.tom.core.ExecutionManager;
 import bftsmart.tom.core.TOMLayer;
-import bftsmart.tom.core.messages.TOMMessage;
-import bftsmart.tom.core.messages.TOMMessageType;
 import bftsmart.tom.util.TOMUtil;
 
 /**
@@ -50,7 +45,7 @@ import bftsmart.tom.util.TOMUtil;
  * work together with the TOMLayer class in order to supply a atomic multicast
  * service.
  *
- * @author Alysson Bessani, Tulio Ribeiro
+ * @author Alysson Bessani
  */
 public final class AcceptorSSLTLS {
 
@@ -62,7 +57,16 @@ public final class AcceptorSSLTLS {
 	private ServerCommunicationSystem communication; // Replicas comunication system
 	private TOMLayer tomLayer; // TOM layer
 	private ServerViewController controller;
-	private Mac mac;
+
+	/**
+	 * Tulio Ribeiro
+	 */
+
+	private BlockingQueue<ConsensusMessage> insertProof;
+	private BlockingQueue<byte[]> readProof;
+	//private ReadProofThread rpt;
+
+	private boolean hasProof;
 
 	/**
 	 * Creates a new instance of Acceptor.
@@ -79,13 +83,17 @@ public final class AcceptorSSLTLS {
 		this.me = controller.getStaticConf().getProcessId();
 		this.factory = factory;
 		this.controller = controller;
+		this.hasProof = false;
 
-		try {
-			this.mac = TOMUtil.getMacFactory();
-			logger.debug("Setting MAC with TOMUtil.getMacFactory(). ReplicaId: {}", me);
-		} catch (NoSuchAlgorithmException ex) {
-			logger.error("Failed to get MAC engine", ex);
-		}
+		
+		 this.insertProof = new LinkedBlockingDeque<>(); 
+		 this.readProof = new LinkedBlockingDeque<>();
+		 
+		 InsertProofThread ipt = new InsertProofThread(this.insertProof); 
+		 new Thread(ipt).start(); 
+		 /*ReadProofThread rpt = new ReadProofThread(this.readProof); 
+		 new Thread(rpt).start();*/
+		 
 
 	}
 
@@ -189,8 +197,7 @@ public final class AcceptorSSLTLS {
 	 */
 	private void executePropose(Epoch epoch, byte[] value) {
 		int cid = epoch.getConsensus().getId();
-		logger.debug("Executing propose for " + cid + "," + epoch.getTimestamp());
-
+		logger.debug("Executing propose for cId:{}, Epoch Timestamp:{}", cid, epoch.getTimestamp());
 		long consensusStartTime = System.nanoTime();
 
 		if (epoch.propValue == null) { // only accept one propose per epoch
@@ -217,7 +224,7 @@ public final class AcceptorSSLTLS {
 					epoch.getConsensus().getDecision().firstMessageProposed.consensusStartTime = consensusStartTime;
 
 				}
-				
+
 				epoch.getConsensus().getDecision().firstMessageProposed.proposeReceivedTime = System.nanoTime();
 
 				if (controller.getStaticConf().isBFT()) {
@@ -225,12 +232,10 @@ public final class AcceptorSSLTLS {
 
 					epoch.setWrite(me, epoch.propValueHash);
 					epoch.getConsensus().getDecision().firstMessageProposed.writeSentTime = System.nanoTime();
-					
-					
+
 					communication.send(this.controller.getCurrentViewOtherAcceptors(),
-									   factory.createWrite(cid, epoch.getTimestamp(), epoch.propValueHash)
-									   );
-					
+							factory.createWrite(cid, epoch.getTimestamp(), epoch.propValueHash));
+
 					logger.debug("WRITE sent for cId:{}, I am:{}", cid, me);
 
 					computeWrite(cid, epoch, epoch.propValueHash);
@@ -296,13 +301,13 @@ public final class AcceptorSSLTLS {
 	private void computeWrite(int cid, Epoch epoch, byte[] value) {
 		int writeAccepted = epoch.countWrite(value);
 
-		logger.debug("I have " + writeAccepted + " WRITEs for " + cid + "," + epoch.getTimestamp());
+		logger.debug("I have {}, WRITE's for cId:{}, Epoch timestamp:{},", writeAccepted, cid, epoch.getTimestamp());
 
 		if (writeAccepted > controller.getQuorum() && Arrays.equals(value, epoch.propValueHash)) {
 
 			if (!epoch.isAcceptSetted(me)) {
 
-				logger.debug("Sending WRITE for cId:{}, I am:{}",  cid, me);
+				logger.debug("Putting ACCEPT message into BlockingQueue to sign, cId:{}, I am:{}", cid, me);
 
 				/**** LEADER CHANGE CODE! ******/
 				logger.debug("Setting consensus " + cid + " QuorumWrite tiemstamp to " + epoch.getConsensus().getEts()
@@ -317,24 +322,39 @@ public final class AcceptorSSLTLS {
 					epoch.getConsensus().getDecision().firstMessageProposed.acceptSentTime = System.nanoTime();
 				}
 
+				//insertProof(cm, epoch);
 				ConsensusMessage cm = factory.createAccept(cid, epoch.getTimestamp(), value);
+				byte[] sig = null;
+				try {
+					sig = readProof.take();
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+				cm.setProof(sig);
 
-				// Create a cryptographic proof for this ACCEPT message
-				//logger.info("Creating cryptographic proof for my ACCEPT message from consensus " + cid);
-				
-				insertProof(cm, epoch);
-
-				int[] targets = this.controller.getCurrentViewOtherAcceptors();
+				int[] targets = controller.getCurrentViewOtherAcceptors();
 
 				if (communication.getConnType().equals(ConnType.SSL_TLS))
-					communication.getServersConnSSLTLS().send(targets, cm, true);
+					communication.getServersConnSSLTLS().send(targets, cm);
 				else
 					communication.getServersConn().send(targets, cm, true);
 
 				epoch.addToProof(cm);
 				computeAccept(cid, epoch, value);
+
 			}
+		} else if (!hasProof) {
+			hasProof = true;
+			logger.debug("Not into quorum yet, advancing Signature stuff. cId:{}", cid);
+			ConsensusMessage cm = factory.createAccept(cid, epoch.getTimestamp(), value);
+			try {
+				insertProof.put(cm);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+			
 		}
+
 	}
 
 	/**
@@ -348,112 +368,19 @@ public final class AcceptorSSLTLS {
 	 * @param epoch
 	 *            The epoch during in which the consensus message was created
 	 */
-	/*private void insertProof_OLD(ConsensusMessage cm, Epoch epoch) {
-		
-		ByteArrayOutputStream bOut = new ByteArrayOutputStream(248);
-		try {
-			new ObjectOutputStream(bOut).writeObject(cm);
-		} catch (IOException ex) {
-			logger.error("Failed to serialize consensus message", ex);
-		}
 
-		byte[] data = bOut.toByteArray();
-
-		// check if consensus contains reconfiguration request
-		TOMMessage[] msgs = epoch.deserializedPropValue;
-		boolean hasReconf = false;
-
-		for (TOMMessage msg : msgs) {
-			if (msg.getReqType() == TOMMessageType.RECONFIG 
-					&& msg.getViewID() == controller.getCurrentViewId()) {
-				hasReconf = true;
-				break; // no need to continue, exit the loop
-			}
-		}
-
-		logger.info("SIGNING ALL Accept messages before send. Blocking...");
-		
-		// If this consensus contains a reconfiguration request, we need to use
-		// signatures (there might be replicas that will not be part of the next
-		// consensus instance, and so their MAC will be outdated and useless)
-		if (hasReconf) {
-
-			PrivateKey privKey = controller.getStaticConf().getPrivateKey();
-			byte[] signature = TOMUtil.signMessage(privKey, data);
-			cm.setProof(signature);
-
-		} else { // ... if not, we can use MAC vectors
-			int[] processes = this.controller.getCurrentViewAcceptors();
-
-			HashMap<Integer, byte[]> macVector = new HashMap<>();
-
-			for (int id : processes) {
-
-				try {
-
-					SecretKey key = null;
-					do {
-						key = communication.getSecretKey(id);
-						if (key == null) {
-							logger.warn("I don't have yet a secret key with " + id + ". Retrying.");
-							Thread.sleep(1000);
-						}
-
-					} while (key == null); // JCS: This loop is to solve a race condition where a
-											// replica might have already been inserted in the view or
-											// recovered after a crash, but it still did not concluded
-											// the Diffie-Hellman protocol. Not an elegant solution,
-											// but for now it will do
-					this.mac.init(key);
-					macVector.put(id, this.mac.doFinal(data));
-				} catch (InterruptedException ex) {
-					logger.error("Interruption while sleeping", ex);
-				} catch (InvalidKeyException ex) {
-
-					logger.error("Failed to generate MAC vector", ex);
-				}
-			}
-
-			cm.setProof(macVector);
-		}
-
-	}*/
-	
 	private void insertProof(ConsensusMessage cm, Epoch epoch) {
-		
 		ByteArrayOutputStream bOut = new ByteArrayOutputStream(248);
 		try {
 			new ObjectOutputStream(bOut).writeObject(cm);
 		} catch (IOException ex) {
 			logger.error("Failed to serialize consensus message", ex);
 		}
-
 		byte[] data = bOut.toByteArray();
 
-		// check if consensus contains reconfiguration request
-		/*TOMMessage[] msgs = epoch.deserializedPropValue;
-		boolean hasReconf = false;*/
-
-		/*for (TOMMessage msg : msgs) {
-			if (msg.getReqType() == TOMMessageType.RECONFIG 
-					&& msg.getViewID() == controller.getCurrentViewId()) {
-				hasReconf = true;
-				break; // no need to continue, exit the loop
-			}			
-		}*/
-
-		if (logger.isDebugEnabled()) {
-			TOMMessage[] msgs = epoch.deserializedPropValue;
-			for (TOMMessage msg : msgs) {
-				logger.debug("Received message, Sender:{}, ReqType:{}", msg.getSender(), msg.getReqType());
-
-			}
-		}
-		
 		PrivateKey privKey = controller.getStaticConf().getPrivateKey();
 		byte[] signature = TOMUtil.signMessage(privKey, data);
 		cm.setProof(signature);
-
 	}
 
 	/**
@@ -468,8 +395,6 @@ public final class AcceptorSSLTLS {
 	 */
 	private void acceptReceived(Epoch epoch, ConsensusMessage msg) {
 		int cid = epoch.getConsensus().getId();
-		logger.debug("ACCEPT received from:{}, for consensus cId:{}", msg.getSender(), cid);
-		logger.debug("PAxos Message Type: {}", msg.getPaxosVerboseType());
 		epoch.setAccept(msg.getSender(), msg.getValue());
 		epoch.addToProof(msg);
 
@@ -485,10 +410,12 @@ public final class AcceptorSSLTLS {
 	 *            Value sent in the message
 	 */
 	private void computeAccept(int cid, Epoch epoch, byte[] value) {
-		logger.debug("I have {} ACCEPTs for cId:{}, Timestamp:{} ", epoch.countAccept(value) , cid, epoch.getTimestamp());
+		logger.debug("I have {} ACCEPTs for cId:{}, Timestamp:{} ", epoch.countAccept(value), cid,
+				epoch.getTimestamp());
 
 		if (epoch.countAccept(value) > controller.getQuorum() && !epoch.getConsensus().isDecided()) {
 			logger.debug("Deciding consensus " + cid);
+			hasProof = false;
 			decide(epoch);
 		}
 	}
@@ -505,4 +432,102 @@ public final class AcceptorSSLTLS {
 
 		epoch.getConsensus().decided(epoch, true);
 	}
+
+	/*
+	 * private int sizeCM(ConsensusMessage cm) { ByteArrayOutputStream bOut2 = new
+	 * ByteArrayOutputStream(248); try { new
+	 * ObjectOutputStream(bOut2).writeObject(cm); } catch (IOException ex) {
+	 * logger.error("Failed to serialize consensus message", ex); } byte[] data2 =
+	 * bOut2.toByteArray();
+	 * 
+	 * return data2.length; }
+	 */
+
+	/**
+	 * Thread used to process signatures proofs and send to replicas.
+	 */
+
+	protected class InsertProofThread implements Runnable {
+		private BlockingQueue<ConsensusMessage> insertProof;
+
+		public InsertProofThread(BlockingQueue<ConsensusMessage> queue) {
+			insertProof = queue;
+			logger.debug("Thread Insert Proof created.");
+		}
+
+		@Override
+		public void run() {
+
+			logger.debug("Thread Insert Proof running.");
+
+			while (true) {
+				try {
+					ConsensusMessage cm = insertProof.take();
+
+					logger.debug("Accept message taken by  insertProof BlockingQueue.");
+
+					ByteArrayOutputStream bOut = new ByteArrayOutputStream(248);
+					try {
+						new ObjectOutputStream(bOut).writeObject(cm);
+					} catch (IOException ex) {
+						logger.error("Failed to serialize consensus message", ex);
+					}
+					byte[] data = bOut.toByteArray();
+
+					PrivateKey privKey = controller.getStaticConf().getPrivateKey();
+					byte[] signature = TOMUtil.signMessage(privKey, data);
+					cm.setProof(signature);
+					readProof.put(signature);
+					
+					logger.debug("Signature inserted using specific thread....");
+					
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+			}
+
+		}
+
+	}
+
+	/**
+	 * Thread used to process signatures proofs and send to replicas.
+	 */
+
+	/*protected class ReadProofThread implements Runnable {
+		private BlockingQueue<Signature> readProof;
+
+		public ReadProofThread(BlockingQueue<Signature> queue) {
+			readProof = queue;
+			logger.debug("Thread READ Proof created.");
+		}
+
+		@Override
+		public void run() {
+
+			logger.debug("Thread READ Proof running.");
+
+			while (true) {
+				try {
+					Signature cm = readProof.take();
+					logger.debug("READ proof taken by BlockingQueue and sending.");
+
+					int[] targets = controller.getCurrentViewOtherAcceptors();
+
+					if (communication.getConnType().equals(ConnType.SSL_TLS))
+						communication.getServersConnSSLTLS().send(targets, cm);
+					else
+						communication.getServersConn().send(targets, cm, true);
+
+					logger.debug("Computing ACCEPT message.");
+
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+			}
+
+		}
+
+	}*/
+
 }

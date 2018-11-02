@@ -258,7 +258,8 @@ public class ServersCommunicationLayerSSLTLS extends Thread {
 	}
 	// ******* EDUARDO END **************//
 
-	public final void send(int[] targets, SystemMessage sm, boolean useMAC) {
+	public final void send(int[] targets, SystemMessage sm) {
+		
 		ByteArrayOutputStream bOut = new ByteArrayOutputStream(248);
 		try {
 			new ObjectOutputStream(bOut).writeObject(sm);
@@ -280,7 +281,7 @@ public class ServersCommunicationLayerSSLTLS extends Thread {
 					// ******* EDUARDO BEGIN **************//
 					// connections[i].send(data);
 					logger.debug("Sending message from:{} -> to:{}.",me,  i);
-					getConnection(i).send(data, useMAC);
+					getConnection(i).send(data);
 					
 					// ******* EDUARDO END **************//
 				}

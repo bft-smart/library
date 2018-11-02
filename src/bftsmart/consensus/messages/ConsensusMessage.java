@@ -163,7 +163,6 @@ public class ConsensusMessage extends SystemMessage {
     }
 
     public void setProof(Object proof) {
-        
         this.proof = proof;
     }
     
