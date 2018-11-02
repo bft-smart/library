@@ -63,7 +63,7 @@ public final class AcceptorSSLTLS {
 	 */
 
 	private BlockingQueue<ConsensusMessage> insertProof;
-	private BlockingQueue<byte[]> readProof;
+	private BlockingQueue<ConsensusMessage> readProof;
 	//private ReadProofThread rpt;
 
 	private boolean hasProof;
@@ -323,15 +323,14 @@ public final class AcceptorSSLTLS {
 				}
 
 				//insertProof(cm, epoch);
-				ConsensusMessage cm = factory.createAccept(cid, epoch.getTimestamp(), value);
-				byte[] sig = null;
+				ConsensusMessage cm = null;
+				
 				try {
-					sig = readProof.take();
+					cm = readProof.take();
 				} catch (InterruptedException e) {
 					e.printStackTrace();
 				}
-				cm.setProof(sig);
-
+				
 				int[] targets = controller.getCurrentViewOtherAcceptors();
 
 				if (communication.getConnType().equals(ConnType.SSL_TLS))
@@ -369,7 +368,7 @@ public final class AcceptorSSLTLS {
 	 *            The epoch during in which the consensus message was created
 	 */
 
-	private void insertProof(ConsensusMessage cm, Epoch epoch) {
+	/*private void insertProof(ConsensusMessage cm, Epoch epoch) {
 		ByteArrayOutputStream bOut = new ByteArrayOutputStream(248);
 		try {
 			new ObjectOutputStream(bOut).writeObject(cm);
@@ -382,7 +381,7 @@ public final class AcceptorSSLTLS {
 		byte[] signature = TOMUtil.signMessage(privKey, data);
 		cm.setProof(signature);
 	}
-
+*/
 	/**
 	 * Called when a ACCEPT message is received
 	 * 
@@ -477,9 +476,8 @@ public final class AcceptorSSLTLS {
 					PrivateKey privKey = controller.getStaticConf().getPrivateKey();
 					byte[] signature = TOMUtil.signMessage(privKey, data);
 					cm.setProof(signature);
-					readProof.put(signature);
-					
-					logger.debug("Signature inserted using specific thread....");
+					readProof.put(cm);
+					logger.debug("Signature inserted using specific thread.... ThreadID: {}", Thread.currentThread().getId());
 					
 				} catch (InterruptedException e) {
 					e.printStackTrace();
