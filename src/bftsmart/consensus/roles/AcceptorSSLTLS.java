@@ -19,9 +19,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.security.PrivateKey;
-import java.security.Signature;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingDeque;
@@ -85,15 +83,15 @@ public final class AcceptorSSLTLS {
 		this.controller = controller;
 		this.hasProof = false;
 
-		
-		 this.insertProof = new LinkedBlockingDeque<>(); 
-		 this.readProof = new LinkedBlockingDeque<>();
-		 
-		 InsertProofThread ipt = new InsertProofThread(this.insertProof); 
-		 new Thread(ipt).start(); 
-		 /*ReadProofThread rpt = new ReadProofThread(this.readProof); 
-		 new Thread(rpt).start();*/
-		 
+		this.insertProof = new LinkedBlockingDeque<>();
+		this.readProof = new LinkedBlockingDeque<>();
+
+		InsertProofThread ipt = new InsertProofThread(this.insertProof);
+		new Thread(ipt).start();
+		/*
+		 * ReadProofThread rpt = new ReadProofThread(this.readProof); new
+		 * Thread(rpt).start();
+		 */
 
 	}
 
@@ -213,6 +211,16 @@ public final class AcceptorSSLTLS {
 			// start this consensus if it is not already running
 			if (cid == tomLayer.getLastExec() + 1) {
 				tomLayer.setInExec(cid);
+				if (!hasProof) {
+					hasProof = true;
+					logger.debug("Advancing Signature for ACCEPT message, cId:{}", cid);
+					ConsensusMessage cm = factory.createAccept(cid, epoch.getTimestamp(), value);
+					try {
+						insertProof.put(cm);
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}					
+				}
 			}
 			epoch.deserializedPropValue = tomLayer.checkProposedValue(value, true);
 
@@ -307,7 +315,7 @@ public final class AcceptorSSLTLS {
 
 			if (!epoch.isAcceptSetted(me)) {
 
-				logger.debug("Putting ACCEPT message into BlockingQueue to sign, cId:{}, I am:{}", cid, me);
+				logger.debug("Sending ACCEPT message, cId:{}, I am:{}", cid, me);
 
 				/**** LEADER CHANGE CODE! ******/
 				logger.debug("Setting consensus " + cid + " QuorumWrite tiemstamp to " + epoch.getConsensus().getEts()
@@ -324,8 +332,8 @@ public final class AcceptorSSLTLS {
 
 				//insertProof(cm, epoch);
 				ConsensusMessage cm = null;
-				
 				try {
+					//logger.info("Retrieving ACCEPT message from BlockingQueue.");
 					cm = readProof.take();
 				} catch (InterruptedException e) {
 					e.printStackTrace();
@@ -342,7 +350,7 @@ public final class AcceptorSSLTLS {
 				computeAccept(cid, epoch, value);
 
 			}
-		} else if (!hasProof) {
+		} /*else if (!hasProof) {
 			hasProof = true;
 			logger.debug("Not into quorum yet, advancing Signature stuff. cId:{}", cid);
 			ConsensusMessage cm = factory.createAccept(cid, epoch.getTimestamp(), value);
@@ -350,9 +358,8 @@ public final class AcceptorSSLTLS {
 				insertProof.put(cm);
 			} catch (InterruptedException e) {
 				e.printStackTrace();
-			}
-			
-		}
+			}			
+		}*/
 
 	}
 
@@ -451,13 +458,13 @@ public final class AcceptorSSLTLS {
 
 		public InsertProofThread(BlockingQueue<ConsensusMessage> queue) {
 			insertProof = queue;
-			logger.debug("Thread Insert Proof created.");
+			//logger.debug("Thread Insert Proof created.");
 		}
 
 		@Override
 		public void run() {
 
-			logger.debug("Thread Insert Proof running.");
+			logger.debug("Thread insert proof running. ThreadId: {}", Thread.currentThread().getId());
 
 			while (true) {
 				try {

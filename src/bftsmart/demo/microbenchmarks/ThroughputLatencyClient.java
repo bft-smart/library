@@ -12,13 +12,7 @@ limitations under the License.
 */
 package bftsmart.demo.microbenchmarks;
 
-import java.io.ByteArrayInputStream;
-import java.io.DataInputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
-
-import bftsmart.tom.ServiceProxy;
-import bftsmart.tom.util.Storage;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.concurrent.ExecutionException;
@@ -27,6 +21,9 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import bftsmart.tom.ServiceProxy;
+import bftsmart.tom.util.Storage;
 
 /**
  * Example client that updates a BFT replicated service (a counter).
