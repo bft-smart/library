@@ -59,11 +59,9 @@ public final class AcceptorSSLTLS {
 	/**
 	 * Tulio Ribeiro
 	 */
-
 	private BlockingQueue<ConsensusMessage> insertProof;
 	private BlockingQueue<ConsensusMessage> readProof;
-	//private ReadProofThread rpt;
-
+	private PrivateKey privKey;
 	private boolean hasProof;
 
 	/**
@@ -81,17 +79,14 @@ public final class AcceptorSSLTLS {
 		this.me = controller.getStaticConf().getProcessId();
 		this.factory = factory;
 		this.controller = controller;
-		this.hasProof = false;
-
+		
+		/* Tulio Ribeiro*/
+		this.hasProof = false;		
+		this.privKey = controller.getStaticConf().getPrivateKey();
 		this.insertProof = new LinkedBlockingDeque<>();
 		this.readProof = new LinkedBlockingDeque<>();
-
 		InsertProofThread ipt = new InsertProofThread(this.insertProof);
 		new Thread(ipt).start();
-		/*
-		 * ReadProofThread rpt = new ReadProofThread(this.readProof); new
-		 * Thread(rpt).start();
-		 */
 
 	}
 
@@ -350,7 +345,7 @@ public final class AcceptorSSLTLS {
 				e.printStackTrace();
 			}			
 		}
-
+		
 	}
 
 	/**
@@ -440,15 +435,15 @@ public final class AcceptorSSLTLS {
 	 */
 
 	/**
-	 * Thread used to process signatures proofs and send to replicas.
+	 * Create a cryptographic proof for a consensus message
+	 * Thread used to advance the signature process.
+	 * The proof is inserted into a Blocking Queue read by ComputeWrite.
 	 */
-
-	protected class InsertProofThread implements Runnable {
+	private class InsertProofThread implements Runnable {
 		private BlockingQueue<ConsensusMessage> insertProof;
 
 		public InsertProofThread(BlockingQueue<ConsensusMessage> queue) {
 			insertProof = queue;
-			//logger.debug("Thread Insert Proof created.");
 		}
 
 		@Override
@@ -469,10 +464,11 @@ public final class AcceptorSSLTLS {
 						logger.error("Failed to serialize consensus message", ex);
 					}
 					byte[] data = bOut.toByteArray();
-
-					PrivateKey privKey = controller.getStaticConf().getPrivateKey();
+					
 					byte[] signature = TOMUtil.signMessage(privKey, data);
+					
 					cm.setProof(signature);
+					
 					readProof.put(cm);
 					
 				} catch (InterruptedException e) {
@@ -484,44 +480,5 @@ public final class AcceptorSSLTLS {
 
 	}
 
-	/**
-	 * Thread used to process signatures proofs and send to replicas.
-	 */
-
-	/*protected class ReadProofThread implements Runnable {
-		private BlockingQueue<Signature> readProof;
-
-		public ReadProofThread(BlockingQueue<Signature> queue) {
-			readProof = queue;
-			logger.debug("Thread READ Proof created.");
-		}
-
-		@Override
-		public void run() {
-
-			logger.debug("Thread READ Proof running.");
-
-			while (true) {
-				try {
-					Signature cm = readProof.take();
-					logger.debug("READ proof taken by BlockingQueue and sending.");
-
-					int[] targets = controller.getCurrentViewOtherAcceptors();
-
-					if (communication.getConnType().equals(ConnType.SSL_TLS))
-						communication.getServersConnSSLTLS().send(targets, cm);
-					else
-						communication.getServersConn().send(targets, cm, true);
-
-					logger.debug("Computing ACCEPT message.");
-
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-				}
-			}
-
-		}
-
-	}*/
 
 }

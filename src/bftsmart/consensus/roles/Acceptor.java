@@ -65,6 +65,8 @@ public final class Acceptor {
     //private Cipher cipher;
     private Mac mac;
     
+    private PrivateKey privKey;
+    
     /**
      * Creates a new instance of Acceptor.
      * @param communication Replicas communication system
@@ -77,14 +79,15 @@ public final class Acceptor {
         this.factory = factory;
         this.controller = controller;
         
-		//if (communication.getConnType().equals(ConnType.No_SSL_TLS)) {
-			try {
-				this.mac = TOMUtil.getMacFactory();
-				logger.debug("Setting MAC with TOMUtil.getMacFactory(). ReplicaId: {}", me);
-			} catch (NoSuchAlgorithmException /* | NoSuchPaddingException */ ex) {
-				logger.error("Failed to get MAC engine", ex);
-			}
-		//}
+        this.privKey = controller.getStaticConf().getPrivateKey();
+        
+		try {
+			this.mac = TOMUtil.getMacFactory();
+			logger.debug("Setting MAC with TOMUtil.getMacFactory(). ReplicaId: {}", me);
+		} catch (NoSuchAlgorithmException /* | NoSuchPaddingException */ ex) {
+			logger.error("Failed to get MAC engine", ex);
+		}
+
     }
 
     public MessageFactory getFactory() {
@@ -349,8 +352,6 @@ public final class Acceptor {
         // signatures (there might be replicas that will not be part of the next
         //consensus instance, and so their MAC will be outdated and useless)
         if (hasReconf) {
-
-            PrivateKey privKey = controller.getStaticConf().getPrivateKey();
 
             byte[] signature = TOMUtil.signMessage(privKey, data);
 

@@ -92,7 +92,8 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 
 	/* Tulio Ribeiro */
 	private static int tcpSendBufferSize = 8 * 1024 * 1024;
-	private static int connectionTimeoutMsec = 30000; /* how long to allow TCP handshake to complete (60 seconds) */
+	private static int connectionTimeoutMsec = 30000; /* (30 seconds, timeout) */
+	private PrivateKey privKey;
 	/* end Tulio Ribeiro */
 
 	public NettyClientServerCommunicationSystemClientSide(int clientId, ClientViewController controller) {
@@ -105,6 +106,10 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 			this.secretKeyFactory = TOMUtil.getSecretFactory();
 
 			this.controller = controller;
+			
+			/*Tulio Ribeiro*/
+			privKey = controller.getStaticConf().getPrivateKey();
+			
 			this.listener = new SyncListener();
 			this.rl = new ReentrantReadWriteLock();
 
@@ -297,8 +302,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 
 		// produce signature
 		if (sign && sm.serializedMessageSignature == null) {
-			sm.serializedMessageSignature = signMessage(controller.getStaticConf().getPrivateKey(),
-					sm.serializedMessage);
+			sm.serializedMessageSignature = signMessage(privKey, sm.serializedMessage);
 		}
 
 		int sent = 0;
@@ -358,10 +362,10 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 
 		// ******* EDUARDO BEGIN **************//
 		// produce signature
-		byte[] data2 = signMessage(controller.getStaticConf().getPrivateKey(), data);
+		byte[] signature = signMessage(privKey, data);
 		// ******* EDUARDO END **************//
 
-		sm.serializedMessageSignature = data2;
+		sm.serializedMessageSignature = signature;
 	}
 
 	public byte[] signMessage(PrivateKey key, byte[] message) {
@@ -375,7 +379,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 			signatureEngine.initSign(key);
 			signatureEngine.update(message);
 			result = signatureEngine.sign();
-
+			
 			// st.store(System.nanoTime() - startTime);
 			return result;
 		} catch (Exception e) {

@@ -23,6 +23,7 @@ import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.nio.channels.ClosedChannelException;
 import java.security.NoSuchAlgorithmException;
+import java.security.PrivateKey;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -80,12 +81,16 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 	private static int bossThreads = 4; /* listens and accepts on server socket; workers handle r/w I/O */
 	private static int connectionBacklog = 1024; /* pending connections boss thread will queue to accept */
 	private static int connectionTimeoutMsec = 30000; /* how long to allow TCP handshake to complete (60 seconds) */
+	private PrivateKey privKey;
 	/* Tulio Ribeiro */
 	    
 	public NettyClientServerCommunicationSystemServerSide(ServerViewController controller) {
 		try {
 
 			this.controller = controller;
+			/*Tulio Ribeiro*/
+			privKey = controller.getStaticConf().getPrivateKey();
+			
 			sessionTable = new HashMap();
 			rl = new ReentrantReadWriteLock();
 
@@ -309,7 +314,7 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 		// produce signature if necessary (never in the current version)
 		if (sm.signed) {
 			// ******* EDUARDO BEGIN **************//
-			byte[] data2 = TOMUtil.signMessage(controller.getStaticConf().getPrivateKey(), data);
+			byte[] data2 = TOMUtil.signMessage(privKey, data);
 			// ******* EDUARDO END **************//
 			sm.serializedMessageSignature = data2;
 		}
