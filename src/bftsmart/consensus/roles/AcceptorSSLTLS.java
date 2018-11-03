@@ -211,16 +211,6 @@ public final class AcceptorSSLTLS {
 			// start this consensus if it is not already running
 			if (cid == tomLayer.getLastExec() + 1) {
 				tomLayer.setInExec(cid);
-				if (!hasProof) {
-					hasProof = true;
-					logger.debug("Advancing Signature for ACCEPT message, cId:{}", cid);
-					ConsensusMessage cm = factory.createAccept(cid, epoch.getTimestamp(), value);
-					try {
-						insertProof.put(cm);
-					} catch (InterruptedException e) {
-						e.printStackTrace();
-					}					
-				}
 			}
 			epoch.deserializedPropValue = tomLayer.checkProposedValue(value, true);
 
@@ -234,7 +224,7 @@ public final class AcceptorSSLTLS {
 				}
 
 				epoch.getConsensus().getDecision().firstMessageProposed.proposeReceivedTime = System.nanoTime();
-
+				
 				if (controller.getStaticConf().isBFT()) {
 					logger.debug("Sending WRITE for cId:{}, I am:{}", cid, me);
 
@@ -333,7 +323,7 @@ public final class AcceptorSSLTLS {
 				//insertProof(cm, epoch);
 				ConsensusMessage cm = null;
 				try {
-					//logger.info("Retrieving ACCEPT message from BlockingQueue.");
+					//logger.info("Retrieving ACCEPT message from BlockingQueue. ThreadId: {}", Thread.currentThread().getId());
 					cm = readProof.take();
 				} catch (InterruptedException e) {
 					e.printStackTrace();
@@ -350,7 +340,7 @@ public final class AcceptorSSLTLS {
 				computeAccept(cid, epoch, value);
 
 			}
-		} /*else if (!hasProof) {
+		} else if (!hasProof) {
 			hasProof = true;
 			logger.debug("Not into quorum yet, advancing Signature stuff. cId:{}", cid);
 			ConsensusMessage cm = factory.createAccept(cid, epoch.getTimestamp(), value);
@@ -359,7 +349,7 @@ public final class AcceptorSSLTLS {
 			} catch (InterruptedException e) {
 				e.printStackTrace();
 			}			
-		}*/
+		}
 
 	}
 
@@ -470,7 +460,7 @@ public final class AcceptorSSLTLS {
 				try {
 					ConsensusMessage cm = insertProof.take();
 
-					logger.debug("Accept message taken by  insertProof BlockingQueue.");
+					//logger.trace("Signing ACCEPT message, ThreadId: {}", Thread.currentThread().getId());
 
 					ByteArrayOutputStream bOut = new ByteArrayOutputStream(248);
 					try {
@@ -484,7 +474,6 @@ public final class AcceptorSSLTLS {
 					byte[] signature = TOMUtil.signMessage(privKey, data);
 					cm.setProof(signature);
 					readProof.put(cm);
-					logger.debug("Signature inserted using specific thread.... ThreadID: {}", Thread.currentThread().getId());
 					
 				} catch (InterruptedException e) {
 					e.printStackTrace();

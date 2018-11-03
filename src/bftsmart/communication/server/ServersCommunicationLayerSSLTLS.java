@@ -69,16 +69,15 @@ import bftsmart.tom.util.TOMUtil;
  * Generate a KeyPair used by SSL/TLS connections. Note that keypass argument is
  * equal to the variable SECRET.
  * 
- * The command generates the secret key. ##Elliptic Curve $keytool -genkey
- * -keyalg EC -alias bftsmartEC -keypass MySeCreT_2hMOygBwY -keystore
- * ./ecKeyPair -dname "CN=BFT-SMaRT" $keytool -importkeystore -srckeystore
- * ./ecKeyPair -destkeystore ./ecKeyPair -deststoretype pkcs12
- * 
- * ##RSA $keytool -genkey -keyalg RSA -keysize 2048 -alias bftsmartRSA -keypass
- * MySeCreT_2hMOygBwY -keystore ./RSA_KeyPair_2048.pkcs12 -dname "CN=BFT-SMaRT"
- * $keytool -importkeystore -srckeystore ./RSA_KeyPair_2048.pkcs12 -destkeystore
- * ./RSA_KeyPair_2048.pkcs12 -deststoretype pkcs12
- */
+ * The command generates the secret key.*/ 
+//##Elliptic Curve 
+  //$keytool -genkey -keyalg EC -alias bftsmartEC -keypass MySeCreT_2hMOygBwY -keystore ./ecKeyPair -dname "CN=BFT-SMaRT" 
+  //$keytool -importkeystore -srckeystore ./ecKeyPair -destkeystore ./ecKeyPair -deststoretype pkcs12
+
+//##RSA 
+  //$keytool -genkey -keyalg RSA -keysize 2048 -alias bftsmartRSA -keypass MySeCreT_2hMOygBwY -keystore ./RSA_KeyPair_2048.pkcs12 -dname "CN=BFT-SMaRT"
+  //$keytool -importkeystore -srckeystore ./RSA_KeyPair_2048.pkcs12 -destkeystore ./RSA_KeyPair_2048.pkcs12 -deststoretype pkcs12
+ 
 
 public class ServersCommunicationLayerSSLTLS extends Thread {
 
@@ -110,11 +109,6 @@ public class ServersCommunicationLayerSSLTLS extends Thread {
 	private SecretKey selfPwd;
 	private SSLServerSocket serverSocketSSLTLS;
 	private String ssltlsProtocolVersion;
-
-	/* Tulio Ribeiro */
-	// private static int tcpSendBufferSize = 8 * 1024 * 1024;
-	// private static int connectionTimeoutMsec = 10000;
-	/* Tulio Ribeiro */
 
 	public ServersCommunicationLayerSSLTLS(ServerViewController controller, LinkedBlockingQueue<SystemMessage> inQueue,
 			ServiceReplica replica) throws KeyStoreException, NoSuchAlgorithmException, CertificateException,

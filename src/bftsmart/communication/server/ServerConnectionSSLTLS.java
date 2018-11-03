@@ -97,10 +97,7 @@ public class ServerConnectionSSLTLS {
 	private SSLSocketFactory socketFactory;
 	private static final String SECRET = "MySeCreT_2hMOygBwY";
 
-	/* Tulio Ribeiro */
-	// private static int connectionTimeoutMsec = 10000;
-	/* Tulio Ribeiro */
-
+	
 	public ServerConnectionSSLTLS(ServerViewController controller, SSLSocket socketSSL, int remoteId,
 			LinkedBlockingQueue<SystemMessage> inQueue, ServiceReplica replica) {
 
@@ -546,7 +543,6 @@ public class ServerConnectionSSLTLS {
 			this.socketSSL = (SSLSocket) socketFactory.createSocket(this.controller.getStaticConf().getHost(remoteId),
 					this.controller.getStaticConf().getServerToServerPort(remoteId));
 			this.socketSSL.setKeepAlive(true);
-			// this.socketSSL.setSoTimeout(connectionTimeoutMsec);
 			this.socketSSL.setTcpNoDelay(true);
 			this.socketSSL.setEnabledCipherSuites(this.controller.getStaticConf().getEnabledCiphers());
 
