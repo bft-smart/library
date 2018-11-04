@@ -89,14 +89,7 @@ public class ECDSAKeyLoader implements KeyLoader {
 			throws IOException, NoSuchAlgorithmException, InvalidKeySpecException, CertificateException {
 
 		if (defaultKeys) {
-			//logger.debug("Loading default PublicKey, id: {}", id);
-			try {
-				logger.trace("Signature Algorithm: {}, Format: {} ", getPublicKeyFromString(PUBLIC_KEY).getAlgorithm(),
-						getPublicKeyFromString(PUBLIC_KEY).getFormat());
-			} catch (NoSuchProviderException e1) {
-				// TODO Auto-generated catch block
-				e1.printStackTrace();
-			}
+			//logger.debug("Loading default PublicKey, id: {}", id);			
 			try {
 				return getPublicKeyFromString(PUBLIC_KEY);
 			} catch (NoSuchProviderException e) {
@@ -131,15 +124,6 @@ public class ECDSAKeyLoader implements KeyLoader {
 			throws IOException, NoSuchAlgorithmException, InvalidKeySpecException, CertificateException {
 
 		if (defaultKeys) {
-			//logger.debug("Loading my default PublicKey, this.id: {}", this.id);
-			try {
-				logger.trace("Signature Algorithm: {}, Format: {} ", getPublicKeyFromString(PUBLIC_KEY).getAlgorithm(),
-						getPublicKeyFromString(PUBLIC_KEY).getFormat());
-			} catch (NoSuchProviderException e1) {
-				// TODO Auto-generated catch block
-				e1.printStackTrace();
-			}
-
 			try {
 				return getPublicKeyFromString(PUBLIC_KEY);
 			} catch (NoSuchProviderException e) {
@@ -180,7 +164,6 @@ public class ECDSAKeyLoader implements KeyLoader {
 	public PrivateKey loadPrivateKey() throws IOException, NoSuchAlgorithmException, InvalidKeySpecException {
 
 		if (defaultKeys) {
-			//logger.debug("Loading default PrivateKey, ID: {}", this.id);
 			try {
 				return getPrivateKeyFromString(PRIVATE_KEY);
 			} catch (NoSuchProviderException e) {

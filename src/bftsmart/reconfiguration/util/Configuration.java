@@ -20,23 +20,16 @@ import java.io.FileReader;
 import java.math.BigInteger;
 import java.net.InetSocketAddress;
 import java.security.PrivateKey;
-import java.security.Provider;
 import java.security.PublicKey;
-import java.security.Security;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.StringTokenizer;
 
-import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.sun.crypto.provider.SunJCE;
-
 import bftsmart.tom.util.KeyLoader;
 import bftsmart.tom.util.TOMUtil;
-import sun.security.ec.SunEC;
-import sun.security.rsa.SunRsaSign;
 
 public class Configuration {
     
@@ -50,8 +43,6 @@ public class Configuration {
     protected Map<String, String> configs;
     protected HostsConfig hosts;
     protected KeyLoader keyLoader;
-    //protected Provider provider;
-           
     
     public static final String DEFAULT_HMAC = "HmacSHA512";
     public static final String DEFAULT_SECRETKEY = "PBKDF2WithHmacSHA1";

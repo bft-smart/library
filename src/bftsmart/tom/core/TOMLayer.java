@@ -19,6 +19,7 @@ package bftsmart.tom.core;
 import java.io.Serializable;
 import java.security.MessageDigest;
 import java.security.PrivateKey;
+import java.security.PublicKey;
 import java.security.Signature;
 import java.security.SignedObject;
 import java.util.concurrent.locks.Condition;
@@ -47,6 +48,8 @@ import bftsmart.tom.util.BatchReader;
 import bftsmart.tom.util.TOMUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.HashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -67,7 +70,6 @@ public final class TOMLayer extends Thread implements RequestReceiver {
     public Acceptor acceptor; // Acceptor role of the PaW algorithm
     public AcceptorSSLTLS acceptorSSLTLS; // Acceptor role of the PaW algorithm
     private ServerCommunicationSystem communication; // Communication system between replicas
-    //private OutOfContextMessageThread ot; // Thread which manages messages that do not belong to the current consensus
     private DeliveryThread dt; // Thread which delivers total ordered messages to the appication
     public StateManager stateManager = null; // object which deals with the state transfer protocol
 
@@ -104,7 +106,9 @@ public final class TOMLayer extends Thread implements RequestReceiver {
     private ReentrantLock proposeLock = new ReentrantLock();
     private Condition canPropose = proposeLock.newCondition();
 
-    private PrivateKey prk;
+    private PrivateKey privateKey;
+    private HashMap<Integer, PublicKey> publicKey;
+    
     public ServerViewController controller;
 
     private RequestVerifier verifier;
@@ -137,6 +141,13 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         this.communication = cs;
         this.controller = controller;
         
+        /*Tulio Ribeiro*/
+        int [] targets  = this.controller.getCurrentViewOtherAcceptors();
+        for (int i = 0; i < targets.length; i++) {
+            publicKey.put(targets[i], controller.getStaticConf().getPublicKey(targets[i]));
+        }
+
+        
         // use either the same number of Netty workers threads if specified in the configuration
         // or use a many as the number of cores available
         this.verifierExecutor = Executors.newWorkStealingPool(Runtime.getRuntime().availableProcessors());
@@ -160,7 +171,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             logger.error("Failed to get signature engine",e);
         }
 
-        this.prk = this.controller.getStaticConf().getPrivateKey();
+        this.privateKey = this.controller.getStaticConf().getPrivateKey();
         this.dt = new DeliveryThread(this, receiver, recoverer, this.controller); // Create delivery thread
         this.dt.start();
         this.stateManager = recoverer.getStateManager();
@@ -223,7 +234,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             logger.error("Failed to get signature engine",e);
         }
 
-        this.prk = this.controller.getStaticConf().getPrivateKey();
+        this.privateKey = this.controller.getStaticConf().getPrivateKey();
         this.dt = new DeliveryThread(this, receiver, recoverer, this.controller); // Create delivery thread
         this.dt.start();
         this.stateManager = recoverer.getStateManager();
@@ -255,7 +266,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
     public SignedObject sign(Serializable obj) {
         try {
-            return new SignedObject(obj, prk, engine);
+            return new SignedObject(obj, privateKey, engine);
         } catch (Exception e) {
             logger.error("Failed to sign object",e);
             return null;
@@ -271,7 +282,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
      */
     public boolean verifySignature(SignedObject so, int sender) {
         try {
-            return so.verify(controller.getStaticConf().getPublicKey(sender), engine);
+            return so.verify(publicKey.get(sender), engine);
         } catch (Exception e) {
             logger.error("Failed to verify object signature",e);
         }
