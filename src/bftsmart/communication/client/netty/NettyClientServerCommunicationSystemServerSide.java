@@ -22,7 +22,6 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.nio.channels.ClosedChannelException;
-import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -30,8 +29,6 @@ import java.util.Iterator;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-
-import javax.crypto.Mac;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -78,9 +75,9 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 
 	/* Tulio Ribeiro */
 	private static int tcpSendBufferSize = 8 * 1024 * 1024;
-	private static int bossThreads = 4; /* listens and accepts on server socket; workers handle r/w I/O */
+	private static int bossThreads = 8; /* listens and accepts on server socket; workers handle r/w I/O */
 	private static int connectionBacklog = 1024; /* pending connections boss thread will queue to accept */
-	private static int connectionTimeoutMsec = 30000; /* how long to allow TCP handshake to complete (60 seconds) */
+	private static int connectionTimeoutMsec = 40000; /* (40 seconds) */
 	private PrivateKey privKey;
 	/* Tulio Ribeiro */
 	    

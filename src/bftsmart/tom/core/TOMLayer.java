@@ -141,8 +141,10 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         this.communication = cs;
         this.controller = controller;
         
+        this.privateKey = this.controller.getStaticConf().getPrivateKey();
+        
         /*Tulio Ribeiro*/
-        int [] targets  = this.controller.getCurrentViewOtherAcceptors();
+        int [] targets  = this.controller.getCurrentViewAcceptors();
         for (int i = 0; i < targets.length; i++) {
             publicKey.put(targets[i], controller.getStaticConf().getPublicKey(targets[i]));
         }
@@ -171,7 +173,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             logger.error("Failed to get signature engine",e);
         }
 
-        this.privateKey = this.controller.getStaticConf().getPrivateKey();
+        
         this.dt = new DeliveryThread(this, receiver, recoverer, this.controller); // Create delivery thread
         this.dt.start();
         this.stateManager = recoverer.getStateManager();
@@ -211,6 +213,8 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         this.communication = cs;
         this.controller = controller;
         
+        this.privateKey = this.controller.getStaticConf().getPrivateKey();
+        
         // use either the same number of Netty workers threads if specified in the configuration
         // or use a many as the number of cores available
         this.verifierExecutor = Executors.newWorkStealingPool(Runtime.getRuntime().availableProcessors());
@@ -234,7 +238,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             logger.error("Failed to get signature engine",e);
         }
 
-        this.privateKey = this.controller.getStaticConf().getPrivateKey();
+        
         this.dt = new DeliveryThread(this, receiver, recoverer, this.controller); // Create delivery thread
         this.dt.start();
         this.stateManager = recoverer.getStateManager();

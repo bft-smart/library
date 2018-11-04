@@ -179,12 +179,13 @@ public class ServersCommunicationLayerSSLTLS extends Thread {
 			logger.trace("Supported Cipher: {} ", ciphers[i]);
 		}
 
-		serverSocketSSLTLS.setPerformancePreferences(0, 2, 1);
-		// serverSocketSSLTLS.setSoTimeout(connectionTimeoutMsec);
+		//serverSocketSSLTLS.setPerformancePreferences(0, 2, 1);
+		//serverSocketSSLTLS.setSoTimeout(connectionTimeoutMsec);
 		serverSocketSSLTLS.setEnableSessionCreation(true);
 		serverSocketSSLTLS.setReuseAddress(true);
 		serverSocketSSLTLS.setNeedClientAuth(true);
 		serverSocketSSLTLS.setWantClientAuth(true);
+		
 
 		SecretKeyFactory fac = TOMUtil.getSecretFactory();
 		PBEKeySpec spec = TOMUtil.generateKeySpec(SECRET.toCharArray());
