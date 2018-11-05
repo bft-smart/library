@@ -16,34 +16,33 @@ limitations under the License.
 package bftsmart.consensus.roles;
 
 
-import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
-import java.util.Arrays;
-
-import bftsmart.communication.ServerCommunicationSystem;
-import bftsmart.communication.ServerCommunicationSystem.ConnType;
-import bftsmart.communication.server.ServerConnection;
-import bftsmart.consensus.Consensus;
-import bftsmart.tom.core.ExecutionManager;
-import bftsmart.consensus.Epoch;
-import bftsmart.consensus.messages.MessageFactory;
-import bftsmart.consensus.messages.ConsensusMessage;
-import bftsmart.reconfiguration.ServerViewController;
-import bftsmart.tom.core.TOMLayer;
-import bftsmart.tom.core.messages.TOMMessage;
-import bftsmart.tom.core.messages.TOMMessageType;
-import bftsmart.tom.util.TOMUtil;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedList;
+
 import javax.crypto.Mac;
 import javax.crypto.SecretKey;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import bftsmart.communication.ServerCommunicationSystem;
+import bftsmart.consensus.Consensus;
+import bftsmart.consensus.Epoch;
+import bftsmart.consensus.messages.ConsensusMessage;
+import bftsmart.consensus.messages.MessageFactory;
+import bftsmart.reconfiguration.ServerViewController;
+import bftsmart.tom.core.ExecutionManager;
+import bftsmart.tom.core.TOMLayer;
+import bftsmart.tom.core.messages.TOMMessage;
+import bftsmart.tom.core.messages.TOMMessageType;
+import bftsmart.tom.util.TOMUtil;
 
 /**
  * This class represents the acceptor role in the consensus protocol.
@@ -424,7 +423,6 @@ public final class Acceptor {
 
         if (epoch.countAccept(value) > controller.getQuorum() && !epoch.getConsensus().isDecided()) {
             logger.debug("Deciding consensus " + cid);
-            //logger.trace("Epoch: {}", epoch.toString());
             decide(epoch);
         }
     }
@@ -440,7 +438,7 @@ public final class Acceptor {
         epoch.getConsensus().decided(epoch, true);
     }
     
-	private int sizeCM(ConsensusMessage cm) {
+	/*private int sizeCM(ConsensusMessage cm) {
 		ByteArrayOutputStream bOut2 = new ByteArrayOutputStream(248);
 		try {
 			new ObjectOutputStream(bOut2).writeObject(cm);
@@ -451,5 +449,5 @@ public final class Acceptor {
 
 		return data2.length;
 
-	}
+	}*/
 }

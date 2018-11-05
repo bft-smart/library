@@ -13,14 +13,31 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+
+/**
+ * TODO
+ * Remove / clear readProof blocking queue in case of non decided consensus. 
+ * */
+
 package bftsmart.consensus.roles;
 
 import java.io.ByteArrayOutputStream;
+import java.io.FileDescriptor;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
+import java.nio.file.FileSystems;
+import java.nio.file.Files;
+import java.nio.file.OpenOption;
+import java.nio.file.Path;
 import java.security.PrivateKey;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedList;
+import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingDeque;
 
@@ -36,6 +53,7 @@ import bftsmart.consensus.messages.MessageFactory;
 import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.tom.core.ExecutionManager;
 import bftsmart.tom.core.TOMLayer;
+import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.util.TOMUtil;
 
 /**
@@ -64,6 +82,10 @@ public final class AcceptorSSLTLS {
 	private PrivateKey privKey;
 	private boolean hasProof;
 
+	//Disk
+	private BlockingQueue<HashMap<Integer, byte[]>> toPersist;
+	private BlockingQueue<Integer> saved;
+	
 	/**
 	 * Creates a new instance of Acceptor.
 	 * 
@@ -79,14 +101,21 @@ public final class AcceptorSSLTLS {
 		this.me = controller.getStaticConf().getProcessId();
 		this.factory = factory;
 		this.controller = controller;
-		
-		/* Tulio Ribeiro*/
-		this.hasProof = false;		
+
+		/* Tulio Ribeiro */
+		this.hasProof = false;
 		this.privKey = controller.getStaticConf().getPrivateKey();
 		this.insertProof = new LinkedBlockingDeque<>();
 		this.readProof = new LinkedBlockingDeque<>();
 		InsertProofThread ipt = new InsertProofThread(this.insertProof);
 		new Thread(ipt).start();
+		
+		// Deal with disk
+		this.saved = new LinkedBlockingDeque<>();
+		this.toPersist = new LinkedBlockingDeque<>();
+		DealWithDiskThread dwd = new DealWithDiskThread(this.toPersist);
+		new Thread(dwd).start();
+		
 
 	}
 
@@ -174,6 +203,9 @@ public final class AcceptorSSLTLS {
 		logger.debug("PROPOSE received from:{}, for consensus cId:{}, I am:{}", msg.getSender(), cid, me);
 		if (msg.getSender() == executionManager.getCurrentLeader() // Is the replica the leader?
 				&& epoch.getTimestamp() == 0 && ts == ets && ets == 0) { // Is all this in epoch 0?
+
+			//logger.info("Proposed msg.getValue(): {}" , msg.getValue());
+			
 			executePropose(epoch, msg.getValue());
 		} else {
 			logger.debug("Propose received is not from the expected leader");
@@ -210,6 +242,16 @@ public final class AcceptorSSLTLS {
 			epoch.deserializedPropValue = tomLayer.checkProposedValue(value, true);
 
 			if (epoch.deserializedPropValue != null && !epoch.isWriteSetted(me)) {
+				
+				
+				try {
+					HashMap<Integer, byte[]> map = new HashMap<>();
+					map.put(cid, value);
+					toPersist.put(map);
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+				
 				if (epoch.getConsensus().getDecision().firstMessageProposed == null) {
 					epoch.getConsensus().getDecision().firstMessageProposed = epoch.deserializedPropValue[0];
 				}
@@ -219,7 +261,7 @@ public final class AcceptorSSLTLS {
 				}
 
 				epoch.getConsensus().getDecision().firstMessageProposed.proposeReceivedTime = System.nanoTime();
-				
+
 				if (controller.getStaticConf().isBFT()) {
 					logger.debug("Sending WRITE for cId:{}, I am:{}", cid, me);
 
@@ -315,15 +357,16 @@ public final class AcceptorSSLTLS {
 					epoch.getConsensus().getDecision().firstMessageProposed.acceptSentTime = System.nanoTime();
 				}
 
-				//insertProof(cm, epoch);
+				// insertProof(cm, epoch);
 				ConsensusMessage cm = null;
 				try {
-					//logger.info("Retrieving ACCEPT message from BlockingQueue. ThreadId: {}", Thread.currentThread().getId());
+					// logger.info("Retrieving ACCEPT message from BlockingQueue. ThreadId: {}",
+					// Thread.currentThread().getId());
 					cm = readProof.take();
 				} catch (InterruptedException e) {
 					e.printStackTrace();
 				}
-				
+
 				int[] targets = controller.getCurrentViewOtherAcceptors();
 
 				if (communication.getConnType().equals(ConnType.SSL_TLS))
@@ -343,9 +386,9 @@ public final class AcceptorSSLTLS {
 				insertProof.put(cm);
 			} catch (InterruptedException e) {
 				e.printStackTrace();
-			}			
+			}
 		}
-		
+
 	}
 
 	/**
@@ -360,20 +403,16 @@ public final class AcceptorSSLTLS {
 	 *            The epoch during in which the consensus message was created
 	 */
 
-	/*private void insertProof(ConsensusMessage cm, Epoch epoch) {
-		ByteArrayOutputStream bOut = new ByteArrayOutputStream(248);
-		try {
-			new ObjectOutputStream(bOut).writeObject(cm);
-		} catch (IOException ex) {
-			logger.error("Failed to serialize consensus message", ex);
-		}
-		byte[] data = bOut.toByteArray();
-
-		PrivateKey privKey = controller.getStaticConf().getPrivateKey();
-		byte[] signature = TOMUtil.signMessage(privKey, data);
-		cm.setProof(signature);
-	}
-*/
+	/*
+	 * private void insertProof(ConsensusMessage cm, Epoch epoch) {
+	 * ByteArrayOutputStream bOut = new ByteArrayOutputStream(248); try { new
+	 * ObjectOutputStream(bOut).writeObject(cm); } catch (IOException ex) {
+	 * logger.error("Failed to serialize consensus message", ex); } byte[] data =
+	 * bOut.toByteArray();
+	 * 
+	 * PrivateKey privKey = controller.getStaticConf().getPrivateKey(); byte[]
+	 * signature = TOMUtil.signMessage(privKey, data); cm.setProof(signature); }
+	 */
 	/**
 	 * Called when a ACCEPT message is received
 	 * 
@@ -407,6 +446,13 @@ public final class AcceptorSSLTLS {
 		if (epoch.countAccept(value) > controller.getQuorum() && !epoch.getConsensus().isDecided()) {
 			logger.debug("Deciding consensus " + cid);
 			hasProof = false;
+			try {
+				Integer savedCid = saved.take();
+				//logger.debug("Saved cId: {}", savedCid);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+			
 			decide(epoch);
 		}
 	}
@@ -435,9 +481,9 @@ public final class AcceptorSSLTLS {
 	 */
 
 	/**
-	 * Create a cryptographic proof for a consensus message
-	 * Thread used to advance the signature process.
-	 * The proof is inserted into a Blocking Queue read by ComputeWrite.
+	 * Create a cryptographic proof for a consensus message Thread used to advance
+	 * the signature process. The proof is inserted into a Blocking Queue read by
+	 * ComputeWrite.
 	 */
 	private class InsertProofThread implements Runnable {
 		private BlockingQueue<ConsensusMessage> insertProof;
@@ -455,8 +501,6 @@ public final class AcceptorSSLTLS {
 				try {
 					ConsensusMessage cm = insertProof.take();
 
-					//logger.trace("Signing ACCEPT message, ThreadId: {}", Thread.currentThread().getId());
-
 					ByteArrayOutputStream bOut = new ByteArrayOutputStream(248);
 					try {
 						new ObjectOutputStream(bOut).writeObject(cm);
@@ -464,13 +508,13 @@ public final class AcceptorSSLTLS {
 						logger.error("Failed to serialize consensus message", ex);
 					}
 					byte[] data = bOut.toByteArray();
-					
+
 					byte[] signature = TOMUtil.signMessage(privKey, data);
-					
+
 					cm.setProof(signature);
-					
+
 					readProof.put(cm);
-					
+
 				} catch (InterruptedException e) {
 					e.printStackTrace();
 				}
@@ -480,5 +524,74 @@ public final class AcceptorSSLTLS {
 
 	}
 
+	
+	/**
+	 * Create a cryptographic proof for a consensus message Thread used to advance
+	 * the signature process. The proof is inserted into a Blocking Queue read by
+	 * ComputeWrite.
+	 */
+	private class DealWithDiskThread implements Runnable {
+		private BlockingQueue<HashMap<Integer, byte[]>> toPersist;
 
+		public DealWithDiskThread(BlockingQueue<HashMap<Integer, byte[]>> queue) {
+			toPersist = queue;
+		}
+
+		@Override
+		public void run() {
+
+			logger.debug("Thread deal with disk running. ThreadId: {}", Thread.currentThread().getId());
+
+			while (true) {
+				try {
+					HashMap<Integer, byte[]> mapConsensus = toPersist.take();
+					Iterator<Integer> it = mapConsensus.keySet().iterator();
+					while (it.hasNext()) {
+						Integer cId = (Integer) it.next();
+						//logger.info("Have cId {} to persist.", cId);
+						
+					/*	Path file = FileSystems.getDefault().getPath("/opt/tempBFT_SMaRt", "cId_"+cId);
+						byte[] buf = mapConsensus.get(cId);
+						Files.write(file, buf);*/
+
+						FileInputStream fis = null;
+						FileOutputStream fos = null;
+						FileDescriptor fd = null;
+						
+						try {
+							fos = new FileOutputStream("/opt/tempBFT_SMaRt/cId_"+cId, false);
+							fd = fos.getFD();
+
+							// writes byte to file output stream
+							fos.write(mapConsensus.get(cId));
+
+							// flush data from the stream into the buffer
+							fos.flush();
+
+							// confirms data to be written to the disk
+							fd.sync();
+						} catch (Exception e) {
+							// if any error occurs
+							e.printStackTrace();
+						} finally {
+							// releases system resources
+							if (fos != null)
+								fos.close();
+							if (fis != null)
+								fis.close();
+						}
+
+						saved.put(cId);	
+					}
+						
+					
+
+				} catch (InterruptedException | IOException e) {
+					e.printStackTrace();
+				}
+			}
+
+		}
+
+	}
 }

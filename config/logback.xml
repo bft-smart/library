@@ -40,6 +40,8 @@
   <!-- SPECIFIC CLASS LOGS -->
   
   <!--
+  <logger name="bftsmart.tom.util.BatchBuilder" level="DEBUG"></logger>
+  
   <logger name="bftsmart.consensus.roles.AcceptorSSLTLS" level="TRACE"></logger>
   <logger name="bftsmart.consensus.roles.Acceptor" level="TRACE"></logger>
   
@@ -51,10 +53,6 @@
   <logger name="bftsmart.communication.client.netty.NettyClientServerCommunicationSystemClientSide" level="DEBUG"></logger>    
   <logger name="bftsmart.tom.leaderchange.LCManager" level="DEBUG"></logger>
   <logger name="bftsmart.communication.server.ServerConnectionSSLTLS" level="DEBUG"></logger>
-    
-  
-  <logger name="bftsmart.tom.util.BatchBuilder" level="DEBUG"></logger>
-  
   
   <logger name="bftsmart.demo.counter.CounterServer" level="INFO"></logger>
   <logger name="bftsmart.demo.counter.CounterClient" level="INFO"></logger>

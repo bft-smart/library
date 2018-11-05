@@ -19,11 +19,10 @@ import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Random;
 
-import bftsmart.reconfiguration.ServerViewController;
-import bftsmart.tom.core.messages.TOMMessage;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import bftsmart.tom.core.messages.TOMMessage;
 
 /**
  * Batch format: TIMESTAMP(long) + N_NONCES(int) + SEED(long) + N_MESSAGES(int)
@@ -121,7 +120,7 @@ public final class BatchBuilder {
 			i++;
 		}
 		
-		logger.debug("Batch size: {}, BatchMessage Size (byte): {}", numMsgs, totalMessageSize);
+		logger.debug("Batch size 1: {}, BatchMessage Size (byte): {}", numMsgs, totalMessageSize);
 		// return the batch
 		return createBatch(timestamp, numNounces, rnd.nextLong(), numMsgs, totalMessageSize, useSignatures, messages,
 				signatures);
@@ -149,7 +148,7 @@ public final class BatchBuilder {
 			i++;
 		}
 
-		logger.debug("Batch size: {}, BatchMessage Size (byte): {}", numMsgs, totalMessageSize);
+		logger.debug("Batch size 2: {}, BatchMessage Size (byte): {}", numMsgs, totalMessageSize);
 		// return the batch
 		return createBatch(timestamp, numNounces, seed, numMsgs, totalMessageSize, useSignatures, messages, signatures);
 

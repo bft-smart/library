@@ -492,7 +492,6 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                     epoch.getConsensus().getDecision().firstMessageProposed = epoch.deserializedPropValue[0];
                     dec.setDecisionEpoch(epoch);
 
-                    //System.out.println("ESTOU AQUI!");
                     dt.delivery(dec);
                     continue;
 
