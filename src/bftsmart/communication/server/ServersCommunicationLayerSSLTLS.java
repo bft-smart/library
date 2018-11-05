@@ -32,10 +32,15 @@ import java.security.Security;
 import java.security.UnrecoverableKeyException;
 import java.security.cert.CertificateException;
 import java.security.spec.InvalidKeySpecException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Random;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -264,7 +269,31 @@ public class ServersCommunicationLayerSSLTLS extends Thread {
 
 		byte[] data = bOut.toByteArray();
 
+		Collections.shuffle(Arrays.asList(targets), new Random());
+	    
+		List<Integer> listTargets = new ArrayList<Integer>();
 		for (int i : targets) {
+			listTargets.add(i);
+		}
+		Collections.shuffle(listTargets);
+		Iterator<Integer> it = listTargets.iterator(); 
+		while (it.hasNext()) {
+			Integer target = it.next();
+			try {
+				if (target == me) {
+					sm.authenticated = true;
+					inQueue.put(sm);
+					logger.debug("Queueing (delivering) my own message, me:{}", target);
+				} else {
+					logger.debug("Sending message from:{} -> to:{}.",me,  target);
+					getConnection(target).send(data);
+				}
+			} catch (InterruptedException ex) {
+				logger.error("Interruption while inserting message into inqueue", ex);
+			}
+		}
+		
+		/*for (int i : targets) {
 			try {
 				if (i == me) {
 					sm.authenticated = true;
@@ -272,18 +301,17 @@ public class ServersCommunicationLayerSSLTLS extends Thread {
 					logger.debug("Queueing (delivering) my own message, me:{}", i);
 				} else {
 					// logger.info("Going to send a message to replica: {}", i);
-					// logger.info("Going to send a message to replica: {}, data:\n{} ", i, data);
-					// ******* EDUARDO BEGIN **************//
+					// ******* EDUARDO BEGIN ************** //
 					// connections[i].send(data);
 					logger.debug("Sending message from:{} -> to:{}.",me,  i);
 					getConnection(i).send(data);
 					
-					// ******* EDUARDO END **************//
+					// ******* EDUARDO END ************** //
 				}
 			} catch (InterruptedException ex) {
 				logger.error("Interruption while inserting message into inqueue", ex);
 			}
-		}
+		}*/
 	}
 
 	public void shutdown() {
