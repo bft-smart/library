@@ -325,18 +325,22 @@ public final class Acceptor {
         TOMMessage[] msgs = epoch.deserializedPropValue;
         boolean hasReconf = false;
 
-        for (TOMMessage msg : msgs) {
-            if (msg.getReqType() == TOMMessageType.RECONFIG
-                    && msg.getViewID() == controller.getCurrentViewId()) {
-                hasReconf = true;
-                break; // no need to continue, exit the loop
+        if (!controller.getStaticConf().getProofType().equalsIgnoreCase("signatures")) {
+        
+            for (TOMMessage msg : msgs) {
+                if (msg.getReqType() == TOMMessageType.RECONFIG
+                        && msg.getViewID() == controller.getCurrentViewId()) {
+                    hasReconf = true;
+                    break; // no need to continue, exit the loop
+                }
             }
         }
-
-        //If this consensus contains a reconfiguration request, we need to use
-        // signatures (there might be replicas that will not be part of the next
-        //consensus instance, and so their MAC will be outdated and useless)
-        if (hasReconf) {
+                
+        if (controller.getStaticConf().getProofType().equalsIgnoreCase("signatures") // if the library is configured to use signatures...
+                
+                || hasReconf) { // ... or if this consensus contains a reconfiguration request, we need to use
+                                // signatures (there might be replicas that will not be part of the next
+                                // consensus instance, and so their MAC will be outdated and useless)...
 
             PrivateKey privKey = controller.getStaticConf().getPrivateKey();
 
@@ -344,7 +348,8 @@ public final class Acceptor {
 
             cm.setProof(signature);
 
-        } else { //... if not, we can use MAC vectores
+        } else { //... otherwise, we must use MAC vectores
+            
             int[] processes = this.controller.getCurrentViewAcceptors();
 
             HashMap<Integer, byte[]> macVector = new HashMap<>();

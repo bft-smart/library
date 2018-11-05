@@ -54,15 +54,15 @@ public class Configuration {
     public static final String DEFAULT_SIGNATURE_PROVIDER = "SunRsaSign";
     public static final String DEFAULT_HASH_PROVIDER = "SUN";
     
-    private String hmacAlgorithm;
-    private String secretKeyAlgorithm;
-    private String signatureAlgorithm;
-    private String hashAlgorithm;
+    protected String hmacAlgorithm;
+    protected String secretKeyAlgorithm;
+    protected String signatureAlgorithm;
+    protected String hashAlgorithm;
 
-    private String hmacAlgorithmProvider;
-    private String secretKeyAlgorithmProvider;
-    private String signatureAlgorithmProvider;
-    private String hashAlgorithmProvider;
+    protected String hmacAlgorithmProvider;
+    protected String secretKeyAlgorithmProvider;
+    protected String signatureAlgorithmProvider;
+    protected String hashAlgorithmProvider;
     
     protected String configHome = "";
 
@@ -70,6 +70,8 @@ public class Configuration {
     protected static String hostsFileName = "";
 
     protected boolean defaultKeys = false;
+    
+    protected String proofType;
 
     public Configuration(int procId, KeyLoader loader){
         processId = procId;
@@ -186,6 +188,13 @@ public class Configuration {
                 DH_G = new BigInteger(s);
             }
             
+            s = (String) configs.remove("system.totalordermulticast.prooftype");
+            if(s == null && !s.equalsIgnoreCase("macvector") && !s.equalsIgnoreCase("signatures")){
+                proofType = "macvector";
+            }else{
+                proofType = s;
+            }
+            
             if (keyLoader == null) keyLoader = new RSAKeyLoader(processId, configHome, defaultKeys, signatureAlgorithm);
             
             TOMUtil.init(hmacAlgorithm, secretKeyAlgorithm, keyLoader.getSignatureAlgorithm(), hashAlgorithm,
@@ -258,6 +267,10 @@ public class Configuration {
     
     public final String getHashAlgorithmProvider() {
         return hashAlgorithmProvider;
+    }
+    
+    public final String getProofType() {
+        return proofType;
     }
     
     public final String getProperty(String key){
