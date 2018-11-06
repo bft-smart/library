@@ -40,6 +40,9 @@
   <!-- SPECIFIC CLASS LOGS -->
   
   <!--
+  
+  <logger name="bftsmart.tom.server.defaultservices.DefaultRecoverable" level="DEBUG"></logger>
+  
   <logger name="bftsmart.tom.util.BatchBuilder" level="DEBUG"></logger>
   
   <logger name="bftsmart.consensus.roles.AcceptorSSLTLS" level="TRACE"></logger>

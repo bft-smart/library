@@ -85,6 +85,7 @@ public final class AcceptorSSLTLS {
 	//Disk
 	private BlockingQueue<HashMap<Integer, byte[]>> toPersist;
 	private BlockingQueue<Integer> saved;
+	private Boolean isPersistent = false;
 	
 	/**
 	 * Creates a new instance of Acceptor.
@@ -115,6 +116,7 @@ public final class AcceptorSSLTLS {
 		this.toPersist = new LinkedBlockingDeque<>();
 		DealWithDiskThread dwd = new DealWithDiskThread(this.toPersist);
 		new Thread(dwd).start();
+		this.isPersistent = controller.getStaticConf().isPersistent();
 		
 
 	}
@@ -203,8 +205,6 @@ public final class AcceptorSSLTLS {
 		logger.debug("PROPOSE received from:{}, for consensus cId:{}, I am:{}", msg.getSender(), cid, me);
 		if (msg.getSender() == executionManager.getCurrentLeader() // Is the replica the leader?
 				&& epoch.getTimestamp() == 0 && ts == ets && ets == 0) { // Is all this in epoch 0?
-
-			//logger.info("Proposed msg.getValue(): {}" , msg.getValue());
 			
 			executePropose(epoch, msg.getValue());
 		} else {
@@ -244,12 +244,14 @@ public final class AcceptorSSLTLS {
 			if (epoch.deserializedPropValue != null && !epoch.isWriteSetted(me)) {
 				
 				
-				try {
-					HashMap<Integer, byte[]> map = new HashMap<>();
-					map.put(cid, value);
-					toPersist.put(map);
-				} catch (InterruptedException e) {
-					e.printStackTrace();
+				if (this.isPersistent) {
+					try {
+						HashMap<Integer, byte[]> map = new HashMap<>();
+						map.put(cid, value);
+						toPersist.put(map);
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
 				}
 				
 				if (epoch.getConsensus().getDecision().firstMessageProposed == null) {
@@ -446,11 +448,14 @@ public final class AcceptorSSLTLS {
 		if (epoch.countAccept(value) > controller.getQuorum() && !epoch.getConsensus().isDecided()) {
 			logger.debug("Deciding consensus " + cid);
 			hasProof = false;
-			try {
-				Integer savedCid = saved.take();
-				//logger.debug("Saved cId: {}", savedCid);
-			} catch (InterruptedException e) {
-				e.printStackTrace();
+			
+			if (this.isPersistent) {
+				try {
+					Integer savedCid = saved.take();
+					// logger.debug("Saved cId: {}", savedCid);
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
 			}
 			
 			decide(epoch);
@@ -526,9 +531,7 @@ public final class AcceptorSSLTLS {
 
 	
 	/**
-	 * Create a cryptographic proof for a consensus message Thread used to advance
-	 * the signature process. The proof is inserted into a Blocking Queue read by
-	 * ComputeWrite.
+	 * 
 	 */
 	private class DealWithDiskThread implements Runnable {
 		private BlockingQueue<HashMap<Integer, byte[]>> toPersist;
@@ -540,7 +543,7 @@ public final class AcceptorSSLTLS {
 		@Override
 		public void run() {
 
-			logger.debug("Thread deal with disk running. ThreadId: {}", Thread.currentThread().getId());
+			logger.debug("Dealing disk thread running. ThreadId: {}", Thread.currentThread().getId());
 
 			while (true) {
 				try {
@@ -554,7 +557,6 @@ public final class AcceptorSSLTLS {
 						byte[] buf = mapConsensus.get(cId);
 						Files.write(file, buf);*/
 
-						FileInputStream fis = null;
 						FileOutputStream fos = null;
 						FileDescriptor fd = null;
 						
@@ -577,8 +579,6 @@ public final class AcceptorSSLTLS {
 							// releases system resources
 							if (fos != null)
 								fos.close();
-							if (fis != null)
-								fis.close();
 						}
 
 						saved.put(cId);	

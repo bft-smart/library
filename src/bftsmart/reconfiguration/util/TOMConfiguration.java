@@ -15,14 +15,13 @@ limitations under the License.
 */
 package bftsmart.reconfiguration.util;
 
-import bftsmart.tom.util.KeyLoader;
-import java.security.Provider;
 import java.util.StringTokenizer;
-
 import java.util.regex.Pattern;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import bftsmart.tom.util.KeyLoader;
 
 public class TOMConfiguration extends Configuration {
     
@@ -63,10 +62,15 @@ public class TOMConfiguration extends Configuration {
     private boolean sameBatchSize;
     private String bindAddress;
     
+    /* Tulio Ribeiro*/
     private Boolean ssltls;
     private String ssltlsProtocolVersion;
     private String keyStoreFile;
     private String [] enabledCiphers;
+    //Persistence
+    private Boolean isPersistent;
+    private String storeDataDir;
+    
     
     /** Creates a new instance of TOMConfiguration */
     public TOMConfiguration(int processId, KeyLoader loader) {
@@ -406,6 +410,23 @@ public class TOMConfiguration extends Configuration {
 						+ "----------------------------------------------------");
 				useMACs = false;
 			}
+
+			//Persistence variables
+			s = (String) configs.remove("system.persistent");
+            if(s == null){
+            	isPersistent = false;                        
+            }else{
+            	isPersistent = Boolean.parseBoolean(s);            	
+			}
+            
+            s = (String) configs.remove("system.persistent.storeDataDir");
+            if(s == null){
+                System.out.println("system.persistent.storeDataDir NOT defined, storing data temporary dir: /tmp/");
+            	storeDataDir = "/tmp/";
+            }else{
+            	storeDataDir = s; 
+			}
+			
             
         } catch (Exception e) {
             logger.error("Could not parse system configuration file",e);
@@ -580,11 +601,9 @@ public class TOMConfiguration extends Configuration {
     }
 
     /**
-     * Tulio Ribeiro SSL/TLS getters.
+     * Tulio Ribeiro ## SSL/TLS getters.
      * */
-    
-    
-	public String getSSLTLSProtocolVersion() {
+    public String getSSLTLSProtocolVersion() {
 		return ssltlsProtocolVersion;
 	}
 	public boolean isSSLTLSEnabled() {
@@ -597,5 +616,13 @@ public class TOMConfiguration extends Configuration {
 	public String[] getEnabledCiphers() {
 		return enabledCiphers;
 	}
-	
+	/**
+     * Tulio Ribeiro ## Persistence getters
+     * */
+	public Boolean isPersistent() {
+		return isPersistent;
+	}
+	public String getStoreDataDir() {
+		return storeDataDir;
+	}
 }

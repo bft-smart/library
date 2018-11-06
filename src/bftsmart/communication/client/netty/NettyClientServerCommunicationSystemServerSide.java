@@ -169,12 +169,20 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 			// ******* EDUARDO END **************//
 			
 			/* Tulio Ribeiro*/
+			//SSL/TLS
 			if (controller.getStaticConf().isSSLTLSEnabled()){
 				logger.info("SSL/TLS enabled, protocol version: {}", 
 						controller.getStaticConf().getSSLTLSProtocolVersion());
 			}else {
 				logger.info("SSL/TLS NOT enabled.");
 			}
+			// Persistent
+			if(controller.getStaticConf().isPersistent()) {
+				logger.info("Persistence enabled.");
+			}else {
+				logger.info("Persistence NOT enabled.");
+			}
+				
 			/* Tulio Ribeiro END */
 
 			mainChannel = f.channel();
@@ -374,7 +382,6 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 								}
 
 								rl.readLock().unlock();
-
 							}
 
 							logger.info("Connection with " + id + " established!");
@@ -387,7 +394,7 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 					///////////////////////////////////////////
 				} 
 				else {
-					logger.warn("... sm.getSequence() >= 0 && sm.getSequence() <= 5 ...");
+					logger.warn("... sm.getSequence() >= 0 && sm.getSequence() <= 5 ::: {}", sm.getSequence());
 				}
 			} finally {
 				// sendLock.unlock();

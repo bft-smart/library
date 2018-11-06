@@ -67,7 +67,7 @@ public class ServiceReplica {
 
     // replica ID
     private int id;
-    // Server side comunication system
+    // Server side communication system
     private ServerCommunicationSystem cs = null;
     private ReplyManager repMan = null;
     private ServerViewController SVController;
