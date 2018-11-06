@@ -169,6 +169,8 @@ public class ServerConnection {
 
             if (!outQueue.offer(data)) {
                 logger.debug("Out queue for " + remoteId + " full (message discarded).");
+            } else {
+                logger.debug("Inserted message into out queue for process {}.", remoteId);
             }
         } else {
             sendLock.lock();
