@@ -21,17 +21,18 @@ limitations under the License.
 
 package bftsmart.consensus.roles;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.FileDescriptor;
-import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.nio.file.FileSystems;
 import java.nio.file.Files;
-import java.nio.file.OpenOption;
-import java.nio.file.Path;
 import java.security.PrivateKey;
+import java.security.Signature;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -54,6 +55,7 @@ import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.tom.core.ExecutionManager;
 import bftsmart.tom.core.TOMLayer;
 import bftsmart.tom.core.messages.TOMMessage;
+import bftsmart.tom.util.BatchReader;
 import bftsmart.tom.util.TOMUtil;
 
 /**
@@ -83,9 +85,12 @@ public final class AcceptorSSLTLS {
 	private boolean hasProof;
 
 	//Disk
-	private BlockingQueue<HashMap<Integer, byte[]>> toPersist;
+	private BlockingQueue<HashMap<Integer, byte[]>> toPersistBatch;
+	private BlockingQueue<HashMap<Integer, Set<ConsensusMessage>>> toPersistProof;
 	private BlockingQueue<Integer> saved;
 	private Boolean isPersistent = false;
+	private String storeDataDir;
+	
 	
 	/**
 	 * Creates a new instance of Acceptor.
@@ -113,11 +118,21 @@ public final class AcceptorSSLTLS {
 		
 		// Deal with disk
 		this.saved = new LinkedBlockingDeque<>();
-		this.toPersist = new LinkedBlockingDeque<>();
-		DealWithDiskThread dwd = new DealWithDiskThread(this.toPersist);
-		new Thread(dwd).start();
-		this.isPersistent = controller.getStaticConf().isPersistent();
+		this.toPersistBatch = new LinkedBlockingDeque<>();
+		this.toPersistProof = new LinkedBlockingDeque<>();
 		
+		SaveBatchToDisk dwd = new SaveBatchToDisk(this.toPersistBatch);
+		new Thread(dwd).start();
+		SaveProofToDisk spd = new SaveProofToDisk(this.toPersistProof);
+		new Thread(spd).start();
+		
+		this.isPersistent = controller.getStaticConf().isPersistent();
+		this.storeDataDir = controller.getStaticConf().getStoreDataDir() + "/replica_"+this.me;
+		if (this.isPersistent) {
+			File f = new File(this.storeDataDir);
+			f.mkdirs();
+			
+		}
 
 	}
 
@@ -248,7 +263,7 @@ public final class AcceptorSSLTLS {
 					try {
 						HashMap<Integer, byte[]> map = new HashMap<>();
 						map.put(cid, value);
-						toPersist.put(map);
+						toPersistBatch.put(map);
 					} catch (InterruptedException e) {
 						e.printStackTrace();
 					}
@@ -362,8 +377,6 @@ public final class AcceptorSSLTLS {
 				// insertProof(cm, epoch);
 				ConsensusMessage cm = null;
 				try {
-					// logger.info("Retrieving ACCEPT message from BlockingQueue. ThreadId: {}",
-					// Thread.currentThread().getId());
 					cm = readProof.take();
 				} catch (InterruptedException e) {
 					e.printStackTrace();
@@ -451,13 +464,14 @@ public final class AcceptorSSLTLS {
 			
 			if (this.isPersistent) {
 				try {
-					Integer savedCid = saved.take();
-					// logger.debug("Saved cId: {}", savedCid);
+					HashMap<Integer, Set<ConsensusMessage>> proof = new HashMap<>();
+					proof.put(cid, epoch.getProof());
+					this.toPersistProof.put(proof);
+					saved.take();
 				} catch (InterruptedException e) {
 					e.printStackTrace();
 				}
 			}
-			
 			decide(epoch);
 		}
 	}
@@ -492,16 +506,12 @@ public final class AcceptorSSLTLS {
 	 */
 	private class InsertProofThread implements Runnable {
 		private BlockingQueue<ConsensusMessage> insertProof;
-
 		public InsertProofThread(BlockingQueue<ConsensusMessage> queue) {
 			insertProof = queue;
 		}
-
 		@Override
 		public void run() {
-
-			logger.debug("Thread insert proof running. ThreadId: {}", Thread.currentThread().getId());
-
+			logger.debug("Insert proof thread running. ThreadId: {}", Thread.currentThread().getId());
 			while (true) {
 				try {
 					ConsensusMessage cm = insertProof.take();
@@ -524,74 +534,152 @@ public final class AcceptorSSLTLS {
 					e.printStackTrace();
 				}
 			}
-
 		}
-
 	}
 
 	
 	/**
 	 * 
 	 */
-	private class DealWithDiskThread implements Runnable {
+	private class SaveBatchToDisk implements Runnable {
 		private BlockingQueue<HashMap<Integer, byte[]>> toPersist;
 
-		public DealWithDiskThread(BlockingQueue<HashMap<Integer, byte[]>> queue) {
+		public SaveBatchToDisk(BlockingQueue<HashMap<Integer, byte[]>> queue) {
 			toPersist = queue;
 		}
-
 		@Override
 		public void run() {
-
-			logger.debug("Dealing disk thread running. ThreadId: {}", Thread.currentThread().getId());
-
+			logger.debug("Disk thread running. ThreadId: {}", Thread.currentThread().getId());
 			while (true) {
 				try {
 					HashMap<Integer, byte[]> mapConsensus = toPersist.take();
 					Iterator<Integer> it = mapConsensus.keySet().iterator();
 					while (it.hasNext()) {
 						Integer cId = (Integer) it.next();
-						//logger.info("Have cId {} to persist.", cId);
+						String consensusFile = storeDataDir + "/cId_"+cId;
 						
-					/*	Path file = FileSystems.getDefault().getPath("/opt/tempBFT_SMaRt", "cId_"+cId);
-						byte[] buf = mapConsensus.get(cId);
-						Files.write(file, buf);*/
-
 						FileOutputStream fos = null;
-						FileDescriptor fd = null;
-						
+						FileDescriptor fd = null;						
 						try {
-							fos = new FileOutputStream("/opt/tempBFT_SMaRt/cId_"+cId, false);
+							fos = new FileOutputStream(consensusFile , false);
 							fd = fos.getFD();
-
-							// writes byte to file output stream
 							fos.write(mapConsensus.get(cId));
-
-							// flush data from the stream into the buffer
 							fos.flush();
-
-							// confirms data to be written to the disk
 							fd.sync();
+							fos.close();
+							saved.put(cId);
 						} catch (Exception e) {
-							// if any error occurs
 							e.printStackTrace();
-						} finally {
-							// releases system resources
-							if (fos != null)
-								fos.close();
+						} 
+
+						if (logger.isTraceEnabled()) {
+							// Informative code, read and show the saved batch.
+							logger.info("READING BATCH FROM DISK, cId:{}", cId);
+							try {
+								byte[] data = Files.readAllBytes(new File(storeDataDir + "/cId_" + cId).toPath());
+								BatchReader batchReader = new BatchReader(data,
+										controller.getStaticConf().getUseSignatures());
+								TOMMessage[] requests = null;
+								requests = batchReader.deserialiseRequests(controller);
+								for (TOMMessage request : requests) {
+									logger.info("Request, Sender:{}, Req Type:{}", request.getSender(),
+											request.getReqType());
+								}
+							} catch (FileNotFoundException e) {
+								e.printStackTrace();
+							} catch (IOException e) {
+								e.printStackTrace();
+							}
 						}
-
-						saved.put(cId);	
+				        
 					}
-						
-					
-
-				} catch (InterruptedException | IOException e) {
+				} catch (InterruptedException e) {
 					e.printStackTrace();
 				}
 			}
+		}
+	}
 
+	private class SaveProofToDisk implements Runnable {
+		private BlockingQueue<HashMap<Integer, Set<ConsensusMessage>>> toPersistProof;
+
+		public SaveProofToDisk(BlockingQueue<HashMap<Integer, Set<ConsensusMessage>>> queue) {
+			toPersistProof = queue;
 		}
 
+		@Override
+		public void run() {
+			logger.debug("Disk proof thread running. ThreadId: {}", Thread.currentThread().getId());
+			while (true) {
+				try {
+					HashMap<Integer, Set<ConsensusMessage>> mapProofs = toPersistProof.take();
+					Iterator<Integer> it = mapProofs.keySet().iterator();
+
+					while (it.hasNext()) {
+						Integer cId = (Integer) it.next();
+						Set<ConsensusMessage> proofsToSave = mapProofs.get(cId);
+
+						String proofFile = storeDataDir + "/cId_" + cId + ".proof";
+
+						ByteArrayOutputStream bOut = new ByteArrayOutputStream(248);
+						try {
+							new ObjectOutputStream(bOut).writeObject(proofsToSave);
+						} catch (IOException ex) {
+							logger.error("Failed to serialize consensus message", ex);
+						}
+						byte[] epochProof = bOut.toByteArray();
+
+						FileOutputStream fos = null;
+						FileDescriptor fd = null;
+
+						try {
+							fos = new FileOutputStream(proofFile, false);
+							fd = fos.getFD();
+							fos.write(epochProof);
+							fos.flush();
+							fd.sync();
+							fos.close();
+						} catch (Exception e) {
+							e.printStackTrace();
+						}
+
+						if (logger.isTraceEnabled()) {
+							// Informative code, read and show the saved proofs.
+							logger.info("READING PROOF FROM DISK, cId:{}", cId);
+							try {
+								byte[] proofs = Files.readAllBytes(new File(proofFile).toPath());
+
+								Set<ConsensusMessage> proofsRead = (Set<ConsensusMessage>) (new ObjectInputStream(
+										new ByteArrayInputStream(proofs)).readObject());
+								Iterator<ConsensusMessage> itProof = proofsRead.iterator();
+								while (itProof.hasNext()) {
+									ConsensusMessage cm = (ConsensusMessage) itProof.next();
+									logger.info("From file, cId:{}, Sender:{}", cm.getNumber(), cm.getSender());
+									
+									/*if(cm.getProof() instanceof byte[]) {
+										//Signature sig = (Signature) cm.getProof();
+										logger.info("\tSignature Proof, Sender:{}, Signarue:{}", cm.getSender(),  cm.getProof());
+									}else {
+										logger.info("\tNot a signature, {} " , cm.getProof().getClass().getTypeName());
+									}*/
+								}
+							} catch (FileNotFoundException e) {
+								e.printStackTrace();
+							} catch (ClassNotFoundException e) {
+								e.printStackTrace();
+							}catch (Exception e) {
+								e.printStackTrace();
+							}
+						}
+					}
+
+				} catch (InterruptedException  e) {
+					e.printStackTrace();
+				}
+				
+				
+				
+			}
+		}
 	}
 }
