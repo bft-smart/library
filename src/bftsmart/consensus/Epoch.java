@@ -43,6 +43,8 @@ public class Epoch implements Serializable {
     private boolean[] acceptSetted;
     private byte[][] write; // WRITE values from other processes
     private byte[][] accept; // accepted values from other processes
+    private boolean writeSent;
+    private boolean acceptSent;
     
     private boolean alreadyRemoved = false; // indicates if this epoch was removed from its consensus
 
@@ -86,11 +88,18 @@ public class Epoch implements Serializable {
 
             Arrays.fill((Object[]) write, null);
             Arrays.fill((Object[]) accept, null);
+            
+            writeSent = false;
+            acceptSent = false;
+            
         } else {
             Epoch previousEpoch = consensus.getEpoch(timestamp - 1, controller);
 
             this.write = previousEpoch.getWrite();
             this.accept = previousEpoch.getAccept();
+            
+            this.writeSent = previousEpoch.isWriteSent();
+            this.acceptSent = previousEpoch.isAcceptSent();
         }
     }
 
@@ -330,6 +339,36 @@ public class Epoch implements Serializable {
     public int countAccept(byte[] value) {
         return count(acceptSetted,accept, value);
     }
+    
+    /**
+     * Indicate that the consensus instance already sent its WRITE message
+     */
+    public void writeSent() {
+        writeSent = true;
+    }
+    
+    /**
+     * Indicate that the consensus instance already sent its ACCEPT message
+     */
+    public void acceptSent() {
+        acceptSent = true;
+    }
+    
+    /**
+     * Indicates if the consensus instance already sent its WRITE message
+     * @return true if WRITE was indicated as sent, false otherwise
+     */
+    public boolean isWriteSent() {
+        return writeSent;
+    }
+    
+    /**
+     * Indicates if the consensus instance already sent its ACCEPT message
+     * @return true if ACCEPT was indicated as sent, false otherwise
+     */
+    public boolean isAcceptSent() {
+        return acceptSent;
+    }
 
     /**
      * Counts how many times 'value' occurs in 'array'
@@ -406,5 +445,8 @@ public class Epoch implements Serializable {
         Arrays.fill((Object[]) accept, null);
         
         this.proof = new HashSet<ConsensusMessage>();
+        
+        this.writeSent = false;
+        this.acceptSent = false;
     }
 }
