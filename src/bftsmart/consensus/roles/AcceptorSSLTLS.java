@@ -30,6 +30,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.RandomAccessFile;
 import java.nio.file.Files;
 import java.security.PrivateKey;
 import java.security.Signature;
@@ -550,17 +551,29 @@ public final class AcceptorSSLTLS {
 		@Override
 		public void run() {
 			logger.debug("Disk thread running. ThreadId: {}", Thread.currentThread().getId());
+			RandomAccessFile raf = null;			
+			//FileOutputStream fos = null;
+			FileDescriptor fd = null;
+			
 			while (true) {
-				try {
-					HashMap<Integer, byte[]> mapConsensus = toPersist.take();
+				try {										
+					HashMap<Integer, byte[]> mapConsensus = toPersist.take();					
 					Iterator<Integer> it = mapConsensus.keySet().iterator();
 					while (it.hasNext()) {
 						Integer cId = (Integer) it.next();
 						String consensusFile = storeDataDir + "/cId_"+cId;
-						
-						FileOutputStream fos = null;
-						FileDescriptor fd = null;						
+								
 						try {
+							raf = new RandomAccessFile(consensusFile, "rws");
+							fd = raf.getFD();
+							raf.write(mapConsensus.get(cId));
+							fd.sync();
+							raf.close();
+							saved.put(cId);
+						} catch (Exception e) {
+							e.printStackTrace();
+						}
+						/*try {
 							fos = new FileOutputStream(consensusFile , false);
 							fd = fos.getFD();
 							fos.write(mapConsensus.get(cId));
@@ -570,7 +583,7 @@ public final class AcceptorSSLTLS {
 							saved.put(cId);
 						} catch (Exception e) {
 							e.printStackTrace();
-						} 
+						} */
 
 						if (logger.isTraceEnabled()) {
 							// Informative code, read and show the saved batch.
@@ -591,7 +604,6 @@ public final class AcceptorSSLTLS {
 								e.printStackTrace();
 							}
 						}
-				        
 					}
 				} catch (InterruptedException e) {
 					e.printStackTrace();
@@ -610,11 +622,17 @@ public final class AcceptorSSLTLS {
 		@Override
 		public void run() {
 			logger.debug("Disk proof thread running. ThreadId: {}", Thread.currentThread().getId());
+			
+			FileOutputStream fos = null;
+			RandomAccessFile raf = null;
+			FileDescriptor fd = null;
+			
 			while (true) {
 				try {
+					
 					HashMap<Integer, Set<ConsensusMessage>> mapProofs = toPersistProof.take();
+					
 					Iterator<Integer> it = mapProofs.keySet().iterator();
-
 					while (it.hasNext()) {
 						Integer cId = (Integer) it.next();
 						Set<ConsensusMessage> proofsToSave = mapProofs.get(cId);
@@ -628,11 +646,18 @@ public final class AcceptorSSLTLS {
 							logger.error("Failed to serialize consensus message", ex);
 						}
 						byte[] epochProof = bOut.toByteArray();
-
-						FileOutputStream fos = null;
-						FileDescriptor fd = null;
-
+						
 						try {
+							raf = new RandomAccessFile(proofFile, "rws");
+							fd = raf.getFD();
+							raf.write(epochProof);
+							fd.sync();
+							raf.close();
+						} catch (Exception e) {
+							e.printStackTrace();
+						}
+						
+						/*try {
 							fos = new FileOutputStream(proofFile, false);
 							fd = fos.getFD();
 							fos.write(epochProof);
@@ -641,7 +666,8 @@ public final class AcceptorSSLTLS {
 							fos.close();
 						} catch (Exception e) {
 							e.printStackTrace();
-						}
+						}*/
+						
 
 						if (logger.isTraceEnabled()) {
 							// Informative code, read and show the saved proofs.
