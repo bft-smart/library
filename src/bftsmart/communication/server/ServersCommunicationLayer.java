@@ -35,8 +35,10 @@ import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.tom.ServiceReplica;
 import bftsmart.tom.util.TOMUtil;
 import java.net.InetAddress;
-import java.security.SecureRandom;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.Random;
 
 import javax.crypto.SecretKey;
 import javax.crypto.SecretKeyFactory;
@@ -192,8 +194,14 @@ public class ServersCommunicationLayer extends Thread {
         }
 
         byte[] data = bOut.toByteArray();
+        
+        // this shuffling is done to prevent the replica with the lowest ID/index  from being always
+        // the last one receiving the messages, which can result in that replica  to become consistently
+        // delayed in relation to the others.
+        Integer[] targetsShuffled = Arrays.stream( targets ).boxed().toArray( Integer[]::new );
+        Collections.shuffle(Arrays.asList(targetsShuffled), new Random(System.nanoTime())); 
 
-        for (int i : targets) {
+        for (int i : targetsShuffled) {
             try {
                 if (i == me) {
                     sm.authenticated = true;
