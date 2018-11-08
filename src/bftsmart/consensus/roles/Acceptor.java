@@ -288,22 +288,51 @@ public final class Acceptor {
 
                         epoch.getConsensus().getDecision().firstMessageProposed.acceptSentTime = System.nanoTime();
                 }
-                        
-                ConsensusMessage cm = factory.createAccept(cid, epoch.getTimestamp(), value);
+                
+                ConsensusMessage cm = epoch.fetchAccept();
                 int[] targets = this.controller.getCurrentViewAcceptors();
-                epoch.acceptSent();
-
-                proofExecutor.submit(() -> {
                 
-                    // Create a cryptographic proof for this ACCEPT message
-                    logger.debug("Creating cryptographic proof for my ACCEPT message from consensus " + cid);
-                    insertProof(cm, epoch.deserializedPropValue);
+                if (Arrays.equals(cm.getValue(), value)) { //make sure the ACCEPT message generated upon receiving the PROPOSE message
+                                                           //still matches the value that ended up being written...
 
+                    logger.debug("Speculative ACCEPT message for consensus {} matches the written value, sending it to the other replicas", cid);
+
+                    epoch.acceptSent();
                     communication.getServersConn().send(targets, cm, true);
-                
-                });
+                    
+                } else { //... and if not, create the ACCEPT message again (with the correct value), and send it
+                    
+                    ConsensusMessage correctAccept = factory.createAccept(cid, epoch.getTimestamp(), value);
+
+                    proofExecutor.submit(() -> {
+                        
+                        // Create a cryptographic proof for this ACCEPT message
+                        logger.debug("Creating cryptographic proof for the correct ACCEPT message from consensus " + cid);
+                        insertProof(correctAccept, epoch.deserializedPropValue);
+
+                        communication.getServersConn().send(targets, correctAccept, true);
+
+                    }); 
+                }
                 
             }
+            
+        } else if (!epoch.isAcceptCreated()) { //start creating the ACCEPT message and its respective proof ASAP, to increase performance.
+                                               //since this is done after a PROPOSE message is received, this is done speculatively, hence
+                                               //the value must be verified before sending the ACCEPT message to the other replicas
+            
+            ConsensusMessage cm = factory.createAccept(cid, epoch.getTimestamp(), value);
+            epoch.acceptCreated();
+
+            proofExecutor.submit(() -> {
+
+                // Create a cryptographic proof for this ACCEPT message
+                logger.debug("Creating cryptographic proof for speculative ACCEPT message from consensus " + cid);
+                insertProof(cm, epoch.deserializedPropValue);
+
+                epoch.setAcceptMsg(cm);
+
+            });            
         }
     }
 

@@ -190,7 +190,7 @@ public class Configuration {
             
             s = (String) configs.remove("system.totalordermulticast.prooftype");
             if(s == null && !s.equalsIgnoreCase("macvector") && !s.equalsIgnoreCase("signatures")){
-                proofType = "macvector";
+                proofType = "signatures";
             }else{
                 proofType = s;
             }
