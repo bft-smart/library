@@ -16,7 +16,8 @@ limitations under the License.
 
 /**
  * TODO
- * Remove / clear readProof blocking queue in case of non decided consensus. 
+ * Remove / clear readProof blocking queue in case of non decided consensus.
+ * Revert state when non decided consensus 
  * */
 
 package bftsmart.consensus.roles;
@@ -24,9 +25,7 @@ package bftsmart.consensus.roles;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.FileDescriptor;
 import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -381,6 +380,16 @@ public final class AcceptorSSLTLS {
 					e.printStackTrace();
 				}
 
+
+				if (this.isPersistent) {
+					try {						
+						int cId = saved.take();
+						logger.debug("Batch for cId: {} was safely persisted.", cId);
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
+				}
+				
 				int[] targets = controller.getCurrentViewOtherAcceptors();
 
 				if (communication.getConnType().equals(ConnType.SSL_TLS))
@@ -405,28 +414,7 @@ public final class AcceptorSSLTLS {
 
 	}
 
-	/**
-	 * Create a cryptographic proof for a consensus message
-	 * 
-	 * This method modifies the consensus message passed as an argument, so that it
-	 * contains a cryptographic proof.
-	 * 
-	 * @param cm
-	 *            The consensus message to which the proof shall be set
-	 * @param epoch
-	 *            The epoch during in which the consensus message was created
-	 */
-
-	/*
-	 * private void insertProof(ConsensusMessage cm, Epoch epoch) {
-	 * ByteArrayOutputStream bOut = new ByteArrayOutputStream(248); try { new
-	 * ObjectOutputStream(bOut).writeObject(cm); } catch (IOException ex) {
-	 * logger.error("Failed to serialize consensus message", ex); } byte[] data =
-	 * bOut.toByteArray();
-	 * 
-	 * PrivateKey privKey = controller.getStaticConf().getPrivateKey(); byte[]
-	 * signature = TOMUtil.signMessage(privKey, data); cm.setProof(signature); }
-	 */
+	
 	/**
 	 * Called when a ACCEPT message is received
 	 * 
@@ -466,11 +454,12 @@ public final class AcceptorSSLTLS {
 					HashMap<Integer, Set<ConsensusMessage>> proof = new HashMap<>();
 					proof.put(cid, epoch.getProof());
 					this.toPersistProof.put(proof);
-					saved.take();
 				} catch (InterruptedException e) {
 					e.printStackTrace();
 				}
 			}
+
+			
 			decide(epoch);
 		}
 	}
@@ -500,9 +489,11 @@ public final class AcceptorSSLTLS {
 
 	/**
 	 * Create a cryptographic proof for a consensus message Thread used to advance
-	 * the signature process. The proof is inserted into a Blocking Queue read by
-	 * ComputeWrite.
+	 * the signature process. 
+	 * 
+	 * The proof is inserted into a Blocking Queue read by ComputeWrite.
 	 */
+	 
 	private class InsertProofThread implements Runnable {
 		private BlockingQueue<ConsensusMessage> insertProof;
 		public InsertProofThread(BlockingQueue<ConsensusMessage> queue) {
@@ -550,9 +541,7 @@ public final class AcceptorSSLTLS {
 		public void run() {
 			logger.debug("Disk thread running. ThreadId: {}", Thread.currentThread().getId());
 			RandomAccessFile raf = null;			
-			//FileOutputStream fos = null;
-			FileDescriptor fd = null;
-			
+
 			while (true) {
 				try {										
 					HashMap<Integer, byte[]> mapConsensus = toPersist.take();					
@@ -562,26 +551,13 @@ public final class AcceptorSSLTLS {
 						String consensusFile = storeDataDir + "/cId_"+cId;
 								
 						try {
-							raf = new RandomAccessFile(consensusFile, "rws");
-							fd = raf.getFD();
+							raf = new RandomAccessFile(consensusFile, "rwd");
 							raf.write(mapConsensus.get(cId));
-							fd.sync();
 							raf.close();
 							saved.put(cId);
 						} catch (Exception e) {
 							e.printStackTrace();
 						}
-						/*try {
-							fos = new FileOutputStream(consensusFile , false);
-							fd = fos.getFD();
-							fos.write(mapConsensus.get(cId));
-							fos.flush();
-							fd.sync();
-							fos.close();
-							saved.put(cId);
-						} catch (Exception e) {
-							e.printStackTrace();
-						} */
 
 						if (logger.isTraceEnabled()) {
 							// Informative code, read and show the saved batch.
@@ -621,9 +597,7 @@ public final class AcceptorSSLTLS {
 		public void run() {
 			logger.debug("Disk proof thread running. ThreadId: {}", Thread.currentThread().getId());
 			
-			FileOutputStream fos = null;
 			RandomAccessFile raf = null;
-			FileDescriptor fd = null;
 			
 			while (true) {
 				try {
@@ -646,27 +620,13 @@ public final class AcceptorSSLTLS {
 						byte[] epochProof = bOut.toByteArray();
 						
 						try {
-							raf = new RandomAccessFile(proofFile, "rws");
-							fd = raf.getFD();
+							raf = new RandomAccessFile(proofFile, "rwd");
 							raf.write(epochProof);
-							fd.sync();
 							raf.close();
 						} catch (Exception e) {
 							e.printStackTrace();
 						}
-						
-						/*try {
-							fos = new FileOutputStream(proofFile, false);
-							fd = fos.getFD();
-							fos.write(epochProof);
-							fos.flush();
-							fd.sync();
-							fos.close();
-						} catch (Exception e) {
-							e.printStackTrace();
-						}*/
-						
-
+			
 						if (logger.isTraceEnabled()) {
 							// Informative code, read and show the saved proofs.
 							logger.info("READING PROOF FROM DISK, cId:{}", cId);

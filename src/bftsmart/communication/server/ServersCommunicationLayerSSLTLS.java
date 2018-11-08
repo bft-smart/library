@@ -277,7 +277,7 @@ public class ServersCommunicationLayerSSLTLS extends Thread {
 					inQueue.put(sm);
 					logger.debug("Queueing (delivering) my own message, me:{}", target);
 				} else {
-					logger.debug("Sending message from:{} -> to:{}.",me,  target);
+					logger.debug("Sending message from:{} -> to:{}.", me,  target);
 					getConnection(target).send(data);
 				}
 			} catch (InterruptedException ex) {
