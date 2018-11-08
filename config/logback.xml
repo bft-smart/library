@@ -39,7 +39,11 @@
   
   <!-- SPECIFIC CLASS LOGS -->
   
+  
   <!--
+  <logger name="bftsmart.communication.client.netty.NettyTOMMessageDecoder" level="TRACE"></logger>
+  
+  <logger name="bftsmart.communication.client.netty.NettyClientServerCommunicationSystemClientSide" level="TRACE"></logger>
   
   <logger name="bftsmart.tom.server.defaultservices.DefaultRecoverable" level="DEBUG"></logger>
   

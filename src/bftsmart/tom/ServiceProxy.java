@@ -263,14 +263,13 @@ public class ServiceProxy extends TOMSender {
 		try {
 			if(reqType == TOMMessageType.UNORDERED_HASHED_REQUEST){
 				if (!this.sm.tryAcquire(invokeUnorderedHashedTimeout, TimeUnit.SECONDS)) {
-					logger.info("######## UNORDERED HASHED REQUEST TIMOUT ########");
+					logger.info("######## UNORDERED HASHED REQUEST TIMEOUT ########");
 					canSendLock.unlock();
 					return invoke(request,TOMMessageType.ORDERED_REQUEST);
 				}
 			}else{ 
 				if (!this.sm.tryAcquire(invokeTimeout, TimeUnit.SECONDS)) {
-					logger.info("###################TIMEOUT#######################");
-					logger.info("Reply timeout for reqId=" + reqId + ", Replies received: " + receivedReplies);
+					logger.info("###### Reply TIMEOUT for reqId {}, Replies received: {}.", reqId, receivedReplies);
 					canSendLock.unlock();
 
 					return null;

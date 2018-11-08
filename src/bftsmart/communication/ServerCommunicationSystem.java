@@ -63,8 +63,7 @@ public class ServerCommunicationSystem extends Thread {
 		super("Server Comm. System");
 
 		this.controller = controller;
-
-				inQueue = new LinkedBlockingQueue<SystemMessage>(controller.getStaticConf().getInQueueSize());
+		inQueue = new LinkedBlockingQueue<SystemMessage>(controller.getStaticConf().getInQueueSize());
 
 		if(this.controller.getStaticConf().isSSLTLSEnabled()){
 			serversConnSSLTLS = new ServersCommunicationLayerSSLTLS(controller, inQueue, replica);
@@ -77,11 +76,8 @@ public class ServerCommunicationSystem extends Thread {
 		}
 
 		// ******* EDUARDO BEGIN **************//
-		// if (manager.isInCurrentView() || manager.isInInitView()) {
 		clientsConn = CommunicationSystemServerSideFactory.getCommunicationSystemServerSide(controller);
-		// }
 		// ******* EDUARDO END **************//
-		// start();
 	}
 	
 	// ******* EDUARDO BEGIN **************//

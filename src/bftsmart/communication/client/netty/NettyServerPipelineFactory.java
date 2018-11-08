@@ -15,30 +15,29 @@ limitations under the License.
 */
 package bftsmart.communication.client.netty;
 
-import io.netty.channel.SimpleChannelInboundHandler;
-import io.netty.handler.codec.ByteToMessageDecoder;
-import io.netty.handler.codec.MessageToByteEncoder;
-
-import java.util.HashMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import bftsmart.reconfiguration.ServerViewController;
+import io.netty.channel.SimpleChannelInboundHandler;
+import io.netty.handler.codec.ByteToMessageDecoder;
+import io.netty.handler.codec.MessageToByteEncoder;
 
 public class NettyServerPipelineFactory {
 
 	private Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	NettyClientServerCommunicationSystemServerSide ncs;
-	HashMap sessionTable;
+	ConcurrentHashMap<Integer, NettyClientServerSession> sessionTable;
 	ServerViewController controller;
 	ReentrantReadWriteLock rl;
 
 	public NettyServerPipelineFactory(
 				NettyClientServerCommunicationSystemServerSide ncs, 
-				HashMap sessionTable,
+				ConcurrentHashMap<Integer, NettyClientServerSession> sessionTable,
 				ServerViewController controller, 
 				ReentrantReadWriteLock rl) {
 		this.ncs = ncs;

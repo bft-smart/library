@@ -16,6 +16,39 @@ limitations under the License.
  */
 package bftsmart.communication.client.netty;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.net.ConnectException;
+import java.nio.channels.ClosedChannelException;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
+import java.security.PrivateKey;
+import java.security.Signature;
+import java.security.spec.InvalidKeySpecException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+
+import javax.crypto.Mac;
+import javax.crypto.SecretKey;
+import javax.crypto.SecretKeyFactory;
+import javax.crypto.spec.PBEKeySpec;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import bftsmart.communication.client.CommunicationSystemClientSide;
+import bftsmart.communication.client.ReplyReceiver;
+import bftsmart.reconfiguration.ClientViewController;
+import bftsmart.tom.core.messages.TOMMessage;
+import bftsmart.tom.util.TOMUtil;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
@@ -30,40 +63,6 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.util.concurrent.GenericFutureListener;
-
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.net.ConnectException;
-import java.nio.channels.ClosedChannelException;
-import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
-import java.security.PrivateKey;
-import java.security.Signature;
-import java.security.spec.InvalidKeySpecException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
-import java.util.Arrays;
-import java.util.concurrent.locks.Condition;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
-
-import javax.crypto.Mac;
-import javax.crypto.SecretKey;
-import javax.crypto.SecretKeyFactory;
-import javax.crypto.spec.PBEKeySpec;
-
-import bftsmart.communication.client.CommunicationSystemClientSide;
-import bftsmart.communication.client.ReplyReceiver;
-import bftsmart.reconfiguration.ClientViewController;
-import bftsmart.tom.core.messages.TOMMessage;
-import bftsmart.tom.util.TOMUtil;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  *
@@ -80,7 +79,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 	// ******* EDUARDO BEGIN **************//
 	private ClientViewController controller;
 	// ******* EDUARDO END **************//
-	private Map<Integer, NettyClientServerSession> sessionTable = new HashMap<>();
+	private ConcurrentHashMap<Integer, NettyClientServerSession> sessionTable = new ConcurrentHashMap<>();
 	private ReentrantReadWriteLock rl;
 	private Signature signatureEngine;
 	private boolean closed = false;
@@ -92,7 +91,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 
 	/* Tulio Ribeiro */
 	private static int tcpSendBufferSize = 8 * 1024 * 1024;
-	private static int connectionTimeoutMsec = 30000; /* (30 seconds, timeout) */
+	private static int connectionTimeoutMsec = 10000; /* (10 seconds, timeout) */
 	private PrivateKey privKey;
 	/* end Tulio Ribeiro */
 
@@ -160,7 +159,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 					rl.writeLock().lock();
 					try {
 						ChannelFuture future = connectToReplica(replicaId, secretKeyFactory);
-						logger.info("ClientID {}, updating connection to replica {}, at address: {}", clientId,
+						logger.debug("ClientID {}, updating connection to replica {}, at address: {}", clientId,
 								replicaId, controller.getRemoteAddress(replicaId));
 
 						future.awaitUninterruptibly();
@@ -218,12 +217,12 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 			return;
 		}
 
-		logger.debug("Channel active");
+		//logger.info("Channel active, Size:{}", sessionTable.size());
 	}
 
 	public void reconnect(final ChannelHandlerContext ctx) {
 
-		rl.writeLock().lock();
+		//rl.writeLock().lock();
 		logger.debug("try to reconnect");
 
 		// Iterator sessions = sessionTable.values().iterator();
@@ -249,8 +248,9 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 								controller.getRemoteAddress(replicaId));
 
 					} else {
-						// This cleans an olde server from the session table
-						sessionTable.remove(replicaId);
+						// This cleans an old server from the session table
+						//sessionTable.remove(replicaId);
+						removeClient(replicaId);
 					}
 				} catch (NoSuchAlgorithmException ex) {
 					logger.error("Failed to reconnect to replica", ex);
@@ -258,7 +258,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 			}
 		}
 
-		rl.writeLock().unlock();
+		//rl.writeLock().unlock();
 	}
 
 	@Override
@@ -498,7 +498,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 						+ " channel operations pending, waiting to complete");
 
 				try {
-					this.enoughCompleted.await(1000, TimeUnit.MILLISECONDS); // timeout if a malicous replica refuses to
+					this.enoughCompleted.await(1500, TimeUnit.MILLISECONDS); // timeout if a malicous replica refuses to
 																				// acknowledge the operation as
 																				// completed
 				} catch (InterruptedException ex) {
@@ -522,7 +522,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 	 * sessionTable is replaced with the new connection.
 	 * Removed redundant code.
 	 */
-	public ChannelFuture connectToReplica(int replicaId, SecretKeyFactory fac)
+	public synchronized ChannelFuture connectToReplica(int replicaId, SecretKeyFactory fac)
 			throws NoSuchAlgorithmException, InvalidKeySpecException, InvalidKeyException {
 
 		String str = this.clientId + ":" + replicaId;
@@ -553,6 +553,9 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 
 		// Start the client.
 		return channelFuture;
-
 	}
+	public synchronized  void removeClient(int clientId) {
+		sessionTable.remove(clientId);
+	}
+	
 }

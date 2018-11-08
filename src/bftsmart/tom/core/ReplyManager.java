@@ -66,7 +66,6 @@ class ReplyThread extends Thread {
             try {
                 msg = replies.poll(POOL_TIME, TimeUnit.MILLISECONDS);
                 if (msg == null) {
-
                     continue; //go back to the start of the loop
                 }
                 cs.getClientsConn().send(new int[] {msg.getSender()}, msg.reply, false);

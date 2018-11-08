@@ -20,6 +20,7 @@ import io.netty.handler.codec.ByteToMessageDecoder;
 import io.netty.handler.codec.MessageToByteEncoder;
 
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import org.slf4j.Logger;
@@ -32,7 +33,7 @@ public class NettyClientPipelineFactory {
 	private Logger logger = LoggerFactory.getLogger(this.getClass());
 	
 	NettyClientServerCommunicationSystemClientSide ncs;
-	Map sessionTable;
+	ConcurrentHashMap<Integer, NettyClientServerSession> sessionTable;
 	
 	// ******* EDUARDO BEGIN **************//
 	ClientViewController controller;
@@ -41,7 +42,7 @@ public class NettyClientPipelineFactory {
 	ReentrantReadWriteLock rl;
 
 	public NettyClientPipelineFactory(NettyClientServerCommunicationSystemClientSide ncs, 
-				Map sessionTable,
+				ConcurrentHashMap<Integer, NettyClientServerSession> sessionTable,
 				ClientViewController controller, 
 				ReentrantReadWriteLock rl) {
 		this.ncs = ncs;

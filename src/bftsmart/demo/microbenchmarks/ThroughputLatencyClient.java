@@ -22,6 +22,8 @@ import java.util.concurrent.Future;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import com.sun.media.jfxmedia.logging.Logger;
+
 import bftsmart.tom.ServiceProxy;
 import bftsmart.tom.util.Storage;
 
@@ -53,7 +55,7 @@ public class ThroughputLatencyClient {
         
         for(int i=0; i<numThreads; i++) {
             try {
-                Thread.sleep(60);
+                Thread.sleep(40);
             } catch (InterruptedException ex) {
                 
                 ex.printStackTrace();
@@ -135,7 +137,7 @@ public class ThroughputLatencyClient {
                         proxy.invokeUnordered(request);
                 else
                         proxy.invokeOrdered(request);
-                        
+                
                 if (verbose) System.out.println(" sent!");
 
                 if (verbose && (req % 1000 == 0)) System.out.println(this.id + " // " + req + " operations sent!");

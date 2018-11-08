@@ -312,12 +312,12 @@ public class ClientsManager {
                     if (reply.recvFromClient && fromClient) {
                         logger.info("[CACHE] re-send reply [Sender: " + reply.getSender() + ", sequence: " + reply.getSequence()+", session: " + reply.getSession()+ "]");
                         cs.send(new int[]{request.getSender()}, reply);
-
                     } 
-                    
                     else if (!reply.recvFromClient && fromClient) {
                         reply.recvFromClient = true;
                     }
+                    
+                    
                     
                 }
                 accounted = true;

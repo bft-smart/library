@@ -22,7 +22,6 @@ import bftsmart.reconfiguration.views.DefaultViewStorage;
 import bftsmart.reconfiguration.views.View;
 import bftsmart.reconfiguration.views.ViewStorage;
 import bftsmart.tom.util.KeyLoader;
-import java.security.Provider;
 
 /**
  *

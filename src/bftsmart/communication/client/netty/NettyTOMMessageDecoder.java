@@ -15,15 +15,11 @@ limitations under the License.
 */
 package bftsmart.communication.client.netty;
 
-import io.netty.buffer.ByteBuf;
-import io.netty.channel.ChannelHandlerContext;
-import io.netty.handler.codec.ByteToMessageDecoder;
-
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import javax.crypto.Mac;
@@ -31,12 +27,15 @@ import javax.crypto.SecretKey;
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.PBEKeySpec;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import bftsmart.reconfiguration.ViewController;
 import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.util.TOMUtil;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import io.netty.buffer.ByteBuf;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.handler.codec.ByteToMessageDecoder;
 
 /**
  *
@@ -50,29 +49,18 @@ public class NettyTOMMessageDecoder extends ByteToMessageDecoder {
     /**
      * number of measures used to calculate statistics
      */
-    //private final int BENCHMARK_PERIOD = 10000;
     private boolean isClient;
-    private Map sessionTable;
-    //private Storage st;
+    private ConcurrentHashMap<Integer, NettyClientServerSession> sessionTable;
     private ViewController controller;
     private boolean firstTime;
     private ReentrantReadWriteLock rl;
-    //******* EDUARDO BEGIN: commented out some unused variables **************//
-    //private long numReceivedMsgs = 0;
-    //private long lastMeasurementStart = 0;
-    //private long max=0;
-    //private Storage st;
-    //private int count = 0;
-   
-    //private Signature signatureEngine;
-    
     
      //******* EDUARDO END **************//
     
     private boolean useMAC;
     
     public NettyTOMMessageDecoder(boolean isClient, 
-    								Map sessionTable, 
+    		ConcurrentHashMap<Integer, NettyClientServerSession> sessionTable, 
     								ViewController controller, 
     								ReentrantReadWriteLock rl, 
     								boolean useMAC) {
@@ -178,8 +166,7 @@ public class NettyTOMMessageDecoder extends ByteToMessageDecoder {
                 } else {
                     //creates MAC/publick key stuff if it's the first message received from the client
                     logger.debug("Creating MAC/public key stuff, first message from client" + sm.getSender());
-                    logger.debug("sessionTable size=" + sessionTable.size());
-
+                    
                     rl.readLock().unlock();
                     
                     SecretKeyFactory fac = TOMUtil.getSecretFactory();
@@ -194,9 +181,8 @@ public class NettyTOMMessageDecoder extends ByteToMessageDecoder {
                     NettyClientServerSession cs = new NettyClientServerSession(context.channel(), macSend, macReceive, sm.getSender());
                                        
                     rl.writeLock().lock();
-//                    logger.info("PUT INTO SESSIONTABLE - [client id]:"+sm.getSender()+" [channel]: "+cs.getChannel());
                     sessionTable.put(sm.getSender(), cs);
-                    logger.debug("active clients " + sessionTable.size());
+                    logger.debug("Active clients: " + sessionTable.size());
                     rl.writeLock().unlock();
                     
                     if (useMAC && !verifyMAC(sm.getSender(), data, digest)) {
