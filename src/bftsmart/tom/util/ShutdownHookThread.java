@@ -52,7 +52,11 @@ public class ShutdownHookThread extends Thread {
         buffer.append("\n---------- DEBUG INFO ----------\n");
         buffer.append("\nCurrent time: " + sdf.format(new Date()));
         buffer.append("\nCurrent leader: " + tomLayer.execManager.getCurrentLeader());
-        buffer.append("\nCurrent regency: " + tomLayer.getSynchronizer().getLCManager().getLastReg());
+        
+        if(tomLayer.getIsSSLTLSEnabled())
+        	buffer.append("\nCurrent regency: " + tomLayer.getSynchronizerSSLTLS().getLCManager().getLastReg());
+        else
+        	buffer.append("\nCurrent regency: " + tomLayer.getSynchronizer().getLCManager().getLastReg());
 
         buffer.append("\n\nLast finished consensus: " + (lastCons == -1 ? "None" : lastCons));
         if(lastCons > -1) {

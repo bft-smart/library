@@ -33,10 +33,8 @@ import java.io.ObjectOutputStream;
 import java.io.RandomAccessFile;
 import java.nio.file.Files;
 import java.security.PrivateKey;
-import java.security.Signature;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Set;
@@ -64,7 +62,7 @@ import bftsmart.tom.util.TOMUtil;
  * work together with the TOMLayer class in order to supply a atomic multicast
  * service.
  *
- * @author Alysson Bessani
+ * @author Alysson Bessani, modified by Tulio Ribeiro
  */
 public final class AcceptorSSLTLS {
 
@@ -317,7 +315,7 @@ public final class AcceptorSSLTLS {
 																								// if the proposal is
 																								// garbage
 
-				tomLayer.getSynchronizer().triggerTimeout(new LinkedList<>());
+				tomLayer.getSynchronizerSSLTLS().triggerTimeout(new LinkedList<>());
 			}
 		}
 	}

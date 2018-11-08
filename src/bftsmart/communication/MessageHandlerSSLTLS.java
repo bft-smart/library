@@ -150,7 +150,7 @@ public class MessageHandlerSSLTLS {
 					if (lcMsg.TRIGGER_LC_LOCALLY)
 						tomLayer.requestsTimer.run_lc_protocol();
 					else
-						tomLayer.getSynchronizer().deliverTimeoutRequest(lcMsg);
+						tomLayer.getSynchronizerSSLTLS().deliverTimeoutRequest(lcMsg);
 					/**************************************************************/
 
 				} else if (sm instanceof ForwardedMessage) {

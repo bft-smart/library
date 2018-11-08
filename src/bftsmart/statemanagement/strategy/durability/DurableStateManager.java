@@ -149,10 +149,29 @@ public class DurableStateManager extends BaseStateManager {
 			int port = 4444 + myId;
 			address = new InetSocketAddress(myIp, port);
 			cstConfig.setAddress(address);
-			CSTSMMessage reply = new CSTSMMessage(myId, msg.getCID(),
-					TOMUtil.SM_REPLY, cstConfig, null,
-					SVController.getCurrentView(), tomLayer.getSynchronizer().getLCManager().getLastReg(),
-					tomLayer.execManager.getCurrentLeader());
+
+			CSTSMMessage reply; 
+			if(tomLayer.getIsSSLTLSEnabled()) {
+				reply = new CSTSMMessage(myId, 
+										 msg.getCID(),
+										 TOMUtil.SM_REPLY, 
+										 cstConfig, 
+										 null,
+										 SVController.getCurrentView(), 
+										 tomLayer.getSynchronizerSSLTLS().getLCManager().getLastReg(),
+										 tomLayer.execManager.getCurrentLeader()
+										);
+			}else {
+				reply = new CSTSMMessage(myId, 
+										 msg.getCID(),
+										 TOMUtil.SM_REPLY, 
+										 cstConfig, 
+										 null,
+										 SVController.getCurrentView(), 
+										 tomLayer.getSynchronizer().getLCManager().getLastReg(),
+										 tomLayer.execManager.getCurrentLeader()
+										 );
+			}
 
 			StateSenderServer stateServer = new StateSenderServer(port);
 			stateServer.setRecoverable(dt.getRecoverer());
@@ -204,7 +223,12 @@ public class DurableStateManager extends BaseStateManager {
 
 				} else {
 					currentLeader = tomLayer.execManager.getCurrentLeader();
-					currentRegency = tomLayer.getSynchronizer().getLCManager().getLastReg();
+					
+					if(tomLayer.getIsSSLTLSEnabled())
+						currentRegency = tomLayer.getSynchronizerSSLTLS().getLCManager().getLastReg();
+					else
+						currentRegency = tomLayer.getSynchronizer().getLCManager().getLastReg();
+					
 					currentView = SVController.getCurrentView();
 				}
 

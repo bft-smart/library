@@ -154,9 +154,28 @@ public class StandardStateManager extends BaseStateManager {
             }
 
             int[] targets = { msg.getSender() };
-            SMMessage smsg = new StandardSMMessage(SVController.getStaticConf().getProcessId(),
-                    msg.getCID(), TOMUtil.SM_REPLY, -1, thisState, SVController.getCurrentView(),
-                    tomLayer.getSynchronizer().getLCManager().getLastReg(), tomLayer.execManager.getCurrentLeader());
+            SMMessage smsg;
+            if(tomLayer.getIsSSLTLSEnabled()) {
+            		smsg = new StandardSMMessage(
+            					SVController.getStaticConf().getProcessId(),
+            					msg.getCID(), 
+            					TOMUtil.SM_REPLY, 
+            					-1, 
+            					thisState, 
+            					SVController.getCurrentView(),
+            					tomLayer.getSynchronizerSSLTLS().getLCManager().getLastReg(), 
+            					tomLayer.execManager.getCurrentLeader());
+            }else {
+            	smsg = new StandardSMMessage(
+    					SVController.getStaticConf().getProcessId(),
+    					msg.getCID(), 
+    					TOMUtil.SM_REPLY, 
+    					-1, 
+    					thisState, 
+    					SVController.getCurrentView(),
+    					tomLayer.getSynchronizer().getLCManager().getLastReg(), 
+    					tomLayer.execManager.getCurrentLeader());
+            }
             
             logger.info("Sending state...");
             tomLayer.getCommunication().send(targets, smsg);
@@ -182,11 +201,26 @@ public class StandardStateManager extends BaseStateManager {
                     if (enoughRegencies(msg.getRegency())) currentRegency = msg.getRegency();
                     if (enoughLeaders(msg.getLeader())) currentLeader = msg.getLeader();
                     if (enoughViews(msg.getView())) currentView = msg.getView();
-                    if (enoughProofs(waitingCID, this.tomLayer.getSynchronizer().getLCManager())) currentProof = msg.getState().getCertifiedDecision(SVController);
+                    
+                    if(tomLayer.getIsSSLTLSEnabled()) {
+                    	if (enoughProofs(waitingCID,this.tomLayer.getSynchronizerSSLTLS().getLCManager())) {
+                    		currentProof = msg.getState().getCertifiedDecision(SVController);
+                    	}
+                    }else {
+                    	if (enoughProofs(waitingCID,this.tomLayer.getSynchronizer().getLCManager())) {
+                    		currentProof = msg.getState().getCertifiedDecision(SVController);
+                    	}
+                    }
+                    		
+                    	
                     
                 } else {
                     currentLeader = tomLayer.execManager.getCurrentLeader();
-                    currentRegency = tomLayer.getSynchronizer().getLCManager().getLastReg();
+                    if(tomLayer.getIsSSLTLSEnabled())
+                    	currentRegency = tomLayer.getSynchronizerSSLTLS().getLCManager().getLastReg();
+                    else
+                    	currentRegency = tomLayer.getSynchronizer().getLCManager().getLastReg();
+                    
                     currentView = SVController.getCurrentView();
                 }
                 
@@ -218,9 +252,17 @@ public class StandardStateManager extends BaseStateManager {
 
                     	logger.info("Received state. Will install it");
                     	
-                        tomLayer.getSynchronizer().getLCManager().setLastReg(currentRegency);
-                        tomLayer.getSynchronizer().getLCManager().setNextReg(currentRegency);
-                        tomLayer.getSynchronizer().getLCManager().setNewLeader(currentLeader);
+                    	if(tomLayer.getIsSSLTLSEnabled()) {
+                    		tomLayer.getSynchronizerSSLTLS().getLCManager().setLastReg(currentRegency);
+                        	tomLayer.getSynchronizerSSLTLS().getLCManager().setNextReg(currentRegency);
+                        	tomLayer.getSynchronizerSSLTLS().getLCManager().setNewLeader(currentLeader);
+                    	}else {
+                    		tomLayer.getSynchronizer().getLCManager().setLastReg(currentRegency);
+                        	tomLayer.getSynchronizer().getLCManager().setNextReg(currentRegency);
+                        	tomLayer.getSynchronizer().getLCManager().setNewLeader(currentLeader);
+                    	}
+                        
+                        
                         tomLayer.execManager.setNewLeader(currentLeader);
                         
                         if (currentProof != null && !appStateOnly) {
@@ -270,7 +312,13 @@ public class StandardStateManager extends BaseStateManager {
                     
                         // I might have timed out before invoking the state transfer, so
                         // stop my re-transmission of STOP messages for all regencies up to the current one
-                        if (currentRegency > 0) tomLayer.getSynchronizer().removeSTOPretransmissions(currentRegency - 1);
+                        
+                        if (currentRegency > 0) {
+                        	if(tomLayer.getIsSSLTLSEnabled())
+                        		tomLayer.getSynchronizerSSLTLS().removeSTOPretransmissions(currentRegency - 1);
+                        	else
+                        		tomLayer.getSynchronizer().removeSTOPretransmissions(currentRegency - 1);
+                        }
                         //if (currentRegency > 0)
                         //    tomLayer.requestsTimer.setTimeout(tomLayer.requestsTimer.getTimeout() * (currentRegency * 2));
                         
@@ -310,7 +358,10 @@ public class StandardStateManager extends BaseStateManager {
                         
                         if (appStateOnly) {
                         	appStateOnly = false;
-                            tomLayer.getSynchronizer().resumeLC();
+                        	if(tomLayer.getIsSSLTLSEnabled())
+                        		tomLayer.getSynchronizerSSLTLS().resumeLC();
+                        	else
+                        		tomLayer.getSynchronizer().resumeLC();
                         }
                     } else if (otherReplicaState == null && (SVController.getCurrentViewN() / 2) < getReplies()) {
                         waitingCID = -1;

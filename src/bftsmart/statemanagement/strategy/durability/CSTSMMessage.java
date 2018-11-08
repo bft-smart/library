@@ -27,7 +27,15 @@ public class CSTSMMessage extends SMMessage {
 
 	private CSTRequestF1 cstConfig;
 	
-    public CSTSMMessage(int sender, int cid, int type, CSTRequestF1 cstConfig, ApplicationState state, View view, int regency, int leader) {
+    public CSTSMMessage(
+    			int sender, 
+    			int cid, 
+    			int type, 
+    			CSTRequestF1 cstConfig, 
+    			ApplicationState state, 
+    			View view, 
+    			int regency, 
+    			int leader) {
     	super(sender, cid, type, state, view, regency, leader);
     	this.cstConfig = cstConfig;
     }

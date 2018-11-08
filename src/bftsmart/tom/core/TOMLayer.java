@@ -114,8 +114,13 @@ public final class TOMLayer extends Thread implements RequestReceiver {
     private RequestVerifier verifier;
             
     private Synchronizer syncher;
+    
+    /* Tulio Ribeiro*/ 
+    private SynchronizerSSLTLS syncherSSLTLS;
+    private Boolean isSSLTLSEnabled;
 
-    /**
+
+	/**
      * Creates a new instance of TOMulticastLayer
      *
      * @param manager Execution manager
@@ -141,14 +146,14 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         this.communication = cs;
         this.controller = controller;
         
-        this.privateKey = this.controller.getStaticConf().getPrivateKey();
-        
         /*Tulio Ribeiro*/
+        this.privateKey = this.controller.getStaticConf().getPrivateKey();
+        this.publicKey = new HashMap<>();
         int [] targets  = this.controller.getCurrentViewAcceptors();
         for (int i = 0; i < targets.length; i++) {
             publicKey.put(targets[i], controller.getStaticConf().getPublicKey(targets[i]));
         }
-
+        this.isSSLTLSEnabled=false;
         
         // use either the same number of Netty workers threads if specified in the configuration
         // or use a many as the number of cores available
@@ -201,7 +206,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
     public TOMLayer(ExecutionManager manager,
             ServiceReplica receiver,
             Recoverable recoverer,
-            AcceptorSSLTLS a,
+            AcceptorSSLTLS acceptor,
             ServerCommunicationSystem cs,
             ServerViewController controller,
             RequestVerifier verifier) {
@@ -209,11 +214,18 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         super("TOM Layer");
 
         this.execManager = manager;
-        this.acceptorSSLTLS = a;
+        this.acceptorSSLTLS = acceptor;
         this.communication = cs;
         this.controller = controller;
         
+        /*Tulio Ribeiro*/
         this.privateKey = this.controller.getStaticConf().getPrivateKey();
+        this.publicKey = new HashMap<>();         
+        int [] targets  = this.controller.getCurrentViewAcceptors();
+        for (int i = 0; i < targets.length; i++) {
+            publicKey.put(targets[i], controller.getStaticConf().getPublicKey(targets[i]));
+        }
+        this.isSSLTLSEnabled=true;
         
         // use either the same number of Netty workers threads if specified in the configuration
         // or use a many as the number of cores available
@@ -249,7 +261,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         // I have a verifier, now create clients manager
         this.clientsManager = new ClientsManager(this.controller, requestsTimer, this.verifier);
 
-        this.syncher = new Synchronizer(this); // create synchronizer
+        this.syncherSSLTLS = new SynchronizerSSLTLS(this); // create synchronizer
     }
 
 
@@ -378,7 +390,11 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         if (readOnly) {
             logger.debug("Received read-only TOMMessage from client " + msg.getSender() + " with sequence number " + msg.getSequence() + " for session " + msg.getSession());
 
-            dt.deliverUnordered(msg, syncher.getLCManager().getLastReg());
+            if(isSSLTLSEnabled)
+            	dt.deliverUnordered(msg, syncherSSLTLS.getLCManager().getLastReg());
+            else
+            	dt.deliverUnordered(msg, syncher.getLCManager().getLastReg());
+            
         } else {
             logger.debug("Received TOMMessage from client " + msg.getSender() + " with sequence number " + msg.getSequence() + " for session " + msg.getSession());
 
@@ -510,7 +526,11 @@ public final class TOMLayer extends Thread implements RequestReceiver {
      */
     public void decided(Decision dec) {
         
-        dec.setRegency(syncher.getLCManager().getLastReg());
+        if(isSSLTLSEnabled)
+        	dec.setRegency(syncherSSLTLS.getLCManager().getLastReg());
+        else
+        	dec.setRegency(syncher.getLCManager().getLastReg());
+        
         dec.setLeader(execManager.getCurrentLeader());
         
         this.dt.delivery(dec); // Sends the decision to the delivery thread
@@ -639,7 +659,10 @@ public final class TOMLayer extends Thread implements RequestReceiver {
     public Synchronizer getSynchronizer() {
         return syncher;
     }
-   
+    public SynchronizerSSLTLS getSynchronizerSSLTLS() {
+        return syncherSSLTLS;
+    }
+    
     private void haveMessages() {
         messagesLock.lock();
         haveMessages.signal();
@@ -665,4 +688,11 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         if (this.communication != null) this.communication.shutdown();
  
     }
+    
+
+    /* Tulio Ribeiro*/
+    public Boolean getIsSSLTLSEnabled() {
+		return isSSLTLSEnabled;
+	}
+
 }

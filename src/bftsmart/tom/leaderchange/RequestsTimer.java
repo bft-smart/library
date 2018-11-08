@@ -186,10 +186,10 @@ public class RequestsTimer {
 
             if (!pendingRequests.isEmpty()) {
                 logger.info("Attempting to start leader change for requests {}", pendingRequests);
-                //Logger.debug = true;
-                //tomLayer.requestTimeout(pendingRequests);
-                //if (reconfManager.getStaticConf().getProcessId() == 4) Logger.debug = true;
-                tomLayer.getSynchronizer().triggerTimeout(pendingRequests);
+                if(tomLayer.getIsSSLTLSEnabled())
+                	tomLayer.getSynchronizerSSLTLS().triggerTimeout(pendingRequests);
+                else
+                	tomLayer.getSynchronizer().triggerTimeout(pendingRequests);
             }
             else {
                 rtTask = new RequestTimerTask();
