@@ -291,13 +291,13 @@ public final class Acceptor {
                 
                 ConsensusMessage cm = epoch.fetchAccept();
                 int[] targets = this.controller.getCurrentViewAcceptors();
+                epoch.acceptSent();
                 
                 if (Arrays.equals(cm.getValue(), value)) { //make sure the ACCEPT message generated upon receiving the PROPOSE message
                                                            //still matches the value that ended up being written...
 
                     logger.debug("Speculative ACCEPT message for consensus {} matches the written value, sending it to the other replicas", cid);
 
-                    epoch.acceptSent();
                     communication.getServersConn().send(targets, cm, true);
                     
                 } else { //... and if not, create the ACCEPT message again (with the correct value), and send it
