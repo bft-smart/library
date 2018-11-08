@@ -118,20 +118,19 @@ public final class AcceptorSSLTLS {
 		this.saved = new LinkedBlockingDeque<>();
 		this.toPersistBatch = new LinkedBlockingDeque<>();
 		this.toPersistProof = new LinkedBlockingDeque<>();
+		this.storeDataDir = controller.getStaticConf().getStoreDataDir() + "/replica_"+this.me;
+		this.isPersistent = controller.getStaticConf().isPersistent();
 		
 		SaveBatchToDisk dwd = new SaveBatchToDisk(this.toPersistBatch);
-		new Thread(dwd).start();
 		SaveProofToDisk spd = new SaveProofToDisk(this.toPersistProof);
-		new Thread(spd).start();
-		
-		this.isPersistent = controller.getStaticConf().isPersistent();
-		this.storeDataDir = controller.getStaticConf().getStoreDataDir() + "/replica_"+this.me;
-		if (this.isPersistent) {
+		if(this.isPersistent) {
 			File f = new File(this.storeDataDir);
 			f.mkdirs();
 			
+			new Thread(dwd).start();	
+			new Thread(spd).start();			
 		}
-
+		
 	}
 
 	public MessageFactory getFactory() {
@@ -501,7 +500,7 @@ public final class AcceptorSSLTLS {
 		}
 		@Override
 		public void run() {
-			logger.debug("Insert proof thread running. ThreadId: {}", Thread.currentThread().getId());
+			logger.info("Advanced proof thread running. ThreadId: {}", Thread.currentThread().getId());
 			while (true) {
 				try {
 					ConsensusMessage cm = insertProof.take();
@@ -532,19 +531,19 @@ public final class AcceptorSSLTLS {
 	 * 
 	 */
 	private class SaveBatchToDisk implements Runnable {
-		private BlockingQueue<HashMap<Integer, byte[]>> toPersist;
+		private BlockingQueue<HashMap<Integer, byte[]>> toPersistBatch;
 
 		public SaveBatchToDisk(BlockingQueue<HashMap<Integer, byte[]>> queue) {
-			toPersist = queue;
+			toPersistBatch = queue;
 		}
 		@Override
 		public void run() {
-			logger.debug("Disk thread running. ThreadId: {}", Thread.currentThread().getId());
+			logger.info("Save batch to disk thread running. ThreadId: {}", Thread.currentThread().getId());
 			RandomAccessFile raf = null;			
 
 			while (true) {
 				try {										
-					HashMap<Integer, byte[]> mapConsensus = toPersist.take();					
+					HashMap<Integer, byte[]> mapConsensus = toPersistBatch.take();					
 					Iterator<Integer> it = mapConsensus.keySet().iterator();
 					while (it.hasNext()) {
 						Integer cId = (Integer) it.next();
@@ -561,7 +560,7 @@ public final class AcceptorSSLTLS {
 
 						if (logger.isTraceEnabled()) {
 							// Informative code, read and show the saved batch.
-							logger.info("READING BATCH FROM DISK, cId:{}", cId);
+							logger.trace("READING BATCH FROM DISK, cId:{}", cId);
 							try {
 								byte[] data = Files.readAllBytes(new File(storeDataDir + "/cId_" + cId).toPath());
 								BatchReader batchReader = new BatchReader(data,
@@ -569,7 +568,7 @@ public final class AcceptorSSLTLS {
 								TOMMessage[] requests = null;
 								requests = batchReader.deserialiseRequests(controller);
 								for (TOMMessage request : requests) {
-									logger.info("Request, Sender:{}, Req Type:{}", request.getSender(),
+									logger.trace("Request, Sender:{}, Req Type:{}", request.getSender(),
 											request.getReqType());
 								}
 							} catch (FileNotFoundException e) {
@@ -595,7 +594,7 @@ public final class AcceptorSSLTLS {
 
 		@Override
 		public void run() {
-			logger.debug("Disk proof thread running. ThreadId: {}", Thread.currentThread().getId());
+			logger.info("Save proof to disk thread running. ThreadId: {}", Thread.currentThread().getId());
 			
 			RandomAccessFile raf = null;
 			
@@ -629,7 +628,7 @@ public final class AcceptorSSLTLS {
 			
 						if (logger.isTraceEnabled()) {
 							// Informative code, read and show the saved proofs.
-							logger.info("READING PROOF FROM DISK, cId:{}", cId);
+							logger.trace("READING PROOF FROM DISK, cId:{}", cId);
 							try {
 								byte[] proofs = Files.readAllBytes(new File(proofFile).toPath());
 
@@ -638,14 +637,7 @@ public final class AcceptorSSLTLS {
 								Iterator<ConsensusMessage> itProof = proofsRead.iterator();
 								while (itProof.hasNext()) {
 									ConsensusMessage cm = (ConsensusMessage) itProof.next();
-									logger.info("From file, cId:{}, Sender:{}", cm.getNumber(), cm.getSender());
-									
-									/*if(cm.getProof() instanceof byte[]) {
-										//Signature sig = (Signature) cm.getProof();
-										logger.info("\tSignature Proof, Sender:{}, Signarue:{}", cm.getSender(),  cm.getProof());
-									}else {
-										logger.info("\tNot a signature, {} " , cm.getProof().getClass().getTypeName());
-									}*/
+									logger.trace("From file, cId:{}, Sender:{}", cm.getNumber(), cm.getSender());
 								}
 							} catch (FileNotFoundException e) {
 								e.printStackTrace();
