@@ -43,8 +43,8 @@ public class FileRecoverer {
 	public FileRecoverer(int replicaId, String defaultDir) {
 		this.replicaId = replicaId;
 		this.defaultDir = defaultDir;
-		ckpLastConsensusId = 0;
-		logLastConsensusId = 0;
+		ckpLastConsensusId = -1;
+		logLastConsensusId = 1;
 	}
 	
 	/**
