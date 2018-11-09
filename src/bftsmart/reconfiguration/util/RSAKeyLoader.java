@@ -28,6 +28,8 @@ import java.security.spec.EncodedKeySpec;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
+import java.util.HashMap;
+import java.util.Map;
 import org.apache.commons.codec.binary.Base64;
 
 /**
@@ -41,6 +43,8 @@ public class RSAKeyLoader implements KeyLoader {
     private PrivateKey priKey;
 
     private String sigAlgorithm;
+    
+    private Map<Integer, PublicKey> pubKeys;
 
     private static String DEFAULT_UKEY = "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAokZC75w2IQLEyAgCpQqCDH3keTdHq+3lFOZJ"+
             "PbAev4zq73umOB3bFdSVu0OpbTwV7Mo7CHGTrtB4oi/REvgL6xwL/DKJ7Y2/cAQ91l4ApgmtyX6d0ESsVWZzCg57zjaiwHzzVN57R8q4/h3Cc"+
@@ -81,6 +85,8 @@ public class RSAKeyLoader implements KeyLoader {
                     path = configHome + System.getProperty("file.separator") + "keys" +
                                     System.getProperty("file.separator");
             }
+            
+            pubKeys = new HashMap<>();
     }
 
     /**
@@ -94,17 +100,25 @@ public class RSAKeyLoader implements KeyLoader {
             if (defaultKeys) {
                 return getPublicKeyFromString(RSAKeyLoader.DEFAULT_UKEY);
             }
-
-            FileReader f = new FileReader(path + "publickey" + id);
-            BufferedReader r = new BufferedReader(f);
-            String tmp = "";
-            String key = "";
-            while ((tmp = r.readLine()) != null) {
-                    key = key + tmp;
+            
+            PublicKey ret = pubKeys.get(id);
+            
+            if (ret == null) {
+                
+                FileReader f = new FileReader(path + "publickey" + id);
+                BufferedReader r = new BufferedReader(f);
+                String tmp = "";
+                String key = "";
+                while ((tmp = r.readLine()) != null) {
+                        key = key + tmp;
+                }
+                f.close();
+                r.close();
+                ret = getPublicKeyFromString(key);
+                
+                pubKeys.put(id, ret);
             }
-            f.close();
-            r.close();
-            PublicKey ret = getPublicKeyFromString(key);
+            
             return ret;
     }
 
@@ -113,17 +127,25 @@ public class RSAKeyLoader implements KeyLoader {
             if (defaultKeys) {                    
                 return getPublicKeyFromString(RSAKeyLoader.DEFAULT_UKEY);
             }
+            
+            PublicKey ret = pubKeys.get(this.id);
 
-            FileReader f = new FileReader(path + "publickey" + this.id);
-            BufferedReader r = new BufferedReader(f);
-            String tmp = "";
-            String key = "";
-            while ((tmp = r.readLine()) != null) {
-                    key = key + tmp;
+            if (ret == null) {
+                                
+                FileReader f = new FileReader(path + "publickey" + this.id);
+                BufferedReader r = new BufferedReader(f);
+                String tmp = "";
+                String key = "";
+                while ((tmp = r.readLine()) != null) {
+                        key = key + tmp;
+                }
+                f.close();
+                r.close();
+                ret = getPublicKeyFromString(key);
+                
+                pubKeys.put(this.id, ret);
             }
-            f.close();
-            r.close();
-            PublicKey ret = getPublicKeyFromString(key);
+            
             return ret;
     }
 
