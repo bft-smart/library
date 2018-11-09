@@ -55,6 +55,9 @@ public class DiskStateLog extends StateLog {
 		this.syncLog = syncLog;
 		this.syncCkp = syncCkp;
 		this.logPointers = new HashMap<>();
+                
+                File directory = new File(DEFAULT_DIR);
+                if (!directory.exists()) directory.mkdir();
 	}
 
 	private void createLogFile() {
