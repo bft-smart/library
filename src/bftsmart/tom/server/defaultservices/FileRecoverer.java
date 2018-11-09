@@ -44,7 +44,7 @@ public class FileRecoverer {
 		this.replicaId = replicaId;
 		this.defaultDir = defaultDir;
 		ckpLastConsensusId = -1;
-		logLastConsensusId = 1;
+		logLastConsensusId = -1;
 	}
 	
 	/**
