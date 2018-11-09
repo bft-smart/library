@@ -62,6 +62,10 @@ public class DurableStateLog extends StateLog {
 		this.syncLog = syncLog;
 		this.syncCkp = syncCkp;
 		this.logPointers = new HashMap<Integer, Long>();
+                
+                File directory = new File(DEFAULT_DIR);
+                if (!directory.exists()) directory.mkdir();
+                
 		this.fr = new FileRecoverer(id, DEFAULT_DIR);
 	}
 

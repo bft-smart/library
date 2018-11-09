@@ -69,7 +69,7 @@ public class DurableStateManager extends BaseStateManager {
 		this.execManager = tomLayer.execManager;
 
 		state = null;
-		lastCID = 1;
+		lastCID = -1;
 		waitingCID = -1;
 
 		appStateOnly = false;
