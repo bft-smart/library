@@ -13,7 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package bftsmart.statemanagement.strategy.durability;
+package bftsmart.statemanagement.durability;
 
 import java.io.IOException;
 import java.net.ServerSocket;
@@ -21,7 +21,7 @@ import java.net.Socket;
 
 import bftsmart.statemanagement.ApplicationState;
 import bftsmart.tom.server.Recoverable;
-import bftsmart.tom.server.defaultservices.durability.DurabilityCoordinator;
+import bftsmart.tom.server.durability.DurabilityCoordinator;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

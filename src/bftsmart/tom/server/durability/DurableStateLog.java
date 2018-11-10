@@ -13,7 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package bftsmart.tom.server.defaultservices.durability;
+package bftsmart.tom.server.durability;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -27,9 +27,9 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.locks.ReentrantLock;
 
-import bftsmart.statemanagement.strategy.durability.CSTRequest;
-import bftsmart.statemanagement.strategy.durability.CSTRequestF1;
-import bftsmart.statemanagement.strategy.durability.CSTState;
+import bftsmart.statemanagement.durability.CSTRequest;
+import bftsmart.statemanagement.durability.CSTRequestF1;
+import bftsmart.statemanagement.durability.CSTState;
 import bftsmart.tom.MessageContext;
 import bftsmart.tom.server.defaultservices.CommandsInfo;
 import bftsmart.tom.server.defaultservices.FileRecoverer;

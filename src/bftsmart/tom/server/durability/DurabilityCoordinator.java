@@ -13,7 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
  */
-package bftsmart.tom.server.defaultservices.durability;
+package bftsmart.tom.server.durability;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -23,9 +23,9 @@ import java.util.concurrent.locks.ReentrantLock;
 import bftsmart.reconfiguration.util.TOMConfiguration;
 import bftsmart.statemanagement.ApplicationState;
 import bftsmart.statemanagement.StateManager;
-import bftsmart.statemanagement.strategy.durability.CSTRequest;
-import bftsmart.statemanagement.strategy.durability.CSTState;
-import bftsmart.statemanagement.strategy.durability.DurableStateManager;
+import bftsmart.statemanagement.durability.CSTRequest;
+import bftsmart.statemanagement.durability.CSTState;
+import bftsmart.statemanagement.durability.DurableStateManager;
 import bftsmart.tom.MessageContext;
 import bftsmart.tom.ReplicaContext;
 import bftsmart.tom.server.BatchExecutable;
