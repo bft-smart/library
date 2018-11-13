@@ -386,7 +386,8 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         
         // check if this request is valid and add it to the client' pending requests list
         boolean readOnly = (msg.getReqType() == TOMMessageType.UNORDERED_REQUEST
-                || msg.getReqType() == TOMMessageType.UNORDERED_HASHED_REQUEST);
+                		 || msg.getReqType() == TOMMessageType.UNORDERED_HASHED_REQUEST);
+        
         if (readOnly) {
             logger.debug("Received read-only TOMMessage from client " + msg.getSender() + " with sequence number " + msg.getSequence() + " for session " + msg.getSession());
 
@@ -401,7 +402,8 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             if (clientsManager.requestReceived(msg, true, communication)) {
                 haveMessages();
             } else {
-                logger.warn("The received TOMMessage " + msg + " was discarded.");
+                logger.warn("The received TOMMessage {} was discarded. Sender:{}, Sequence:{}", 
+                		msg, msg.getSender(), msg.getSequence() );
             }
         }
     }
@@ -418,10 +420,10 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         RequestList pendingRequests = clientsManager.getPendingRequests();
 
         int numberOfMessages = pendingRequests.size(); // number of messages retrieved
-        int numberOfNonces = this.controller.getStaticConf().getNumberOfNonces(); // ammount of nonces to be generated
+        int numberOfNonces = this.controller.getStaticConf().getNumberOfNonces(); // amount of nonces to be generated
 
         //for benchmarking
-        if (dec.getConsensusId() > -1) { // if this is from the leader change, it doesnt matter
+        if (dec.getConsensusId() > -1) { // if this is from the leader change, it does not matter
             dec.firstMessageProposed = pendingRequests.getFirst();
             dec.firstMessageProposed.consensusStartTime = System.nanoTime();
         }
@@ -478,9 +480,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             
             if (!doWork) break;
             
-            logger.debug("There are messages to be ordered.");
-
-            logger.debug("I can try to propose.");
+            logger.debug("There are messages to be ordered. I will propose.");
 
             if ((execManager.getCurrentLeader() == this.controller.getStaticConf().getProcessId()) && //I'm the leader
                     (clientsManager.havePendingRequests()) && //there are messages to be ordered
@@ -489,7 +489,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                 // Sets the current consensus
                 int execId = getLastExec() + 1;
                 setInExec(execId);
-
+                
                 Decision dec = execManager.getConsensus(execId).getDecision();
 
                 // Bypass protocol if service is not replicated

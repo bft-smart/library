@@ -28,7 +28,8 @@ import java.security.Signature;
 import java.security.spec.InvalidKeySpecException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
+import java.util.Collections;
+import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
@@ -91,7 +92,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 
 	/* Tulio Ribeiro */
 	private static int tcpSendBufferSize = 8 * 1024 * 1024;
-	private static int connectionTimeoutMsec = 10000; /* (10 seconds, timeout) */
+	private static int connectionTimeoutMsec = 40000; /* (40 seconds, timeout) */
 	private PrivateKey privKey;
 	/* end Tulio Ribeiro */
 
@@ -270,6 +271,9 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 	public void send(boolean sign, int[] targets, TOMMessage sm) {
 
 		int quorum;
+		
+		Integer[] targetArray = Arrays.stream(targets).boxed().toArray(Integer[]::new);
+		Collections.shuffle(Arrays.asList(targetArray), new Random());
 
 		if (controller.getStaticConf().isBFT()) {
 			quorum = (int) Math.ceil((controller.getCurrentViewN() + controller.getCurrentViewF()) / 2) + 1;
@@ -280,7 +284,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 		listener.waitForChannels(quorum); // wait for the previous transmission to complete
 
 		logger.debug("Sending request from " + sm.getSender() + " with sequence number " + sm.getSequence() + " to "
-				+ Arrays.toString(targets));
+				+ Arrays.toString(targetArray));
 
 		if (sm.serializedMessage == null) {
 
@@ -306,8 +310,8 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 		}
 
 		int sent = 0;
-		for (int i = targets.length - 1; i >= 0; i--) {
 
+        for (int target : targetArray) { 
 			// This is done to avoid a race condition with the writeAndFush method. Since
 			// the method is asynchronous,
 			// each iteration of this loop could overwrite the destination of the previous
@@ -319,10 +323,10 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 				continue;
 			}
 
-			sm.destination = targets[i];
+			sm.destination = targets[target];
 
 			rl.readLock().lock();
-			Channel channel = ((NettyClientServerSession) sessionTable.get(targets[i])).getChannel();
+			Channel channel = ((NettyClientServerSession) sessionTable.get(targets[target])).getChannel();
 			rl.readLock().unlock();
 			if (channel.isActive()) {
 				sm.signed = sign;
@@ -332,7 +336,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 
 				sent++;
 			} else {
-				logger.debug("Channel to " + targets[i] + " is not connected");
+				logger.debug("Channel to " + targets[target] + " is not connected");
 			}
 		}
 
@@ -507,7 +511,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 
 			}
 
-			logger.debug("All channel operations completed or timed out");
+			logger.trace("All channel operations completed or timed out");
 
 			this.remainingFutures = n;
 

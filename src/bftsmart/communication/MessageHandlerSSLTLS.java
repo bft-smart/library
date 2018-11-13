@@ -15,16 +15,6 @@ limitations under the License.
 */
 package bftsmart.communication;
 
-import bftsmart.consensus.messages.MessageFactory;
-import bftsmart.consensus.messages.ConsensusMessage;
-import bftsmart.consensus.roles.Acceptor;
-import bftsmart.consensus.roles.AcceptorSSLTLS;
-import bftsmart.statemanagement.SMMessage;
-import bftsmart.tom.core.TOMLayer;
-import bftsmart.tom.core.messages.TOMMessage;
-import bftsmart.tom.core.messages.ForwardedMessage;
-import bftsmart.tom.leaderchange.LCMessage;
-import bftsmart.tom.util.TOMUtil;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
@@ -32,10 +22,21 @@ import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 import java.util.HashMap;
+
 import javax.crypto.Mac;
-import javax.crypto.SecretKey;
-import org.slf4j.LoggerFactory;
+
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import bftsmart.consensus.messages.ConsensusMessage;
+import bftsmart.consensus.messages.MessageFactory;
+import bftsmart.consensus.roles.AcceptorSSLTLS;
+import bftsmart.statemanagement.SMMessage;
+import bftsmart.tom.core.TOMLayer;
+import bftsmart.tom.core.messages.ForwardedMessage;
+import bftsmart.tom.core.messages.TOMMessage;
+import bftsmart.tom.leaderchange.LCMessage;
+import bftsmart.tom.util.TOMUtil;
 
 /**
  *

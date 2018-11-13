@@ -39,25 +39,23 @@
   
   <!-- SPECIFIC CLASS LOGS -->
   
-  
+  <logger name="bftsmart.communication.client.netty.NettyClientServerCommunicationSystemClientSide" level="DEBUG"></logger>
+  <logger name="bftsmart.communication.client.netty.NettyClientServerCommunicationSystemServertSide" level="INFO"></logger>
+    
   <!--
+  
+  <logger name="bftsmart.tom.core.SynchronizerSSLTLS" level="DEBUG"></logger>
+  <logger name="bftsmart.communication.MessageHandlerSSLTLS" level="DEBUG"></logger>
+  <logger name="bftsmart.tom.leaderchange.RequestsTimer" level="DEBUG"></logger>  
   <logger name="bftsmart.communication.client.netty.NettyTOMMessageDecoder" level="TRACE"></logger>
-  
-  <logger name="bftsmart.communication.client.netty.NettyClientServerCommunicationSystemClientSide" level="TRACE"></logger>
-  
   <logger name="bftsmart.tom.server.defaultservices.DefaultRecoverable" level="DEBUG"></logger>
-  
-  <logger name="bftsmart.tom.util.BatchBuilder" level="DEBUG"></logger>
   
   <logger name="bftsmart.consensus.roles.AcceptorSSLTLS" level="TRACE"></logger>
   <logger name="bftsmart.consensus.roles.Acceptor" level="TRACE"></logger>
-  
-  
   <logger name="bftsmart.communication.server.ServersCommunicationLayerSSLTLS" level="DEBUG"></logger>
     
   <logger name="bftsmart.reconfiguration.util.ECDSAKeyLoader" level="TRACE"></logger>
   <logger name="bftsmart.reconfiguration.util.RSAKeyLoader" level="TRACE"></logger>
-  <logger name="bftsmart.communication.client.netty.NettyClientServerCommunicationSystemClientSide" level="DEBUG"></logger>    
   <logger name="bftsmart.tom.leaderchange.LCManager" level="DEBUG"></logger>
   <logger name="bftsmart.communication.server.ServerConnectionSSLTLS" level="DEBUG"></logger>
   
@@ -74,8 +72,6 @@
   
   <logger name="bftsmart.tom.util.TOMUtil" level="TRACE"></logger>
   <logger name="bftsmart.reconfiguration.util.Configuration" level="DEBUG"></logger>
-  <logger name="bftsmart.communication.client.netty.NettyClientServerCommunicationSystemClientSide" level="TRACE"></logger>  
-  <logger name="bftsmart.communication.client.netty.NettyClientServerCommunicationSystemServertSide" level="TRACE"></logger>
   <logger name="bftsmart.communication.client.netty.NettyTOMMessageDecoder" level="TRACE"></logger>
   
   <logger name="bftsmart.tom.ServiceProxy" level="TRACE"></logger>-->

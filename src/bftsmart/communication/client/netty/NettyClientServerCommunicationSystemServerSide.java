@@ -24,7 +24,10 @@ import java.net.UnknownHostException;
 import java.nio.channels.ClosedChannelException;
 import java.security.PrivateKey;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.Iterator;
+import java.util.Random;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -325,6 +328,9 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 		}
 
 		
+		Integer[] targetArray = Arrays.stream( targets ).boxed().toArray( Integer[]::new );
+		Collections.shuffle(Arrays.asList(targetArray), new Random());
+		
 		
 		for (int target = 0; target < targets.length; target++) {
 			// This is done to avoid a race condition with the writeAndFush method. 
@@ -343,13 +349,18 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 				//logger.info("sessionTable.containsKey({}): {}", targets[target], sessionTable.containsKey(targets[target]));
 				sm.destination = targets[target];
 				sessionTable.get(targets[target]).getChannel().writeAndFlush(sm); 
-			}else if (sm.getSequence() >= 0 && sm.getSequence() <= 5) {
+			}else {
+				logger.debug("Client not into sessionTable.containsKey({}): {}", targets[target], sessionTable.containsKey(targets[target]));
+			}
+			
+			/*else if (sm.getSequence() >= 0 && sm.getSequence() <= 5) {
 				logger.info("Creating  thread :: sessionTable.containsKey({}): {}", targets[target], sessionTable.containsKey(targets[target]));
 				ClientSession clientSession = new ClientSession(targets[target], sm);
 				new Thread(clientSession).start();				
 			}else {
-				logger.warn(" ### sm.getSequence() >= 5, why this else?! {}", sm.getSequence());
-			}
+				logger.warn(" ### sm.getSequence() >= 5, {}, Target: {}, "
+						+ "is into sessionTable:{}", sm.getSequence(), targets[target], sessionTable.containsKey(targets[target]));
+			}*/
 			
 			rl.readLock().unlock();
 			
@@ -464,9 +475,10 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 				sm.destination = id;
 				sessionTable.get(id).getChannel().writeAndFlush(sm);
 				logger.info("Sent my message before entering into looop...");
+				counter=101;
 			}
 			
-			while (!sessionTable.containsKey(id) && counter<100) {
+			while (!sessionTable.containsKey(id) && counter<20) {
 				
 				logger.info("sessionTable.containsKey({}): {}", id, sessionTable.containsKey(id));
 				

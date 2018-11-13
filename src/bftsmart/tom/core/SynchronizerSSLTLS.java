@@ -5,27 +5,6 @@
  */
 package bftsmart.tom.core;
 
-import bftsmart.communication.ServerCommunicationSystem;
-import bftsmart.consensus.Decision;
-import bftsmart.consensus.Epoch;
-import bftsmart.consensus.Consensus;
-import bftsmart.consensus.TimestampValuePair;
-import bftsmart.consensus.messages.ConsensusMessage;
-import bftsmart.consensus.messages.MessageFactory;
-import bftsmart.consensus.roles.Acceptor;
-import bftsmart.consensus.roles.AcceptorSSLTLS;
-import bftsmart.reconfiguration.ServerViewController;
-import bftsmart.statemanagement.StateManager;
-import bftsmart.tom.core.messages.TOMMessage;
-import bftsmart.tom.leaderchange.RequestsTimer;
-import bftsmart.tom.leaderchange.CollectData;
-import bftsmart.tom.leaderchange.LCManager;
-import bftsmart.tom.leaderchange.LCMessage;
-import bftsmart.tom.leaderchange.CertifiedDecision;
-import bftsmart.tom.util.BatchBuilder;
-import bftsmart.tom.util.BatchReader;
-import bftsmart.tom.util.TOMUtil;
-
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -34,15 +13,36 @@ import java.io.ObjectOutputStream;
 import java.security.MessageDigest;
 import java.security.SignedObject;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 
 import org.apache.commons.codec.binary.Base64;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import bftsmart.communication.ServerCommunicationSystem;
+import bftsmart.consensus.Consensus;
+import bftsmart.consensus.Decision;
+import bftsmart.consensus.Epoch;
+import bftsmart.consensus.TimestampValuePair;
+import bftsmart.consensus.messages.ConsensusMessage;
+import bftsmart.consensus.messages.MessageFactory;
+import bftsmart.consensus.roles.AcceptorSSLTLS;
+import bftsmart.reconfiguration.ServerViewController;
+import bftsmart.statemanagement.StateManager;
+import bftsmart.tom.core.messages.TOMMessage;
+import bftsmart.tom.leaderchange.CertifiedDecision;
+import bftsmart.tom.leaderchange.CollectData;
+import bftsmart.tom.leaderchange.LCManager;
+import bftsmart.tom.leaderchange.LCMessage;
+import bftsmart.tom.leaderchange.RequestsTimer;
+import bftsmart.tom.util.BatchBuilder;
+import bftsmart.tom.util.BatchReader;
+import bftsmart.tom.util.TOMUtil;
 
 /**
  *
@@ -1078,13 +1078,13 @@ public class SynchronizerSSLTLS {
 
             // Is this replica still executing the last decided consensus?
             if (tom.getLastExec() + 1 == lastHighestCID.getCID()) {
-                
                 logger.info("I'm still at the CID before the most recent one!!! (" + lastHighestCID.getCID() + ")");
                 cons.decided(e, true);
             }
             else {
                 cons.decided(e, false);
             }
+            
 
         } else {
             logger.info("I did not install any proof of last decided consensus " + lastHighestCID.getCID());
@@ -1125,31 +1125,18 @@ public class SynchronizerSSLTLS {
             //Update current consensus with latest ETS. This may be necessary
             //if I 'jumped' to a consensus instance ahead of the one I was executing
                    
-            //int currentETS = lcManager.getETS(currentCID, selectedColls);
-            //if (currentETS > ets) {
             if (regency > ets) {
                 
                 //System.out.println("(Synchronizer.finalise) Updating consensus' ETS after SYNC (from " + ets + " to " + currentETS +")");
                 logger.debug("Updating consensus' ETS after SYNC (from " + ets + " to " + regency +")");
 
-                /*do {
-                    cons.incEts();
-                } while (cons.getEts() != currentETS);*/
-                
                 cons.setETS(regency);
                 
-                //cons.createEpoch(currentETS, controller);
                 cons.createEpoch(regency, controller);
                 
                 e = cons.getLastEpoch();
             }
 
-            // Make sure the epoch is created
-            /*if (e == null || e.getTimestamp() != ets) {
-                e = cons.createEpoch(ets, controller);
-            } else {
-                e.clear();
-            }*/
             if (e == null || e.getTimestamp() != regency) {
                 e = cons.createEpoch(regency, controller);
             } else {
@@ -1194,10 +1181,21 @@ public class SynchronizerSSLTLS {
             if (iAmLeader) {
                 logger.debug("Waking up proposer thread");
                 tom.imAmTheLeader();
-            } // waik up the thread that propose values in normal operation
+            } // wake up the thread that propose values in normal operation
 
             // send a WRITE/ACCEPT message to the other replicas
             if (this.controller.getStaticConf().isBFT()) {
+            	
+				if (controller.getStaticConf().isPersistent()) {
+					HashMap<Integer, byte[]> map = new HashMap<>();
+					map.put(currentCID, e.propValue);
+					/*Iterator<Integer> it = map.keySet().iterator();
+					 * while (it.hasNext()) { Integer cId = (Integer) it.next();
+					 * logger.info("Consensus id not saved yet, leader change view. ConsensusId:{} ", cId ); }
+					 */
+					acceptor.advanceBatchSaving(map);
+				}
+				
                 logger.info("Sending WRITE message for CID " + currentCID + ", timestamp " + e.getTimestamp() + ", value " + Arrays.toString(e.propValueHash));
                 communication.send(this.controller.getCurrentViewOtherAcceptors(),
                         acceptor.getFactory().createWrite(currentCID, e.getTimestamp(), e.propValueHash));

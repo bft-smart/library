@@ -255,17 +255,6 @@ public final class AcceptorSSLTLS {
 
 			if (epoch.deserializedPropValue != null && !epoch.isWriteSetted(me)) {
 				
-				
-				if (this.isPersistent) {
-					try {
-						HashMap<Integer, byte[]> map = new HashMap<>();
-						map.put(cid, value);
-						toPersistBatch.put(map);
-					} catch (InterruptedException e) {
-						e.printStackTrace();
-					}
-				}
-				
 				if (epoch.getConsensus().getDecision().firstMessageProposed == null) {
 					epoch.getConsensus().getDecision().firstMessageProposed = epoch.deserializedPropValue[0];
 				}
@@ -277,15 +266,18 @@ public final class AcceptorSSLTLS {
 				epoch.getConsensus().getDecision().firstMessageProposed.proposeReceivedTime = System.nanoTime();
 
 				if (controller.getStaticConf().isBFT()) {
-					logger.debug("Sending WRITE for cId:{}, I am:{}", cid, me);
-
 					epoch.setWrite(me, epoch.propValueHash);
 					epoch.getConsensus().getDecision().firstMessageProposed.writeSentTime = System.nanoTime();
 
+					if (this.isPersistent) {
+						HashMap<Integer, byte[]> map = new HashMap<>();
+						map.put(cid, value);
+						advanceBatchSaving(map);
+					}
+					
+					logger.debug("Sending WRITE for cId:{}, I am:{}", cid, me);
 					communication.send(this.controller.getCurrentViewOtherAcceptors(),
 							factory.createWrite(cid, epoch.getTimestamp(), epoch.propValueHash));
-
-					logger.debug("WRITE sent for cId:{}, I am:{}", cid, me);
 
 					computeWrite(cid, epoch, epoch.propValueHash);
 
@@ -313,6 +305,11 @@ public final class AcceptorSSLTLS {
 																								// if the proposal is
 																								// garbage
 
+				if (this.isPersistent) {
+					HashMap<Integer, byte[]> map = new HashMap<>();
+					map.put(cid, value);
+					advanceBatchSaving(map);
+				}
 				tomLayer.getSynchronizerSSLTLS().triggerTimeout(new LinkedList<>());
 			}
 		}
@@ -351,7 +348,7 @@ public final class AcceptorSSLTLS {
 		int writeAccepted = epoch.countWrite(value);
 
 		logger.debug("I have {}, WRITE's for cId:{}, Epoch timestamp:{},", writeAccepted, cid, epoch.getTimestamp());
-
+		
 		if (writeAccepted > controller.getQuorum() && Arrays.equals(value, epoch.propValueHash)) {
 
 			if (!epoch.isAcceptSetted(me)) {
@@ -374,14 +371,15 @@ public final class AcceptorSSLTLS {
 				// insertProof(cm, epoch);
 				ConsensusMessage cm = null;
 				try {
+					//logger.info("Waiting for readProof Blocking Queue... cID: {}", cid );
 					cm = readProof.take();
 				} catch (InterruptedException e) {
 					e.printStackTrace();
 				}
 
-
 				if (this.isPersistent) {
-					try {						
+					try {
+						logger.trace("Waiting for saved Blocking Queue... cid: {}", cid );
 						int cId = saved.take();
 						logger.debug("Batch for cId: {} was safely persisted.", cId);
 					} catch (InterruptedException e) {
@@ -400,19 +398,45 @@ public final class AcceptorSSLTLS {
 				computeAccept(cid, epoch, value);
 
 			}
-		} else if (!hasProof) {
+		}else if (!hasProof) {
+			advanceInsertProof(cid, epoch.getTimestamp(), value);
+		} 
+	}
+
+	/**
+	 * Advancing batch disk saving.
+	 * TODO: problem when changing leader.     
+	 *  
+	 * @param cid: consensus id
+	 * @param epoch: epoch
+	 * @param value: value sent in the message
+	 */
+	
+	public void advanceBatchSaving(HashMap<Integer, byte[]> map) {
+		logger.debug("Advancing batch disk saving, KeySet: {}", map.keySet().toString());
+		try {
+			toPersistBatch.put(map);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+	}
+	/**
+	 * Advancing signature proof for Accept message.
+	 * It is called by SynchornizerSSLTLS at Leader Changes. 
+	 * @param cid: consensus id
+	 * @param epoch: epoch
+	 * @param value: value sent in the message
+	 */
+	public void advanceInsertProof(int cid, int epochTimestamp, byte[] value) {
 			hasProof = true;
-			logger.debug("Not into quorum yet, advancing Signature stuff. cId:{}", cid);
-			ConsensusMessage cm = factory.createAccept(cid, epoch.getTimestamp(), value);
+			logger.debug("Advancing signature for ACCEPT message. cId:{}", cid);
+			ConsensusMessage cm = factory.createAccept(cid, epochTimestamp, value);
 			try {
 				insertProof.put(cm);
 			} catch (InterruptedException e) {
 				e.printStackTrace();
 			}
-		}
-
 	}
-
 	
 	/**
 	 * Called when a ACCEPT message is received
@@ -457,8 +481,6 @@ public final class AcceptorSSLTLS {
 					e.printStackTrace();
 				}
 			}
-
-			
 			decide(epoch);
 		}
 	}
@@ -554,6 +576,7 @@ public final class AcceptorSSLTLS {
 							raf.write(mapConsensus.get(cId));
 							raf.close();
 							saved.put(cId);
+							//logger.info("Batch safely saved. cId:{}", cId);
 						} catch (Exception e) {
 							e.printStackTrace();
 						}

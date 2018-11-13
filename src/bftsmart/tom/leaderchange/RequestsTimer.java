@@ -82,7 +82,9 @@ public class RequestsTimer {
             long t = (shortTimeout > -1 ? shortTimeout : timeout);
             //shortTimeout = -1;
             rtTask = new RequestTimerTask();
-            if (controller.getCurrentViewN() > 1) timer.schedule(rtTask, t);
+            if (controller.getCurrentViewN() > 1) {
+           		timer.schedule(rtTask, t);	
+            }
         }
     }
     
@@ -169,13 +171,13 @@ public class RequestsTimer {
         
         if (!pendingRequests.isEmpty()) {
             
-            logger.info("The following requests timed out: " + pendingRequests);
+            logger.trace("The following requests timed out: " + pendingRequests);
             
             for (ListIterator<TOMMessage> li = pendingRequests.listIterator(); li.hasNext(); ) {
                 TOMMessage request = li.next();
                 if (!request.timeout) {
                     
-                    logger.info("Forwarding requests {} to leader", request);
+                    logger.trace("Forwarding requests {} to leader", request);
 
                     request.signed = request.serializedMessageSignature != null;
                     tomLayer.forwardRequestToLeader(request);
