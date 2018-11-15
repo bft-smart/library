@@ -17,15 +17,19 @@ package bftsmart.demo.microbenchmarks;
 
 import bftsmart.tom.MessageContext;
 import bftsmart.tom.ServiceReplica;
+import bftsmart.tom.server.defaultservices.CommandsInfo;
 import bftsmart.tom.server.defaultservices.DefaultRecoverable;
 import bftsmart.tom.util.Storage;
 import bftsmart.tom.util.TOMUtil;
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.ObjectOutputStream;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.security.InvalidKeyException;
 import java.security.KeyFactory;
 import java.security.NoSuchAlgorithmException;
@@ -71,6 +75,7 @@ public final class ThroughputLatencyServer extends DefaultRecoverable{
     private ServiceReplica replica;
     
     private RandomAccessFile randomAccessFile = null;
+    private FileChannel channel = null;
 
     public ThroughputLatencyServer(int id, int interval, int replySize, int stateSize, boolean context,  int signed, int write) {
 
@@ -103,6 +108,7 @@ public final class ThroughputLatencyServer extends DefaultRecoverable{
             try {
                 final File f = File.createTempFile("bft-"+id+"-", Long.toString(System.nanoTime()));
                 randomAccessFile = new RandomAccessFile(f, (write > 1 ? "rwd" : "rw"));
+                channel = randomAccessFile.getChannel();
                 
                 Runtime.getRuntime().addShutdownHook(new Thread() {
                     
@@ -133,6 +139,36 @@ public final class ThroughputLatencyServer extends DefaultRecoverable{
             
         }
         
+        if (randomAccessFile != null) {
+                
+            ObjectOutputStream oos = null;
+            try {
+                CommandsInfo cmd = new CommandsInfo(commands,msgCtxs);
+                ByteArrayOutputStream bos = new ByteArrayOutputStream();
+                oos = new ObjectOutputStream(bos);
+                oos.writeObject(cmd);
+                oos.flush();
+                byte[] bytes = bos.toByteArray();
+                oos.close();
+                bos.close();
+                
+                ByteBuffer bb = ByteBuffer.allocate(bytes.length);
+                bb.put(bytes);
+                bb.flip();
+                
+                channel.write(bb);
+            } catch (IOException ex) {
+                Logger.getLogger(ThroughputLatencyServer.class.getName()).log(Level.SEVERE, null, ex);
+                
+            } finally {
+                try {
+                    oos.close();
+                } catch (IOException ex) {
+                    Logger.getLogger(ThroughputLatencyServer.class.getName()).log(Level.SEVERE, null, ex);
+                }
+            }
+        }
+                    
         return replies;
     }
     
@@ -181,11 +217,7 @@ public final class ThroughputLatencyServer extends DefaultRecoverable{
                 }
             }
             
-            if (randomAccessFile != null) {
-                
-                randomAccessFile.write(request);
-            }
-        } catch (NoSuchAlgorithmException | InvalidKeyException | SignatureException | CertificateException | IOException ex) {
+        } catch (NoSuchAlgorithmException | InvalidKeyException | SignatureException | CertificateException ex) {
             ex.printStackTrace();
             System.exit(0);
         } catch (NoSuchProviderException ex) {
