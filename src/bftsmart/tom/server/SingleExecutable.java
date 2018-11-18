@@ -16,6 +16,7 @@ limitations under the License.
 package bftsmart.tom.server;
 
 import bftsmart.tom.MessageContext;
+import bftsmart.tom.core.messages.TOMMessage;
 
 /**
  * Executables that implement this interface will receive client requests individually.
@@ -40,5 +41,13 @@ public interface SingleExecutable extends Executable {
      * @return the reply for the request issued by the client
      */
     public byte[] executeOrdered(byte[] command, MessageContext msgCtx);
+    
+    public default TOMMessage executeOrdered(int processID, int viewID, byte[] command, MessageContext msgCtx) {
+        
+         byte[] result = executeOrdered(command, msgCtx);
+         
+         return getTOMMessage(processID, viewID, command, msgCtx, result);
+         
+    }
 
 }

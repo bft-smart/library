@@ -198,27 +198,22 @@ public class ServiceReplica {
      * @deprecated 
      */
     public final void receiveReadonlyMessage(TOMMessage message, MessageContext msgCtx) {
-        byte[] response;
+        TOMMessage response;
 
         // This is used to deliver the requests to the application and obtain a reply to deliver
         //to the clients. The raw decision does not need to be delivered to the recoverable since
         // it is not associated with any consensus instance, and therefore there is no need for
         //applications to log it or keep any proof.
-        response = executor.executeUnordered(message.getContent(), msgCtx);
+        response = executor.executeUnordered(id, SVController.getCurrentViewId(),
+                (message.getReqType() == TOMMessageType.UNORDERED_HASHED_REQUEST &&
+                        message.getReplyServer() != this.id),message.getContent(), msgCtx);
 
-        if (message.getReqType() == TOMMessageType.UNORDERED_HASHED_REQUEST
-                && message.getReplyServer() != this.id) {
-            response = TOMUtil.computeHash(response);
-        }
-
-        // Generate the messages to send back to the clients
-        message.reply = new TOMMessage(id, message.getSession(), message.getSequence(), message.getOperationId(),
-                response, SVController.getCurrentViewId(), message.getReqType());
-
-        if (SVController.getStaticConf().getNumRepliers() > 0) {
-            repMan.send(message);
-        } else {
-            cs.send(new int[]{message.getSender()}, message.reply);
+        if (response != null) {
+            if (SVController.getStaticConf().getNumRepliers() > 0) {
+                repMan.send(message);
+            } else {
+                cs.send(new int[]{message.getSender()}, message.reply);
+            }
         }
     }
         
@@ -339,13 +334,13 @@ public class ServiceReplica {
                                 
                                 // This is used to deliver the requests to the application and obtain a reply to deliver
                                 //to the clients. The raw decision is passed to the application in the line above.
-                                byte[] response = ((SingleExecutable) executor).executeOrdered(request.getContent(), msgCtx);
+                                TOMMessage response = ((SingleExecutable) executor).executeOrdered(id, SVController.getCurrentViewId(), request.getContent(), msgCtx);
                                 
-                                // Generate the messages to send back to the clients
-                                request.reply = new TOMMessage(id, request.getSession(),
-                                        request.getSequence(), request.getOperationId(), response, SVController.getCurrentViewId(), request.getReqType());
-                                logger.debug("sending reply to " + request.getSender());
-                                replier.manageReply(request, msgCtx);
+                                if (response != null) {
+                                    
+                                    logger.debug("sending reply to " + request.getSender());
+                                    replier.manageReply(request, msgCtx);
+                                }
                             } else { //this code should never be executed
                                 throw new UnsupportedOperationException("Non-existent interface");
                             }   break;
@@ -427,21 +422,21 @@ public class ServiceReplica {
             msgContexts = msgCtxts.toArray(msgContexts);
             
             //Deliver the batch and wait for replies
-            byte[][] replies = ((BatchExecutable) executor).executeBatch(batch, msgContexts);
+            TOMMessage[] replies = ((BatchExecutable) executor).executeBatch(id, SVController.getCurrentViewId(), batch, msgContexts);
 
             //Send the replies back to the client
-            for (int index = 0; index < toBatch.size(); index++) {
-                TOMMessage request = toBatch.get(index);
-                request.reply = new TOMMessage(id, request.getSession(), request.getSequence(), request.getOperationId(),
-                        replies[index], SVController.getCurrentViewId(), request.getReqType());
+            if (replies != null) {
+                
+                for (TOMMessage reply : replies) {
 
-                if (SVController.getStaticConf().getNumRepliers() > 0) {
-                    logger.debug("Sending reply to " + request.getSender() + " with sequence number " + request.getSequence() + " and operation ID " + request.getOperationId() +" via ReplyManager");
-                    repMan.send(request);
-                } else {
-                    logger.debug("Sending reply to " + request.getSender() + " with sequence number " + request.getSequence() + " and operation ID " + request.getOperationId());
-                    replier.manageReply(request, msgContexts[index]);
-                    //cs.send(new int[]{request.getSender()}, request.reply);
+                    if (SVController.getStaticConf().getNumRepliers() > 0) {
+                        logger.debug("Sending reply to " + reply.getSender() + " with sequence number " + reply.getSequence() + " and operation ID " + reply.getOperationId() +" via ReplyManager");
+                        repMan.send(reply);
+                    } else {
+                        logger.debug("Sending reply to " + reply.getSender() + " with sequence number " + reply.getSequence() + " and operation ID " + reply.getOperationId());
+                        replier.manageReply(reply, null);
+                        //cs.send(new int[]{request.getSender()}, request.reply);
+                    }
                 }
             }
             //DEBUG

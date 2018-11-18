@@ -16,6 +16,7 @@ limitations under the License.
 package bftsmart.tom.server;
 
 import bftsmart.tom.MessageContext;
+import bftsmart.tom.core.messages.TOMMessage;
 
 /**
  * 
@@ -32,5 +33,19 @@ public interface BatchExecutable extends Executable {
      * @return
      */
     public byte[][] executeBatch(byte[][] command, MessageContext[] msgCtx);
+    
+    public default TOMMessage[] executeBatch(int processID, int viewID, byte[][] command, MessageContext[] msgCtx) {
+        
+        TOMMessage[] replies = new TOMMessage[command.length];
+        
+        byte[][] results = executeBatch(command, msgCtx);
+        
+        for (int i = 0; i < results.length; i++) {
+
+            replies[i] = getTOMMessage(processID, viewID, command[i], msgCtx[i], results[i]);
+        }
+        
+        return replies;
+    }
 
 }
