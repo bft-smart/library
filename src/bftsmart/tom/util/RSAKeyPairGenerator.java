@@ -15,6 +15,7 @@ limitations under the License.
 */
 package bftsmart.tom.util;
 
+import bftsmart.reconfiguration.util.TOMConfiguration;
 import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.security.Key;
@@ -42,8 +43,8 @@ public class RSAKeyPairGenerator {
      * @param id the id of the process to generate key
      * @throws Exception something goes wrong when writing the files
      */
-    public void run(int id, int size) throws Exception {
-        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
+    public void run(int id, int size, String provider) throws Exception {
+        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA", provider);
         keyGen.initialize(size);
         KeyPair kp = keyGen.generateKeyPair();
         PublicKey puk = kp.getPublic();
@@ -73,12 +74,18 @@ public class RSAKeyPairGenerator {
         return Base64.encodeBase64String(keyBytes);
     }
 
-    public static void main(String[] args){
-        try{
-            new RSAKeyPairGenerator().run(Integer.parseInt(args[0]), Integer.parseInt(args[1]));
-        }catch(Exception e){
-            System.err.println("Use: RSAKeyPairGenerator <id> <key size>");
-        }
+    public static void main(String[] args) throws Exception{
+        
+        if (args.length < 2) System.err.println("Use: RSAKeyPairGenerator <id> <key length> [config dir]");
+        String confHome = "";
+        if (args.length > 2) confHome = args[2];
+        
+        TOMConfiguration conf = new TOMConfiguration(Integer.parseInt(args[0]), confHome, null);
+        String provider = conf.getSignatureAlgorithmProvider();
+        
+        
+        new RSAKeyPairGenerator().run(Integer.parseInt(args[0]), Integer.parseInt(args[1]), provider);
+
     }
 
 }
