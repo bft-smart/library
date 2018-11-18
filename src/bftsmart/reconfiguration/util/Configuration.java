@@ -195,7 +195,21 @@ public class Configuration {
                 proofType = s;
             }
             
-            if (keyLoader == null) keyLoader = new RSAKeyLoader(processId, configHome, defaultKeys, signatureAlgorithm);
+            if (keyLoader == null) {
+                
+                if (signatureAlgorithm.toLowerCase().contains("ecdsa")) {
+                    logger.debug("Using default ECDSA key loader");
+                    keyLoader = new ECDSAKeyLoader(processId, configHome, defaultKeys, signatureAlgorithm);
+                }
+                else if (signatureAlgorithm.toLowerCase().contains("rsa")) {
+                    logger.debug("Using default RSA key loader");
+                    keyLoader = new RSAKeyLoader(processId, configHome, defaultKeys, signatureAlgorithm);
+                }
+                
+                else {
+                    throw new RuntimeException("Unsupported signature algorithm, custom keyloader required");
+                }
+            }
             
             TOMUtil.init(hmacAlgorithm, secretKeyAlgorithm, keyLoader.getSignatureAlgorithm(), hashAlgorithm,
                     hmacAlgorithmProvider, secretKeyAlgorithmProvider, signatureAlgorithmProvider, hashAlgorithmProvider);
