@@ -210,9 +210,9 @@ public class ServiceReplica {
 
         if (response != null) {
             if (SVController.getStaticConf().getNumRepliers() > 0) {
-                repMan.send(message);
+                repMan.send(response);
             } else {
-                cs.send(new int[]{message.getSender()}, message.reply);
+                cs.send(new int[]{response.getSender()}, response.reply);
             }
         }
     }
