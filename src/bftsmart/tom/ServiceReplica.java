@@ -338,8 +338,8 @@ public class ServiceReplica {
                                 
                                 if (response != null) {
                                     
-                                    logger.debug("sending reply to " + request.getSender());
-                                    replier.manageReply(request, msgCtx);
+                                    logger.debug("sending reply to " + response.getSender());
+                                    replier.manageReply(response, msgCtx);
                                 }
                             } else { //this code should never be executed
                                 throw new UnsupportedOperationException("Non-existent interface");
