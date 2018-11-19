@@ -157,6 +157,7 @@ public final class ThroughputLatencyServer extends DefaultRecoverable{
                 bb.flip();
                 
                 channel.write(bb);
+                channel.force(false);
             } catch (IOException ex) {
                 Logger.getLogger(ThroughputLatencyServer.class.getName()).log(Level.SEVERE, null, ex);
                 
