@@ -216,6 +216,17 @@ public abstract class StateManager {
     }
 
     public void askCurrentConsensusId() {
+        
+        if (SVController.getCurrentViewN() == 1) {
+            logger.info("Replica state is up to date");
+            dt.deliverLock();
+            isInitializing = false;
+            tomLayer.setLastExec(-1);
+            dt.canDeliver();
+            dt.deliverUnlock();
+            return;
+        }
+        
         int me = SVController.getStaticConf().getProcessId();
         int[] target = SVController.getCurrentViewOtherAcceptors();
         SMMessage currentCID;
