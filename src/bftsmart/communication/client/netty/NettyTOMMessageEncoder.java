@@ -100,7 +100,11 @@ public class NettyTOMMessageEncoder extends MessageToByteEncoder<TOMMessage> {
     }
 
     byte[] produceMAC(int id, byte[] data, int me) {
+        
+        rl.readLock().lock();
         NettyClientServerSession session = (NettyClientServerSession)sessionTable.get(id);
+        rl.readLock().unlock();
+        
         if(session == null) {
         	logger.warn("Session for client " + id + " is null");
         	return null;

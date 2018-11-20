@@ -54,7 +54,7 @@ public class AsyncLatencyClient {
     
     public static void main(String[] args) throws IOException {
         if (args.length < 8) {
-            System.out.println("Usage: ... ThroughputLatencyClient <initial client id> <number of clients> <number of operations> <request size> <interval (ms)> <read only?> <verbose?> <nosig | default | ecdsa>");
+            System.out.println("Usage: ... ThroughputLatencyClient <initial client id> <number of clients> <number of operations> <request size> <max interval (ms)> <read only?> <verbose?> <nosig | default | ecdsa>");
             System.exit(-1);
         }
 
@@ -123,6 +123,8 @@ public class AsyncLatencyClient {
         byte[] request;
         TOMMessageType reqType;
         boolean verbose;
+        Random rand;
+        int rampup = 3000;
 
         public Client(int id, int numberOfOps, int requestSize, int interval, boolean readOnly, boolean verbose, int sign) {
 
@@ -137,7 +139,7 @@ public class AsyncLatencyClient {
             this.verbose = verbose;
             this.request = new byte[this.requestSize];
             
-            Random rand = new Random(System.nanoTime() + this.id);
+            rand = new Random(System.nanoTime() + this.id);
             rand.nextBytes(request);
             
             byte[] signature = new byte[0];
@@ -220,8 +222,9 @@ public class AsyncLatencyClient {
                     }, this.reqType);
                     if (i > (this.numberOfOps / 2)) st.store(System.nanoTime() - last_send_instant);
 
-                    if (this.interval > 0) {
-                        Thread.sleep(this.interval);
+                    if (this.interval > 0 || this.rampup > 0) {
+                        Thread.sleep(Math.max(rand.nextInt(this.interval) + 1, this.rampup));
+                        if (this.rampup > 0) this.rampup -= 100;
                     }
                     
                     if (this.verbose) System.out.println("Sending " + (i + 1) + "th op");
