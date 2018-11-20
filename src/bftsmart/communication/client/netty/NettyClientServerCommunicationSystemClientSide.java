@@ -29,6 +29,7 @@ import java.security.spec.InvalidKeySpecException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
@@ -80,7 +81,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 	// ******* EDUARDO BEGIN **************//
 	private ClientViewController controller;
 	// ******* EDUARDO END **************//
-	private ConcurrentHashMap<Integer, NettyClientServerSession> sessionTable = new ConcurrentHashMap<>();
+	private ConcurrentHashMap<Integer, NettyClientServerSession> sessionClientToReplica = new ConcurrentHashMap<>();
 	private ReentrantReadWriteLock rl;
 	private Signature signatureEngine;
 	private boolean closed = false;
@@ -155,7 +156,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 				int replicaId = currV[i];
 
 				rl.readLock().lock();
-				if (sessionTable.get(replicaId) == null) {
+				if (sessionClientToReplica.get(replicaId) == null) {
 					rl.readLock().unlock();
 					rl.writeLock().lock();
 					try {
@@ -198,11 +199,11 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 
 	@Override
 	public void channelRead0(ChannelHandlerContext ctx, TOMMessage sm) throws Exception {
-
+		logger.debug("channelRead0(ChannelHandlerContext ctx, TOMMessage sm).");
+		//debugSessions();
+		
 		if (closed) {
-
 			closeChannelAndEventLoop(ctx.channel());
-
 			return;
 		}
 		trr.replyReceived(sm);
@@ -211,6 +212,8 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 	@Override
 	public void channelActive(ChannelHandlerContext ctx) {
 
+		//debugSessions();
+		
 		if (closed) {
 
 			closeChannelAndEventLoop(ctx.channel());
@@ -224,11 +227,12 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 	public void reconnect(final ChannelHandlerContext ctx) {
 
 		//rl.writeLock().lock();
-		logger.debug("try to reconnect");
 
+//		debugSessions();
 		// Iterator sessions = sessionTable.values().iterator();
 
-		ArrayList<NettyClientServerSession> sessions = new ArrayList<NettyClientServerSession>(sessionTable.values());
+		
+		ArrayList<NettyClientServerSession> sessions = new ArrayList<NettyClientServerSession>(sessionClientToReplica.values());
 		for (NettyClientServerSession ncss : sessions) {
 			if (ncss.getChannel() == ctx.channel()) {
 				int replicaId = ncss.getReplicaId();
@@ -250,7 +254,6 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 
 					} else {
 						// This cleans an old server from the session table
-						//sessionTable.remove(replicaId);
 						removeClient(replicaId);
 					}
 				} catch (NoSuchAlgorithmException ex) {
@@ -326,7 +329,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 			sm.destination = targets[target];
 
 			rl.readLock().lock();
-			Channel channel = ((NettyClientServerSession) sessionTable.get(targets[target])).getChannel();
+			Channel channel = ((NettyClientServerSession) sessionClientToReplica.get(targets[target])).getChannel();
 			rl.readLock().unlock();
 			if (channel.isActive()) {
 				sm.signed = sign;
@@ -394,10 +397,11 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 
 	@Override
 	public void close() {
+		//debugSessions();
+		
 		this.closed = true;
-		// Iterator sessions = sessionTable.values().iterator();
 		rl.readLock().lock();
-		ArrayList<NettyClientServerSession> sessions = new ArrayList<>(sessionTable.values());
+		ArrayList<NettyClientServerSession> sessions = new ArrayList<>(sessionClientToReplica.values());
 		rl.readLock().unlock();
 		for (NettyClientServerSession ncss : sessions) {
 			Channel c = ncss.getChannel();
@@ -409,7 +413,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 
 		//Mac macDummy = TOMUtil.getMacFactory();
 
-		final NettyClientPipelineFactory nettyClientPipelineFactory = new NettyClientPipelineFactory(this, sessionTable,
+		final NettyClientPipelineFactory nettyClientPipelineFactory = new NettyClientPipelineFactory(this, sessionClientToReplica,
 				controller, rl);
 
 		ChannelInitializer channelInitializer = new ChannelInitializer<SocketChannel>() {
@@ -435,17 +439,19 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 	}
 
 	private void closeChannelAndEventLoop(Channel c) {
-		// once having an event in your handler (EchoServerHandler)
-		// Close the current channel
+	//	logger.debug("closeChannelAndEventLoop(Channel c)");
+	//	debugSessions();
 		c.close();
 		// Then close the parent channel (the one attached to the bind)
-		if (c.parent() != null)
+		if (c.parent() != null) {
 			c.parent().close();
-		// c.eventLoop().shutdownGracefully();
+		}
+		
 		workerGroup.shutdownGracefully();
 	}
 
 	private void scheduleReconnect(final ChannelHandlerContext ctx, int time) {
+		logger.debug("scheduleReconnect(final ChannelHandlerContext ctx, int time)");
 		if (closed) {
 			closeChannelAndEventLoop(ctx.channel());
 			return;
@@ -468,7 +474,9 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 		private final Condition enoughCompleted;
 
 		public SyncListener() {
-
+		//	logger.debug("SyncListener(), TheradID:{}", Thread.currentThread().getId());
+		//	debugSessions();
+			
 			this.remainingFutures = 0;
 
 			this.futureLock = new ReentrantLock();
@@ -502,7 +510,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 						+ " channel operations pending, waiting to complete");
 
 				try {
-					this.enoughCompleted.await(1500, TimeUnit.MILLISECONDS); // timeout if a malicous replica refuses to
+					this.enoughCompleted.await(5000, TimeUnit.MILLISECONDS); // timeout if a malicous replica refuses to
 																				// acknowledge the operation as
 																				// completed
 				} catch (InterruptedException ex) {
@@ -523,7 +531,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 	/**
 	 * Tulio Ribeiro
 	 * Connect to specific replica and returns the ChannelFuture. 
-	 * sessionTable is replaced with the new connection.
+	 * sessionClientToReplica is replaced with the new connection.
 	 * Removed redundant code.
 	 */
 	public synchronized ChannelFuture connectToReplica(int replicaId, SecretKeyFactory fac)
@@ -550,16 +558,32 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 		macSend.init(authKey);
 		Mac macReceive = TOMUtil.getMacFactory();
 		macReceive.init(authKey);
-		NettyClientServerSession cs = new NettyClientServerSession(channelFuture.channel(), macSend, macReceive,
-				replicaId);
-		sessionTable.put(replicaId, cs);
+		NettyClientServerSession ncss = new NettyClientServerSession(channelFuture.channel(), 
+																	macSend, 
+																	macReceive, 
+																	replicaId);
+		sessionClientToReplica.put(replicaId, ncss);
 		// ******* EDUARDO END **************//
 
+		 //debugSessions();
 		// Start the client.
 		return channelFuture;
 	}
-	public synchronized  void removeClient(int clientId) {
-		sessionTable.remove(clientId);
+	public synchronized void removeClient(int clientId) {
+		sessionClientToReplica.remove(clientId);
 	}
+	
+	
+
+/*	public void debugSessions() {
+		Iterator<Integer> it = sessionClientToReplica.keySet().iterator();
+		while (it.hasNext()) {
+			Integer key = (Integer) it.next();
+			logger.debug("sessionClientToReplica: Key:{}, Value:{}", key, sessionClientToReplica.get(key));
+
+		}
+
+	}*/
+	
 	
 }

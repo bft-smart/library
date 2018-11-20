@@ -187,7 +187,7 @@ public class RequestsTimer {
             }
 
             if (!pendingRequests.isEmpty()) {
-                logger.info("Attempting to start leader change for requests {}", pendingRequests);
+                logger.debug("Attempting to start leader change for requests {}", pendingRequests);
                 if(tomLayer.getIsSSLTLSEnabled())
                 	tomLayer.getSynchronizerSSLTLS().triggerTimeout(pendingRequests);
                 else

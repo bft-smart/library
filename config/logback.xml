@@ -38,11 +38,11 @@
   
   
   <!-- SPECIFIC CLASS LOGS -->
-  
-  <logger name="bftsmart.communication.client.netty.NettyClientServerCommunicationSystemClientSide" level="DEBUG"></logger>
-  <logger name="bftsmart.communication.client.netty.NettyClientServerCommunicationSystemServertSide" level="INFO"></logger>
-    
   <!--
+  <logger name="bftsmart.communication.client.netty.NettyClientServerCommunicationSystemClientSide" level="DEBUG"></logger>
+  <logger name="bftsmart.communication.client.netty.NettyClientServerCommunicationSystemServerSide" level="DEBUG"></logger>
+    
+  
   
   <logger name="bftsmart.tom.core.SynchronizerSSLTLS" level="DEBUG"></logger>
   <logger name="bftsmart.communication.MessageHandlerSSLTLS" level="DEBUG"></logger>

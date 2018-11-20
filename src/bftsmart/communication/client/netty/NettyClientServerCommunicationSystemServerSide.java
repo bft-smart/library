@@ -24,10 +24,7 @@ import java.net.UnknownHostException;
 import java.nio.channels.ClosedChannelException;
 import java.security.PrivateKey;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.Iterator;
-import java.util.Random;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -65,7 +62,7 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 	private Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	private RequestReceiver requestReceiver;
-	private ConcurrentHashMap<Integer, NettyClientServerSession> sessionTable;
+	private ConcurrentHashMap<Integer, NettyClientServerSession> sessionReplicaToClient;
 	private ReentrantReadWriteLock rl;
 	private ServerViewController controller;
 	private boolean closed = false;
@@ -88,12 +85,12 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 			/*Tulio Ribeiro*/
 			privKey = controller.getStaticConf().getPrivateKey();
 			
-			sessionTable = new ConcurrentHashMap<>();
+			sessionReplicaToClient = new ConcurrentHashMap<>();
 			rl = new ReentrantReadWriteLock();
 
 			// Configure the server.			
 
-			serverPipelineFactory = new NettyServerPipelineFactory(this, sessionTable, controller, rl);
+			serverPipelineFactory = new NettyServerPipelineFactory(this, sessionReplicaToClient, controller, rl);
 
 			EventLoopGroup bossGroup = new NioEventLoopGroup(bossThreads);
 			EventLoopGroup workerGroup = new NioEventLoopGroup(Runtime.getRuntime().availableProcessors());
@@ -116,11 +113,7 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 						}
 					})
 				.childOption(ChannelOption.SO_KEEPALIVE, true)
-				.childOption(ChannelOption.TCP_NODELAY, true)
-				//.childOption(ChannelOption.SO_SNDBUF, tcpSendBufferSize)
-	            //.childOption(ChannelOption.CONNECT_TIMEOUT_MILLIS, connectionTimeoutMsec)
-	            //.childOption(ChannelOption.SO_BACKLOG, connectionBacklog)
-				;
+				.childOption(ChannelOption.TCP_NODELAY, true);
 			String myAddress;
 			String confAddress = controller.getStaticConf().getRemoteAddress(controller.getStaticConf().getProcessId())
 					.getAddress().getHostAddress();
@@ -185,6 +178,8 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 			/* Tulio Ribeiro END */
 
 			mainChannel = f.channel();
+			
+			//debugSessions();
 
 		} catch (InterruptedException | UnknownHostException ex) {
 			logger.error("Failed to create Netty communication system", ex);
@@ -192,10 +187,12 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 	}
 
 	private void closeChannelAndEventLoop(Channel c) {
+		logger.debug("Closing ChannelAndEventLoop");
 		c.flush();
 		c.deregister();
 		c.close();
 		c.eventLoop().shutdownGracefully();
+	//	debugSessions();
 	}
 
 	@Override
@@ -208,12 +205,11 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 		closeChannelAndEventLoop(mainChannel);
 
 		rl.readLock().lock();
-		ArrayList<NettyClientServerSession> sessions = new ArrayList<>(sessionTable.values());
+		ArrayList<NettyClientServerSession> sessions = new ArrayList<>(sessionReplicaToClient.values());
 		rl.readLock().unlock();
+		
 		for (NettyClientServerSession ncss : sessions) {
-
 			closeChannelAndEventLoop(ncss.getChannel());
-
 		}
 
 		logger.info("NettyClientServerCommunicationSystemServerSide is halting.");
@@ -228,7 +224,7 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 			return;
 		}
 		if (cause instanceof ClosedChannelException)
-			logger.info("Connection with client closed.");
+			logger.info("Client connection closed.");
 		else if (cause instanceof IOException) {
 			logger.error("Impossible to connect to client. (Connection reset by peer)");
 		}
@@ -240,6 +236,7 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 	@Override
 	protected void channelRead0(ChannelHandlerContext ctx, TOMMessage sm) throws Exception {
 
+		logger.debug("Channel Read0 (ChannelHandlerContext ctx, TOMMessage sm)");
 		if (this.closed) {
 			closeChannelAndEventLoop(ctx.channel());
 			return;
@@ -250,47 +247,58 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 			logger.warn("Request receiver is still null!");
 		else
 			requestReceiver.requestReceived(sm);
+		
+		//debugSessions();
 	}
 
 	@Override
 	public void channelActive(ChannelHandlerContext ctx) {
+		logger.debug("Client leved. Clientes:{}", sessionReplicaToClient.size());
 		if (this.closed) {
 			closeChannelAndEventLoop(ctx.channel());
 			return;
 		}
-		logger.info("Session Created, active clients = " + sessionTable.size());
+		
+		//debugSessions();
+		
 	}
 
 	@Override
 	public void channelInactive(ChannelHandlerContext ctx) {
+		logger.debug("Channel Inactive");
 		if (this.closed) {
 			closeChannelAndEventLoop(ctx.channel());
 			return;
 		}
 
-		Set s = sessionTable.entrySet();
+		//debugSessions();
+		
+		Set s = sessionReplicaToClient.entrySet();
 		Iterator i = s.iterator();
 		while (i.hasNext()) {
 			Entry m = (Entry) i.next();
 			NettyClientServerSession value = (NettyClientServerSession) m.getValue();
 			if (ctx.channel().equals(value.getChannel())) {
 				int key = (Integer) m.getKey();
-				// logger.debug("Removing client channel with ID= " + key);
-				// sessionTable.remove(key);
 				toRemove(key);
-				// logger.info("Active clients=" + sessionTable.size());
 				break;
 			}
 		}
 
-		logger.debug("Session Closed, active clients=" + sessionTable.size());
+		logger.debug("Session Closed, active clients=" + sessionReplicaToClient.size());
 	}
 
-	public void toRemove(Integer key) {
+	public synchronized void toRemove(Integer key) {
 		
-		//logger.info("Removing client channel with ID = " + key);
-		sessionTable.remove(key);
-		//logger.info("Active clients = " + sessionTable.size());
+		Iterator<Integer> it = sessionReplicaToClient.keySet().iterator();
+		while (it.hasNext()) {
+			Integer cli = (Integer) it.next();
+			logger.debug("SessionReplicaToClient: Key:{}, Value:{}", cli, sessionReplicaToClient.get(cli));
+			
+		}
+		
+		logger.debug("Removing client channel with ID = " + key);
+		sessionReplicaToClient.remove(key);
 		
 	}
 	
@@ -302,6 +310,9 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 	@Override
 	public void send(int[] targets, TOMMessage sm, boolean serializeClassHeaders) {
 
+		//Variable int[] targets, is not used once there is always one target in this context. 
+		//The target it will be only the client related which the request.
+		
 		// serialize message
 		DataOutputStream dos = null;
 
@@ -328,14 +339,11 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 		}
 
 		
-		Integer[] targetArray = Arrays.stream( targets ).boxed().toArray( Integer[]::new );
-		Collections.shuffle(Arrays.asList(targetArray), new Random());
+		/*This method return only to one client at time, there is no race condition.
+		 *  
+		 * */
 		
-		
-		for (int target = 0; target < targets.length; target++) {
-			// This is done to avoid a race condition with the writeAndFush method. 
-			// Since the method is asynchronous, each iteration of this loop could 
-			// overwrite the destination of the previous one.
+		for(int target : targets) {
 			try {
 				sm = (TOMMessage) sm.clone();
 			} catch (CloneNotSupportedException ex) {
@@ -344,97 +352,26 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 			}
 
 			rl.readLock().lock();
-
-			if(sessionTable.containsKey(targets[target])) {
-				//logger.info("sessionTable.containsKey({}): {}", targets[target], sessionTable.containsKey(targets[target]));
-				sm.destination = targets[target];
-				sessionTable.get(targets[target]).getChannel().writeAndFlush(sm); 
-			}else {
-				logger.debug("Client not into sessionTable.containsKey({}): {}", targets[target], sessionTable.containsKey(targets[target]));
+			if(sessionReplicaToClient.containsKey(target)) {
+				sm.destination = target;
+				sessionReplicaToClient.get(target).getChannel().writeAndFlush(sm);				
+			}else {				
+				logger.debug("Client not into sessionReplicaToClient({}):{}, waiting and retrying.", 
+						target, sessionReplicaToClient.containsKey(target));
+				/*ClientSession clientSession = new ClientSession(target, sm);
+				new Thread(clientSession).start();*/			
+				//should I wait for the client?
 			}
-			
-			/*else if (sm.getSequence() >= 0 && sm.getSequence() <= 5) {
-				logger.info("Creating  thread :: sessionTable.containsKey({}): {}", targets[target], sessionTable.containsKey(targets[target]));
-				ClientSession clientSession = new ClientSession(targets[target], sm);
-				new Thread(clientSession).start();				
-			}else {
-				logger.warn(" ### sm.getSequence() >= 5, {}, Target: {}, "
-						+ "is into sessionTable:{}", sm.getSequence(), targets[target], sessionTable.containsKey(targets[target]));
-			}*/
-			
 			rl.readLock().unlock();
-			
-			/*try {
-				NettyClientServerSession ncss = (NettyClientServerSession) sessionTable.get(targets[target]);
-				if (ncss != null) {
-					Channel session = ncss.getChannel();
-					sm.destination = targets[target];
-					// send message
-					session.writeAndFlush(sm); // This used to invoke "await". Removed to avoid blockage and race
-												// condition.
-
-					/////// TODO: replace this patch for a proper client preamble
-				}else if (ncss != null) {
-					logger.warn("NettyClientServerSession is NULL! sequence: " + sm.getSequence() + ", ID; " + targets[target]);
-				}
-				else if (sm.getSequence() >= 0 && sm.getSequence() <= 5) {
-
-					final int id = targets[target];
-					final TOMMessage msg = sm;
-
-					Thread t = new Thread() {
-
-						public void run() {
-
-							logger.warn("Received request from " + id
-									+ " before establishing Netty connection. Re-trying until connection is established");
-
-							NettyClientServerSession ncss = null;
-							while (ncss == null) {
-
-								rl.readLock().lock();
-
-								try {
-									Thread.sleep(100);
-								} catch (InterruptedException ex) {
-									logger.error("Interruption while sleeping", ex);
-								}
-
-								ncss = (NettyClientServerSession) sessionTable.get(id);
-								if (ncss != null) {
-									Channel session = ncss.getChannel();
-									msg.destination = id;
-									// send message
-									session.writeAndFlush(msg);
-								}
-
-								rl.readLock().unlock();
-							}
-
-							logger.info("Connection with " + id + " established!");
-
-						}
-
-					};
-
-					t.start();
-					///////////////////////////////////////////
-				} 
-				else {
-					logger.warn("... sm.getSequence() >= 0 && sm.getSequence() <= 5 ::: {}", sm.getSequence());
-				}
-			} finally {
-				// sendLock.unlock();
-				rl.readLock().unlock();
-			}*/
 		}
+		
 	}
 		
 	@Override
 	public int[] getClients() {
 
 		rl.readLock().lock();
-		Set s = sessionTable.keySet();
+		Set s = sessionReplicaToClient.keySet();
 		int[] clients = new int[s.size()];
 		Iterator it = s.iterator();
 		int i = 0;
@@ -443,9 +380,7 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 			clients[i] = ((Integer) it.next()).intValue();
 			i++;
 		}
-
 		rl.readLock().unlock();
-
 		return clients;
 	}
 	
@@ -453,11 +388,11 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 	
 	/**
 	 * Thread to deal with delayed ClientSession connection. 
-	 * 
+	 * Is it necessary?
 	 * @author Tulio Ribeiro 
 	 *
 	 */
-	private class ClientSession implements Runnable {
+	/*private class ClientSession implements Runnable {
 		int id;
 		TOMMessage sm;
 		
@@ -471,24 +406,24 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 			logger.info("Client session thread running. ThreadId: {}", Thread.currentThread().getId());			
 			
 			int counter=0;
-			if(sessionTable.containsKey(id)) {
+			if(sessionReplicaToClient.containsKey(id)) {
 				sm.destination = id;
-				sessionTable.get(id).getChannel().writeAndFlush(sm);
+				sessionReplicaToClient.get(id).getChannel().writeAndFlush(sm);
 				logger.info("Sent my message before entering into looop...");
-				counter=101;
+				counter=6;
 			}
 			
-			while (!sessionTable.containsKey(id) && counter<20) {
+			while (!sessionReplicaToClient.containsKey(id) && counter<5) {
 				
-				logger.info("sessionTable.containsKey({}): {}", id, sessionTable.containsKey(id));
+				logger.info("sessionTable.containsKey({}): {}", id, sessionReplicaToClient.containsKey(id));
 				
-				if(sessionTable.containsKey(id)) {
+				if(sessionReplicaToClient.containsKey(id)) {
 					sm.destination = id;
-					sessionTable.get(id).getChannel().writeAndFlush(sm);
+					sessionReplicaToClient.get(id).getChannel().writeAndFlush(sm);
 					logger.info("Sent my message, leaving the loop...");
 				}
 				try {
-					Thread.sleep(100);
+					Thread.sleep(200);
 				} catch (InterruptedException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
@@ -496,6 +431,16 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 				counter++;
 			}
 		}
-	}
+	}*/
 
+/*	public void debugSessions() {
+		Iterator<Integer> it = sessionReplicaToClient.keySet().iterator();
+		while (it.hasNext()) {
+			Integer key = (Integer) it.next();
+			logger.debug("SessionReplicaToClient: Key:{}, Value:{}", key, sessionReplicaToClient.get(key));
+
+		}
+
+	}*/
+	
 }

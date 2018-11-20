@@ -22,23 +22,15 @@ import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Scanner;
 import java.util.StringTokenizer;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import bftsmart.communication.server.ServerConnection;
 import bftsmart.communication.server.ServerConnectionSSLTLS;
 import bftsmart.reconfiguration.views.View;
 import bftsmart.tom.util.KeyLoader;
-
-import java.security.KeyManagementException;
-import java.security.KeyStoreException;
-import java.security.NoSuchAlgorithmException;
-import java.security.Provider;
-import java.security.UnrecoverableKeyException;
-import java.security.cert.CertificateException;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  *

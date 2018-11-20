@@ -371,8 +371,16 @@ public final class AcceptorSSLTLS {
 				// insertProof(cm, epoch);
 				ConsensusMessage cm = null;
 				try {
-					//logger.info("Waiting for readProof Blocking Queue... cID: {}", cid );
-					cm = readProof.take();
+					if(this.hasProof) {
+						logger.info("Waiting for readProof Blocking Queue... cID: {}", cid );
+						cm = readProof.take();
+					}
+					else {
+						//Deal with some case where the protocol does not execute from begin, as leader change.
+						logger.info("Proof not done yes, leader change?, hasProof:{}", this.hasProof);
+						advanceInsertProof(cid, epoch.getTimestamp(), value);
+						cm = readProof.take();
+					}
 				} catch (InterruptedException e) {
 					e.printStackTrace();
 				}
@@ -429,7 +437,7 @@ public final class AcceptorSSLTLS {
 	 */
 	public void advanceInsertProof(int cid, int epochTimestamp, byte[] value) {
 			hasProof = true;
-			logger.debug("Advancing signature for ACCEPT message. cId:{}", cid);
+			logger.info("Advancing signature for ACCEPT message. cId:{}", cid);
 			ConsensusMessage cm = factory.createAccept(cid, epochTimestamp, value);
 			try {
 				insertProof.put(cm);

@@ -70,7 +70,7 @@ public class LCManager {
     private HashMap<Integer,HashSet<CertifiedDecision>> lastCIDs;
     private HashMap<Integer,HashSet<SignedObject>> collects;
 
-    //stuff from the TOM layer that this object needss
+    //stuff from the TOM layer that this object needs
     private ServerViewController SVController;
     private MessageDigest md;
     private TOMLayer tomLayer;
