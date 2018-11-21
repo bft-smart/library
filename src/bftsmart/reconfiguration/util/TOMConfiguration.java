@@ -317,7 +317,7 @@ public class TOMConfiguration extends Configuration {
 
             s = (String) configs.remove("system.numrepliers");
             if (s == null) {
-                numRepliers = 0;
+                numRepliers = Runtime.getRuntime().availableProcessors();
             } else {
                 numRepliers = Integer.parseInt(s);
             }

@@ -1,79 +1,72 @@
-/*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
- */
 package bftsmart.tom.core;
+
+import java.util.LinkedList;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+import org.slf4j.LoggerFactory;
 
 import bftsmart.communication.ServerCommunicationSystem;
 import bftsmart.tom.core.messages.TOMMessage;
-import java.util.LinkedList;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.TimeUnit;
-import org.slf4j.LoggerFactory;
-
 
 /**
- *
- * @author joao
+ * @author Joao; Tulio Ribeiro
  */
 public class ReplyManager {
-    
-    private LinkedList<ReplyThread> threads;
-    private int iteration;
-    
-    public ReplyManager(int numThreads, ServerCommunicationSystem cs) {
-        
-        this.threads = new LinkedList();
-        this.iteration = 0;
-        
-        for (int i = 0; i < numThreads; i++) {
+
+	ReplyThread rt;
+	private LinkedList<ReplyThread> threads;
+	private int iteration;
+	
+	public ReplyManager(int numThreads, ServerCommunicationSystem cs) {
+		rt = new ReplyThread(cs);
+		this.threads = new LinkedList<>();
+
+		for (int i = 0; i < numThreads; i++) {
             this.threads.add(new ReplyThread(cs));
         }
         
         for (ReplyThread t : threads)
-            t.start();
-    }
-    
-    public void send (TOMMessage msg) {
+            new Thread(t).start();
+	}
 
-        iteration++;
+	public void send(TOMMessage msg) {
+		iteration++;
         threads.get((iteration % threads.size())).send(msg);
-
-    }
+	}
 }
-class ReplyThread extends Thread {
-    
-    private static final long POOL_TIME = 5000;
-    
-    private LinkedBlockingQueue<TOMMessage> replies;
-    private ServerCommunicationSystem cs = null;
-    
-    ReplyThread(ServerCommunicationSystem cs) {
-        this.cs = cs;
-        this.replies = new LinkedBlockingQueue<TOMMessage>();
-    }
-    
-    void send(TOMMessage msg) {
-        replies.add(msg);
-    }
-    
-    public void run() {
 
-        TOMMessage msg;
+class ReplyThread implements Runnable {
+	private LinkedBlockingQueue<TOMMessage> replies;
+	private ServerCommunicationSystem cs = null;
 
-        while (true) {
+	ReplyThread(ServerCommunicationSystem cs) {
+		this.cs = cs;
+		this.replies = new LinkedBlockingQueue<TOMMessage>();
+	}
 
-            try {
-                msg = replies.poll(POOL_TIME, TimeUnit.MILLISECONDS);
-                if (msg == null) {
-                    continue; //go back to the start of the loop
-                }
-                cs.getClientsConn().send(new int[] {msg.getSender()}, msg.reply, false);
-            } catch (InterruptedException ex) {
-                LoggerFactory.getLogger(this.getClass()).error("Could not retrieve reply from queue",ex);
-            }
+	void send(TOMMessage msg) {
+		try {
+			replies.put(msg);
+		} catch (InterruptedException ex) {
+			Logger.getLogger(ReplyThread.class.getName()).log(Level.SEVERE, null, ex);
+		}
+	}
 
-        }
-
-    }
+	@Override
+	public void run() {
+		while (true) {
+			try {
+				LinkedList<TOMMessage> list = new LinkedList<>();
+				list.add(replies.take());
+				replies.drainTo(list);
+				for (TOMMessage msg : list) {
+					cs.getClientsConn().send(new int[] { msg.getSender() }, msg.reply, false);
+				}
+			} catch (InterruptedException ex) {
+				LoggerFactory.getLogger(this.getClass()).error("Could not retrieve reply from queue", ex);
+			}
+		}
+	}
 }
