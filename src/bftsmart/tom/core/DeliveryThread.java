@@ -45,6 +45,7 @@ public final class DeliveryThread extends Thread {
     private Logger logger = LoggerFactory.getLogger(this.getClass());
 
     private boolean doWork = true;
+    private boolean hadReconfig = false;	
     private final LinkedBlockingQueue<Decision> decided; 
     private final TOMLayer tomLayer; // TOM layer
     private final ServiceReplica receiver; // Object that receives requests from clients
@@ -95,18 +96,21 @@ public final class DeliveryThread extends Thread {
         } catch (Exception e) {
             logger.error("Could not insert decision into decided queue",e);
         }
-        
-        if (!containsGoodReconfig(dec)) {
 
-            logger.debug("Decision from consensus " + dec.getConsensusId() + " does not contain good reconfiguration");
-            //set this decision as the last one from this replica
-            tomLayer.setLastExec(dec.getConsensusId());
-            //define that end of this execution
-            tomLayer.setInExec(-1);
-        } //else if (tomLayer.controller.getStaticConf().getProcessId() == 0) System.exit(0);
-    }
+		hadReconfig = containsReconfig(dec);
 
-    private boolean containsGoodReconfig(Decision dec) {
+		if (!hadReconfig) {
+			logger.debug("Decision from consensus " + dec.getConsensusId() + " does not contain good reconfiguration");
+			// set this decision as the last one from this replica
+			tomLayer.setLastExec(dec.getConsensusId());
+			// define that end of this execution
+			tomLayer.setInExec(-1);
+		} // else if (tomLayer.controller.getStaticConf().getProcessId() == 0)
+			// System.exit(0);
+
+	}
+
+	private boolean containsReconfig(Decision dec) {
         TOMMessage[] decidedMessages = dec.getDeserializedValue();
 
         for (TOMMessage decidedMessage : decidedMessages) {
@@ -237,17 +241,21 @@ public final class DeliveryThread extends Thread {
                     if (requests != null && requests.length > 0) {
                         deliverMessages(consensusIds, regenciesIds, leadersIds, cDecs, requests);
 
-                        // ******* EDUARDO BEGIN ***********//
-                        if (controller.hasUpdates()) {
-                            processReconfigMessages(lastDecision.getConsensusId());
-
-                            // set the consensus associated to the last decision as the last executed
-                            tomLayer.setLastExec(lastDecision.getConsensusId());
-                            // define that end of this execution
-                            tomLayer.setInExec(-1);
-                            // ******* EDUARDO END **************//
+                       // ******* EDUARDO BEGIN ***********//
+                       if (controller.hasUpdates()) {
+                           processReconfigMessages(lastDecision.getConsensusId());
                         }
-                    }
+                       if (hadReconfig) {
+                           
+                           // set the consensus associated to the last decision as the last executed
+                           tomLayer.setLastExec(lastDecision.getConsensusId());
+                           // define that end of this execution
+                           tomLayer.setInExec(-1);
+                           // ******* EDUARDO END **************//
+                           
+                           hadReconfig = false;
+                       }
+                   }
 
                     // define the last stable consensus... the stable consensus can
                     // be removed from the leaderManager and the executionManager
