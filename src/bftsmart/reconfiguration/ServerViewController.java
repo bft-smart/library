@@ -109,11 +109,12 @@ public class ServerViewController extends ViewController {
 
     public void enqueueUpdate(TOMMessage up) {
         ReconfigureRequest request = (ReconfigureRequest) TOMUtil.getObject(up.getContent());
-        if (TOMUtil.verifySignature(getStaticConf().getPublicKey(request.getSender()),
-                request.toString().getBytes(), request.getSignature())) {
-            if (request.getSender() == getStaticConf().getTTPId()) {
+        if (request != null && request.getSender() == getStaticConf().getTTPId() 
+                && TOMUtil.verifySignature(getStaticConf().getPublicKey(request.getSender()),
+                    request.toString().getBytes(), request.getSignature())) {
+            //if (request.getSender() == getStaticConf().getTTPId()) {
                 this.updates.add(up);
-            } else {
+            /*} else {
                 boolean add = true;
                 Iterator<Integer> it = request.getProperties().keySet().iterator();
                 while (it.hasNext()) {
@@ -144,7 +145,9 @@ public class ServerViewController extends ViewController {
                 if(add){
                     this.updates.add(up);
                 }
-            }
+            }*/
+        } else {
+            logger.warn("Invalid reconfiguration from {}, discarding", up.getSender());
         }
     }
 

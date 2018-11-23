@@ -45,6 +45,7 @@ public final class DeliveryThread extends Thread {
     private Logger logger = LoggerFactory.getLogger(this.getClass());
 
     private boolean doWork = true;
+    private boolean hadReconfig = false;
     private final LinkedBlockingQueue<Decision> decided; 
     private final TOMLayer tomLayer; // TOM layer
     private final ServiceReplica receiver; // Object that receives requests from clients
@@ -96,7 +97,9 @@ public final class DeliveryThread extends Thread {
             logger.error("Could not insert decision into decided queue",e);
         }
         
-        if (!containsGoodReconfig(dec)) {
+        hadReconfig = containsReconfig(dec);
+        
+        if (!hadReconfig) {
 
             logger.debug("Decision from consensus " + dec.getConsensusId() + " does not contain good reconfiguration");
             //set this decision as the last one from this replica
@@ -106,7 +109,7 @@ public final class DeliveryThread extends Thread {
         } //else if (tomLayer.controller.getStaticConf().getProcessId() == 0) System.exit(0);
     }
 
-    private boolean containsGoodReconfig(Decision dec) {
+    private boolean containsReconfig(Decision dec) {
         TOMMessage[] decidedMessages = dec.getDeserializedValue();
 
         for (TOMMessage decidedMessage : decidedMessages) {
@@ -240,12 +243,16 @@ public final class DeliveryThread extends Thread {
                         // ******* EDUARDO BEGIN ***********//
                         if (controller.hasUpdates()) {
                             processReconfigMessages(lastDecision.getConsensusId());
-
+                        }
+                        if (hadReconfig) {
+                            
                             // set the consensus associated to the last decision as the last executed
                             tomLayer.setLastExec(lastDecision.getConsensusId());
                             // define that end of this execution
                             tomLayer.setInExec(-1);
                             // ******* EDUARDO END **************//
+                            
+                            hadReconfig = false;
                         }
                     }
 
