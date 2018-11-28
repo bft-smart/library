@@ -292,6 +292,8 @@ public class ClientsManager {
                     (!request.signed ||
                     clientData.verifySignature(request.serializedMessage,
                             request.serializedMessageSignature))) {
+                
+                logger.debug("Message from client {} is valid", clientData.getClientId());
 
                 //I don't have the message but it is valid, I will
                 //insert it in the pending requests of this client
@@ -307,6 +309,9 @@ public class ClientsManager {
                 }
 
                 accounted = true;
+            } else {
+                
+                logger.warn("Message from client {} is invalid", clientData.getClientId());
             }
         } else {
             //I will not put this message on the pending requests list
@@ -331,6 +336,9 @@ public class ClientsManager {
                 }
                 accounted = true;
             } else {
+                
+                logger.warn("Message from client {} is too forward", clientData.getClientId());
+                
                 //a too forward message... the client must be malicious
                 accounted = false;
             }
