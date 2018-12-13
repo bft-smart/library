@@ -126,8 +126,7 @@ public class Decision {
     }
 
     private void waitForPropose() {
-        while (decisionEpoch == null &&
-                decisionEpoch.deserializedPropValue == null) {
+        while (decisionEpoch == null || decisionEpoch.deserializedPropValue == null) {
             try {
                 LoggerFactory.getLogger(this.getClass()).info("waiting for propose for consensus " + cid);
                 Thread.sleep(1);
