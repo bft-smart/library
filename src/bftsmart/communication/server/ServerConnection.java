@@ -412,6 +412,9 @@ public class ServerConnection {
     }
 
     private void closeSocket() {
+        
+        connectLock.lock();
+        
         if (socket != null) {
             try {
                 socketOutStream.flush();
@@ -426,6 +429,8 @@ public class ServerConnection {
             socketOutStream = null;
             socketInStream = null;
         }
+        
+        connectLock.unlock();
     }
 
     private void waitAndConnect() {
