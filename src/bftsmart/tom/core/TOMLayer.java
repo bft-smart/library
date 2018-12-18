@@ -44,6 +44,8 @@ import bftsmart.tom.server.RequestVerifier;
 import bftsmart.tom.util.BatchBuilder;
 import bftsmart.tom.util.BatchReader;
 import bftsmart.tom.util.TOMUtil;
+import java.util.Timer;
+import java.util.TimerTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.util.concurrent.CountDownLatch;
@@ -76,6 +78,11 @@ public final class TOMLayer extends Thread implements RequestReceiver {
      * Manage timers for pending requests
      */
     public RequestsTimer requestsTimer;
+    
+    //timeout for batch
+    private Timer batchTimer = null;
+    private long lastRequest = -1;
+    
     /**
      * Store requests received but still not ordered
      */
@@ -147,7 +154,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         } else {
             this.requestsTimer = new RequestsTimer(this, communication, this.controller); // Create requests timers manager (a thread)
         }
-
+        
         try {
             this.md = TOMUtil.getHashEngine();
         } catch (Exception e) {
@@ -172,6 +179,24 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         this.clientsManager = new ClientsManager(this.controller, requestsTimer, this.verifier);
 
         this.syncher = new Synchronizer(this); // create synchronizer
+        
+        if (controller.getStaticConf().getBatchTimeout() > -1) {
+
+            batchTimer = new Timer();
+            batchTimer.scheduleAtFixedRate(new TimerTask() {
+                @Override
+                public void run() {
+
+                    if (clientsManager.havePendingRequests() && 
+                            (System.currentTimeMillis() - lastRequest) >= controller.getStaticConf().getBatchTimeout()) {
+
+                        logger.debug("Signaling proposer thread!!");
+                        haveMessages();
+                    }
+                }
+
+            }, 0, controller.getStaticConf().getBatchTimeout());
+        }
     }
 
     /**
@@ -304,7 +329,21 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             logger.debug("Received TOMMessage from client " + msg.getSender() + " with sequence number " + msg.getSequence() + " for session " + msg.getSession());
 
             if (clientsManager.requestReceived(msg, true, communication)) {
-                haveMessages();
+                
+                if(controller.getStaticConf().getBatchTimeout() == -1) {
+                    haveMessages();
+                } else {
+                    
+                    if (clientsManager.countPendingRequests() < controller.getStaticConf().getMaxBatchSize()) {
+                        
+                        lastRequest = System.currentTimeMillis();
+                                                
+                    } else {
+                        
+                        haveMessages();
+                    }
+                    
+                }
             } else {
                 logger.warn("The received TOMMessage " + msg + " was discarded.");
             }
@@ -378,14 +417,18 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
             // blocks until there are requests to be processed/ordered
             messagesLock.lock();
-            if (!clientsManager.havePendingRequests()) {
+            if (!clientsManager.havePendingRequests() ||
+                    (controller.getStaticConf().getBatchTimeout() > -1 && clientsManager.countPendingRequests() < controller.getStaticConf().getMaxBatchSize())) {
+                
+                logger.debug("Waiting for enough requests");
                 haveMessages.awaitUninterruptibly();
+                logger.debug("Got enough requests");
             }
             messagesLock.unlock();
             
             if (!doWork) break;
             
-            logger.debug("There are messages to be ordered.");
+            logger.debug("There are requests to be ordered.");
 
             logger.debug("I can try to propose.");
 

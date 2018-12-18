@@ -179,6 +179,38 @@ public class ClientsManager {
         clientsLock.unlock();
         return havePending;
     }
+    
+    /**
+     * Retrieves the number of pending requests
+     * @return Number of pending requests
+     */
+    public int countPendingRequests() {
+        int count = 0;
+
+        clientsLock.lock();
+        /******* BEGIN CLIENTS CRITICAL SECTION ******/        
+        
+        Iterator<Entry<Integer, ClientData>> it = clientsData.entrySet().iterator();
+
+        while (it.hasNext()) {
+            ClientData clientData = it.next().getValue();
+            
+            clientData.clientLock.lock();
+            RequestList reqs = clientData.getPendingRequests();
+            if (!reqs.isEmpty()) {
+                for(TOMMessage msg:reqs) {
+                    if(!msg.alreadyProposed) {
+                        count++;
+                    }
+                }
+            }
+            clientData.clientLock.unlock();
+        }
+
+        /******* END CLIENTS CRITICAL SECTION ******/
+        clientsLock.unlock();
+        return count;
+    }
 
     /**
      * Verifies if some reqId is pending.

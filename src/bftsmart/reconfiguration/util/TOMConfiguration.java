@@ -16,7 +16,6 @@ limitations under the License.
 package bftsmart.reconfiguration.util;
 
 import bftsmart.tom.util.KeyLoader;
-import java.security.Provider;
 import java.util.StringTokenizer;
 
 import java.util.regex.Pattern;
@@ -31,6 +30,7 @@ public class TOMConfiguration extends Configuration {
     protected int n;
     protected int f;
     protected int requestTimeout;
+    protected int batchTimeout;
     protected int tomPeriod;
     protected int paxosHighMark;
     protected int revivalHighMark;
@@ -103,6 +103,16 @@ public class TOMConfiguration extends Configuration {
                 requestTimeout = Integer.parseInt(s);
                 if (requestTimeout < 0) {
                     requestTimeout = 0;
+                }
+            }
+            
+            s = (String) configs.remove("system.totalordermulticast.batchtimeout");
+            if (s == null) {
+                batchTimeout = -1;
+            } else {
+                batchTimeout = Integer.parseInt(s);
+                if (batchTimeout <= 0) {
+                    batchTimeout = -1;
                 }
             }
 
@@ -369,6 +379,10 @@ public class TOMConfiguration extends Configuration {
         return requestTimeout;
     }
 
+    public int getBatchTimeout() {
+        return batchTimeout;
+    }
+    
     public int getReplyVerificationTime() {
         return replyVerificationTime;
     }
