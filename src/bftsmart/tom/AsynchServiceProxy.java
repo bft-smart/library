@@ -48,7 +48,6 @@ public class AsynchServiceProxy extends ServiceProxy {
      */
     public AsynchServiceProxy(int processId) {
         this(processId, null);
-        init();
     }
 
 /**
@@ -142,8 +141,7 @@ public class AsynchServiceProxy extends ServiceProxy {
         
         cleanerThread.start();
         
-        //This does not work, but I cant understans why yet.
-        /*invokeQueue = new LinkedBlockingQueue<>();
+        invokeQueue = new LinkedBlockingQueue<>();
         invokeThread = new Thread() {
             
             public void run() {
@@ -151,9 +149,14 @@ public class AsynchServiceProxy extends ServiceProxy {
                 while(true) {
                     
                     try {
-                        RequestContext tuple = invokeQueue.take();
+                        RequestContext requestContext = invokeQueue.take();
                         
-                        invokeAsynch(tuple);
+                        logger.debug("Dequeing invoke at client {} for request #{}", getViewManager().getStaticConf().getProcessId(), requestContext.getOperationId());
+
+                        invokeAsynch(requestContext);
+
+                        logger.debug("Finished invoke at client {} for request #{}", getViewManager().getStaticConf().getProcessId(), requestContext.getOperationId());
+
                         
                     } catch (InterruptedException ex) {
                         logger.error("Interrupted error.",ex);
@@ -162,7 +165,7 @@ public class AsynchServiceProxy extends ServiceProxy {
             }
         };
         
-        invokeThread.start();*/
+        invokeThread.start();
     }
     
     private View newView(byte[] bytes) {
@@ -200,10 +203,10 @@ public class AsynchServiceProxy extends ServiceProxy {
          RequestContext requestContext = new RequestContext(generateRequestId(reqType), generateOperationId(),
                 reqType, targets, System.currentTimeMillis(), replyListener, request, dos);
         
-         //This does not work, i dont know why yet
-        //invokeQueue.put(requestContext);
-        invokeAsynch(requestContext);
-        
+         logger.debug("Enqueuing invoke at client {} for request #{}", getViewManager().getStaticConf().getProcessId(), requestContext.getOperationId());
+
+        invokeQueue.put(requestContext);
+                            
         return requestContext.getOperationId();
     }
 
@@ -335,7 +338,7 @@ public class AsynchServiceProxy extends ServiceProxy {
 
                             requestContext.getReplyListener().reset();
 
-                            Thread t = new Thread() {
+                            /*Thread t = new Thread() {
 
                                 @Override
                                 public void run() {
@@ -352,12 +355,11 @@ public class AsynchServiceProxy extends ServiceProxy {
 
                             };
 
-                            t.start();
+                            t.start();*/
                             
-                            //does not work, dont know why yet
-                            //RequestContext newContext = new RequestContext(generateRequestId(requestContext.getRequestType()), generateOperationId(),
-                            //    requestContext.getRequestType(), requestContext.getTargets(), System.currentTimeMillis(), replyListener, requestContext.getRequest(), requestContext.getDoS());
-                            //invokeQueue.put(newContext);
+                            RequestContext newContext = new RequestContext(generateRequestId(requestContext.getRequestType()), generateOperationId(),
+                                requestContext.getRequestType(), requestContext.getTargets(), System.currentTimeMillis(), replyListener, requestContext.getRequest(), requestContext.getDoS());
+                            invokeQueue.put(newContext);
 
                         }
                         
@@ -380,7 +382,7 @@ public class AsynchServiceProxy extends ServiceProxy {
         logger.debug("Asynchronously sending request to " + Arrays.toString(requestContext.getTargets()));
 
         canSendLock.lock();
-
+        
         try {
             logger.debug("Storing request context for " + requestContext.getOperationId());
             requestsContext.put(requestContext.getOperationId(), requestContext);
@@ -389,6 +391,8 @@ public class AsynchServiceProxy extends ServiceProxy {
             ackId = requestContext.getOperationId();
             Arrays.fill(acks, null);
             
+            logger.debug("Sending invoke at client {} for request #{}", getViewManager().getStaticConf().getProcessId(), requestContext.getOperationId());
+
             sendMessageToTargets(requestContext.getRequest(), requestContext.getReqId(),
                     requestContext.getOperationId(), requestContext.getTargets(), requestContext.getRequestType());
             

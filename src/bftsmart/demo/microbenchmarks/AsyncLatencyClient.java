@@ -42,6 +42,8 @@ import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -114,6 +116,8 @@ public class AsyncLatencyClient {
         
         System.out.println("All clients done.");
         
+        System.exit(0);
+        
     }
 
     static class Client extends Thread {
@@ -129,6 +133,10 @@ public class AsyncLatencyClient {
         Random rand;
         int rampup = 3000;
         boolean dos;
+        
+        int completed = 0;
+        ReentrantLock completionLock;
+        Condition isFinished;
 
         public Client(int id, int numberOfOps, int requestSize, int interval, boolean readOnly, boolean verbose, int sign, boolean dos) {
 
@@ -144,6 +152,9 @@ public class AsyncLatencyClient {
             this.request = new byte[this.requestSize];
             this.dos = dos;
             
+            this.completionLock = new ReentrantLock();
+            this.isFinished =completionLock.newCondition();
+        
             rand = new Random(System.nanoTime() + this.id);
             rand.nextBytes(request);
             
@@ -196,16 +207,18 @@ public class AsyncLatencyClient {
 
                 for (int i = 0; i < this.numberOfOps; i++) {
                     
-                    long last_send_instant = System.nanoTime();
-                    int id = this.serviceProxy.invokeAsynchRequest(this.request, new ReplyListener() {
+                        long last_send_instant = System.nanoTime();
+                        int id = this.serviceProxy.invokeAsynchRequest(this.request, new ReplyListener() {
 
                         private int replies = 0;
+                        private boolean gotQuorum = false;
 
                         @Override
                         public void reset() {
 
                             if (verbose) System.out.println("[RequestContext] The proxy is re-issuing the request to the replicas");
                             replies = 0;
+                            gotQuorum = false;
                         }
 
                         @Override
@@ -219,14 +232,22 @@ public class AsyncLatencyClient {
 
                             double q = Math.ceil((double) (serviceProxy.getViewManager().getCurrentViewN() + serviceProxy.getViewManager().getCurrentViewF() + 1) / 2.0);
 
-                            if (replies >= q) {
+                            if (replies >= q && !gotQuorum) {
                                 if (verbose) System.out.println("[RequestContext] clean request context id: " + context.getReqId());
+                                completed++;
+                                gotQuorum = true;
                                 try {
                                     serviceProxy.cleanAsynchRequest(context.getOperationId());
                                 } catch (InterruptedException ex) {
                                     ex.printStackTrace();
                                 }
                                 
+                                if (completed >= numberOfOps) {
+                                                                        
+                                    completionLock.lock();
+                                    isFinished.signalAll();
+                                    completionLock.unlock();
+                                }
                             }
                         }
                     }, this.reqType, this.dos);
@@ -240,8 +261,6 @@ public class AsyncLatencyClient {
                     
                     if (this.verbose) System.out.println("Sending " + (i + 1) + "th op");
                 }
-
-                Thread.sleep(100);//wait 100ms to receive the last replies
                 
                 if(this.id == initId) {
                    System.out.println(this.id + " // Average time for " + numberOfOps / 2 + " executions (-10%) = " + st.getAverage(true) / 1000 + " us ");
@@ -254,6 +273,22 @@ public class AsyncLatencyClient {
             } catch (Exception e) {
                 e.printStackTrace();
             } finally {
+                
+                System.out.println(this.id + " // Waiting for all replies to arrive.");
+                
+                if (completed < numberOfOps) {
+                                    
+                    try {
+                        completionLock.lock();
+                        isFinished.await();
+                        completionLock.unlock();
+                    } catch (InterruptedException ex) {
+                        ex.printStackTrace();
+                    }
+                }
+                
+                System.out.println(this.id + " // Closing after " + completed + " ops.");
+                
                 this.serviceProxy.close();
             }
 

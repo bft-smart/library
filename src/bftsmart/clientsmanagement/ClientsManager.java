@@ -385,7 +385,8 @@ public class ClientsManager {
                 accounted = true;
             } else {
                 
-                logger.warn("Message from client {} is too forward", clientData.getClientId());
+                logger.warn("Message from client {} is too forward  (last message received was #{} and last delivered was #{})",
+                        clientData.getClientId(), clientData.getLastMessageReceived(), clientData.getLastMessageDelivered());
                 
                 //a too forward message... the client must be malicious
                 accounted = false;
