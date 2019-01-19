@@ -15,7 +15,7 @@ public final class RequestContext{
 	private final long sendingTime;
 	private final ReplyListener replyListener;
         private final byte[] request;
-        
+        private final boolean dos;
 
         /**
          * Constructor 
@@ -29,7 +29,7 @@ public final class RequestContext{
          * @param request Payload of the request
          */
 	public RequestContext(int reqId, int operationId, TOMMessageType requestType, int [] targets, 
-			long sendingTime, ReplyListener replyListener, byte[] request) {
+			long sendingTime, ReplyListener replyListener, byte[] request, boolean dos) {
 		this.reqId = reqId;
 		this.operationId = operationId;
 		this.requestType = requestType;
@@ -37,6 +37,7 @@ public final class RequestContext{
 		this.sendingTime = sendingTime;
 		this.replyListener = replyListener;
                 this.request = request;
+                this.dos = dos;
 	}
         
         /**
@@ -96,5 +97,13 @@ public final class RequestContext{
         public byte [] getRequest() {
 		return request;
 	}
+        
+        /**
+         * Returns whether client is set to ignore contrl flow mechanism
+         * @return Whether client is set to ignore contrl flow mechanism
+         */
+        public boolean getDoS() {
+            return dos;
+        }
 }
 

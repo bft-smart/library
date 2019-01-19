@@ -22,9 +22,12 @@ import java.util.Map.Entry;
 import java.util.concurrent.locks.ReentrantLock;
 import bftsmart.communication.ServerCommunicationSystem;
 import bftsmart.reconfiguration.ServerViewController;
+import bftsmart.tom.core.ExecutionManager;
 import bftsmart.tom.core.messages.TOMMessage;
+import bftsmart.tom.core.messages.TOMMessageType;
 import bftsmart.tom.leaderchange.RequestsTimer;
 import bftsmart.tom.server.RequestVerifier;
+import java.nio.ByteBuffer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,13 +43,18 @@ public class ClientsManager {
     private RequestsTimer timer;
     private HashMap<Integer, ClientData> clientsData = new HashMap<Integer, ClientData>();
     private RequestVerifier verifier;
+    private boolean ignore = false;
+    private ExecutionManager manager;
+    private ServerCommunicationSystem cs;
     
     private ReentrantLock clientsLock = new ReentrantLock();
 
-    public ClientsManager(ServerViewController controller, RequestsTimer timer, RequestVerifier verifier) {
+    public ClientsManager(ServerViewController controller, RequestsTimer timer, RequestVerifier verifier, ServerCommunicationSystem cs, ExecutionManager manager) {
         this.controller = controller;
         this.timer = timer;
         this.verifier = verifier;
+        this.cs = cs;
+        this.manager = manager;
     }
 
     /**
@@ -241,10 +249,6 @@ public class ClientsManager {
         return pendingMessage;
     }
 
-    public boolean requestReceived(TOMMessage request, boolean fromClient) {
-        return requestReceived(request, fromClient, null);
-    }
-
     /**
      * Notifies the ClientsManager that a new request from a client arrived.
      * This method updates the ClientData of the client request.getSender().
@@ -258,8 +262,35 @@ public class ClientsManager {
      * for this client, false if there is some problem and the message was not
      * accounted
      */
-    public boolean requestReceived(TOMMessage request, boolean fromClient, ServerCommunicationSystem cs) {
+    public boolean requestReceived(TOMMessage request, boolean fromClient) {
                 
+        int pending = countPendingRequests();
+        
+        //logger.info("Currently {} requests pending to be ordered", pending);
+        
+        //control flow mechanism
+        if (fromClient) {
+            if (this.controller.getStaticConf().getMaxPendigReqs() > 0) {
+
+                if (pending >= this.controller.getStaticConf().getMaxPendigReqs()) {
+
+                    ignore = true;
+
+                } else if (pending <= this.controller.getStaticConf().getPreferredPendigReqs()) {
+
+                    ignore = false;
+                }
+            }
+
+            if (ignore) {
+
+                logger.warn("Discarding message due to control flow mechanism (max requests at {}, current requests at {})", 
+                        this.controller.getStaticConf().getMaxPendigReqs(), countPendingRequests());
+
+                return false;
+            }
+        }
+        
         long receptionTime = System.nanoTime();
         long receptionTimestamp = System.currentTimeMillis();
         
@@ -282,25 +313,6 @@ public class ClientsManager {
         request.receptionTime = receptionTime;
         request.receptionTimestamp = receptionTimestamp;
         
-        /******* BEGIN CLIENTDATA CRITICAL SECTION ******/
-        //Logger.println("(ClientsManager.requestReceived) lock for client "+clientData.getClientId()+" acquired");
-
-        /* ################################################ */
-        //pjsousa: simple flow control mechanism to avoid out of memory exception
-        if (fromClient && (controller.getStaticConf().getUseControlFlow() != 0)) {
-            if (clientData.getPendingRequests().size() > controller.getStaticConf().getUseControlFlow()) {
-                //clients should not have more than defined in the config file
-                //outstanding messages, otherwise they will be dropped.
-                //just account for the message reception
-                clientData.setLastMessageReceived(request.getSequence());
-                clientData.setLastMessageReceivedTime(request.receptionTime);
-
-                clientData.clientLock.unlock();
-                return false;
-            }
-        }
-        /* ################################################ */
-
         //new session... just reset the client counter
         if (clientData.getSession() != request.getSession()) {
             clientData.setSession(request.getSession());
@@ -340,6 +352,8 @@ public class ClientsManager {
                     timer.watch(request);
                 }
 
+                sendAck(fromClient, request);
+                
                 accounted = true;
             } else {
                 
@@ -365,6 +379,8 @@ public class ClientsManager {
                         reply.recvFromClient = true;
                     }
                     
+                } else {
+                    sendAck(fromClient, request);
                 }
                 accounted = true;
             } else {
@@ -383,6 +399,22 @@ public class ClientsManager {
         return accounted;
     }
 
+    public void sendAck (boolean fromClient, TOMMessage request) {
+        if ((fromClient || !request.ackSent) && this.controller.getStaticConf().getMaxPendigReqs() > 0 && cs != null) {
+            
+            logger.debug("Sending ACK to client {}", request.getSender());
+            
+            ByteBuffer buff = ByteBuffer.allocate(Integer.BYTES);
+            buff.putInt(manager.getCurrentLeader());
+                    
+            TOMMessage ack = new TOMMessage(controller.getStaticConf().getProcessId(), request.getSession(), request.getSequence(), 
+                    request.getOperationId(), buff.array(), request.getViewID(), TOMMessageType.ACK);
+
+            cs.send(new int[]{request.getSender()}, ack);
+            
+            request.ackSent = true;
+        }
+    }
     /**
      * Notifies the ClientsManager that these requests were already executed.
      * 

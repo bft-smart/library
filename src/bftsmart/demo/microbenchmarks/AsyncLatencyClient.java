@@ -42,6 +42,8 @@ import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  *
@@ -53,8 +55,8 @@ public class AsyncLatencyClient {
     static int initId;
     
     public static void main(String[] args) throws IOException {
-        if (args.length < 8) {
-            System.out.println("Usage: ... ThroughputLatencyClient <initial client id> <number of clients> <number of operations> <request size> <max interval (ms)> <read only?> <verbose?> <nosig | default | ecdsa>");
+        if (args.length < 9) {
+            System.out.println("Usage: ... ThroughputLatencyClient <initial client id> <number of clients> <number of operations> <request size> <max interval (ms)> <read only?> <verbose?> <DoS?> <nosig | default | ecdsa>");
             System.exit(-1);
         }
 
@@ -65,7 +67,8 @@ public class AsyncLatencyClient {
         int interval = Integer.parseInt(args[4]);
         boolean readOnly = Boolean.parseBoolean(args[5]);
         boolean verbose = Boolean.parseBoolean(args[6]);
-        String sign = args[7];
+        boolean dos = Boolean.parseBoolean(args[7]);
+        String sign = args[8];
         
         int s = 0;
         if (!sign.equalsIgnoreCase("nosig")) s++;
@@ -87,7 +90,7 @@ public class AsyncLatencyClient {
             }
 
             System.out.println("Launching client " + (initId + i));
-            clients[i] = new AsyncLatencyClient.Client(initId + i, numberOfOps, requestSize, interval, readOnly, verbose, s);
+            clients[i] = new AsyncLatencyClient.Client(initId + i, numberOfOps, requestSize, interval, readOnly, verbose, s, dos);
         }
         
         ExecutorService exec = Executors.newFixedThreadPool(clients.length);
@@ -107,10 +110,10 @@ public class AsyncLatencyClient {
 
         }
     
-        exec.shutdown();
+        //exec.shutdown();
         
         System.out.println("All clients done.");
-
+        
     }
 
     static class Client extends Thread {
@@ -125,8 +128,9 @@ public class AsyncLatencyClient {
         boolean verbose;
         Random rand;
         int rampup = 3000;
+        boolean dos;
 
-        public Client(int id, int numberOfOps, int requestSize, int interval, boolean readOnly, boolean verbose, int sign) {
+        public Client(int id, int numberOfOps, int requestSize, int interval, boolean readOnly, boolean verbose, int sign, boolean dos) {
 
             this.id = id;
             this.serviceProxy = new AsynchServiceProxy(id);
@@ -138,6 +142,7 @@ public class AsyncLatencyClient {
             this.reqType = (readOnly ? TOMMessageType.UNORDERED_REQUEST : TOMMessageType.ORDERED_REQUEST);
             this.verbose = verbose;
             this.request = new byte[this.requestSize];
+            this.dos = dos;
             
             rand = new Random(System.nanoTime() + this.id);
             rand.nextBytes(request);
@@ -192,7 +197,7 @@ public class AsyncLatencyClient {
                 for (int i = 0; i < this.numberOfOps; i++) {
                     
                     long last_send_instant = System.nanoTime();
-                    this.serviceProxy.invokeAsynchRequest(this.request, new ReplyListener() {
+                    int id = this.serviceProxy.invokeAsynchRequest(this.request, new ReplyListener() {
 
                         private int replies = 0;
 
@@ -216,13 +221,19 @@ public class AsyncLatencyClient {
 
                             if (replies >= q) {
                                 if (verbose) System.out.println("[RequestContext] clean request context id: " + context.getReqId());
-                                serviceProxy.cleanAsynchRequest(context.getOperationId());
+                                try {
+                                    serviceProxy.cleanAsynchRequest(context.getOperationId());
+                                } catch (InterruptedException ex) {
+                                    ex.printStackTrace();
+                                }
+                                
                             }
                         }
-                    }, this.reqType);
+                    }, this.reqType, this.dos);
+                    
                     if (i > (this.numberOfOps / 2)) st.store(System.nanoTime() - last_send_instant);
 
-                    if (this.interval > 0 || this.rampup > 0) {
+                    if (this.interval > 0) {
                         Thread.sleep(Math.max(rand.nextInt(this.interval) + 1, this.rampup));
                         if (this.rampup > 0) this.rampup -= 100;
                     }

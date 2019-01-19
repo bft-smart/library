@@ -31,12 +31,16 @@ public class TOMConfiguration extends Configuration {
     protected int f;
     protected int requestTimeout;
     protected int batchTimeout;
+    protected int controlFlowTimeout;
+    protected int invokeTimeout;
     protected int tomPeriod;
     protected int paxosHighMark;
     protected int revivalHighMark;
     protected int timeoutHighMark;
     protected int replyVerificationTime;
     protected int maxBatchSize;
+    protected int maxPendingReqs;
+    protected int preferredPendingReqs;
     protected int numberOfNonces;
     protected int inQueueSize;
     protected int outQueueSize;
@@ -116,6 +120,26 @@ public class TOMConfiguration extends Configuration {
                 }
             }
 
+            s = (String) configs.remove("system.totalordermulticast.invoketimeout");
+            if (s == null) {
+                invokeTimeout = 1000;
+            } else {
+                invokeTimeout = Integer.parseInt(s);
+                if (invokeTimeout <= 0) {
+                    invokeTimeout = 1000;
+                }
+            }
+            
+            s = (String) configs.remove("system.totalordermulticast.controlflowtimeout");
+            if (s == null) {
+                controlFlowTimeout = 40000;
+            } else {
+                controlFlowTimeout = Integer.parseInt(s);
+                if (controlFlowTimeout <= 0) {
+                    controlFlowTimeout = 40000;
+                }
+            }
+            
             s = (String) configs.remove("system.totalordermulticast.highMark");
             if (s == null) {
                 paxosHighMark = 10000;
@@ -153,6 +177,24 @@ public class TOMConfiguration extends Configuration {
                 maxBatchSize = Integer.parseInt(s);
             }
 
+            s = (String) configs.remove("system.totalordermulticast.maxpendingreqs");
+            if (s == null) {
+                maxPendingReqs = 100000;
+            } else {
+                maxPendingReqs = Integer.parseInt(s);
+                if (maxPendingReqs <= 0) {
+                    maxPendingReqs = -1;
+                }
+            }
+            
+            s = (String) configs.remove("system.totalordermulticast.preferredpendingreqs");
+            if (s == null) {
+                preferredPendingReqs = 10000;
+            } else {
+                preferredPendingReqs = Integer.parseInt(s);
+
+            }
+            
             s = (String) configs.remove("system.totalordermulticast.replayVerificationTime");
             if (s == null) {
                 replyVerificationTime = 0;
@@ -383,6 +425,10 @@ public class TOMConfiguration extends Configuration {
         return batchTimeout;
     }
     
+    public int getInvokeTimeout() {
+        return invokeTimeout;
+    }
+    
     public int getReplyVerificationTime() {
         return replyVerificationTime;
     }
@@ -411,6 +457,18 @@ public class TOMConfiguration extends Configuration {
         return maxBatchSize;
     }
 
+    public int getMaxPendigReqs() {
+        return maxPendingReqs;
+    }
+    
+    public int getPreferredPendigReqs() {
+        return preferredPendingReqs;
+    }
+    
+    public int getControlFlowTimeout() {
+        return controlFlowTimeout;
+    }
+    
     public boolean isShutdownHookEnabled() {
         return shutdownHookEnabled;
     }

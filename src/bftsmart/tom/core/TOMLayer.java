@@ -176,7 +176,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         this.verifier = (verifier != null) ? verifier : ((request) -> true); // By default, never validate requests 
 		
         // I have a verifier, now create clients manager
-        this.clientsManager = new ClientsManager(this.controller, requestsTimer, this.verifier);
+        this.clientsManager = new ClientsManager(this.controller, requestsTimer, this.verifier, this.communication, this.execManager);
 
         this.syncher = new Synchronizer(this); // create synchronizer
         
@@ -187,6 +187,8 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                 @Override
                 public void run() {
 
+                    //logger.info("Currently pending requests: " + clientsManager.countPendingRequests());
+                    
                     if (clientsManager.havePendingRequests() && 
                             (System.currentTimeMillis() - lastRequest) >= controller.getStaticConf().getBatchTimeout()) {
 
@@ -194,7 +196,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                         haveMessages();
                     }
                 }
-
+                
             }, 0, controller.getStaticConf().getBatchTimeout());
         }
     }
@@ -328,7 +330,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         } else {
             logger.debug("Received TOMMessage from client " + msg.getSender() + " with sequence number " + msg.getSequence() + " for session " + msg.getSession());
 
-            if (clientsManager.requestReceived(msg, true, communication)) {
+            if (clientsManager.requestReceived(msg, true)) {
                 
                 if(controller.getStaticConf().getBatchTimeout() == -1) {
                     haveMessages();

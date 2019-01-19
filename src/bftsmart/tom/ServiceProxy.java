@@ -30,7 +30,7 @@ import bftsmart.tom.core.messages.TOMMessageType;
 import bftsmart.tom.util.Extractor;
 import bftsmart.tom.util.KeyLoader;
 import bftsmart.tom.util.TOMUtil;
-import java.security.Provider;
+import java.nio.ByteBuffer;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,18 +47,20 @@ public class ServiceProxy extends TOMSender {
 
 	// Locks for send requests and receive replies
 	protected ReentrantLock canReceiveLock = new ReentrantLock();
-	protected ReentrantLock canSendLock = new ReentrantLock();
-	private Semaphore sm = new Semaphore(0);
+	protected ReentrantLock canSendLock = new ReentrantLock(); // for the control flow mechanism
+	private Semaphore invoke = new Semaphore(0);
+        protected Semaphore controlFlow = new Semaphore(0);
 	private int reqId = -1; // request id
 	private int operationId = -1; // request id
+        protected int ackId = -1; // or the control flow mechanism
 	private TOMMessageType requestType;
 	private int replyQuorum = 0; // size of the reply quorum
 	private TOMMessage replies[] = null; // Replies from replicas are stored here
+        protected TOMMessage acks[] = null; // Control flow acknowledgments from replicas are store here
 	private int receivedReplies = 0; // Number of received replies
 	private TOMMessage response = null; // Reply delivered to the application
-	private int invokeTimeout = 40;
-	private Comparator<byte[]> comparator;
-	private Extractor extractor;
+	protected Comparator<byte[]> comparator;
+	protected Extractor extractor;
 	private Random rand = new Random(System.currentTimeMillis());
 	private int replyServer;
 	private HashResponseController hashResponseController;
@@ -111,6 +113,7 @@ public class ServiceProxy extends TOMSender {
 		}
 
 		replies = new TOMMessage[getViewManager().getCurrentViewN()];
+                acks = new TOMMessage[getViewManager().getCurrentViewN()];
 
 		comparator = (replyComparator != null) ? replyComparator : new Comparator<byte[]>() {
 			@Override
@@ -128,16 +131,6 @@ public class ServiceProxy extends TOMSender {
 		};
 	}
 
-	/**
-	 * Get the amount of time (in seconds) that this proxy will wait for
-	 * servers replies before returning null.
-	 *
-	 * @return the timeout value in seconds
-	 */
-	public int getInvokeTimeout() {
-		return invokeTimeout;
-	}
-
         /**
 	 * Get the amount of time (in seconds) that this proxy will wait for
 	 * servers unordered hashed replies before returning null.
@@ -146,16 +139,6 @@ public class ServiceProxy extends TOMSender {
          */
 	public int getInvokeUnorderedHashedTimeout() {
 		return invokeUnorderedHashedTimeout;
-	}
-
-	/**
-	 * Set the amount of time (in seconds) that this proxy will wait for
-	 * servers replies before returning null.
-	 *
-	 * @param invokeTimeout the timeout value to set
-	 */
-	public void setInvokeTimeout(int invokeTimeout) {
-		this.invokeTimeout = invokeTimeout;
 	}
 
         /**
@@ -225,6 +208,7 @@ public class ServiceProxy extends TOMSender {
 
 		// Clean all statefull data to prepare for receiving next replies
 		Arrays.fill(replies, null);
+                Arrays.fill(acks, null);
 		receivedReplies = 0;
 		response = null;
 		replyQuorum = getReplyQuorum();
@@ -236,7 +220,10 @@ public class ServiceProxy extends TOMSender {
 
 		replyServer = -1;
 		hashResponseController = null;
+                ackId = operationId;
 
+                TOMMessage sm = null;
+                        
 		if(requestType == TOMMessageType.UNORDERED_HASHED_REQUEST){
 
 			replyServer = getRandomlyServerId();
@@ -246,16 +233,21 @@ public class ServiceProxy extends TOMSender {
 			hashResponseController = new HashResponseController(getViewManager().getCurrentViewPos(replyServer),
 					getViewManager().getCurrentViewProcesses().length);
 
-			TOMMessage sm = new TOMMessage(getProcessId(),getSession(), reqId, operationId, request,
+			sm = new TOMMessage(getProcessId(),getSession(), reqId, operationId, request,
 					getViewManager().getCurrentViewId(), requestType);
 			sm.setReplyServer(replyServer);
 
-			TOMulticast(sm);
 		}else{
-			TOMulticast(request, reqId, operationId, reqType);
+                    
+                    sm = new TOMMessage(getProcessId(), getSession(), reqId, operationId, request, getViewManager().getCurrentViewId(), reqType);
 		}
 
-		logger.debug("Sending request (" + reqType + ") with reqId=" + reqId);
+
+                //logger.info("Sending invoke at client {} for request #{}", getViewManager().getStaticConf().getProcessId(), reqId);
+
+                TOMulticast(sm);
+
+                logger.debug("Sending request (" + reqType + ") with reqId=" + reqId);
 		logger.debug("Expected number of matching replies: " + replyQuorum);
 
 		// This instruction blocks the thread, until a response is obtained.
@@ -263,20 +255,44 @@ public class ServiceProxy extends TOMSender {
 		// by the client side communication system
 		try {
 			if(reqType == TOMMessageType.UNORDERED_HASHED_REQUEST){
-				if (!this.sm.tryAcquire(invokeUnorderedHashedTimeout, TimeUnit.SECONDS)) {
+				if (!this.invoke.tryAcquire(invokeUnorderedHashedTimeout, TimeUnit.SECONDS)) {
 					logger.info("######## UNORDERED HASHED REQUEST TIMOUT ########");
 					canSendLock.unlock();
 					return invoke(request,TOMMessageType.ORDERED_REQUEST);
 				}
 			}else{ 
-				if (!this.sm.tryAcquire(invokeTimeout, TimeUnit.SECONDS)) {
-					logger.info("###################TIMEOUT#######################");
-					logger.info("Reply timeout for reqId=" + reqId + ", Replies received: " + receivedReplies);
-					canSendLock.unlock();
+                            
+                            if (getViewManager().getStaticConf().getMaxPendigReqs() > 0) {
+                                while (true) {
 
-					return null;
-				}
+                                    if (this.controlFlow.tryAcquire(getViewManager().getStaticConf().getControlFlowTimeout(), TimeUnit.MILLISECONDS)) {
+
+                                        break;
+
+
+                                    } else {
+
+                                        if (reqId != -1) {
+                                            logger.warn("Retrying invoke at client {} for request #{}", getViewManager().getStaticConf().getProcessId(), operationId);
+                                            Arrays.fill(acks, null);
+                                            TOMulticast(sm);
+                                        } else {
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            if (!this.invoke.tryAcquire(getViewManager().getStaticConf().getInvokeTimeout(), TimeUnit.MILLISECONDS)) {
+                                    
+                                logger.error("###################TIMEOUT#######################");
+                                logger.error("Reply timeout for reqId=" + reqId + ", Replies received: " + receivedReplies);
+                                canSendLock.unlock();
+
+                                return null;
+                            }
 			}
+                        
 		} catch (InterruptedException ex) {
 			logger.error("Problem aquiring semaphore",ex);
 		}
@@ -359,6 +375,7 @@ public class ServiceProxy extends TOMSender {
 		getViewManager().reconfigureTo(v);
 		getViewManager().getViewStore().storeView(v);
 		replies = new TOMMessage[getViewManager().getCurrentViewN()];
+                acks = new TOMMessage[getViewManager().getCurrentViewN()];
 		getCommunicationSystem().updateConnections();
 	}
 	//******* EDUARDO END **************//
@@ -387,6 +404,52 @@ public class ServiceProxy extends TOMSender {
 				return;
 			}
 
+                        //control flow mechanism
+                        if (reply.getReqType() == TOMMessageType.ACK) {
+                            
+                            logger.debug("Received ACK from {} to {}",reply.getSender(), getProcessId());
+                            
+                            if (reply.getSession() == getSession() && ackId == operationId &&
+                                    reply.getOperationId() == operationId && reply.getSequence() == reqId) {
+                                                            
+                                int sameContent = 1;
+                                int leader = -1;
+                                
+                                acks[pos] = reply;
+                                
+                                for (int i = 0; i < acks.length; i++) {
+
+                                    if ((i != pos || getViewManager().getCurrentViewN() == 1) && acks[i] != null
+                                                    && (comparator.compare(acks[i].getContent(), reply.getContent()) == 0)) {
+                                            sameContent++;
+                                            if (sameContent >= replyQuorum) {
+                                                    ByteBuffer buff = ByteBuffer.wrap(extractor.extractResponse(acks, sameContent, pos).getContent());
+                                                    leader = buff.getInt();
+                                                    
+                                                    logger.debug("Client {} received quorum of ACKs for req id #{} "+
+                                                              "indicating replica {} as the leader", getProcessId(), operationId, leader);
+
+                                                    int p = getViewManager().getCurrentViewPos(leader);
+                                                    
+                                                    if (acks[p] != null) {
+                                                                
+                                                        logger.debug("Client {} also received ACK from leader, client "+
+                                                                "can stop re-transmiting request #{}", getProcessId(), operationId);
+                                                        
+                                                        Arrays.fill(acks, null);
+                                                        ackId = -1;
+                                                        this.controlFlow.release();
+                                                    }
+                                            }
+                                    }
+                                }
+                            }
+
+                            canReceiveLock.unlock();
+
+                            return;
+                        }
+                        
 			int sameContent = 1;
 			if (reply.getSequence() == reqId && reply.getReqType() == requestType) {
 
@@ -398,7 +461,7 @@ public class ServiceProxy extends TOMSender {
 					response = hashResponseController.getResponse(pos,reply);
 					if(response !=null){
 						reqId = -1;
-						this.sm.release(); // resumes the thread that is executing the "invoke" method
+						this.invoke.release(); // resumes the thread that is executing the "invoke" method
 						canReceiveLock.unlock();
 						return;
 					}
@@ -419,7 +482,7 @@ public class ServiceProxy extends TOMSender {
 							if (sameContent >= replyQuorum) {
 								response = extractor.extractResponse(replies, sameContent, pos);
 								reqId = -1;
-								this.sm.release(); // resumes the thread that is executing the "invoke" method
+								this.invoke.release(); // resumes the thread that is executing the "invoke" method
 								canReceiveLock.unlock();
 								return;
 							}
@@ -431,17 +494,17 @@ public class ServiceProxy extends TOMSender {
 					if (requestType.equals(TOMMessageType.ORDERED_REQUEST)) {
 						if (receivedReplies == getViewManager().getCurrentViewN()) {
 							reqId = -1;
-							this.sm.release(); // resumes the thread that is executing the "invoke" method
+							this.invoke.release(); // resumes the thread that is executing the "invoke" method
 						}
 					}else if (requestType.equals(TOMMessageType.UNORDERED_HASHED_REQUEST)) {
 						if (hashResponseController.getNumberReplies() == getViewManager().getCurrentViewN()) {
 							reqId = -1;
-							this.sm.release(); // resumes the thread that is executing the "invoke" method
+							this.invoke.release(); // resumes the thread that is executing the "invoke" method
 						}
 					} else {  // UNORDERED
 						if (receivedReplies != sameContent) {
 							reqId = -1;
-							this.sm.release(); // resumes the thread that is executing the "invoke" method
+							this.invoke.release(); // resumes the thread that is executing the "invoke" method
 						}
 					}
 				}

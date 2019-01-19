@@ -7,9 +7,16 @@ import bftsmart.tom.core.messages.TOMMessageType;
 import bftsmart.tom.util.Extractor;
 import bftsmart.tom.util.KeyLoader;
 import bftsmart.tom.util.TOMUtil;
+import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.logging.Level;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,7 +33,14 @@ public class AsynchServiceProxy extends ServiceProxy {
     private HashMap<Integer, RequestContext> requestsContext;
     private HashMap<Integer, TOMMessage[]> requestsReplies;
     private HashMap<Integer, Integer> requestsAlias;
-
+    private HashSet<Integer> requestsAcked;
+    private ReentrantLock ackLock;
+    private Condition gotAcked;
+    private LinkedBlockingQueue<Integer> cleanQueue;
+    private Thread cleanerThread;
+    private LinkedBlockingQueue<RequestContext> invokeQueue;
+    private Thread invokeThread;
+    
 /**
      * Constructor
      *
@@ -79,6 +93,76 @@ public class AsynchServiceProxy extends ServiceProxy {
         requestsContext = new HashMap<>();
         requestsReplies = new HashMap<>();
         requestsAlias = new HashMap<>();
+        requestsAcked = new HashSet<>();
+        ackLock = new ReentrantLock();
+        gotAcked =ackLock.newCondition();
+        
+        cleanQueue = new LinkedBlockingQueue<>();
+        cleanerThread = new Thread() {
+            
+            public void run() {
+                
+                while (true) {
+                    
+                    try {
+                        int requestId = cleanQueue.take();
+                        
+                        Integer id = requestId;
+
+                        do {
+                            
+                            ackLock.lock();
+
+                            while (!requestsAcked.contains(id)) {
+                                try {
+                                    gotAcked.await();
+                                } catch (InterruptedException ex) {
+                                    logger.error("Interruption error.",ex);
+                                }
+                            }
+
+                            ackLock.unlock();
+
+                            requestsAcked.remove(id);
+                        
+                            requestsContext.remove(id);
+                            requestsReplies.remove(id);
+
+                            id = requestsAlias.remove(id);
+
+                        } while (id != null);
+        
+                    } catch (InterruptedException ex) {
+                        
+                        logger.error("Interrupted error.",ex);
+                    }
+                }
+            }
+        };
+        
+        cleanerThread.start();
+        
+        //This does not work, but I cant understans why yet.
+        /*invokeQueue = new LinkedBlockingQueue<>();
+        invokeThread = new Thread() {
+            
+            public void run() {
+                
+                while(true) {
+                    
+                    try {
+                        RequestContext tuple = invokeQueue.take();
+                        
+                        invokeAsynch(tuple);
+                        
+                    } catch (InterruptedException ex) {
+                        logger.error("Interrupted error.",ex);
+                    }
+                }
+            }
+        };
+        
+        invokeThread.start();*/
     }
     
     private View newView(byte[] bytes) {
@@ -89,10 +173,17 @@ public class AsynchServiceProxy extends ServiceProxy {
     /**
      * @see bellow
      */
-    public int invokeAsynchRequest(byte[] request, ReplyListener replyListener, TOMMessageType reqType) {
-        return invokeAsynchRequest(request, super.getViewManager().getCurrentViewProcesses(), replyListener, reqType);
+    public int invokeAsynchRequest(byte[] request, ReplyListener replyListener, TOMMessageType reqType) throws InterruptedException {
+        return invokeAsynchRequest(request, super.getViewManager().getCurrentViewProcesses(), replyListener, reqType, false);
     }
 
+    /**
+     * @see bellow
+     */
+    public int invokeAsynchRequest(byte[] request, ReplyListener replyListener, TOMMessageType reqType, boolean dos) throws InterruptedException {
+        return invokeAsynchRequest(request, super.getViewManager().getCurrentViewProcesses(), replyListener, reqType, dos);
+    }
+    
     /**
      * This method asynchronously sends a request to the replicas.
      * 
@@ -100,11 +191,20 @@ public class AsynchServiceProxy extends ServiceProxy {
      * @param targets The IDs for the replicas to which to send the request
      * @param replyListener Callback object that handles reception of replies
      * @param reqType Request type
+     * @param dos Ignore control flow mechanism
      * 
      * @return A unique identification for the request
      */
-    public int invokeAsynchRequest(byte[] request, int[] targets, ReplyListener replyListener, TOMMessageType reqType) {
-        return invokeAsynch(request, targets, replyListener, reqType);
+    public int invokeAsynchRequest(byte[] request, int[] targets, ReplyListener replyListener, TOMMessageType reqType, boolean dos) throws InterruptedException {
+                
+         RequestContext requestContext = new RequestContext(generateRequestId(reqType), generateOperationId(),
+                reqType, targets, System.currentTimeMillis(), replyListener, request, dos);
+        
+         //This does not work, i dont know why yet
+        //invokeQueue.put(requestContext);
+        invokeAsynch(requestContext);
+        
+        return requestContext.getOperationId();
     }
 
     /**
@@ -113,18 +213,9 @@ public class AsynchServiceProxy extends ServiceProxy {
      * 
      * @param requestId A unique identification for a previously sent request
      */
-    public void cleanAsynchRequest(int requestId) {
-
-        Integer id = requestId;
-
-        do {
-
-            requestsContext.remove(id);
-            requestsReplies.remove(id);
-
-            id = requestsAlias.remove(id);
-
-        } while (id != null);
+    public void cleanAsynchRequest(int requestId) throws InterruptedException {
+        
+        cleanQueue.put(requestId);
 
     }
 
@@ -142,8 +233,63 @@ public class AsynchServiceProxy extends ServiceProxy {
 
             RequestContext requestContext = requestsContext.get(reply.getOperationId());
 
-            if (requestContext == null) { // it is not a asynchronous request
+            if (requestContext == null) { // it is not a asynchronous request                
                 super.replyReceived(reply);
+                return;
+            }
+            
+            //control flow mechanism
+            if (reply.getReqType() == TOMMessageType.ACK) {
+
+                logger.debug("Received ACK from {} to {}",reply.getSender(), getProcessId());
+
+                if (reply.getSession() == getSession() && ackId == requestContext.getOperationId() &&
+                        reply.getOperationId() == requestContext.getOperationId() && reply.getSequence() == requestContext.getReqId()) {
+
+                    logger.debug("ACK is for the current request ({})", requestContext.getOperationId());
+                    
+                    int pos = getViewManager().getCurrentViewPos(reply.getSender());
+                    
+                    int sameContent = 1;
+                    int leader = -1;
+
+                    acks[pos] = reply;
+
+                    for (int i = 0; i < acks.length; i++) {
+
+                        if ((i != pos || getViewManager().getCurrentViewN() == 1) && acks[i] != null
+                                        && (comparator.compare(acks[i].getContent(), reply.getContent()) == 0)) {
+                                sameContent++;
+                                if (sameContent >= getReplyQuorum()) {
+                                        ByteBuffer buff = ByteBuffer.wrap(extractor.extractResponse(acks, sameContent, pos).getContent());
+                                        leader = buff.getInt();
+
+                                        logger.debug("Client {} received quorum of ACKs for req id #{} "+
+                                                  "indicating replica {} as the leader", getProcessId(), requestContext.getOperationId(), leader);
+
+                                        int p = getViewManager().getCurrentViewPos(leader);
+
+                                        if (acks[p] != null) {
+
+                                            logger.debug("Client {} also received ACK from leader, client "+
+                                                    "can stop re-transmiting request #{}", getProcessId(), requestContext.getOperationId());
+
+                                            Arrays.fill(acks, null);
+                                            requestsAcked.add(ackId);
+                                            ackId = -1;
+                                            
+                                            this.controlFlow.release();
+                                            ackLock.lock();
+                                            gotAcked.signalAll();
+                                            ackLock.unlock();
+                                        }
+                                }
+                        }
+                    }
+                }
+
+                //canReceiveLock.unlock();
+
                 return;
             }
 
@@ -194,14 +340,24 @@ public class AsynchServiceProxy extends ServiceProxy {
                                 @Override
                                 public void run() {
 
-                                    int id = invokeAsynch(requestContext.getRequest(), requestContext.getTargets(), requestContext.getReplyListener(), TOMMessageType.ORDERED_REQUEST);
-
-                                    requestsAlias.put(reply.getOperationId(), id);
+                                    //int id = invokeAsynch(requestContext.getRequest(), requestContext.getTargets(), requestContext.getReplyListener(), TOMMessageType.ORDERED_REQUEST, false);
+                            
+                                    //requestsAlias.put(reply.getOperationId(), id);
+                            
+                                    RequestContext newContext = new RequestContext(generateRequestId(requestContext.getRequestType()), generateOperationId(),
+                                        requestContext.getRequestType(), requestContext.getTargets(), System.currentTimeMillis(), replyListener, requestContext.getRequest(), requestContext.getDoS());
+                            
+                                    requestsAlias.put(reply.getOperationId(), newContext.getOperationId());
                                 }
 
                             };
 
                             t.start();
+                            
+                            //does not work, dont know why yet
+                            //RequestContext newContext = new RequestContext(generateRequestId(requestContext.getRequestType()), generateOperationId(),
+                            //    requestContext.getRequestType(), requestContext.getTargets(), System.currentTimeMillis(), replyListener, requestContext.getRequest(), requestContext.getDoS());
+                            //invokeQueue.put(newContext);
 
                         }
                         
@@ -219,24 +375,43 @@ public class AsynchServiceProxy extends ServiceProxy {
         }
     }
 
-    private int invokeAsynch(byte[] request, int[] targets, ReplyListener replyListener, TOMMessageType reqType) {
+    private int invokeAsynch(RequestContext requestContext) {
 
-        logger.debug("Asynchronously sending request to " + Arrays.toString(targets));
-
-        RequestContext requestContext = null;
+        logger.debug("Asynchronously sending request to " + Arrays.toString(requestContext.getTargets()));
 
         canSendLock.lock();
-
-        requestContext = new RequestContext(generateRequestId(reqType), generateOperationId(),
-                reqType, targets, System.currentTimeMillis(), replyListener, request);
 
         try {
             logger.debug("Storing request context for " + requestContext.getOperationId());
             requestsContext.put(requestContext.getOperationId(), requestContext);
             requestsReplies.put(requestContext.getOperationId(), new TOMMessage[super.getViewManager().getCurrentViewN()]);
 
-            sendMessageToTargets(request, requestContext.getReqId(), requestContext.getOperationId(), targets, reqType);
+            ackId = requestContext.getOperationId();
+            Arrays.fill(acks, null);
+            
+            sendMessageToTargets(requestContext.getRequest(), requestContext.getReqId(),
+                    requestContext.getOperationId(), requestContext.getTargets(), requestContext.getRequestType());
+            
+            if (!requestContext.getDoS() && getViewManager().getStaticConf().getMaxPendigReqs() > 0) {
+                while (true) {
 
+                    if (this.controlFlow.tryAcquire(getViewManager().getStaticConf().getControlFlowTimeout(), TimeUnit.MILLISECONDS)) {
+
+                        break;
+
+
+                    } else {
+                            logger.warn("Retrying invoke at client {} for request #{}", getViewManager().getStaticConf().getProcessId(), requestContext.getOperationId());
+                            Arrays.fill(acks, null);
+                           
+                            sendMessageToTargets(requestContext.getRequest(), requestContext.getReqId(), requestContext.getOperationId(), requestContext.getTargets(), requestContext.getRequestType());
+  
+                    }
+                }
+            }
+
+        } catch (InterruptedException ex) {
+            logger.error("Problem aquiring semaphore",ex);
         } finally {
             canSendLock.unlock();
         }
