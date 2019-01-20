@@ -207,8 +207,8 @@ public class AsyncLatencyClient {
 
                 for (int i = 0; i < this.numberOfOps; i++) {
                     
-                        long last_send_instant = System.nanoTime();
-                        int id = this.serviceProxy.invokeAsynchRequest(this.request, new ReplyListener() {
+                    
+                    ReplyListener listener = new ReplyListener() {
 
                         private int replies = 0;
                         private boolean gotQuorum = false;
@@ -250,7 +250,18 @@ public class AsyncLatencyClient {
                                 }
                             }
                         }
-                    }, this.reqType, this.dos);
+                    };
+                    
+                    long last_send_instant = System.nanoTime();
+                    
+                    if (this.dos) {
+                        
+                        this.serviceProxy.invokeAsynchRequest(this.request, listener, this.reqType, this.dos);
+                    } else {
+                        
+                        RequestContext ctx = this.serviceProxy.generateNextContext(this.request, listener, this.reqType, this.dos);
+                        this.serviceProxy.invokeAsynch(ctx);
+                    }
                     
                     if (i > (this.numberOfOps / 2)) st.store(System.nanoTime() - last_send_instant);
 

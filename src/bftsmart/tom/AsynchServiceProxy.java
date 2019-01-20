@@ -189,6 +189,8 @@ public class AsynchServiceProxy extends ServiceProxy {
     
     /**
      * This method asynchronously sends a request to the replicas.
+     * It returns immediately after adding the request to an internal queue, hence preventing the current thread from blocking while waiting for a quorum of ACKS.
+     * After instantiation, developers must either always use one of the 'invokeAsynchRequest' or always the 'invokeAsynch' method.
      * 
      * @param request Request to be sent
      * @param targets The IDs for the replicas to which to send the request
@@ -200,8 +202,7 @@ public class AsynchServiceProxy extends ServiceProxy {
      */
     public int invokeAsynchRequest(byte[] request, int[] targets, ReplyListener replyListener, TOMMessageType reqType, boolean dos) throws InterruptedException {
                 
-         RequestContext requestContext = new RequestContext(generateRequestId(reqType), generateOperationId(),
-                reqType, targets, System.currentTimeMillis(), replyListener, request, dos);
+         RequestContext requestContext = generateNextContext(request, targets, replyListener, reqType, dos);
         
          logger.debug("Enqueuing invoke at client {} for request #{}", getViewManager().getStaticConf().getProcessId(), requestContext.getOperationId());
 
@@ -210,6 +211,36 @@ public class AsynchServiceProxy extends ServiceProxy {
         return requestContext.getOperationId();
     }
 
+    /**
+     * @see bellow
+     */
+    public RequestContext generateNextContext(byte[] request, ReplyListener replyListener, TOMMessageType reqType) throws InterruptedException {
+        return generateNextContext(request, super.getViewManager().getCurrentViewProcesses(), replyListener, reqType, false);
+    }
+
+    /**
+     * @see bellow
+     */
+    public RequestContext generateNextContext(byte[] request, ReplyListener replyListener, TOMMessageType reqType, boolean dos) throws InterruptedException {
+        return generateNextContext(request, super.getViewManager().getCurrentViewProcesses(), replyListener, reqType, dos);
+    }
+    
+    /**
+     * Generate the next request context. This method should only be used if request are to be submitted using 'invokeAsych'.
+     * 
+     * @param request Request to be sent
+     * @param targets The IDs for the replicas to which to send the request
+     * @param replyListener Callback object that handles reception of replies
+     * @param reqType Request type
+     * @param dos Ignore control flow mechanism
+     * 
+     * @return A unique identification for the request
+     */
+    public RequestContext generateNextContext(byte[] request, int[] targets, ReplyListener replyListener, TOMMessageType reqType, boolean dos) {
+        
+        return new RequestContext(generateRequestId(reqType), generateOperationId(),
+                reqType, targets, System.currentTimeMillis(), replyListener, request, dos);
+    }
     /**
      * Purges all information associated to the request.
      * This should always be invoked once enough replies are received and processed by the ReplyListener callback.
@@ -377,7 +408,14 @@ public class AsynchServiceProxy extends ServiceProxy {
         }
     }
 
-    private int invokeAsynch(RequestContext requestContext) {
+    /**
+     * This method asynchronously sends a request to the replicas using a RequestContext object.
+     * It blocks while waiting for a quorum of ACKs from the replicas.
+     * After instantiation, developers must either always use one of the 'invokeAsynchRequest' or always the 'invokeAsynch' method.
+     * 
+     * @param requestContext The context for the request to be submitted.
+     */
+    public void invokeAsynch(RequestContext requestContext) {
 
         logger.debug("Asynchronously sending request to " + Arrays.toString(requestContext.getTargets()));
 
@@ -420,7 +458,7 @@ public class AsynchServiceProxy extends ServiceProxy {
             canSendLock.unlock();
         }
 
-        return requestContext.getOperationId();
+        //return requestContext.getOperationId();
     }
 
     /**
