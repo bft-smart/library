@@ -52,7 +52,8 @@ public class ServiceProxy extends TOMSender {
         protected Semaphore controlFlow = new Semaphore(0);
 	private int reqId = -1; // request id
 	private int operationId = -1; // request id
-        protected int ackId = -1; // or the control flow mechanism
+        protected int ackId = -1; // for the control flow mechanism
+        protected int ackSeq = -1; // for the control flow mechanism
 	private TOMMessageType requestType;
 	private int replyQuorum = 0; // size of the reply quorum
 	private TOMMessage replies[] = null; // Replies from replicas are stored here
@@ -221,6 +222,7 @@ public class ServiceProxy extends TOMSender {
 		replyServer = -1;
 		hashResponseController = null;
                 ackId = operationId;
+                ackSeq = 0;
 
                 TOMMessage sm = null;
                         
@@ -240,7 +242,9 @@ public class ServiceProxy extends TOMSender {
 		}else{
                     
                     sm = new TOMMessage(getProcessId(), getSession(), reqId, operationId, request, getViewManager().getCurrentViewId(), reqType);
-		}
+
+                    sm.setAckSeq(ackSeq);
+                }
 
 
                 //logger.info("Sending invoke at client {} for request #{}", getViewManager().getStaticConf().getProcessId(), reqId);
@@ -273,7 +277,15 @@ public class ServiceProxy extends TOMSender {
                                     } else {
 
                                         if (reqId != -1) {
-                                            logger.warn("Retrying invoke at client {} for request #{}", getViewManager().getStaticConf().getProcessId(), operationId);
+                                            
+                                            sm = new TOMMessage(getProcessId(), getSession(), reqId, operationId, request, getViewManager().getCurrentViewId(), reqType);
+                                            
+                                            ackSeq++;
+                                            sm.setAckSeq(ackSeq);
+
+                                            logger.warn("Retrying invoke at client {} for request #{} and ACK sequence #{}", 
+                                                    getViewManager().getStaticConf().getProcessId(), sm.getOperationId(), sm.getAckSeq());
+                        
                                             Arrays.fill(acks, null);
                                             TOMulticast(sm);
                                         } else {
@@ -413,6 +425,7 @@ public class ServiceProxy extends TOMSender {
                                     reply.getOperationId() == operationId && reply.getSequence() == reqId) {
                                                             
                                 int sameContent = 1;
+                                int ackSeq = -1;
                                 int leader = -1;
                                 
                                 acks[pos] = reply;
@@ -424,6 +437,8 @@ public class ServiceProxy extends TOMSender {
                                             sameContent++;
                                             if (sameContent >= replyQuorum) {
                                                     ByteBuffer buff = ByteBuffer.wrap(extractor.extractResponse(acks, sameContent, pos).getContent());
+                                                    
+                                                    ackSeq = buff.getInt();
                                                     leader = buff.getInt();
                                                     
                                                     logger.debug("Client {} received quorum of ACKs for req id #{} "+
@@ -431,7 +446,7 @@ public class ServiceProxy extends TOMSender {
 
                                                     int p = getViewManager().getCurrentViewPos(leader);
                                                     
-                                                    if (acks[p] != null) {
+                                                    if (this.ackSeq == ackSeq && p != -1 && acks[p] != null) {
                                                                 
                                                         logger.debug("Client {} also received ACK from leader, client "+
                                                                 "can stop re-transmiting request #{}", getProcessId(), operationId);

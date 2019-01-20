@@ -86,6 +86,7 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 	public transient boolean alreadyProposed = false;
 	
 	private int replyServer = -1;
+        private int ackSeq = -1;
 
 	public TOMMessage() {
 	}
@@ -235,6 +236,7 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 		out.writeInt(sequence);
 		out.writeInt(operationId);
 		out.writeInt(replyServer);
+                out.writeInt(ackSeq);
 		
 		if (content == null) {
 			out.writeInt(-1);
@@ -252,6 +254,7 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 		sequence = in.readInt();
 		operationId = in.readInt();
 		replyServer = in.readInt();
+                ackSeq = in.readInt();
 		
 		int toRead = in.readInt();
 		if (toRead != -1) {
@@ -351,6 +354,7 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
                             operationId, content, viewID, type);
 
                     clone.setReplyServer(replyServer);
+                    clone.setReplyServer(ackSeq);
                     
                     clone.acceptSentTime = this.acceptSentTime;
                     clone.alreadyProposed = this.alreadyProposed;
@@ -389,5 +393,14 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 
 	public void setReplyServer(int replyServer) {
 		this.replyServer = replyServer;
+	}
+        
+        public int getAckSeq() {
+		return ackSeq;
+	}
+
+
+	public void setAckSeq(int ackSeq) {
+		this.ackSeq = ackSeq;
 	}
 }

@@ -400,12 +400,14 @@ public class ClientsManager {
         return accounted;
     }
 
-    public void sendAck (boolean fromClient, TOMMessage request) {
+    public void sendAck(boolean fromClient, TOMMessage request) {
         if ((fromClient || !request.ackSent) && this.controller.getStaticConf().getMaxPendigReqs() > 0 && cs != null) {
             
             logger.debug("Sending ACK to client {}", request.getSender());
             
-            ByteBuffer buff = ByteBuffer.allocate(Integer.BYTES);
+            ByteBuffer buff = ByteBuffer.allocate(Integer.BYTES * 2);
+            
+            buff.putInt(request.getAckSeq());
             buff.putInt(manager.getCurrentLeader());
                     
             TOMMessage ack = new TOMMessage(controller.getStaticConf().getProcessId(), request.getSession(), request.getSequence(), 

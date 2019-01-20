@@ -286,6 +286,7 @@ public class AsynchServiceProxy extends ServiceProxy {
                     
                     int sameContent = 1;
                     int leader = -1;
+                    int ackSeq = -1;
 
                     acks[pos] = reply;
 
@@ -296,14 +297,17 @@ public class AsynchServiceProxy extends ServiceProxy {
                                 sameContent++;
                                 if (sameContent >= getReplyQuorum()) {
                                         ByteBuffer buff = ByteBuffer.wrap(extractor.extractResponse(acks, sameContent, pos).getContent());
+                                        
+                                        ackSeq = buff.getInt();
                                         leader = buff.getInt();
 
                                         logger.debug("Client {} received quorum of ACKs for req id #{} "+
-                                                  "indicating replica {} as the leader", getProcessId(), requestContext.getOperationId(), leader);
+                                                  "with ACK sequence {} indicating replica {} as the leader", 
+                                                    getProcessId(), requestContext.getOperationId(), ackSeq,leader);
 
                                         int p = getViewManager().getCurrentViewPos(leader);
 
-                                        if (acks[p] != null) {
+                                        if (this.ackSeq == ackSeq && p != -1 && acks[p] != null) {
 
                                             logger.debug("Client {} also received ACK from leader, client "+
                                                     "can stop re-transmiting request #{}", getProcessId(), requestContext.getOperationId());
@@ -413,41 +417,57 @@ public class AsynchServiceProxy extends ServiceProxy {
      * It blocks while waiting for a quorum of ACKs from the replicas.
      * After instantiation, developers must either always use one of the 'invokeAsynchRequest' or always the 'invokeAsynch' method.
      * 
-     * @param requestContext The context for the request to be submitted.
+     * @param reqCtx The context for the request to be submitted.
      */
-    public void invokeAsynch(RequestContext requestContext) {
+    public void invokeAsynch(RequestContext reqCtx) {
 
-        logger.debug("Asynchronously sending request to " + Arrays.toString(requestContext.getTargets()));
+        logger.debug("Asynchronously sending request to " + Arrays.toString(reqCtx.getTargets()));
 
         canSendLock.lock();
         
         try {
-            logger.debug("Storing request context for " + requestContext.getOperationId());
-            requestsContext.put(requestContext.getOperationId(), requestContext);
-            requestsReplies.put(requestContext.getOperationId(), new TOMMessage[super.getViewManager().getCurrentViewN()]);
+            logger.debug("Storing request context for " + reqCtx.getOperationId());
+            requestsContext.put(reqCtx.getOperationId(), reqCtx);
+            requestsReplies.put(reqCtx.getOperationId(), new TOMMessage[super.getViewManager().getCurrentViewN()]);
 
-            ackId = requestContext.getOperationId();
+            ackId = reqCtx.getOperationId();
+            ackSeq = 0;
+            
             Arrays.fill(acks, null);
             
-            logger.debug("Sending invoke at client {} for request #{}", getViewManager().getStaticConf().getProcessId(), requestContext.getOperationId());
+            logger.debug("Sending invoke at client {} for request #{}", getViewManager().getStaticConf().getProcessId(), reqCtx.getOperationId());
 
-            sendMessageToTargets(requestContext.getRequest(), requestContext.getReqId(),
-                    requestContext.getOperationId(), requestContext.getTargets(), requestContext.getRequestType());
+
+            TOMMessage sm = new TOMMessage(getProcessId(), getSession(), reqCtx.getReqId(),
+                    reqCtx.getOperationId(), reqCtx.getRequest(), getViewManager().getCurrentViewId(), reqCtx.getRequestType());
             
-            if (!requestContext.getDoS() && getViewManager().getStaticConf().getMaxPendigReqs() > 0) {
+            //sendMessageToTargets(reqCtx.getRequest(), reqCtx.getReqId(),
+            //        reqCtx.getOperationId(), reqCtx.getTargets(), reqCtx.getRequestType());
+            
+            sm.setAckSeq(ackSeq);
+            
+            TOMulticast(sm);
+            
+            if (!reqCtx.getDoS() && getViewManager().getStaticConf().getMaxPendigReqs() > 0) {
                 while (true) {
 
                     if (this.controlFlow.tryAcquire(getViewManager().getStaticConf().getControlFlowTimeout(), TimeUnit.MILLISECONDS)) {
 
                         break;
 
-
                     } else {
-                            logger.warn("Retrying invoke at client {} for request #{}", getViewManager().getStaticConf().getProcessId(), requestContext.getOperationId());
-                            Arrays.fill(acks, null);
-                           
-                            sendMessageToTargets(requestContext.getRequest(), requestContext.getReqId(), requestContext.getOperationId(), requestContext.getTargets(), requestContext.getRequestType());
-  
+                        
+                        sm = new TOMMessage(getProcessId(), getSession(), reqCtx.getReqId(),
+                            reqCtx.getOperationId(), reqCtx.getRequest(), getViewManager().getCurrentViewId(), reqCtx.getRequestType());
+                        
+                        ackSeq++;
+                        sm.setAckSeq(ackSeq);
+
+                        logger.warn("Retrying invoke at client {} for request #{} ACK ack sequence #{}", 
+                                getViewManager().getStaticConf().getProcessId(), reqCtx.getOperationId(), sm.getAckSeq());
+                        Arrays.fill(acks, null);
+                        
+                        TOMulticast(sm);
                     }
                 }
             }
