@@ -22,6 +22,7 @@ import java.util.Map.Entry;
 import java.util.concurrent.locks.ReentrantLock;
 import bftsmart.communication.ServerCommunicationSystem;
 import bftsmart.reconfiguration.ServerViewController;
+import bftsmart.tom.core.DeliveryThread;
 import bftsmart.tom.core.ExecutionManager;
 import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.core.messages.TOMMessageType;
@@ -45,16 +46,20 @@ public class ClientsManager {
     private RequestVerifier verifier;
     private boolean ignore = false;
     private ExecutionManager manager;
+    private DeliveryThread dt;
     private ServerCommunicationSystem cs;
     
     private ReentrantLock clientsLock = new ReentrantLock();
 
-    public ClientsManager(ServerViewController controller, RequestsTimer timer, RequestVerifier verifier, ServerCommunicationSystem cs, ExecutionManager manager) {
+    public ClientsManager(ServerViewController controller, RequestsTimer timer, RequestVerifier verifier, 
+            ServerCommunicationSystem cs, ExecutionManager manager, DeliveryThread dt) {
+        
         this.controller = controller;
         this.timer = timer;
         this.verifier = verifier;
         this.cs = cs;
         this.manager = manager;
+        this.dt = dt;
     }
 
     /**
@@ -264,7 +269,8 @@ public class ClientsManager {
      */
     public boolean requestReceived(TOMMessage request, boolean fromClient) {
                 
-        int pending = countPendingRequests();
+        int pendingReqs = countPendingRequests();
+        int pendingDecs = dt.getDecisionsInQueue();
         
         //logger.info("Currently {} requests pending to be ordered", pending);
         
@@ -272,11 +278,13 @@ public class ClientsManager {
         if (fromClient) {
             if (this.controller.getStaticConf().getMaxPendigReqs() > 0) {
 
-                if (pending >= this.controller.getStaticConf().getMaxPendigReqs()) {
+                if (pendingReqs >= this.controller.getStaticConf().getMaxPendigReqs() || 
+                        pendingDecs >= this.controller.getStaticConf().getMaxPendigDecs()) {
 
                     ignore = true;
 
-                } else if (pending <= this.controller.getStaticConf().getPreferredPendigReqs()) {
+                } else if (pendingReqs <= this.controller.getStaticConf().getPreferredPendigReqs() && 
+                        pendingDecs <= this.controller.getStaticConf().getPreferredPendigDecs()) {
 
                     ignore = false;
                 }
@@ -284,8 +292,11 @@ public class ClientsManager {
 
             if (ignore) {
 
-                logger.warn("Discarding message due to control flow mechanism (max requests at {}, current requests at {})", 
-                        this.controller.getStaticConf().getMaxPendigReqs(), countPendingRequests());
+                logger.warn("Discarding message due to control flow mechanism\n" +
+                        "\tMax requests at {}, current requests at {}\n" + 
+                        "\tMax decisions at {}, current decisions at {}\n", 
+                        this.controller.getStaticConf().getMaxPendigReqs(), pendingReqs,
+                        this.controller.getStaticConf().getMaxPendigDecs(), pendingDecs);
 
                 return false;
             }

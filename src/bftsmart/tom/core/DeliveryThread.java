@@ -76,6 +76,10 @@ public final class DeliveryThread extends Thread {
         return recoverer;
     }
    
+   public int getDecisionsInQueue() {
+       return decided.size();
+   }
+   
     /**
      * Invoked by the TOM layer, to deliver a decision
      * @param dec Decision established from the consensus

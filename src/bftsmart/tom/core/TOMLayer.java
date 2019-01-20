@@ -176,7 +176,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         this.verifier = (verifier != null) ? verifier : ((request) -> true); // By default, never validate requests 
 		
         // I have a verifier, now create clients manager
-        this.clientsManager = new ClientsManager(this.controller, requestsTimer, this.verifier, this.communication, this.execManager);
+        this.clientsManager = new ClientsManager(this.controller, requestsTimer, this.verifier, this.communication, this.execManager, this.dt);
 
         this.syncher = new Synchronizer(this); // create synchronizer
         

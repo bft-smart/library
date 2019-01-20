@@ -41,6 +41,8 @@ public class TOMConfiguration extends Configuration {
     protected int maxBatchSize;
     protected int maxPendingReqs;
     protected int preferredPendingReqs;
+    protected int maxPendingDecs;
+    protected int preferredPendingDecs;
     protected int numberOfNonces;
     protected int inQueueSize;
     protected int outQueueSize;
@@ -192,6 +194,24 @@ public class TOMConfiguration extends Configuration {
                 preferredPendingReqs = 10000;
             } else {
                 preferredPendingReqs = Integer.parseInt(s);
+
+            }
+            
+            s = (String) configs.remove("system.totalordermulticast.maxpendingdecs");
+            if (s == null) {
+                maxPendingDecs = 100000;
+            } else {
+                maxPendingDecs = Integer.parseInt(s);
+                if (maxPendingDecs <= 0) {
+                    maxPendingDecs = -1;
+                }
+            }
+            
+            s = (String) configs.remove("system.totalordermulticast.preferredpendingdecs");
+            if (s == null) {
+                preferredPendingDecs = 10000;
+            } else {
+                preferredPendingDecs = Integer.parseInt(s);
 
             }
             
@@ -463,6 +483,14 @@ public class TOMConfiguration extends Configuration {
     
     public int getPreferredPendigReqs() {
         return preferredPendingReqs;
+    }
+    
+    public int getMaxPendigDecs() {
+        return maxPendingDecs;
+    }
+    
+    public int getPreferredPendigDecs() {
+        return preferredPendingDecs;
     }
     
     public int getControlFlowTimeout() {
