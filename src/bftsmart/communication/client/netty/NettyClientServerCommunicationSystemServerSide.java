@@ -339,7 +339,7 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
                                                             Channel session = ncss.getChannel();
                                                             msg.destination = id;
                                                             //send message
-                                                            session.writeAndFlush(msg);
+                                                            //session.writeAndFlush(msg);
                                                     }
 
                                                     rl.readLock().unlock();
