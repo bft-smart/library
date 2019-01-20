@@ -298,7 +298,7 @@ public class AsyncLatencyClient {
                         long latency = System.nanoTime() - last_send_instant;
                         st.store(latency);
                         
-                        latencies.put(this.id + "\t" + latency);
+                        latencies.put(this.id + "\t" + latency + "\n");
                     }
 
                     if (this.interval > 0) {
