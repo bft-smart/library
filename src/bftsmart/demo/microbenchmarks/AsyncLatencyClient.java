@@ -266,8 +266,18 @@ public class AsyncLatencyClient {
                                 if (verbose) System.out.println("[RequestContext] clean request context id: " + context.getReqId());
                                 completed++;
                                 gotQuorum = true;
+                                long latency = System.nanoTime() - context.getSendingTime();
+                                st.store(latency);
+                                
                                 try {
                                     serviceProxy.cleanAsynchRequest(context.getOperationId());
+                                
+                                    if (completed > (numberOfOps / 2)) {
+
+                                            latencies.put(id + "\t" + latency + "\n");
+
+                                    }
+                                    
                                 } catch (InterruptedException ex) {
                                     ex.printStackTrace();
                                 }
@@ -281,9 +291,7 @@ public class AsyncLatencyClient {
                             }
                         }
                     };
-                    
-                    long last_send_instant = System.nanoTime();
-                    
+                                        
                     if (this.dos) {
                         
                         this.serviceProxy.invokeAsynchRequest(this.request, listener, this.reqType, this.dos);
@@ -293,14 +301,6 @@ public class AsyncLatencyClient {
                         this.serviceProxy.invokeAsynch(ctx);
                     }
                     
-                    if (i > (this.numberOfOps / 2)) {
-                        
-                        long latency = System.nanoTime() - last_send_instant;
-                        st.store(latency);
-                        
-                        latencies.put(this.id + "\t" + latency + "\n");
-                    }
-
                     if (this.interval > 0) {
                         Thread.sleep(Math.max(rand.nextInt(this.interval) + 1, this.rampup));
                         if (this.rampup > 0) this.rampup -= 100;

@@ -215,14 +215,23 @@ public class AsynchServiceProxy extends ServiceProxy {
      * @see bellow
      */
     public RequestContext generateNextContext(byte[] request, ReplyListener replyListener, TOMMessageType reqType) throws InterruptedException {
-        return generateNextContext(request, super.getViewManager().getCurrentViewProcesses(), replyListener, reqType, false);
+        return generateNextContext(request, super.getViewManager().getCurrentViewProcesses(), replyListener, reqType, false, System.nanoTime());
     }
 
     /**
      * @see bellow
      */
     public RequestContext generateNextContext(byte[] request, ReplyListener replyListener, TOMMessageType reqType, boolean dos) throws InterruptedException {
-        return generateNextContext(request, super.getViewManager().getCurrentViewProcesses(), replyListener, reqType, dos);
+        return generateNextContext(request, super.getViewManager().getCurrentViewProcesses(), replyListener, reqType, dos, System.nanoTime());
+    }
+    
+    
+    /**
+     * @see bellow
+     */
+    public RequestContext generateNextContext(byte[] request, int[] targets, ReplyListener replyListener, TOMMessageType reqType, boolean dos) {
+        
+        return generateNextContext(request, super.getViewManager().getCurrentViewProcesses(), replyListener, reqType, false, System.nanoTime());
     }
     
     /**
@@ -233,14 +242,16 @@ public class AsynchServiceProxy extends ServiceProxy {
      * @param replyListener Callback object that handles reception of replies
      * @param reqType Request type
      * @param dos Ignore control flow mechanism
+     * @param sentTime Timestamp of the time of creating
      * 
      * @return A unique identification for the request
      */
-    public RequestContext generateNextContext(byte[] request, int[] targets, ReplyListener replyListener, TOMMessageType reqType, boolean dos) {
+    public RequestContext generateNextContext(byte[] request, int[] targets, ReplyListener replyListener, TOMMessageType reqType, boolean dos, long sentTime) {
         
         return new RequestContext(generateRequestId(reqType), generateOperationId(),
-                reqType, targets, System.currentTimeMillis(), replyListener, request, dos);
+                reqType, targets, sentTime, replyListener, request, dos);
     }
+    
     /**
      * Purges all information associated to the request.
      * This should always be invoked once enough replies are received and processed by the ReplyListener callback.
