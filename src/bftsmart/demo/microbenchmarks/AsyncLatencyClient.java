@@ -25,6 +25,7 @@ import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.core.messages.TOMMessageType;
 import bftsmart.tom.util.Storage;
 import bftsmart.tom.util.TOMUtil;
+import java.io.FileWriter;
 import java.nio.ByteBuffer;
 import java.security.InvalidKeyException;
 import java.security.KeyFactory;
@@ -42,6 +43,7 @@ import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Level;
@@ -55,12 +57,40 @@ import java.util.logging.Logger;
 public class AsyncLatencyClient {
 
     static int initId;
+    static LinkedBlockingQueue<String> latencies;
+    static Thread writerThread;
     
     public static void main(String[] args) throws IOException {
         if (args.length < 9) {
             System.out.println("Usage: ... ThroughputLatencyClient <initial client id> <number of clients> <number of operations> <request size> <max interval (ms)> <read only?> <verbose?> <DoS?> <nosig | default | ecdsa>");
             System.exit(-1);
         }
+        
+        latencies = new LinkedBlockingQueue<>();
+        writerThread = new Thread() {
+            
+            public void run() {
+                
+                FileWriter f = null;
+                try {
+                    f = new FileWriter("./latencies.txt");
+                    while (true) {
+                        
+                        f.write(latencies.take());
+                    }   
+                    
+                } catch (IOException | InterruptedException ex) {
+                    ex.printStackTrace();
+                } finally {
+                    try {
+                        f.close();
+                    } catch (IOException ex) {
+                        ex.printStackTrace();
+                    }
+                }
+            }
+        };
+        writerThread.start();
 
         initId = Integer.parseInt(args[0]);
         int numThreads = Integer.parseInt(args[1]);
@@ -116,7 +146,7 @@ public class AsyncLatencyClient {
         
         System.out.println("All clients done.");
         
-        System.exit(0);
+        //System.exit(0);
         
     }
 
@@ -263,7 +293,13 @@ public class AsyncLatencyClient {
                         this.serviceProxy.invokeAsynch(ctx);
                     }
                     
-                    if (i > (this.numberOfOps / 2)) st.store(System.nanoTime() - last_send_instant);
+                    if (i > (this.numberOfOps / 2)) {
+                        
+                        long latency = System.nanoTime() - last_send_instant;
+                        st.store(latency);
+                        
+                        latencies.put(this.id + "\t" + latency);
+                    }
 
                     if (this.interval > 0) {
                         Thread.sleep(Math.max(rand.nextInt(this.interval) + 1, this.rampup));
