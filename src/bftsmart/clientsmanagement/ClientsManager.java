@@ -295,7 +295,7 @@ public class ClientsManager {
 
             if (ignore) {
                 
-                if(usedMemory <= this.controller.getStaticConf().getPreferredUsedMemory()) Runtime.getRuntime().gc(); // force garbage collection
+                if(usedMemory > this.controller.getStaticConf().getPreferredUsedMemory()) Runtime.getRuntime().gc(); // force garbage collection
 
                 logger.warn("Discarding message due to control flow mechanism\n" +
                         "\tMaximum requests are {}, current requests at {}\n" + 
