@@ -46,6 +46,7 @@ public final class DeliveryThread extends Thread {
 
     private boolean doWork = true;
     private int lastReconfig = -2;
+    private int currentDecisions = 0;
     private final LinkedBlockingQueue<Decision> decided; 
     private final TOMLayer tomLayer; // TOM layer
     private final ServiceReplica receiver; // Object that receives requests from clients
@@ -76,8 +77,8 @@ public final class DeliveryThread extends Thread {
         return recoverer;
     }
    
-   public int getDecisionsInQueue() {
-       return decided.size();
+   public int getPendingDecisions() {
+       return decided.size() + currentDecisions;
    }
    
     /**
@@ -181,6 +182,9 @@ public final class DeliveryThread extends Thread {
     @Override
     public void run() {
         while (doWork) {
+            
+            currentDecisions = 0;
+            
             /** THIS IS JOAO'S CODE, TO HANDLE STATE TRANSFER */
             deliverLock();
             while (tomLayer.isRetrievingState()) {
@@ -210,6 +214,9 @@ public final class DeliveryThread extends Thread {
                 if (!doWork) break;
                 
                 if (decisions.size() > 0) {
+                    
+                    currentDecisions = decisions.size();
+                    
                     TOMMessage[][] requests = new TOMMessage[decisions.size()][];
                     int[] consensusIds = new int[requests.length];
                     int[] leadersIds = new int[requests.length];

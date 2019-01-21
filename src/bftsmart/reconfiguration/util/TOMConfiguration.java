@@ -50,6 +50,7 @@ public class TOMConfiguration extends Configuration {
     protected int outQueueSize;
     protected boolean shutdownHookEnabled;
     protected boolean useSenderThread;
+    protected boolean controlFlow;
     private int numNIOThreads;
     private int useMACs;
     private int useSignatures;
@@ -126,21 +127,11 @@ public class TOMConfiguration extends Configuration {
 
             s = (String) configs.remove("system.totalordermulticast.invoketimeout");
             if (s == null) {
-                invokeTimeout = 1000;
+                invokeTimeout = 40000;
             } else {
                 invokeTimeout = Integer.parseInt(s);
                 if (invokeTimeout <= 0) {
-                    invokeTimeout = 1000;
-                }
-            }
-            
-            s = (String) configs.remove("system.totalordermulticast.controlflowtimeout");
-            if (s == null) {
-                controlFlowTimeout = 40000;
-            } else {
-                controlFlowTimeout = Integer.parseInt(s);
-                if (controlFlowTimeout <= 0) {
-                    controlFlowTimeout = 40000;
+                    invokeTimeout = 40000;
                 }
             }
             
@@ -181,7 +172,14 @@ public class TOMConfiguration extends Configuration {
                 maxBatchSize = Integer.parseInt(s);
             }
 
-            s = (String) configs.remove("system.totalordermulticast.maxpendingreqs");
+            s = (String) configs.remove("system.controlflow.controlflow");
+            if (s == null) {
+                controlFlow = true;
+            } else {
+                controlFlow = Boolean.parseBoolean(s);
+            }
+            
+            s = (String) configs.remove("system.controlflow.maxpendingreqs");
             if (s == null) {
                 maxPendingReqs = 100000;
             } else {
@@ -191,7 +189,7 @@ public class TOMConfiguration extends Configuration {
                 }
             }
             
-            s = (String) configs.remove("system.totalordermulticast.preferredpendingreqs");
+            s = (String) configs.remove("system.controlflow.preferredpendingreqs");
             if (s == null) {
                 preferredPendingReqs = 10000;
             } else {
@@ -199,7 +197,7 @@ public class TOMConfiguration extends Configuration {
 
             }
             
-            s = (String) configs.remove("system.totalordermulticast.maxpendingdecs");
+            s = (String) configs.remove("system.controlflow.maxpendingdecs");
             if (s == null) {
                 maxPendingDecs = 100000;
             } else {
@@ -209,7 +207,7 @@ public class TOMConfiguration extends Configuration {
                 }
             }
             
-            s = (String) configs.remove("system.totalordermulticast.preferredpendingdecs");
+            s = (String) configs.remove("system.controlflow.preferredpendingdecs");
             if (s == null) {
                 preferredPendingDecs = 10000;
             } else {
@@ -217,7 +215,7 @@ public class TOMConfiguration extends Configuration {
 
             }
             
-            s = (String) configs.remove("system.totalordermulticast.maxusedmemory");
+            s = (String) configs.remove("system.controlflow.maxusedmemory");
             if (s == null) {
                 maxUsedMemory = 100000;
             } else {
@@ -227,12 +225,22 @@ public class TOMConfiguration extends Configuration {
                 }
             }
             
-            s = (String) configs.remove("system.totalordermulticast.preferredusedmemory");
+            s = (String) configs.remove("system.controlflow.preferredusedmemory");
             if (s == null) {
                 preferredUsedMemory = 10000;
             } else {
                 preferredUsedMemory = Integer.parseInt(s);
 
+            }
+            
+            s = (String) configs.remove("system.controlflow.timeout");
+            if (s == null) {
+                controlFlowTimeout = 1000;
+            } else {
+                controlFlowTimeout = Integer.parseInt(s);
+                if (controlFlowTimeout <= 0) {
+                    controlFlowTimeout = 1000;
+                }
             }
             
             s = (String) configs.remove("system.totalordermulticast.replayVerificationTime");
@@ -255,7 +263,7 @@ public class TOMConfiguration extends Configuration {
             } else {
                 useSenderThread = Boolean.parseBoolean(s);
             }
-
+            
             s = (String) configs.remove("system.communication.numNIOThreads");
             if (s == null) {
                 numNIOThreads = 2;
@@ -577,31 +585,35 @@ public class TOMConfiguration extends Configuration {
     public int getCheckpointPeriod() {
         return checkpointPeriod;
     }
+    
+    public boolean getControlFlow() {
+            return controlFlow;
+    }
 
-	public boolean isToWriteCkpsToDisk() {
-		return isToWriteCkpsToDisk;
-	}
-	
-	public boolean isToWriteSyncCkp() {
-		return syncCkp;
-	}
+    public boolean isToWriteCkpsToDisk() {
+            return isToWriteCkpsToDisk;
+    }
 
-	public boolean isToLog() {
-		return isToLog;
-	}
+    public boolean isToWriteSyncCkp() {
+            return syncCkp;
+    }
 
-	public boolean isToWriteSyncLog() {
-		return syncLog;
-	}
+    public boolean isToLog() {
+            return isToLog;
+    }
 
-	public boolean logToDisk() {
-		return logToDisk;
-	}
+    public boolean isToWriteSyncLog() {
+            return syncLog;
+    }
 
-	public boolean isToLogParallel() {
-		// TODO Auto-generated method stub
-		return parallelLog;
-	}
+    public boolean logToDisk() {
+            return logToDisk;
+    }
+
+    public boolean isToLogParallel() {
+            // TODO Auto-generated method stub
+            return parallelLog;
+    }
 
     /**
      * Indicates the checkpoint period used when fetching the state from the application

@@ -16,7 +16,6 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.logging.Level;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,6 +39,7 @@ public class AsynchServiceProxy extends ServiceProxy {
     private Thread cleanerThread;
     private LinkedBlockingQueue<RequestContext> invokeQueue;
     private Thread invokeThread;
+    private boolean doWork = true;
     
 /**
      * Constructor
@@ -101,9 +101,12 @@ public class AsynchServiceProxy extends ServiceProxy {
             
             public void run() {
                 
-                while (true) {
+                while (doWork) {
                     
                     try {
+                        
+                        if (cleanQueue.poll(200, TimeUnit.MILLISECONDS) == null) continue;
+                        
                         int requestId = cleanQueue.take();
                         
                         Integer id = requestId;
@@ -146,12 +149,16 @@ public class AsynchServiceProxy extends ServiceProxy {
             
             public void run() {
                 
-                while(true) {
+                while(doWork) {
                     
                     try {
-                        RequestContext requestContext = invokeQueue.take();
+                        RequestContext requestContext = null;
                         
-                        logger.debug("Dequeing invoke at client {} for request #{}", getViewManager().getStaticConf().getProcessId(), requestContext.getOperationId());
+                        requestContext = invokeQueue.poll(200, TimeUnit.MILLISECONDS);
+                        
+                        if (requestContext == null) continue;
+                        
+                        logger.debug("Dequeued invoke at client {} for request #{}", getViewManager().getStaticConf().getProcessId(), requestContext.getOperationId());
 
                         invokeAsynch(requestContext);
 
@@ -264,6 +271,11 @@ public class AsynchServiceProxy extends ServiceProxy {
 
     }
 
+    @Override
+    public void close() {
+        doWork = false;
+        super.close();
+    }
     /**
      * This is the method invoked by the client side communication system.
      *
@@ -459,7 +471,8 @@ public class AsynchServiceProxy extends ServiceProxy {
             
             TOMulticast(sm);
             
-            if (!reqCtx.getDoS() && getViewManager().getStaticConf().getMaxPendigReqs() > 0) {
+            //Control flow
+            if (!reqCtx.getDoS() && getViewManager().getStaticConf().getControlFlow()) {
                 while (true) {
 
                     if (this.controlFlow.tryAcquire(getViewManager().getStaticConf().getControlFlowTimeout(), TimeUnit.MILLISECONDS)) {

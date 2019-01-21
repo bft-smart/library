@@ -266,7 +266,9 @@ public class ServiceProxy extends TOMSender {
 				}
 			}else{ 
                             
-                            if (getViewManager().getStaticConf().getMaxPendigReqs() > 0) {
+                            //Control flow
+                            if (getViewManager().getStaticConf().getControlFlow()) {
+                                
                                 while (true) {
 
                                     if (this.controlFlow.tryAcquire(getViewManager().getStaticConf().getControlFlowTimeout(), TimeUnit.MILLISECONDS)) {

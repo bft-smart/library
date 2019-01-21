@@ -28,6 +28,7 @@ import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.core.messages.TOMMessageType;
 import bftsmart.tom.leaderchange.RequestsTimer;
 import bftsmart.tom.server.RequestVerifier;
+import bftsmart.tom.util.TOMUtil;
 import java.nio.ByteBuffer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -270,16 +271,15 @@ public class ClientsManager {
     public boolean requestReceived(TOMMessage request, boolean fromClient) {
                 
         int pendingReqs = countPendingRequests();
-        int pendingDecs = dt.getDecisionsInQueue();
+        int pendingDecs = dt.getPendingDecisions();
         long usedMemory = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
                 
         //control flow mechanism
-        if (fromClient) {
-            if (this.controller.getStaticConf().getMaxPendigReqs() > 0) {
+        if (fromClient && this.controller.getStaticConf().getControlFlow()) {
 
-                if (pendingReqs >= this.controller.getStaticConf().getMaxPendigReqs() || 
-                        pendingDecs >= this.controller.getStaticConf().getMaxPendigDecs() ||
-                        usedMemory >= this.controller.getStaticConf().getMaxUsedMemory())
+                if ((this.controller.getStaticConf().getMaxPendigReqs() > 0 && pendingReqs >= this.controller.getStaticConf().getMaxPendigReqs()) || 
+                        (this.controller.getStaticConf().getMaxPendigDecs() > 0 && pendingDecs >= this.controller.getStaticConf().getMaxPendigDecs()) ||
+                        (this.controller.getStaticConf().getMaxUsedMemory() > 0 && usedMemory >= this.controller.getStaticConf().getMaxUsedMemory()))
                                 {
 
                     ignore = true;
@@ -291,11 +291,11 @@ public class ClientsManager {
 
                     ignore = false;
                 }
-            }
 
             if (ignore) {
                 
-                if(usedMemory > this.controller.getStaticConf().getPreferredUsedMemory()) Runtime.getRuntime().gc(); // force garbage collection
+                if(this.controller.getStaticConf().getMaxUsedMemory() > 0 &&
+                        usedMemory > this.controller.getStaticConf().getPreferredUsedMemory()) Runtime.getRuntime().gc(); // force garbage collection
 
                 logger.warn("Discarding message due to control flow mechanism\n" +
                         "\tMaximum requests are {}, current requests at {}\n" + 
@@ -303,7 +303,8 @@ public class ClientsManager {
                         "\tMaximum memory is {} current memory at {}\n",
                         this.controller.getStaticConf().getMaxPendigReqs(), pendingReqs,
                         this.controller.getStaticConf().getMaxPendigDecs(), pendingDecs,
-                        this.controller.getStaticConf().getMaxUsedMemory(), usedMemory);
+                        TOMUtil.humanReadableByteCount(this.controller.getStaticConf().getMaxUsedMemory(), false),
+                        TOMUtil.humanReadableByteCount(usedMemory, false));
 
                 return false;
             }
@@ -419,7 +420,7 @@ public class ClientsManager {
     }
 
     public void sendAck(boolean fromClient, TOMMessage request) {
-        if ((fromClient || !request.ackSent) && this.controller.getStaticConf().getMaxPendigReqs() > 0 && cs != null) {
+        if ((fromClient || !request.ackSent) && this.controller.getStaticConf().getControlFlow() && cs != null) {
             
             logger.debug("Sending ACK to client {}", request.getSender());
             
