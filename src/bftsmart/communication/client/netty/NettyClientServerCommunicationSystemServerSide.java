@@ -313,6 +313,8 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 					sm.destination = targets[i];
 					//send message
 					session.writeAndFlush(sm); // This used to invoke "await". Removed to avoid blockage and race condition.
+                                        
+                                        sending++;
                                 
                                 ///////TODO: replace this patch for a proper client preamble
                                 } else if (sm.getSequence() >= 0 && sm.getSequence() <= 5) {
