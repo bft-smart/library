@@ -81,9 +81,9 @@ public final class DeliveryThread extends Thread {
        return decided.size() + currentDecisions;
    }
    
-   public int getPendingReplies() {
+   public ReplyManager getReplyManager() {
       
-       return receiver.getPendingReplies();
+       return receiver.getReplyManager();
    }
     /**
      * Invoked by the TOM layer, to deliver a decision
