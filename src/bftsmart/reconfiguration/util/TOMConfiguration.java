@@ -43,6 +43,8 @@ public class TOMConfiguration extends Configuration {
     protected int preferredPendingReqs;
     protected int maxPendingDecs;
     protected int preferredPendingDecs;
+    protected int maxUsedMemory;
+    protected int preferredUsedMemory;
     protected int numberOfNonces;
     protected int inQueueSize;
     protected int outQueueSize;
@@ -212,6 +214,24 @@ public class TOMConfiguration extends Configuration {
                 preferredPendingDecs = 10000;
             } else {
                 preferredPendingDecs = Integer.parseInt(s);
+
+            }
+            
+            s = (String) configs.remove("system.totalordermulticast.maxusedmemory");
+            if (s == null) {
+                maxUsedMemory = 100000;
+            } else {
+                maxUsedMemory = Integer.parseInt(s);
+                if (maxUsedMemory <= 0) {
+                    maxUsedMemory = -1;
+                }
+            }
+            
+            s = (String) configs.remove("system.totalordermulticast.preferredusedmemory");
+            if (s == null) {
+                preferredUsedMemory = 10000;
+            } else {
+                preferredUsedMemory = Integer.parseInt(s);
 
             }
             
@@ -491,6 +511,14 @@ public class TOMConfiguration extends Configuration {
     
     public int getPreferredPendigDecs() {
         return preferredPendingDecs;
+    }
+    
+    public int getMaxUsedMemory() {
+        return maxUsedMemory;
+    }
+    
+    public int getPreferredUsedMemory() {
+        return preferredUsedMemory;
     }
     
     public int getControlFlowTimeout() {
