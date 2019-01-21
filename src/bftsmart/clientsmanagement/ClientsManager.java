@@ -272,6 +272,7 @@ public class ClientsManager {
                 
         int pendingReqs = countPendingRequests();
         int pendingDecs = dt.getPendingDecisions();
+        int pendingReps = dt.getPendingReplies();
         long usedMemory = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
                 
         //control flow mechanism
@@ -279,6 +280,7 @@ public class ClientsManager {
 
                 if ((this.controller.getStaticConf().getMaxPendigReqs() > 0 && pendingReqs >= this.controller.getStaticConf().getMaxPendigReqs()) || 
                         (this.controller.getStaticConf().getMaxPendigDecs() > 0 && pendingDecs >= this.controller.getStaticConf().getMaxPendigDecs()) ||
+                        (this.controller.getStaticConf().getMaxPendigReps() > 0 && pendingReps >= this.controller.getStaticConf().getMaxPendigReps()) ||
                         (this.controller.getStaticConf().getMaxUsedMemory() > 0 && usedMemory >= this.controller.getStaticConf().getMaxUsedMemory()))
                                 {
 
@@ -286,6 +288,7 @@ public class ClientsManager {
 
                 } else if (pendingReqs <= this.controller.getStaticConf().getPreferredPendigReqs() && 
                         pendingDecs <= this.controller.getStaticConf().getPreferredPendigDecs() &&
+                        pendingReps <= this.controller.getStaticConf().getPreferredPendigReps() && 
                         usedMemory <= this.controller.getStaticConf().getPreferredUsedMemory())
                         {
 
@@ -298,11 +301,13 @@ public class ClientsManager {
                         usedMemory > this.controller.getStaticConf().getPreferredUsedMemory()) Runtime.getRuntime().gc(); // force garbage collection
 
                 logger.warn("Discarding message due to control flow mechanism\n" +
-                        "\tMaximum requests are {}, current requests at {}\n" + 
-                        "\tMaximum decisions are {}, current decisions at {}\n" +
+                        "\tMaximum requests are {}, pending requests at {}\n" + 
+                        "\tMaximum decisions are {}, pending decisions at {}\n" +
+                        "\tMaximum replies are {}, pending replies at {}\n" + 
                         "\tMaximum memory is {} current memory at {}\n",
                         this.controller.getStaticConf().getMaxPendigReqs(), pendingReqs,
                         this.controller.getStaticConf().getMaxPendigDecs(), pendingDecs,
+                        this.controller.getStaticConf().getMaxPendigReps(), pendingReps,
                         TOMUtil.humanReadableByteCount(this.controller.getStaticConf().getMaxUsedMemory(), false),
                         TOMUtil.humanReadableByteCount(usedMemory, false));
 

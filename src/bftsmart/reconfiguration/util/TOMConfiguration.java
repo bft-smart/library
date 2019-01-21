@@ -33,6 +33,8 @@ public class TOMConfiguration extends Configuration {
     protected int batchTimeout;
     protected int controlFlowTimeout;
     protected int invokeTimeout;
+    protected int nettyClientTimeout;
+    protected int nettyReplicaTimeout;
     protected int tomPeriod;
     protected int paxosHighMark;
     protected int revivalHighMark;
@@ -43,6 +45,8 @@ public class TOMConfiguration extends Configuration {
     protected int preferredPendingReqs;
     protected int maxPendingDecs;
     protected int preferredPendingDecs;
+    protected int maxPendingReps;
+    protected int preferredPendingReps;
     protected int maxUsedMemory;
     protected int preferredUsedMemory;
     protected int numberOfNonces;
@@ -57,7 +61,6 @@ public class TOMConfiguration extends Configuration {
     private boolean stateTransferEnabled;
     private int checkpointPeriod;
     private int globalCheckpointPeriod;
-    private int useControlFlow;
     private int[] initialView;
     private int ttpId;
     private boolean isToLog;
@@ -67,7 +70,6 @@ public class TOMConfiguration extends Configuration {
     private boolean isToWriteCkpsToDisk;
     private boolean syncCkp;
     private boolean isBFT;
-    private int numRepliers;
     private int numNettyWorkers;
     private boolean sameBatchSize;
     private String bindAddress;
@@ -132,6 +134,26 @@ public class TOMConfiguration extends Configuration {
                 invokeTimeout = Integer.parseInt(s);
                 if (invokeTimeout <= 0) {
                     invokeTimeout = 40000;
+                }
+            }
+            
+            s = (String) configs.remove("system.communication.clienttimeout");
+            if (s == null) {
+                nettyClientTimeout = 1000;
+            } else {
+                nettyClientTimeout = Integer.parseInt(s);
+                if (nettyClientTimeout <= 0) {
+                    nettyClientTimeout = 1000;
+                }
+            }
+            
+            s = (String) configs.remove("system.communication.replicaimeout");
+            if (s == null) {
+                nettyReplicaTimeout = 1000;
+            } else {
+                nettyReplicaTimeout = Integer.parseInt(s);
+                if (nettyReplicaTimeout <= 0) {
+                    nettyReplicaTimeout = 1000;
                 }
             }
             
@@ -212,6 +234,24 @@ public class TOMConfiguration extends Configuration {
                 preferredPendingDecs = 10000;
             } else {
                 preferredPendingDecs = Integer.parseInt(s);
+
+            }
+            
+            s = (String) configs.remove("system.controlflow.maxpendingreps");
+            if (s == null) {
+                maxPendingReps = 100000;
+            } else {
+                maxPendingReps = Integer.parseInt(s);
+                if (maxPendingReps <= 0) {
+                    maxPendingReps = -1;
+                }
+            }
+            
+            s = (String) configs.remove("system.controlflow.preferredpendingreps");
+            if (s == null) {
+                preferredPendingReps = 10000;
+            } else {
+                preferredPendingReps = Integer.parseInt(s);
 
             }
             
@@ -297,13 +337,6 @@ public class TOMConfiguration extends Configuration {
                 checkpointPeriod = 1;
             } else {
                 checkpointPeriod = Integer.parseInt(s);
-            }
-
-            s = (String) configs.remove("system.communication.useControlFlow");
-            if (s == null) {
-                useControlFlow = 0;
-            } else {
-                useControlFlow = Integer.parseInt(s);
             }
 
             s = (String) configs.remove("system.initial.view");
@@ -405,13 +438,6 @@ public class TOMConfiguration extends Configuration {
 
             s = (String) configs.remove("system.bft");
             isBFT = (s != null) ? Boolean.parseBoolean(s) : true;
-
-            s = (String) configs.remove("system.numrepliers");
-            if (s == null) {
-                numRepliers = 0;
-            } else {
-                numRepliers = Integer.parseInt(s);
-            }
  
             s = (String) configs.remove("system.numnettyworkers");
             if (s == null) {
@@ -477,6 +503,14 @@ public class TOMConfiguration extends Configuration {
         return invokeTimeout;
     }
     
+    public int getNettyClientTimeout() {
+        return nettyClientTimeout;
+    }
+    
+    public int getNettyReplicaTimeout() {
+        return nettyReplicaTimeout;
+    }
+    
     public int getReplyVerificationTime() {
         return replyVerificationTime;
     }
@@ -519,6 +553,14 @@ public class TOMConfiguration extends Configuration {
     
     public int getPreferredPendigDecs() {
         return preferredPendingDecs;
+    }
+    
+    public int getMaxPendigReps() {
+        return maxPendingReps;
+    }
+    
+    public int getPreferredPendigReps() {
+        return preferredPendingReps;
     }
     
     public int getMaxUsedMemory() {
@@ -622,20 +664,9 @@ public class TOMConfiguration extends Configuration {
         return globalCheckpointPeriod;
     }
 
-    /**
-     * Indicates if a simple control flow mechanism should be used to avoid an overflow of client requests
-     */
-    public int getUseControlFlow() {
-        return useControlFlow;
-    }
-
     public boolean isBFT(){
     	
     	return this.isBFT;
-    }
-
-    public int getNumRepliers() {
-        return numRepliers;
     }
     
     public int getNumNettyWorkers() {

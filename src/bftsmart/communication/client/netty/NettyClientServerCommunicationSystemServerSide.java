@@ -31,7 +31,6 @@ import io.netty.channel.socket.nio.NioServerSocketChannel;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.net.ConnectException;
 import java.net.InetSocketAddress;
 import java.nio.channels.ClosedChannelException;
 import java.security.NoSuchAlgorithmException;
@@ -54,7 +53,6 @@ import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.util.TOMUtil;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-import java.util.logging.Level;
 
 /**
  *
@@ -71,6 +69,8 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
     private ServerViewController controller;
     private boolean closed = false;
     private Channel mainChannel;
+    private SyncListener listener;
+    private int sending = 0;
 
     // This locked seems to introduce a bottleneck and seems useless, but I cannot recall why I added it
     //private ReentrantLock sendLock = new ReentrantLock();
@@ -80,6 +80,7 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 		try {
 
 			this.controller = controller;
+                        this.listener = new SyncListener(this.controller.getStaticConf().getNettyReplicaTimeout());
 			sessionTable = new HashMap();
 			rl = new ReentrantReadWriteLock();
 
@@ -264,7 +265,9 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 
 	@Override
 	public void send(int[] targets, TOMMessage sm, boolean serializeClassHeaders) {
-
+                            
+                sending = 0;
+                
 		//serialize message
 		DataOutputStream dos = null;
 
@@ -340,6 +343,8 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
                                                             msg.destination = id;
                                                             //send message
                                                             session.writeAndFlush(msg);
+                                                            
+                                                            sending++;
                                                     }
 
                                                     rl.readLock().unlock();
@@ -359,10 +364,12 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
                                     logger.warn("!!!!!!!!NettyClientServerSession is NULL !!!!!! sequence: " + sm.getSequence() + ", ID; " + targets[i]);
                                 }
 			} finally {
-				//sendLock.unlock();
 				rl.readLock().unlock();
 			}
 		}
+
+                listener.waitForChannels(sending); // wait for the this transmission to complete
+
 	}
 
     @Override

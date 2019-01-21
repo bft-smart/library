@@ -46,6 +46,8 @@ public interface Executable {
         TOMMessage reply = msgCtx.recreateTOMMessage(command);
         reply.reply = new TOMMessage(processID, reply.getSession(), reply.getSequence(), reply.getOperationId(),
                     result, viewID, reply.getReqType());
+        
+        reply.msgCtx = msgCtx;
          
          return reply;
     }
