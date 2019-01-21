@@ -35,7 +35,7 @@ public class DefaultReplier implements Replier{
     private ReplicaContext rc;
     
     @Override
-    public void manageReply(TOMMessage request, MessageContext msgCtx) {
+    public void manageReply(TOMMessage reply, MessageContext msgCtx) {
         
         
         while (rc == null) {
@@ -53,7 +53,7 @@ public class DefaultReplier implements Replier{
             }
         }
         
-        rc.getServerCommunicationSystem().send(new int[]{request.getSender()}, request.reply);
+        rc.getServerCommunicationSystem().send(new int[]{msgCtx.getSender()}, reply);
         
     }
 

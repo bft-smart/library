@@ -57,7 +57,6 @@ public class TOMConfiguration extends Configuration {
     private boolean stateTransferEnabled;
     private int checkpointPeriod;
     private int globalCheckpointPeriod;
-    private int useControlFlow;
     private int[] initialView;
     private int ttpId;
     private boolean isToLog;
@@ -67,7 +66,6 @@ public class TOMConfiguration extends Configuration {
     private boolean isToWriteCkpsToDisk;
     private boolean syncCkp;
     private boolean isBFT;
-    private int numRepliers;
     private int numNettyWorkers;
     private boolean sameBatchSize;
     private String bindAddress;
@@ -299,13 +297,6 @@ public class TOMConfiguration extends Configuration {
                 checkpointPeriod = Integer.parseInt(s);
             }
 
-            s = (String) configs.remove("system.communication.useControlFlow");
-            if (s == null) {
-                useControlFlow = 0;
-            } else {
-                useControlFlow = Integer.parseInt(s);
-            }
-
             s = (String) configs.remove("system.initial.view");
             if (s == null) {
                 initialView = new int[n];
@@ -405,13 +396,6 @@ public class TOMConfiguration extends Configuration {
 
             s = (String) configs.remove("system.bft");
             isBFT = (s != null) ? Boolean.parseBoolean(s) : true;
-
-            s = (String) configs.remove("system.numrepliers");
-            if (s == null) {
-                numRepliers = 0;
-            } else {
-                numRepliers = Integer.parseInt(s);
-            }
  
             s = (String) configs.remove("system.numnettyworkers");
             if (s == null) {
@@ -622,20 +606,9 @@ public class TOMConfiguration extends Configuration {
         return globalCheckpointPeriod;
     }
 
-    /**
-     * Indicates if a simple control flow mechanism should be used to avoid an overflow of client requests
-     */
-    public int getUseControlFlow() {
-        return useControlFlow;
-    }
-
     public boolean isBFT(){
     	
     	return this.isBFT;
-    }
-
-    public int getNumRepliers() {
-        return numRepliers;
     }
     
     public int getNumNettyWorkers() {
