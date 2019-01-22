@@ -353,11 +353,11 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
             if (ignore) {
                 
-                logger.warn("Discarding message due to control flow mechanism\n" +
+                logger.warn("Discarding request {} due to control flow mechanism\n" +
                         "\tMaximum requests are {}, pending requests at {}\n" + 
                         "\tMaximum decisions are {}, pending decisions at {}\n" +
                         "\tMaximum replies are {}, pending replies at {}\n" + 
-                        "\tMaximum memory is {} current memory at {}\n",
+                        "\tMaximum memory is {} current memory at {}\n", msg,
                         this.controller.getStaticConf().getMaxPendigReqs(), pendingReqs,
                         this.controller.getStaticConf().getMaxPendigDecs(), pendingDecs,
                         this.controller.getStaticConf().getMaxPendigReps(), pendingReps,
