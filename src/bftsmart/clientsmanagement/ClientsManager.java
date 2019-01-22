@@ -22,6 +22,7 @@ import java.util.Map.Entry;
 import java.util.concurrent.locks.ReentrantLock;
 import bftsmart.communication.ServerCommunicationSystem;
 import bftsmart.reconfiguration.ServerViewController;
+import bftsmart.tom.MessageContext;
 import bftsmart.tom.core.DeliveryThread;
 import bftsmart.tom.core.ExecutionManager;
 import bftsmart.tom.core.messages.TOMMessage;
@@ -451,8 +452,15 @@ public class ClientsManager {
 
                 public void run() {
 
+                    MessageContext msgCtx = new MessageContext(request.getSender(), request.getViewID(), request.getReqType(),
+                        request.getSession(), request.getSequence(), request.getOperationId(), request.getReplyServer(), request.serializedMessageSignature,
+                        System.currentTimeMillis(), 0, 0, -1, -1, -1, null, null, false);
+                    
+                    request.reply = ack;
+                    request.msgCtx = msgCtx;
+                    
                     //cs.send(new int[]{request.getSender()}, ack);
-                    dt.getReplyManager().send(ack);
+                    dt.getReplyManager().send(request);
                 }
             };
 
