@@ -307,7 +307,7 @@ public class ClientsManager {
                         "\tMaximum memory is {} current memory at {}\n",
                         this.controller.getStaticConf().getMaxPendigReqs(), pendingReqs,
                         this.controller.getStaticConf().getMaxPendigDecs(), pendingDecs,
-                        this.controller.getStaticConf().getMaxPendigReqs(), pendingReps,
+                        this.controller.getStaticConf().getMaxPendigReps(), pendingReps,
                         TOMUtil.humanReadableByteCount(this.controller.getStaticConf().getMaxUsedMemory(), false),
                         TOMUtil.humanReadableByteCount(usedMemory, false));
 
