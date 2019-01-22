@@ -33,7 +33,6 @@ import bftsmart.tom.util.TOMUtil;
 import java.nio.ByteBuffer;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
-import java.util.logging.Level;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -419,22 +418,27 @@ public class ClientsManager {
                 
                 //send reply if it is available
                 TOMMessage reply = clientData.getReply(request.getSequence());
+                MessageContext ctx = clientData.getContext(request.getSequence());
+                TOMMessage clone = null;
                 
-                if (reply != null && cs != null) {
+                try {
+                    clone = (TOMMessage) request.clone();
+                } catch (CloneNotSupportedException ex) {
+                    logger.error("Error cloning object.",ex);
+                }
+                
+                if (reply != null && ctx != null && clone != null) {
                     
                     if (reply.recvFromClient && fromClient) {
-                        logger.info("[CACHE] re-send reply [Sender: " + reply.getSender() + ", sequence: " + reply.getSequence()+", session: " + reply.getSession()+ "]");
+                        logger.info("[CACHE] re-send reply [Sender: " + request.getSender() + ", sequence: " + reply.getSequence()+", session: " + reply.getSession()+ "]");
+                                                
+                        clone.reply = reply;
+                        clone.msgCtx = ctx;
+
+                        dt.getReplyManager().send(clone);
                         
-                        //Launch another thread to not interfere with the netty worker
-                        Thread t = new Thread() {
-                        
-                            public void run() {
-                                
-                                cs.send(new int[]{request.getSender()}, reply);
-                            }
-                        };
-                        
-                        t.start();
+                        //cs.send(new int[]{request.getSender()}, reply);
+
                     } 
                     
                     else if (!reply.recvFromClient && fromClient) {

@@ -15,6 +15,7 @@ limitations under the License.
 */
 package bftsmart.clientsmanagement;
 
+import bftsmart.tom.MessageContext;
 import java.security.PublicKey;
 import java.security.Signature;
 import java.security.SignatureException;
@@ -158,4 +159,13 @@ public class ClientData {
         }
     }
 
+    public MessageContext getContext(int reqSequence) {
+        TOMMessage request = orderedRequests.getBySequence(reqSequence);
+        if(request != null) {
+            return request.msgCtx;
+        } else {
+            return null;
+        }
+    }
+    
 }
