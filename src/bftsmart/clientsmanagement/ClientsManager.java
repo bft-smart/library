@@ -470,11 +470,18 @@ public class ClientsManager {
                     
             TOMMessage ack = new TOMMessage(controller.getStaticConf().getProcessId(), request.getSession(), request.getSequence(), 
                     request.getOperationId(), buff.array(), request.getViewID(), TOMMessageType.ACK);
-
-            request.reply = ack;
+            
             try {
-                ackQueue.put(request);
+                
+                TOMMessage clone = (TOMMessage) request.clone();
+            
+                clone.reply = ack;
+            
+                ackQueue.put(clone);
+                
             } catch (InterruptedException ex) {
+                java.util.logging.Logger.getLogger(ClientsManager.class.getName()).log(Level.SEVERE, null, ex);
+            } catch (CloneNotSupportedException ex) {
                 java.util.logging.Logger.getLogger(ClientsManager.class.getName()).log(Level.SEVERE, null, ex);
             }
                                     
