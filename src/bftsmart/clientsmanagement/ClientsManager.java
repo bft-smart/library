@@ -395,8 +395,17 @@ public class ClientsManager {
                     
                     if (reply.recvFromClient && fromClient) {
                         logger.info("[CACHE] re-send reply [Sender: " + reply.getSender() + ", sequence: " + reply.getSequence()+", session: " + reply.getSession()+ "]");
-                        cs.send(new int[]{request.getSender()}, reply);
-
+                        
+                        //Launch another thread to not interfere with the netty worker
+                        Thread t = new Thread() {
+                        
+                            public void run() {
+                                
+                                cs.send(new int[]{request.getSender()}, reply);
+                            }
+                        };
+                        
+                        t.start();
                     } 
                     
                     else if (!reply.recvFromClient && fromClient) {
@@ -437,8 +446,17 @@ public class ClientsManager {
             TOMMessage ack = new TOMMessage(controller.getStaticConf().getProcessId(), request.getSession(), request.getSequence(), 
                     request.getOperationId(), buff.array(), request.getViewID(), TOMMessageType.ACK);
 
-            cs.send(new int[]{request.getSender()}, ack);
-            
+            //Launch another thread to not interfere with the netty worker
+            Thread t = new Thread() {
+
+                public void run() {
+
+                    cs.send(new int[]{request.getSender()}, ack);
+                }
+            };
+
+            t.start();
+                                    
             request.ackSent = true;
         }
     }
