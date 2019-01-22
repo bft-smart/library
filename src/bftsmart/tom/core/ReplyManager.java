@@ -6,7 +6,6 @@ package bftsmart.tom.core;
 
 import bftsmart.communication.ServerCommunicationSystem;
 import bftsmart.tom.core.messages.TOMMessage;
-import bftsmart.tom.server.Replier;
 import io.netty.channel.Channel;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -16,6 +15,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import org.slf4j.LoggerFactory;
 
 
@@ -23,27 +24,48 @@ import org.slf4j.LoggerFactory;
  *
  * @author joao
  */
-public class ReplyManager extends Thread {
+public class ReplyManager {
         
-    private int currentReplies = 0;
-    private boolean doWork = true;
-    private LinkedBlockingQueue<TOMMessage> replies = null;
+    private LinkedList<ReplyThread> threads;
+    private int iteration;
+    
+    public ReplyManager(int numThreads, ServerCommunicationSystem cs) {
+        
+        this.threads = new LinkedList();
+        this.iteration = 0;
+        
+        for (int i = 0; i < numThreads; i++) {
+            this.threads.add(new ReplyThread(cs));
+        }
+        
+        for (ReplyThread t : threads)
+            t.start();
+    }
+    
+    public void send (TOMMessage msg) {
+        
+        iteration++;
+        threads.get((iteration % threads.size())).send(msg);
+
+    }
+}
+class ReplyThread extends Thread {
+        
+    private LinkedBlockingQueue<TOMMessage> replies;
     private ServerCommunicationSystem cs = null;
-    private Replier replier = null;
     
     private final Lock queueLock = new ReentrantLock();
     private final Condition notEmptyQueue = queueLock.newCondition();
     
     private Map<Integer, Channel> channels;
     
-    public ReplyManager (ServerCommunicationSystem cs, Replier replier) {
+    ReplyThread(ServerCommunicationSystem cs) {
         this.cs = cs;
         this.replies = new LinkedBlockingQueue<TOMMessage>();
         this.channels = new HashMap<>();
-        this.replier = replier;
     }
     
-    public void send(TOMMessage msg) {
+    void send(TOMMessage msg) {
         
         try {
             queueLock.lock();
@@ -51,44 +73,27 @@ public class ReplyManager extends Thread {
             notEmptyQueue.signalAll();
             queueLock.unlock();
         } catch (InterruptedException ex) {
-            LoggerFactory.getLogger(this.getClass()).error("Interruption error", ex);
+            Logger.getLogger(ReplyThread.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
-    
-    public int getPendingReplies() {
-       return replies.size() + currentReplies;
-   }
     
     public void run() {
 
 
-        while (doWork) {
+        while (true) {
 
             try {
-                currentReplies = 0;
                 
                 LinkedList<TOMMessage> list = new LinkedList<>();
                 
                 queueLock.lock();
-                
-                while (replies.isEmpty()) {
-                    notEmptyQueue.await(10, TimeUnit.MILLISECONDS);
-                    if (!doWork) break;
-                }
-                
-                if (!doWork && replies.isEmpty()) {
-                    queueLock.unlock();
-                    break;
-                }
-                
+                while (replies.isEmpty()) notEmptyQueue.await(10, TimeUnit.MILLISECONDS);
                 replies.drainTo(list);
                 queueLock.unlock();
                 
-                currentReplies = list.size();
-                
                 for (TOMMessage msg : list) {
                     
-                    replier.manageReply(msg.reply, msg.msgCtx);
+                    cs.getClientsConn().send(new int[] {msg.getSender()}, msg.reply, false);             
                 }
             } catch (InterruptedException ex) {
                 LoggerFactory.getLogger(this.getClass()).error("Could not retrieve reply from queue",ex);

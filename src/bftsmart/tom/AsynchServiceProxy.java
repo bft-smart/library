@@ -487,7 +487,7 @@ public class AsynchServiceProxy extends ServiceProxy {
                         ackSeq++;
                         sm.setAckSeq(ackSeq);
 
-                        logger.warn("Retrying invoke at client {} for request #{} with ACK sequence #{}", 
+                        logger.warn("Retrying invoke at client {} for request #{} ACK ack sequence #{}", 
                                 getViewManager().getStaticConf().getProcessId(), reqCtx.getOperationId(), sm.getAckSeq());
                         Arrays.fill(acks, null);
                         

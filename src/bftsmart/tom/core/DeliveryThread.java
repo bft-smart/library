@@ -81,10 +81,6 @@ public final class DeliveryThread extends Thread {
        return decided.size() + currentDecisions;
    }
    
-   public int getPendingReplies() {
-      
-       return receiver.getPendingReplies();
-   }
     /**
      * Invoked by the TOM layer, to deliver a decision
      * @param dec Decision established from the consensus

@@ -146,7 +146,6 @@ public class ServiceReplica {
     private void init() {
         try {
             cs = new ServerCommunicationSystem(this.SVController, this);
-            repMan = new ReplyManager(cs, replier);
         } catch (Exception ex) {
             logger.error("Failed to initialize replica-to-replica communication system", ex);
             throw new RuntimeException("Unable to build a communication system.");
@@ -192,7 +191,7 @@ public class ServiceReplica {
 
     private void initReplica() {
         cs.start();
-        repMan.start();
+        repMan = new ReplyManager(SVController.getStaticConf().getNumRepliers(), cs);
     }
 
     /**
@@ -210,9 +209,11 @@ public class ServiceReplica {
                         message.getReplyServer() != this.id),message.getContent(), msgCtx);
 
         if (response != null) {
-
-            repMan.send(response);
-
+            if (SVController.getStaticConf().getNumRepliers() > 0) {
+                repMan.send(response);
+            } else {
+                cs.send(new int[]{response.getSender()}, response.reply);
+            }
         }
     }
         
@@ -338,7 +339,7 @@ public class ServiceReplica {
                                 if (response != null) {
                                     
                                     logger.debug("sending reply to " + response.getSender());
-                                    repMan.send(response);
+                                    replier.manageReply(response, msgCtx);
                                 }
                             } else { //this code should never be executed
                                 throw new UnsupportedOperationException("Non-existent interface");
@@ -427,9 +428,15 @@ public class ServiceReplica {
             if (replies != null) {
                 
                 for (TOMMessage reply : replies) {
-                    
-                    logger.debug("Sending reply to " + reply.getSender() + " with sequence number " + reply.getSequence() + " and operation ID " + reply.getOperationId());
-                    repMan.send(reply);
+
+                    if (SVController.getStaticConf().getNumRepliers() > 0) {
+                        logger.debug("Sending reply to " + reply.getSender() + " with sequence number " + reply.getSequence() + " and operation ID " + reply.getOperationId() +" via ReplyManager");
+                        repMan.send(reply);
+                    } else {
+                        logger.debug("Sending reply to " + reply.getSender() + " with sequence number " + reply.getSequence() + " and operation ID " + reply.getOperationId());
+                        replier.manageReply(reply, null);
+                        //cs.send(new int[]{request.getSender()}, request.reply);
+                    }
                 }
             }
             //DEBUG
@@ -512,10 +519,5 @@ public class ServiceReplica {
      */
     public int getId() {
         return id;
-    }
-    
-    public int getPendingReplies() {
-        
-        return repMan.getPendingReplies();
     }
 }

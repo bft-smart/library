@@ -25,7 +25,6 @@ import java.io.Externalizable;
 import java.io.IOException;
 
 import bftsmart.communication.SystemMessage;
-import bftsmart.tom.MessageContext;
 import bftsmart.tom.util.DebugInfo;
 import org.slf4j.LoggerFactory;
 
@@ -84,7 +83,6 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 
 	//the reply associated with this message
 	public transient TOMMessage reply = null;
-        public transient MessageContext msgCtx = null;
 	public transient boolean alreadyProposed = false;
 	
 	private int replyServer = -1;

@@ -38,7 +38,7 @@ public interface Replier {
      * @param request The executed request
      * @param msgCtx The message context associated to the request
      */
-    public void manageReply(TOMMessage reply, MessageContext msgCtx);
+    public void manageReply(TOMMessage request, MessageContext msgCtx);
 
 }
 
