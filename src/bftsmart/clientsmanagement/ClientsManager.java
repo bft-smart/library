@@ -286,10 +286,10 @@ public class ClientsManager {
 
                     ignore = true;
 
-                } else if (pendingReqs <= this.controller.getStaticConf().getPreferredPendigReqs() && 
-                        pendingDecs <= this.controller.getStaticConf().getPreferredPendigDecs() &&
-                        pendingReps <= this.controller.getStaticConf().getPreferredPendigReps() &&
-                        usedMemory <= this.controller.getStaticConf().getPreferredUsedMemory())
+                } else if ((this.controller.getStaticConf().getMaxPendigReqs() < 0 || pendingReqs <= this.controller.getStaticConf().getPreferredPendigReqs()) && 
+                        (this.controller.getStaticConf().getMaxPendigDecs() < 0 || pendingDecs <= this.controller.getStaticConf().getPreferredPendigDecs()) &&
+                        (this.controller.getStaticConf().getMaxPendigReps() < 0 || pendingReps <= this.controller.getStaticConf().getPreferredPendigReps()) &&
+                        (this.controller.getStaticConf().getMaxUsedMemory() < 0 || usedMemory <= this.controller.getStaticConf().getPreferredUsedMemory()))
                         {
 
                     ignore = false;
