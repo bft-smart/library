@@ -312,9 +312,7 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 					Channel session = ncss.getChannel();
 					sm.destination = targets[i];
 					//send message
-					ChannelFuture f = session.writeAndFlush(sm); // This used to invoke "await". Removed to avoid blockage and race condition.
-                                        
-                                        f.addListener(listener);
+					session.writeAndFlush(sm); // This used to invoke "await". Removed to avoid blockage and race condition.
                                         
                                         sending++;
                                 
@@ -346,9 +344,8 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
                                                             Channel session = ncss.getChannel();
                                                             msg.destination = id;
                                                             //send message
-                                                            ChannelFuture f = session.writeAndFlush(msg);
+                                                            session.writeAndFlush(msg);
                                                             
-                                                            f.addListener(listener);
                                                             sending++;
                                                     }
 
