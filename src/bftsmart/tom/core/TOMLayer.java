@@ -627,10 +627,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         setNoExec();
 
         if (this.requestsTimer != null) this.requestsTimer.shutdown();
-        if (this.clientsManager != null) {
-            this.clientsManager.clear();
-            this.clientsManager.getPendingRequests().clear();
-        }
+        if (this.clientsManager != null) this.clientsManager.shutdown();
         if (this.dt != null) this.dt.shutdown();
         if (this.communication != null) this.communication.shutdown();
  

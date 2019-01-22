@@ -32,6 +32,7 @@ import bftsmart.tom.server.RequestVerifier;
 import bftsmart.tom.util.TOMUtil;
 import java.nio.ByteBuffer;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,6 +45,7 @@ public class ClientsManager {
 
     private Logger logger = LoggerFactory.getLogger(this.getClass());
 
+    private boolean doWork = true;
     private ServerViewController controller;
     private RequestsTimer timer;
     private HashMap<Integer, ClientData> clientsData = new HashMap<Integer, ClientData>();
@@ -73,13 +75,15 @@ public class ClientsManager {
             
             public void run() {
                 
-                while (true) {
+                while (doWork) {
                     
                     try {
-                        TOMMessage request = ackQueue.take();
-                        cs.send(new int[]{request.getSender()}, request.reply);
+                        TOMMessage request = null;
+                        request = ackQueue.poll(100,TimeUnit.MILLISECONDS);
+                        if (request != null)
+                            cs.send(new int[]{request.getSender()}, request.reply);
                     } catch (InterruptedException ex) {
-                        java.util.logging.Logger.getLogger(ClientsManager.class.getName()).log(Level.SEVERE, null, ex);
+                        logger.error("Interrupted exception", ex);
                     }
                 }
             }
@@ -479,10 +483,8 @@ public class ClientsManager {
             
                 ackQueue.put(clone);
                 
-            } catch (InterruptedException ex) {
-                java.util.logging.Logger.getLogger(ClientsManager.class.getName()).log(Level.SEVERE, null, ex);
-            } catch (CloneNotSupportedException ex) {
-                java.util.logging.Logger.getLogger(ClientsManager.class.getName()).log(Level.SEVERE, null, ex);
+            } catch (InterruptedException | CloneNotSupportedException ex) {
+                logger.error("Error while sending ACK", ex);
             }
                                     
             request.ackSent = true;
@@ -544,4 +546,12 @@ public class ClientsManager {
         
         return clientsData.size();
     }
+    
+    public void shutdown() {
+        
+        clear();
+        getPendingRequests().clear();
+        doWork = false;
+    }
+    
 }
