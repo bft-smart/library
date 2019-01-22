@@ -377,8 +377,10 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 			}
 		}
 
+                listener.setRemainingFutures(sending);
+                listener.waitForChannels(0);
+
                 //listener.setRemainingFutures(sending);
-                //listener.waitForChannels(0);
 	}
 
     @Override
