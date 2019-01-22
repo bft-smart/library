@@ -451,7 +451,8 @@ public class ClientsManager {
 
                 public void run() {
 
-                    cs.send(new int[]{request.getSender()}, ack);
+                    //cs.send(new int[]{request.getSender()}, ack);
+                    dt.getReplyManager().send(ack);
                 }
             };
 
