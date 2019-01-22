@@ -43,6 +43,8 @@ public class TOMConfiguration extends Configuration {
     protected int preferredPendingReqs;
     protected int maxPendingDecs;
     protected int preferredPendingDecs;
+    protected int maxPendingReps;
+    protected int preferredPendingReps;
     protected int maxUsedMemory;
     protected int preferredUsedMemory;
     protected int numberOfNonces;
@@ -210,6 +212,24 @@ public class TOMConfiguration extends Configuration {
                 preferredPendingDecs = 10000;
             } else {
                 preferredPendingDecs = Integer.parseInt(s);
+
+            }
+            
+            s = (String) configs.remove("system.controlflow.maxpendingreps");
+            if (s == null) {
+                maxPendingReps = 10000;
+            } else {
+                maxPendingReps = Integer.parseInt(s);
+                if (maxPendingReps <= 0) {
+                    maxPendingReps = -1;
+                }
+            }
+            
+            s = (String) configs.remove("system.controlflow.preferredpendingreps");
+            if (s == null) {
+                preferredPendingReps = 1000;
+            } else {
+                preferredPendingReps = Integer.parseInt(s);
 
             }
             
@@ -504,6 +524,15 @@ public class TOMConfiguration extends Configuration {
     public int getPreferredPendigDecs() {
         return preferredPendingDecs;
     }
+    
+    public int getMaxPendigReps() {
+        return maxPendingReps;
+    }
+    
+    public int getPreferredPendigReps() {
+        return preferredPendingReps;
+    }
+    
     
     public int getMaxUsedMemory() {
         return maxUsedMemory;
