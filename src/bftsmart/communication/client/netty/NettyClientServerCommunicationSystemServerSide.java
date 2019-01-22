@@ -266,8 +266,6 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 	@Override
 	public void send(int[] targets, TOMMessage sm, boolean serializeClassHeaders) {
                             
-                listener.waitForChannels(sending); // wait for the previous transmission to complete
-            
                 sending = 0;
                 
 		//serialize message
@@ -373,7 +371,9 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 			} finally {
 				rl.readLock().unlock();
 			}
-		}                
+		}
+
+                listener.waitForChannels(sending); // wait for the this transmission to complete
 
 	}
 
