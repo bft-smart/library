@@ -272,7 +272,7 @@ public class ClientsManager {
                 
         int pendingReqs = countPendingRequests();
         int pendingDecs = dt.getPendingDecisions();
-        int pendingReps = dt.getReplyManager().getPendingReplies();
+        int pendingReps = dt.getPendingReplies();
         long usedMemory = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
                 
         //control flow mechanism
@@ -395,17 +395,7 @@ public class ClientsManager {
                     
                     if (reply.recvFromClient && fromClient) {
                         logger.info("[CACHE] re-send reply [Sender: " + reply.getSender() + ", sequence: " + reply.getSequence()+", session: " + reply.getSession()+ "]");
-                        
-                        Thread t = new Thread() {
-                            
-                            public void run() {
-                                
-                                cs.send(new int[]{request.getSender()}, reply);
-                            }
-                        };
-                        
-                        t.start();
-                        
+                        cs.send(new int[]{request.getSender()}, reply);
 
                     } 
                     
@@ -446,19 +436,10 @@ public class ClientsManager {
                     
             TOMMessage ack = new TOMMessage(controller.getStaticConf().getProcessId(), request.getSession(), request.getSequence(), 
                     request.getOperationId(), buff.array(), request.getViewID(), TOMMessageType.ACK);
+
+            cs.send(new int[]{request.getSender()}, ack);
             
             request.ackSent = true;
-
-            Thread t = new Thread() {
-                            
-                public void run() {
-
-                    cs.send(new int[]{request.getSender()}, ack);
-                }
-            };
-
-            t.start();
-                        
         }
     }
     /**

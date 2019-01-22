@@ -46,7 +46,6 @@ class SyncListener implements GenericFutureListener<ChannelFuture> {
 
         if (this.remainingFutures <= 0) {
 
-            logger.debug("Signaling that all operations are now done");
             this.enoughCompleted.signalAll();
         }
 
@@ -77,13 +76,5 @@ class SyncListener implements GenericFutureListener<ChannelFuture> {
 
         this.futureLock.unlock();
     }
-    
-    public void setRemainingFutures(int n) {
-        
-        logger.debug("Remaining futures were at " + this.remainingFutures);
-        
-        this.remainingFutures += n;
-        
-        logger.debug("Remaining futures now at " + this.remainingFutures);
-    }
+
 }

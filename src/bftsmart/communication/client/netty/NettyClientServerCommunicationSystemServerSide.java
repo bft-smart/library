@@ -69,7 +69,7 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
     private ServerViewController controller;
     private boolean closed = false;
     private Channel mainChannel;
-    //private SyncListener listener;
+    private SyncListener listener;
     private int sending = 0;
 
     // This locked seems to introduce a bottleneck and seems useless, but I cannot recall why I added it
@@ -80,7 +80,7 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 		try {
 
 			this.controller = controller;
-                        //this.listener = new SyncListener(this.controller.getStaticConf().getNettyReplicaTimeout());
+                        this.listener = new SyncListener(this.controller.getStaticConf().getNettyReplicaTimeout());
 			sessionTable = new HashMap();
 			rl = new ReentrantReadWriteLock();
 
@@ -266,11 +266,9 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 	@Override
 	public void send(int[] targets, TOMMessage sm, boolean serializeClassHeaders) {
                             
-                //listener.waitForChannels(sending); // wait for the previous transmission to complete
-                                                  
-                SyncListener listener = new SyncListener(this.controller.getStaticConf().getNettyReplicaTimeout());
-
-                int sending = 0;
+                listener.waitForChannels(sending); // wait for the previous transmission to complete
+            
+                sending = 0;
                 
 		//serialize message
 		DataOutputStream dos = null;
@@ -317,7 +315,7 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 					sm.destination = targets[i];
 					//send message
 					ChannelFuture f = session.writeAndFlush(sm); // This used to invoke "await". Removed to avoid blockage and race condition.
-                                                                                
+                                        
                                         f.addListener(listener);
                                         
                                         sending++;
@@ -352,8 +350,8 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
                                                             //send message
                                                             ChannelFuture f = session.writeAndFlush(msg);
                                                             
-                                                            //f.addListener(listener);
-                                                            //sending++;
+                                                            f.addListener(listener);
+                                                            sending++;
                                                     }
 
                                                     rl.readLock().unlock();
@@ -375,12 +373,8 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 			} finally {
 				rl.readLock().unlock();
 			}
-		}
+		}                
 
-                listener.setRemainingFutures(sending);
-                listener.waitForChannels(0);
-
-                //listener.setRemainingFutures(sending);
 	}
 
     @Override

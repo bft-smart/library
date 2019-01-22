@@ -514,8 +514,8 @@ public class ServiceReplica {
         return id;
     }
     
-    public ReplyManager getReplyManager() {
+    public int getPendingReplies() {
         
-        return repMan;
+        return repMan.getPendingReplies();
     }
 }
