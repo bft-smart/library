@@ -47,11 +47,12 @@ public class CommandsInfo implements Serializable {
                             msgCtx[i].getViewID(), msgCtx[i].getType(),
                             msgCtx[i].getSession(), msgCtx[i].getSequence(),
                             msgCtx[i].getOperationId(), msgCtx[i].getReplyServer(),
-                            msgCtx[i].getSignature(), msgCtx[i].getTimestamp(),
-                            msgCtx[i].getNumOfNonces(),  msgCtx[i].getSeed(),
-                            msgCtx[i].getRegency(), msgCtx[i].getLeader(),
-                            msgCtx[i].getConsensusId(), msgCtx[i].getProof(),
-                            msgCtx[i].getFirstInBatch(), msgCtx[i].isNoOp());
+                            msgCtx[i].getAckSeq(), msgCtx[i].getSignature(),
+                            msgCtx[i].getTimestamp(), msgCtx[i].getNumOfNonces(), 
+                            msgCtx[i].getSeed(), msgCtx[i].getRegency(),
+                            msgCtx[i].getLeader(), msgCtx[i].getConsensusId(),
+                            msgCtx[i].getProof(), msgCtx[i].getFirstInBatch(),
+                            msgCtx[i].isNoOp());
                     onlyNeeded[i] = msg;
         	}
         }

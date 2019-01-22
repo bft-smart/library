@@ -15,7 +15,6 @@ limitations under the License.
 */
 package bftsmart.tom.leaderchange;
 
-import bftsmart.communication.server.ServerConnection;
 import java.io.IOException;
 import java.security.MessageDigest;
 import java.security.SignedObject;

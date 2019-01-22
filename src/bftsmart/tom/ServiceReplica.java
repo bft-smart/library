@@ -301,7 +301,7 @@ public class ServiceReplica {
                             numRequests++;
                             MessageContext msgCtx = new MessageContext(request.getSender(), request.getViewID(),
                                     request.getReqType(), request.getSession(), request.getSequence(), request.getOperationId(),
-                                    request.getReplyServer(), request.serializedMessageSignature, firstRequest.timestamp,
+                                    request.getReplyServer(), request.getAckSeq(), request.serializedMessageSignature, firstRequest.timestamp,
                                     request.numOfNonces, request.seed, regencies[consensusCount], leaders[consensusCount],
                                     consId[consensusCount], cDecs[consensusCount].getConsMessages(), firstRequest, false);
                             if (requestCount + 1 == requestsFromConsensus.length) {
@@ -384,7 +384,7 @@ public class ServiceReplica {
 
                         msgCtx[line] = new MessageContext(m.getSender(), m.getViewID(),
                             m.getReqType(), m.getSession(), m.getSequence(), m.getOperationId(),
-                            m.getReplyServer(), m.serializedMessageSignature, firstRequest.timestamp,
+                            m.getReplyServer(), m.getAckSeq(), m.serializedMessageSignature, firstRequest.timestamp,
                             m.numOfNonces, m.seed, regencies[consensusCount], leaders[consensusCount],
                             consId[consensusCount], cDecs[consensusCount].getConsMessages(), firstRequest, true);
                         msgCtx[line].setLastInBatch();
