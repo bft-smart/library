@@ -83,6 +83,9 @@ public final class TOMLayer extends Thread implements RequestReceiver {
     private Timer batchTimer = null;
     private long lastRequest = -1;
     
+    //used for control flow
+    private boolean ignore = false;
+
     /**
      * Store requests received but still not ordered
      */
@@ -320,12 +323,58 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                
         if (!doWork) return;
         
+        //control flow mechanism
+        int pendingReqs = clientsManager.countPendingRequests();
+        int pendingDecs = dt.getPendingDecisions();
+        int pendingReps = dt.getReplyManager().getPendingReplies();
+        long usedMemory = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
+                
+        if (this.controller.getStaticConf().getControlFlow()) {
+
+                if ((this.controller.getStaticConf().getMaxPendigReqs() > 0 && pendingReqs >= this.controller.getStaticConf().getMaxPendigReqs()) || 
+                        (this.controller.getStaticConf().getMaxPendigDecs() > 0 && pendingDecs >= this.controller.getStaticConf().getMaxPendigDecs()) ||
+                        (this.controller.getStaticConf().getMaxPendigReps() > 0 && pendingReps >= this.controller.getStaticConf().getMaxPendigReps()) ||
+                        (this.controller.getStaticConf().getMaxUsedMemory() > 0 && usedMemory >= this.controller.getStaticConf().getMaxUsedMemory()))
+                                {
+
+                    if(!ignore &&
+                        usedMemory > this.controller.getStaticConf().getPreferredUsedMemory()) Runtime.getRuntime().gc(); // force garbage collection
+
+                    ignore = true;
+
+                } else if ((this.controller.getStaticConf().getMaxPendigReqs() < 0 || pendingReqs <= this.controller.getStaticConf().getPreferredPendigReqs()) && 
+                        (this.controller.getStaticConf().getMaxPendigDecs() < 0 || pendingDecs <= this.controller.getStaticConf().getPreferredPendigDecs()) &&
+                        (this.controller.getStaticConf().getMaxPendigReps() < 0 || pendingReps <= this.controller.getStaticConf().getPreferredPendigReps()) &&
+                        (this.controller.getStaticConf().getMaxUsedMemory() < 0 || usedMemory <= this.controller.getStaticConf().getPreferredUsedMemory()))
+                        {
+
+                    ignore = false;
+                }
+
+            if (ignore) {
+                
+                logger.warn("Discarding message due to control flow mechanism\n" +
+                        "\tMaximum requests are {}, pending requests at {}\n" + 
+                        "\tMaximum decisions are {}, pending decisions at {}\n" +
+                        "\tMaximum replies are {}, pending replies at {}\n" + 
+                        "\tMaximum memory is {} current memory at {}\n",
+                        this.controller.getStaticConf().getMaxPendigReqs(), pendingReqs,
+                        this.controller.getStaticConf().getMaxPendigDecs(), pendingDecs,
+                        this.controller.getStaticConf().getMaxPendigReps(), pendingReps,
+                        TOMUtil.humanReadableByteCount(this.controller.getStaticConf().getMaxUsedMemory(), false),
+                        TOMUtil.humanReadableByteCount(usedMemory, false));
+
+                return;
+            }
+        }
+        
         // check if this request is valid and add it to the client' pending requests list
         boolean readOnly = (msg.getReqType() == TOMMessageType.UNORDERED_REQUEST
                 || msg.getReqType() == TOMMessageType.UNORDERED_HASHED_REQUEST);
         if (readOnly) {
             logger.debug("Received read-only TOMMessage from client " + msg.getSender() + " with sequence number " + msg.getSequence() + " for session " + msg.getSession());
 
+            clientsManager.sendAck(true, msg);
             dt.deliverUnordered(msg, syncher.getLCManager().getLastReg());
         } else {
             logger.debug("Received TOMMessage from client " + msg.getSender() + " with sequence number " + msg.getSequence() + " for session " + msg.getSession());
@@ -336,7 +385,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                     haveMessages();
                 } else {
                     
-                    if (clientsManager.countPendingRequests() < controller.getStaticConf().getMaxBatchSize()) {
+                    if (pendingReqs < controller.getStaticConf().getMaxBatchSize()) {
                         
                         lastRequest = System.currentTimeMillis();
                                                 

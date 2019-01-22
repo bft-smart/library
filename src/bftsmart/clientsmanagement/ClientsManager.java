@@ -49,7 +49,6 @@ public class ClientsManager {
     private RequestsTimer timer;
     private HashMap<Integer, ClientData> clientsData = new HashMap<Integer, ClientData>();
     private RequestVerifier verifier;
-    private boolean ignore = false;
     private ExecutionManager manager;
     private DeliveryThread dt;
     private ServerCommunicationSystem cs;
@@ -297,52 +296,7 @@ public class ClientsManager {
      * accounted
      */
     public boolean requestReceived(TOMMessage request, boolean fromClient) {
-                
-        int pendingReqs = countPendingRequests();
-        int pendingDecs = dt.getPendingDecisions();
-        int pendingReps = dt.getReplyManager().getPendingReplies();
-        long usedMemory = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
-                
-        //control flow mechanism
-        if (fromClient && this.controller.getStaticConf().getControlFlow()) {
-
-                if ((this.controller.getStaticConf().getMaxPendigReqs() > 0 && pendingReqs >= this.controller.getStaticConf().getMaxPendigReqs()) || 
-                        (this.controller.getStaticConf().getMaxPendigDecs() > 0 && pendingDecs >= this.controller.getStaticConf().getMaxPendigDecs()) ||
-                        (this.controller.getStaticConf().getMaxPendigReps() > 0 && pendingDecs >= this.controller.getStaticConf().getMaxPendigReps()) ||
-                        (this.controller.getStaticConf().getMaxUsedMemory() > 0 && usedMemory >= this.controller.getStaticConf().getMaxUsedMemory()))
-                                {
-
-                    ignore = true;
-
-                } else if ((this.controller.getStaticConf().getMaxPendigReqs() < 0 || pendingReqs <= this.controller.getStaticConf().getPreferredPendigReqs()) && 
-                        (this.controller.getStaticConf().getMaxPendigDecs() < 0 || pendingDecs <= this.controller.getStaticConf().getPreferredPendigDecs()) &&
-                        (this.controller.getStaticConf().getMaxPendigReps() < 0 || pendingReps <= this.controller.getStaticConf().getPreferredPendigReps()) &&
-                        (this.controller.getStaticConf().getMaxUsedMemory() < 0 || usedMemory <= this.controller.getStaticConf().getPreferredUsedMemory()))
-                        {
-
-                    ignore = false;
-                }
-
-            if (ignore) {
-                
-                if(this.controller.getStaticConf().getMaxUsedMemory() > 0 &&
-                        usedMemory > this.controller.getStaticConf().getPreferredUsedMemory()) Runtime.getRuntime().gc(); // force garbage collection
-
-                logger.warn("Discarding message due to control flow mechanism\n" +
-                        "\tMaximum requests are {}, pending requests at {}\n" + 
-                        "\tMaximum decisions are {}, pending decisions at {}\n" +
-                        "\tMaximum replies are {}, pending replies at {}\n" + 
-                        "\tMaximum memory is {} current memory at {}\n",
-                        this.controller.getStaticConf().getMaxPendigReqs(), pendingReqs,
-                        this.controller.getStaticConf().getMaxPendigDecs(), pendingDecs,
-                        this.controller.getStaticConf().getMaxPendigReps(), pendingReps,
-                        TOMUtil.humanReadableByteCount(this.controller.getStaticConf().getMaxUsedMemory(), false),
-                        TOMUtil.humanReadableByteCount(usedMemory, false));
-
-                return false;
-            }
-        }
-        
+                       
         long receptionTime = System.nanoTime();
         long receptionTimestamp = System.currentTimeMillis();
         
