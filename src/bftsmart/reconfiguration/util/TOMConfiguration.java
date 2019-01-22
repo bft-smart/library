@@ -33,6 +33,8 @@ public class TOMConfiguration extends Configuration {
     protected int batchTimeout;
     protected int controlFlowTimeout;
     protected int invokeTimeout;
+    protected int nettyClientTimeout;
+    protected int nettyReplicaTimeout;
     protected int tomPeriod;
     protected int paxosHighMark;
     protected int revivalHighMark;
@@ -53,7 +55,6 @@ public class TOMConfiguration extends Configuration {
     protected boolean shutdownHookEnabled;
     protected boolean useSenderThread;
     protected boolean controlFlow;
-    private int numNIOThreads;
     private int useMACs;
     private int useSignatures;
     private boolean stateTransferEnabled;
@@ -133,6 +134,22 @@ public class TOMConfiguration extends Configuration {
                 if (invokeTimeout <= 0) {
                     invokeTimeout = 40000;
                 }
+            }
+            
+            s = (String) configs.remove("system.communication.clienttimeout");
+            if (s == null) {
+                nettyClientTimeout = 1000;
+            } else {
+                nettyClientTimeout = Integer.parseInt(s);
+
+            }
+            
+            s = (String) configs.remove("system.communication.replicatimeout");
+            if (s == null) {
+                nettyReplicaTimeout = 1000;
+            } else {
+                nettyReplicaTimeout = Integer.parseInt(s);
+
             }
             
             s = (String) configs.remove("system.totalordermulticast.highMark");
@@ -280,13 +297,6 @@ public class TOMConfiguration extends Configuration {
                 useSenderThread = false;
             } else {
                 useSenderThread = Boolean.parseBoolean(s);
-            }
-            
-            s = (String) configs.remove("system.communication.numNIOThreads");
-            if (s == null) {
-                numNIOThreads = 2;
-            } else {
-                numNIOThreads = Integer.parseInt(s);
             }
 
             s = (String) configs.remove("system.communication.useMACs");
@@ -481,6 +491,14 @@ public class TOMConfiguration extends Configuration {
         return invokeTimeout;
     }
     
+    public int getNettyClientTimeout() {
+        return nettyClientTimeout;
+    }
+    
+    public int getNettyReplicaTimeout() {
+        return nettyReplicaTimeout;
+    }
+    
     public int getReplyVerificationTime() {
         return replyVerificationTime;
     }
@@ -564,13 +582,6 @@ public class TOMConfiguration extends Configuration {
 
     public boolean isUseSenderThread() {
         return useSenderThread;
-    }
-
-    /**
-     *     *
-     */
-    public int getNumberOfNIOThreads() {
-        return numNIOThreads;
     }
 
     /**     * @return the numberOfNonces     */

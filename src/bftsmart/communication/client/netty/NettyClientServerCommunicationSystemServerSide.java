@@ -31,7 +31,6 @@ import io.netty.channel.socket.nio.NioServerSocketChannel;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.net.ConnectException;
 import java.net.InetSocketAddress;
 import java.nio.channels.ClosedChannelException;
 import java.security.NoSuchAlgorithmException;
@@ -54,7 +53,6 @@ import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.util.TOMUtil;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-import java.util.logging.Level;
 
 /**
  *
@@ -267,6 +265,9 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 
 		//serialize message
 		DataOutputStream dos = null;
+                
+                SyncListener listener = new SyncListener(this.controller.getStaticConf().getNettyReplicaTimeout());
+                int writes = 0;
 
 		byte[] data = null;
 		try {
@@ -309,8 +310,10 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 					Channel session = ncss.getChannel();
 					sm.destination = targets[i];
 					//send message
-					session.writeAndFlush(sm); // This used to invoke "await". Removed to avoid blockage and race condition.
-                                
+					ChannelFuture f = session.writeAndFlush(sm); // This used to invoke "await". Removed to avoid blockage and race condition.
+                                        f.addListener(listener);
+                                        writes++;                                        
+                                        
                                 ///////TODO: replace this patch for a proper client preamble
                                 } else if (sm.getSequence() >= 0 && sm.getSequence() <= 5) {
                                     
@@ -363,6 +366,12 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 				rl.readLock().unlock();
 			}
 		}
+                
+                if (this.controller.getStaticConf().getNettyReplicaTimeout() > 0) {
+                    
+                    listener.setRemainingFutures(writes);
+                    listener.waitForChannels(0);
+                }
 	}
 
     @Override

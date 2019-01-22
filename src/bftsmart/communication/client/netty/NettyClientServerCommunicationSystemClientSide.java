@@ -28,7 +28,6 @@ import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
-import io.netty.util.concurrent.GenericFutureListener;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
@@ -46,9 +45,6 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.Arrays;
-import java.util.concurrent.locks.Condition;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 
 import javax.crypto.Mac;
 import javax.crypto.SecretKey;
@@ -98,7 +94,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
             SecretKeyFactory fac = TOMUtil.getSecretFactory();
 
             this.controller = controller;
-            this.listener = new SyncListener();
+            this.listener = new SyncListener(this.controller.getStaticConf().getNettyClientTimeout());
 
             //this.st = new Storage(BENCHMARK_PERIOD);
             this.rl = new ReentrantReadWriteLock();
@@ -330,16 +326,19 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
     @Override
     public void send(boolean sign, int[] targets, TOMMessage sm) {
 
-        int quorum;
-        
-        if (controller.getStaticConf().isBFT()) {
-                quorum = (int) Math.ceil((controller.getCurrentViewN()
-                                + controller.getCurrentViewF()) / 2) + 1;
-        } else {
-                quorum = (int) Math.ceil((controller.getCurrentViewN()) / 2) + 1;
+        if (this.controller.getStaticConf().getNettyClientTimeout() > 0) {
+                
+            int quorum;
+
+            if (controller.getStaticConf().isBFT()) {
+                    quorum = (int) Math.ceil((controller.getCurrentViewN()
+                                    + controller.getCurrentViewF()) / 2) + 1;
+            } else {
+                    quorum = (int) Math.ceil((controller.getCurrentViewN()) / 2) + 1;
+            }
+
+            listener.waitForChannels(quorum); // wait for the previous transmission to complete
         }
-        
-        listener.waitForChannels(quorum); // wait for the previous transmission to complete
         
         logger.debug("Sending request from " + sm.getSender() + " with sequence number " + sm.getSequence() + " to " + Arrays.toString(targets));
                 
@@ -512,62 +511,4 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
             }
         },time,TimeUnit.SECONDS);
     }
-    
-    
-    private class SyncListener implements GenericFutureListener<ChannelFuture> {
-            
-            private int remainingFutures;
-            
-            private final Lock futureLock;
-            private final Condition enoughCompleted;
-            
-            public SyncListener() {
-                
-                this.remainingFutures = 0;
-
-                this.futureLock = new ReentrantLock();
-                this.enoughCompleted = futureLock.newCondition();
-            }
-            
-            @Override
-            public void operationComplete(ChannelFuture f) {
-                
-                this.futureLock.lock();
-
-                this.remainingFutures--;
-
-                if (this.remainingFutures <= 0) {
-
-                    this.enoughCompleted.signalAll();
-                }
-
-                logger.debug(this.remainingFutures + " channel operations remaining to complete");
-                
-                this.futureLock.unlock();
-              
-            }
-            
-            public void waitForChannels(int n) {
-                
-                this.futureLock.lock();
-                if (this.remainingFutures > 0) {
-                    
-                    logger.debug("There are still " + this.remainingFutures + " channel operations pending, waiting to complete");
-                    
-                    try {
-                        this.enoughCompleted.await(1000, TimeUnit.MILLISECONDS); // timeout if a malicous replica refuses to acknowledge the operation as completed
-                    } catch (InterruptedException ex) {
-                        logger.error("Interruption while waiting on condition", ex);
-                    }
-                    
-                }
-                
-                    logger.debug("All channel operations completed or timed out");
-
-                this.remainingFutures = n;
-                
-                this.futureLock.unlock();
-            }
-            
-        }
 }
