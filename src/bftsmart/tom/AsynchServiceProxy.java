@@ -335,6 +335,7 @@ public class AsynchServiceProxy extends ServiceProxy {
                                             logger.debug("Client {} also received ACK from leader, client "+
                                                     "can stop re-transmiting request #{}", getProcessId(), requestContext.getOperationId());
 
+                                            this.leader = leader;
                                             Arrays.fill(acks, null);
                                             requestsAcked.add(ackId);
                                             ackId = -1;
@@ -468,6 +469,8 @@ public class AsynchServiceProxy extends ServiceProxy {
             //        reqCtx.getOperationId(), reqCtx.getTargets(), reqCtx.getRequestType());
             
             sm.setAckSeq(ackSeq);
+            
+            //int[] targets = (leader != -1 ?  new int[]{leader} : getViewManager().getCurrentViewProcesses());
             
             TOMulticast(sm);
             

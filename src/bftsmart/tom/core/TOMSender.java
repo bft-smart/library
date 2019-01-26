@@ -115,6 +115,10 @@ public abstract class TOMSender implements ReplyReceiver, Closeable, AutoCloseab
 		return opCounter.getAndIncrement();
 	}
 
+        public void TOMulticast(int[] targets, TOMMessage sm) {
+		cs.send(useSignatures, targets, sm);
+	}
+        
 	public void TOMulticast(TOMMessage sm) {
 		cs.send(useSignatures, this.viewController.getCurrentViewProcesses(), sm);
 	}

@@ -54,6 +54,7 @@ public class ServiceProxy extends TOMSender {
 	private int operationId = -1; // request id
         protected int ackId = -1; // for the control flow mechanism
         protected int ackSeq = -1; // for the control flow mechanism
+        protected int leader = -1;
 	private TOMMessageType requestType;
 	private int replyQuorum = 0; // size of the reply quorum
 	private TOMMessage replies[] = null; // Replies from replicas are stored here
@@ -249,6 +250,8 @@ public class ServiceProxy extends TOMSender {
 
                 //logger.info("Sending invoke at client {} for request #{}", getViewManager().getStaticConf().getProcessId(), reqId);
 
+                //int[] targets = (leader != -1 ?  new int[]{leader} : getViewManager().getCurrentViewProcesses());
+                
                 TOMulticast(sm);
 
                 logger.debug("Sending request (" + reqType + ") with reqId=" + reqId);
@@ -453,6 +456,7 @@ public class ServiceProxy extends TOMSender {
                                                         logger.debug("Client {} also received ACK from leader, client "+
                                                                 "can stop re-transmiting request #{}", getProcessId(), operationId);
                                                         
+                                                        this.leader = leader;
                                                         Arrays.fill(acks, null);
                                                         ackId = -1;
                                                         this.controlFlow.release();

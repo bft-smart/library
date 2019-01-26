@@ -29,7 +29,6 @@ import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.core.messages.TOMMessageType;
 import bftsmart.tom.leaderchange.RequestsTimer;
 import bftsmart.tom.server.RequestVerifier;
-import bftsmart.tom.util.TOMUtil;
 import java.nio.ByteBuffer;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -254,13 +253,38 @@ public class ClientsManager {
     }
 
     /**
-     * Verifies if some reqId is pending.
-     *
-     * @param reqId the request identifier
+     * 
+     * @param req if some request is pending
      * @return true if the request is pending
      */
-    public boolean isPending(int reqId) {
-        return getPending(reqId) != null;
+    public boolean isPending(TOMMessage req) {
+        
+        return isPending(req.getSender(), req.getOperationId());
+        
+    }
+    
+    /**
+     * Verifies if some request is pending.
+     *
+     * @param sender the request sender
+     * @param operationID the request identifier
+     * @return true if the request is pending
+     */
+    public boolean isPending(int sender, int operationID) {
+        
+        ClientData clientData = getClientData(sender);
+        
+        
+        try {
+
+            clientData.clientLock.lock();
+
+            return clientData.getPendingRequests().getByOperationID(operationID) != null;
+
+        }
+        finally {
+            clientData.clientLock.unlock();
+        }
     }
 
     /**
@@ -288,15 +312,13 @@ public class ClientsManager {
      *
      * @param request the received request
      * @param fromClient the message was received from client or not?
-     * @param storeMessage the message should be stored or not? (read-only requests are not stored)
-     * @param cs server com. system to be able to send replies to already processed requests
      *
      * @return true if the request is ok and is added to the pending messages
      * for this client, false if there is some problem and the message was not
      * accounted
      */
     public boolean requestReceived(TOMMessage request, boolean fromClient) {
-                       
+    
         long receptionTime = System.nanoTime();
         long receptionTimestamp = System.currentTimeMillis();
         

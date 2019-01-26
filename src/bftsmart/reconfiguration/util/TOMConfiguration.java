@@ -32,6 +32,7 @@ public class TOMConfiguration extends Configuration {
     protected int requestTimeout;
     protected int batchTimeout;
     protected int controlFlowTimeout;
+    protected int maxReqsFromLeader;
     protected int invokeTimeout;
     protected int nettyClientTimeout;
     protected int nettyReplicaTimeout;
@@ -275,6 +276,16 @@ public class TOMConfiguration extends Configuration {
                 controlFlowTimeout = Integer.parseInt(s);
                 if (controlFlowTimeout <= 0) {
                     controlFlowTimeout = 1000;
+                }
+            }
+            
+            s = (String) configs.remove("system.controlflow.maxreqsfromleader");
+            if (s == null) {
+                maxReqsFromLeader = 10000;
+            } else {
+                maxReqsFromLeader = Integer.parseInt(s);
+                if (maxReqsFromLeader <= 0) {
+                    maxReqsFromLeader = 10000;
                 }
             }
             
@@ -568,6 +579,11 @@ public class TOMConfiguration extends Configuration {
         return shutdownHookEnabled;
     }
 
+    public int getMaxNewReqsFromLeader() {
+        return maxReqsFromLeader;
+        
+    }
+        
     public boolean isStateTransferEnabled() {
         return stateTransferEnabled;
     }

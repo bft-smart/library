@@ -284,6 +284,8 @@ public class ServiceReplica {
 
         for (TOMMessage[] requestsFromConsensus : requests) {
 
+            if (requestsFromConsensus.length == 0) continue;
+            
             TOMMessage firstRequest = requestsFromConsensus[0];
             int requestCount = 0;
             noop = true;

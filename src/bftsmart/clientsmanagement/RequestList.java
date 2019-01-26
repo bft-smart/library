@@ -110,6 +110,17 @@ public class RequestList extends LinkedList<TOMMessage> {
         }
         return null;
     }
+    
+    public TOMMessage getByOperationID(int operationID){
+        for(ListIterator<TOMMessage> li = listIterator(); li.hasNext(); ) {
+            TOMMessage msg = li.next();
+            if(msg.getOperationId() == operationID) {
+                return msg;
+            }
+        }
+        return null;
+    }
+    
     public boolean contains(int id){
         for(ListIterator<TOMMessage> li = listIterator(); li.hasNext(); ) {
             TOMMessage msg = li.next();

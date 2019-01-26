@@ -44,6 +44,7 @@ import bftsmart.tom.server.RequestVerifier;
 import bftsmart.tom.util.BatchBuilder;
 import bftsmart.tom.util.BatchReader;
 import bftsmart.tom.util.TOMUtil;
+import java.util.LinkedList;
 import java.util.Timer;
 import java.util.TimerTask;
 import org.slf4j.Logger;
@@ -81,11 +82,12 @@ public final class TOMLayer extends Thread implements RequestReceiver {
     
     //timeout for batch
     private Timer batchTimer = null;
-    private long lastRequest = -1;
-    
+    private long lastRequest = -1;    
+
     //used for control flow
     private boolean ignore = false;
-
+    private int reqsFromLeader = 0;
+    
     /**
      * Store requests received but still not ordered
      */
@@ -341,6 +343,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                         usedMemory > this.controller.getStaticConf().getPreferredUsedMemory()) Runtime.getRuntime().gc(); // force garbage collection
 
                     ignore = true;
+                    reqsFromLeader = 0;
 
                 } else if ((this.controller.getStaticConf().getMaxPendigReqs() < 0 || pendingReqs <= this.controller.getStaticConf().getPreferredPendigReqs()) && 
                         (this.controller.getStaticConf().getMaxPendigDecs() < 0 || pendingDecs <= this.controller.getStaticConf().getPreferredPendigDecs()) &&
@@ -349,6 +352,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                         {
 
                     ignore = false;
+                    reqsFromLeader = 0;
                 }
 
             if (ignore) {
@@ -531,6 +535,14 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         dec.setRegency(syncher.getLCManager().getLastReg());
         dec.setLeader(execManager.getCurrentLeader());
         
+        // deal with the corner case of a malicious leader trying to overload the system
+        if (reqsFromLeader > this.controller.getStaticConf().getMaxNewReqsFromLeader() && !isChangingLeader()) { //force a leader change if the proposal is garbage
+            
+            reqsFromLeader = 0;
+            getSynchronizer().triggerTimeout(new LinkedList<>());
+            
+        }
+        
         this.dt.delivery(dec); // Sends the decision to the delivery thread
     }
 
@@ -560,7 +572,54 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             requests = batchReader.deserialiseRequests(this.controller);
             
             if (addToClientManager) {
+                
+                //Control flow mechanism
+                int pendingReqs = clientsManager.countPendingRequests();
+                int pendingDecs = dt.getPendingDecisions();
+                int pendingReps = dt.getReplyManager().getPendingReplies();
+                long usedMemory = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
+                    
+                if (ignore) {
+                    
+                    // deal with the corner case of a malicious leader trying to overload the system
+                    if ((this.controller.getStaticConf().getMaxPendigReqs() > 0 && pendingReqs > this.controller.getStaticConf().getPreferredPendigReqs()) || 
+                        (this.controller.getStaticConf().getMaxPendigDecs() > 0 && pendingDecs > this.controller.getStaticConf().getPreferredPendigDecs()) ||
+                        (this.controller.getStaticConf().getMaxPendigReps() > 0 && pendingReps > this.controller.getStaticConf().getPreferredPendigReps()) ||
+                        (this.controller.getStaticConf().getMaxUsedMemory() > 0 && usedMemory > this.controller.getStaticConf().getPreferredUsedMemory())) {
+                        
+                        for (TOMMessage request : requests) {
+                            
+                            if (!clientsManager.isPending(request)) reqsFromLeader++;
+                            
+                        }
+                        
+                    // check if it is time to resume accepting new requests
+                    } else if ((this.controller.getStaticConf().getMaxPendigReqs() < 0 || pendingReqs <= this.controller.getStaticConf().getPreferredPendigReqs()) && 
+                        (this.controller.getStaticConf().getMaxPendigDecs() < 0 || pendingDecs <= this.controller.getStaticConf().getPreferredPendigDecs()) &&
+                        (this.controller.getStaticConf().getMaxPendigReps() < 0 || pendingReps <= this.controller.getStaticConf().getPreferredPendigReps()) &&
+                        (this.controller.getStaticConf().getMaxUsedMemory() < 0 || usedMemory <= this.controller.getStaticConf().getPreferredUsedMemory()))
+                        {
+                            ignore = false;
+                            reqsFromLeader = 0;
+                        }
 
+                } else if (this.controller.getStaticConf().getControlFlow()) { //check if it is time to stop accepting new requests
+                    
+                    if ((this.controller.getStaticConf().getMaxPendigReqs() > 0 && pendingReqs >= this.controller.getStaticConf().getMaxPendigReqs()) || 
+                        (this.controller.getStaticConf().getMaxPendigDecs() > 0 && pendingDecs >= this.controller.getStaticConf().getMaxPendigDecs()) ||
+                        (this.controller.getStaticConf().getMaxPendigReps() > 0 && pendingReps >= this.controller.getStaticConf().getMaxPendigReps()) ||
+                        (this.controller.getStaticConf().getMaxUsedMemory() > 0 && usedMemory >= this.controller.getStaticConf().getMaxUsedMemory()))
+                            {
+
+                                if(!ignore &&
+                                    usedMemory > this.controller.getStaticConf().getPreferredUsedMemory()) Runtime.getRuntime().gc(); // force garbage collection
+
+                                ignore = true;
+                                reqsFromLeader = 0;
+
+                            }
+                }
+                
                 //use parallelization to validate the request
                 final CountDownLatch latch = new CountDownLatch(requests.length);
 
