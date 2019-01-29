@@ -93,10 +93,12 @@ public final class DeliveryThread extends Thread {
         try {
             decidedLock.lock();
             decided.put(dec);
+            logger.debug("Inserted decision for CID {} in queue", dec.getConsensusId());
             
             // clean the ordered messages from the pending buffer
             TOMMessage[] requests = extractMessagesFromDecision(dec);
             tomLayer.clientsManager.requestsOrdered(requests);
+            logger.debug("Cleaned the ordered messages from the pending list, signaling TOmLayer");
             
             notEmptyQueue.signalAll();
             decidedLock.unlock();
@@ -297,7 +299,9 @@ public final class DeliveryThread extends Thread {
     }
     
     private TOMMessage[] extractMessagesFromDecision(Decision dec) {
+        logger.debug("Deserializing decision value for CID " + dec.getConsensusId());
     	TOMMessage[] requests = (TOMMessage[]) dec.getDeserializedValue();
+        logger.debug("Deserilized decision value for CID " + dec.getConsensusId());
     	if (requests == null) {
             // there are no cached deserialized requests
             // this may happen if this batch proposal was not verified

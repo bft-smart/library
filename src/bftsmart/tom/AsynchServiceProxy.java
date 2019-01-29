@@ -470,9 +470,9 @@ public class AsynchServiceProxy extends ServiceProxy {
             
             sm.setAckSeq(ackSeq);
             
-            //int[] targets = (leader != -1 ?  new int[]{leader} : getViewManager().getCurrentViewProcesses());
+           int[] targets = (leader != -1 ?  new int[]{leader} : getViewManager().getCurrentViewProcesses());
             
-            TOMulticast(sm);
+            TOMulticast(targets, sm);
             
             //Control flow
             if (!reqCtx.getDoS() && getViewManager().getStaticConf().getControlFlow()) {
@@ -490,8 +490,8 @@ public class AsynchServiceProxy extends ServiceProxy {
                         ackSeq++;
                         sm.setAckSeq(ackSeq);
 
-                        logger.warn("Retrying invoke at client {} for request #{} with ACK sequence #{}", 
-                                getViewManager().getStaticConf().getProcessId(), reqCtx.getOperationId(), sm.getAckSeq());
+                        logger.warn("Retrying invoke at client {} for request #{} with ACK sequence #{} (last observed leader: {})", 
+                                getViewManager().getStaticConf().getProcessId(), reqCtx.getOperationId(), sm.getAckSeq(), leader);
                         Arrays.fill(acks, null);
                         
                         TOMulticast(sm);

@@ -370,7 +370,7 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
                 if (this.controller.getStaticConf().getNettyReplicaTimeout() > 0) {
                     
                     listener.setRemainingFutures(writes);
-                    listener.waitForChannels(0);
+                    listener.waitForChannels();
                 }
 	}
 

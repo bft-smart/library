@@ -106,14 +106,6 @@ public class ClientData {
         return lastMessageReceived;
     }
 
-    public void setLastMessageReceivedTime(long lastMessageReceivedTime) {
-        this.lastMessageReceivedTime = lastMessageReceivedTime;
-    }
-
-    public long getLastMessageReceivedTime() {
-        return lastMessageReceivedTime;
-    }
-
     public boolean verifySignature(byte[] message, byte[] signature) {
         if(signatureVerificator != null) {
             try {

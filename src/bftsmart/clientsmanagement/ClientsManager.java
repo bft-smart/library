@@ -30,6 +30,7 @@ import bftsmart.tom.core.messages.TOMMessageType;
 import bftsmart.tom.leaderchange.RequestsTimer;
 import bftsmart.tom.server.RequestVerifier;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
@@ -154,12 +155,13 @@ public class ClientsManager {
 
                 /******* BEGIN CLIENTDATA CRITICAL SECTION ******/
                 TOMMessage request = (clientPendingRequests.size() > i) ? clientPendingRequests.get(i) : null;
+                int lastDelivered = clientData.getLastMessageDelivered();
 
                 /******* END CLIENTDATA CRITICAL SECTION ******/
                 clientData.clientLock.unlock();
 
                 if (request != null) {
-                    if(!request.alreadyProposed) {
+                    if(!request.alreadyProposed && (lastDelivered + 1) == request.getSequence()) {
                         
                         logger.debug("Selected request with sequence number {} from client {}", request.getSequence(), request.getSender());
                         
@@ -204,9 +206,10 @@ public class ClientsManager {
             
             clientData.clientLock.lock();
             RequestList reqs = clientData.getPendingRequests();
+            int lastDelivered = clientData.getLastMessageDelivered();
             if (!reqs.isEmpty()) {
                 for(TOMMessage msg:reqs) {
-                    if(!msg.alreadyProposed) {
+                    if((lastDelivered + 1) == msg.getSequence() && !msg.alreadyProposed) {
                         havePending = true;
                         break;
                     }
@@ -237,9 +240,10 @@ public class ClientsManager {
             
             clientData.clientLock.lock();
             RequestList reqs = clientData.getPendingRequests();
+            int lastDelivered = clientData.getLastMessageDelivered();
             if (!reqs.isEmpty()) {
                 for(TOMMessage msg:reqs) {
-                    if(!msg.alreadyProposed) {
+                    if((lastDelivered + 1) == msg.getSequence() && !msg.alreadyProposed) {
                         count++;
                     }
                 }
@@ -322,6 +326,173 @@ public class ClientsManager {
         long receptionTime = System.nanoTime();
         long receptionTimestamp = System.currentTimeMillis();
         
+        boolean accounted = false;
+
+        ClientData clientData = getClientData(request.getSender());
+        
+        try {
+            
+            clientData.clientLock.lock();
+            
+            //Is this a leader replay attack?
+            if (clientData.getSession() == request.getSession() &&
+                    clientData.getLastMessageDelivered() >= request.getSequence()) {
+
+                if (!fromClient) {
+                    logger.warn("Potential leader replay attack, rejecting request {} (last request sequence was {})", request, clientData.getLastMessageDelivered());
+                    return false;
+                }
+                else logger.warn("I already ordered request {} (last request sequence was {})", request, clientData.getLastMessageDelivered());
+            }
+            
+            TOMMessage temp = null;
+            boolean verified = false;
+            
+            //validate request
+            if (clientData.getSession() == request.getSession() && 
+                    (temp = clientData.getPendingRequests().getByOperationID(request.getOperationId())) != null) {
+                
+                if (Arrays.equals(request.serializedMessage, temp.serializedMessage)) {
+                    
+                    verified = true;
+                    
+                } else {
+                    
+                    //enforce the "external validity" property, i.e, verify if the
+                    //requests are valid in accordance to the application semantics
+                    //and not an erroneous requests sent by a Byzantine leader.
+                    boolean isValid = (!controller.getStaticConf().isBFT() || verifier.isValidRequest(request));
+
+                    //it is a valid new message and I have to verify it's signature
+                    if (isValid &&
+                            (!request.signed ||
+                            clientData.verifySignature(request.serializedMessage,
+                                    request.serializedMessageSignature))) {
+
+                        verified = true;
+                        //temp.setAckSeq(request.getAckSeq());
+                        //request = temp;
+                        request.recvFromClient = temp.recvFromClient;
+                        request.receptionTime = temp.receptionTime;
+                        request.receptionTimestamp = temp.receptionTimestamp;
+                        request.ackSent = temp.ackSent;
+
+                        clientData.getPendingRequests().remove(temp);
+                        clientData.getPendingRequests().add(request);
+
+                        //create a timer for this message
+                        if (timer != null) {
+
+                            timer.unwatch(temp);
+                            timer.watch(request);
+                        }
+                    }
+                }
+                
+            } else {
+                
+                //enforce the "external validity" property, i.e, verify if the
+                //requests are valid in accordance to the application semantics
+                //and not an erroneous requests sent by a Byzantine leader.
+                boolean isValid = (!controller.getStaticConf().isBFT() || verifier.isValidRequest(request));
+
+                //it is a valid new message and I have to verify it's signature
+                if (isValid &&
+                        (!request.signed ||
+                        clientData.verifySignature(request.serializedMessage,
+                                request.serializedMessageSignature))) {
+                    
+                    verified = true;
+                    request.recvFromClient = fromClient;
+                    request.receptionTime = receptionTime;
+                    request.receptionTimestamp = receptionTimestamp;
+                    clientData.getPendingRequests().add(request);
+                    
+                    //create a timer for this message
+                    if (timer != null) {
+                        timer.watch(request);
+                    }
+                }
+            }
+            if (verified) {
+                
+                logger.debug("Message from client {} is valid", clientData.getClientId());
+                
+                //new session... just reset the client counter
+                if (clientData.getSession() != request.getSession() && request.getSequence() == 0) {
+                    clientData.setSession(request.getSession());
+                    //clientData.setLastMessageReceived(-1);
+                    clientData.setLastMessageDelivered(-1);
+                    clientData.getOrderedRequests().clear();
+                    clientData.getPendingRequests().clear();
+                    
+                    clientData.getPendingRequests().add(request);
+                }
+                
+                if (!fromClient) {
+                    
+                    accounted = (clientData.getLastMessageDelivered() + 1 == request.getSequence());
+                    
+                } else {
+                    
+                    accounted = true;
+                    
+                    if (clientData.getLastMessageDelivered() >= request.getSequence()) {
+                        //I already have/had this message
+
+                        //send reply if it is available
+                        TOMMessage reply = clientData.getReply(request.getSequence());
+                        MessageContext ctx = clientData.getContext(request.getSequence());
+                        TOMMessage clone = null;
+
+                        try {
+                            clone = (TOMMessage) request.clone();
+                        } catch (CloneNotSupportedException ex) {
+                            logger.error("Error cloning object.",ex);
+                        }
+
+                        if (reply != null && ctx != null && clone != null) {
+
+                            if (reply.recvFromClient && fromClient) {
+                                logger.info("[CACHE] re-send reply [Sender: " + request.getSender() + ", sequence: " + reply.getSequence()+", session: " + reply.getSession()+ "]");
+
+                                clone.reply = reply;
+                                clone.msgCtx = ctx;
+
+                                dt.getReplyManager().send(clone);
+
+                            } 
+
+                            else if (!reply.recvFromClient && fromClient) {
+                                reply.recvFromClient = true;
+                            }
+                        }                         
+                    } 
+                }
+                
+                sendAck(fromClient, request);
+                
+            } else {
+                
+                logger.warn("Message from client {} is invalid", clientData.getClientId());
+   
+            }
+            
+            return accounted;
+            
+        } finally {
+           
+            clientData.clientLock.unlock();
+            
+        }
+    }
+    
+    //Leave the original implementation here, just in case
+    /*public boolean requestReceived(TOMMessage request, boolean fromClient) {
+    
+        long receptionTime = System.nanoTime();
+        long receptionTimestamp = System.currentTimeMillis();
+        
         int clientId = request.getSender();
         boolean accounted = false;
 
@@ -373,7 +544,7 @@ public class ClientsManager {
                 request.recvFromClient = fromClient;
                 clientData.getPendingRequests().add(request); 
                 clientData.setLastMessageReceived(request.getSequence());
-                clientData.setLastMessageReceivedTime(request.receptionTime);
+                //clientData.setLastMessageReceivedTime(request.receptionTime);
 
                 //create a timer for this message
                 if (timer != null) {
@@ -434,13 +605,11 @@ public class ClientsManager {
                 accounted = false;
             }
         }
-
-        /******* END CLIENTDATA CRITICAL SECTION ******/
         
         clientData.clientLock.unlock();
 
         return accounted;
-    }
+    }*/
 
     public void sendAck(boolean fromClient, TOMMessage request) {
         if ((fromClient || !request.ackSent) && this.controller.getStaticConf().getControlFlow() && cs != null) {

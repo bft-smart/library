@@ -250,9 +250,9 @@ public class ServiceProxy extends TOMSender {
 
                 //logger.info("Sending invoke at client {} for request #{}", getViewManager().getStaticConf().getProcessId(), reqId);
 
-                //int[] targets = (leader != -1 ?  new int[]{leader} : getViewManager().getCurrentViewProcesses());
+                int[] targets = (leader != -1 ?  new int[]{leader} : getViewManager().getCurrentViewProcesses());
                 
-                TOMulticast(sm);
+                TOMulticast(targets, sm);
 
                 logger.debug("Sending request (" + reqType + ") with reqId=" + reqId);
 		logger.debug("Expected number of matching replies: " + replyQuorum);

@@ -237,6 +237,15 @@ public final class Acceptor {
                 }
                 executionManager.processOutOfContext(epoch.getConsensus());
                 
+                if (tomLayer.isLeaderOverloadingMe()) { //force a leader change if it is still overloading the replica
+            
+                    logger.warn("Suspicious behaviour from the leader in CID "+ cid +
+                            " (keeps sending new proposals even though replica is currently ignoring requests), asking for a leader change");
+                    tomLayer.resetLeaderOverloadCount();
+                    tomLayer.getSynchronizer().triggerTimeout(new LinkedList<>());
+
+                }
+                
             } else if (epoch.deserializedPropValue == null && !tomLayer.isChangingLeader()) { //force a leader change if the proposal is garbage
                 
                 tomLayer.getSynchronizer().triggerTimeout(new LinkedList<>());

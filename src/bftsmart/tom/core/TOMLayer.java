@@ -44,6 +44,7 @@ import bftsmart.tom.server.RequestVerifier;
 import bftsmart.tom.util.BatchBuilder;
 import bftsmart.tom.util.BatchReader;
 import bftsmart.tom.util.TOMUtil;
+import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -535,13 +536,8 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         dec.setRegency(syncher.getLCManager().getLastReg());
         dec.setLeader(execManager.getCurrentLeader());
         
-        // deal with the corner case of a malicious leader trying to overload the system
-        if (reqsFromLeader > this.controller.getStaticConf().getMaxNewReqsFromLeader() && !isChangingLeader()) { //force a leader change if the proposal is garbage
-            
-            reqsFromLeader = 0;
-            getSynchronizer().triggerTimeout(new LinkedList<>());
-            
-        }
+        logger.debug("Delivering decision [{},{},{}] to Delivery Thread",
+                dec.getConsensusId(), dec.getDecisionEpoch().getTimestamp(), Arrays.toString(dec.getValue()));
         
         this.dt.delivery(dec); // Sends the decision to the delivery thread
     }
@@ -578,7 +574,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                 int pendingDecs = dt.getPendingDecisions();
                 int pendingReps = dt.getReplyManager().getPendingReplies();
                 long usedMemory = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
-                    
+                
                 if (ignore) {
                     
                     // deal with the corner case of a malicious leader trying to overload the system
@@ -658,7 +654,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             }
 
             logger.debug("Successfully deserialized batch");
-
+            
             return requests;
         
         } catch (Exception e) {
@@ -667,6 +663,16 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
             return null;
         }
+    }
+    
+    public boolean isLeaderOverloadingMe(){
+        
+        return reqsFromLeader > this.controller.getStaticConf().getMaxNewReqsFromLeader() && !isChangingLeader();
+    }
+    
+    public void resetLeaderOverloadCount() {
+        
+        reqsFromLeader = 0;
     }
 
     public void forwardRequestToLeader(TOMMessage request) {

@@ -55,7 +55,7 @@ class SyncListener implements GenericFutureListener<ChannelFuture> {
 
     }
 
-    public void waitForChannels(int n) {
+    public void waitForChannels() {
 
         this.futureLock.lock();
         if (this.remainingFutures > 0) {
@@ -72,8 +72,6 @@ class SyncListener implements GenericFutureListener<ChannelFuture> {
 
         if (this.remainingFutures > 0) logger.debug("Some or all channel operations timed out");
         else logger.debug("All channel operations completed");
-
-        this.remainingFutures = n;
 
         this.futureLock.unlock();
     }

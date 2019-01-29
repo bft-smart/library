@@ -111,6 +111,7 @@ public class Decision {
 
     public TOMMessage[] getDeserializedValue() {
         while (deserializedValue == null) {
+            LoggerFactory.getLogger(this.getClass()).debug("waiting for propose for consensus " + cid);
             waitForPropose();
             deserializedValue = decisionEpoch.deserializedPropValue;
         }
@@ -129,8 +130,8 @@ public class Decision {
         while (decisionEpoch == null &&
                 decisionEpoch.deserializedPropValue == null) {
             try {
-                LoggerFactory.getLogger(this.getClass()).info("waiting for propose for consensus " + cid);
-                Thread.sleep(1);
+                LoggerFactory.getLogger(this.getClass()).warn("waiting for propose for consensus " + cid);
+                Thread.sleep(10);
             } catch (InterruptedException ie) {
                 
                 LoggerFactory.getLogger(this.getClass()).error("Interruption during sleep",ie);

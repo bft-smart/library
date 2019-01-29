@@ -980,11 +980,17 @@ public class Synchronizer {
             e.clear();
         }
 
+        TOMMessage[] reqs = tom.checkProposedValue(tempLastHighestCID.getDecision(), true);
+        if (reqs == null) {
+            logger.warn("Proposed value did not pass checking, ignoring");
+            return;
+        }
+            
         byte[] hash = tom.computeHash(tempLastHighestCID.getDecision());
         e.propValueHash = hash;
         e.propValue = tempLastHighestCID.getDecision();
 
-        e.deserializedPropValue = tom.checkProposedValue(tempLastHighestCID.getDecision(), false);
+        e.deserializedPropValue = reqs;
 
         finalise(tempRegency, tempLastHighestCID,
                 tempSignedCollects, tempPropose, tempBatchSize, tempIAmLeader);
@@ -1161,11 +1167,17 @@ public class Synchronizer {
             cons.addWritten(tmpval);
             /*************************************/
             
+            TOMMessage[] reqs = tom.checkProposedValue(tmpval, true);
+            if (reqs == null) {
+                logger.warn("Proposed value did not pass checking, ignoring");
+                return;
+            }
+            
             byte[] hash = tom.computeHash(tmpval);
             e.propValueHash = hash;
             e.propValue = tmpval;
 
-            e.deserializedPropValue = tom.checkProposedValue(tmpval, false);
+            e.deserializedPropValue = reqs;
 
             if (cons.getDecision().firstMessageProposed == null) {
                 if (e.deserializedPropValue != null
@@ -1198,12 +1210,12 @@ public class Synchronizer {
 
             // send a WRITE/ACCEPT message to the other replicas
             if (this.controller.getStaticConf().isBFT()) {
-                logger.info("Sending WRITE message for CID " + currentCID + ", timestamp " + e.getTimestamp() + ", value " + Arrays.toString(e.propValueHash));
+                logger.info("Sending WRITE message for CID " + currentCID + ", timestamp " + e.getTimestamp() + ", value " + Arrays.toString(e.propValueHash) + " with " + e.deserializedPropValue.length + " requests");
                 communication.send(this.controller.getCurrentViewOtherAcceptors(),
                         acceptor.getFactory().createWrite(currentCID, e.getTimestamp(), e.propValueHash));
                 e.writeSent();
             } else {
-                logger.info("Sending ACCEPT message for CID " + currentCID + ", timestamp " + e.getTimestamp() + ", value " + Arrays.toString(e.propValueHash));
+                logger.info("Sending ACCEPT message for CID " + currentCID + ", timestamp " + e.getTimestamp() + ", value " + Arrays.toString(e.propValueHash) + " with " + e.deserializedPropValue.length + " requests");
                 communication.send(this.controller.getCurrentViewOtherAcceptors(),
                         acceptor.getFactory().createAccept(currentCID, e.getTimestamp(), e.propValueHash));
                 e.acceptSent();

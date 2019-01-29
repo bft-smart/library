@@ -83,8 +83,6 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 
     private EventLoopGroup workerGroup;
     
-    private SyncListener listener;
-
     public NettyClientServerCommunicationSystemClientSide(int clientId, ClientViewController controller) {
         super();
 
@@ -94,8 +92,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
             SecretKeyFactory fac = TOMUtil.getSecretFactory();
 
             this.controller = controller;
-            this.listener = new SyncListener(this.controller.getStaticConf().getNettyClientTimeout());
-
+            
             //this.st = new Storage(BENCHMARK_PERIOD);
             this.rl = new ReentrantReadWriteLock();
 
@@ -326,19 +323,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
     @Override
     public void send(boolean sign, int[] targets, TOMMessage sm) {
 
-        if (this.controller.getStaticConf().getNettyClientTimeout() > 0) {
-                
-            int quorum;
-
-            if (controller.getStaticConf().isBFT()) {
-                    quorum = (int) Math.ceil((controller.getCurrentViewN()
-                                    + controller.getCurrentViewF()) / 2) + 1;
-            } else {
-                    quorum = (int) Math.ceil((controller.getCurrentViewN()) / 2) + 1;
-            }
-
-            listener.waitForChannels(quorum); // wait for the previous transmission to complete
-        }
+        SyncListener listener = new SyncListener(this.controller.getStaticConf().getNettyClientTimeout());
         
         logger.debug("Sending request from " + sm.getSender() + " with sequence number " + sm.getSequence() + " to " + Arrays.toString(targets));
                 
@@ -400,6 +385,12 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
         }
         if(targets.length == 1 && sent == 0)
                 throw new RuntimeException("Server not connected");
+        
+        if (this.controller.getStaticConf().getNettyClientTimeout() > 0) {
+                    
+            listener.setRemainingFutures(sent);
+            listener.waitForChannels();
+        }
     }
 
     public void sign(TOMMessage sm) {

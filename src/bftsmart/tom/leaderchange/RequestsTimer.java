@@ -120,8 +120,18 @@ public class RequestsTimer {
      */
     public void unwatch(TOMMessage request) {
         //long startInstant = System.nanoTime();
+        
+        TreeSet<TOMMessage> reqs = new TreeSet<>();
+        
         rwLock.writeLock().lock();
-        if (watched.remove(request) && watched.isEmpty()) stopTimer();
+        watched.forEach(r -> {
+            if (r.getSender() == request.getSender() &&
+                    r.getSession() == request.getSession() && r.getSequence() <= request.getSequence()) {
+                
+                reqs.add(r);
+            }
+        });
+        if (watched.removeAll(reqs) && watched.isEmpty()) stopTimer();
         rwLock.writeLock().unlock();
     }
 
