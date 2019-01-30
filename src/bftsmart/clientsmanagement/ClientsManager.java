@@ -321,7 +321,7 @@ public class ClientsManager {
      * for this client, false if there is some problem and the message was not
      * accounted
      */
-    /*public boolean requestReceived(TOMMessage request, boolean fromClient) {
+    public boolean requestReceived(TOMMessage request, boolean fromClient) {
     
         long receptionTime = System.nanoTime();
         long receptionTimestamp = System.currentTimeMillis();
@@ -485,10 +485,10 @@ public class ClientsManager {
             clientData.clientLock.unlock();
             
         }
-    }*/
+    }
     
     //Leave the original implementation here, just in case
-    public boolean requestReceived(TOMMessage request, boolean fromClient) {
+    /*public boolean requestReceived(TOMMessage request, boolean fromClient) {
     
         long receptionTime = System.nanoTime();
         long receptionTimestamp = System.currentTimeMillis();
@@ -609,7 +609,7 @@ public class ClientsManager {
         clientData.clientLock.unlock();
 
         return accounted;
-    }
+    }*/
 
     public void sendAck(boolean fromClient, TOMMessage request) {
         if ((fromClient || !request.ackSent) && this.controller.getStaticConf().getControlFlow() && cs != null) {
