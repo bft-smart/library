@@ -470,9 +470,10 @@ public class AsynchServiceProxy extends ServiceProxy {
             
             sm.setAckSeq(ackSeq);
             
-           int[] targets = (leader != -1 ?  new int[]{leader} : getViewManager().getCurrentViewProcesses());
+           //int[] targets = (leader != -1 ?  new int[]{leader} : getViewManager().getCurrentViewProcesses());
             
-            TOMulticast(targets, sm);
+            //TOMulticast(targets, sm);
+            TOMulticast(sm);
             
             //Control flow
             if (!reqCtx.getDoS() && getViewManager().getStaticConf().getControlFlow()) {
