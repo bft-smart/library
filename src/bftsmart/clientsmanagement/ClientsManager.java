@@ -340,9 +340,13 @@ public class ClientsManager {
 
                 if (!fromClient) {
                     logger.warn("Potential leader replay attack, rejecting request {} (last request sequence was {})", request, clientData.getLastMessageDelivered());
-                    return false;
                 }
-                else logger.warn("I already ordered request {} (last request sequence was {})", request, clientData.getLastMessageDelivered());
+                else {
+
+                    logger.warn("I already ordered request {} (last request sequence was {})", request, clientData.getLastMessageDelivered());
+                    sendAck(fromClient, request);
+                }
+                return false;
             }
             
             TOMMessage temp = null;
@@ -661,10 +665,6 @@ public class ClientsManager {
      * @param request the request ordered by the consensus
      */
     private void requestOrdered(TOMMessage request) {
-        //stops the timer associated with this message
-        if (timer != null) {
-            timer.unwatch(request);
-        }
 
         ClientData clientData = getClientData(request.getSender());
 
@@ -676,6 +676,12 @@ public class ClientsManager {
         clientData.setLastMessageDelivered(request.getSequence());
 
         /******* END CLIENTDATA CRITICAL SECTION ******/
+        
+        //stops the timer associated with this message
+        if (timer != null) {
+            timer.unwatch(request);
+        }
+        
         clientData.clientLock.unlock();
     }
 

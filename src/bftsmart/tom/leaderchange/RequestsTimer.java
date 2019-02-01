@@ -47,7 +47,7 @@ public class RequestsTimer {
     private TOMLayer tomLayer; // TOM layer
     private long timeout;
     private long shortTimeout;
-    private TreeSet<TOMMessage> watched = new TreeSet<TOMMessage>();
+    private HashMap<Integer,TOMMessage> watched = new HashMap<>();
     private ReentrantReadWriteLock rwLock = new ReentrantReadWriteLock();
     
     private boolean enabled = true;
@@ -109,7 +109,7 @@ public class RequestsTimer {
     public void watch(TOMMessage request) {
         //long startInstant = System.nanoTime();
         rwLock.writeLock().lock();
-        watched.add(request);
+        watched.put(getHashCode(request), request);
         if (watched.size() >= 1 && enabled) startTimer();
         rwLock.writeLock().unlock();
     }
@@ -120,18 +120,9 @@ public class RequestsTimer {
      */
     public void unwatch(TOMMessage request) {
         //long startInstant = System.nanoTime();
-        
-        TreeSet<TOMMessage> reqs = new TreeSet<>();
-        
-        rwLock.writeLock().lock();
-        watched.forEach(r -> {
-            if (r.getSender() == request.getSender() &&
-                    r.getSession() == request.getSession() && r.getSequence() <= request.getSequence()) {
                 
-                reqs.add(r);
-            }
-        });
-        if (watched.removeAll(reqs) && watched.isEmpty()) stopTimer();
+        rwLock.writeLock().lock();
+        if (watched.remove(getHashCode(request)) != null && watched.isEmpty()) stopTimer();
         rwLock.writeLock().unlock();
     }
 
@@ -139,13 +130,14 @@ public class RequestsTimer {
      * Cancels all timers for all messages
      */
     public void clearAll() {
-        TOMMessage[] requests = new TOMMessage[watched.size()];
         rwLock.writeLock().lock();
+
+        TOMMessage[] requests = new TOMMessage[watched.size()];
         
-        watched.toArray(requests);
+        watched.values().toArray(requests);
 
         for (TOMMessage request : requests) {
-            if (request != null && watched.remove(request) && watched.isEmpty() && rtTask != null) {
+            if (request != null && watched.remove(getHashCode(request)) != null && watched.isEmpty() && rtTask != null) {
                 rtTask.cancel();
                 rtTask = null;
             }
@@ -165,7 +157,7 @@ public class RequestsTimer {
         
             rwLock.readLock().lock();
         
-            for (Iterator<TOMMessage> i = watched.iterator(); i.hasNext();) {
+            for (Iterator<TOMMessage> i = watched.values().iterator(); i.hasNext();) {
                 TOMMessage request = i.next();
                 if ((System.currentTimeMillis() - request.receptionTimestamp ) > t) {
                     pendingRequests.add(request);
@@ -253,6 +245,14 @@ public class RequestsTimer {
         stopAllSTOPs();
         LoggerFactory.getLogger(this.getClass()).info("RequestsTimer stopped.");
 
+    }
+    
+    private int getHashCode(TOMMessage req) {
+        int hash = 1;
+        hash = hash * 31 + req.getSender();
+        hash = hash * 31 + req.getSession();
+        hash = hash * 31 + req.getSequence();
+        return hash;
     }
     
     class RequestTimerTask extends TimerTask {
