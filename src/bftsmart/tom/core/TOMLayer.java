@@ -327,7 +327,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         if (!doWork) return;
         
         //control flow mechanism
-        int pendingReqs = clientsManager.countPendingRequests();
+        int pendingReqs = clientsManager.numPendingRequests();
         int pendingDecs = dt.getPendingDecisions();
         int pendingReps = dt.getReplyManager().getPendingReplies();
         long usedMemory = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
@@ -474,7 +474,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             // blocks until there are requests to be processed/ordered
             messagesLock.lock();
             if (!clientsManager.havePendingRequests() ||
-                    (controller.getStaticConf().getBatchTimeout() > -1 && clientsManager.countPendingRequests() < controller.getStaticConf().getMaxBatchSize())) {
+                    (controller.getStaticConf().getBatchTimeout() > -1 && clientsManager.numPendingRequests() < controller.getStaticConf().getMaxBatchSize())) {
                 
                 logger.debug("Waiting for enough requests");
                 haveMessages.awaitUninterruptibly();
@@ -570,7 +570,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             if (addToClientManager) {
                 
                 //Control flow mechanism
-                int pendingReqs = clientsManager.countPendingRequests();
+                int pendingReqs = clientsManager.numPendingRequests();
                 int pendingDecs = dt.getPendingDecisions();
                 int pendingReps = dt.getReplyManager().getPendingReplies();
                 long usedMemory = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();

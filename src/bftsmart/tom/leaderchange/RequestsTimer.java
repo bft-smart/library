@@ -145,6 +145,10 @@ public class RequestsTimer {
         rwLock.writeLock().unlock();
     }
     
+    public int size() {
+        return watched.size();
+    }
+    
     public void run_lc_protocol() {
         
         long t = (shortTimeout > -1 ? shortTimeout : timeout);

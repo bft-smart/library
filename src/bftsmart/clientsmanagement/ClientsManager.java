@@ -33,6 +33,7 @@ import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -227,11 +228,10 @@ public class ClientsManager {
      * Retrieves the number of pending requests
      * @return Number of pending requests
      */
-    public int countPendingRequests() {
+    /*public int countPendingRequests() {
         int count = 0;
 
         clientsLock.lock();
-        /******* BEGIN CLIENTS CRITICAL SECTION ******/        
         
         Iterator<Entry<Integer, ClientData>> it = clientsData.entrySet().iterator();
 
@@ -251,10 +251,9 @@ public class ClientsManager {
             clientData.clientLock.unlock();
         }
 
-        /******* END CLIENTS CRITICAL SECTION ******/
         clientsLock.unlock();
         return count;
-    }
+    }*/
 
     /**
      * 
@@ -428,6 +427,9 @@ public class ClientsManager {
                     //clientData.setLastMessageReceived(-1);
                     clientData.setLastMessageDelivered(-1);
                     clientData.getOrderedRequests().clear();
+                    
+                    int numReqs = clientData.getPendingRequests().size();
+                    
                     clientData.getPendingRequests().clear();
                     
                     clientData.getPendingRequests().add(request);
@@ -702,10 +704,14 @@ public class ClientsManager {
         return clientsData.size();
     }
     
+    public int numPendingRequests() {
+        
+        return timer != null ? timer.size() : 0;
+    }
+    
     public void shutdown() {
         
         clear();
-        getPendingRequests().clear();
         doWork = false;
     }
     
