@@ -195,10 +195,14 @@ public class ClientsManager {
      * @return true if there are some pending requests and false otherwise
      */
     public boolean havePendingRequests() {
+        
+        return numPendingRequests() != 0;
+    }
+    
+    /*public boolean havePendingRequests() {
         boolean havePending = false;
 
         clientsLock.lock();
-        /******* BEGIN CLIENTS CRITICAL SECTION ******/        
         
         Iterator<Entry<Integer, ClientData>> it = clientsData.entrySet().iterator();
 
@@ -219,10 +223,9 @@ public class ClientsManager {
             clientData.clientLock.unlock();
         }
 
-        /******* END CLIENTS CRITICAL SECTION ******/
         clientsLock.unlock();
         return havePending;
-    }
+    }*/
     
     /**
      * Retrieves the number of pending requests
