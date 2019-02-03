@@ -45,6 +45,7 @@ import bftsmart.tom.util.BatchBuilder;
 import bftsmart.tom.util.BatchReader;
 import bftsmart.tom.util.TOMUtil;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -616,24 +617,46 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                             }
                 }
                 
-                //use parallelization to validate the request
-                final CountDownLatch latch = new CountDownLatch(requests.length);
-
+                //Requests from the same client need to be processed sequentially, but requests
+                //from different clients can be processed in parallel
+                HashMap<Integer,LinkedList<TOMMessage>> queuedReqs = new HashMap<>();
                 for (TOMMessage request : requests) {
                     
+                    LinkedList<TOMMessage> list = queuedReqs.get(request.getSender());
+                    if (list == null) {
+                        list = new LinkedList<>();
+                        queuedReqs.put(request.getSender(), list);
+                    }
+                    list.add(request);
+                }
+                
+                //use parallelization to validate the request
+                final CountDownLatch latch = new CountDownLatch(queuedReqs.keySet().size());
+
+                for (int  client : queuedReqs.keySet()) {
+                    
+                    final LinkedList<TOMMessage> list = queuedReqs.get(client);
+                    
+                    logger.debug("List of requests for client {} has {} elements",client, list.size());
+                    
                     verifierExecutor.submit(() -> {
-                        try {
+                        
+                        for (TOMMessage request : list) {
                             
-                            //notifies the client manager that this request was received and get
-                            //the result of its validation
-                            request.isValid = clientsManager.requestReceived(request, false);
-                            if (Thread.holdsLock(clientsManager.getClientsLock())) clientsManager.getClientsLock().unlock();
-                            
-                        }
-                        catch (Exception e) {
-                            
-                            logger.error("Error while validating requests", e);
-                            if (Thread.holdsLock(clientsManager.getClientsLock())) clientsManager.getClientsLock().unlock();
+                            try {
+
+                                //notifies the client manager that this request was received and get
+                                //the result of its validation
+                                request.isValid = clientsManager.requestReceived(request, false);
+                                if (Thread.holdsLock(clientsManager.getClientsLock())) clientsManager.getClientsLock().unlock();
+
+                            }
+                            catch (Exception e) {
+
+                                logger.error("Error while validating requests", e);
+                                if (Thread.holdsLock(clientsManager.getClientsLock())) clientsManager.getClientsLock().unlock();
+
+                            }
                             
                         }
                         

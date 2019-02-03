@@ -354,7 +354,7 @@ public class ClientsManager {
                     }
                     return false;
                     
-                } else if (fromClient && request.getSequence() > (clientData.getLastMessageReceived() + 1)) {
+                } else if (request.getSequence() > (clientData.getLastMessageReceived() + 1)) {
                     
                     logger.warn("Request {} is too forward (last request sequence was {}, expected {})", request, clientData.getLastMessageReceived(), clientData.getLastMessageReceived()+1);
                     return false;
