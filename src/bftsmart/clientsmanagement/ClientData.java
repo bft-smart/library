@@ -19,11 +19,12 @@ import bftsmart.tom.MessageContext;
 import java.security.PublicKey;
 import java.security.Signature;
 import java.security.SignatureException;
-import java.util.Iterator;
 import java.util.concurrent.locks.ReentrantLock;
 
 import bftsmart.tom.core.messages.TOMMessage;
+import bftsmart.tom.core.messages.TOMMessageType;
 import bftsmart.tom.util.TOMUtil;
+import java.util.HashMap;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,6 +49,8 @@ public class ClientData {
     //anb: new code to deal with client requests that arrive after their execution
     private RequestList orderedRequests = new RequestList(5);
 
+    private HashMap<Integer,TOMMessage> pendingMap = new HashMap<>();
+    
     private Signature signatureVerificator = null;
     
     /**
@@ -118,7 +121,8 @@ public class ClientData {
     }
 
     public boolean removeOrderedRequest(TOMMessage request) {
-        if(pendingRequests.remove(request)) {
+        if((pendingMap.remove(request.getHashCode())) != null) {
+            pendingRequests.remove(request);
             //anb: new code to deal with client requests that arrive after their execution
             orderedRequests.addLast(request);
             return true;
@@ -126,7 +130,7 @@ public class ClientData {
         return false;
     }
 
-    public boolean removeRequest(TOMMessage request) {
+    /*public boolean removeRequest(TOMMessage request) {
 	lastMessageDelivered = request.getSequence();
 	boolean result = pendingRequests.remove(request);
         //anb: new code to deal with client requests that arrive after their execution
@@ -140,8 +144,21 @@ public class ClientData {
 	}
 
     	return result;
+    }*/
+    
+    public void addRequest(TOMMessage request) {
+        
+        pendingRequests.add(request);
+        pendingMap.put(request.getHashCode(), request);
+        lastMessageReceived = request.getSequence();
+    }
+    
+    public TOMMessage getPendingRequest(int hash) {
+        
+        return pendingMap.get(hash);
     }
 
+    
     public TOMMessage getReply(int reqSequence) {
         TOMMessage request = orderedRequests.getBySequence(reqSequence);
         if(request != null) {

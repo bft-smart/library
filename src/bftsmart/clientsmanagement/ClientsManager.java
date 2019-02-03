@@ -130,6 +130,7 @@ public class ClientsManager {
      */
     public RequestList getPendingRequests() {
         RequestList allReq = new RequestList();
+        int total = 0;
         
         clientsLock.lock();
         /******* BEGIN CLIENTS CRITICAL SECTION ******/
@@ -137,7 +138,8 @@ public class ClientsManager {
         Set<Entry<Integer, ClientData>> clientsEntrySet = clientsData.entrySet();
         logger.debug("Number of active clients: {}", clientsEntrySet.size());
         
-        for (int i = 0; true; i++) {
+        int i = 0;
+        for (i = 0; true; i++) {
             Iterator<Entry<Integer, ClientData>> it = clientsEntrySet.iterator();
             int noMoreMessages = 0;
             
@@ -152,6 +154,7 @@ public class ClientsManager {
 
                 clientData.clientLock.lock();
 
+                if (i == 0) total += clientPendingRequests.size();
                 logger.debug("Number of pending requests for client {}: {}.", clientData.getClientId(), clientPendingRequests.size());
 
                 /******* BEGIN CLIENTDATA CRITICAL SECTION ******/
@@ -161,8 +164,8 @@ public class ClientsManager {
                 /******* END CLIENTDATA CRITICAL SECTION ******/
                 clientData.clientLock.unlock();
 
-                if (request != null) {
-                    if(!request.alreadyProposed && (lastDelivered + 1) == request.getSequence()) {
+                if (request != null && (lastDelivered + 1) == request.getSequence()) {
+                    if(!request.alreadyProposed) {
                         
                         logger.debug("Selected request with sequence number {} from client {}", request.getSequence(), request.getSender());
                         
@@ -185,6 +188,9 @@ public class ClientsManager {
         
         /******* END CLIENTS CRITICAL SECTION ******/
         clientsLock.unlock();
+        
+        logger.debug("List of requests with {} elements required {} iterations from a total of {} pending requests", allReq.size(), i, total);
+        
         return allReq;
     }
 
@@ -209,12 +215,12 @@ public class ClientsManager {
             RequestList reqs = clientData.getPendingRequests();
             int lastDelivered = clientData.getLastMessageDelivered();
             if (!reqs.isEmpty()) {
-                for(TOMMessage msg:reqs) {
-                    if((lastDelivered + 1) == msg.getSequence() && !msg.alreadyProposed) {
+                //for(TOMMessage msg:reqs) {
+                    if((lastDelivered + 1) == reqs.get(0).getSequence() && !reqs.get(0).alreadyProposed) {
                         havePending = true;
-                        break;
+                        //break;
                     }
-                }
+                //}
             }
             clientData.clientLock.unlock();
         }
@@ -334,26 +340,32 @@ public class ClientsManager {
             clientData.clientLock.lock();
             
             //Is this a leader replay attack?
-            if (clientData.getSession() == request.getSession() &&
-                    clientData.getLastMessageDelivered() >= request.getSequence()) {
+            if (clientData.getSession() == request.getSession()) {
+                
+                if(clientData.getLastMessageDelivered() >= request.getSequence()) {
 
-                if (!fromClient) {
-                    logger.warn("Potential leader replay attack, rejecting request {} (last request sequence was {})", request, clientData.getLastMessageDelivered());
-                }
-                else {
+                    if (!fromClient) {
+                        logger.warn("Potential leader replay attack, rejecting request {} (last request sequence was {})", request, clientData.getLastMessageDelivered());
+                    } else {
 
-                    logger.warn("I already ordered request {} (last request sequence was {})", request, clientData.getLastMessageDelivered());
-                    sendAck(fromClient, request);
+                        logger.warn("I already ordered request {} (last request sequence was {})", request, clientData.getLastMessageDelivered());
+                        sendAck(fromClient, request);
+                    }
+                    return false;
+                    
+                } else if (fromClient && request.getSequence() > (clientData.getLastMessageReceived() + 1)) {
+                    
+                    logger.warn("Request {} is too forward (last request sequence was {}, expected {})", request, clientData.getLastMessageReceived(), clientData.getLastMessageReceived()+1);
+                    return false;
                 }
-                return false;
+                
             }
-            
             TOMMessage temp = null;
             boolean verified = false;
             
             //validate request
             if (clientData.getSession() == request.getSession() && 
-                    (temp = clientData.getPendingRequests().getByOperationID(request.getOperationId())) != null) {
+                    (temp = clientData.getPendingRequest(request.getHashCode())) != null) {
                 
                 if (Arrays.equals(request.serializedMessage, temp.serializedMessage)) {
                     
@@ -378,10 +390,11 @@ public class ClientsManager {
                         request.recvFromClient = temp.recvFromClient;
                         request.receptionTime = temp.receptionTime;
                         request.receptionTimestamp = temp.receptionTimestamp;
+                        request.alreadyProposed = temp.alreadyProposed;
                         request.ackSent = temp.ackSent;
 
-                        clientData.getPendingRequests().remove(temp);
-                        clientData.getPendingRequests().add(request);
+                        int index = clientData.getPendingRequests().indexOf(temp);
+                        clientData.getPendingRequests().set(index,request);
 
                         //create a timer for this message
                         if (timer != null) {
@@ -409,7 +422,7 @@ public class ClientsManager {
                     request.recvFromClient = fromClient;
                     request.receptionTime = receptionTime;
                     request.receptionTimestamp = receptionTimestamp;
-                    clientData.getPendingRequests().add(request);
+                    clientData.addRequest(request);
                     
                     //create a timer for this message
                     if (timer != null) {
@@ -494,7 +507,7 @@ public class ClientsManager {
     }
     
     //Leave the original implementation here, just in case
-    /*public boolean requestReceived(TOMMessage request, boolean fromClient) {
+    /*public boolean requestReceived_(TOMMessage request, boolean fromClient) {
     
         long receptionTime = System.nanoTime();
         long receptionTimestamp = System.currentTimeMillis();
@@ -548,7 +561,8 @@ public class ClientsManager {
                 //insert it in the pending requests of this client
 
                 request.recvFromClient = fromClient;
-                clientData.getPendingRequests().add(request); 
+                //clientData.getPendingRequests().add(request); 
+                clientData.addRequest(request);
                 clientData.setLastMessageReceived(request.getSequence());
                 //clientData.setLastMessageReceivedTime(request.receptionTime);
 

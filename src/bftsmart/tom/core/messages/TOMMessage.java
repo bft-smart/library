@@ -405,4 +405,12 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 	public void setAckSeq(int ackSeq) {
 		this.ackSeq = ackSeq;
 	}
+        
+        public int getHashCode() {
+            int hash = 1;
+            hash = hash * 31 + getSender();
+            hash = hash * 31 + getSession();
+            hash = hash * 31 + getSequence();
+            return hash;
+        }
 }

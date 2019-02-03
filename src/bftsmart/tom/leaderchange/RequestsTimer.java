@@ -20,7 +20,6 @@ import java.util.LinkedList;
 import java.util.ListIterator;
 import java.util.Timer;
 import java.util.TimerTask;
-import java.util.TreeSet;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.HashMap;
 import java.util.Set;
@@ -109,7 +108,7 @@ public class RequestsTimer {
     public void watch(TOMMessage request) {
         //long startInstant = System.nanoTime();
         rwLock.writeLock().lock();
-        watched.put(getHashCode(request), request);
+        watched.put(request.getHashCode(), request);
         if (watched.size() >= 1 && enabled) startTimer();
         rwLock.writeLock().unlock();
     }
@@ -122,7 +121,7 @@ public class RequestsTimer {
         //long startInstant = System.nanoTime();
                 
         rwLock.writeLock().lock();
-        if (watched.remove(getHashCode(request)) != null && watched.isEmpty()) stopTimer();
+        if (watched.remove(request.getHashCode()) != null && watched.isEmpty()) stopTimer();
         rwLock.writeLock().unlock();
     }
 
@@ -137,7 +136,7 @@ public class RequestsTimer {
         watched.values().toArray(requests);
 
         for (TOMMessage request : requests) {
-            if (request != null && watched.remove(getHashCode(request)) != null && watched.isEmpty() && rtTask != null) {
+            if (request != null && watched.remove(request.getHashCode()) != null && watched.isEmpty() && rtTask != null) {
                 rtTask.cancel();
                 rtTask = null;
             }
@@ -250,15 +249,7 @@ public class RequestsTimer {
         LoggerFactory.getLogger(this.getClass()).info("RequestsTimer stopped.");
 
     }
-    
-    private int getHashCode(TOMMessage req) {
-        int hash = 1;
-        hash = hash * 31 + req.getSender();
-        hash = hash * 31 + req.getSession();
-        hash = hash * 31 + req.getSequence();
-        return hash;
-    }
-    
+        
     class RequestTimerTask extends TimerTask {
 
         @Override
