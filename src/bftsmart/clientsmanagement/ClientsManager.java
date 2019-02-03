@@ -332,6 +332,7 @@ public class ClientsManager {
         long receptionTimestamp = System.currentTimeMillis();
         
         boolean accounted = false;
+        boolean newReq = false;
 
         ClientData clientData = getClientData(request.getSender());
         
@@ -428,6 +429,8 @@ public class ClientsManager {
                     if (timer != null) {
                         timer.watch(request);
                     }
+                    
+                    newReq = true;
                 }
             }
             if (verified) {
@@ -455,8 +458,7 @@ public class ClientsManager {
                 } else {*/
                     
                     accounted = true;
-                    
-                    if (clientData.getLastMessageDelivered() >= request.getSequence()) {
+                    if (!newReq && clientData.getLastMessageReceived() >= request.getSequence()) {
                         //I already have/had this message
 
                         //send reply if it is available
