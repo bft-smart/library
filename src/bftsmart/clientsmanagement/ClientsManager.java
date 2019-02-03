@@ -164,7 +164,7 @@ public class ClientsManager {
                 /******* END CLIENTDATA CRITICAL SECTION ******/
                 clientData.clientLock.unlock();
 
-                if (request != null && (lastDelivered + 1) == request.getSequence()) {
+                if (request != null && request.getSequence() >= (lastDelivered + 1)) {
                     if(!request.alreadyProposed) {
                         
                         logger.debug("Selected request with sequence number {} from client {}", request.getSequence(), request.getSender());
@@ -216,7 +216,7 @@ public class ClientsManager {
             int lastDelivered = clientData.getLastMessageDelivered();
             if (!reqs.isEmpty()) {
                 //for(TOMMessage msg:reqs) {
-                    if((lastDelivered + 1) == reqs.get(0).getSequence() && !reqs.get(0).alreadyProposed) {
+                    if(reqs.get(0).getSequence() >= (lastDelivered + 1) && !reqs.get(0).alreadyProposed) {
                         havePending = true;
                         //break;
                     }
@@ -448,11 +448,11 @@ public class ClientsManager {
                     clientData.getPendingRequests().add(request);
                 }
                 
-                if (!fromClient) {
+                /*if (!fromClient) {
                     
                     accounted = (clientData.getLastMessageDelivered() + 1 == request.getSequence());
                     
-                } else {
+                } else {*/
                     
                     accounted = true;
                     
@@ -487,7 +487,7 @@ public class ClientsManager {
                             }
                         }                         
                     } 
-                }
+                //}
                 
                 sendAck(fromClient, request);
                 
