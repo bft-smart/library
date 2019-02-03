@@ -161,7 +161,7 @@ public final class Acceptor {
     	logger.debug("PROPOSE for consensus " + cid);
     	if (msg.getSender() == executionManager.getCurrentLeader() // Is the replica the leader?
                 && epoch.getTimestamp() == 0 && ts == ets && ets == 0) { // Is all this in epoch 0?
-    		executePropose(epoch, msg.getValue());
+    		executePropose(msg.getSender(), epoch, msg.getValue());
     	} else {
     		logger.debug("Propose received is not from the expected leader");
     	}
@@ -173,7 +173,7 @@ public final class Acceptor {
      * @param epoch the current epoch of the consensus
      * @param value Value that is proposed
      */
-    private void executePropose(Epoch epoch, byte[] value) {
+    private void executePropose(int sender, Epoch epoch, byte[] value) {
         int cid = epoch.getConsensus().getId();
         logger.debug("Executing propose for " + cid + "," + epoch.getTimestamp());
 
@@ -193,7 +193,7 @@ public final class Acceptor {
             if (cid == tomLayer.getLastExec() + 1) {
                 tomLayer.setInExec(cid);
             }
-            epoch.deserializedPropValue = tomLayer.checkProposedValue(value, true);
+            epoch.deserializedPropValue = tomLayer.checkProposedValue(value, sender != me);
             
             if (epoch.deserializedPropValue != null && !epoch.isWriteSent()) {
                 if(epoch.getConsensus().getDecision().firstMessageProposed == null) {
