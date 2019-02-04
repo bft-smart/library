@@ -55,6 +55,7 @@ public final class ThroughputLatencyServer extends DefaultRecoverable{
     private byte[] reply;
     private float maxTp = -1;
     private boolean context;
+    private boolean prettyPrint;
     private int signed;
     
     private byte[] state;
@@ -77,10 +78,11 @@ public final class ThroughputLatencyServer extends DefaultRecoverable{
     private RandomAccessFile randomAccessFile = null;
     private FileChannel channel = null;
 
-    public ThroughputLatencyServer(int id, int interval, int replySize, int stateSize, boolean context,  int signed, int write) {
+    public ThroughputLatencyServer(int id, int interval, int replySize, int stateSize, boolean context, boolean prettyPrint, int signed, int write) {
 
         this.interval = interval;
         this.context = context;
+        this.prettyPrint = prettyPrint;
         this.signed = signed;
         
         this.reply = new byte[replySize];
@@ -280,32 +282,44 @@ public final class ThroughputLatencyServer extends DefaultRecoverable{
         if(iterations % interval == 0) {
             if (context) System.out.println("--- (Context)  iterations: "+ iterations + " // regency: " + msgCtx.getRegency() + " // consensus: " + msgCtx.getConsensusId() + " ---");
             
-            System.out.println("--- Measurements after "+ iterations+" ops ("+interval+" samples) ---");
-            
+            System.out.println("--- Measurements after "+ iterations+" ops at timestamp " + System.currentTimeMillis() + " ("+interval+" samples) ---");
+
             tp = (float)(interval*1000/(float)(System.currentTimeMillis()-throughputMeasurementStartTime));
-            
+
             if (tp > maxTp) maxTp = tp;
-            
-            System.out.println("Throughput = " + tp +" operations/sec (Maximum observed: " + maxTp + " ops/sec)");            
-            
-            System.out.println("Total latency = " + totalLatency.getAverage(false) / 1000 + " (+/- "+ (long)totalLatency.getDP(false) / 1000 +") us ");
+
+            if (prettyPrint) {
+
+                System.out.println("Throughput = " + tp +" operations/sec (Maximum observed: " + maxTp + " ops/sec)");            
+                System.out.println("Total latency = " + totalLatency.getAverage(false) / 1000 + " (+/- "+ (long)totalLatency.getDP(false) / 1000 +") us ");
+                System.out.println("Consensus latency = " + consensusLatency.getAverage(false) / 1000 + " (+/- "+ (long)consensusLatency.getDP(false) / 1000 +") us ");
+                System.out.println("Pre-consensus latency = " + preConsLatency.getAverage(false) / 1000 + " (+/- "+ (long)preConsLatency.getDP(false) / 1000 +") us ");
+                System.out.println("Pos-consensus latency = " + posConsLatency.getAverage(false) / 1000 + " (+/- "+ (long)posConsLatency.getDP(false) / 1000 +") us ");
+                System.out.println("Propose latency = " + proposeLatency.getAverage(false) / 1000 + " (+/- "+ (long)proposeLatency.getDP(false) / 1000 +") us ");
+                System.out.println("Write latency = " + writeLatency.getAverage(false) / 1000 + " (+/- "+ (long)writeLatency.getDP(false) / 1000 +") us ");
+                System.out.println("Accept latency = " + acceptLatency.getAverage(false) / 1000 + " (+/- "+ (long)acceptLatency.getDP(false) / 1000 +") us ");
+                System.out.println("Batch average size = " + batchSize.getAverage(false) + " (+/- "+ (long)batchSize.getDP(false) +") requests");
+                
+            } else {
+                
+                System.out.println(System.currentTimeMillis() + "\t" + iterations + "\t" + tp+"\t" + maxTp +
+                        "\t" + totalLatency.getAverage(false) + "\t" + totalLatency.getDP(false)+
+                        "\t" + consensusLatency.getAverage(false) + "\t" + consensusLatency.getDP(false) + 
+                        "\t" + preConsLatency.getAverage(false) + "\t" + preConsLatency.getDP(false) +
+                        "\t" + posConsLatency.getAverage(false) + "\t" + posConsLatency.getDP(false) +
+                        "\t" + proposeLatency.getAverage(false) + "\t" + proposeLatency.getDP(false) +
+                        "\t" + writeLatency.getAverage(false) + "\t" + writeLatency.getDP(false) +
+                        "\t" + acceptLatency.getAverage(false) + "\t" + acceptLatency.getDP(false) +
+                        "\t" + batchSize.getAverage(false) + "\t" + batchSize.getDP(false));
+            }
             totalLatency.reset();
-            System.out.println("Consensus latency = " + consensusLatency.getAverage(false) / 1000 + " (+/- "+ (long)consensusLatency.getDP(false) / 1000 +") us ");
             consensusLatency.reset();
-            System.out.println("Pre-consensus latency = " + preConsLatency.getAverage(false) / 1000 + " (+/- "+ (long)preConsLatency.getDP(false) / 1000 +") us ");
             preConsLatency.reset();
-            System.out.println("Pos-consensus latency = " + posConsLatency.getAverage(false) / 1000 + " (+/- "+ (long)posConsLatency.getDP(false) / 1000 +") us ");
             posConsLatency.reset();
-            System.out.println("Propose latency = " + proposeLatency.getAverage(false) / 1000 + " (+/- "+ (long)proposeLatency.getDP(false) / 1000 +") us ");
             proposeLatency.reset();
-            System.out.println("Write latency = " + writeLatency.getAverage(false) / 1000 + " (+/- "+ (long)writeLatency.getDP(false) / 1000 +") us ");
             writeLatency.reset();
-            System.out.println("Accept latency = " + acceptLatency.getAverage(false) / 1000 + " (+/- "+ (long)acceptLatency.getDP(false) / 1000 +") us ");
             acceptLatency.reset();
-            
-            System.out.println("Batch average size = " + batchSize.getAverage(false) + " (+/- "+ (long)batchSize.getDP(false) +") requests");
             batchSize.reset();
-            
             throughputMeasurementStartTime = System.currentTimeMillis();
         }
 
@@ -313,8 +327,8 @@ public final class ThroughputLatencyServer extends DefaultRecoverable{
     }
 
     public static void main(String[] args){
-        if(args.length < 6) {
-            System.out.println("Usage: ... ThroughputLatencyServer <processId> <measurement interval> <reply size> <state size> <context?> <nosig | default | ecdsa> [rwd | rw]");
+        if(args.length < 7) {
+            System.out.println("Usage: ... ThroughputLatencyServer <processId> <measurement interval> <reply size> <state size> <context?> <pretty print?> <nosig | default | ecdsa> [rwd | rw]");
             System.exit(-1);
         }
 
@@ -323,8 +337,9 @@ public final class ThroughputLatencyServer extends DefaultRecoverable{
         int replySize = Integer.parseInt(args[2]);
         int stateSize = Integer.parseInt(args[3]);
         boolean context = Boolean.parseBoolean(args[4]);
-        String signed = args[5];
-        String write = args.length > 6 ? args[6] : "";
+        boolean prettyPrint = Boolean.parseBoolean(args[5]);
+        String signed = args[6];
+        String write = args.length > 7 ? args[7] : "";
         
         int s = 0;
         
@@ -342,7 +357,7 @@ public final class ThroughputLatencyServer extends DefaultRecoverable{
         if (!write.equalsIgnoreCase("")) w++;
         if (write.equalsIgnoreCase("rwd")) w++;
 
-        new ThroughputLatencyServer(processId,interval,replySize, stateSize, context, s, w);        
+        new ThroughputLatencyServer(processId,interval,replySize, stateSize, context, prettyPrint, s, w);        
     }
 
     @Override

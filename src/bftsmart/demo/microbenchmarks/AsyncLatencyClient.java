@@ -274,7 +274,7 @@ public class AsyncLatencyClient {
                                 
                                     //if (completed > (numberOfOps / 2)) {
 
-                                            latencies.put(id + "\t" + latency + "\n");
+                                            latencies.put(id + "\t" + System.currentTimeMillis() + "\t" + latency + "\n");
 
                                     //}
                                     
