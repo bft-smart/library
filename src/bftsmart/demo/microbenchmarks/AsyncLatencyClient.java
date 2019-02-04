@@ -272,11 +272,11 @@ public class AsyncLatencyClient {
                                 try {
                                     serviceProxy.cleanAsynchRequest(context.getOperationId());
                                 
-                                    if (completed > (numberOfOps / 2)) {
+                                    //if (completed > (numberOfOps / 2)) {
 
                                             latencies.put(id + "\t" + latency + "\n");
 
-                                    }
+                                    //}
                                     
                                 } catch (InterruptedException ex) {
                                     ex.printStackTrace();
