@@ -67,6 +67,7 @@ public class TOMConfiguration extends Configuration {
     private boolean syncLog;
     private boolean parallelLog;
     private boolean logToDisk;
+    private String logBatchType;
     private boolean isToWriteCkpsToDisk;
     private boolean syncCkp;
     private boolean isBFT;
@@ -412,6 +413,14 @@ public class TOMConfiguration extends Configuration {
                     syncLog = false;
             }
 
+            s = (String) configs.remove("system.totalordermulticast.log_batch_type");
+            if(s == null || (!s.equalsIgnoreCase("buffer") && !s.equalsIgnoreCase("parallel") 
+                    && !s.equalsIgnoreCase("async") && !s.equalsIgnoreCase("void"))){
+                logBatchType = "async";
+            }else{
+                logBatchType = s;
+            }
+            
             s = (String) configs
                             .remove("system.totalordermulticast.checkpoint_to_disk");
             if (s == null) {
@@ -677,5 +686,10 @@ public class TOMConfiguration extends Configuration {
     
     public String getBindAddress() {
         return bindAddress;
+    }
+    
+    public String getLogBatchType() {
+
+        return logBatchType;
     }
 }

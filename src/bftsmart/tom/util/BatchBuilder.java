@@ -45,7 +45,7 @@ public final class BatchBuilder {
         }
 
         /** build buffer */
-	private byte[] createBatch(long timestamp, int numberOfNonces, long seed, int numberOfMessages, int totalMessagesSize,
+	public byte[] createBatch(long timestamp, int numberOfNonces, long seed, int numberOfMessages, int totalMessagesSize,
 			boolean useSignatures, byte[][] messages, byte[][] signatures) {
             
                 int sigsSize = 0;
