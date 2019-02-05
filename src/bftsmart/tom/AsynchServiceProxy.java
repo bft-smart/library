@@ -183,14 +183,14 @@ public class AsynchServiceProxy extends ServiceProxy {
     /**
      * @see bellow
      */
-    public int invokeAsynchRequest(byte[] request, ReplyListener replyListener, TOMMessageType reqType) throws InterruptedException {
+    public int invokeAsynchRequest(byte[] request, ReplyListener replyListener, TOMMessageType reqType) {
         return invokeAsynchRequest(request, super.getViewManager().getCurrentViewProcesses(), replyListener, reqType, false);
     }
 
     /**
      * @see bellow
      */
-    public int invokeAsynchRequest(byte[] request, ReplyListener replyListener, TOMMessageType reqType, boolean dos) throws InterruptedException {
+    public int invokeAsynchRequest(byte[] request, ReplyListener replyListener, TOMMessageType reqType, boolean dos) {
         return invokeAsynchRequest(request, super.getViewManager().getCurrentViewProcesses(), replyListener, reqType, dos);
     }
     
