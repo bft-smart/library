@@ -205,17 +205,29 @@ public class AsynchServiceProxy extends ServiceProxy {
      * @param reqType Request type
      * @param dos Ignore control flow mechanism
      * 
-     * @return A unique identification for the request
+     * @return A unique identification for the request if it succeeds, -1 otherwise
      */
-    public int invokeAsynchRequest(byte[] request, int[] targets, ReplyListener replyListener, TOMMessageType reqType, boolean dos) throws InterruptedException {
+    public int invokeAsynchRequest(byte[] request, int[] targets, ReplyListener replyListener, TOMMessageType reqType, boolean dos) {
                 
-         RequestContext requestContext = generateNextContext(request, targets, replyListener, reqType, dos);
+        RequestContext requestContext = null;
         
-         logger.debug("Enqueuing invoke at client {} for request #{}", getViewManager().getStaticConf().getProcessId(), requestContext.getOperationId());
+        try {
+            
+            requestContext = generateNextContext(request, targets, replyListener, reqType, dos);
+        
+            logger.debug("Enqueuing invoke at client {} for request #{}", getViewManager().getStaticConf().getProcessId(), requestContext.getOperationId());
 
-        invokeQueue.put(requestContext);
-                            
-        return requestContext.getOperationId();
+            invokeQueue.put(requestContext);
+            
+            return requestContext.getOperationId();
+            
+        } catch (Exception ex) {
+            
+            logger.debug("Interuption error.",ex);
+            if (requestContext != null) reverse(reqType);
+            return -1;
+        }
+        
     }
 
     /**
@@ -265,9 +277,14 @@ public class AsynchServiceProxy extends ServiceProxy {
      * 
      * @param requestId A unique identification for a previously sent request
      */
-    public void cleanAsynchRequest(int requestId) throws InterruptedException {
+    public void cleanAsynchRequest(int requestId) {
         
-        cleanQueue.put(requestId);
+        try {
+            cleanQueue.put(requestId);
+        } catch (InterruptedException ex) {
+            
+            logger.error("Interruption error.", ex);
+        }
 
     }
 

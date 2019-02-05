@@ -114,6 +114,20 @@ public abstract class TOMSender implements ReplyReceiver, Closeable, AutoCloseab
 	public int generateOperationId() {
 		return opCounter.getAndIncrement();
 	}
+        
+        public void reverse(TOMMessageType type) {
+            
+            opCounter.decrementAndGet();
+            
+            lock.lock();
+
+            if(type == TOMMessageType.ORDERED_REQUEST)
+                    sequence--;
+            else
+                    unorderedMessageSequence--; 
+            lock.unlock();
+            
+        }
 
         public void TOMulticast(int[] targets, TOMMessage sm) {
 		cs.send(useSignatures, targets, sm);
