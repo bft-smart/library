@@ -186,6 +186,7 @@ public final class DeliveryThread extends Thread {
      */
     @Override
     public void run() {
+        boolean init = true;
         while (doWork) {
             
             currentDecisions = 0;
@@ -196,8 +197,11 @@ public final class DeliveryThread extends Thread {
                 logger.info("Retrieving State");
                 canDeliver.awaitUninterruptibly();
                 
-                if (tomLayer.getLastExec() == -1)
+                //if (tomLayer.getLastExec() == -1)
+                if (init) {
                     logger.info("Ready to process operations");
+                    init = false;
+                }
             }
             try {
                 ArrayList<Decision> decisions = new ArrayList<Decision>();
