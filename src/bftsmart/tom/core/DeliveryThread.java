@@ -176,6 +176,7 @@ public final class DeliveryThread extends Thread {
      */
     @Override
     public void run() {
+        boolean init = true;
         while (doWork) {
             /** THIS IS JOAO'S CODE, TO HANDLE STATE TRANSFER */
             deliverLock();
@@ -183,8 +184,11 @@ public final class DeliveryThread extends Thread {
                 logger.info("Retrieving State");
                 canDeliver.awaitUninterruptibly();
                 
-                if (tomLayer.getLastExec() == -1)
+                //if (tomLayer.getLastExec() == -1)
+                if (init) {
                     logger.info("Ready to process operations");
+                    init = false;
+                }
             }
             try {
                 ArrayList<Decision> decisions = new ArrayList<Decision>();

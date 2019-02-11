@@ -52,7 +52,15 @@ public class DurableStateManager extends StateManager {
     private CSTState stateCkp;
     private CSTState stateLower;
     private CSTState stateUpper;
+    
+    private Thread stateThread = null;
 
+    public void setLastCID(int cid) {
+        
+        super.setLastCID(cid);
+        tomLayer.setLastExec(cid);
+    }
+    
     @Override
     protected void requestState() {
         if (tomLayer.requestsTimer != null) {
@@ -134,13 +142,16 @@ public class DurableStateManager extends StateManager {
                     SVController.getCurrentView(), tomLayer.getSynchronizer().getLCManager().getLastReg(),
                     tomLayer.execManager.getCurrentLeader());
 
-            StateSenderServer stateServer = new StateSenderServer(port);
-            stateServer.setRecoverable(dt.getRecoverer());
-            stateServer.setRequest(cstConfig);
-            new Thread(stateServer).start();
-
             tomLayer.getCommunication().send(targets, reply);
-
+            
+            if (stateThread == null) {
+                
+                StateSenderServer stateServer = new StateSenderServer(port);
+                stateServer.setRecoverable(dt.getRecoverer());
+                stateServer.setRequest(cstConfig);
+                stateThread = new Thread(stateServer);
+                stateThread.start();
+            }
         }
     }
 
