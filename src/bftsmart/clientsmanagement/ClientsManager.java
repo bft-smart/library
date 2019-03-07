@@ -25,6 +25,7 @@ import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.leaderchange.RequestsTimer;
 import bftsmart.tom.server.RequestVerifier;
+import bftsmart.tom.util.TOMUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,12 +42,22 @@ public class ClientsManager {
     private HashMap<Integer, ClientData> clientsData = new HashMap<Integer, ClientData>();
     private RequestVerifier verifier;
     
+    //Used when the intention is to perform benchmarking with signature verification, but
+    //without having to make the clients create one first. Useful to optimize resources
+    private byte[] tempMsg = null;
+    private byte[] tempSig = null;
+    
     private ReentrantLock clientsLock = new ReentrantLock();
 
     public ClientsManager(ServerViewController controller, RequestsTimer timer, RequestVerifier verifier) {
         this.controller = controller;
         this.timer = timer;
         this.verifier = verifier;
+        
+        if (controller.getStaticConf().getUseSignatures() == 2) {
+            tempMsg = new byte []{3,5,6,7,4,3,5,6,4,7,4,1,7,7,5,4,3,1,4,85,7,5,7,3};
+            tempSig = TOMUtil.signMessage(controller.getStaticConf().getPrivateKey(), tempMsg);            
+        }
     }
 
     /**
@@ -324,6 +335,9 @@ public class ClientsManager {
                     (!request.signed ||
                     clientData.verifySignature(request.serializedMessage,
                             request.serializedMessageSignature))) {
+
+                if (tempMsg != null && tempSig != null)
+                    TOMUtil.verifySignature(controller.getStaticConf().getPublicKey(), tempMsg, tempSig);
                 
                 logger.debug("Message from client {} is valid", clientData.getClientId());
 
