@@ -81,6 +81,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
     
     //timeout for batch
     private Timer batchTimer = null;
+    private long lastRequest = -1;
     
     /**
      * Store requests received but still not ordered
@@ -179,29 +180,25 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
         this.syncher = new Synchronizer(this); // create synchronizer
         
-        if (controller.getStaticConf().getBatchTimeout() > -1) resetBatchTimer();
-    }
+        if (controller.getStaticConf().getBatchTimeout() > -1) {
 
-    public synchronized void resetBatchTimer() {
+            batchTimer = new Timer();
+            batchTimer.scheduleAtFixedRate(new TimerTask() {
+                @Override
+                public void run() {
 
-        if (batchTimer != null) {
-            batchTimer.cancel();
-        }
-        batchTimer = new Timer();
-        batchTimer.schedule(new TimerTask() {
-            @Override
-            public void run() {
+                    if (clientsManager.havePendingRequests() && 
+                            (System.currentTimeMillis() - lastRequest) >= controller.getStaticConf().getBatchTimeout()) {
 
-                if (clientsManager.havePendingRequests()) {
-
-                    logger.debug("Signaling proposer thread!!");
-                    haveMessages();
+                        logger.debug("Signaling proposer thread!!");
+                        haveMessages();
+                    }
                 }
-            }
 
-        }, controller.getStaticConf().getBatchTimeout());
-        
+            }, 0, controller.getStaticConf().getBatchTimeout());
+        }
     }
+
     /**
      * Computes an hash for a TOM message
      *
@@ -337,12 +334,13 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                     haveMessages();
                 } else {
                     
-                    resetBatchTimer();
-                    
-                    if (clientsManager.countPendingRequests() >= controller.getStaticConf().getMaxBatchSize()) {
+                    if (clientsManager.countPendingRequests() < controller.getStaticConf().getMaxBatchSize()) {
+                        
+                        lastRequest = System.currentTimeMillis();
+                                                
+                    } else {
                         
                         haveMessages();
-                                                
                     }
                     
                 }
