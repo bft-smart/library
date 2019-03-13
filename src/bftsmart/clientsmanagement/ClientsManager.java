@@ -133,6 +133,9 @@ public class ClientsManager {
         
         /******* END CLIENTS CRITICAL SECTION ******/
         clientsLock.unlock();
+        
+        //logger.debug("I have ({}) pending requests.", allReq.size());
+        
         return allReq;
     }
 

@@ -42,7 +42,11 @@ public final class ThroughputLatencyServer extends DefaultRecoverable{
     private Storage proposeLatency = null;
     private Storage writeLatency = null;
     private Storage acceptLatency = null;
+    private Storage batchSize = null;
+    
     private ServiceReplica replica;
+    
+    
 
     public ThroughputLatencyServer(int id, int interval, int replySize, int stateSize, boolean context) {
 
@@ -62,6 +66,8 @@ public final class ThroughputLatencyServer extends DefaultRecoverable{
         proposeLatency = new Storage(interval);
         writeLatency = new Storage(interval);
         acceptLatency = new Storage(interval);
+        
+        batchSize = new Storage(interval);
 
         replica = new ServiceReplica(id, this, this);
     }
@@ -69,6 +75,8 @@ public final class ThroughputLatencyServer extends DefaultRecoverable{
     @Override
     public byte[][] appExecuteBatch(byte[][] commands, MessageContext[] msgCtxs, boolean fromConsensus) {
         
+    	batchSize.store(commands.length);
+    	
         byte[][] replies = new byte[commands.length][];
         
         for (int i = 0; i < commands.length; i++) {
@@ -162,6 +170,9 @@ public final class ThroughputLatencyServer extends DefaultRecoverable{
             writeLatency.reset();
             System.out.println("Accept latency = " + acceptLatency.getAverage(false) / 1000 + " (+/- "+ (long)acceptLatency.getDP(false) / 1000 +") us ");
             acceptLatency.reset();
+            
+            System.out.println("Batch average size = " + batchSize.getAverage(false) + " (+/- "+ (long)batchSize.getDP(false) +") requests");
+            batchSize.reset();
             
             throughputMeasurementStartTime = System.currentTimeMillis();
         }

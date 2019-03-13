@@ -37,8 +37,7 @@ public final class BatchReader {
     /** wrap buffer */
     public BatchReader(byte[] batch, boolean useSignatures) {
         proposalBuffer = ByteBuffer.wrap(batch);
-        this.useSignatures = useSignatures;
-        
+        this.useSignatures = useSignatures;        
     }
 
     public TOMMessage[] deserialiseRequests(ServerViewController controller) {

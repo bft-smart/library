@@ -4,11 +4,11 @@
 	<classpathentry kind="src" path="src"/>
 	<classpathentry exported="true" kind="lib" path="lib/commons-codec-1.5.jar"/>
 	<classpathentry exported="true" kind="lib" path="lib/core-0.1.4.jar"/>
-	<classpathentry exported="true" kind="lib" path="lib/netty-all-4.1.30.Final.jar" sourcepath="/home/worm/.m2/repository/io/netty/netty-all/4.1.30.Final/netty-all-4.1.30.Final-sources.jar"/>
 	<classpathentry exported="true" kind="lib" path="lib/logback-classic-1.2.3.jar"/>
 	<classpathentry exported="true" kind="lib" path="lib/logback-core-1.2.3.jar"/>
 	<classpathentry exported="true" kind="lib" path="lib/slf4j-api-1.7.25.jar"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/java-8-oracle"/>
 	<classpathentry kind="lib" path="lib/bcpkix-jdk15on-160.jar"/>
+	<classpathentry kind="lib" path="lib/netty-all-4.1.34.Final.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

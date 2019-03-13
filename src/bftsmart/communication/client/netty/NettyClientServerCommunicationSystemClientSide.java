@@ -29,7 +29,6 @@ import java.security.spec.InvalidKeySpecException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Iterator;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
@@ -226,7 +225,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 
 	public void reconnect(final ChannelHandlerContext ctx) {
 
-		//rl.writeLock().lock();
+		rl.writeLock().lock();
 
 //		debugSessions();
 		// Iterator sessions = sessionTable.values().iterator();
@@ -262,7 +261,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 			}
 		}
 
-		//rl.writeLock().unlock();
+		rl.writeLock().unlock();
 	}
 
 	@Override

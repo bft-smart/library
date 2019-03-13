@@ -74,6 +74,10 @@
   <logger name="bftsmart.reconfiguration.util.Configuration" level="DEBUG"></logger>
   <logger name="bftsmart.communication.client.netty.NettyTOMMessageDecoder" level="TRACE"></logger>
   
-  <logger name="bftsmart.tom.ServiceProxy" level="TRACE"></logger>-->
+  <logger name="bftsmart.tom.ServiceProxy" level="TRACE"></logger>
+  
+  <logger name="bftsmart.clientsmanagement.ClientsManager" level="INFO"></logger>
+  
+  -->
 
 </configuration>

@@ -155,9 +155,10 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         }
         this.isSSLTLSEnabled=false;
         
-        // use either the same number of Netty workers threads if specified in the configuration
-        // or use a many as the number of cores available
-        this.verifierExecutor = Executors.newWorkStealingPool(Runtime.getRuntime().availableProcessors());
+        // Use a many as the number of available cores. 
+        //this.verifierExecutor = Executors.newWorkStealingPool(Runtime.getRuntime().availableProcessors());
+        this.verifierExecutor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+                
         
         //do not create a timer manager if the timeout is 0
         if (this.controller.getStaticConf().getRequestTimeout() == 0) {
@@ -227,9 +228,9 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         }
         this.isSSLTLSEnabled=true;
         
-        // use either the same number of Netty workers threads if specified in the configuration
-        // or use a many as the number of cores available
-        this.verifierExecutor = Executors.newWorkStealingPool(Runtime.getRuntime().availableProcessors());
+        // use a many as the number of cores available
+        //this.verifierExecutor = Executors.newWorkStealingPool(Runtime.getRuntime().availableProcessors());
+        this.verifierExecutor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
         
         //do not create a timer manager if the timeout is 0
         if (this.controller.getStaticConf().getRequestTimeout() == 0) {
@@ -417,6 +418,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
      */
     public byte[] createPropose(Decision dec) {
         // Retrieve a set of pending requests from the clients manager
+    	
         RequestList pendingRequests = clientsManager.getPendingRequests();
 
         int numberOfMessages = pendingRequests.size(); // number of messages retrieved
@@ -573,6 +575,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                             //notifies the client manager that this request was received and get
                             //the result of its validation
                             request.isValid = clientsManager.requestReceived(request, false);
+                            
                             if (Thread.holdsLock(clientsManager.getClientsLock())) clientsManager.getClientsLock().unlock();
                             
                         }
@@ -598,7 +601,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                     }
                 }
             }
-
+            
             logger.debug("Successfully deserialized batch");
 
             return requests;

@@ -104,7 +104,7 @@ public class MessageHandlerSSLTLS {
 
 				try {
 					// this.mac.init(key);
-					this.mac.init(tomLayer.getCommunication().getServersConn().getSecretKey(consMsg.getSender()));
+					this.mac.init(tomLayer.getCommunication().getServersConnSSLTLS().getSecretKey(consMsg.getSender()));
 					myMAC = this.mac.doFinal(data);
 				} catch (InvalidKeyException ex) {
 					logger.error("Failed to generate MAC", ex);

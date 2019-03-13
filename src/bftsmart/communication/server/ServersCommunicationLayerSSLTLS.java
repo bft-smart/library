@@ -390,7 +390,7 @@ public class ServersCommunicationLayerSSLTLS extends Thread {
 		try {
 			socket.setTcpNoDelay(true);
 		} catch (SocketException ex) {
-			LoggerFactory.getLogger(ServersCommunicationLayer.class).error("Failed to set TCPNODELAY", ex);
+			LoggerFactory.getLogger(ServersCommunicationLayerSSLTLS.class).error("Failed to set TCPNODELAY", ex);
 		}
 	}
 

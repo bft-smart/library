@@ -372,7 +372,7 @@ public final class AcceptorSSLTLS {
 				ConsensusMessage cm = null;
 				try {
 					if(this.hasProof) {
-						logger.info("Waiting for readProof Blocking Queue... cID: {}", cid );
+						logger.debug("Waiting for readProof Blocking Queue... cID: {}", cid );
 						cm = readProof.take();
 					}
 					else {
@@ -397,10 +397,10 @@ public final class AcceptorSSLTLS {
 				
 				int[] targets = controller.getCurrentViewOtherAcceptors();
 
-				if (communication.getConnType().equals(ConnType.SSL_TLS))
+				//if (communication.getConnType().equals(ConnType.SSL_TLS))
 					communication.getServersConnSSLTLS().send(targets, cm);
-				else
-					communication.getServersConn().send(targets, cm, true);
+				/*else
+					communication.getServersConn().send(targets, cm, true);*/
 
 				epoch.addToProof(cm);
 				computeAccept(cid, epoch, value);
@@ -437,7 +437,7 @@ public final class AcceptorSSLTLS {
 	 */
 	public void advanceInsertProof(int cid, int epochTimestamp, byte[] value) {
 			hasProof = true;
-			logger.info("Advancing signature for ACCEPT message. cId:{}", cid);
+			logger.debug("Advancing signature for ACCEPT message. cId:{}", cid);
 			ConsensusMessage cm = factory.createAccept(cid, epochTimestamp, value);
 			try {
 				insertProof.put(cm);
