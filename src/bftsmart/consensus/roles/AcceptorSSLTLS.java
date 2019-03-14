@@ -44,7 +44,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import bftsmart.communication.ServerCommunicationSystem;
-import bftsmart.communication.ServerCommunicationSystem.ConnType;
 import bftsmart.consensus.Consensus;
 import bftsmart.consensus.Epoch;
 import bftsmart.consensus.messages.ConsensusMessage;
@@ -397,11 +396,8 @@ public final class AcceptorSSLTLS {
 				
 				int[] targets = controller.getCurrentViewOtherAcceptors();
 
-				//if (communication.getConnType().equals(ConnType.SSL_TLS))
-					communication.getServersConnSSLTLS().send(targets, cm);
-				/*else
-					communication.getServersConn().send(targets, cm, true);*/
-
+				communication.getServersConnSSLTLS().send(targets, cm);
+				
 				epoch.addToProof(cm);
 				computeAccept(cid, epoch, value);
 

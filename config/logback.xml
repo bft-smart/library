@@ -63,21 +63,17 @@
   <logger name="bftsmart.demo.counter.CounterClient" level="INFO"></logger>
   <logger name="bftsmart.demo.counter.CounterClientPoolThread" level="DEBUG"></logger>
   
-  <logger name="bftsmart.clientsmanagement.ClientData" level="TRACE"></logger>
-  <logger name="bftsmart.clientsmanagement.ClientsManager" level="INFO"></logger>  
-  <logger name="bftsmart.demo.microbenchmarks.ThroughputLatencyClient" level="DEBUG"></logger>  
   
-  
-  <logger name="bftsmart.reconfiguration.util.SunECKeyLoader" level="INFO"></logger>
-  
-  <logger name="bftsmart.tom.util.TOMUtil" level="TRACE"></logger>
   <logger name="bftsmart.reconfiguration.util.Configuration" level="DEBUG"></logger>
   <logger name="bftsmart.communication.client.netty.NettyTOMMessageDecoder" level="TRACE"></logger>
   
-  <logger name="bftsmart.tom.ServiceProxy" level="TRACE"></logger>
   
-  <logger name="bftsmart.clientsmanagement.ClientsManager" level="INFO"></logger>
   
-  -->
-
+  	<logger name="bftsmart.clientsmanagement.ClientsManager" level="INFO"></logger>
+	<logger name="bftsmart.tom.core.TOMLayer" level="INFO"></logger>
+	<logger name="bftsmart.clientsmanagement.ClientData" level="INFO"></logger>
+	
+	<logger name="bftsmart.tom.util.TOMUtil" level="INFO"></logger>
+	-->
+	
 </configuration>

@@ -286,8 +286,8 @@ public class ClientsManager {
                     (!request.signed ||
                     clientData.verifySignature(request.serializedMessage,
                             request.serializedMessageSignature))) {
-
-                //I don't have the message but it is valid, I will
+            	
+            	//I don't have the message but it is valid, I will
                 //insert it in the pending requests of this client
 
                 request.recvFromClient = fromClient;
@@ -301,6 +301,9 @@ public class ClientsManager {
                 }
 
                 accounted = true;
+            }
+            else {
+            	logger.info("Message was NOT verified: {}", request.timestamp);
             }
         } else {
             //I will not put this message on the pending requests list

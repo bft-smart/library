@@ -207,7 +207,7 @@ public class TOMUtil {
      */
     public static boolean verifySignature(Signature initializedSignatureEngine, byte[] message, byte[] signature) throws SignatureException {
 
-        initializedSignatureEngine.update(message);
+    	initializedSignatureEngine.update(message);
         return initializedSignatureEngine.verify(signature);
     }
 

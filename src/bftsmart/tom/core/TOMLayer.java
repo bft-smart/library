@@ -379,6 +379,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
      * order.
      *
      * @param msg The request being received
+     * @throws InterruptedException 
      */
     @Override
     public void requestReceived(TOMMessage msg) {
@@ -400,8 +401,9 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         } else {
             logger.debug("Received TOMMessage from client " + msg.getSender() + " with sequence number " + msg.getSequence() + " for session " + msg.getSession());
 
+            
             if (clientsManager.requestReceived(msg, true, communication)) {
-                haveMessages();
+            	haveMessages();
             } else {
                 logger.warn("The received TOMMessage {} was discarded. Sender:{}, Sequence:{}", 
                 		msg, msg.getSender(), msg.getSequence() );
@@ -562,19 +564,20 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             //TODO: verify Timestamps and Nonces
             requests = batchReader.deserialiseRequests(this.controller);
             
+            
             if (addToClientManager) {
 
                 //use parallelization to validate the request
                 final CountDownLatch latch = new CountDownLatch(requests.length);
 
-                for (TOMMessage request : requests) {
-                    
-                    verifierExecutor.submit(() -> {
+               for (TOMMessage request : requests) {
+            	   request.isValid = true;
+                	verifierExecutor.submit(() -> {
                         try {
                             
                             //notifies the client manager that this request was received and get
                             //the result of its validation
-                            request.isValid = clientsManager.requestReceived(request, false);
+                           	request.isValid = clientsManager.requestReceived(request, false);
                             
                             if (Thread.holdsLock(clientsManager.getClientsLock())) clientsManager.getClientsLock().unlock();
                             

@@ -76,6 +76,8 @@ public class Configuration {
 
     protected boolean defaultKeys = false;
     
+    protected String proofType;
+    
     public Configuration(int procId, KeyLoader loader){
     	logger = LoggerFactory.getLogger(this.getClass());
         processId = procId;
@@ -201,6 +203,12 @@ public class Configuration {
                 DH_G = new BigInteger(s);
             }
             
+            s = (String) configs.remove("system.totalordermulticast.prooftype");
+            if(s == null || !s.equalsIgnoreCase("macvector")){
+                proofType = "signatures";
+            }else{
+                proofType = s;
+            }
             
             if (keyLoader == null) {
 				switch (defaultKeyLoader) {
@@ -298,6 +306,9 @@ public class Configuration {
         return hashAlgorithmProvider;
     }
     
+    public final String getProofType() {
+        return proofType;
+    }
     
     public final String getProperty(String key){
         Object o = configs.get(key);
