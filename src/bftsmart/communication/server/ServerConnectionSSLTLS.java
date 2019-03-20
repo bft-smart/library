@@ -80,9 +80,7 @@ public class ServerConnectionSSLTLS {
 	private boolean useSenderThread;
 	private LinkedBlockingQueue<SystemMessage> inQueue;
 	protected LinkedBlockingQueue<byte[]> outQueue;// = new LinkedBlockingQueue<byte[]>(SEND_QUEUE_SIZE);
-	private HashSet<Integer> noMACs = null; // this is used to keep track of data to be sent without a MAC.
-											// It uses the reference id for that same data	
-
+	
 	private Lock connectLock = new ReentrantLock();
 	/** Only used when there is no sender Thread */
 	private Lock sendLock;
@@ -98,8 +96,10 @@ public class ServerConnectionSSLTLS {
 	private static final String SECRET = "MySeCreT_2hMOygBwY";
 
 	
-	public ServerConnectionSSLTLS(ServerViewController controller, SSLSocket socketSSL, int remoteId,
-			LinkedBlockingQueue<SystemMessage> inQueue, ServiceReplica replica) {
+	public ServerConnectionSSLTLS(ServerViewController controller, 
+			SSLSocket socketSSL, int remoteId,
+			LinkedBlockingQueue<SystemMessage> inQueue,
+			ServiceReplica replica) {
 
 		this.controller = controller;
 
@@ -111,7 +111,6 @@ public class ServerConnectionSSLTLS {
 
 		this.outQueue = new LinkedBlockingQueue<byte[]>(this.controller.getStaticConf().getOutQueueSize());
 
-		this.noMACs = new HashSet<Integer>();
 		// Connect to the remote process or just wait for the connection?
 		if (isToConnect()) {
 			ssltlsCreateConnection();
@@ -390,7 +389,6 @@ public class ServerConnectionSSLTLS {
 						}
 					} catch (ClassNotFoundException ex) {
 						logger.info("Invalid message received. Ignoring!");
-						// invalid message received, just ignore;
 					} catch (IOException ex) {
 						if (doWork) {
 							logger.debug("Closing socket and reconnecting");
@@ -425,11 +423,6 @@ public class ServerConnectionSSLTLS {
 
 		@Override
 		public void run() {
-			byte[] receivedMac = null;
-			try {
-				receivedMac = new byte[TOMUtil.getMacFactory().getMacLength()];
-			} catch (NoSuchAlgorithmException ex) {
-			}
 
 			while (doWork) {
 				if (socketSSL != null && socketInStream != null) {

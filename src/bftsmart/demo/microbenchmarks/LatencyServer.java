@@ -15,9 +15,7 @@ limitations under the License.
 */
 package bftsmart.demo.microbenchmarks;
 
-import bftsmart.statemanagement.StateManager;
 import bftsmart.tom.MessageContext;
-import bftsmart.tom.ReplicaContext;
 import bftsmart.tom.ServiceReplica;
 import bftsmart.tom.server.defaultservices.DefaultRecoverable;
 import bftsmart.tom.util.Storage;

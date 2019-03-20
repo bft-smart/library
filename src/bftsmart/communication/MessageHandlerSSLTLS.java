@@ -40,7 +40,7 @@ import bftsmart.tom.util.TOMUtil;
 
 /**
  *
- * @author edualchieri, Tulio Ribeiro
+ * @author edualchieri
  */
 public class MessageHandlerSSLTLS {
 

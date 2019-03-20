@@ -248,7 +248,8 @@ public class ServersCommunicationLayerSSLTLS extends Thread {
 		connectionsLock.lock();
 		ServerConnectionSSLTLS ret = this.connections.get(remoteId);
 		if (ret == null) {
-			ret = new ServerConnectionSSLTLS(controller, null, remoteId, this.inQueue, this.replica);
+			ret = new ServerConnectionSSLTLS(controller, null, 
+					remoteId, this.inQueue, this.replica);
 			this.connections.put(remoteId, ret);
 		}
 		connectionsLock.unlock();
@@ -330,7 +331,7 @@ public class ServersCommunicationLayerSSLTLS extends Thread {
 			try {
 				// System.out.println("Waiting for connections.");
 				SSLSocket newSocket = (SSLSocket) serverSocketSSLTLS.accept();
-				ServersCommunicationLayerSSLTLS.setSSLSocketOptions(newSocket);
+				setSSLSocketOptions(newSocket);
 
 				int remoteId = new DataInputStream(newSocket.getInputStream()).readInt();
 
@@ -390,7 +391,8 @@ public class ServersCommunicationLayerSSLTLS extends Thread {
 		try {
 			socket.setTcpNoDelay(true);
 		} catch (SocketException ex) {
-			LoggerFactory.getLogger(ServersCommunicationLayerSSLTLS.class).error("Failed to set TCPNODELAY", ex);
+			LoggerFactory.getLogger(ServersCommunicationLayerSSLTLS.class
+					).error("Failed to set TCPNODELAY", ex);
 		}
 	}
 

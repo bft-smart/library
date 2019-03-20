@@ -294,7 +294,6 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 		while (it.hasNext()) {
 			Integer cli = (Integer) it.next();
 			logger.debug("SessionReplicaToClient: Key:{}, Value:{}", cli, sessionReplicaToClient.get(cli));
-			
 		}
 		
 		logger.debug("Removing client channel with ID = " + key);
@@ -332,9 +331,7 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 		sm.signed = false;
 		// produce signature if necessary (never in the current version)
 		if (sm.signed) {
-			// ******* EDUARDO BEGIN **************//
 			byte[] signature = TOMUtil.signMessage(privKey, data);
-			// ******* EDUARDO END **************//
 			sm.serializedMessageSignature = signature;
 		}
 

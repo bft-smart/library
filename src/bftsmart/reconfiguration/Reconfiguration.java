@@ -19,9 +19,6 @@ import bftsmart.tom.ServiceProxy;
 import bftsmart.tom.core.messages.TOMMessageType;
 import bftsmart.tom.util.KeyLoader;
 import bftsmart.tom.util.TOMUtil;
-import sun.util.logging.resources.logging;
-
-import java.security.Provider;
 
 /**
  *
@@ -44,7 +41,8 @@ public class Reconfiguration {
     
     public void connect(){
         if(proxy == null){
-        	proxy = new ServiceProxy(id, configDir, null, null, keyLoader);
+        	proxy = new ServiceProxy(id, configDir, null, null, 
+        			keyLoader);
         }
     }
     

@@ -163,7 +163,6 @@ public class ServerViewController extends ViewController {
             }
 
         }
-        //ret = reconfigure(updates.get(i).getContent());
         return reconfigure(jSetInfo, jSet, rSet, f, cid);
     }
 
@@ -177,9 +176,6 @@ public class ServerViewController extends ViewController {
     }
 
     private byte[] reconfigure(List<String> jSetInfo, List<Integer> jSet, List<Integer> rSet, int f, int cid) {
-        //ReconfigureRequest request = (ReconfigureRequest) TOMUtil.getObject(req);
-        // Hashtable<Integer, String> props = request.getProperties();
-        // int f = Integer.valueOf(props.get(CHANGE_F));
         lastJoinStet = new int[jSet.size()];
         int[] nextV = new int[currentView.getN() + jSet.size() - rSet.size()];
         int p = 0;

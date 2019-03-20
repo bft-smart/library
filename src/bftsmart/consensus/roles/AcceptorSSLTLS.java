@@ -300,10 +300,9 @@ public final class AcceptorSSLTLS {
 				}
 				executionManager.processOutOfContext(epoch.getConsensus());
 
-			} else if (epoch.deserializedPropValue == null && !tomLayer.isChangingLeader()) { // force a leader change
+			} else if (epoch.deserializedPropValue == null 
+					&& !tomLayer.isChangingLeader()) { // force a leader change
 																								// if the proposal is
-																								// garbage
-
 				if (this.isPersistent) {
 					HashMap<Integer, byte[]> map = new HashMap<>();
 					map.put(cid, value);
@@ -326,7 +325,8 @@ public final class AcceptorSSLTLS {
 	 */
 	private void writeReceived(Epoch epoch, int sender, byte[] value) {
 		int cid = epoch.getConsensus().getId();
-		logger.debug("WRITE received from:{}, for consensus cId:{}", sender, cid);
+		logger.debug("WRITE received from:{}, for consensus cId:{}", 
+				sender, cid);
 		epoch.setWrite(sender, value);
 
 		computeWrite(cid, epoch, value);
@@ -348,7 +348,8 @@ public final class AcceptorSSLTLS {
 
 		logger.debug("I have {}, WRITE's for cId:{}, Epoch timestamp:{},", writeAccepted, cid, epoch.getTimestamp());
 		
-		if (writeAccepted > controller.getQuorum() && Arrays.equals(value, epoch.propValueHash)) {
+		if (writeAccepted > controller.getQuorum() 
+				&& Arrays.equals(value, epoch.propValueHash)) {
 
 			if (!epoch.isAcceptSetted(me)) {
 
@@ -454,6 +455,7 @@ public final class AcceptorSSLTLS {
 	 */
 	private void acceptReceived(Epoch epoch, ConsensusMessage msg) {
 		int cid = epoch.getConsensus().getId();
+		logger.debug("ACCEPT from " + msg.getSender() + " for consensus " + cid);
 		epoch.setAccept(msg.getSender(), msg.getValue());
 		epoch.addToProof(msg);
 

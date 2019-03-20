@@ -30,15 +30,10 @@ import bftsmart.reconfiguration.ClientViewController;
 
 public class NettyClientPipelineFactory {
 
-	private Logger logger = LoggerFactory.getLogger(this.getClass());
 	
 	NettyClientServerCommunicationSystemClientSide ncs;
 	ConcurrentHashMap<Integer, NettyClientServerSession> sessionTable;
-	
-	// ******* EDUARDO BEGIN **************//
 	ClientViewController controller;
-	// ******* EDUARDO END **************//
-
 	ReentrantReadWriteLock rl;
 
 	public NettyClientPipelineFactory(NettyClientServerCommunicationSystemClientSide ncs, 
@@ -54,11 +49,11 @@ public class NettyClientPipelineFactory {
 	}
 
 	public ByteToMessageDecoder getDecoder(){
-    	return new NettyTOMMessageDecoder(true, sessionTable,controller,rl,controller.getStaticConf().getUseMACs());	
+    	return new NettyTOMMessageDecoder(true, sessionTable,controller,rl);	
     }
     
     public MessageToByteEncoder getEncoder(){
-    	return new NettyTOMMessageEncoder(true, sessionTable,rl, controller.getStaticConf().getUseMACs());	
+    	return new NettyTOMMessageEncoder(true, sessionTable,rl);	
     }
     
     public SimpleChannelInboundHandler getHandler(){
