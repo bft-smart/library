@@ -147,6 +147,7 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 			logger.info("maxBatch = " + controller.getStaticConf().getMaxBatchSize());
 			if (controller.getStaticConf().getUseMACs() == 1) logger.info("Using MACs");
 			if(controller.getStaticConf().getUseSignatures() == 1) logger.info("Using Signatures");
+                        else if (controller.getStaticConf().getUseSignatures() == 2) logger.info("Using benchmark signature verification");
                         logger.info("Binded replica to IP address " + myAddress);
                         //******* EDUARDO END **************//
                         

@@ -26,6 +26,9 @@ import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.leaderchange.RequestsTimer;
 import bftsmart.tom.server.RequestVerifier;
 import bftsmart.tom.util.TOMUtil;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
+import java.security.Signature;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,8 +47,9 @@ public class ClientsManager {
     
     //Used when the intention is to perform benchmarking with signature verification, but
     //without having to make the clients create one first. Useful to optimize resources
-    private byte[] tempMsg = null;
-    private byte[] tempSig = null;
+    private byte[] benchMsg = null;
+    private byte[] benchSig = null;
+    private HashMap<String,Signature> benchEngines = new HashMap<>();
     
     private ReentrantLock clientsLock = new ReentrantLock();
 
@@ -55,8 +59,8 @@ public class ClientsManager {
         this.verifier = verifier;
         
         if (controller.getStaticConf().getUseSignatures() == 2) {
-            tempMsg = new byte []{3,5,6,7,4,3,5,6,4,7,4,1,7,7,5,4,3,1,4,85,7,5,7,3};
-            tempSig = TOMUtil.signMessage(controller.getStaticConf().getPrivateKey(), tempMsg);            
+            benchMsg = new byte []{3,5,6,7,4,3,5,6,4,7,4,1,7,7,5,4,3,1,4,85,7,5,7,3};
+            benchSig = TOMUtil.signMessage(controller.getStaticConf().getPrivateKey(), benchMsg);            
         }
     }
 
@@ -330,14 +334,26 @@ public class ClientsManager {
             //and not an erroneous requests sent by a Byzantine leader.
             boolean isValid = (!controller.getStaticConf().isBFT() || verifier.isValidRequest(request));
 
+            Signature engine = benchEngines.get(Thread.currentThread().getName());
+            
+            if (engine == null) {
+                
+                try {
+                    engine = TOMUtil.getSigEngine();
+                    engine.initVerify(controller.getStaticConf().getPublicKey());
+                    
+                    benchEngines.put(Thread.currentThread().getName(), engine);
+                } catch (NoSuchAlgorithmException | InvalidKeyException ex) {
+                    logger.error("Signature error.",ex);
+                    engine = null;
+                }
+            }
+            
             //it is a valid new message and I have to verify it's signature
             if (isValid &&
-                    (!request.signed ||
+                    ((engine != null && benchMsg != null && benchSig != null && TOMUtil.verifySigForBenchmark(engine, benchMsg, benchSig)) || !request.signed ||
                     clientData.verifySignature(request.serializedMessage,
                             request.serializedMessageSignature))) {
-
-                if (tempMsg != null && tempSig != null)
-                    TOMUtil.verifySignature(controller.getStaticConf().getPublicKey(), tempMsg, tempSig);
                 
                 logger.debug("Message from client {} is valid", clientData.getClientId());
 

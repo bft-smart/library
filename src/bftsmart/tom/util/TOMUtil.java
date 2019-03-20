@@ -182,6 +182,17 @@ public class TOMUtil {
         return result;
     }
 
+    public static boolean verifySigForBenchmark(Signature initializedSignatureEngine, byte[] message, byte[] signature) {
+
+        try {
+            initializedSignatureEngine.update(message);
+            return initializedSignatureEngine.verify(signature);
+        } catch (SignatureException ex) {
+            logger.error("Signature error.",ex);
+            return false;
+        }
+    }
+    
     /**
      * Verify the signature of a message.
      *
