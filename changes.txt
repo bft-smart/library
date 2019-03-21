@@ -1,0 +1,21 @@
+First changes (commit), for porting to TLS.
+
++ Altered system.config, added TLS configurations. 
++ Added directory with specific keys. 
++ Updated Netty from 4.1.30 to 4.1.34.
+
+Second changes
++ Changed communication system. 
++ Changed ServerConnection
++ Changed Configuration and TOMConfiguration.
++ Added BouncyCastle provider at TOMUtil.init().
++ Tested changes, seems working. 
+TODO: Test failure scenarios.
+
+
+Third changes
++ Remove hmac and mac from code and system.config
++ Decreased creation time among threads (ThroughputLatencyClient)
+
+TODO: 
+
