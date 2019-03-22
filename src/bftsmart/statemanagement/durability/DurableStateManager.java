@@ -54,12 +54,6 @@ public class DurableStateManager extends StateManager {
     private CSTState stateUpper;
     
     private Thread stateThread = null;
-
-    public void setLastCID(int cid) {
-        
-        super.setLastCID(cid);
-        tomLayer.setLastExec(cid);
-    }
     
     @Override
     protected void requestState() {

@@ -260,6 +260,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
      * @param last ID of the consensus which was last to be executed
      */
     public void setLastExec(int last) {
+        logger.debug("Setting last exec to " + last);
         this.lastExecuted = last;
     }
 
