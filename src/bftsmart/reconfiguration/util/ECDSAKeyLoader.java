@@ -209,7 +209,7 @@ public class ECDSAKeyLoader implements KeyLoader {
 	private PrivateKey getPrivateKeyFromString(String key)
 			throws NoSuchProviderException, NoSuchAlgorithmException, InvalidKeySpecException {
 
-		KeyFactory keyFactory = KeyFactory.getInstance("ECDSA", "BC");
+		KeyFactory keyFactory = KeyFactory.getInstance("EC", "BC");
 		EncodedKeySpec privateKeySpec = new PKCS8EncodedKeySpec(Base64.decodeBase64(key));
 		privateKey = keyFactory.generatePrivate(privateKeySpec);
 		return privateKey;
@@ -217,7 +217,7 @@ public class ECDSAKeyLoader implements KeyLoader {
 
 	private PublicKey getPublicKeyFromString(String key)
 			throws NoSuchProviderException, NoSuchAlgorithmException, InvalidKeySpecException, NoSuchProviderException {
-		KeyFactory keyFactory = KeyFactory.getInstance("ECDSA", "BC");
+		KeyFactory keyFactory = KeyFactory.getInstance("EC", "BC");
 		X509EncodedKeySpec pubKeySpec = new X509EncodedKeySpec(Base64.decodeBase64(key));
 		PublicKey publicKey = keyFactory.generatePublic(pubKeySpec);
 		return publicKey;
