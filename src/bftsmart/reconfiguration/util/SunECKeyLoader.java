@@ -99,14 +99,14 @@ public class SunECKeyLoader implements KeyLoader {
 		if (defaultKeys) {
 			//logger.debug("Loading default PublicKey, id: {}", id);
 			try {
-				logger.trace("Signature Algorithm: {}, Format: {} ", getPublicKeyFromString(DEFAULT_PKEY).getAlgorithm(),
-						getPublicKeyFromString(DEFAULT_PKEY).getFormat());
+				logger.trace("Signature Algorithm: {}, Format: {} ", getPublicKeyFromString(DEFAULT_UKEY).getAlgorithm(),
+						getPublicKeyFromString(DEFAULT_UKEY).getFormat());
 			} catch (NoSuchProviderException e1) {
 				// TODO Auto-generated catch block
 				logger.error("Provider error.",e1);
 			}
 			try {
-				return getPublicKeyFromString(DEFAULT_PKEY);
+				return getPublicKeyFromString(DEFAULT_UKEY);
 			} catch (NoSuchProviderException e) {
 				// TODO Auto-generated catch block
 				logger.error("Provider error.",e);
@@ -140,14 +140,14 @@ public class SunECKeyLoader implements KeyLoader {
 		if (defaultKeys) {
 			//logger.debug("Loading my default PublicKey, this.id: {}", this.id);
 			try {
-				logger.trace("Signature Algorithm: {}, Format: {} ", getPublicKeyFromString(DEFAULT_PKEY).getAlgorithm(),
-						getPublicKeyFromString(DEFAULT_PKEY).getFormat());
+				logger.trace("Signature Algorithm: {}, Format: {} ", getPublicKeyFromString(DEFAULT_UKEY).getAlgorithm(),
+						getPublicKeyFromString(DEFAULT_UKEY).getFormat());
 			} catch (NoSuchProviderException e1) {
 				logger.error("Provider error.",e1);
 			}
 
 			try {
-				return getPublicKeyFromString(DEFAULT_PKEY);
+				return getPublicKeyFromString(DEFAULT_UKEY);
 			} catch (NoSuchProviderException e) {
 				logger.error("Provider error.",e);
 			}
@@ -165,7 +165,7 @@ public class SunECKeyLoader implements KeyLoader {
 		r.close();
 		PublicKey ret = null;
 		try {
-			ret = getPublicKeyFromString(DEFAULT_PKEY);
+			ret = getPublicKeyFromString(DEFAULT_UKEY);
 		} catch (NoSuchProviderException e) {
 			// TODO Auto-generated catch block
 			logger.error("Provider error.",e);
@@ -188,7 +188,7 @@ public class SunECKeyLoader implements KeyLoader {
 		if (defaultKeys) {
 			//logger.debug("Loading default PrivateKey, ID: {}", this.id);
 			try {
-				return getPrivateKeyFromString(DEFAULT_UKEY);
+				return getPrivateKeyFromString(DEFAULT_PKEY);
 			} catch (NoSuchProviderException e) {
 				// TODO Auto-generated catch block
 				logger.error("Provider error.",e);

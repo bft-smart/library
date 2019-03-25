@@ -100,7 +100,7 @@ public class ECDSAKeyLoader implements KeyLoader {
 		if (defaultKeys) {
 			//logger.debug("Loading default PublicKey, id: {}", id);			
 			try {
-				return getPublicKeyFromString(DEFAULT_PKEY);
+				return getPublicKeyFromString(DEFAULT_UKEY);
 			} catch (NoSuchProviderException e) {
 				// TODO Auto-generated catch block
 				logger.error("Provider error.",e);
@@ -134,7 +134,7 @@ public class ECDSAKeyLoader implements KeyLoader {
 
 		if (defaultKeys) {
 			try {
-				return getPublicKeyFromString(DEFAULT_PKEY);
+				return getPublicKeyFromString(DEFAULT_UKEY);
 			} catch (NoSuchProviderException e) {
 				logger.error("Provider error.",e);
 			}
@@ -152,7 +152,7 @@ public class ECDSAKeyLoader implements KeyLoader {
 		r.close();
 		PublicKey ret = null;
 		try {
-			ret = getPublicKeyFromString(DEFAULT_PKEY);
+			ret = getPublicKeyFromString(DEFAULT_UKEY);
 		} catch (NoSuchProviderException e) {
 			// TODO Auto-generated catch block
 			logger.error("Provider error.",e);
@@ -175,7 +175,7 @@ public class ECDSAKeyLoader implements KeyLoader {
 		if (defaultKeys) {
 			//logger.info("Loading private key...");
 			try {
-				return getPrivateKeyFromString(DEFAULT_UKEY);
+				return getPrivateKeyFromString(DEFAULT_PKEY);
 			} catch (NoSuchProviderException e) {
 				// TODO Auto-generated catch block
 				logger.error("Provider error.",e);
