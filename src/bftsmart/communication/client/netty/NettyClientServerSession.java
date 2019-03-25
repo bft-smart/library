@@ -29,32 +29,17 @@ import javax.crypto.Mac;
  */
 public class NettyClientServerSession {
     private Channel channel;
-    private Mac macSend;
-    private Mac macReceive;
     private int replicaId;
     private Lock lock;
     private int lastMsgReceived;
 
-    public NettyClientServerSession(Channel channel, Mac macSend, Mac macReceive, int replicaId) {
+    public NettyClientServerSession(Channel channel, int replicaId) {
         this.channel = channel;
-        this.macSend = macSend;
-        this.macReceive = macReceive;
         this.replicaId = replicaId;
         this.lock =  new ReentrantLock();
         this.lastMsgReceived = -1;
     }
     
-
-    public Mac getMacReceive() {
-        return macReceive;
-    }
-
-
-    public Mac getMacSend() {
-        return macSend;
-    }
-
-
     public Channel getChannel() {
         return channel;
     }

@@ -89,7 +89,7 @@ public abstract class TOMSender implements ReplyReceiver, Closeable, AutoCloseab
 		this.cs = CommunicationSystemClientSideFactory.getCommunicationSystemClientSide(clientId, this.viewController);
 		this.cs.setReplyReceiver(this); // This object itself shall be a reply receiver
 		this.me = this.viewController.getStaticConf().getProcessId();
-		this.useSignatures = this.viewController.getStaticConf().getUseSignatures()==1?true:false;
+		this.useSignatures = this.viewController.getStaticConf().getUseSignatures() == 1;
 		this.session = new Random().nextInt();
 	}
 	//******* EDUARDO END **************//

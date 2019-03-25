@@ -22,16 +22,14 @@ import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Scanner;
 import java.util.StringTokenizer;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import bftsmart.communication.server.ServerConnection;
 import bftsmart.reconfiguration.views.View;
 import bftsmart.tom.util.KeyLoader;
-import java.security.Provider;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  *
@@ -95,9 +93,9 @@ public class ViewManager {
         }
     }
 
-    public void addServer(int id, String ip, int port) {
-        this.controller.getStaticConf().addHostInfo(id, ip, port);
-        rec.addServer(id, ip, port);
+    public void addServer(int id, String ip, int port, int portRR) {
+        this.controller.getStaticConf().addHostInfo(id, ip, port, portRR);
+        rec.addServer(id, ip, port, portRR);
         addIds.add(id);
     }
 
@@ -121,8 +119,6 @@ public class ViewManager {
             sendResponse(addIds.toArray(new Integer[1]), msg);
             addIds.clear();
         }
-
-
     }
 
     private ServerConnection getConnection(int remoteId) {
@@ -141,17 +137,15 @@ public class ViewManager {
         byte[] data = bOut.toByteArray();
 
         for (Integer i : targets) {
-            //br.ufsc.das.tom.util.Logger.println("(ServersCommunicationLayer.send) Sending msg to replica "+i);
             try {
                 if (i.intValue() != id) {
-                    getConnection(i.intValue()).send(data, true);
+                    getConnection(i.intValue()).send(data);
                 }
             } catch (InterruptedException ex) {
                // ex.printStackTrace();
                 logger.error("Failed to send data to target", ex);
             }
         }
-        //br.ufsc.das.tom.util.Logger.println("(ServersCommunicationLayer.send) Finished sending messages to replicas");
     }
 
     public void close() {

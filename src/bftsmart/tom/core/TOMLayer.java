@@ -19,6 +19,7 @@ package bftsmart.tom.core;
 import java.io.Serializable;
 import java.security.MessageDigest;
 import java.security.PrivateKey;
+import java.security.PublicKey;
 import java.security.Signature;
 import java.security.SignedObject;
 import java.util.concurrent.locks.Condition;
@@ -44,6 +45,8 @@ import bftsmart.tom.server.RequestVerifier;
 import bftsmart.tom.util.BatchBuilder;
 import bftsmart.tom.util.BatchReader;
 import bftsmart.tom.util.TOMUtil;
+
+import java.util.HashMap;
 import java.util.Timer;
 import java.util.TimerTask;
 import org.slf4j.Logger;
@@ -109,7 +112,9 @@ public final class TOMLayer extends Thread implements RequestReceiver {
     private ReentrantLock proposeLock = new ReentrantLock();
     private Condition canPropose = proposeLock.newCondition();
 
-    private PrivateKey prk;
+    private PrivateKey privateKey;
+    private HashMap<Integer, PublicKey> publicKey;
+    
     public ServerViewController controller;
 
     private RequestVerifier verifier;
@@ -142,6 +147,13 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         this.communication = cs;
         this.controller = controller;
         
+        /*Tulio Ribeiro*/
+        this.privateKey = this.controller.getStaticConf().getPrivateKey();
+        this.publicKey = new HashMap<>();
+        int [] targets  = this.controller.getCurrentViewAcceptors();
+        for (int i = 0; i < targets.length; i++) {
+            publicKey.put(targets[i], controller.getStaticConf().getPublicKey(targets[i]));
+        }
         // use either the same number of Netty workers threads if specified in the configuration
         // or use a many as the number of cores available
         int nWorkers = this.controller.getStaticConf().getNumNettyWorkers();
@@ -167,7 +179,6 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             logger.error("Failed to get signature engine",e);
         }
 
-        this.prk = this.controller.getStaticConf().getPrivateKey();
         this.dt = new DeliveryThread(this, receiver, recoverer, this.controller); // Create delivery thread
         this.dt.start();
         this.stateManager = recoverer.getStateManager();
@@ -216,7 +227,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
     public SignedObject sign(Serializable obj) {
         try {
-            return new SignedObject(obj, prk, engine);
+            return new SignedObject(obj, privateKey, engine);
         } catch (Exception e) {
             logger.error("Failed to sign object",e);
             return null;
@@ -232,7 +243,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
      */
     public boolean verifySignature(SignedObject so, int sender) {
         try {
-            return so.verify(controller.getStaticConf().getPublicKey(sender), engine);
+            return so.verify(publicKey.get(sender), engine);
         } catch (Exception e) {
             logger.error("Failed to verify object signature",e);
         }
@@ -419,7 +430,8 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             // blocks until there are requests to be processed/ordered
             messagesLock.lock();
             if (!clientsManager.havePendingRequests() ||
-                    (controller.getStaticConf().getBatchTimeout() > -1 && clientsManager.countPendingRequests() < controller.getStaticConf().getMaxBatchSize())) {
+                    (controller.getStaticConf().getBatchTimeout() > -1 
+                    		&& clientsManager.countPendingRequests() < controller.getStaticConf().getMaxBatchSize())) {
                 
                 logger.debug("Waiting for enough requests");
                 haveMessages.awaitUninterruptibly();
@@ -429,9 +441,8 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             
             if (!doWork) break;
             
-            logger.debug("There are requests to be ordered.");
+            logger.debug("There are requests to be ordered. I will propose.");
 
-            logger.debug("I can try to propose.");
 
             if ((execManager.getCurrentLeader() == this.controller.getStaticConf().getProcessId()) && //I'm the leader
                     (clientsManager.havePendingRequests()) && //there are messages to be ordered

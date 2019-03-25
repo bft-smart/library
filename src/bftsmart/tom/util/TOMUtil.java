@@ -31,16 +31,15 @@ import java.util.Arrays;
 import bftsmart.reconfiguration.util.Configuration;
 import java.security.Security;
 import java.util.Random;
-import javax.crypto.Mac;
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.PBEKeySpec;
 
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class TOMUtil {
 
-    //private static final int BENCHMARK_PERIOD = 10000;
     private static Logger logger = LoggerFactory.getLogger(TOMUtil.class);
 
     //some message types
@@ -58,42 +57,44 @@ public class TOMUtil {
     public static final int TRIGGER_LC_LOCALLY = 8;
     public static final int TRIGGER_SM_LOCALLY = 9;
     
-    private static int signatureSize = -1;
     private static boolean init = false;
         
-    private static String hmacAlgorithm = Configuration.DEFAULT_HMAC;
     private static String secretAlgorithm = Configuration.DEFAULT_SECRETKEY;
-    private static String sigAlgorithm = Configuration.DEFAULT_SIGNATURE;
-    private static String hashAlgorithm = Configuration.DEFAULT_HASH;
-    
-    private static String hmacAlgorithmProvider = Configuration.DEFAULT_HMAC_PROVIDER;
     private static String secretAlgorithmProvider = Configuration.DEFAULT_SECRETKEY_PROVIDER;
-    private static String sigAlgorithmProvider = Configuration.DEFAULT_SIGNATURE_PROVIDER;
+    
+    private static String hashAlgorithm = Configuration.DEFAULT_HASH;
     private static String hashAlgorithmProvider = Configuration.DEFAULT_HASH_PROVIDER;
+    
+    private static String sigAlgorithm = Configuration.DEFAULT_SIGNATURE;
+    private static String sigAlgorithmProvider = Configuration.DEFAULT_SIGNATURE_PROVIDER;
     
     private static final int SALT_SEED = 509;
     private static final int SALT_BYTE_SIZE = 64; // 512 bits
     private static final int HASH_BYTE_SIZE = 64; // 512 bits
     private static final int PBE_ITERATIONS = 1000;  
 
-    public static void init(String hmacAlgorithm, String secretAlgorithm, String sigAlgorithm, String hashAlgorithm,
-            String hmacAlgorithmProvider, String secretAlgorithmProvider, String sigAlgorithmProvider, String hashAlgorithmProvider) {
+    public static void init( 
+    		String secretAlgorithm, 
+    		String sigAlgorithm, 
+    		String hashAlgorithm,
+            String secretAlgorithmProvider, 
+            String sigAlgorithmProvider, 
+            String hashAlgorithmProvider) {
      
         if (!TOMUtil.init) {
             
-            TOMUtil.hmacAlgorithm = hmacAlgorithm;
-            TOMUtil.sigAlgorithm = sigAlgorithm;
             TOMUtil.secretAlgorithm = secretAlgorithm;
-            TOMUtil.hashAlgorithm = hashAlgorithm;
-        
-            TOMUtil.hmacAlgorithmProvider = hmacAlgorithmProvider;
-            TOMUtil.sigAlgorithmProvider = sigAlgorithmProvider;
             TOMUtil.secretAlgorithmProvider = secretAlgorithmProvider;
+            
+            TOMUtil.hashAlgorithm = hashAlgorithm;
             TOMUtil.hashAlgorithmProvider = hashAlgorithmProvider;
+
+            TOMUtil.sigAlgorithm = sigAlgorithm;
+            TOMUtil.sigAlgorithmProvider = sigAlgorithmProvider;
             
             TOMUtil.init = true;
+            }
         }
-    }    
     
     //******* EDUARDO BEGIN **************//
     public static byte[] getBytes(Object o) {
@@ -249,11 +250,6 @@ public class TOMUtil {
     public static SecretKeyFactory getSecretFactory() throws NoSuchAlgorithmException {
         
         return SecretKeyFactory.getInstance(TOMUtil.secretAlgorithm, Security.getProvider(TOMUtil.secretAlgorithmProvider));
-    }
-    
-    public static Mac getMacFactory() throws NoSuchAlgorithmException {
-        
-        return Mac.getInstance(TOMUtil.hmacAlgorithm, Security.getProvider(TOMUtil.hmacAlgorithmProvider));
     }
     
     public static PBEKeySpec generateKeySpec(char[] password) throws NoSuchAlgorithmException {

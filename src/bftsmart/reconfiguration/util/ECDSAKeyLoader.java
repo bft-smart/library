@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2007-2013 Alysson Bessani, Eduardo Alchieri, Paulo Sousa, and the authors indicated in the @author tags
+Copyright (c) 2007-2013 Alysson Bessani, Eduardo Alchieri, Paulo Sousa, Tulio A. Ribeiro, and the authors indicated in the @author tags
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -15,25 +15,25 @@ limitations under the License.
 */
 package bftsmart.reconfiguration.util;
 
-import bftsmart.tom.util.KeyLoader;
 import java.io.BufferedReader;
-import java.io.ByteArrayInputStream;
 import java.io.FileReader;
 import java.io.IOException;
-import java.io.InputStream;
 import java.security.KeyFactory;
 import java.security.NoSuchAlgorithmException;
+import java.security.NoSuchProviderException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.cert.CertificateException;
-import java.security.cert.CertificateFactory;
 import java.security.spec.EncodedKeySpec;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
-import java.util.HashMap;
-import java.util.Map;
+
 import org.apache.commons.codec.binary.Base64;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import bftsmart.tom.util.KeyLoader;
 
 /**
  * Used to load JCA public and private keys from conf/keys/publickey<id> and
@@ -41,166 +41,183 @@ import org.apache.commons.codec.binary.Base64;
  */
 public class ECDSAKeyLoader implements KeyLoader {
 
-    private String path;
-    private int id;
-    private PrivateKey priKey;
+	private Logger logger = LoggerFactory.getLogger(this.getClass());
+	private String path;
+	private int id;
+	private PrivateKey privateKey = null;
 
-    private String sigAlgorithm;
-    
-    private Map<Integer, PublicKey> pubKeys;
-    
-    //generated with domain parameter prime256v1
-    //private static String DEFAULT_PKEY = "MIGTAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBHkwdwIBAQQgTnHcXa7szRTx5k6r2oNuG4aAFs1UyVEbsI9H3tLVSqigCgYIKoZIzj0DAQehRANCAATe0MF+aL4zTbQvwM5ipCaTSNN1kBxOxvgMj+VCTXL+6BCoUOWwT67/ECMj5s7jiTiQC/bac2edbDqKPkLYn76Y";
-    //private static String DEFAULT_UKEY ="MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE3tDBfmi+M020L8DOYqQmk0jTdZAcTsb4DI/lQk1y/ugQqFDlsE+u/xAjI+bO44k4kAv22nNnnWw6ij5C2J++mA==";
-    
-    //generated with domain parameter secp256r1
-    //private static String DEFAULT_PKEY = "MEECAQAwEwYHKoZIzj0CAQYIKoZIzj0DAQcEJzAlAgEBBCAd3DWH1lE9twy7K8HVX9uF/+tmAzgl567vfS67fz05vg==";
-    //private static String DEFAULT_UKEY = "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE2i5bI5qktDHFMBNZ4v2XMGeOJreB+KO2I5R8ozGEs1DMKxkF0yLpqcNOptjDjsGFRBKPm3Fs/TfgTTlmG8obkQ==";
+	private String sigAlgorithm;
 
-    //generated with domain parameter secp256k1
-    private static String DEFAULT_PKEY = "MD4CAQAwEAYHKoZIzj0CAQYFK4EEAAoEJzAlAgEBBCBnhIob4JXH+WpaNiL72BlbtUMAIBQoM852d+tKFBb7fg==";
-    private static String DEFAULT_UKEY = "MFYwEAYHKoZIzj0CAQYFK4EEAAoDQgAEavNEKGRcmB7u49alxowlwCi1s24ANOpOQ9UiFBxgqnO/RfOl3BJm0qE2IJgCnvL7XUetwj5C/8MnMWi9ux2aeQ==";
-    
-    //generated with domain parameter secp521r1
-    //private static String DEFAULT_PKEY = "MGACAQAwEAYHKoZIzj0CAQYFK4EEACMESTBHAgEBBEIBvFkcBAE7qEo04W4mlfDLjbuII0SgEJB8o5dm7lWimgCH/KxFsosp+8eimfC2mxyV+ojjhtlg+v8dWVuDlRBedko=";
-    //private static String DEFAULT_UKEY = "MIGbMBAGByqGSM49AgEGBSuBBAAjA4GGAAQBJ6HADdASTTSAid8x1tUx9GIkruQX9IUBc24GJTmgAdEh4Gr9gkI+qr4ViyaRY9JsZ9tno9l/Dl07PjxGjw+EU1oAswrOmwNm6s4A+hyTixHZwRktQ+xmpUHXg0EQklvJDi161e5Ai7iX6pTPq1ySCxAtx/GdV78mBKpeEhyV2UUy3x8=";
-    
-    //generated with domain parameter sect571r1
-    //private static String DEFAULT_PKEY = "MGYCAQAwEAYHKoZIzj0CAQYFK4EEACcETzBNAgEBBEgBZZp6QK35NNOQpJG/lXSNNzaurf5Mz97bfV3OK39E7GLYqKXX8W3AjcFMg4W6+z94qwBcf5rxg+ETfznw6fUWDqeazwZLqGU=";
-    //private static String DEFAULT_UKEY = "MIGnMBAGByqGSM49AgEGBSuBBAAnA4GSAAQDoITHkD7zotSVc8XARYQ4N/HAPMf4hCMqwCjXyWR9QedWv/kL8oJiyVfx4vyBMFNuUXNacKxUNJ/gugfHdcId389sd/9b7dgHQzpe3uaKPH4vMTozdIaPlZ4JaDBqrRmCKkRViZ955TvLlseKqD3QDK2/CpyTeQ3G9gFm83LZf/xw/lc2mNO1AxItdtn1EMQ=";
-    
-    private boolean defaultKeys;
+	private boolean defaultKeys;
 
-    /** Creates a new instance of RSAKeyLoader */
-    public ECDSAKeyLoader(int id, String configHome, boolean defaultKeys, String sigAlgorithm) {
+	//Bouncy Castle | 256 key size
+	private static final String PRIVATE_KEY = "MIGTAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBHkwdwIBAQQgMMpfKtHS5ZlgHDPj3TG41Y0t5r9NIzx7p4YPZxn5gBmgCgYIKoZIzj0DAQehRANCAAQkD2DTG37xnxtcMMLJMiUCyObUdVJE+rMM9WQ1Z3sjtIZchN8Xefr02Ag+giXGLej862qu3v4/fy6UGJNAHNx3";
+	private static final String PUBLIC_KEY = "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEJA9g0xt+8Z8bXDDCyTIlAsjm1HVSRPqzDPVkNWd7I7SGXITfF3n69NgIPoIlxi3o/Otqrt7+P38ulBiTQBzcdw==";
 
-            this.id = id;
-            this.defaultKeys = defaultKeys;
-            this.sigAlgorithm = sigAlgorithm;
-            
-            if (configHome.equals("")) {
-                    path = "config" + System.getProperty("file.separator") + "ecdsakeys" +
-                                    System.getProperty("file.separator");
-            } else {
-                    path = configHome + System.getProperty("file.separator") + "ecdsakeys" +
-                                    System.getProperty("file.separator");
-            }
-            
-            pubKeys = new HashMap<>();
-    }
+	//Bouncy Castle | 384 key size
+	//private static final String PRIVATE_KEY = "MIG/AgEAMBAGByqGSM49AgEGBSuBBAAiBIGnMIGkAgEBBDAgJ7PlzZFc8/rsMTODSsQgenL2+WDxGjohmwGSLe8wp0+dYX8x2M2CidHdjzQu41qgBwYFK4EEACKhZANiAASFk9m7oKkuGqHg+BDMo51XbDnvIahxmfcagDgOvU/plgjpyuoY74eJit2LlLhLyKzVq0Rmpr1dZAuQWhlZfmlvdv0RhScaSaOiea54VdO8ZhdHzHHDwZQkJiSJQAuWOv0=";
+	//private static final String PUBLIC_KEY = "MHYwEAYHKoZIzj0CAQYFK4EEACIDYgAEhZPZu6CpLhqh4PgQzKOdV2w57yGocZn3GoA4Dr1P6ZYI6crqGO+HiYrdi5S4S8is1atEZqa9XWQLkFoZWX5pb3b9EYUnGkmjonmueFXTvGYXR8xxw8GUJCYkiUALljr9";
 
-    /**
-     * Loads the public key of some processes from configuration files
-     *
-     * @return the PublicKey loaded from config/keys/publickey<id>
-     * @throws Exception problems reading or parsing the key
-     */
-    public PublicKey loadPublicKey(int id) throws IOException, NoSuchAlgorithmException, InvalidKeySpecException, CertificateException {
+	//Bouncy Castle | 521 key size
+	//private static final String PRIVATE_KEY = "MIH3AgEAMBAGByqGSM49AgEGBSuBBAAjBIHfMIHcAgEBBEIBlz6dy43Dp2XHkJzP00oY4japCVdVjYqUZdmDJwTnNfPCmiBA362OO8XgHzkSoz11W/YhXN3NNyBZg0gWNC1E4ZmgBwYFK4EEACOhgYkDgYYABAH0rMKko/e9Wp8f0G01SCbQaRBkZ/9PvxBKG3GbFUFeR5TiCf1GH8UNLHn5q6+ayD9RfhtOuSj2JuLKzZwAFNo12QAPXa/COqKxdwzoLnUcc81i1I/NEsgVp4eqHjs4UPzP9mvWE+D+XqXAqEU8cK+CMA9IXvdIrUU/szSvkhWT5nw0EA==";
+	//private static final String PUBLIC_KEY = "MIGbMBAGByqGSM49AgEGBSuBBAAjA4GGAAQB9KzCpKP3vVqfH9BtNUgm0GkQZGf/T78QShtxmxVBXkeU4gn9Rh/FDSx5+auvmsg/UX4bTrko9ibiys2cABTaNdkAD12vwjqisXcM6C51HHPNYtSPzRLIFaeHqh47OFD8z/Zr1hPg/l6lwKhFPHCvgjAPSF73SK1FP7M0r5IVk+Z8NBA=";
 
-            if (defaultKeys) {
-                return getPublicKeyFromString(ECDSAKeyLoader.DEFAULT_UKEY);
-            }
-            
-            PublicKey ret = pubKeys.get(id);
-            
-            if (ret == null) {
-                
-                FileReader f = new FileReader(path + "publickey" + id);
-                BufferedReader r = new BufferedReader(f);
-                String tmp = "";
-                String key = "";
-                while ((tmp = r.readLine()) != null) {
-                        key = key + tmp;
-                }
-                f.close();
-                r.close();
-                ret = getPublicKeyFromString(key);
-                
-                pubKeys.put(id, ret);
-            }
-            
-            return ret;
-    }
+	/** Creates a new instance of ECDSAKeyLoader */
 
-    public PublicKey loadPublicKey() throws IOException, NoSuchAlgorithmException, InvalidKeySpecException, CertificateException {
+	public ECDSAKeyLoader(int id, String configHome, boolean defaultKeys, String sigAlgorithm) {
+		this.id = id;
+		this.defaultKeys = defaultKeys;
+		this.sigAlgorithm = sigAlgorithm;
 
-            if (defaultKeys) {                    
-                return getPublicKeyFromString(ECDSAKeyLoader.DEFAULT_UKEY);
-            }
-            
-            PublicKey ret = pubKeys.get(this.id);
+		if (configHome.equals("")) {
+			path = "config" + System.getProperty("file.separator") + "keysECDSA" 
+					+ System.getProperty("file.separator");
+		} else {
+			path = configHome + System.getProperty("file.separator") + "keysECDSA"
+					+ System.getProperty("file.separator");
+		}
+		
+	}
 
-            if (ret == null) {
-                                
-                FileReader f = new FileReader(path + "publickey" + this.id);
-                BufferedReader r = new BufferedReader(f);
-                String tmp = "";
-                String key = "";
-                while ((tmp = r.readLine()) != null) {
-                        key = key + tmp;
-                }
-                f.close();
-                r.close();
-                ret = getPublicKeyFromString(key);
-                
-                pubKeys.put(this.id, ret);
-            }
-            
-            return ret;
-    }
+	/**
+	 * Loads the public key of some processes from configuration files
+	 *
+	 * @return the PublicKey loaded from config/keys/publickey<id>
+	 * @throws Exception
+	 *             problems reading or parsing the key
+	 */
+	public PublicKey loadPublicKey(int id)
+			throws IOException, NoSuchAlgorithmException, InvalidKeySpecException, CertificateException {
 
-    /**
-     * Loads the private key of this process
-     *
-     * @return the PrivateKey loaded from config/keys/publickey<conf.getProcessId()>
-     * @throws Exception problems reading or parsing the key
-     */
-    public PrivateKey loadPrivateKey() throws IOException, NoSuchAlgorithmException, InvalidKeySpecException {
+		if (defaultKeys) {
+			//logger.debug("Loading default PublicKey, id: {}", id);			
+			try {
+				return getPublicKeyFromString(PUBLIC_KEY);
+			} catch (NoSuchProviderException e) {
+				// TODO Auto-generated catch block
+				logger.error("Provider error.",e);
+			}
+		}
 
-            if (defaultKeys) {
-                return getPrivateKeyFromString(ECDSAKeyLoader.DEFAULT_PKEY);
-            }
+		FileReader f = new FileReader(path + "publickey" + id);
+		BufferedReader r = new BufferedReader(f);
+		String tmp = "";
+		String key = "";
+		while ((tmp = r.readLine()) != null) {
+			key = key + tmp;
+		}
+		f.close();
+		r.close();
+		PublicKey ret = null;
+		logger.debug("Loading PublicKey from file, id: {}", id);
+		try {
+			ret = getPublicKeyFromString(key);
+		} catch (NoSuchProviderException e) {
+			// TODO Auto-generated catch block
+			logger.error("Provider error.",e);
+		}
+		logger.trace("ID: {}, PublicKey Format: {}, PublicKey Algorithm: {} ",
+				new Object[] { id, ret.getFormat(), ret.getAlgorithm() });
+		return ret;
+	}
 
-            if (priKey == null) {
-                    FileReader f = new FileReader(path + "privatekey" + this.id);
-                    BufferedReader r = new BufferedReader(f);
-                    String tmp = "";
-                    String key = "";
-                    while ((tmp = r.readLine()) != null) {
-                            key = key + tmp;
-                    }
-                    f.close();
-                    r.close();
-                    priKey = getPrivateKeyFromString(key);
-            }
-            return priKey;
-    }
+	public PublicKey loadPublicKey()
+			throws IOException, NoSuchAlgorithmException, InvalidKeySpecException, CertificateException {
 
-    //utility methods for going from string to public/private key
-    private PrivateKey getPrivateKeyFromString(String key) throws NoSuchAlgorithmException, InvalidKeySpecException {
-            KeyFactory keyFactory = KeyFactory.getInstance("EC");
-            EncodedKeySpec privateKeySpec = new PKCS8EncodedKeySpec(Base64.decodeBase64(key));
-            PrivateKey privateKey = keyFactory.generatePrivate(privateKeySpec);
-            return privateKey;
-    }
+		if (defaultKeys) {
+			try {
+				return getPublicKeyFromString(PUBLIC_KEY);
+			} catch (NoSuchProviderException e) {
+				logger.error("Provider error.",e);
+			}
+		}
+		logger.debug("Loading PublicKey from file, this.id: {}", this.id);
 
-    private PublicKey getPublicKeyFromString(String key) throws NoSuchAlgorithmException, InvalidKeySpecException, CertificateException {
-            /*CertificateFactory kf = CertificateFactory.getInstance("X.509");
-            InputStream certstream = new ByteArrayInputStream (Base64.decodeBase64(key));
-            
-            return kf.generateCertificate(certstream).getPublicKey();*/
-            
-            KeyFactory keyFactory = KeyFactory.getInstance("EC");
+		FileReader f = new FileReader(path + "publickey" + this.id);
+		BufferedReader r = new BufferedReader(f);
+		String tmp = "";
+		String key = "";
+		while ((tmp = r.readLine()) != null) {
+			key = key + tmp;
+		}
+		f.close();
+		r.close();
+		PublicKey ret = null;
+		try {
+			ret = getPublicKeyFromString(PUBLIC_KEY);
+		} catch (NoSuchProviderException e) {
+			// TODO Auto-generated catch block
+			logger.error("Provider error.",e);
+		}
+		logger.trace("ID: {}, PublicKey Format: {}, PublicKey Algorithm: {} ",
+				new Object[] { this.id, ret.getFormat(), ret.getAlgorithm() });
+		return ret;
 
-            EncodedKeySpec publicKeySpec = new X509EncodedKeySpec(Base64.decodeBase64(key));
-            PublicKey publicKey = keyFactory.generatePublic(publicKeySpec);
-            
-            return publicKey;
-    }
+	}
 
-    @Override
-    public String getSignatureAlgorithm() {
-        
-        return this.sigAlgorithm;
-    }
+	/**
+	 * Loads the private key of this process
+	 *
+	 * @return the PrivateKey loaded from config/keys/publickey<conf.getProcessId()>
+	 * @throws Exception
+	 *             problems reading or parsing the key
+	 */
+	public PrivateKey loadPrivateKey() throws IOException, NoSuchAlgorithmException, InvalidKeySpecException {
+
+		if (defaultKeys) {
+			//logger.info("Loading private key...");
+			try {
+				return getPrivateKeyFromString(PRIVATE_KEY);
+			} catch (NoSuchProviderException e) {
+				// TODO Auto-generated catch block
+				logger.error("Provider error.",e);
+			}
+		}
+
+		if (privateKey == null) {
+			FileReader f = new FileReader(path + "privatekey" + this.id);
+			BufferedReader r = new BufferedReader(f);
+			String tmp = "";
+			String key = "";
+			while ((tmp = r.readLine()) != null) {
+				key = key + tmp;
+			}
+			f.close();
+			r.close();
+			logger.debug("Loading first time PrivateKey from file, this.id: {}, \nKey:{}", this.id, key);
+			try {
+				privateKey = getPrivateKeyFromString(key);
+				logger.trace("PrivateKey loaded for this.id: {}, PrivateKey Format: {}, PrivateKey Algorithm: {} ",
+						new Object[] { this.id, privateKey.getFormat(), privateKey.getAlgorithm() });
+			} catch (NoSuchProviderException e) {
+				logger.error("Provider error.",e);
+			}
+		}
+		logger.trace("Returning previous stored PrivateKey from file, this.id: {}", this.id);
+		return privateKey;
+	}
+
+	// utility methods for going from string to public/private key
+	private PrivateKey getPrivateKeyFromString(String key)
+			throws NoSuchProviderException, NoSuchAlgorithmException, InvalidKeySpecException {
+
+		KeyFactory keyFactory = KeyFactory.getInstance("ECDSA", "BC");
+		EncodedKeySpec privateKeySpec = new PKCS8EncodedKeySpec(Base64.decodeBase64(key));
+		privateKey = keyFactory.generatePrivate(privateKeySpec);
+		return privateKey;
+	}
+
+	private PublicKey getPublicKeyFromString(String key)
+			throws NoSuchProviderException, NoSuchAlgorithmException, InvalidKeySpecException, NoSuchProviderException {
+		KeyFactory keyFactory = KeyFactory.getInstance("ECDSA", "BC");
+		X509EncodedKeySpec pubKeySpec = new X509EncodedKeySpec(Base64.decodeBase64(key));
+		PublicKey publicKey = keyFactory.generatePublic(pubKeySpec);
+		return publicKey;
+	}
+
+	@Override
+	public String getSignatureAlgorithm() {
+		return this.sigAlgorithm;
+	}
+	
 }

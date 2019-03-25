@@ -1,47 +1,50 @@
 <configuration debug="false"> 
 
   <!-- Logging to console -->
-  <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender"> 
-    
+  <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
     <encoder>
       <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
     </encoder>
   </appender>
 
   <!-- Logging to console wih minimal output -->
-  <appender name="MIN-STDOUT" class="ch.qos.logback.core.ConsoleAppender"> 
-    
+  <appender name="MIN-STDOUT" class="ch.qos.logback.core.ConsoleAppender">    
     <encoder>
       <pattern> -- %msg%n</pattern>
     </encoder>
   </appender>
 
-  <!-- https://logback.qos.ch/manual/appenders.html#AsyncAppender
-  http://blog.takipi.com/how-to-instantly-improve-your-java-logging-with-7-logback-tweaks/
-   -->
+  <!-- https://logback.qos.ch/manual/appenders.html#AsyncAppender http://blog.takipi.com/how-to-instantly-improve-your-java-logging-with-7-logback-tweaks/ -->
   <appender name="ASYNC" class="ch.qos.logback.classic.AsyncAppender">
     <appender-ref ref="STDOUT" />
     <queueSize>1000</queueSize>
   </appender>
 
-
   <root level="INFO">
     <!-- To use async logging use ref="ASYNC" instead -->
-
   </root>
-  
-  <logger name="bftsmart" level="INFO">
-
-    <appender-ref ref="MIN-STDOUT" />
-    <!--  <appender-ref ref="STDOUT" /> -->
-
-  </logger>
 
   <logger name="io.netty" level="OFF">
-
     <appender-ref ref="MIN-STDOUT" />
-   <!--  <appender-ref ref="STDOUT" /> -->
-
+  	<!--  <appender-ref ref="STDOUT" /> -->
   </logger>
-
+  
+  
+  <logger name="bftsmart" level="INFO"> 
+  	<appender-ref ref="MIN-STDOUT" />
+  	<!-- <appender-ref ref="STDOUT" /> -->
+  </logger> 
+  
+  
+  <!-- SPECIFIC CLASS LOGS -->
+  <!--
+  
+  <logger name="bftsmart.consensus.roles.AcceptorSSLTLS" level="TRACE"></logger>
+  <logger name="bftsmart.consensus.roles.Acceptor" level="TRACE"></logger>
+  <logger name="bftsmart.communication.server.ServersCommunicationLayerSSLTLS" level="DEBUG"></logger>
+    	
+   <logger name="bftsmart.reconfiguration.util.ECDSAKeyLoader" level="TRACE"></logger>
+	-->
+  <logger name="bftsmart.reconfiguration.util.RSAKeyLoader" level="TRACE"></logger>
+  
 </configuration>

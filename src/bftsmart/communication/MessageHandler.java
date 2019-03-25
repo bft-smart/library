@@ -15,26 +15,17 @@ limitations under the License.
 */
 package bftsmart.communication;
 
-import bftsmart.consensus.messages.MessageFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import bftsmart.consensus.messages.ConsensusMessage;
 import bftsmart.consensus.roles.Acceptor;
 import bftsmart.statemanagement.SMMessage;
 import bftsmart.tom.core.TOMLayer;
-import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.core.messages.ForwardedMessage;
+import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.leaderchange.LCMessage;
 import bftsmart.tom.util.TOMUtil;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.ObjectOutputStream;
-import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
-import java.util.Arrays;
-import java.util.HashMap;
-import javax.crypto.Mac;
-import javax.crypto.SecretKey;
-import org.slf4j.LoggerFactory;
-import org.slf4j.Logger;
 
 /**
  *
@@ -42,145 +33,105 @@ import org.slf4j.Logger;
  */
 public class MessageHandler {
 
-    private Logger logger = LoggerFactory.getLogger(this.getClass());
+	private Logger logger = LoggerFactory.getLogger(this.getClass());
 
-    private Acceptor acceptor;
-    private TOMLayer tomLayer;
-    private Mac mac;
-    
-    public MessageHandler() {
-        try {
-            this.mac = TOMUtil.getMacFactory();
-        } catch (NoSuchAlgorithmException /*| NoSuchPaddingException*/ ex) {
-            logger.error("Failed to create MAC engine",ex);
-        }
-    }
-    public void setAcceptor(Acceptor acceptor) {
-        this.acceptor = acceptor;
-    }
+	private Acceptor acceptor;
+	private TOMLayer tomLayer;
 
-    public void setTOMLayer(TOMLayer tomLayer) {
-        this.tomLayer = tomLayer;
-    }
+	public MessageHandler() {}
 
-    @SuppressWarnings("unchecked")
-    protected void processData(SystemMessage sm) {
-        if (sm instanceof ConsensusMessage) {
-            
-            int myId = tomLayer.controller.getStaticConf().getProcessId();
-            
-            ConsensusMessage consMsg = (ConsensusMessage) sm;
+	public void setAcceptor(Acceptor acceptor) {
+		this.acceptor = acceptor;
+	}
 
-            if (tomLayer.controller.getStaticConf().getUseMACs() == 0 || consMsg.authenticated || consMsg.getSender() == myId) acceptor.deliver(consMsg);
-            else if (consMsg.getType() == MessageFactory.ACCEPT && consMsg.getProof() != null) {
-                                        
-                //We are going to verify the MAC vector at the algorithm level
-                HashMap<Integer, byte[]> macVector = (HashMap<Integer, byte[]>) consMsg.getProof();
-                               
-                byte[] recvMAC = macVector.get(myId);
-                
-                ConsensusMessage cm = new ConsensusMessage(MessageFactory.ACCEPT,consMsg.getNumber(),
-                        consMsg.getEpoch(), consMsg.getSender(), consMsg.getValue());
-                
-                ByteArrayOutputStream bOut = new ByteArrayOutputStream(248);
-                try {
-                    new ObjectOutputStream(bOut).writeObject(cm);
-                } catch (IOException ex) {
-                    logger.error("Failed to serialize consensus message",ex);
-                }
+	public void setTOMLayer(TOMLayer tomLayer) {
+		this.tomLayer = tomLayer;
+	}
 
-                byte[] data = bOut.toByteArray();
-        
-                //byte[] hash = tomLayer.computeHash(data); 
-                
-                byte[] myMAC = null;
-                
-                /*byte[] k = tomLayer.getCommunication().getServersConn().getSecretKey(paxosMsg.getSender()).getEncoded();
-                SecretKeySpec key = new SecretKeySpec(new String(k).substring(0, 8).getBytes(), "DES");*/
-                
-                SecretKey key = tomLayer.getCommunication().getServersConn().getSecretKey(consMsg.getSender());
-                try {
-                    this.mac.init(key);                   
-                    myMAC = this.mac.doFinal(data);
-                } catch (/*IllegalBlockSizeException | BadPaddingException |*/ InvalidKeyException ex) {
-                    logger.error("Failed to generate MAC",ex);
-                }
-                
-                if (recvMAC != null && myMAC != null && Arrays.equals(recvMAC, myMAC))
-                    acceptor.deliver(consMsg);
-                else {
-                    logger.warn("Invalid MAC from " + sm.getSender());
-                }
-            } else {
-                logger.warn("Discarding unauthenticated message from " + sm.getSender());
-            }
+	@SuppressWarnings("unchecked")
+	protected void processData(SystemMessage sm) {
+		if (sm instanceof ConsensusMessage) {
 
-        } else {
-        	if (tomLayer.controller.getStaticConf().getUseMACs() == 0 || sm.authenticated) {
-	            /*** This is Joao's code, related to leader change */
-	            if (sm instanceof LCMessage) {
-	                LCMessage lcMsg = (LCMessage) sm;
-	
-	                String type = null;
-	                switch(lcMsg.getType()) {
-	
-	                    case TOMUtil.STOP:
-	                        type = "STOP";
-	                        break;
-	                    case TOMUtil.STOPDATA:
-	                        type = "STOPDATA";
-	                        break;
-	                    case TOMUtil.SYNC:
-	                        type = "SYNC";
-	                        break;
-	                    default:
-	                        type = "LOCAL";
-	                        break;
-	                }
-	
-                        if (lcMsg.getReg() != -1 && lcMsg.getSender() != -1)
-                            logger.info("Received leader change message of type {} for regency {} from replica {}", type, lcMsg.getReg(), lcMsg.getSender());
-                        else logger.debug("Received leader change message from myself");
-	                if (lcMsg.TRIGGER_LC_LOCALLY) tomLayer.requestsTimer.run_lc_protocol();
-	                else tomLayer.getSynchronizer().deliverTimeoutRequest(lcMsg);
-	            /**************************************************************/
-	
-	            } else if (sm instanceof ForwardedMessage) {
-	                TOMMessage request = ((ForwardedMessage) sm).getRequest();
-	                tomLayer.requestReceived(request);
-	
-	            /** This is Joao's code, to handle state transfer */
-	            } else if (sm instanceof SMMessage) {
-	                SMMessage smsg = (SMMessage) sm;
-	                // System.out.println("(MessageHandler.processData) SM_MSG received: type " + smsg.getType() + ", regency " + smsg.getRegency() + ", (replica " + smsg.getSender() + ")");
-	                switch(smsg.getType()) {
-	                    case TOMUtil.SM_REQUEST:
-		                    tomLayer.getStateManager().SMRequestDeliver(smsg, tomLayer.controller.getStaticConf().isBFT());
-	                        break;
-	                    case TOMUtil.SM_REPLY:
-		                    tomLayer.getStateManager().SMReplyDeliver(smsg, tomLayer.controller.getStaticConf().isBFT());
-	                        break;
-	                    case TOMUtil.SM_ASK_INITIAL:
-	                    	tomLayer.getStateManager().currentConsensusIdAsked(smsg.getSender(), smsg.getCID());
-	                    	break;
-	                    case TOMUtil.SM_REPLY_INITIAL:
-	                    	tomLayer.getStateManager().currentConsensusIdReceived(smsg);
-	                    	break;
-	                    default:
-		                    tomLayer.getStateManager().stateTimeout();
-	                        break;
-	                }
-	            /******************************************************************/
-	            } else {
-	            	logger.warn("UNKNOWN MESSAGE TYPE: " + sm);
-	            }
-	        } else {
-	            logger.warn("Discarding unauthenticated message from " + sm.getSender());
-	        }
-        }
-    }
-    
-    protected void verifyPending() {
-        tomLayer.processOutOfContext();
-    }
+			int myId = tomLayer.controller.getStaticConf().getProcessId();
+
+			ConsensusMessage consMsg = (ConsensusMessage) sm;
+
+			if (consMsg.authenticated || consMsg.getSender() == myId)
+				acceptor.deliver(consMsg);
+			else {
+				logger.warn("Discarding unauthenticated message from " + sm.getSender());
+			}
+
+		} else {
+			if (sm.authenticated) {
+				/*** This is Joao's code, related to leader change */
+				if (sm instanceof LCMessage) {
+					LCMessage lcMsg = (LCMessage) sm;
+
+					String type = null;
+					switch (lcMsg.getType()) {
+
+					case TOMUtil.STOP:
+						type = "STOP";
+						break;
+					case TOMUtil.STOPDATA:
+						type = "STOPDATA";
+						break;
+					case TOMUtil.SYNC:
+						type = "SYNC";
+						break;
+					default:
+						type = "LOCAL";
+						break;
+					}
+
+					if (lcMsg.getReg() != -1 && lcMsg.getSender() != -1)
+						logger.info("Received leader change message of type {} " + "for regency {} from replica {}",
+								type, lcMsg.getReg(), lcMsg.getSender());
+					else
+						logger.debug("Received leader change message from myself");
+					
+					if (lcMsg.TRIGGER_LC_LOCALLY)
+						tomLayer.requestsTimer.run_lc_protocol();
+					else
+						tomLayer.getSynchronizer().deliverTimeoutRequest(lcMsg);
+					/**************************************************************/
+
+				} else if (sm instanceof ForwardedMessage) {
+					TOMMessage request = ((ForwardedMessage) sm).getRequest();
+					tomLayer.requestReceived(request);
+
+					/** This is Joao's code, to handle state transfer */
+				} else if (sm instanceof SMMessage) {
+					SMMessage smsg = (SMMessage) sm;
+					switch (smsg.getType()) {
+					case TOMUtil.SM_REQUEST:
+						tomLayer.getStateManager().SMRequestDeliver(smsg, tomLayer.controller.getStaticConf().isBFT());
+						break;
+					case TOMUtil.SM_REPLY:
+						tomLayer.getStateManager().SMReplyDeliver(smsg, tomLayer.controller.getStaticConf().isBFT());
+						break;
+					case TOMUtil.SM_ASK_INITIAL:
+						tomLayer.getStateManager().currentConsensusIdAsked(smsg.getSender(), smsg.getCID());
+						break;
+					case TOMUtil.SM_REPLY_INITIAL:
+						tomLayer.getStateManager().currentConsensusIdReceived(smsg);
+						break;
+					default:
+						tomLayer.getStateManager().stateTimeout();
+						break;
+					}
+					/******************************************************************/
+				} else {
+					logger.warn("UNKNOWN MESSAGE TYPE: " + sm);
+				}
+			} else {
+				logger.warn("Discarding unauthenticated message from " + sm.getSender());
+			}
+		}
+	}
+
+	protected void verifyPending() {
+		tomLayer.processOutOfContext();
+	}
 }

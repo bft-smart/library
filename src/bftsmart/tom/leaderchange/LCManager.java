@@ -15,15 +15,21 @@ limitations under the License.
 */
 package bftsmart.tom.leaderchange;
 
-import bftsmart.communication.server.ServerConnection;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.ObjectOutputStream;
 import java.security.MessageDigest;
+import java.security.PublicKey;
 import java.security.SignedObject;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import bftsmart.consensus.TimestampValuePair;
 import bftsmart.consensus.messages.ConsensusMessage;
@@ -31,17 +37,6 @@ import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.tom.core.TOMLayer;
 import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.util.TOMUtil;
-import java.io.ByteArrayOutputStream;
-import java.io.ObjectOutputStream;
-import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
-import java.security.PublicKey;
-import java.util.LinkedList;
-import javax.crypto.Mac;
-import javax.crypto.SecretKey;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  *
@@ -77,7 +72,6 @@ public class LCManager {
     
     private int currentLeader;
     //private Cipher cipher;
-    private Mac mac;
     
     /**
      * Constructor
@@ -97,12 +91,6 @@ public class LCManager {
 
         this.SVController = SVController;
         this.md = md;
-
-        try {
-            this.mac = TOMUtil.getMacFactory();
-        } catch (NoSuchAlgorithmException /*| NoSuchPaddingException*/ ex) {
-            logger.error("Could not instantiate MAC algorithm",ex);
-        }
 
     }
     
@@ -481,8 +469,6 @@ public class LCManager {
 
         return (quorumHighest(timestamp, value, collects) && certifiedValue(timestamp, value, collects));
 
-        //return value != null && collects != null && (collects.size() >= (SVController.getCurrentViewN() - SVController.getCurrentViewF()))
-        //        && quorumHighest(timestamp, value, collects) && certifiedValue(timestamp, value, collects);
     }
 
     /**
@@ -808,12 +794,10 @@ public class LCManager {
         
         byte[] hashedValue = md.digest(cDec.getDecision());
         Set<ConsensusMessage> ConsensusMessages = cDec.getConsMessages();
-        int myId = tomLayer.controller.getStaticConf().getProcessId();
         int certificateCurrentView = (2*tomLayer.controller.getCurrentViewF()) + 1;
         int certificateLastView = -1;
         if (tomLayer.controller.getLastView() != null) certificateLastView = (2*tomLayer.controller.getLastView().getF()) + 1;
         int countValid = 0;
-        SecretKey secretKey = null;
         PublicKey pubKey = null;
         
         HashSet<Integer> alreadyCounted = new HashSet<>(); //stores replica IDs that were already counted
@@ -832,34 +816,7 @@ public class LCManager {
 
             byte[] data = bOut.toByteArray();
 
-            if (consMsg.getProof() instanceof HashMap) { // Certificate is made of MAC vector
-                
-                logger.debug("Proof made of MAC vector");
-            
-                HashMap<Integer, byte[]> macVector = (HashMap<Integer, byte[]>) consMsg.getProof();
-                               
-                byte[] recvMAC = macVector.get(myId);
-
-                byte[] myMAC = null;
-                                
-                secretKey = tomLayer.getCommunication().getServersConn().getSecretKey(consMsg.getSender());
-                try {
-                    this.mac.init(secretKey);                   
-                   myMAC = this.mac.doFinal(data);
-                } catch (InvalidKeyException ex) {
-                    logger.error("Could not compute MAC",ex);
-                }
-            
-                if (recvMAC != null && myMAC != null && Arrays.equals(recvMAC, myMAC) &&
-                        Arrays.equals(consMsg.getValue(), hashedValue) &&
-                        consMsg.getNumber() == cDec.getCID() && !alreadyCounted.contains(consMsg.getSender())) {
-                
-                    alreadyCounted.add(consMsg.getSender());
-                    countValid++;
-                } else {
-                    logger.error("Invalid MAC in message from " + consMsg.getSender());
-                }
-            } else if (consMsg.getProof() instanceof byte[]) { // certificate is made of signatures
+            if (consMsg.getProof() instanceof byte[]) { // certificate is made of signatures
                 
                 logger.debug("Proof made of Signatures");
                 pubKey = SVController.getStaticConf().getPublicKey(consMsg.getSender());
@@ -876,7 +833,7 @@ public class LCManager {
                 }
    
             } else {
-                logger.debug("Proof is message is invalid");
+                logger.debug("Proof message is not an instance of byte[].");
             }
         }
         

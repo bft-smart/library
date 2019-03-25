@@ -18,31 +18,42 @@ package bftsmart.communication.server;
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.ObjectInputStream;
-import java.net.Socket;
+import java.net.SocketException;
 import java.net.UnknownHostException;
+import java.security.KeyManagementException;
+import java.security.KeyStore;
+import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
-import java.util.Arrays;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-import javax.crypto.Mac;
 import javax.crypto.SecretKey;
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.PBEKeySpec;
+import javax.net.ssl.HandshakeCompletedEvent;
+import javax.net.ssl.HandshakeCompletedListener;
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLSocket;
+import javax.net.ssl.SSLSocketFactory;
+import javax.net.ssl.TrustManagerFactory;
 
 import bftsmart.communication.SystemMessage;
 import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.reconfiguration.VMMessage;
 import bftsmart.tom.ServiceReplica;
 import bftsmart.tom.util.TOMUtil;
-import java.math.BigInteger;
-import java.security.PrivateKey;
-import java.security.PublicKey;
-import java.util.HashSet;
+import java.security.SecureRandom;
+import java.security.Security;
+import java.security.UnrecoverableKeyException;
+import java.security.cert.CertificateException;
+import java.security.spec.InvalidKeySpecException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -59,30 +70,39 @@ public class ServerConnection {
     private Logger logger = LoggerFactory.getLogger(this.getClass());
 
 
-    //public static final String MAC_ALGORITHM = "HmacMD5";
     private static final long POOL_TIME = 5000;
-    //private static final int SEND_QUEUE_SIZE = 50;
     private ServerViewController controller;
-    private Socket socket;
+    private SSLSocket socket;
     private DataOutputStream socketOutStream = null;
     private DataInputStream socketInStream = null;
     private int remoteId;
     private boolean useSenderThread;
     protected LinkedBlockingQueue<byte[]> outQueue;// = new LinkedBlockingQueue<byte[]>(SEND_QUEUE_SIZE);
-    private HashSet<Integer> noMACs = null; // this is used to keep track of data to be sent without a MAC.
-                                            // It uses the reference id for that same data
     private LinkedBlockingQueue<SystemMessage> inQueue;
-    private SecretKey authKey = null;
-    private Mac macSend;
-    private Mac macReceive;
-    private int macSize;
+    
     private Lock connectLock = new ReentrantLock();
     /** Only used when there is no sender Thread */
     private Lock sendLock;
     private boolean doWork = true;
+    
+    private SecretKey secretKey = null;
 
-    public ServerConnection(ServerViewController controller, Socket socket, int remoteId,
-            LinkedBlockingQueue<SystemMessage> inQueue, ServiceReplica replica) {
+    /**
+     * Tulio A. Ribeiro
+     * TLS vars. 
+     */
+    private KeyManagerFactory kmf;
+	private KeyStore ks = null;
+	private FileInputStream fis = null;
+	private TrustManagerFactory trustMgrFactory;
+	private SSLContext context;
+	private SSLSocketFactory socketFactory;
+	private static final String SECRET = "MySeCreT_2hMOygBwY";
+    
+    public ServerConnection(ServerViewController controller, 
+    		SSLSocket socket, int remoteId,
+            LinkedBlockingQueue<SystemMessage> inQueue, 
+            ServiceReplica replica) {
 
         this.controller = controller;
 
@@ -94,32 +114,19 @@ public class ServerConnection {
 
         this.outQueue = new LinkedBlockingQueue<byte[]>(this.controller.getStaticConf().getOutQueueSize());
 
-        this.noMACs = new HashSet<Integer>();
         // Connect to the remote process or just wait for the connection?
-        if (isToConnect()) {
-            //I have to connect to the remote server
-            try {
-                this.socket = new Socket(this.controller.getStaticConf().getHost(remoteId),
-                        this.controller.getStaticConf().getServerToServerPort(remoteId));
-                ServersCommunicationLayer.setSocketOptions(this.socket);
-                new DataOutputStream(this.socket.getOutputStream()).writeInt(this.controller.getStaticConf().getProcessId());
-
-            } catch (UnknownHostException ex) {
-                logger.error("Failed to connect to replica",ex);
-            } catch (IOException ex) {
-                logger.error("Failed to connect to replica",ex);
-            }
-        }
-        //else I have to wait a connection from the remote server
-
-        if (this.socket != null) {
-            try {
-                socketOutStream = new DataOutputStream(this.socket.getOutputStream());
-                socketInStream = new DataInputStream(this.socket.getInputStream());
-            } catch (IOException ex) {
-                logger.error("Error creating connection to "+remoteId,ex);
-            }
-        }
+     		if (isToConnect()) {
+     			ssltlsCreateConnection();
+     		}
+     		
+     		if (this.socket != null) {
+    			try {
+    				socketOutStream = new DataOutputStream(this.socket.getOutputStream());
+    				socketInStream = new DataInputStream(this.socket.getInputStream());
+    			} catch (IOException ex) {
+    				logger.error("Error creating connection to " + remoteId, ex);
+    			}
+    		}
                
        //******* EDUARDO BEGIN **************//
         this.useSenderThread = this.controller.getStaticConf().isUseSenderThread();
@@ -129,7 +136,6 @@ public class ServerConnection {
         } else {
             sendLock = new ReentrantLock();
         }
-        authenticateAndEstablishAuthKey();
         
         if (!this.controller.getStaticConf().isTheTTP()) {
             if (this.controller.getStaticConf().getTTPId() == remoteId) {
@@ -141,10 +147,26 @@ public class ServerConnection {
         }
         //******* EDUARDO END **************//
     }
-
+/**
+ * Tulio A. Ribeiro.
+ * @return SecretKey
+ */
     public SecretKey getSecretKey() {
-        return authKey;
-    }
+		if (secretKey != null)
+			return secretKey;
+		else {
+			SecretKeyFactory fac;
+			PBEKeySpec spec;
+			try {
+				fac = TOMUtil.getSecretFactory();
+				spec = TOMUtil.generateKeySpec(SECRET.toCharArray());
+				secretKey = fac.generateSecret(spec);
+			} catch (NoSuchAlgorithmException |InvalidKeySpecException e) {
+				logger.error("Algorithm error.",e);
+			}
+		}
+		return secretKey;
+	}
     
     /**
      * Stop message sending and reception.
@@ -159,65 +181,53 @@ public class ServerConnection {
     /**
      * Used to send packets to the remote server.
      */
-    public final void send(byte[] data, boolean useMAC) throws InterruptedException {
-        if (useSenderThread) {
-            //only enqueue messages if there queue is not full
-            if (!useMAC) {
-                logger.debug("Not sending defaultMAC " + System.identityHashCode(data));
-                noMACs.add(System.identityHashCode(data));
-            }
-
-            if (!outQueue.offer(data)) {
-                logger.debug("Out queue for " + remoteId + " full (message discarded).");
-            } else {
-                logger.debug("Inserted message into out queue for process {}.", remoteId);
-            }
-        } else {
-            sendLock.lock();
-            sendBytes(data, useMAC);
-            sendLock.unlock();
-        }
+    public final void send(byte[] data) throws InterruptedException {
+    	if (useSenderThread) {
+			// only enqueue messages if there queue is not full
+			if (!outQueue.offer(data)) {
+				logger.debug("Out queue for " + remoteId + " full (message discarded).");
+			}
+		} else {
+			sendLock.lock();
+			sendBytes(data);
+			sendLock.unlock();
+		}
     }
 
     /**
-     * try to send a message through the socket
-     * if some problem is detected, a reconnection is done
-     */
-    private final void sendBytes(byte[] messageData, boolean useMAC) {       
-        boolean abort = false;
-        do {
-            if (abort) return; // if there is a need to reconnect, abort this method
-            if (socket != null && socketOutStream != null) {
-                try {
-                    //do an extra copy of the data to be sent, but on a single out stream write
-                    byte[] mac = (useMAC && this.controller.getStaticConf().getUseMACs() == 1)?macSend.doFinal(messageData):null;
-                    byte[] data = new byte[5 +messageData.length+((mac!=null)?mac.length:0)];
-                    int value = messageData.length;
+	 * try to send a message through the socket if some problem is detected, a
+	 * reconnection is done
+	 */
+	private final void sendBytes(byte[] messageData) {
+		boolean abort = false;
+		do {
+			if (abort)
+				return; // if there is a need to reconnect, abort this method
+			if (socket != null && socketOutStream != null) {
+				try {
+					// do an extra copy of the data to be sent, but on a single out stream write
+					byte[] data = new byte[5 + messageData.length];// without MAC
+					int value = messageData.length;
 
-                    System.arraycopy(new byte[]{(byte)(value >>> 24),(byte)(value >>> 16),(byte)(value >>> 8),(byte)value},0,data,0,4);
-                    System.arraycopy(messageData,0,data,4,messageData.length);
-                    if(mac != null) {
-                        //System.arraycopy(mac,0,data,4+messageData.length,mac.length);
-                        System.arraycopy(new byte[]{ (byte) 1},0,data,4+messageData.length,1);
-                        System.arraycopy(mac,0,data,5+messageData.length,mac.length);
-                    } else {
-                        System.arraycopy(new byte[]{(byte) 0},0,data,4+messageData.length,1);                        
-                    }
+					System.arraycopy(new byte[] { (byte) (value >>> 24), (byte) (value >>> 16), (byte) (value >>> 8),
+							(byte) value }, 0, data, 0, 4);
+					System.arraycopy(messageData, 0, data, 4, messageData.length);
+					System.arraycopy(new byte[] { (byte) 0 }, 0, data, 4 + messageData.length, 1);
 
-                    socketOutStream.write(data);
+					socketOutStream.write(data);
 
-                    return;
-                } catch (IOException ex) {
-                    closeSocket();
-                    waitAndConnect();
-                    abort = true;
-                }
-            } else {
-                waitAndConnect();
-                abort = true;
-            }
-        } while (doWork);
-    }
+					return;
+				} catch (IOException ex) {
+					closeSocket();
+					waitAndConnect();
+					abort = true;
+				}
+			} else {
+				waitAndConnect();
+				abort = true;
+			}
+		} while (doWork);
+	}
 
     //******* EDUARDO BEGIN **************//
     //return true of a process shall connect to the remote process, false otherwise
@@ -275,142 +285,35 @@ public class ServerConnection {
      * @param newSocket socket created when this server accepted the connection
      * (only used if processId is less than remoteId)
      */
-    protected void reconnect(Socket newSocket) {
-        
-        connectLock.lock();
+    protected void reconnect(SSLSocket newSocket) {
 
-        if (socket == null || !socket.isConnected()) {
+		connectLock.lock();
 
-            try {
+		if (socket == null || !socket.isConnected()) {
 
-                //******* EDUARDO BEGIN **************//
-                if (isToConnect()) {
+			if (isToConnect()) {
+				ssltlsCreateConnection();
+			} else {
+				socket = newSocket;
+			}
 
-                    socket = new Socket(this.controller.getStaticConf().getHost(remoteId),
-                            this.controller.getStaticConf().getServerToServerPort(remoteId));
-                    ServersCommunicationLayer.setSocketOptions(socket);
-                    new DataOutputStream(socket.getOutputStream()).writeInt(this.controller.getStaticConf().getProcessId());
+			if (socket != null) {
+				try {
+					socketOutStream = new DataOutputStream(socket.getOutputStream());
+					socketInStream = new DataInputStream(socket.getInputStream());
 
-                //******* EDUARDO END **************//
-                } else {
-                    socket = newSocket;
-                }
-            } catch (UnknownHostException ex) {
-                logger.error("Failed to connect to replica",ex);
-            } catch (IOException ex) {
-                
-                logger.error("Impossible to reconnect to replica " + remoteId + ": " + ex.getMessage());
-                //ex.printStackTrace();
-            }
+					// authKey = null;
+					// authenticateAndEstablishAuthKey();
+				} catch (IOException ex) {
+					logger.error("Failed to authenticate to replica", ex);
+				}
+			}
+		}
 
-            if (socket != null) {
-                try {
-                    socketOutStream = new DataOutputStream(socket.getOutputStream());
-                    socketInStream = new DataInputStream(socket.getInputStream());
-                    
-                    authKey = null;
-                    authenticateAndEstablishAuthKey();
-                } catch (IOException ex) {
-                    logger.error("Failed to authenticate to replica",ex);
-                }
-            }
-        }
+		connectLock.unlock();
+	}
 
-        connectLock.unlock();
-    }
-
-    //TODO!
-    public void authenticateAndEstablishAuthKey() {
-        if (authKey != null || socketOutStream == null || socketInStream == null) {
-            return;
-        }
-
-        try {
-            //if (conf.getProcessId() > remoteId) {
-            // I asked for the connection, so I'm first on the auth protocol
-            //DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
-            //} else {
-            // I received a connection request, so I'm second on the auth protocol
-            //DataInputStream dis = new DataInputStream(socket.getInputStream());
-            //}
-            
-            //Derive DH private key from replica's own private key
-            
-            PrivateKey privKey = controller.getStaticConf().getPrivateKey();
-            BigInteger DHPrivKey =
-                    new BigInteger(privKey.getEncoded());
-            
-            //Create DH public key
-            BigInteger myDHPubKey =
-                    controller.getStaticConf().getDHG().modPow(DHPrivKey, controller.getStaticConf().getDHP());
-            
-            //turn it into a byte array
-            byte[] bytes = myDHPubKey.toByteArray();
-            
-            byte[] signature = TOMUtil.signMessage(privKey, bytes);
-            
-            //send my DH public key and signature
-            socketOutStream.writeInt(bytes.length);
-            socketOutStream.write(bytes);
-            
-            socketOutStream.writeInt(signature.length);
-            socketOutStream.write(signature);
-            
-            //receive remote DH public key and signature
-            int dataLength = socketInStream.readInt();
-            bytes = new byte[dataLength];
-            int read = 0;
-            do {
-                read += socketInStream.read(bytes, read, dataLength - read);
-                
-            } while (read < dataLength);
-            
-            byte[] remote_Bytes = bytes;
-
-            dataLength = socketInStream.readInt();
-            bytes = new byte[dataLength];
-            read = 0;
-            do {
-                read += socketInStream.read(bytes, read, dataLength - read);
-                
-            } while (read < dataLength);
-            
-            byte[] remote_Signature = bytes;
-            
-            //verify signature
-            PublicKey remotePubkey = controller.getStaticConf().getPublicKey(remoteId);
-            
-            if (!TOMUtil.verifySignature(remotePubkey, remote_Bytes, remote_Signature)) {
-                
-                logger.warn(remoteId + " sent an invalid signature!");
-                shutdown();
-                return;
-            }
-            
-            BigInteger remoteDHPubKey = new BigInteger(remote_Bytes);
-
-            //Create secret key
-            BigInteger secretKey =
-                    remoteDHPubKey.modPow(DHPrivKey, controller.getStaticConf().getDHP());
-            
-            logger.info("Diffie-Hellman complete with " + remoteId);
-            
-            SecretKeyFactory fac = TOMUtil.getSecretFactory();
-            PBEKeySpec spec = TOMUtil.generateKeySpec(secretKey.toString().toCharArray());
-            
-            //PBEKeySpec spec = new PBEKeySpec(PASSWORD.toCharArray());
-            authKey = fac.generateSecret(spec);
-
-            macSend = TOMUtil.getMacFactory();
-            macSend.init(authKey);
-            macReceive = TOMUtil.getMacFactory();
-            macReceive.init(authKey);
-            macSize = macSend.getMacLength();
-        } catch (Exception ex) {
-            logger.error("Failed to create secret key",ex);
-        }
-    }
-
+  
     private void closeSocket() {
         
         connectLock.lock();
@@ -466,12 +369,9 @@ public class ServerConnection {
                 }
 
                 if (data != null) {
-                    //sendBytes(data, noMACs.contains(System.identityHashCode(data)));
-                    int ref = System.identityHashCode(data);
-                    boolean sendMAC = !noMACs.remove(ref);
-                    logger.debug((sendMAC ? "Sending" : "Not sending") + " MAC for data " + ref);
-                    sendBytes(data, sendMAC);
-                }
+					logger.trace("Sending data to, RemoteId:{}", remoteId);
+					sendBytes(data);
+				}
             }
 
             logger.debug("Sender for " + remoteId + " stopped!");
@@ -489,65 +389,51 @@ public class ServerConnection {
 
         @Override
         public void run() {
-            byte[] receivedMac = null;
-            try {
-                receivedMac = new byte[TOMUtil.getMacFactory().getMacLength()];
-            } catch (NoSuchAlgorithmException ex) {
-                logger.error("Failed to get MAC vector object",ex);
-            }
+          
+        	while (doWork) {
+				if (socket != null && socketInStream != null) {
 
-            while (doWork) {
-                if (socket != null && socketInStream != null) {
-                    try {
-                        //read data length
-                        int dataLength = socketInStream.readInt();
-                        byte[] data = new byte[dataLength];
+					try {
+						// read data length
+						int dataLength = socketInStream.readInt();
+						byte[] data = new byte[dataLength];
 
-                        //read data
-                        int read = 0;
-                        do {
-                            read += socketInStream.read(data, read, dataLength - read);
-                        } while (read < dataLength);
+						// read data
+						int read = 0;
+						do {
+							read += socketInStream.read(data, read, dataLength - read);
+						} while (read < dataLength);
 
-                        //read mac
-                        boolean result = true;
-                        
-                        byte hasMAC = socketInStream.readByte();
-                        if (controller.getStaticConf().getUseMACs() == 1 && hasMAC == 1) {
-                            read = 0;
-                            do {
-                                read += socketInStream.read(receivedMac, read, macSize - read);
-                            } while (read < macSize);
+						byte hasMAC = socketInStream.readByte();
 
-                            result = Arrays.equals(macReceive.doFinal(data), receivedMac);
-                        }
+						logger.trace("Read: {}, HasMAC: {}", read, hasMAC);
 
-                        if (result) {
-                            SystemMessage sm = (SystemMessage) (new ObjectInputStream(new ByteArrayInputStream(data)).readObject());
-                            sm.authenticated = (controller.getStaticConf().getUseMACs() == 1 && hasMAC == 1);
-                            
-                            if (sm.getSender() == remoteId) {
-                                if (!inQueue.offer(sm)) {
-                                    logger.warn("Inqueue full (message from " + remoteId + " discarded).");
-                                }
-                            }
-                        } else {
-                            //TODO: violation of authentication... we should do something
-                            logger.warn("Violation of authentication in message received from " + remoteId);
-                        }
-                    } catch (ClassNotFoundException ex) {
-                        //invalid message sent, just ignore;
-                    } catch (IOException ex) {
-                        if (doWork) {
-                            logger.debug("Closing socket and reconnecting");
-                            closeSocket();
-                            waitAndConnect();
-                        }
-                    }
-                } else {
-                    waitAndConnect();
-                }
-            }
+						SystemMessage sm = (SystemMessage) (new ObjectInputStream(new ByteArrayInputStream(data))
+								.readObject());
+
+						//The verification it is done for the SSL/TLS protocol.
+						sm.authenticated = true;
+
+						if (sm.getSender() == remoteId) {
+							if (!inQueue.offer(sm)) {
+								logger.warn("Inqueue full (message from " + remoteId + " discarded).");
+							}/* else {
+								logger.trace("Message: {} queued, remoteId: {}", sm.toString(), sm.getSender());
+							}*/
+						}
+					} catch (ClassNotFoundException ex) {
+						logger.info("Invalid message received. Ignoring!");
+					} catch (IOException ex) {
+						if (doWork) {
+							logger.debug("Closing socket and reconnecting");
+							closeSocket();
+							waitAndConnect();
+						}
+					}
+				} else {
+					waitAndConnect();
+				}
+			}
         }
     }
 
@@ -569,70 +455,133 @@ public class ServerConnection {
         }
 
         @Override
-        public void run() {
-            byte[] receivedMac = null;
-            try {
-                receivedMac = new byte[TOMUtil.getMacFactory().getMacLength()];
-            } catch (NoSuchAlgorithmException ex) {
-            }
+		public void run() {
 
-            while (doWork) {
-                if (socket != null && socketInStream != null) {
-                    try {
-                        //read data length
-                        int dataLength = socketInStream.readInt();
+			while (doWork) {
+				if (socket != null && socketInStream != null) {
+					try {
+						// read data length
+						int dataLength = socketInStream.readInt();
 
-                        byte[] data = new byte[dataLength];
+						byte[] data = new byte[dataLength];
 
-                        //read data
-                        int read = 0;
-                        do {
-                            read += socketInStream.read(data, read, dataLength - read);
-                        } while (read < dataLength);
+						// read data
+						int read = 0;
+						do {
+							read += socketInStream.read(data, read, dataLength - read);
+						} while (read < dataLength);
 
-                        //read mac
-                        boolean result = true;
-                        
-                        byte hasMAC = socketInStream.readByte();
-                        if (controller.getStaticConf().getUseMACs() == 1 && hasMAC == 1) {
-                            
-                            read = 0;
-                            do {
-                                read += socketInStream.read(receivedMac, read, macSize - read);
-                            } while (read < macSize);
+						SystemMessage sm = (SystemMessage) (new ObjectInputStream(new ByteArrayInputStream(data))
+								.readObject());
 
-                            result = Arrays.equals(macReceive.doFinal(data), receivedMac);
-                        }
+						if (sm.getSender() == remoteId) {
+							this.replica.joinMsgReceived((VMMessage) sm);
+						}
 
-                        if (result) {
-                            SystemMessage sm = (SystemMessage) (new ObjectInputStream(new ByteArrayInputStream(data)).readObject());
-
-                            if (sm.getSender() == remoteId) {
-                                //System.out.println("Mensagem recebia de: "+remoteId);
-                                /*if (!inQueue.offer(sm)) {
-                                bftsmart.tom.util.Logger.println("(ReceiverThread.run) in queue full (message from " + remoteId + " discarded).");
-                                System.out.println("(ReceiverThread.run) in queue full (message from " + remoteId + " discarded).");
-                                }*/
-                                this.replica.joinMsgReceived((VMMessage) sm);
-                            }
-                        } else {
-                            //TODO: violation of authentication... we should do something
-                            logger.warn("Violation of authentication in message received from " + remoteId);
-                        }
-                    } catch (ClassNotFoundException ex) {
-                        logger.error("Failed to deserialize message",ex);
-                    } catch (IOException ex) {
-                        //ex.printStackTrace();
-                        if (doWork) {
-                            closeSocket();
-                            waitAndConnect();
-                        }
-                    }
-                } else {
-                    waitAndConnect();
-                }
-            }
-        }
+					} catch (ClassNotFoundException ex) {
+						logger.error("Failed to deserialize message", ex);
+					} catch (IOException ex) {
+						// ex.printStackTrace();
+						if (doWork) {
+							closeSocket();
+							waitAndConnect();
+						}
+					}
+				} else {
+					waitAndConnect();
+				}
+			}
+		}
     }
         //******* EDUARDO END **************//
+    
+    
+    /**
+	 * Deal with the creation of SSL/TLS connection.
+	 *  Author: Tulio A. Ribeiro
+	 *  
+	 * @throws KeyStoreException
+	 * @throws IOException
+	 * @throws CertificateException
+	 * @throws NoSuchAlgorithmException
+	 * @throws UnrecoverableKeyException
+	 * @throws KeyManagementException
+	 * @throws InvalidKeySpecException
+	 */
+
+	public void ssltlsCreateConnection() {
+
+		SecretKeyFactory fac;
+		PBEKeySpec spec;
+		try {
+			fac = TOMUtil.getSecretFactory();
+			spec = TOMUtil.generateKeySpec(SECRET.toCharArray());
+			secretKey = fac.generateSecret(spec);
+		} catch (NoSuchAlgorithmException | InvalidKeySpecException e) {
+			logger.error("Algorithm error.", e);
+		}
+
+		String algorithm = Security.getProperty("ssl.KeyManagerFactory.algorithm");
+		try {
+			fis = new FileInputStream("config/keysSSL_TLS/" + this.controller.getStaticConf().getSSLTLSKeyStore());
+			ks = KeyStore.getInstance(KeyStore.getDefaultType());
+			ks.load(fis, SECRET.toCharArray());
+		} catch (FileNotFoundException | KeyStoreException | NoSuchAlgorithmException | CertificateException e) {
+			logger.error("SSL connection error.",e);
+		} catch (IOException e) {
+			logger.error("SSL connection error.",e);
+		} finally {
+			if (fis != null) {
+				try {
+					fis.close();
+				} catch (IOException e) {
+					logger.error("IO error.",e);
+				}
+			}
+		}
+		try {
+			kmf = KeyManagerFactory.getInstance(algorithm);
+			kmf.init(ks, SECRET.toCharArray());
+
+			trustMgrFactory = TrustManagerFactory.getInstance(algorithm);
+			trustMgrFactory.init(ks);
+			context = SSLContext.getInstance(this.controller.getStaticConf().getSSLTLSProtocolVersion());
+			context.init(kmf.getKeyManagers(), trustMgrFactory.getTrustManagers(), new SecureRandom());
+			socketFactory = context.getSocketFactory();
+
+		} catch (KeyStoreException | NoSuchAlgorithmException | UnrecoverableKeyException | KeyManagementException e) {
+			logger.error("SSL connection error.",e);
+		}
+		// Create the connection.
+		try {
+			this.socket = (SSLSocket) socketFactory.createSocket(this.controller.getStaticConf().getHost(remoteId),
+					this.controller.getStaticConf().getServerToServerPort(remoteId));
+			this.socket.setKeepAlive(true);
+			this.socket.setTcpNoDelay(true);
+			this.socket.setEnabledCipherSuites(this.controller.getStaticConf().getEnabledCiphers());
+
+			this.socket.addHandshakeCompletedListener(new HandshakeCompletedListener() {
+				@Override
+				public void handshakeCompleted(HandshakeCompletedEvent event) {
+					logger.info("SSL/TLS handshake complete!, Id:{}" + "  ## CipherSuite: {}.", remoteId,
+							event.getCipherSuite());
+				}
+			});
+
+			this.socket.startHandshake();
+
+			ServersCommunicationLayer.setSSLSocketOptions(this.socket);
+			new DataOutputStream(this.socket.getOutputStream())
+					.writeInt(this.controller.getStaticConf().getProcessId());
+
+		} catch (SocketException e) {
+			logger.error("Connection refused (SocketException)");
+			// e.printStackTrace();
+		} catch (UnknownHostException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+
+	}
 }

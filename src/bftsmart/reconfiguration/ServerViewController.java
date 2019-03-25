@@ -114,38 +114,6 @@ public class ServerViewController extends ViewController {
                     request.toString().getBytes(), request.getSignature())) {
             //if (request.getSender() == getStaticConf().getTTPId()) {
                 this.updates.add(up);
-            /*} else {
-                boolean add = true;
-                Iterator<Integer> it = request.getProperties().keySet().iterator();
-                while (it.hasNext()) {
-                    int key = it.next();
-                    String value = request.getProperties().get(key);
-                    if (key == ADD_SERVER) {
-                        StringTokenizer str = new StringTokenizer(value, ":");
-                        if (str.countTokens() > 2) {
-                            int id = Integer.parseInt(str.nextToken());
-                            if(id != request.getSender()){
-                                add = false;
-                            }
-                        }else{
-                            add = false;
-                        }
-                    } else if (key == REMOVE_SERVER) {
-                        if (isCurrentViewMember(Integer.parseInt(value))) {
-                            if(Integer.parseInt(value) != request.getSender()){
-                                add = false;
-                            }
-                        }else{
-                            add = false;
-                        }
-                    } else if (key == CHANGE_F) {
-                        add = false;
-                    }
-                }
-                if(add){
-                    this.updates.add(up);
-                }
-            }*/
         } else {
             logger.warn("Invalid reconfiguration from {}, discarding", up.getSender());
         }
@@ -178,8 +146,8 @@ public class ServerViewController extends ViewController {
                             jSet.add(id);
                             String host = str.nextToken();
                             int port = Integer.valueOf(str.nextToken());
-                            this.getStaticConf().addHostInfo(id, host, port);
-                        }
+                            int portRR = Integer.valueOf(str.nextToken());
+                            this.getStaticConf().addHostInfo(id, host, port, portRR);                        }
                     }
                 } else if (key == REMOVE_SERVER) {
                     if (isCurrentViewMember(Integer.parseInt(value))) {
@@ -191,7 +159,6 @@ public class ServerViewController extends ViewController {
             }
 
         }
-        //ret = reconfigure(updates.get(i).getContent());
         return reconfigure(jSetInfo, jSet, rSet, f, cid);
     }
 
@@ -205,9 +172,6 @@ public class ServerViewController extends ViewController {
     }
 
     private byte[] reconfigure(List<String> jSetInfo, List<Integer> jSet, List<Integer> rSet, int f, int cid) {
-        //ReconfigureRequest request = (ReconfigureRequest) TOMUtil.getObject(req);
-        // Hashtable<Integer, String> props = request.getProperties();
-        // int f = Integer.valueOf(props.get(CHANGE_F));
         lastJoinStet = new int[jSet.size()];
         int[] nextV = new int[currentView.getN() + jSet.size() - rSet.size()];
         int p = 0;
@@ -295,7 +259,8 @@ public class ServerViewController extends ViewController {
              this.lastJoinStet[i] = id;
              String host = str.nextToken();
              int port = Integer.valueOf(str.nextToken());
-             this.getStaticConf().addHostInfo(id, host, port);
+             int portRR = Integer.valueOf(str.nextToken());
+             this.getStaticConf().addHostInfo(id, host, port, portRR);
         }
     }
 

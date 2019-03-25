@@ -29,8 +29,9 @@ public class DefaultVMServices extends VMServices {
             int smartId = Integer.parseInt(args[0]);
             String ipAddress = args[1];
             int port = Integer.parseInt(args[2]);
+            int portRR = Integer.parseInt(args[3]);
 
-            (new DefaultVMServices()).addServer(smartId, ipAddress, port);
+            (new DefaultVMServices()).addServer(smartId, ipAddress, port, portRR);
 
         }else{
             System.out.println("Usage: java -jar TppServices <smart id> [ip address] [port]");

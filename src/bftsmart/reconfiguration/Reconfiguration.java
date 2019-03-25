@@ -19,7 +19,6 @@ import bftsmart.tom.ServiceProxy;
 import bftsmart.tom.core.messages.TOMMessageType;
 import bftsmart.tom.util.KeyLoader;
 import bftsmart.tom.util.TOMUtil;
-import java.security.Provider;
 
 /**
  *
@@ -35,22 +34,24 @@ public class Reconfiguration {
     private String configDir;
     
     public Reconfiguration(int id, String configDir, KeyLoader loader) {
-        this.id = id;
-        
+        this.id = id;        
         this.keyLoader = loader;
         this.configDir = configDir;
-         //proxy = new ServiceProxy(id);
-        //request = new ReconfigureRequest(id);
     }
     
     public void connect(){
         if(proxy == null){
-            proxy = new ServiceProxy(id, configDir, null, null, keyLoader);
+        	proxy = new ServiceProxy(id, configDir, null, null, keyLoader);
         }
     }
     
-    public void addServer(int id, String ip, int port){
-        this.setReconfiguration(ServerViewController.ADD_SERVER, id + ":" + ip + ":" + port);
+    public void addServer(int id, String ip, int port, int portRR){
+    	this.setReconfiguration(
+        			ServerViewController.ADD_SERVER, 
+        			id + ":" + 
+        			ip + ":" + 
+        			port + ":" + 
+        			portRR);
     }
     
     public void removeServer(int id){
@@ -73,7 +74,7 @@ public class Reconfiguration {
     
     public ReconfigureReply execute(){
         byte[] signature = TOMUtil.signMessage(proxy.getViewManager().getStaticConf().getPrivateKey(),
-                                                                            request.toString().getBytes());
+                request.toString().getBytes());
         request.setSignature(signature);
         byte[] reply = proxy.invoke(TOMUtil.getBytes(request), TOMMessageType.RECONFIG);
         request = null;
