@@ -50,19 +50,26 @@ public class SunECKeyLoader implements KeyLoader {
 
 	private boolean defaultKeys;
 
-	//SunEC secp256r1
-	private static final String PRIVATE_KEY = "MEECAQAwEwYHKoZIzj0CAQYIKoZIzj0DAQcEJzAlAgEBBCCzKihManx3ughKcT5x8mdNj9GFGxH1UvKVKm8LqbDlig==";
-	private static final String PUBLIC_KEY = "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEqDGm5E0cL8w427d/3NujzqZPYvLR+dd6ZzyZaCmE3u9lN5lSjh7ia3xpxW0R20Gv6dxitwLBy02PhXsUk21B1Q==";
+	//generated with domain parameter prime256v1
+        //private static String DEFAULT_PKEY = "MIGTAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBHkwdwIBAQQgTnHcXa7szRTx5k6r2oNuG4aAFs1UyVEbsI9H3tLVSqigCgYIKoZIzj0DAQehRANCAATe0MF+aL4zTbQvwM5ipCaTSNN1kBxOxvgMj+VCTXL+6BCoUOWwT67/ECMj5s7jiTiQC/bac2edbDqKPkLYn76Y";
+        //private static String DEFAULT_UKEY ="MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE3tDBfmi+M020L8DOYqQmk0jTdZAcTsb4DI/lQk1y/ugQqFDlsE+u/xAjI+bO44k4kAv22nNnnWw6ij5C2J++mA==";
 
-	//SunEC secp384r1
-	//private static final String PRIVATE_KEY = "ME4CAQAwEAYHKoZIzj0CAQYFK4EEACIENzA1AgEBBDAmegdlkADA/8rbG0CpuZdO1fnHOngWnBwOH04XFk0ZX/GNOTaYTtVMHuI/fuhALDk=";
-	//private static final String PUBLIC_KEY = "MHYwEAYHKoZIzj0CAQYFK4EEACIDYgAEFFMlwova3OBpWS9YsZvjnQAuoLGwZjAGpNKFspZAskB2vTnkBOAmgm1I9UTM45rT5OzLPdrv9p+Ry76ZkEx7MK4s2eCj1U7RsLInZ1fFkgCleTDVYx/1JHBMf0wcscKR";
+        //generated with domain parameter secp256r1
+        //private static String DEFAULT_PKEY = "MEECAQAwEwYHKoZIzj0CAQYIKoZIzj0DAQcEJzAlAgEBBCAd3DWH1lE9twy7K8HVX9uF/+tmAzgl567vfS67fz05vg==";
+        //private static String DEFAULT_UKEY = "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE2i5bI5qktDHFMBNZ4v2XMGeOJreB+KO2I5R8ozGEs1DMKxkF0yLpqcNOptjDjsGFRBKPm3Fs/TfgTTlmG8obkQ==";
 
-	//SunEC secp521r1
-	//private static final String PRIVATE_KEY = "MF8CAQAwEAYHKoZIzj0CAQYFK4EEACMESDBGAgEBBEHwZjYqD8oGXmtwvYtJI2mezVcU9hSKQHWc/LirGP/+oqVbnJQ8Unz6toGE8+WDXVFnIr6u4mmmV47L4/78Tmnu+w==";
-	//private static final String PUBLIC_KEY = "MIGbMBAGByqGSM49AgEGBSuBBAAjA4GGAAQAUsovGsGwA3FFEfUOK01+UF1LFq2U7rIxzJYuW0/HVK18unQOkpFwezKzvwcYeS3hli2VHxHr6PJm2mVuh4MGtxYA4/2h46Dk5qMl5dX65723/4mq9sEHk9xQp0XtMfeeDyFGplNQYvtJ7OcqerOb3bhKcCFgoGGSFv8wwWjSI0NyiSU=";
+        //generated with domain parameter secp256k1
+        private static String DEFAULT_PKEY = "MD4CAQAwEAYHKoZIzj0CAQYFK4EEAAoEJzAlAgEBBCBnhIob4JXH+WpaNiL72BlbtUMAIBQoM852d+tKFBb7fg==";
+        private static String DEFAULT_UKEY = "MFYwEAYHKoZIzj0CAQYFK4EEAAoDQgAEavNEKGRcmB7u49alxowlwCi1s24ANOpOQ9UiFBxgqnO/RfOl3BJm0qE2IJgCnvL7XUetwj5C/8MnMWi9ux2aeQ==";
 
-	
+        //generated with domain parameter secp521r1
+        //private static String DEFAULT_PKEY = "MGACAQAwEAYHKoZIzj0CAQYFK4EEACMESTBHAgEBBEIBvFkcBAE7qEo04W4mlfDLjbuII0SgEJB8o5dm7lWimgCH/KxFsosp+8eimfC2mxyV+ojjhtlg+v8dWVuDlRBedko=";
+        //private static String DEFAULT_UKEY = "MIGbMBAGByqGSM49AgEGBSuBBAAjA4GGAAQBJ6HADdASTTSAid8x1tUx9GIkruQX9IUBc24GJTmgAdEh4Gr9gkI+qr4ViyaRY9JsZ9tno9l/Dl07PjxGjw+EU1oAswrOmwNm6s4A+hyTixHZwRktQ+xmpUHXg0EQklvJDi161e5Ai7iX6pTPq1ySCxAtx/GdV78mBKpeEhyV2UUy3x8=";
+
+        //generated with domain parameter sect571r1
+        //private static String DEFAULT_PKEY = "MGYCAQAwEAYHKoZIzj0CAQYFK4EEACcETzBNAgEBBEgBZZp6QK35NNOQpJG/lXSNNzaurf5Mz97bfV3OK39E7GLYqKXX8W3AjcFMg4W6+z94qwBcf5rxg+ETfznw6fUWDqeazwZLqGU=";
+        //private static String DEFAULT_UKEY = "MIGnMBAGByqGSM49AgEGBSuBBAAnA4GSAAQDoITHkD7zotSVc8XARYQ4N/HAPMf4hCMqwCjXyWR9QedWv/kL8oJiyVfx4vyBMFNuUXNacKxUNJ/gugfHdcId389sd/9b7dgHQzpe3uaKPH4vMTozdIaPlZ4JaDBqrRmCKkRViZ955TvLlseKqD3QDK2/CpyTeQ3G9gFm83LZf/xw/lc2mNO1AxItdtn1EMQ=";
+
 	/** Creates a new instance of ECDSAKeyLoader */
 
 	public SunECKeyLoader(int id, String configHome, boolean defaultKeys, String sigAlgorithm) {
@@ -92,14 +99,14 @@ public class SunECKeyLoader implements KeyLoader {
 		if (defaultKeys) {
 			//logger.debug("Loading default PublicKey, id: {}", id);
 			try {
-				logger.trace("Signature Algorithm: {}, Format: {} ", getPublicKeyFromString(PUBLIC_KEY).getAlgorithm(),
-						getPublicKeyFromString(PUBLIC_KEY).getFormat());
+				logger.trace("Signature Algorithm: {}, Format: {} ", getPublicKeyFromString(DEFAULT_PKEY).getAlgorithm(),
+						getPublicKeyFromString(DEFAULT_PKEY).getFormat());
 			} catch (NoSuchProviderException e1) {
 				// TODO Auto-generated catch block
 				logger.error("Provider error.",e1);
 			}
 			try {
-				return getPublicKeyFromString(PUBLIC_KEY);
+				return getPublicKeyFromString(DEFAULT_PKEY);
 			} catch (NoSuchProviderException e) {
 				// TODO Auto-generated catch block
 				logger.error("Provider error.",e);
@@ -133,14 +140,14 @@ public class SunECKeyLoader implements KeyLoader {
 		if (defaultKeys) {
 			//logger.debug("Loading my default PublicKey, this.id: {}", this.id);
 			try {
-				logger.trace("Signature Algorithm: {}, Format: {} ", getPublicKeyFromString(PUBLIC_KEY).getAlgorithm(),
-						getPublicKeyFromString(PUBLIC_KEY).getFormat());
+				logger.trace("Signature Algorithm: {}, Format: {} ", getPublicKeyFromString(DEFAULT_PKEY).getAlgorithm(),
+						getPublicKeyFromString(DEFAULT_PKEY).getFormat());
 			} catch (NoSuchProviderException e1) {
 				logger.error("Provider error.",e1);
 			}
 
 			try {
-				return getPublicKeyFromString(PUBLIC_KEY);
+				return getPublicKeyFromString(DEFAULT_PKEY);
 			} catch (NoSuchProviderException e) {
 				logger.error("Provider error.",e);
 			}
@@ -158,7 +165,7 @@ public class SunECKeyLoader implements KeyLoader {
 		r.close();
 		PublicKey ret = null;
 		try {
-			ret = getPublicKeyFromString(PUBLIC_KEY);
+			ret = getPublicKeyFromString(DEFAULT_PKEY);
 		} catch (NoSuchProviderException e) {
 			// TODO Auto-generated catch block
 			logger.error("Provider error.",e);
@@ -181,7 +188,7 @@ public class SunECKeyLoader implements KeyLoader {
 		if (defaultKeys) {
 			//logger.debug("Loading default PrivateKey, ID: {}", this.id);
 			try {
-				return getPrivateKeyFromString(PRIVATE_KEY);
+				return getPrivateKeyFromString(DEFAULT_UKEY);
 			} catch (NoSuchProviderException e) {
 				// TODO Auto-generated catch block
 				logger.error("Provider error.",e);

@@ -50,17 +50,25 @@ public class ECDSAKeyLoader implements KeyLoader {
 
 	private boolean defaultKeys;
 
-	//Bouncy Castle | 256 key size
-	private static final String PRIVATE_KEY = "MIGTAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBHkwdwIBAQQgMMpfKtHS5ZlgHDPj3TG41Y0t5r9NIzx7p4YPZxn5gBmgCgYIKoZIzj0DAQehRANCAAQkD2DTG37xnxtcMMLJMiUCyObUdVJE+rMM9WQ1Z3sjtIZchN8Xefr02Ag+giXGLej862qu3v4/fy6UGJNAHNx3";
-	private static final String PUBLIC_KEY = "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEJA9g0xt+8Z8bXDDCyTIlAsjm1HVSRPqzDPVkNWd7I7SGXITfF3n69NgIPoIlxi3o/Otqrt7+P38ulBiTQBzcdw==";
+	//generated with domain parameter prime256v1
+        //private static String DEFAULT_PKEY = "MIGTAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBHkwdwIBAQQgTnHcXa7szRTx5k6r2oNuG4aAFs1UyVEbsI9H3tLVSqigCgYIKoZIzj0DAQehRANCAATe0MF+aL4zTbQvwM5ipCaTSNN1kBxOxvgMj+VCTXL+6BCoUOWwT67/ECMj5s7jiTiQC/bac2edbDqKPkLYn76Y";
+        //private static String DEFAULT_UKEY ="MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE3tDBfmi+M020L8DOYqQmk0jTdZAcTsb4DI/lQk1y/ugQqFDlsE+u/xAjI+bO44k4kAv22nNnnWw6ij5C2J++mA==";
 
-	//Bouncy Castle | 384 key size
-	//private static final String PRIVATE_KEY = "MIG/AgEAMBAGByqGSM49AgEGBSuBBAAiBIGnMIGkAgEBBDAgJ7PlzZFc8/rsMTODSsQgenL2+WDxGjohmwGSLe8wp0+dYX8x2M2CidHdjzQu41qgBwYFK4EEACKhZANiAASFk9m7oKkuGqHg+BDMo51XbDnvIahxmfcagDgOvU/plgjpyuoY74eJit2LlLhLyKzVq0Rmpr1dZAuQWhlZfmlvdv0RhScaSaOiea54VdO8ZhdHzHHDwZQkJiSJQAuWOv0=";
-	//private static final String PUBLIC_KEY = "MHYwEAYHKoZIzj0CAQYFK4EEACIDYgAEhZPZu6CpLhqh4PgQzKOdV2w57yGocZn3GoA4Dr1P6ZYI6crqGO+HiYrdi5S4S8is1atEZqa9XWQLkFoZWX5pb3b9EYUnGkmjonmueFXTvGYXR8xxw8GUJCYkiUALljr9";
+        //generated with domain parameter secp256r1
+        //private static String DEFAULT_PKEY = "MEECAQAwEwYHKoZIzj0CAQYIKoZIzj0DAQcEJzAlAgEBBCAd3DWH1lE9twy7K8HVX9uF/+tmAzgl567vfS67fz05vg==";
+        //private static String DEFAULT_UKEY = "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE2i5bI5qktDHFMBNZ4v2XMGeOJreB+KO2I5R8ozGEs1DMKxkF0yLpqcNOptjDjsGFRBKPm3Fs/TfgTTlmG8obkQ==";
 
-	//Bouncy Castle | 521 key size
-	//private static final String PRIVATE_KEY = "MIH3AgEAMBAGByqGSM49AgEGBSuBBAAjBIHfMIHcAgEBBEIBlz6dy43Dp2XHkJzP00oY4japCVdVjYqUZdmDJwTnNfPCmiBA362OO8XgHzkSoz11W/YhXN3NNyBZg0gWNC1E4ZmgBwYFK4EEACOhgYkDgYYABAH0rMKko/e9Wp8f0G01SCbQaRBkZ/9PvxBKG3GbFUFeR5TiCf1GH8UNLHn5q6+ayD9RfhtOuSj2JuLKzZwAFNo12QAPXa/COqKxdwzoLnUcc81i1I/NEsgVp4eqHjs4UPzP9mvWE+D+XqXAqEU8cK+CMA9IXvdIrUU/szSvkhWT5nw0EA==";
-	//private static final String PUBLIC_KEY = "MIGbMBAGByqGSM49AgEGBSuBBAAjA4GGAAQB9KzCpKP3vVqfH9BtNUgm0GkQZGf/T78QShtxmxVBXkeU4gn9Rh/FDSx5+auvmsg/UX4bTrko9ibiys2cABTaNdkAD12vwjqisXcM6C51HHPNYtSPzRLIFaeHqh47OFD8z/Zr1hPg/l6lwKhFPHCvgjAPSF73SK1FP7M0r5IVk+Z8NBA=";
+        //generated with domain parameter secp256k1
+        private static String DEFAULT_PKEY = "MD4CAQAwEAYHKoZIzj0CAQYFK4EEAAoEJzAlAgEBBCBnhIob4JXH+WpaNiL72BlbtUMAIBQoM852d+tKFBb7fg==";
+        private static String DEFAULT_UKEY = "MFYwEAYHKoZIzj0CAQYFK4EEAAoDQgAEavNEKGRcmB7u49alxowlwCi1s24ANOpOQ9UiFBxgqnO/RfOl3BJm0qE2IJgCnvL7XUetwj5C/8MnMWi9ux2aeQ==";
+
+        //generated with domain parameter secp521r1
+        //private static String DEFAULT_PKEY = "MGACAQAwEAYHKoZIzj0CAQYFK4EEACMESTBHAgEBBEIBvFkcBAE7qEo04W4mlfDLjbuII0SgEJB8o5dm7lWimgCH/KxFsosp+8eimfC2mxyV+ojjhtlg+v8dWVuDlRBedko=";
+        //private static String DEFAULT_UKEY = "MIGbMBAGByqGSM49AgEGBSuBBAAjA4GGAAQBJ6HADdASTTSAid8x1tUx9GIkruQX9IUBc24GJTmgAdEh4Gr9gkI+qr4ViyaRY9JsZ9tno9l/Dl07PjxGjw+EU1oAswrOmwNm6s4A+hyTixHZwRktQ+xmpUHXg0EQklvJDi161e5Ai7iX6pTPq1ySCxAtx/GdV78mBKpeEhyV2UUy3x8=";
+
+        //generated with domain parameter sect571r1
+        //private static String DEFAULT_PKEY = "MGYCAQAwEAYHKoZIzj0CAQYFK4EEACcETzBNAgEBBEgBZZp6QK35NNOQpJG/lXSNNzaurf5Mz97bfV3OK39E7GLYqKXX8W3AjcFMg4W6+z94qwBcf5rxg+ETfznw6fUWDqeazwZLqGU=";
+        //private static String DEFAULT_UKEY = "MIGnMBAGByqGSM49AgEGBSuBBAAnA4GSAAQDoITHkD7zotSVc8XARYQ4N/HAPMf4hCMqwCjXyWR9QedWv/kL8oJiyVfx4vyBMFNuUXNacKxUNJ/gugfHdcId389sd/9b7dgHQzpe3uaKPH4vMTozdIaPlZ4JaDBqrRmCKkRViZ955TvLlseKqD3QDK2/CpyTeQ3G9gFm83LZf/xw/lc2mNO1AxItdtn1EMQ=";
 
 	/** Creates a new instance of ECDSAKeyLoader */
 
@@ -92,7 +100,7 @@ public class ECDSAKeyLoader implements KeyLoader {
 		if (defaultKeys) {
 			//logger.debug("Loading default PublicKey, id: {}", id);			
 			try {
-				return getPublicKeyFromString(PUBLIC_KEY);
+				return getPublicKeyFromString(DEFAULT_PKEY);
 			} catch (NoSuchProviderException e) {
 				// TODO Auto-generated catch block
 				logger.error("Provider error.",e);
@@ -126,7 +134,7 @@ public class ECDSAKeyLoader implements KeyLoader {
 
 		if (defaultKeys) {
 			try {
-				return getPublicKeyFromString(PUBLIC_KEY);
+				return getPublicKeyFromString(DEFAULT_PKEY);
 			} catch (NoSuchProviderException e) {
 				logger.error("Provider error.",e);
 			}
@@ -144,7 +152,7 @@ public class ECDSAKeyLoader implements KeyLoader {
 		r.close();
 		PublicKey ret = null;
 		try {
-			ret = getPublicKeyFromString(PUBLIC_KEY);
+			ret = getPublicKeyFromString(DEFAULT_PKEY);
 		} catch (NoSuchProviderException e) {
 			// TODO Auto-generated catch block
 			logger.error("Provider error.",e);
@@ -167,7 +175,7 @@ public class ECDSAKeyLoader implements KeyLoader {
 		if (defaultKeys) {
 			//logger.info("Loading private key...");
 			try {
-				return getPrivateKeyFromString(PRIVATE_KEY);
+				return getPrivateKeyFromString(DEFAULT_UKEY);
 			} catch (NoSuchProviderException e) {
 				// TODO Auto-generated catch block
 				logger.error("Provider error.",e);
