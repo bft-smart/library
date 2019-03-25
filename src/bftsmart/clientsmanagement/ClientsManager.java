@@ -29,6 +29,9 @@ import bftsmart.tom.util.TOMUtil;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.Signature;
+import java.util.Collections;
+import java.util.LinkedList;
+import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -107,18 +110,21 @@ public class ClientsManager {
         clientsLock.lock();
         /******* BEGIN CLIENTS CRITICAL SECTION ******/
         
-        Set<Entry<Integer, ClientData>> clientsEntrySet = clientsData.entrySet();
-        logger.debug("Number of active clients: {}", clientsEntrySet.size());
+        List<Entry<Integer, ClientData>> clientsEntryList = new LinkedList<>(clientsData.entrySet());
+        Collections.shuffle(clientsEntryList); // ensure fairness
+
+        logger.debug("Number of active clients: {}", clientsEntryList.size());
         
         for (int i = 0; true; i++) {
-            Iterator<Entry<Integer, ClientData>> it = clientsEntrySet.iterator();
+                        
+            Iterator<Entry<Integer, ClientData>> it = clientsEntryList.iterator();
             int noMoreMessages = 0;
             
             logger.debug("Fetching requests with internal index {}", i);
 
             while (it.hasNext()
                     && allReq.size() < controller.getStaticConf().getMaxBatchSize()
-                    && noMoreMessages < clientsEntrySet.size()) {
+                    && noMoreMessages < clientsEntryList.size()) {
 
                 ClientData clientData = it.next().getValue();
                 RequestList clientPendingRequests = clientData.getPendingRequests();
@@ -149,7 +155,7 @@ public class ClientsManager {
             }
             
             if(allReq.size() == controller.getStaticConf().getMaxBatchSize() ||
-                    noMoreMessages == clientsEntrySet.size()) {
+                    noMoreMessages == clientsEntryList.size()) {
                 
                 break;
             }
