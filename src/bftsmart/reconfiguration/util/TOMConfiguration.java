@@ -60,6 +60,7 @@ public class TOMConfiguration extends Configuration {
     private int numRepliers;
     private int numNettyWorkers;
     private boolean sameBatchSize;
+    private boolean fairbatch;
     private String bindAddress;
     
     /* Tulio Ribeiro*/
@@ -346,6 +347,13 @@ public class TOMConfiguration extends Configuration {
                     sameBatchSize = false;
             }
             
+            s = (String) configs.remove("system.totalordermulticast.fairbatch");
+            if (s != null) {
+                    fairbatch = Boolean.parseBoolean(s);
+            } else {
+                    fairbatch = false;
+            }
+            
             /**
              * Tulio Ribeiro 
              * 
@@ -558,6 +566,10 @@ public class TOMConfiguration extends Configuration {
     
     public boolean getSameBatchSize() {
         return sameBatchSize;
+    }
+    
+    public boolean getFairBatch() {
+        return fairbatch;
     }
     
     public String getBindAddress() {

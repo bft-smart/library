@@ -106,7 +106,7 @@ public class ClientsManager {
      *
      * @return the set of all pending requests of this system
      */
-    public RequestList getPendingRequests() throws Exception {
+    public RequestList getPendingRequests() {
         RequestList allReq = new RequestList();
         
         clientsLock.lock();
@@ -114,7 +114,9 @@ public class ClientsManager {
         
         List<Entry<Integer, ClientData>> clientsEntryList = new ArrayList<>(clientsData.entrySet().size());
         clientsEntryList.addAll(clientsData.entrySet());
-        Collections.shuffle(clientsEntryList); // ensure fairness
+        
+        if (controller.getStaticConf().getFairBatch()) // ensure fairness
+            Collections.shuffle(clientsEntryList);
 
         logger.debug("Number of active clients: {}", clientsEntryList.size());
         
