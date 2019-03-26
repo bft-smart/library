@@ -58,40 +58,6 @@ public class ClientsManager {
     
     private ReentrantLock clientsLock = new ReentrantLock();
 
-    private class RandomPermuteIterator implements Enumeration<Long> {
-        
-        int c = 1013904223, a = 1664525;
-        long seed, N, m, next;
-        boolean hasNext = true;
-        long next2;
-
-        private RandomPermuteIterator(long N) throws Exception {
-            if (N <= 0 || N > Math.pow(2, 62)) throw new Exception("Unsupported size: " + N);
-            this.N = N;
-            m = (long) Math.pow(2, Math.ceil(Math.log(N) / Math.log(2)));
-            next = seed = new Random().nextInt((int) Math.min(N, Integer.MAX_VALUE));
-            
-            next2 = -1;
-        }
-
-        @Override
-        public boolean hasMoreElements() {
-            return hasNext;
-        }
-
-        @Override
-        public Long nextElement() {
-            next = (a * next + c) % m;
-            while (next >= N) next = (a * next + c) % m;
-            if (next == seed) hasNext = false;
-            //return  next;
-            
-            next2++;
-            hasNext = next2 < N;
-            return next2;
-        }
-    }
-    
     public ClientsManager(ServerViewController controller, RequestsTimer timer, RequestVerifier verifier) {
         this.controller = controller;
         this.timer = timer;
@@ -148,23 +114,22 @@ public class ClientsManager {
         
         List<Entry<Integer, ClientData>> clientsEntryList = new ArrayList<>(clientsData.entrySet().size());
         clientsEntryList.addAll(clientsData.entrySet());
-        //Collections.shuffle(clientsEntryList); // ensure fairness
+        Collections.shuffle(clientsEntryList); // ensure fairness
 
         logger.debug("Number of active clients: {}", clientsEntryList.size());
         
         for (int i = 0; true; i++) {
                         
-            //Iterator<Entry<Integer, ClientData>> it = clientsEntryList.iterator();
-            RandomPermuteIterator it = new RandomPermuteIterator(clientsEntryList.size());
+            Iterator<Entry<Integer, ClientData>> it = clientsEntryList.iterator();
             int noMoreMessages = 0;
             
             logger.debug("Fetching requests with internal index {}", i);
             
-            while (it.hasMoreElements()
+            while (it.hasNext()
                     && allReq.size() < controller.getStaticConf().getMaxBatchSize()
                     && noMoreMessages < clientsEntryList.size()) {
 
-                ClientData clientData = clientsEntryList.get(it.nextElement().intValue()).getValue();
+                ClientData clientData = it.next().getValue();
                 RequestList clientPendingRequests = clientData.getPendingRequests();
 
                 clientData.clientLock.lock();
