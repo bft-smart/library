@@ -87,7 +87,7 @@ public class ClientsManager {
             //return  next;
             
             next2++;
-            hasNext = next2 <=  N;
+            hasNext = next2 < N;
             return next2;
         }
     }
