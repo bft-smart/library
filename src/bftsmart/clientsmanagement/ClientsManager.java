@@ -78,10 +78,14 @@ public class ClientsManager {
 
         @Override
         public Long nextElement() {
-            next = (a * next + c) % m;
+            /*next = (a * next + c) % m;
             while (next >= N) next = (a * next + c) % m;
             if (next == seed) hasNext = false;
-            return  next;
+            return  next;*/
+            
+            next++;
+            hasNext = next <=  N;
+            return next;
         }
     }
     
