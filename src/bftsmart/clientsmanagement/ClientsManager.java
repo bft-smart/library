@@ -29,8 +29,8 @@ import bftsmart.tom.util.TOMUtil;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.Signature;
+import java.util.ArrayList;
 import java.util.Collections;
-import java.util.LinkedList;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -110,7 +110,8 @@ public class ClientsManager {
         clientsLock.lock();
         /******* BEGIN CLIENTS CRITICAL SECTION ******/
         
-        List<Entry<Integer, ClientData>> clientsEntryList = new LinkedList<>(clientsData.entrySet());
+        List<Entry<Integer, ClientData>> clientsEntryList = new ArrayList<>(clientsData.entrySet().size());
+        clientsEntryList.addAll(clientsData.entrySet());
         Collections.shuffle(clientsEntryList); // ensure fairness
 
         logger.debug("Number of active clients: {}", clientsEntryList.size());
