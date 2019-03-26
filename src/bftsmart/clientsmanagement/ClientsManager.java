@@ -69,6 +69,7 @@ public class ClientsManager {
             this.N = N;
             m = (long) Math.pow(2, Math.ceil(Math.log(N) / Math.log(2)));
             next = seed = new Random().nextInt((int) Math.min(N, Integer.MAX_VALUE));
+            next = -1;
         }
 
         @Override
