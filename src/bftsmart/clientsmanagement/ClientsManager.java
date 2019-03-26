@@ -31,7 +31,9 @@ import java.security.NoSuchAlgorithmException;
 import java.security.Signature;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Enumeration;
 import java.util.List;
+import java.util.Random;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -56,6 +58,33 @@ public class ClientsManager {
     
     private ReentrantLock clientsLock = new ReentrantLock();
 
+    private class RandomPermuteIterator implements Enumeration<Long> {
+        
+        int c = 1013904223, a = 1664525;
+        long seed, N, m, next;
+        boolean hasNext = true;
+
+        private RandomPermuteIterator(long N) throws Exception {
+            if (N <= 0 || N > Math.pow(2, 62)) throw new Exception("Unsupported size: " + N);
+            this.N = N;
+            m = (long) Math.pow(2, Math.ceil(Math.log(N) / Math.log(2)));
+            next = seed = new Random().nextInt((int) Math.min(N, Integer.MAX_VALUE));
+        }
+
+        @Override
+        public boolean hasMoreElements() {
+            return hasNext;
+        }
+
+        @Override
+        public Long nextElement() {
+            next = (a * next + c) % m;
+            while (next >= N) next = (a * next + c) % m;
+            if (next == seed) hasNext = false;
+            return  next;
+        }
+    }
+    
     public ClientsManager(ServerViewController controller, RequestsTimer timer, RequestVerifier verifier) {
         this.controller = controller;
         this.timer = timer;
@@ -104,7 +133,7 @@ public class ClientsManager {
      *
      * @return the set of all pending requests of this system
      */
-    public RequestList getPendingRequests() {
+    public RequestList getPendingRequests() throws Exception {
         RequestList allReq = new RequestList();
         
         clientsLock.lock();
@@ -112,22 +141,23 @@ public class ClientsManager {
         
         List<Entry<Integer, ClientData>> clientsEntryList = new ArrayList<>(clientsData.entrySet().size());
         clientsEntryList.addAll(clientsData.entrySet());
-        Collections.shuffle(clientsEntryList); // ensure fairness
+        //Collections.shuffle(clientsEntryList); // ensure fairness
 
         logger.debug("Number of active clients: {}", clientsEntryList.size());
         
         for (int i = 0; true; i++) {
                         
-            Iterator<Entry<Integer, ClientData>> it = clientsEntryList.iterator();
+            //Iterator<Entry<Integer, ClientData>> it = clientsEntryList.iterator();
+            RandomPermuteIterator it = new RandomPermuteIterator(clientsEntryList.size());
             int noMoreMessages = 0;
             
             logger.debug("Fetching requests with internal index {}", i);
-
-            while (it.hasNext()
+            
+            while (it.hasMoreElements()
                     && allReq.size() < controller.getStaticConf().getMaxBatchSize()
                     && noMoreMessages < clientsEntryList.size()) {
 
-                ClientData clientData = it.next().getValue();
+                ClientData clientData = clientsEntryList.get(it.nextElement().intValue()).getValue();
                 RequestList clientPendingRequests = clientData.getPendingRequests();
 
                 clientData.clientLock.lock();
