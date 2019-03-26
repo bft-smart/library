@@ -63,13 +63,15 @@ public class ClientsManager {
         int c = 1013904223, a = 1664525;
         long seed, N, m, next;
         boolean hasNext = true;
+        long next2;
 
         private RandomPermuteIterator(long N) throws Exception {
             if (N <= 0 || N > Math.pow(2, 62)) throw new Exception("Unsupported size: " + N);
             this.N = N;
             m = (long) Math.pow(2, Math.ceil(Math.log(N) / Math.log(2)));
             next = seed = new Random().nextInt((int) Math.min(N, Integer.MAX_VALUE));
-            next = -1;
+            
+            next2 = -1;
         }
 
         @Override
@@ -79,14 +81,14 @@ public class ClientsManager {
 
         @Override
         public Long nextElement() {
-            /*next = (a * next + c) % m;
+            next = (a * next + c) % m;
             while (next >= N) next = (a * next + c) % m;
             if (next == seed) hasNext = false;
-            return  next;*/
+            //return  next;
             
-            next++;
-            hasNext = next <=  N;
-            return next;
+            next2++;
+            hasNext = next2 <=  N;
+            return next2;
         }
     }
     
