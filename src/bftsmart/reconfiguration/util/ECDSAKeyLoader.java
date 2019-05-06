@@ -152,7 +152,7 @@ public class ECDSAKeyLoader implements KeyLoader {
 		r.close();
 		PublicKey ret = null;
 		try {
-			ret = getPublicKeyFromString(DEFAULT_UKEY);
+			ret = getPublicKeyFromString(key);
 		} catch (NoSuchProviderException e) {
 			// TODO Auto-generated catch block
 			logger.error("Provider error.",e);
