@@ -25,7 +25,7 @@ The servers must be specified in the configuration file (see `config/hosts.confi
 
 The system configurations also have to be specified (see`config/system.config`). Most of the parameters are self explanatory.
 
-**Important tip #3:** When using the library in real systems, always make sure to set `system.communication.defaultkeys` to `false` and `system.communication.useSignatures` to `1`. Also make sure that only the `config/keys` directory only has the private key for the repective replica/client.
+**Important tip #3:** When using the library in real systems, always make sure to set `system.communication.defaultkeys` to `false` and `system.communication.useSignatures` to `1`. Also make sure that only the `config/keys` directory only has the private key for the respective replica/client.
 
 You can run the counter demonstration by executing the following commands, from within the main directory across four different consoles (4 replicas, to tolerate 1 fault):
 
