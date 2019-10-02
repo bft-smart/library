@@ -18,6 +18,7 @@ package bftsmart.tom.core;
 import java.util.ArrayList;
 import java.util.concurrent.LinkedBlockingQueue;
 
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -54,6 +55,7 @@ public final class DeliveryThread extends Thread {
 	private final ServerViewController controller;
 	private final Lock decidedLock = new ReentrantLock();
 	private final Condition notEmptyQueue = decidedLock.newCondition();
+	private AtomicInteger waitingForLock = new AtomicInteger(0);
 
 	/**
 	 * Creates a new instance of DeliveryThread
@@ -141,6 +143,15 @@ public final class DeliveryThread extends Thread {
 		deliverLock.lock();
 	}
 
+	public void iAmWaitingForDeliverLock() {
+		waitingForLock.incrementAndGet();
+	}
+
+	public void iAmNotWaitingForDeliverLock() {
+		if (waitingForLock.get() > 0)
+			waitingForLock.decrementAndGet();
+	}
+
 	public void deliverUnlock() {
 		deliverLock.unlock();
 	}
@@ -174,6 +185,10 @@ public final class DeliveryThread extends Thread {
 		logger.info("All finished up to " + lastCID);
 	}
 
+	public void refreshState(ApplicationState state) {
+		recoverer.setState(state);
+	}
+
 	/**
 	 * This is the code for the thread. It delivers decisions to the TOM request
 	 * receiver object (which is the application)
@@ -183,6 +198,8 @@ public final class DeliveryThread extends Thread {
 		boolean init = true;
 		while (doWork) {
 			/** THIS IS JOAO'S CODE, TO HANDLE STATE TRANSFER */
+			if (waitingForLock.get() > 0)
+				continue;
 			deliverLock();
 			while (tomLayer.isRetrievingState()) {
 				logger.info("Retrieving State");

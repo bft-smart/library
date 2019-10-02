@@ -22,6 +22,7 @@ import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.Signature;
 import java.security.SignedObject;
+import java.util.*;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -46,9 +47,6 @@ import bftsmart.tom.util.BatchBuilder;
 import bftsmart.tom.util.BatchReader;
 import bftsmart.tom.util.TOMUtil;
 
-import java.util.HashMap;
-import java.util.Timer;
-import java.util.TimerTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.util.concurrent.CountDownLatch;
@@ -120,6 +118,10 @@ public final class TOMLayer extends Thread implements RequestReceiver {
     private RequestVerifier verifier;
             
     private Synchronizer syncher;
+
+    private Queue<TOMMessage> msgHolder = new LinkedList<>();
+    private boolean pauseProcessingClientMessages;
+    private ReentrantLock clientMessagesLock = new ReentrantLock();
 
     /**
      * Creates a new instance of TOMulticastLayer
@@ -318,6 +320,17 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         return this.inExecution;
     }
 
+    public void pauseProcessingClientMessages() {
+        this.pauseProcessingClientMessages = true;
+    }
+
+    public void resumeProcessingClientMessages() {
+        clientMessagesLock.lock();
+        pauseProcessingClientMessages = false;
+        msgHolder.iterator().forEachRemaining(this::processRequest);
+        clientMessagesLock.unlock();
+    }
+
     /**
      * This method is invoked by the communication system to deliver a request.
      * It assumes that the communication system delivers the message in FIFO
@@ -327,9 +340,22 @@ public final class TOMLayer extends Thread implements RequestReceiver {
      */
     @Override
     public void requestReceived(TOMMessage msg) {
-               
         if (!doWork) return;
-        
+
+        if (pauseProcessingClientMessages && !controller.getCurrentView().isMember(msg.getSender())) {
+            clientMessagesLock.lock();
+            if (pauseProcessingClientMessages)
+                msgHolder.add(msg);
+            else
+                processRequest(msg);
+            clientMessagesLock.unlock();
+        } else
+            processRequest(msg);
+    }
+
+    private void processRequest(TOMMessage msg) {
+        if (!doWork) return;
+
         // check if this request is valid and add it to the client' pending requests list
         boolean readOnly = (msg.getReqType() == TOMMessageType.UNORDERED_REQUEST
                 || msg.getReqType() == TOMMessageType.UNORDERED_HASHED_REQUEST);
@@ -341,20 +367,20 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             logger.debug("Received TOMMessage from client " + msg.getSender() + " with sequence number " + msg.getSequence() + " for session " + msg.getSession());
 
             if (clientsManager.requestReceived(msg, true, communication)) {
-                
+
                 if(controller.getStaticConf().getBatchTimeout() == -1) {
                     haveMessages();
                 } else {
-                    
+
                     if (clientsManager.countPendingRequests() < controller.getStaticConf().getMaxBatchSize()) {
-                        
+
                         lastRequest = System.currentTimeMillis();
-                                                
+
                     } else {
-                        
+
                         haveMessages();
                     }
-                    
+
                 }
             } else {
                 logger.warn("The received TOMMessage " + msg + " was discarded.");
