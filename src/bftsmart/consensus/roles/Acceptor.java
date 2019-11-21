@@ -256,7 +256,7 @@ public final class Acceptor {
      */
     private void computeWrite(int cid, Epoch epoch, byte[] value) {
         //int writeAccepted = round.countWrite(value);
-        int writeWeigths = epoch.countWriteWeigths(value);
+        double writeWeigths = epoch.countWriteWeigths(value);
         
         //Logger.println("(Acceptor.computeWrite) I have " + writeAccepted +
         //        " WRITEs for " + eid + "," + round.getNumber());
@@ -414,7 +414,7 @@ public final class Acceptor {
         //Logger.println("(Acceptor.computeAccept) I have " + round.countAccept(value) +
         //        " ACCEPTs for " + eid + "," + round.getNumber());
 
-        long acceptWeights = epoch.countAcceptWeigths(value);
+        double acceptWeights = epoch.countAcceptWeigths(value);
         Logger.println("(Acceptor.computeAccept) I have " + acceptWeights +
                 " ACCEPT weigths and " + epoch.countAccept(value) + " ACCEPT messages for " + eid + "," + epoch.getTimestamp());
 

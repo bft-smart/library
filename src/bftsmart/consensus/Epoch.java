@@ -363,7 +363,7 @@ public class Epoch implements Serializable {
      * @param value The value in question
      * @return total weights from which this process received the specified value
      */
-    public int countWriteWeigths(byte[] value) {
+    public double countWriteWeigths(byte[] value) {
         return countWeigths(writeSetted,sumWeightsWrite, write, value);
     }
 
@@ -372,7 +372,7 @@ public class Epoch implements Serializable {
      * @param value The value in question
      * @return total weights from which this process accepted the specified value
      */
-    public int countAcceptWeigths(byte[] value) {
+    public double countAcceptWeigths(byte[] value) {
         return countWeigths(acceptSetted,sumWeightsAccept, accept, value);
     }
 
@@ -382,9 +382,9 @@ public class Epoch implements Serializable {
      * @param value Value to count
      * @return Ammount of times that 'value' was find in 'array'
      */
-    private int countWeigths(boolean[] arraySetted, double[] arrayWeights, byte[][] array, byte[] value) {
+    private double countWeigths(boolean[] arraySetted, double[] arrayWeights, byte[][] array, byte[] value) {
         if (value != null) {
-            int counter = 0;
+            double counter = 0;
             for (int i = 0; i < array.length; i++) {
                 if (arraySetted != null && arraySetted[i] && Arrays.equals(value, array[i])) {
                     counter += arrayWeights[i];
