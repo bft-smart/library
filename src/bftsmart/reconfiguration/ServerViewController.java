@@ -309,13 +309,13 @@ public class ServerViewController extends ViewController {
                 }
             }
 
-            this.quorumBFT = (int) Math.ceil((this.currentView.getN() + this.currentView.getF()) / 2);
-            this.quorumCFT = (int) Math.ceil(this.currentView.getN() / 2);
+            this.quorumBFT = (int) Math.ceil((this.currentView.getN() + this.currentView.getF()) / 2.0);
+            this.quorumCFT = (int) Math.ceil(this.currentView.getN() / 2.0);
 
             this.overlayN = this.currentView.getOverlayN();
             this.overlayF = this.currentView.getOverlayF();
-            this.overlayQ_BFT = (int) Math.ceil((this.overlayN + this.overlayF) / 2);
-            this.overlayQ_CFT = (int) Math.ceil(this.overlayN / 2);
+            this.overlayQ_BFT = (int) Math.ceil((this.overlayN + this.overlayF) / 2.0);
+            this.overlayQ_CFT = (int) Math.ceil(this.overlayN / 2.0);
         } else if (this.currentView != null && this.currentView.isMember(getStaticConf().getProcessId())) {
             //TODO: Left the system in newView -> LEAVE
             //CODE for LEAVE   

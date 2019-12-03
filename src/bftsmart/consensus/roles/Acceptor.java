@@ -50,6 +50,9 @@ import javax.crypto.SecretKey;
  */
 public final class Acceptor {
 
+    // to address numeric errors when adding up double values
+    private static final double THRESHOLD = -0.0000000001;
+
     private int me; // This replica ID
     private ExecutionManager executionManager; // Execution manager of consensus's executions
     private MessageFactory factory; // Factory for PaW messages
@@ -268,7 +271,7 @@ public final class Acceptor {
         //if (writeAccepted > controller.getQuorum() && Arrays.equals(value, epoch.propValueHash)) {
         
         //code for vote schemes
-        if (writeWeigths > controller.getOverlayQuorum() && Arrays.equals(value, epoch.propValueHash)) {              
+        if (writeWeigths - ((double) controller.getOverlayQuorum()) > THRESHOLD && Arrays.equals(value, epoch.propValueHash)) {
             
             if (controller.getStaticConf().getTentative()) { //code for tentative execution
             
@@ -422,7 +425,7 @@ public final class Acceptor {
         //if (round.countAccept(value) > controller.getQuorum() && !round.getExecution().isDecided()) {
         
         //code for vote scheme
-        if (acceptWeights > controller.getOverlayQuorum() && !epoch.getConsensus().isDecided()) {
+        if (acceptWeights - ((double) controller.getOverlayQuorum()) > THRESHOLD && !epoch.getConsensus().isDecided()) {
             Logger.println("(Acceptor.computeAccept) Deciding " + eid);
             decide(epoch);
         }

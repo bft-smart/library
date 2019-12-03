@@ -384,7 +384,7 @@ public class Epoch implements Serializable {
      */
     private double countWeigths(boolean[] arraySetted, double[] arrayWeights, byte[][] array, byte[] value) {
         if (value != null) {
-            double counter = 0;
+            double counter = 0.0;
             for (int i = 0; i < array.length; i++) {
                 if (arraySetted != null && arraySetted[i] && Arrays.equals(value, array[i])) {
                     counter += arrayWeights[i];
