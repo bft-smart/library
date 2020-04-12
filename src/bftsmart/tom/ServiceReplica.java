@@ -94,6 +94,12 @@ public class ServiceReplica {
                           ProposeRequestVerifier proposeRequestVerifier) {
         this(id, "", executor, recoverer, null, new DefaultReplier(), null, proposeRequestVerifier);
     }
+
+    public ServiceReplica(int id, Executable executor, Recoverable recoverer,
+                          RequestVerifier verifier, Replier replier, KeyLoader loader,
+                          Provider provider, ProposeRequestVerifier proposeRequestVerifier) {
+        this(id, "", executor, recoverer, verifier, replier, loader, proposeRequestVerifier);
+    }
     //******* ROBIN END ******//
 
     /**
@@ -107,19 +113,19 @@ public class ServiceReplica {
     public ServiceReplica(int id, Executable executor, Recoverable recoverer, RequestVerifier verifier) {
         this(id, "", executor, recoverer, verifier, new DefaultReplier(), null, null);
     }
-    
+
     /**
      * Constructor
-     * 
+     *
      * @see bellow
      */
     public ServiceReplica(int id, Executable executor, Recoverable recoverer, RequestVerifier verifier, Replier replier) {
         this(id, "", executor, recoverer, verifier, replier, null, null);
     }
-    
+
     /**
      * Constructor
-     * 
+     *
      * @see bellow
      */
     public ServiceReplica(int id, Executable executor, Recoverable recoverer, RequestVerifier verifier, Replier replier, KeyLoader loader, Provider provider) {
