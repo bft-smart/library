@@ -34,12 +34,7 @@ import bftsmart.tom.core.TOMLayer;
 import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.core.messages.TOMMessageType;
 import bftsmart.tom.leaderchange.CertifiedDecision;
-import bftsmart.tom.server.BatchExecutable;
-import bftsmart.tom.server.Executable;
-import bftsmart.tom.server.Recoverable;
-import bftsmart.tom.server.Replier;
-import bftsmart.tom.server.RequestVerifier;
-import bftsmart.tom.server.SingleExecutable;
+import bftsmart.tom.server.*;
 
 import bftsmart.tom.server.defaultservices.DefaultReplier;
 import bftsmart.tom.util.KeyLoader;
@@ -79,6 +74,10 @@ public class ServiceReplica {
     private Replier replier = null;
     private RequestVerifier verifier = null;
 
+    //****** ROBIN BEGIN ******//
+    private ProposeRequestVerifier proposeRequestVerifier;
+    //******* ROBIN END ******//
+
     /**
      * Constructor
      *
@@ -87,8 +86,15 @@ public class ServiceReplica {
      * @param recoverer Recoverer
      */
     public ServiceReplica(int id, Executable executor, Recoverable recoverer) {
-        this(id, "", executor, recoverer, null, new DefaultReplier(), null);
+        this(id, "", executor, recoverer, null, new DefaultReplier(), null, null);
     }
+
+    //****** ROBIN BEGIN ******//
+    public ServiceReplica(int id, Executable executor, Recoverable recoverer,
+                          ProposeRequestVerifier proposeRequestVerifier) {
+        this(id, "", executor, recoverer, null, new DefaultReplier(), null, proposeRequestVerifier);
+    }
+    //******* ROBIN END ******//
 
     /**
      * Constructor
@@ -99,7 +105,7 @@ public class ServiceReplica {
      * @param verifier Requests verifier
      */
     public ServiceReplica(int id, Executable executor, Recoverable recoverer, RequestVerifier verifier) {
-        this(id, "", executor, recoverer, verifier, new DefaultReplier(), null);
+        this(id, "", executor, recoverer, verifier, new DefaultReplier(), null, null);
     }
     
     /**
@@ -108,7 +114,7 @@ public class ServiceReplica {
      * @see bellow
      */
     public ServiceReplica(int id, Executable executor, Recoverable recoverer, RequestVerifier verifier, Replier replier) {
-        this(id, "", executor, recoverer, verifier, replier, null);
+        this(id, "", executor, recoverer, verifier, replier, null, null);
     }
     
     /**
@@ -117,7 +123,7 @@ public class ServiceReplica {
      * @see bellow
      */
     public ServiceReplica(int id, Executable executor, Recoverable recoverer, RequestVerifier verifier, Replier replier, KeyLoader loader, Provider provider) {
-        this(id, "", executor, recoverer, verifier, replier, loader);
+        this(id, "", executor, recoverer, verifier, replier, loader, null);
     }
     /**
      * Constructor
@@ -130,13 +136,18 @@ public class ServiceReplica {
      * @param replier Can be used to override the targets of the replies associated to each request.
      * @param loader Used to load signature keys from disk
      */
-    public ServiceReplica(int id, String configHome, Executable executor, Recoverable recoverer, RequestVerifier verifier, Replier replier, KeyLoader loader) {
+    public ServiceReplica(int id, String configHome, Executable executor,
+                          Recoverable recoverer, RequestVerifier verifier,
+                          Replier replier, KeyLoader loader, ProposeRequestVerifier proposeRequestVerifier) {
         this.id = id;
         this.SVController = new ServerViewController(id, configHome, loader);
         this.executor = executor;
         this.recoverer = recoverer;
         this.replier = (replier != null ? replier : new DefaultReplier());
         this.verifier = verifier;
+        //****** ROBIN BEGIN ******//
+        this.proposeRequestVerifier = proposeRequestVerifier;
+        //******* ROBIN END ******//
         this.init();
         this.recoverer.setReplicaContext(replicaCtx);
         this.replier.setReplicaContext(replicaCtx);
@@ -471,7 +482,8 @@ public class ServiceReplica {
 
         acceptor.setExecutionManager(executionManager);
 
-        tomLayer = new TOMLayer(executionManager, this, recoverer, acceptor, cs, SVController, verifier);
+        tomLayer = new TOMLayer(executionManager, this, recoverer, acceptor, cs,
+                SVController, verifier, proposeRequestVerifier);
 
         executionManager.setTOMLayer(tomLayer);
 

@@ -41,6 +41,7 @@ import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.core.messages.TOMMessageType;
 import bftsmart.tom.core.messages.ForwardedMessage;
 import bftsmart.tom.leaderchange.RequestsTimer;
+import bftsmart.tom.server.ProposeRequestVerifier;
 import bftsmart.tom.server.Recoverable;
 import bftsmart.tom.server.RequestVerifier;
 import bftsmart.tom.util.BatchBuilder;
@@ -116,7 +117,11 @@ public final class TOMLayer extends Thread implements RequestReceiver {
     public ServerViewController controller;
 
     private RequestVerifier verifier;
-            
+
+    //****** ROBIN BEGIN ******//
+    private ProposeRequestVerifier proposeRequestVerifier;
+    //******* ROBIN END ******//
+
     private Synchronizer syncher;
 
     private Queue<TOMMessage> msgHolder = new LinkedList<>();
@@ -135,14 +140,20 @@ public final class TOMLayer extends Thread implements RequestReceiver {
      * @param verifier
      */
     public TOMLayer(ExecutionManager manager,
-            ServiceReplica receiver,
-            Recoverable recoverer,
-            Acceptor a,
-            ServerCommunicationSystem cs,
-            ServerViewController controller,
-            RequestVerifier verifier) {
+                    ServiceReplica receiver,
+                    Recoverable recoverer,
+                    Acceptor a,
+                    ServerCommunicationSystem cs,
+                    ServerViewController controller,
+                    RequestVerifier verifier,
+                    ProposeRequestVerifier proposeRequestVerifier) {
 
         super("TOM Layer");
+
+        //****** ROBIN BEGIN ******//
+        this.proposeRequestVerifier = proposeRequestVerifier == null ?
+                (request -> true) : proposeRequestVerifier;
+        //******* ROBIN END ******//
 
         this.execManager = manager;
         this.acceptor = a;
@@ -559,6 +570,11 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                             //notifies the client manager that this request was received and get
                             //the result of its validation
                             request.isValid = clientsManager.requestReceived(request, false);
+
+                            //****** ROBIN BEGIN ******//
+                            request.isValid &= proposeRequestVerifier.isValidRequest(request);
+                            //******* ROBIN END ******//
+
                             if (Thread.holdsLock(clientsManager.getClientsLock())) clientsManager.getClientsLock().unlock();
                             
                         }
