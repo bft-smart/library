@@ -55,7 +55,12 @@ public final class DeliveryThread extends Thread {
 	private final ServerViewController controller;
 	private final Lock decidedLock = new ReentrantLock();
 	private final Condition notEmptyQueue = decidedLock.newCondition();
+
+	//Robin - BEGIN
 	private AtomicInteger waitingForLock = new AtomicInteger(0);
+	private boolean isRefreshing;//get deliverLock before modifying this variable
+	//Robin - END
+
 
 	/**
 	 * Creates a new instance of DeliveryThread
@@ -143,6 +148,7 @@ public final class DeliveryThread extends Thread {
 		deliverLock.lock();
 	}
 
+	//Robin - BEGIN
 	public void iAmWaitingForDeliverLock() {
 		waitingForLock.incrementAndGet();
 	}
@@ -151,6 +157,16 @@ public final class DeliveryThread extends Thread {
 		if (waitingForLock.get() > 0)
 			waitingForLock.decrementAndGet();
 	}
+
+	public void setRefreshingState(boolean isRefreshing) {
+		this.isRefreshing = isRefreshing;
+	}
+
+	public void refreshState(ApplicationState state) {
+		recoverer.setState(state);
+	}
+
+	//Robin - END
 
 	public void deliverUnlock() {
 		deliverLock.unlock();
@@ -185,10 +201,6 @@ public final class DeliveryThread extends Thread {
 		logger.info("All finished up to " + lastCID);
 	}
 
-	public void refreshState(ApplicationState state) {
-		recoverer.setState(state);
-	}
-
 	/**
 	 * This is the code for the thread. It delivers decisions to the TOM request
 	 * receiver object (which is the application)
@@ -201,8 +213,11 @@ public final class DeliveryThread extends Thread {
 			if (waitingForLock.get() > 0)
 				continue;
 			deliverLock();
-			while (tomLayer.isRetrievingState()) {
-				logger.info("Retrieving State");
+			while (tomLayer.isRetrievingState() || isRefreshing) {
+				if (isRefreshing)
+					logger.info("Waiting for refresh");
+				else
+					logger.info("Retrieving State");
 				canDeliver.awaitUninterruptibly();
 
 				// if (tomLayer.getLastExec() == -1)
