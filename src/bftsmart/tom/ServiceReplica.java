@@ -223,7 +223,7 @@ public class ServiceReplica {
         //applications to log it or keep any proof.
         response = executor.executeUnordered(id, SVController.getCurrentViewId(),
                 (message.getReqType() == TOMMessageType.UNORDERED_HASHED_REQUEST &&
-                        message.getReplyServer() != this.id),message.getContent(), msgCtx);
+                        message.getReplyServer() != this.id),message.getContent(), message.getPrivateContent(), msgCtx);
 
         if (response != null) {
             if (SVController.getStaticConf().getNumRepliers() > 0) {
@@ -351,7 +351,9 @@ public class ServiceReplica {
                                 
                                 // This is used to deliver the requests to the application and obtain a reply to deliver
                                 //to the clients. The raw decision is passed to the application in the line above.
-                                TOMMessage response = ((SingleExecutable) executor).executeOrdered(id, SVController.getCurrentViewId(), request.getContent(), msgCtx);
+                                TOMMessage response = ((SingleExecutable) executor).executeOrdered(id,
+                                        SVController.getCurrentViewId(), request.getContent(),
+                                        request.getPrivateContent(), msgCtx);
                                 
                                 if (response != null) {
                                     
@@ -464,8 +466,8 @@ public class ServiceReplica {
     /**
      * This method initializes the object
      *
-     * @param cs Server side communication System
-     * @param conf Total order messaging configuration
+     * //@param cs Server side communication System
+     * //@param conf Total order messaging configuration
      */
     private void initTOMLayer() {
         if (tomStackCreated) { // if this object was already initialized, don't do it again

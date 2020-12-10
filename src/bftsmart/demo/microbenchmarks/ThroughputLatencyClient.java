@@ -246,9 +246,9 @@ public class ThroughputLatencyClient {
                 
                 byte[] reply = null;
                 if(readOnly)
-                        reply = proxy.invokeUnordered(request);
+                        reply = proxy.invokeUnordered(request, null);
                 else
-                        reply = proxy.invokeOrdered(request);
+                        reply = proxy.invokeOrdered(request, null);
                 long latency = System.nanoTime() - last_send_instant;
                 
                 try {
@@ -287,9 +287,9 @@ public class ThroughputLatencyClient {
                 if (verbose) System.out.print(this.id + " // Sending req " + req + "...");
 
                 if(readOnly)
-                        proxy.invokeUnordered(request);
+                        proxy.invokeUnordered(request, null);
                 else
-                        proxy.invokeOrdered(request);
+                        proxy.invokeOrdered(request, null);
                 long latency = System.nanoTime() - last_send_instant;
                 
                 try {

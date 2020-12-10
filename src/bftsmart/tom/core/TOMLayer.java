@@ -16,30 +16,20 @@
  */
 package bftsmart.tom.core;
 
-import java.io.Serializable;
-import java.security.MessageDigest;
-import java.security.PrivateKey;
-import java.security.PublicKey;
-import java.security.Signature;
-import java.security.SignedObject;
-import java.util.*;
-import java.util.concurrent.locks.Condition;
-import java.util.concurrent.locks.ReentrantLock;
-
 import bftsmart.clientsmanagement.ClientsManager;
 import bftsmart.clientsmanagement.RequestList;
 import bftsmart.communication.ServerCommunicationSystem;
 import bftsmart.communication.client.RequestReceiver;
-import bftsmart.consensus.Decision;
 import bftsmart.consensus.Consensus;
+import bftsmart.consensus.Decision;
 import bftsmart.consensus.Epoch;
 import bftsmart.consensus.roles.Acceptor;
 import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.statemanagement.StateManager;
 import bftsmart.tom.ServiceReplica;
+import bftsmart.tom.core.messages.ForwardedMessage;
 import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.core.messages.TOMMessageType;
-import bftsmart.tom.core.messages.ForwardedMessage;
 import bftsmart.tom.leaderchange.RequestsTimer;
 import bftsmart.tom.server.ProposeRequestVerifier;
 import bftsmart.tom.server.Recoverable;
@@ -47,23 +37,28 @@ import bftsmart.tom.server.RequestVerifier;
 import bftsmart.tom.util.BatchBuilder;
 import bftsmart.tom.util.BatchReader;
 import bftsmart.tom.util.TOMUtil;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.Serializable;
+import java.security.*;
+import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * This class implements the state machine replication protocol described in
  * Joao Sousa's 'From Byzantine Consensus to BFT state machine replication: a latency-optimal transformation' (May 2012)
- * 
+ *
  * The synchronization phase described in the paper is implemented in the Synchronizer class
  */
 public final class TOMLayer extends Thread implements RequestReceiver {
 
     private Logger logger = LoggerFactory.getLogger(this.getClass());
-    
+
     private boolean doWork = true;
     //other components used by the TOMLayer (they are never changed)
     public ExecutionManager execManager; // Execution manager
@@ -75,16 +70,16 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
     //thread pool used to paralelise verification of requests contained in a batch
     private ExecutorService verifierExecutor = null;
-    
+
     /**
      * Manage timers for pending requests
      */
     public RequestsTimer requestsTimer;
-    
+
     //timeout for batch
     private Timer batchTimer = null;
     private long lastRequest = -1;
-    
+
     /**
      * Store requests received but still not ordered
      */
@@ -113,7 +108,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
     private PrivateKey privateKey;
     private HashMap<Integer, PublicKey> publicKey;
-    
+
     public ServerViewController controller;
 
     private RequestVerifier verifier;
@@ -159,7 +154,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         this.acceptor = a;
         this.communication = cs;
         this.controller = controller;
-        
+
         /*Tulio Ribeiro*/
         this.privateKey = this.controller.getStaticConf().getPrivateKey();
         this.publicKey = new HashMap<>();
@@ -172,14 +167,14 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         int nWorkers = this.controller.getStaticConf().getNumNettyWorkers();
         nWorkers = nWorkers > 0 ? nWorkers : Runtime.getRuntime().availableProcessors();
         this.verifierExecutor = Executors.newWorkStealingPool(nWorkers);
-        
+
         //do not create a timer manager if the timeout is 0
         if (this.controller.getStaticConf().getRequestTimeout() == 0) {
             this.requestsTimer = null;
         } else {
             this.requestsTimer = new RequestsTimer(this, communication, this.controller); // Create requests timers manager (a thread)
         }
-        
+
         try {
             this.md = TOMUtil.getHashEngine();
         } catch (Exception e) {
@@ -196,14 +191,14 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         this.dt.start();
         this.stateManager = recoverer.getStateManager();
         stateManager.init(this, dt);
-        
+
         this.verifier = (verifier != null) ? verifier : ((request) -> true); // By default, never validate requests 
-		
+
         // I have a verifier, now create clients manager
         this.clientsManager = new ClientsManager(this.controller, requestsTimer, this.verifier);
 
         this.syncher = new Synchronizer(this); // create synchronizer
-        
+
         if (controller.getStaticConf().getBatchTimeout() > -1) {
 
             batchTimer = new Timer();
@@ -211,7 +206,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                 @Override
                 public void run() {
 
-                    if (clientsManager.havePendingRequests() && 
+                    if (clientsManager.havePendingRequests() &&
                             (System.currentTimeMillis() - lastRequest) >= controller.getStaticConf().getBatchTimeout()) {
 
                         logger.debug("Signaling proposer thread!!");
@@ -378,7 +373,9 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             logger.debug("Received TOMMessage from client " + msg.getSender() + " with sequence number " + msg.getSequence() + " for session " + msg.getSession());
 
             if (clientsManager.requestReceived(msg, true, communication)) {
-
+                //****** ROBIN BEGIN ******//
+                clientsManager.extractPrivateContentFrom(msg);
+                //****** ROBIN END ******//
                 if(controller.getStaticConf().getBatchTimeout() == -1) {
                     haveMessages();
                 } else {
@@ -409,7 +406,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
     public byte[] createPropose(Decision dec) {
         // Retrieve a set of pending requests from the clients manager
         RequestList pendingRequests = clientsManager.getPendingRequests();
-        
+
         logger.debug("Number of pending requets to propose in consensus {}: {}", dec.getConsensusId(), pendingRequests.size());
 
         int numberOfMessages = pendingRequests.size(); // number of messages retrieved
@@ -448,7 +445,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             }
             //******* EDUARDO END **************//
             leaderLock.unlock();
-            
+
             if (!doWork) break;
 
             // blocks until the current consensus finishes
@@ -459,7 +456,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                 canPropose.awaitUninterruptibly();
             }
             proposeLock.unlock();
-            
+
             if (!doWork) break;
 
             logger.debug("I'm the leader.");
@@ -467,17 +464,17 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             // blocks until there are requests to be processed/ordered
             messagesLock.lock();
             if (!clientsManager.havePendingRequests() ||
-                    (controller.getStaticConf().getBatchTimeout() > -1 
-                    		&& clientsManager.countPendingRequests() < controller.getStaticConf().getMaxBatchSize())) {
-                
+                    (controller.getStaticConf().getBatchTimeout() > -1
+                            && clientsManager.countPendingRequests() < controller.getStaticConf().getMaxBatchSize())) {
+
                 logger.debug("Waiting for enough requests");
                 haveMessages.awaitUninterruptibly();
                 logger.debug("Got enough requests");
             }
             messagesLock.unlock();
-            
+
             if (!doWork) break;
-            
+
             logger.debug("There are requests to be ordered. I will propose.");
 
 
@@ -495,7 +492,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                 if (controller.getCurrentViewN() == 1) {
 
                     logger.debug("Only one replica, bypassing consensus.");
-                    
+
                     byte[] value = createPropose(dec);
 
                     Consensus consensus = execManager.getConsensus(dec.getConsensusId());
@@ -525,10 +522,10 @@ public final class TOMLayer extends Thread implements RequestReceiver {
      * @param dec The decision of the consensus
      */
     public void decided(Decision dec) {
-        
+
         dec.setRegency(syncher.getLCManager().getLastReg());
         dec.setLeader(execManager.getCurrentLeader());
-        
+
         this.dt.delivery(dec); // Sends the decision to the delivery thread
     }
 
@@ -543,30 +540,30 @@ public final class TOMLayer extends Thread implements RequestReceiver {
      * @return Valid messages contained in the proposed value
      */
     public TOMMessage[] checkProposedValue(byte[] proposedValue, boolean addToClientManager) {
-    
+
         try{
-            
+
             logger.debug("Checking proposed value");
 
             BatchReader batchReader = new BatchReader(proposedValue,
-                this.controller.getStaticConf().getUseSignatures() == 1);
+                    this.controller.getStaticConf().getUseSignatures() == 1);
 
             TOMMessage[] requests = null;
 
             //deserialize the message
             //TODO: verify Timestamps and Nonces
             requests = batchReader.deserialiseRequests(this.controller);
-            
+
             if (addToClientManager) {
 
                 //use parallelization to validate the request
                 final CountDownLatch latch = new CountDownLatch(requests.length);
 
                 for (TOMMessage request : requests) {
-                    
+
                     verifierExecutor.submit(() -> {
                         try {
-                            
+
                             //notifies the client manager that this request was received and get
                             //the result of its validation
                             request.isValid = clientsManager.requestReceived(request, false);
@@ -576,25 +573,25 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                             //******* ROBIN END ******//
 
                             if (Thread.holdsLock(clientsManager.getClientsLock())) clientsManager.getClientsLock().unlock();
-                            
+
                         }
                         catch (Exception e) {
-                            
+
                             logger.error("Error while validating requests", e);
                             if (Thread.holdsLock(clientsManager.getClientsLock())) clientsManager.getClientsLock().unlock();
-                            
+
                         }
-                        
+
                         latch.countDown();
                     });
                 }
-                
+
                 latch.await();
-                
+
                 for (TOMMessage request : requests) {
-                    
+
                     if (request.isValid == false) {
-                        
+
                         logger.warn("Request {} could not be added to the pending messages queue of its respective client", request);
                         return null;
                     }
@@ -604,7 +601,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             logger.debug("Successfully deserialized batch");
 
             return requests;
-        
+
         } catch (Exception e) {
             logger.error("Failed to check proposed value",e);
             if (Thread.holdsLock(clientsManager.getClientsLock())) clientsManager.getClientsLock().unlock();
@@ -631,11 +628,11 @@ public final class TOMLayer extends Thread implements RequestReceiver {
     }
 
     public boolean isChangingLeader() {
-        
+
         return !requestsTimer.isEnabled();
 
     }
-    
+
     public void setNoExec() {
         logger.debug("Modifying inExec from " + this.inExecution + " to " + -1);
 
@@ -648,8 +645,8 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
     public void processOutOfContext() {
         for (int nextConsensus = getLastExec() + 1;
-                execManager.receivedOutOfContextPropose(nextConsensus);
-                nextConsensus = getLastExec() + 1) {
+             execManager.receivedOutOfContextPropose(nextConsensus);
+             nextConsensus = getLastExec() + 1) {
             execManager.processOutOfContextPropose(execManager.getConsensus(nextConsensus));
         }
     }
@@ -661,17 +658,17 @@ public final class TOMLayer extends Thread implements RequestReceiver {
     public Synchronizer getSynchronizer() {
         return syncher;
     }
-   
+
     private void haveMessages() {
         messagesLock.lock();
         haveMessages.signal();
         messagesLock.unlock();
     }
-    
+
     public DeliveryThread getDeliveryThread() {
         return dt;
     }
-    
+
     public void shutdown() {
         this.doWork = false;
         imAmTheLeader();
@@ -685,6 +682,6 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         }
         if (this.dt != null) this.dt.shutdown();
         if (this.communication != null) this.communication.shutdown();
- 
+
     }
 }

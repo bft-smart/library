@@ -260,7 +260,7 @@ public final class Acceptor {
 	 * Called when a WRITE message is received
 	 *
 	 * @param epoch Epoch of the receives message
-	 * @param a     Replica that sent the message
+	 * @param sender     Replica that sent the message
 	 * @param value Value sent in the message
 	 */
 	private void writeReceived(Epoch epoch, int sender, byte[] value) {
@@ -365,7 +365,7 @@ public final class Acceptor {
 	 * contains a cryptographic proof.
 	 * 
 	 * @param cm    The consensus message to which the proof shall be set
-	 * @param epoch The epoch during in which the consensus message was created
+	 * //@param epoch The epoch during in which the consensus message was created
 	 */
 	private void insertProof(ConsensusMessage cm, TOMMessage[] msgs) {
 		ByteArrayOutputStream bOut = new ByteArrayOutputStream(248);
@@ -391,8 +391,8 @@ public final class Acceptor {
 	 * Called when a ACCEPT message is received
 	 * 
 	 * @param epoch Epoch of the receives message
-	 * @param a     Replica that sent the message
-	 * @param value Value sent in the message
+	 * //@param a     Replica that sent the message
+	 * //@param value Value sent in the message
 	 */
 	private void acceptReceived(Epoch epoch, ConsensusMessage msg) {
 		int cid = epoch.getConsensus().getId();

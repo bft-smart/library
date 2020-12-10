@@ -66,7 +66,7 @@ public class YCSBClient extends DB {
             map.put(field, values.get(field).toArray());
         }
         YCSBMessage msg = YCSBMessage.newInsertRequest(table, key, map);
-        byte[] reply = proxy.invokeOrdered(msg.getBytes());
+        byte[] reply = proxy.invokeOrdered(msg.getBytes(), null);
         YCSBMessage replyMsg = YCSBMessage.getObject(reply);
         return replyMsg.getResult();
     }
@@ -76,7 +76,7 @@ public class YCSBClient extends DB {
             Set<String> fields, HashMap<String, ByteIterator> result) {
         HashMap<String, byte[]> results = new HashMap<>();
         YCSBMessage request = YCSBMessage.newReadRequest(table, key, fields, results);
-        byte[] reply = proxy.invokeUnordered(request.getBytes());
+        byte[] reply = proxy.invokeUnordered(request.getBytes(), null);
         YCSBMessage replyMsg = YCSBMessage.getObject(reply);
         return replyMsg.getResult();
     }
@@ -97,7 +97,7 @@ public class YCSBClient extends DB {
             map.put(field, values.get(field).toArray());
         }
         YCSBMessage msg = YCSBMessage.newUpdateRequest(table, key, map);
-        byte[] reply = proxy.invokeOrdered(msg.getBytes());
+        byte[] reply = proxy.invokeOrdered(msg.getBytes(), null);
         YCSBMessage replyMsg = YCSBMessage.getObject(reply);
         return replyMsg.getResult();
     }

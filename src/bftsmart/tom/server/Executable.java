@@ -39,7 +39,7 @@ public interface Executable {
      * 
      * @return the reply for the request issued by the client
      */
-    public byte[] executeUnordered(byte[] command, MessageContext msgCtx);
+    public byte[] executeUnordered(byte[] command, byte[] privateData, MessageContext msgCtx);
     
     default TOMMessage getTOMMessage(int processID, int viewID, byte[] command, MessageContext msgCtx, byte[] result) {
         
@@ -50,9 +50,9 @@ public interface Executable {
          return reply;
     }
     
-    public default TOMMessage executeUnordered(int processID, int viewID, boolean isReplyHash, byte[] command, MessageContext msgCtx) {
+    public default TOMMessage executeUnordered(int processID, int viewID, boolean isReplyHash, byte[] command, byte[] privateData, MessageContext msgCtx) {
         
-         byte[] result = executeUnordered(command, msgCtx);
+         byte[] result = executeUnordered(command, privateData, msgCtx);
          
          if (isReplyHash) result = TOMUtil.computeHash(result);
          

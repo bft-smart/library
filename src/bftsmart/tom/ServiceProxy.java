@@ -15,25 +15,24 @@
  */
 package bftsmart.tom;
 
-import bftsmart.tom.core.TOMSender;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.Random;
-import java.util.concurrent.Semaphore;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.locks.ReentrantLock;
-
 import bftsmart.reconfiguration.ReconfigureReply;
 import bftsmart.reconfiguration.views.View;
+import bftsmart.tom.core.TOMSender;
 import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.core.messages.TOMMessageType;
 import bftsmart.tom.util.Extractor;
 import bftsmart.tom.util.KeyLoader;
 import bftsmart.tom.util.TOMUtil;
-import java.security.Provider;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.Map;
+import java.util.Random;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * This class implements a TOMSender and represents a proxy to be used on the
@@ -173,11 +172,11 @@ public class ServiceProxy extends TOMSender {
 	 * If the servers take more than invokeTimeout seconds the method returns null.
 	 * This method is thread-safe.
 	 *
-	 * @param request to be sent
+	 * @param requestCommonData to be sent
 	 * @return The reply from the replicas related to request
 	 */
-	public byte[] invokeOrdered(byte[] request) {
-		return invoke(request, TOMMessageType.ORDERED_REQUEST);
+	public byte[] invokeOrdered(byte[] requestCommonData, Map<Integer, byte[]> requestPrivateData) {
+		return invoke(TOMMessageType.ORDERED_REQUEST, requestCommonData, requestPrivateData);
 	}
 
 	/**
@@ -185,11 +184,11 @@ public class ServiceProxy extends TOMSender {
 	 * If the servers take more than invokeTimeout seconds the method returns null.
 	 * This method is thread-safe.
 	 *
-	 * @param request to be sent
+	 * @param requestCommonData to be sent
 	 * @return The reply from the replicas related to request
 	 */
-	public byte[] invokeUnordered(byte[] request) {
-		return invoke(request, TOMMessageType.UNORDERED_REQUEST);
+	public byte[] invokeUnordered(byte[] requestCommonData, Map<Integer, byte[]> requestPrivateData) {
+		return invoke(TOMMessageType.UNORDERED_REQUEST, requestCommonData, requestPrivateData);
 	}
 
 	/**
@@ -199,11 +198,11 @@ public class ServiceProxy extends TOMSender {
 	 * If the servers take more than invokeTimeout seconds the method returns null.
 	 * This method is thread-safe.
 	 *
-	 * @param request to be sent
+	 * @param requestCommonData to be sent
 	 * @return The reply from the replicas related to request
 	 */
-	public byte[] invokeUnorderedHashed(byte[] request) {
-		return invoke(request, TOMMessageType.UNORDERED_HASHED_REQUEST);
+	public byte[] invokeUnorderedHashed(byte[] requestCommonData, Map<Integer, byte[]> requestPrivateData) {
+		return invoke(TOMMessageType.UNORDERED_HASHED_REQUEST, requestCommonData, requestPrivateData);
 	}
 
 	/**
@@ -211,13 +210,13 @@ public class ServiceProxy extends TOMSender {
 	 * If the servers take more than invokeTimeout seconds the method returns null.
 	 * This method is thread-safe.
 	 *
-	 * @param request Request to be sent
+	 * @param requestCommonData Request to be sent
 	 * @param reqType ORDERED_REQUEST/UNORDERED_REQUEST/UNORDERED_HASHED_REQUEST for normal requests, and RECONFIG for
 	 *        reconfiguration requests.
 	 *
 	 * @return The reply from the replicas related to request
 	 */
-	public byte[] invoke(byte[] request, TOMMessageType reqType) {
+	public byte[] invoke(TOMMessageType reqType, byte[] requestCommonData, Map<Integer, byte[]> requestPrivateData) {
 
 		try {
 
@@ -246,13 +245,31 @@ public class ServiceProxy extends TOMSender {
 				hashResponseController = new HashResponseController(getViewManager().getCurrentViewPos(replyServer),
 						getViewManager().getCurrentViewProcesses().length);
 
-				TOMMessage sm = new TOMMessage(getProcessId(),getSession(), reqId, operationId, request,
+				TOMMessage sm = new TOMMessage(getProcessId(),getSession(), reqId, operationId, requestCommonData,
 						getViewManager().getCurrentViewId(), requestType);
 				sm.setReplyServer(replyServer);
 
 				TOMulticast(sm);
 			}else{
-				TOMulticast(request, reqId, operationId, reqType);
+				//****** ROBIN BEGIN ******//
+				TOMMessage m;
+				int pid = getProcessId();
+				int sid = getSession();
+				int rid = reqId;
+				int oid = operationId;
+				int vid = getViewManager().getCurrentViewId();
+				if (requestPrivateData == null) {
+					m = new TOMMessage(pid, sid, rid, oid, requestCommonData, vid, requestType);
+					TOMulticast(m);
+				} else {
+					for (Map.Entry<Integer, byte[]> entry : requestPrivateData.entrySet()) {
+						m = new TOMMessage(pid, sid, rid, oid, null, requestCommonData, entry.getValue(), vid,
+								requestType);
+						sendMessageToTargets(m, entry.getKey());
+					}
+				}
+				//****** ROBIN END ******//
+				//TOMulticast(request, reqId, operationId, reqType);
 			}
 
 			logger.debug("Sending request (" + reqType + ") with reqId=" + reqId);
@@ -266,7 +283,7 @@ public class ServiceProxy extends TOMSender {
 					if (!this.sm.tryAcquire(invokeUnorderedHashedTimeout, TimeUnit.SECONDS)) {
 						logger.info("######## UNORDERED HASHED REQUEST TIMOUT ########");
 						canSendLock.unlock();
-						return invoke(request,TOMMessageType.ORDERED_REQUEST);
+						return invoke(TOMMessageType.ORDERED_REQUEST, requestCommonData, requestPrivateData);
 					}
 				}else{
 					if (!this.sm.tryAcquire(invokeTimeout, TimeUnit.SECONDS)) {
@@ -294,7 +311,7 @@ public class ServiceProxy extends TOMSender {
 				if (reqType == TOMMessageType.UNORDERED_REQUEST || reqType == TOMMessageType.UNORDERED_HASHED_REQUEST) {
 					//invoke the operation again, whitout the read-only flag
 					logger.debug("###################RETRY#######################");
-					return invokeOrdered(request);
+					return invokeOrdered(requestCommonData, requestPrivateData);
 				} else {
 					throw new RuntimeException("Received n-f replies without f+1 of them matching.");
 				}
@@ -310,14 +327,14 @@ public class ServiceProxy extends TOMSender {
 						reconfigureTo((View) TOMUtil.getObject(response.getContent()));
 
 						canSendLock.unlock();
-						return invoke(request, reqType);
+						return invoke(reqType, requestCommonData, requestPrivateData);
 					}
 				} else if (reqType == TOMMessageType.UNORDERED_REQUEST || reqType == TOMMessageType.UNORDERED_HASHED_REQUEST){
 					if (response.getViewID() == getViewManager().getCurrentViewId()) {
 						ret = response.getContent(); // return the response
 					}else{
 						canSendLock.unlock();
-						return invoke(request,TOMMessageType.ORDERED_REQUEST);
+						return invoke(TOMMessageType.ORDERED_REQUEST, requestCommonData, requestPrivateData);
 					}
 				} else {
 					if (response.getViewID() > getViewManager().getCurrentViewId()) {
@@ -328,7 +345,7 @@ public class ServiceProxy extends TOMSender {
 							reconfigureTo((View) r);
 
 							canSendLock.unlock();
-							return invoke(request, reqType);
+							return invoke(reqType, requestCommonData, requestPrivateData);
 						}  else if (r instanceof ReconfigureReply) { //reconfiguration executed!
 							reconfigureTo(((ReconfigureReply) r).getView());
 							ret = response.getContent();

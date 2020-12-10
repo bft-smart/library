@@ -46,9 +46,11 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 
 	//****** ROBIN BEGIN ******//
 	private byte[] metadata;
+	private byte[] commonContent;
+	private byte[] privateContent;
 	//******* ROBIN END ******//
 
-	private byte[] content = null; // Content of the message
+	//private byte[] content = null; // Content of the message
 
 	//the fields bellow are not serialized!!!
 	private transient int id; // ID for this message. It should be unique
@@ -124,7 +126,7 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 		this.operationId = operationId;
 		this.viewID = view;
 		buildId();
-		this.content = content;
+		this.commonContent = content;
 		this.type = type;
 	}
 
@@ -138,12 +140,12 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 	 * @param sequence The sequence number created based on the message type
 	 * @param operationId The operation sequence number disregarding message type
 	 * @param metadata Optional metadata
-	 * @param content The command to be executed
+	 * @param commonContent The command to be executed
 	 * @param view The view in which the message was sent
 	 * @param type Ordered or Unordered request
 	 */
 	public TOMMessage(int sender, int session, int sequence, int operationId,
-					  byte[] metadata, byte[] content, int view, TOMMessageType type) {
+					  byte[] metadata, byte[] commonContent, byte[] privateContent, int view, TOMMessageType type) {
 		super(sender);
 		this.session = session;
 		this.sequence = sequence;
@@ -152,8 +154,10 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 		buildId();
 		//****** ROBIN BEGIN ******//
 		this.metadata = metadata;
+		this.commonContent = commonContent;
+		this.privateContent = privateContent;
 		//******* ROBIN END ******//
-		this.content = content;
+		//this.content = content;
 		this.type = type;
 	}
 	//******* ROBIN END ******//
@@ -219,6 +223,18 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 	public byte[] getMetadata() {
 		return metadata;
 	}
+
+	public byte[] getCommonContent() {
+		return commonContent;
+	}
+
+	public byte[] getPrivateContent() {
+		return privateContent;
+	}
+
+	public void setPrivateContent(byte[] privateContent) {
+		this.privateContent = privateContent;
+	}
 	//******* ROBIN END ******//
 
 	/**
@@ -226,7 +242,7 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 	 * @return The content of the message
 	 */
 	public byte[] getContent() {
-		return content;
+		return commonContent;
 	}
 
 	/**
@@ -274,14 +290,29 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 		out.writeInt(operationId);
 		out.writeInt(replyServer);
 
+		/*
 		if (content == null) {
 			out.writeInt(-1);
 		} else {
 			out.writeInt(content.length);
 			out.write(content);
-		}
+		}*/
 
 		//****** ROBIN BEGIN ******//
+		if (commonContent == null) {
+			out.writeInt(-1);
+		} else {
+			out.writeInt(commonContent.length);
+			out.write(commonContent);
+		}
+
+		/*if (privateContent == null) {
+			out.writeInt(-1);
+		} else {
+			out.writeInt(privateContent.length);
+			out.write(privateContent);
+		}*/
+
 		if (metadata == null)
 			out.writeInt(-1);
 		else {
@@ -301,12 +332,23 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 		replyServer = in.readInt();
 
 		int toRead = in.readInt();
-		if (toRead != -1) {
+		/*if (toRead != -1) {
 			content = new byte[toRead];
 			in.readFully(content);
-		}
+		}*/
 
 		//****** ROBIN BEGIN ******//
+		if (toRead != -1) {
+			commonContent = new byte[toRead];
+			in.readFully(commonContent);
+		}
+
+		/*toRead = in.readInt();
+		if (toRead != -1) {
+			privateContent = new byte[toRead];
+			in.readFully(privateContent);
+		}*/
+
 		toRead = in.readInt();
 		if (toRead != -1) {
 			metadata = new byte[toRead];
@@ -402,8 +444,11 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 	public Object clone() throws CloneNotSupportedException {
 
 
+		//TOMMessage clone = new TOMMessage(sender, session, sequence,
+		//		operationId, metadata, content, viewID, type);
+
 		TOMMessage clone = new TOMMessage(sender, session, sequence,
-				operationId, metadata, content, viewID, type);
+				operationId, metadata, commonContent, privateContent, viewID, type);
 
 		clone.setReplyServer(replyServer);
 

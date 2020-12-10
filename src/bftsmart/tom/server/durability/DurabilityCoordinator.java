@@ -419,7 +419,7 @@ public abstract class DurabilityCoordinator implements Recoverable, BatchExecuta
         
         
         @Override
-        public byte[] executeUnordered(byte[] command, MessageContext msgCtx) {
+        public byte[] executeUnordered(byte[] command, byte[] privateData, MessageContext msgCtx) {
             return appExecuteUnordered(command, msgCtx);
         }
         

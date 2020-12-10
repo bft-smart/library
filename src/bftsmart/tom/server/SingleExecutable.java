@@ -40,11 +40,11 @@ public interface SingleExecutable extends Executable {
      * 
      * @return the reply for the request issued by the client
      */
-    public byte[] executeOrdered(byte[] command, MessageContext msgCtx);
+    public byte[] executeOrdered(byte[] command, byte[] privateData, MessageContext msgCtx);
     
-    public default TOMMessage executeOrdered(int processID, int viewID, byte[] command, MessageContext msgCtx) {
+    public default TOMMessage executeOrdered(int processID, int viewID, byte[] command, byte[] privateData, MessageContext msgCtx) {
         
-         byte[] result = executeOrdered(command, msgCtx);
+         byte[] result = executeOrdered(command, privateData, msgCtx);
          
          return getTOMMessage(processID, viewID, command, msgCtx, result);
          

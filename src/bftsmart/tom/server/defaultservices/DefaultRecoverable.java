@@ -414,7 +414,7 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
     }
 
     @Override
-    public byte[] executeUnordered(byte[] command, MessageContext msgCtx) {
+    public byte[] executeUnordered(byte[] command, byte[] privateData, MessageContext msgCtx) {
         return appExecuteUnordered(command, msgCtx);
     }
     

@@ -135,6 +135,13 @@ public abstract class TOMSender implements ReplyReceiver, Closeable, AutoCloseab
 				new TOMMessage(me, session, reqId, operationId, m, viewController.getCurrentViewId(), type));
 	}
 
+	//****** ROBIN BEGIN ******//
+	public void sendMessageToTargets(TOMMessage m, int... targets) {
+		cs.send(useSignatures, targets, m);
+	}
+
+	//****** ROBIN END ******//
+
 	public int getSession(){
 		return session;
 	}

@@ -1,18 +1,18 @@
 /**
-Copyright (c) 2007-2013 Alysson Bessani, Eduardo Alchieri, Paulo Sousa, and the authors indicated in the @author tags
+ Copyright (c) 2007-2013 Alysson Bessani, Eduardo Alchieri, Paulo Sousa, and the authors indicated in the @author tags
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
 
-http://www.apache.org/licenses/LICENSE-2.0
+ http://www.apache.org/licenses/LICENSE-2.0
 
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+ */
 package bftsmart.clientsmanagement;
 
 import java.util.HashMap;
@@ -49,23 +49,23 @@ public class ClientsManager {
     private RequestsTimer timer;
     private HashMap<Integer, ClientData> clientsData = new HashMap<Integer, ClientData>();
     private RequestVerifier verifier;
-    
+
     //Used when the intention is to perform benchmarking with signature verification, but
     //without having to make the clients create one first. Useful to optimize resources
     private byte[] benchMsg = null;
     private byte[] benchSig = null;
     private HashMap<String,Signature> benchEngines = new HashMap<>();
-    
+
     private ReentrantLock clientsLock = new ReentrantLock();
 
     public ClientsManager(ServerViewController controller, RequestsTimer timer, RequestVerifier verifier) {
         this.controller = controller;
         this.timer = timer;
         this.verifier = verifier;
-        
+
         if (controller.getStaticConf().getUseSignatures() == 2) {
             benchMsg = new byte []{3,5,6,7,4,3,5,6,4,7,4,1,7,7,5,4,3,1,4,85,7,5,7,3};
-            benchSig = TOMUtil.signMessage(controller.getStaticConf().getPrivateKey(), benchMsg);            
+            benchSig = TOMUtil.signMessage(controller.getStaticConf().getPrivateKey(), benchMsg);
         }
     }
 
@@ -88,8 +88,8 @@ public class ClientsManager {
             //******* EDUARDO BEGIN **************//
             clientData = new ClientData(clientId,
                     (controller.getStaticConf().getUseSignatures() == 1)
-                    ? controller.getStaticConf().getPublicKey(clientId)
-                    : null);
+                            ? controller.getStaticConf().getPublicKey(clientId)
+                            : null);
             //******* EDUARDO END **************//
             clientsData.put(clientId, clientData);
         }
@@ -108,25 +108,25 @@ public class ClientsManager {
      */
     public RequestList getPendingRequests() {
         RequestList allReq = new RequestList();
-        
+
         clientsLock.lock();
         /******* BEGIN CLIENTS CRITICAL SECTION ******/
-        
+
         List<Entry<Integer, ClientData>> clientsEntryList = new ArrayList<>(clientsData.entrySet().size());
         clientsEntryList.addAll(clientsData.entrySet());
-        
+
         if (controller.getStaticConf().getFairBatch()) // ensure fairness
             Collections.shuffle(clientsEntryList);
 
         logger.debug("Number of active clients: {}", clientsEntryList.size());
-        
+
         for (int i = 0; true; i++) {
-                        
+
             Iterator<Entry<Integer, ClientData>> it = clientsEntryList.iterator();
             int noMoreMessages = 0;
-            
+
             logger.debug("Fetching requests with internal index {}", i);
-            
+
             while (it.hasNext()
                     && allReq.size() < controller.getStaticConf().getMaxBatchSize()
                     && noMoreMessages < clientsEntryList.size()) {
@@ -146,9 +146,9 @@ public class ClientsManager {
 
                 if (request != null) {
                     if(!request.alreadyProposed) {
-                        
+
                         logger.debug("Selected request with sequence number {} from client {}", request.getSequence(), request.getSender());
-                        
+
                         //this client have pending message
                         request.alreadyProposed = true;
                         allReq.addLast(request);
@@ -158,14 +158,14 @@ public class ClientsManager {
                     noMoreMessages++;
                 }
             }
-            
+
             if(allReq.size() == controller.getStaticConf().getMaxBatchSize() ||
                     noMoreMessages == clientsEntryList.size()) {
-                
+
                 break;
             }
         }
-        
+
         /******* END CLIENTS CRITICAL SECTION ******/
         clientsLock.unlock();
         return allReq;
@@ -181,13 +181,13 @@ public class ClientsManager {
         boolean havePending = false;
 
         clientsLock.lock();
-        /******* BEGIN CLIENTS CRITICAL SECTION ******/        
-        
+        /******* BEGIN CLIENTS CRITICAL SECTION ******/
+
         Iterator<Entry<Integer, ClientData>> it = clientsData.entrySet().iterator();
 
         while (it.hasNext() && !havePending) {
             ClientData clientData = it.next().getValue();
-            
+
             clientData.clientLock.lock();
             RequestList reqs = clientData.getPendingRequests();
             if (!reqs.isEmpty()) {
@@ -205,7 +205,7 @@ public class ClientsManager {
         clientsLock.unlock();
         return havePending;
     }
-    
+
     /**
      * Retrieves the number of pending requests
      * @return Number of pending requests
@@ -214,13 +214,13 @@ public class ClientsManager {
         int count = 0;
 
         clientsLock.lock();
-        /******* BEGIN CLIENTS CRITICAL SECTION ******/        
-        
+        /******* BEGIN CLIENTS CRITICAL SECTION ******/
+
         Iterator<Entry<Integer, ClientData>> it = clientsData.entrySet().iterator();
 
         while (it.hasNext()) {
             ClientData clientData = it.next().getValue();
-            
+
             clientData.clientLock.lock();
             RequestList reqs = clientData.getPendingRequests();
             if (!reqs.isEmpty()) {
@@ -277,7 +277,7 @@ public class ClientsManager {
      *
      * @param request the received request
      * @param fromClient the message was received from client or not?
-     * @param storeMessage the message should be stored or not? (read-only requests are not stored)
+     * //@param storeMessage the message should be stored or not? (read-only requests are not stored)
      * @param cs server com. system to be able to send replies to already processed requests
      *
      * @return true if the request is ok and is added to the pending messages
@@ -285,21 +285,21 @@ public class ClientsManager {
      * accounted
      */
     public boolean requestReceived(TOMMessage request, boolean fromClient, ServerCommunicationSystem cs) {
-                
+
         long receptionTime = System.nanoTime();
         long receptionTimestamp = System.currentTimeMillis();
-        
+
         int clientId = request.getSender();
         boolean accounted = false;
 
         ClientData clientData = getClientData(clientId);
-        
+
         clientData.clientLock.lock();
-        
+
         //Is this a leader replay attack?
         if (!fromClient && clientData.getSession() == request.getSession() &&
                 clientData.getLastMessageDelivered() >= request.getSequence()) {
-            
+
             clientData.clientLock.unlock();
             logger.warn("Detected a leader replay attack, rejecting request");
             return false;
@@ -307,7 +307,7 @@ public class ClientsManager {
 
         request.receptionTime = receptionTime;
         request.receptionTimestamp = receptionTimestamp;
-        
+
         /******* BEGIN CLIENTDATA CRITICAL SECTION ******/
         //Logger.println("(ClientsManager.requestReceived) lock for client "+clientData.getClientId()+" acquired");
 
@@ -346,33 +346,33 @@ public class ClientsManager {
             boolean isValid = (!controller.getStaticConf().isBFT() || verifier.isValidRequest(request));
 
             Signature engine = benchEngines.get(Thread.currentThread().getName());
-            
+
             if (engine == null) {
-                
+
                 try {
                     engine = TOMUtil.getSigEngine();
                     engine.initVerify(controller.getStaticConf().getPublicKey());
-                    
+
                     benchEngines.put(Thread.currentThread().getName(), engine);
                 } catch (NoSuchAlgorithmException | InvalidKeyException ex) {
                     logger.error("Signature error.",ex);
                     engine = null;
                 }
             }
-            
+
             //it is a valid new message and I have to verify it's signature
             if (isValid &&
                     ((engine != null && benchMsg != null && benchSig != null && TOMUtil.verifySigForBenchmark(engine, benchMsg, benchSig)) || !request.signed ||
-                    clientData.verifySignature(request.serializedMessage,
-                            request.serializedMessageSignature))) {
-                
+                            clientData.verifySignature(request.serializedMessage,
+                                    request.serializedMessageSignature))) {
+
                 logger.debug("Message from client {} is valid", clientData.getClientId());
 
                 //I don't have the message but it is valid, I will
                 //insert it in the pending requests of this client
 
                 request.recvFromClient = fromClient;
-                clientData.getPendingRequests().add(request); 
+                clientData.getPendingRequests().add(request);
                 clientData.setLastMessageReceived(request.getSequence());
                 clientData.setLastMessageReceivedTime(request.receptionTime);
 
@@ -383,50 +383,86 @@ public class ClientsManager {
 
                 accounted = true;
             } else {
-                
+
                 logger.warn("Message from client {} is invalid", clientData.getClientId());
             }
         } else {
             //I will not put this message on the pending requests list
             if (clientData.getLastMessageReceived() >= request.getSequence()) {
                 //I already have/had this message
-                
+
                 //send reply if it is available
                 TOMMessage reply = clientData.getReply(request.getSequence());
-                
+
                 if (reply != null && cs != null) {
-                    
+
                     if (reply.recvFromClient && fromClient) {
                         logger.info("[CACHE] re-send reply [Sender: " + reply.getSender() + ", sequence: " + reply.getSequence()+", session: " + reply.getSession()+ "]");
                         cs.send(new int[]{request.getSender()}, reply);
 
-                    } 
-                    
+                    }
+
                     else if (!reply.recvFromClient && fromClient) {
                         reply.recvFromClient = true;
                     }
-                    
+
                 }
                 accounted = true;
             } else {
-                
+
                 logger.warn("Message from client {} is too forward", clientData.getClientId());
-                
+
                 //a too forward message... the client must be malicious
                 accounted = false;
             }
         }
 
         /******* END CLIENTDATA CRITICAL SECTION ******/
-        
+
         clientData.clientLock.unlock();
 
         return accounted;
     }
 
+    //****** ROBIN BEGIN ******//
+
+    /**
+     * Removes private content from the request if its exists and stores it.
+     * @param request Client's request
+     * @requires This method must be called after requestReceived method call.
+     */
+    public void extractPrivateContentFrom(TOMMessage request) {
+        byte[] privateContent = request.getPrivateContent();
+        if (privateContent == null)
+            return;
+
+        ClientData clientData = getClientData(request.getSender());
+
+        clientData.clientLock.lock();
+        clientData.storePrivateContent(request.getSequence(), privateContent);
+        clientData.clientLock.unlock();
+        request.setPrivateContent(null);
+    }
+
+    /**
+     * Injects private content into request, if it was previously stored.
+     * @param request Client's request
+     * @requires This method must be called after extractPrivateContentFrom and before requestsOrdered.
+     */
+    public void injectPrivateContentTo(TOMMessage request) {
+        ClientData clientData = getClientData(request.getSender());
+
+        clientData.clientLock.lock();
+        byte[] privateContent = clientData.removePrivateContent(request.getSequence());
+        clientData.clientLock.unlock();
+
+        request.setPrivateContent(privateContent);
+    }
+    //****** ROBIN END ******//
+
     /**
      * Notifies the ClientsManager that these requests were already executed.
-     * 
+     *
      * @param requests the array of requests to account as ordered
      */
     public void requestsOrdered(TOMMessage[] requests) {
@@ -467,7 +503,7 @@ public class ClientsManager {
     public ReentrantLock getClientsLock() {
         return clientsLock;
     }
-    
+
     public void clear() {
         clientsLock.lock();
         clientsData.clear();
@@ -475,9 +511,9 @@ public class ClientsManager {
         logger.info("ClientsManager cleared.");
 
     }
-    
+
     public int numClients() {
-        
+
         return clientsData.size();
     }
 }

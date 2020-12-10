@@ -1,34 +1,35 @@
 /**
-Copyright (c) 2007-2013 Alysson Bessani, Eduardo Alchieri, Paulo Sousa, and the authors indicated in the @author tags
+ Copyright (c) 2007-2013 Alysson Bessani, Eduardo Alchieri, Paulo Sousa, and the authors indicated in the @author tags
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
 
-http://www.apache.org/licenses/LICENSE-2.0
+ http://www.apache.org/licenses/LICENSE-2.0
 
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+ */
 package bftsmart.clientsmanagement;
+
+import bftsmart.tom.core.messages.TOMMessage;
+import bftsmart.tom.util.TOMUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.security.PublicKey;
 import java.security.Signature;
 import java.security.SignatureException;
+import java.util.HashMap;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.concurrent.locks.ReentrantLock;
 
-import bftsmart.tom.core.messages.TOMMessage;
-import bftsmart.tom.util.TOMUtil;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 public class ClientData {
-    
+
     private Logger logger = LoggerFactory.getLogger(this.getClass());
 
     ReentrantLock clientLock = new ReentrantLock();
@@ -48,7 +49,11 @@ public class ClientData {
     private RequestList orderedRequests = new RequestList(5);
 
     private Signature signatureVerificator = null;
-    
+
+    //****** ROBIN BEGIN ******//
+    private final Map<Integer, byte[]> privateContents;
+    //****** ROBIN END ******//
+
     /**
      * Class constructor. Just store the clientId and creates a signature
      * verificator for a given client public key.
@@ -58,6 +63,7 @@ public class ClientData {
      */
     public ClientData(int clientId, PublicKey publicKey) {
         this.clientId = clientId;
+        this.privateContents = new HashMap<>();
         if(publicKey != null) {
             try {
                 signatureVerificator = TOMUtil.getSigEngine();
@@ -134,19 +140,19 @@ public class ClientData {
     }
 
     public boolean removeRequest(TOMMessage request) {
-	lastMessageDelivered = request.getSequence();
-	boolean result = pendingRequests.remove(request);
+        lastMessageDelivered = request.getSequence();
+        boolean result = pendingRequests.remove(request);
         //anb: new code to deal with client requests that arrive after their execution
         orderedRequests.addLast(request);
 
-	for(Iterator<TOMMessage> it = pendingRequests.iterator();it.hasNext();){
-		TOMMessage msg = it.next();
-		if(msg.getSequence()<request.getSequence()){
-			it.remove();
-		}
-	}
+        for(Iterator<TOMMessage> it = pendingRequests.iterator();it.hasNext();){
+            TOMMessage msg = it.next();
+            if(msg.getSequence()<request.getSequence()){
+                it.remove();
+            }
+        }
 
-    	return result;
+        return result;
     }
 
     public TOMMessage getReply(int reqSequence) {
@@ -158,4 +164,15 @@ public class ClientData {
         }
     }
 
+    //****** ROBIN BEGIN ******//
+
+    public void storePrivateContent(int sequence, byte[] privateContent) {
+        privateContents.put(sequence, privateContent);
+    }
+
+    public byte[] removePrivateContent(int sequence) {
+        return privateContents.remove(sequence);
+    }
+
+    //****** ROBIN END ******//
 }

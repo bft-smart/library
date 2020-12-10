@@ -35,7 +35,7 @@ public class MapClient<K, V> implements Map<K, V>{
 			objOut.flush();
 			byteOut.flush();
 			
-			byte[] reply = serviceProxy.invokeOrdered(byteOut.toByteArray());
+			byte[] reply = serviceProxy.invokeOrdered(byteOut.toByteArray(), null);
 			if (reply.length == 0)
 				return null;
 			try (ByteArrayInputStream byteIn = new ByteArrayInputStream(reply);
@@ -61,7 +61,7 @@ public class MapClient<K, V> implements Map<K, V>{
 			objOut.flush();
 			byteOut.flush();
 			
-			byte[] reply = serviceProxy.invokeUnordered(byteOut.toByteArray());
+			byte[] reply = serviceProxy.invokeUnordered(byteOut.toByteArray(), null);
 			if (reply.length == 0)
 				return null;
 			try (ByteArrayInputStream byteIn = new ByteArrayInputStream(reply);
@@ -87,7 +87,7 @@ public class MapClient<K, V> implements Map<K, V>{
 			objOut.flush();
 			byteOut.flush();
 			
-			byte[] reply = serviceProxy.invokeOrdered(byteOut.toByteArray());
+			byte[] reply = serviceProxy.invokeOrdered(byteOut.toByteArray(), null);
 			if (reply.length == 0)
 				return null;
 			try (ByteArrayInputStream byteIn = new ByteArrayInputStream(reply);
@@ -109,7 +109,7 @@ public class MapClient<K, V> implements Map<K, V>{
 			objOut.flush();
 			byteOut.flush();
 			
-			byte[] reply = serviceProxy.invokeUnordered(byteOut.toByteArray());
+			byte[] reply = serviceProxy.invokeUnordered(byteOut.toByteArray(), null);
 			try (ByteArrayInputStream byteIn = new ByteArrayInputStream(reply);
 					ObjectInput objIn = new ObjectInputStream(byteIn)) {
 				return objIn.readInt();
@@ -132,7 +132,7 @@ public class MapClient<K, V> implements Map<K, V>{
 			objOut.flush();
 			byteOut.flush();
 			
-			byte[] reply = serviceProxy.invokeUnordered(byteOut.toByteArray());
+			byte[] reply = serviceProxy.invokeUnordered(byteOut.toByteArray(), null);
 			try (ByteArrayInputStream byteIn = new ByteArrayInputStream(reply);
 					ObjectInput objIn = new ObjectInputStream(byteIn)) {
 				int size = objIn.readInt();

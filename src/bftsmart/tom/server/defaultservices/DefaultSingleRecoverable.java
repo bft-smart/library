@@ -71,7 +71,7 @@ public abstract class DefaultSingleRecoverable implements Recoverable, SingleExe
     }
     
     @Override
-    public byte[] executeOrdered(byte[] command, MessageContext msgCtx) {
+    public byte[] executeOrdered(byte[] command, byte[] privateData, MessageContext msgCtx) {
         
         return executeOrdered(command, msgCtx, false);
         
@@ -292,7 +292,7 @@ public abstract class DefaultSingleRecoverable implements Recoverable, SingleExe
     }
           
     @Override
-    public byte[] executeUnordered(byte[] command, MessageContext msgCtx) {
+    public byte[] executeUnordered(byte[] command, byte[] privateData, MessageContext msgCtx) {
         return appExecuteUnordered(command, msgCtx);
     }
     
