@@ -246,7 +246,7 @@ public class ServiceProxy extends TOMSender {
 						getViewManager().getCurrentViewProcesses().length);
 
 				TOMMessage sm = new TOMMessage(getProcessId(),getSession(), reqId, operationId, requestCommonData,
-						getViewManager().getCurrentViewId(), requestType);
+						new byte[0], getViewManager().getCurrentViewId(), requestType);
 				sm.setReplyServer(replyServer);
 
 				TOMulticast(sm);
@@ -259,14 +259,11 @@ public class ServiceProxy extends TOMSender {
 				int oid = operationId;
 				int vid = getViewManager().getCurrentViewId();
 				if (requestPrivateData == null) {
-					m = new TOMMessage(pid, sid, rid, oid, requestCommonData, vid, requestType);
+					m = new TOMMessage(pid, sid, rid, oid, requestCommonData, new byte[0], vid, requestType);
 					TOMulticast(m);
 				} else {
-					for (Map.Entry<Integer, byte[]> entry : requestPrivateData.entrySet()) {
-						m = new TOMMessage(pid, sid, rid, oid, null, requestCommonData, entry.getValue(), vid,
-								requestType);
-						sendMessageToTargets(m, entry.getKey());
-					}
+					sendMessageToTargets(requestCommonData, requestPrivateData, rid, oid, reqType,
+							getViewManager().getCurrentViewProcesses());
 				}
 				//****** ROBIN END ******//
 				//TOMulticast(request, reqId, operationId, reqType);

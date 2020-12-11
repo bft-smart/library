@@ -25,10 +25,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.Signature;
 import java.security.spec.InvalidKeySpecException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Random;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
@@ -40,6 +37,7 @@ import javax.crypto.SecretKey;
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.PBEKeySpec;
 
+import bftsmart.tom.core.messages.TOMMessageType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -296,7 +294,6 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 		}
 
 		int sent = 0;
-
 		for (int target : targetArray) {
 			// This is done to avoid a race condition with the writeAndFush method. Since
 			// the method is asynchronous,
@@ -309,10 +306,10 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 				continue;
 			}
 
-			sm.destination = targets[target];
+			sm.destination = target;
 
 			rl.readLock().lock();
-			Channel channel = ((NettyClientServerSession) sessionClientToReplica.get(targets[target])).getChannel();
+			Channel channel = ((NettyClientServerSession) sessionClientToReplica.get(target)).getChannel();
 			rl.readLock().unlock();
 			if (channel.isActive()) {
 				sm.signed = sign;
@@ -322,7 +319,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 
 				sent++;
 			} else {
-				logger.debug("Channel to " + targets[target] + " is not connected");
+				logger.debug("Channel to " + target + " is not connected");
 			}
 		}
 
@@ -333,6 +330,90 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 		if (targets.length == 1 && sent == 0)
 			throw new RuntimeException("Server not connected");
 	}
+
+	//******* ROBIN BEGIN **************//
+	@Override
+	public void send(boolean sign, int[] targets, byte[] commonData, Map<Integer, byte[]> privateData, int sender,
+					 int session, int reqId, int operationId, int view, TOMMessageType type) {
+		TOMMessage sm = new TOMMessage(sender, session, reqId, operationId, commonData, null, view, type);
+		int quorum;
+
+		Integer[] targetArray = Arrays.stream(targets).boxed().toArray(Integer[]::new);
+		Collections.shuffle(Arrays.asList(targetArray), new Random());
+
+		if (controller.getStaticConf().isBFT()) {
+			quorum = (int) Math.ceil((controller.getCurrentViewN() + controller.getCurrentViewF()) / 2.0) + 1;
+		} else {
+			quorum = (int) Math.ceil((controller.getCurrentViewN()) / 2.0) + 1;
+		}
+
+		listener.waitForChannels(quorum); // wait for the previous transmission to complete
+		logger.debug("Sending request from " + sm.getSender() + " with sequence number " + sm.getSequence() + " to "
+				+ Arrays.toString(targetArray));
+
+		if (sm.serializedMessage == null) {
+
+			// serialize message
+			DataOutputStream dos = null;
+			try {
+				ByteArrayOutputStream baos = new ByteArrayOutputStream();
+				dos = new DataOutputStream(baos);
+				sm.wExternal(dos);
+				dos.flush();
+				sm.serializedMessage = baos.toByteArray();
+			} catch (IOException ex) {
+				logger.debug("Impossible to serialize message: " + sm);
+			}
+		}
+
+		// Logger.println("Sending message with "+sm.serializedMessage.length+" bytes of
+		// content.");
+
+		// produce signature
+		if (sign && sm.serializedMessageSignature == null) {
+			sm.serializedMessageSignature = signMessage(privKey, sm.serializedMessage);
+		}
+
+		int sent = 0;
+		for (int target : targetArray) {
+			// This is done to avoid a race condition with the writeAndFush method. Since
+			// the method is asynchronous,
+			// each iteration of this loop could overwrite the destination of the previous
+			// one
+			try {
+				sm = (TOMMessage) sm.clone();
+			} catch (CloneNotSupportedException e) {
+				logger.error("Failed to clone TOMMessage", e);
+				continue;
+			}
+
+			byte[] pd = privateData.get(target);
+			sm.setPrivateContent(pd == null ? new byte[0] : pd);
+			sm.destination = target;
+
+			rl.readLock().lock();
+			Channel channel = ((NettyClientServerSession) sessionClientToReplica.get(target)).getChannel();
+			rl.readLock().unlock();
+			if (channel.isActive()) {
+				sm.signed = sign;
+				ChannelFuture f = channel.writeAndFlush(sm);
+
+				f.addListener(listener);
+
+				sent++;
+			} else {
+				logger.debug("Channel to " + target + " is not connected");
+			}
+		}
+
+		if (targets.length > controller.getCurrentViewF() && sent < controller.getCurrentViewF() + 1) {
+			// if less than f+1 servers are connected send an exception to the client
+			throw new RuntimeException("Impossible to connect to servers!");
+		}
+		if (targets.length == 1 && sent == 0)
+			throw new RuntimeException("Server not connected");
+	}
+	//******* ROBIN END **************//
 
 	public void sign(TOMMessage sm) {
 		// serialize message

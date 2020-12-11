@@ -293,7 +293,7 @@ public class MessageContext implements Serializable {
      */
     public TOMMessage recreateTOMMessage(byte[] content) {
 
-        TOMMessage ret = new TOMMessage(sender, session, sequence, operationId, content, viewID, type);
+        TOMMessage ret = new TOMMessage(sender, session, sequence, operationId, content, new byte[0], viewID, type);
         ret.setReplyServer(replyServer);
         ret.serializedMessageSignature = signature;
         ret.serializedMessage = TOMMessage.messageToBytes(ret);

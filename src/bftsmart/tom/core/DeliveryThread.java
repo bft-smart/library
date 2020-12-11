@@ -16,6 +16,7 @@ limitations under the License.
 package bftsmart.tom.core;
 
 import java.util.ArrayList;
+import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.LinkedBlockingQueue;
 
 import java.util.concurrent.atomic.AtomicInteger;
@@ -48,7 +49,7 @@ public final class DeliveryThread extends Thread {
 
 	private boolean doWork = true;
 	private int lastReconfig = -2;
-	private final LinkedBlockingQueue<Decision> decided;
+	private final LinkedBlockingDeque<Decision> decided;
 	private final TOMLayer tomLayer; // TOM layer
 	private final ServiceReplica receiver; // Object that receives requests from clients
 	private final Recoverable recoverer; // Object that uses state transfer
@@ -71,7 +72,7 @@ public final class DeliveryThread extends Thread {
 	public DeliveryThread(TOMLayer tomLayer, ServiceReplica receiver, Recoverable recoverer,
 			ServerViewController controller) {
 		super("Delivery Thread");
-		this.decided = new LinkedBlockingQueue<>();
+		this.decided = new LinkedBlockingDeque<>();
 
 		this.tomLayer = tomLayer;
 		this.receiver = receiver;
@@ -99,11 +100,9 @@ public final class DeliveryThread extends Thread {
 			// clean the ordered messages from the pending buffer
 			TOMMessage[] requests = extractMessagesFromDecision(dec);
 			//****** ROBIN BEGIN ******//
-			for (TOMMessage request : requests) {
-				tomLayer.clientsManager.injectPrivateContentTo(request);
-			}
+
 			//****** ROBIN END ******//
-			tomLayer.clientsManager.requestsOrdered(requests);
+			//tomLayer.clientsManager.requestsOrdered(requests);
 
 			notEmptyQueue.signalAll();
 			decidedLock.unlock();
@@ -153,7 +152,7 @@ public final class DeliveryThread extends Thread {
 		deliverLock.lock();
 	}
 
-	//Robin - BEGIN
+	//****** ROBIN BEGIN ******//
 	public void iAmWaitingForDeliverLock() {
 		waitingForLock.incrementAndGet();
 	}
@@ -171,7 +170,7 @@ public final class DeliveryThread extends Thread {
 		recoverer.setState(state);
 	}
 
-	//Robin - END
+	//****** ROBIN END ******//
 
 	public void deliverUnlock() {
 		deliverLock.unlock();
@@ -262,8 +261,28 @@ public final class DeliveryThread extends Thread {
 					CertifiedDecision[] cDecs;
 					cDecs = new CertifiedDecision[requests.length];
 					int count = 0;
+					boolean hasInjectedPrivateData = true;
 					for (Decision d : decisions) {
-						requests[count] = extractMessagesFromDecision(d);
+						TOMMessage[] decisionRequests = extractMessagesFromDecision(d);
+						//****** ROBIN BEGIN ******//
+						for (TOMMessage request : decisionRequests) {
+							if (request.getPrivateContent() == null)
+								tomLayer.clientsManager.injectPrivateContentTo(request);
+							if (request.getPrivateContent() == null) {
+								hasInjectedPrivateData = false;
+								logger.warn("Request from {} does not have injected private data", request.getSender());
+								for (int i = decisions.size() - 1; i >= 0; i--) {
+									Decision dec = decisions.get(i);
+									decided.putFirst(dec);
+								}
+								break;
+							}
+						}
+						if (!hasInjectedPrivateData)
+							break;
+						//****** ROBIN END ******//
+
+						requests[count] = decisionRequests;
 						consensusIds[count] = d.getConsensusId();
 						leadersIds[count] = d.getLeader();
 						regenciesIds[count] = d.getRegency();
@@ -277,18 +296,29 @@ public final class DeliveryThread extends Thread {
 							long time = requests[count][0].timestamp;
 							long seed = requests[count][0].seed;
 							int numOfNonces = requests[count][0].numOfNonces;
+							//****** ROBIN BEGIN ******//
+							d.firstMessageProposed.setPrivateContent(requests[count][0].getPrivateContent());
+							//****** ROBIN END ******//
 							requests[count][0] = d.firstMessageProposed;
 							requests[count][0].timestamp = time;
 							requests[count][0].seed = seed;
 							requests[count][0].numOfNonces = numOfNonces;
 						}
-
 						count++;
 					}
-
+					//****** ROBIN BEGIN ******//
+					if (!hasInjectedPrivateData) {
+						continue;
+					}
+					//****** ROBIN END ******//
 					Decision lastDecision = decisions.get(decisions.size() - 1);
 
 					if (requests != null && requests.length > 0) {
+						//****** ROBIN BEGIN ******//
+						for (TOMMessage[] decisionRequests : requests) {
+							tomLayer.clientsManager.requestsOrdered(decisionRequests);
+						}
+						//****** ROBIN END ******//
 						deliverMessages(consensusIds, regenciesIds, leadersIds, cDecs, requests);
 
 						// ******* EDUARDO BEGIN ***********//
@@ -339,7 +369,7 @@ public final class DeliveryThread extends Thread {
 			// TODO: this condition is possible?
 
 			logger.debug("Interpreting and verifying batched requests.");
-
+			logger.warn("At this point, request must have been deserialized");
 			// obtain an array of requests from the decisions obtained
 			BatchReader batchReader = new BatchReader(dec.getValue(), controller.getStaticConf().getUseSignatures() == 1);
 			requests = batchReader.deserialiseRequests(controller);

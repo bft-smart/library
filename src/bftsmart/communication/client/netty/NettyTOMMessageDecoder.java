@@ -105,6 +105,15 @@ public class NettyTOMMessageDecoder extends ByteToMessageDecoder {
             buffer.readBytes(signature);
         }
 
+        //****** ROBIN BEGIN ******//
+        size = buffer.readInt();
+        byte[] privateData = null;
+        if (size > -1) {
+            privateData = new byte[size];
+            buffer.readBytes(privateData);
+        }
+        //****** ROBIN END ******//
+
         DataInputStream dis = null;
         TOMMessage sm = null;
 
@@ -119,6 +128,10 @@ public class NettyTOMMessageDecoder extends ByteToMessageDecoder {
                 sm.serializedMessageSignature = signature;
                 sm.signed = true;
             }
+
+            //****** ROBIN BEGIN ******//
+            sm.setPrivateContent(privateData);
+            //****** ROBIN END ******//
 
             if (!isClient) {                
                 rl.readLock().lock();                

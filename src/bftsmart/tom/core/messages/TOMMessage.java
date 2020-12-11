@@ -119,7 +119,7 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 	 * @param view The view in which the message was sent
 	 * @param type Ordered or Unordered request
 	 */
-	public TOMMessage(int sender, int session, int sequence, int operationId, byte[] content, int view, TOMMessageType type) {
+	/*public TOMMessage(int sender, int session, int sequence, int operationId, byte[] content, int view, TOMMessageType type) {
 		super(sender);
 		this.session = session;
 		this.sequence = sequence;
@@ -128,9 +128,37 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 		buildId();
 		this.commonContent = content;
 		this.type = type;
-	}
+	}*/
 
 	//****** ROBIN BEGIN ******//
+	/**
+	 * Creates a new instance of TOMMessage with optional metadata. This one has an
+	 * operationId parameter
+	 * used for FIFO executions
+	 * @param sender The client id
+	 * @param session The session id of the sender
+	 * @param sequence The sequence number created based on the message type
+	 * @param operationId The operation sequence number disregarding message type
+	 * @param commonContent The command to be executed
+	 * @param view The view in which the message was sent
+	 * @param type Ordered or Unordered request
+	 */
+	public TOMMessage(int sender, int session, int sequence, int operationId,
+					  byte[] commonContent, byte[] privateContent, int view, TOMMessageType type) {
+		super(sender);
+		this.session = session;
+		this.sequence = sequence;
+		this.operationId = operationId;
+		this.viewID = view;
+		buildId();
+		//****** ROBIN BEGIN ******//
+		this.commonContent = commonContent;
+		this.privateContent = privateContent;
+		//******* ROBIN END ******//
+		//this.content = content;
+		this.type = type;
+	}
+
 	/**
 	 * Creates a new instance of TOMMessage with optional metadata. This one has an
 	 * operationId parameter

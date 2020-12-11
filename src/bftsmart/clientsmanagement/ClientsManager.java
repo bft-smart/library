@@ -433,12 +433,15 @@ public class ClientsManager {
      */
     public void extractPrivateContentFrom(TOMMessage request) {
         byte[] privateContent = request.getPrivateContent();
-        if (privateContent == null)
+        if (privateContent == null) {
+            logger.warn("Private data was null");
             return;
+        }
 
         ClientData clientData = getClientData(request.getSender());
 
         clientData.clientLock.lock();
+        logger.info("Storing private data from {} with id {} and data {}", request.getSender(), request.getSequence(), privateContent);
         clientData.storePrivateContent(request.getSequence(), privateContent);
         clientData.clientLock.unlock();
         request.setPrivateContent(null);
@@ -455,7 +458,7 @@ public class ClientsManager {
         clientData.clientLock.lock();
         byte[] privateContent = clientData.removePrivateContent(request.getSequence());
         clientData.clientLock.unlock();
-
+        logger.info("Injecting private data from {} with id {} and data {}", request.getSender(), request.getSequence(), privateContent);
         request.setPrivateContent(privateContent);
     }
     //****** ROBIN END ******//

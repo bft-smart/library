@@ -15,6 +15,7 @@ limitations under the License.
 */
 package bftsmart.tom.core;
 
+import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
@@ -122,7 +123,7 @@ public abstract class TOMSender implements ReplyReceiver, Closeable, AutoCloseab
 
 	public void TOMulticast(byte[] m, int reqId, int operationId, TOMMessageType reqType) {
 		cs.send(useSignatures, viewController.getCurrentViewProcesses(),
-				new TOMMessage(me, session, reqId, operationId, m, viewController.getCurrentViewId(),
+				new TOMMessage(me, session, reqId, operationId, m, new byte[0], viewController.getCurrentViewId(),
 						reqType));
 	}
 
@@ -132,12 +133,15 @@ public abstract class TOMSender implements ReplyReceiver, Closeable, AutoCloseab
 			type = TOMMessageType.ASK_STATUS;
 		}
 		cs.send(useSignatures, targets,
-				new TOMMessage(me, session, reqId, operationId, m, viewController.getCurrentViewId(), type));
+				new TOMMessage(me, session, reqId, operationId, m, new byte[0], viewController.getCurrentViewId(), type));
 	}
 
 	//****** ROBIN BEGIN ******//
-	public void sendMessageToTargets(TOMMessage m, int... targets) {
-		cs.send(useSignatures, targets, m);
+
+	public void sendMessageToTargets(byte[] commonData, Map<Integer, byte[]> privateData, int reqId, int operationId,
+									 TOMMessageType type, int[] targets) {
+		cs.send(useSignatures, targets, commonData, privateData, me, session, reqId, operationId,
+				viewController.getCurrentViewId(), type);
 	}
 
 	//****** ROBIN END ******//

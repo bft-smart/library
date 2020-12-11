@@ -16,6 +16,9 @@ limitations under the License.
 package bftsmart.communication.client;
 
 import bftsmart.tom.core.messages.TOMMessage;
+import bftsmart.tom.core.messages.TOMMessageType;
+
+import java.util.Map;
 
 /**
  * Methods that should be implemented by the client side of the client-server communication system
@@ -24,6 +27,12 @@ import bftsmart.tom.core.messages.TOMMessage;
  */
 public interface CommunicationSystemClientSide {
    public void send(boolean sign, int[] targets, TOMMessage sm);
+
+   //******* ROBIN BEGIN **************//
+   public void send(boolean sign, int[] targets, byte[] commonData, Map<Integer, byte[]> privateData, int sender,
+                    int session, int reqId, int operationId, int view, TOMMessageType type);
+   //******* ROBIN END **************//
+
    public void setReplyReceiver(ReplyReceiver trr);
    public void sign(TOMMessage sm);
    public void close();

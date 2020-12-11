@@ -56,6 +56,11 @@ public class NettyTOMMessageEncoder extends MessageToByteEncoder<TOMMessage> {
         
         int dataLength = Integer.BYTES + msgData.length +
                 Integer.BYTES + (signatureData != null ? signatureData.length : 0);
+
+        //****** ROBIN BEGIN ******//
+        byte[] privateData = sm.getPrivateContent();
+        dataLength += Integer.BYTES + (privateData == null ? -1 : privateData.length);
+        //****** ROBIN END ******//
         
         /* msg size */
         buffer.writeInt(dataLength);
@@ -71,6 +76,12 @@ public class NettyTOMMessageEncoder extends MessageToByteEncoder<TOMMessage> {
         } else {
                 buffer.writeInt(0);
         }
+
+        //****** ROBIN BEGIN ******//
+        buffer.writeInt(privateData == null ? -1 : privateData.length);
+        if (privateData != null)
+            buffer.writeBytes(privateData);
+        //****** ROBIN END ******//
         
         context.flush();
     }

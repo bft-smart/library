@@ -47,7 +47,6 @@ public final class ForwardedMessage extends SystemMessage {
     @Override
     public void writeExternal(ObjectOutput out) throws IOException {
         super.writeExternal(out);
-
         out.writeInt(request.serializedMessage.length);
         out.write(request.serializedMessage);
         out.writeBoolean(request.signed);
@@ -56,12 +55,18 @@ public final class ForwardedMessage extends SystemMessage {
             out.writeInt(request.serializedMessageSignature.length);
             out.write(request.serializedMessageSignature);
         }
+
+        //****** ROBIN BEGIN ******//
+        byte[] privateData = request.getPrivateContent();
+        out.writeInt(request == null ? -1 : privateData.length);
+        if (privateData != null)
+            out.write(privateData);
+        //****** ROBIN END ******//
     }
 
     @Override
     public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
         super.readExternal(in);
-
         byte[] serReq = new byte[in.readInt()];
         in.readFully(serReq);
 
@@ -77,6 +82,15 @@ public final class ForwardedMessage extends SystemMessage {
             request.serializedMessageSignature = serReqSign;
 
         }
+
+        //****** ROBIN BEGIN ******//
+        int size = in.readInt();
+        if (size > -1) {
+            byte[] privateData = new byte[size];
+            in.readFully(privateData);
+            request.setPrivateContent(privateData);
+        }
+        //****** ROBIN END ******//
     }
 
 }
