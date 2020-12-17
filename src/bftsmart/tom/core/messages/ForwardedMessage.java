@@ -58,7 +58,7 @@ public final class ForwardedMessage extends SystemMessage {
 
         //****** ROBIN BEGIN ******//
         byte[] privateData = request.getPrivateContent();
-        out.writeInt(request == null ? -1 : privateData.length);
+        out.writeInt(privateData == null ? -1 : privateData.length);
         if (privateData != null)
             out.write(privateData);
         //****** ROBIN END ******//
