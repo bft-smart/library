@@ -270,7 +270,6 @@ public final class DeliveryThread extends Thread {
 							if (metadata != null && metadata.length > 1 && metadata[1] == 1 && request.getPrivateContent() == null) {
 								tomLayer.clientsManager.injectPrivateContentTo(request);
 								if (request.getPrivateContent() == null) {
-									logger.info("Waiting for private data!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 									hasInjectedPrivateData = false;
 									logger.debug("Request from {} does not have injected private data", request.getSender());
 									for (int i = decisions.size() - 1; i >= 0; i--) {
