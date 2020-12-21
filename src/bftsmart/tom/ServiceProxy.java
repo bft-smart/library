@@ -259,7 +259,7 @@ public class ServiceProxy extends TOMSender {
 				int oid = operationId;
 				int vid = getViewManager().getCurrentViewId();
 				if (requestPrivateData == null) {
-					m = new TOMMessage(pid, sid, rid, oid, requestCommonData, new byte[0], vid, requestType);
+					m = new TOMMessage(pid, sid, rid, oid, new byte[] {0, 0}, requestCommonData, null, vid, requestType);
 					TOMulticast(m);
 				} else {
 					sendMessageToTargets(requestCommonData, requestPrivateData, rid, oid, reqType,

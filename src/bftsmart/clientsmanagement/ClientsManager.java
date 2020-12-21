@@ -434,7 +434,6 @@ public class ClientsManager {
     public void extractPrivateContentFrom(TOMMessage request) {
         byte[] privateContent = request.getPrivateContent();
         if (privateContent == null) {
-            logger.warn("Private data was null");
             return;
         }
 

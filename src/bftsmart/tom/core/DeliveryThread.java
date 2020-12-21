@@ -266,16 +266,19 @@ public final class DeliveryThread extends Thread {
 						TOMMessage[] decisionRequests = extractMessagesFromDecision(d);
 						//****** ROBIN BEGIN ******//
 						for (TOMMessage request : decisionRequests) {
-							if (request.getPrivateContent() == null)
+							byte[] metadata = request.getMetadata();
+							if (metadata != null && metadata.length > 1 && metadata[1] == 1 && request.getPrivateContent() == null) {
 								tomLayer.clientsManager.injectPrivateContentTo(request);
-							if (request.getPrivateContent() == null) {
-								hasInjectedPrivateData = false;
-								logger.warn("Request from {} does not have injected private data", request.getSender());
-								for (int i = decisions.size() - 1; i >= 0; i--) {
-									Decision dec = decisions.get(i);
-									decided.putFirst(dec);
+								if (request.getPrivateContent() == null) {
+									logger.info("Waiting for private data!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+									hasInjectedPrivateData = false;
+									logger.debug("Request from {} does not have injected private data", request.getSender());
+									for (int i = decisions.size() - 1; i >= 0; i--) {
+										Decision dec = decisions.get(i);
+										decided.putFirst(dec);
+									}
+									break;
 								}
-								break;
 							}
 						}
 						if (!hasInjectedPrivateData)
