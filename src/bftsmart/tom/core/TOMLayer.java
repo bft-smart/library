@@ -374,7 +374,8 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
             if (clientsManager.requestReceived(msg, true, communication)) {
                 //****** ROBIN BEGIN ******//
-                clientsManager.extractPrivateContentFrom(msg);
+                if (msg.getMetadata() != null && msg.getMetadata().length > 1 && msg.getMetadata()[1] == 1)
+                    clientsManager.extractPrivateContentFrom(msg);
                 //****** ROBIN END ******//
                 if(controller.getStaticConf().getBatchTimeout() == -1) {
                     haveMessages();
