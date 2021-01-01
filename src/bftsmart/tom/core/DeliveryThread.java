@@ -15,15 +15,6 @@ limitations under the License.
 */
 package bftsmart.tom.core;
 
-import java.util.ArrayList;
-import java.util.concurrent.LinkedBlockingDeque;
-import java.util.concurrent.LinkedBlockingQueue;
-
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.locks.Condition;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
-
 import bftsmart.consensus.Decision;
 import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.statemanagement.ApplicationState;
@@ -34,9 +25,14 @@ import bftsmart.tom.core.messages.TOMMessageType;
 import bftsmart.tom.leaderchange.CertifiedDecision;
 import bftsmart.tom.server.Recoverable;
 import bftsmart.tom.util.BatchReader;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.ArrayList;
+import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * This class implements a thread which will deliver totally ordered requests to
@@ -58,14 +54,14 @@ public final class DeliveryThread extends Thread {
 	private final Condition notEmptyQueue = decidedLock.newCondition();
 
 	//Robin - BEGIN
-	private AtomicInteger waitingForLock = new AtomicInteger(0);
-	private boolean isRefreshing;//get deliverLock before modifying this variable
+	private boolean stoppingDelivery;
+	public Lock stoppingDeliveryLock = new ReentrantLock(true);
+	Condition stoppingDeliveryCondition = stoppingDeliveryLock.newCondition();
 	//Robin - END
-
 
 	/**
 	 * Creates a new instance of DeliveryThread
-	 * 
+	 *
 	 * @param tomLayer TOM layer
 	 * @param receiver Object that receives requests from clients
 	 */
@@ -88,7 +84,7 @@ public final class DeliveryThread extends Thread {
 
 	/**
 	 * Invoked by the TOM layer, to deliver a decision
-	 * 
+	 *
 	 * @param dec Decision established from the consensus
 	 */
 	public void delivery(Decision dec) {
@@ -96,13 +92,6 @@ public final class DeliveryThread extends Thread {
 		try {
 			decidedLock.lock();
 			decided.put(dec);
-
-			// clean the ordered messages from the pending buffer
-			TOMMessage[] requests = extractMessagesFromDecision(dec);
-			//****** ROBIN BEGIN ******//
-
-			//****** ROBIN END ******//
-			//tomLayer.clientsManager.requestsOrdered(requests);
 
 			notEmptyQueue.signalAll();
 			decidedLock.unlock();
@@ -137,10 +126,10 @@ public final class DeliveryThread extends Thread {
 		}
 		return false;
 	}
-
 	/** THIS IS JOAO'S CODE, TO HANDLE STATE TRANSFER */
 	private ReentrantLock deliverLock = new ReentrantLock();
 	private Condition canDeliver = deliverLock.newCondition();
+
 
 	public void deliverLock() {
 		// release the delivery lock to avoid blocking on state transfer
@@ -153,17 +142,21 @@ public final class DeliveryThread extends Thread {
 	}
 
 	//****** ROBIN BEGIN ******//
-	public void iAmWaitingForDeliverLock() {
-		waitingForLock.incrementAndGet();
+	public void pauseDecisionDelivery() {
+		stoppingDeliveryLock.lock();
+		stoppingDelivery = true;
+		decidedLock.lock();
+		notEmptyQueue.signalAll();
+		decidedLock.unlock();
+		stoppingDeliveryLock.unlock();
 	}
 
-	public void iAmNotWaitingForDeliverLock() {
-		if (waitingForLock.get() > 0)
-			waitingForLock.decrementAndGet();
-	}
-
-	public void setRefreshingState(boolean isRefreshing) {
-		this.isRefreshing = isRefreshing;
+	public void resumeDecisionDelivery() {
+		stoppingDeliveryLock.lock();
+		stoppingDelivery = false;
+		stoppingDeliveryCondition.signalAll();
+		stoppingDeliveryLock.unlock();
+		logger.info("Decision delivery resumed");
 	}
 
 	public void refreshState(ApplicationState state) {
@@ -213,15 +206,16 @@ public final class DeliveryThread extends Thread {
 	public void run() {
 		boolean init = true;
 		while (doWork) {
+			stoppingDeliveryLock.lock();
+			if (stoppingDelivery) {
+				logger.info("Decision delivery paused");
+				stoppingDeliveryCondition.awaitUninterruptibly();
+			}
+			stoppingDeliveryLock.unlock();
 			/** THIS IS JOAO'S CODE, TO HANDLE STATE TRANSFER */
-			if (waitingForLock.get() > 0)
-				continue;
 			deliverLock();
-			while (tomLayer.isRetrievingState() || isRefreshing) {
-				if (isRefreshing)
-					logger.info("Waiting for refresh");
-				else
-					logger.info("Retrieving State");
+			while (tomLayer.isRetrievingState()) {
+				logger.info("Retrieving State");
 				canDeliver.awaitUninterruptibly();
 
 				// if (tomLayer.getLastExec() == -1)
