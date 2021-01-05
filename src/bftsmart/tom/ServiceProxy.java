@@ -175,8 +175,8 @@ public class ServiceProxy extends TOMSender {
 	 * @param requestCommonData to be sent
 	 * @return The reply from the replicas related to request
 	 */
-	public byte[] invokeOrdered(byte[] requestCommonData, Map<Integer, byte[]> requestPrivateData) {
-		return invoke(TOMMessageType.ORDERED_REQUEST, requestCommonData, requestPrivateData);
+	public byte[] invokeOrdered(byte[] requestCommonData, Map<Integer, byte[]> requestPrivateData, byte metadata) {
+		return invoke(TOMMessageType.ORDERED_REQUEST, requestCommonData, requestPrivateData, metadata);
 	}
 
 	/**
@@ -187,8 +187,8 @@ public class ServiceProxy extends TOMSender {
 	 * @param requestCommonData to be sent
 	 * @return The reply from the replicas related to request
 	 */
-	public byte[] invokeUnordered(byte[] requestCommonData, Map<Integer, byte[]> requestPrivateData) {
-		return invoke(TOMMessageType.UNORDERED_REQUEST, requestCommonData, requestPrivateData);
+	public byte[] invokeUnordered(byte[] requestCommonData, Map<Integer, byte[]> requestPrivateData, byte metadata) {
+		return invoke(TOMMessageType.UNORDERED_REQUEST, requestCommonData, requestPrivateData, metadata);
 	}
 
 	/**
@@ -201,8 +201,8 @@ public class ServiceProxy extends TOMSender {
 	 * @param requestCommonData to be sent
 	 * @return The reply from the replicas related to request
 	 */
-	public byte[] invokeUnorderedHashed(byte[] requestCommonData, Map<Integer, byte[]> requestPrivateData) {
-		return invoke(TOMMessageType.UNORDERED_HASHED_REQUEST, requestCommonData, requestPrivateData);
+	public byte[] invokeUnorderedHashed(byte[] requestCommonData, Map<Integer, byte[]> requestPrivateData, byte metadata) {
+		return invoke(TOMMessageType.UNORDERED_HASHED_REQUEST, requestCommonData, requestPrivateData, metadata);
 	}
 
 	/**
@@ -216,7 +216,8 @@ public class ServiceProxy extends TOMSender {
 	 *
 	 * @return The reply from the replicas related to request
 	 */
-	public byte[] invoke(TOMMessageType reqType, byte[] requestCommonData, Map<Integer, byte[]> requestPrivateData) {
+	public byte[] invoke(TOMMessageType reqType, byte[] requestCommonData, Map<Integer, byte[]> requestPrivateData,
+						 byte metadata) {
 
 		try {
 
@@ -246,7 +247,7 @@ public class ServiceProxy extends TOMSender {
 						getViewManager().getCurrentViewProcesses().length);
 
 				TOMMessage sm = new TOMMessage(getProcessId(),getSession(), reqId, operationId, requestCommonData,
-						new byte[0], getViewManager().getCurrentViewId(), requestType);
+						new byte[] {metadata, 0}, getViewManager().getCurrentViewId(), requestType);
 				sm.setReplyServer(replyServer);
 
 				TOMulticast(sm);
@@ -259,10 +260,10 @@ public class ServiceProxy extends TOMSender {
 				int oid = operationId;
 				int vid = getViewManager().getCurrentViewId();
 				if (requestPrivateData == null) {
-					m = new TOMMessage(pid, sid, rid, oid, new byte[] {0, 0}, requestCommonData, null, vid, requestType);
+					m = new TOMMessage(pid, sid, rid, oid, new byte[] {metadata, 0}, requestCommonData, null, vid, requestType);
 					TOMulticast(m);
 				} else {
-					sendMessageToTargets(requestCommonData, requestPrivateData, rid, oid, reqType,
+					sendMessageToTargets(requestCommonData, requestPrivateData, metadata, rid, oid, reqType,
 							getViewManager().getCurrentViewProcesses());
 				}
 				//****** ROBIN END ******//
@@ -280,7 +281,7 @@ public class ServiceProxy extends TOMSender {
 					if (!this.sm.tryAcquire(invokeUnorderedHashedTimeout, TimeUnit.SECONDS)) {
 						logger.info("######## UNORDERED HASHED REQUEST TIMOUT ########");
 						canSendLock.unlock();
-						return invoke(TOMMessageType.ORDERED_REQUEST, requestCommonData, requestPrivateData);
+						return invoke(TOMMessageType.ORDERED_REQUEST, requestCommonData, requestPrivateData, metadata);
 					}
 				}else{
 					if (!this.sm.tryAcquire(invokeTimeout, TimeUnit.SECONDS)) {
@@ -308,7 +309,7 @@ public class ServiceProxy extends TOMSender {
 				if (reqType == TOMMessageType.UNORDERED_REQUEST || reqType == TOMMessageType.UNORDERED_HASHED_REQUEST) {
 					//invoke the operation again, whitout the read-only flag
 					logger.debug("###################RETRY#######################");
-					return invokeOrdered(requestCommonData, requestPrivateData);
+					return invokeOrdered(requestCommonData, requestPrivateData, metadata);
 				} else {
 					throw new RuntimeException("Received n-f replies without f+1 of them matching.");
 				}
@@ -324,14 +325,14 @@ public class ServiceProxy extends TOMSender {
 						reconfigureTo((View) TOMUtil.getObject(response.getContent()));
 
 						canSendLock.unlock();
-						return invoke(reqType, requestCommonData, requestPrivateData);
+						return invoke(reqType, requestCommonData, requestPrivateData, metadata);
 					}
 				} else if (reqType == TOMMessageType.UNORDERED_REQUEST || reqType == TOMMessageType.UNORDERED_HASHED_REQUEST){
 					if (response.getViewID() == getViewManager().getCurrentViewId()) {
 						ret = response.getContent(); // return the response
 					}else{
 						canSendLock.unlock();
-						return invoke(TOMMessageType.ORDERED_REQUEST, requestCommonData, requestPrivateData);
+						return invoke(TOMMessageType.ORDERED_REQUEST, requestCommonData, requestPrivateData, metadata);
 					}
 				} else {
 					if (response.getViewID() > getViewManager().getCurrentViewId()) {
@@ -342,7 +343,7 @@ public class ServiceProxy extends TOMSender {
 							reconfigureTo((View) r);
 
 							canSendLock.unlock();
-							return invoke(reqType, requestCommonData, requestPrivateData);
+							return invoke(reqType, requestCommonData, requestPrivateData, metadata);
 						}  else if (r instanceof ReconfigureReply) { //reconfiguration executed!
 							reconfigureTo(((ReconfigureReply) r).getView());
 							ret = response.getContent();

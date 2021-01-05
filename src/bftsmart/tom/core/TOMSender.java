@@ -138,9 +138,9 @@ public abstract class TOMSender implements ReplyReceiver, Closeable, AutoCloseab
 
 	//****** ROBIN BEGIN ******//
 
-	public void sendMessageToTargets(byte[] commonData, Map<Integer, byte[]> privateData, int reqId, int operationId,
-									 TOMMessageType type, int[] targets) {
-		cs.send(useSignatures, targets, commonData, privateData, me, session, reqId, operationId,
+	public void sendMessageToTargets(byte[] commonData, Map<Integer, byte[]> privateData, byte metadata, int reqId,
+									 int operationId, TOMMessageType type, int[] targets) {
+		cs.send(useSignatures, targets, commonData, privateData, metadata, me, session, reqId, operationId,
 				viewController.getCurrentViewId(), type);
 	}
 

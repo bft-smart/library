@@ -174,5 +174,9 @@ public class ClientData {
         return privateContents.remove(sequence);
     }
 
+    public byte[] getPrivateContent(int sequence) {
+        return privateContents.get(sequence);
+    }
+
     //****** ROBIN END ******//
 }

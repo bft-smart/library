@@ -15,13 +15,9 @@ limitations under the License.
 */
 package bftsmart.demo.counter;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
-
 import bftsmart.tom.ServiceProxy;
+
+import java.io.*;
 
 /**
  * Example client that updates a BFT replicated service (a counter).
@@ -52,8 +48,8 @@ public class CounterClient {
 
                 System.out.print("Invocation " + i);
                 byte[] reply = (inc == 0)?
-                        counterProxy.invokeUnordered(out.toByteArray(), null):
-                	counterProxy.invokeOrdered(out.toByteArray(), null); //magic happens here
+                        counterProxy.invokeUnordered(out.toByteArray(), null, (byte)-1):
+                	counterProxy.invokeOrdered(out.toByteArray(), null, (byte) -1); //magic happens here
                 
                 if(reply != null) {
                     int newValue = new DataInputStream(new ByteArrayInputStream(reply)).readInt();

@@ -570,7 +570,11 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                             request.isValid = clientsManager.requestReceived(request, false);
 
                             //****** ROBIN BEGIN ******//
+                            byte[] privateContent = clientsManager.getPrivateContentOf(request.getSender(),
+                                    request.getSequence());
+                            request.setPrivateContent(privateContent);
                             request.isValid &= proposeRequestVerifier.isValidRequest(request);
+                            request.setPrivateContent(null);
                             //******* ROBIN END ******//
 
                             if (Thread.holdsLock(clientsManager.getClientsLock())) clientsManager.getClientsLock().unlock();

@@ -460,6 +460,14 @@ public class ClientsManager {
         //logger.info("Injecting private data from {} with id {} and data {}", request.getSender(), request.getSequence(), privateContent);
         request.setPrivateContent(privateContent);
     }
+
+    public byte[] getPrivateContentOf(int client, int sequence) {
+        ClientData clientData = getClientData(client);
+        clientData.clientLock.lock();
+        byte[] privateContent = clientData.getPrivateContent(sequence);
+        clientData.clientLock.unlock();
+        return privateContent;
+    }
     //****** ROBIN END ******//
 
     /**

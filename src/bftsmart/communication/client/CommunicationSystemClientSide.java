@@ -29,8 +29,8 @@ public interface CommunicationSystemClientSide {
    public void send(boolean sign, int[] targets, TOMMessage sm);
 
    //******* ROBIN BEGIN **************//
-   public void send(boolean sign, int[] targets, byte[] commonData, Map<Integer, byte[]> privateData, int sender,
-                    int session, int reqId, int operationId, int view, TOMMessageType type);
+   public void send(boolean sign, int[] targets, byte[] commonData, Map<Integer, byte[]> privateData, byte metadata,
+                    int sender, int session, int reqId, int operationId, int view, TOMMessageType type);
    //******* ROBIN END **************//
 
    public void setReplyReceiver(ReplyReceiver trr);

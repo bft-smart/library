@@ -333,14 +333,14 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 
 	//******* ROBIN BEGIN **************//
 	@Override
-	public void send(boolean sign, int[] targets, byte[] commonData, Map<Integer, byte[]> privateData, int sender,
-					 int session, int reqId, int operationId, int view, TOMMessageType type) {
+	public void send(boolean sign, int[] targets, byte[] commonData, Map<Integer, byte[]> privateData, byte metadata,
+					 int sender, int session, int reqId, int operationId, int view, TOMMessageType type) {
 
 		TOMMessage sm = null;
 		if (privateData != null && privateData.size() != 0) {
-			sm = new TOMMessage(sender, session, reqId, operationId, new byte[]{0, 1}, commonData, null, view, type);
+			sm = new TOMMessage(sender, session, reqId, operationId, new byte[]{metadata, 1}, commonData, null, view, type);
 		} else {
-			sm = new TOMMessage(sender, session, reqId, operationId, new byte[]{0, 0}, commonData, null, view, type);
+			sm = new TOMMessage(sender, session, reqId, operationId, new byte[]{metadata, 0}, commonData, null, view, type);
 		}
 		int quorum;
 
