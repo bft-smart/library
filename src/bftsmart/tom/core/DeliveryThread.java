@@ -93,6 +93,18 @@ public final class DeliveryThread extends Thread {
 			decidedLock.lock();
 			decided.put(dec);
 
+			// clean the ordered messages from the pending buffer
+			TOMMessage[] requests = extractMessagesFromDecision(dec);
+			//****** ROBIN BEGIN ******//
+			for (TOMMessage request : requests) {
+				if (request.getMetadata() != null && request.getMetadata().length > 1
+						&& request.getMetadata()[1] == 1) {
+					tomLayer.clientsManager.injectPrivateContentTo(request);
+				}
+			}
+			//****** ROBIN END ******//
+			tomLayer.clientsManager.requestsOrdered(requests);
+
 			notEmptyQueue.signalAll();
 			decidedLock.unlock();
 			logger.debug("Consensus " + dec.getConsensusId() + " finished. Decided size=" + decided.size());
@@ -255,30 +267,8 @@ public final class DeliveryThread extends Thread {
 					CertifiedDecision[] cDecs;
 					cDecs = new CertifiedDecision[requests.length];
 					int count = 0;
-					boolean hasInjectedPrivateData = true;
 					for (Decision d : decisions) {
-						TOMMessage[] decisionRequests = extractMessagesFromDecision(d);
-						//****** ROBIN BEGIN ******//
-						for (TOMMessage request : decisionRequests) {
-							byte[] metadata = request.getMetadata();
-							if (metadata != null && metadata.length > 1 && metadata[1] == 1 && request.getPrivateContent() == null) {
-								tomLayer.clientsManager.injectPrivateContentTo(request);
-								if (request.getPrivateContent() == null) {
-									hasInjectedPrivateData = false;
-									logger.debug("Request from {} does not have injected private data", request.getSender());
-									for (int i = decisions.size() - 1; i >= 0; i--) {
-										Decision dec = decisions.get(i);
-										decided.putFirst(dec);
-									}
-									break;
-								}
-							}
-						}
-						if (!hasInjectedPrivateData)
-							break;
-						//****** ROBIN END ******//
-
-						requests[count] = decisionRequests;
+						requests[count] = extractMessagesFromDecision(d);
 						consensusIds[count] = d.getConsensusId();
 						leadersIds[count] = d.getLeader();
 						regenciesIds[count] = d.getRegency();
@@ -292,9 +282,6 @@ public final class DeliveryThread extends Thread {
 							long time = requests[count][0].timestamp;
 							long seed = requests[count][0].seed;
 							int numOfNonces = requests[count][0].numOfNonces;
-							//****** ROBIN BEGIN ******//
-							d.firstMessageProposed.setPrivateContent(requests[count][0].getPrivateContent());
-							//****** ROBIN END ******//
 							requests[count][0] = d.firstMessageProposed;
 							requests[count][0].timestamp = time;
 							requests[count][0].seed = seed;
@@ -302,19 +289,10 @@ public final class DeliveryThread extends Thread {
 						}
 						count++;
 					}
-					//****** ROBIN BEGIN ******//
-					if (!hasInjectedPrivateData) {
-						continue;
-					}
-					//****** ROBIN END ******//
+
 					Decision lastDecision = decisions.get(decisions.size() - 1);
 
 					if (requests != null && requests.length > 0) {
-						//****** ROBIN BEGIN ******//
-						for (TOMMessage[] decisionRequests : requests) {
-							tomLayer.clientsManager.requestsOrdered(decisionRequests);
-						}
-						//****** ROBIN END ******//
 						deliverMessages(consensusIds, regenciesIds, leadersIds, cDecs, requests);
 
 						// ******* EDUARDO BEGIN ***********//

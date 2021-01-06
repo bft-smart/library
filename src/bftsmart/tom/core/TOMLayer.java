@@ -47,6 +47,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
@@ -374,8 +375,12 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
             if (clientsManager.requestReceived(msg, true, communication)) {
                 //****** ROBIN BEGIN ******//
-                if (msg.getMetadata() != null && msg.getMetadata().length > 1 && msg.getMetadata()[1] == 1)
+                if (msg.getMetadata() != null && msg.getMetadata().length > 1 && msg.getMetadata()[1] == 1) {
                     clientsManager.extractPrivateContentFrom(msg);
+                    privateStateLock.lock();
+                    privateStateReceived.signalAll();
+                    privateStateLock.unlock();
+                }
                 //****** ROBIN END ******//
                 if(controller.getStaticConf().getBatchTimeout() == -1) {
                     haveMessages();
@@ -530,6 +535,9 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         this.dt.delivery(dec); // Sends the decision to the delivery thread
     }
 
+    private final Lock privateStateLock = new ReentrantLock(true);
+    private final Condition privateStateReceived = privateStateLock.newCondition();
+
     /**
      * Verify if the value being proposed for a epoch is valid. It verifies the
      * client signature of all batch requests.
@@ -564,14 +572,28 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
                     verifierExecutor.submit(() -> {
                         try {
+                            //****** ROBIN BEGIN ******//
+                            byte[] privateContent = null;
+                            if (request.getMetadata() != null && request.getMetadata().length > 1
+                                    && request.getMetadata()[1] == 1) {
+                                do {
+                                    privateContent = clientsManager.getPrivateContentOf(request.getSender(),
+                                            request.getSequence());
+                                    if (privateContent == null) {
+                                        //logger.info("Private Content is null {} {}!!!!!!!!!!!!!!!!!!!!!", request.getSender(), request.getSequence());
+                                        privateStateLock.lock();
+                                        privateStateReceived.await();
+                                        privateStateLock.unlock();
+                                    }
+                                } while (privateContent == null);
+                            }
+                            //******* ROBIN END ******//
 
                             //notifies the client manager that this request was received and get
                             //the result of its validation
                             request.isValid = clientsManager.requestReceived(request, false);
 
                             //****** ROBIN BEGIN ******//
-                            byte[] privateContent = clientsManager.getPrivateContentOf(request.getSender(),
-                                    request.getSequence());
                             request.setPrivateContent(privateContent);
                             request.isValid &= proposeRequestVerifier.isValidRequest(request);
                             request.setPrivateContent(null);
