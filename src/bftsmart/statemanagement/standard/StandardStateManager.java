@@ -55,6 +55,7 @@ public class StandardStateManager extends StateManager {
     private Timer stateTimer = null;
     private final static long INIT_TIMEOUT = 40000;
     private long timeout = INIT_TIMEOUT;
+    private long recoveryStartTime;
 
     @Override
     public void init(TOMLayer tomLayer, DeliveryThread dt) {
@@ -92,6 +93,8 @@ public class StandardStateManager extends StateManager {
         }
 
         changeReplica(); // always ask the complete state to a different replica
+
+        recoveryStartTime = System.nanoTime();
 
         SMMessage smsg = new StandardSMMessage(SVController.getStaticConf().getProcessId(),
                 waitingCID, TOMUtil.SM_REQUEST, replica, null, null, -1, -1);
@@ -196,6 +199,8 @@ public class StandardStateManager extends StateManager {
                 logger.debug("Verifying more than F replies");
                 if (enoughReplies()) {
                     logger.debug("More than F confirmed");
+                    long commTime = System.nanoTime();
+                    double totalCommunicationTime = (commTime - recoveryStartTime) / 1_000_000.0;
                     ApplicationState otherReplicaState = getOtherReplicaState();
                     int haveState = 0;
                     if (state != null) {
@@ -213,6 +218,7 @@ public class StandardStateManager extends StateManager {
                     if (otherReplicaState != null && haveState == 1 && currentRegency > -1
                             && currentLeader > -1 && currentView != null && (!isBFT || currentProof != null || appStateOnly)) {
 
+                        logger.info("Took {} ms to receive enough recovery states", totalCommunicationTime);
                         logger.info("Received state. Will install it");
 
                         tomLayer.getSynchronizer().getLCManager().setLastReg(currentRegency);
@@ -300,6 +306,10 @@ public class StandardStateManager extends StateManager {
                         reset();
 
                         logger.info("I updated the state!");
+
+                        long recoveryEndTime = System.nanoTime();
+                        double totalRecoveryTime = (recoveryEndTime - recoveryStartTime) / 1_000_000.0;
+                        logger.info("Total recovery duration: {} ms", totalRecoveryTime);
 
                         tomLayer.requestsTimer.Enabled(true);
                         tomLayer.requestsTimer.startTimer();

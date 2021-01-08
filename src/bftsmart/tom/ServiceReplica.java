@@ -117,7 +117,6 @@ public class ServiceReplica {
     /**
      * Constructor
      *
-     * @see bellow
      */
     public ServiceReplica(int id, Executable executor, Recoverable recoverer, RequestVerifier verifier, Replier replier) {
         this(id, "", executor, recoverer, verifier, replier, null, null);
@@ -126,7 +125,6 @@ public class ServiceReplica {
     /**
      * Constructor
      *
-     * @see bellow
      */
     public ServiceReplica(int id, Executable executor, Recoverable recoverer, RequestVerifier verifier, Replier replier, KeyLoader loader, Provider provider) {
         this(id, "", executor, recoverer, verifier, replier, loader, null);
@@ -321,7 +319,8 @@ public class ServiceReplica {
                                     request.getReqType(), request.getSession(), request.getSequence(), request.getOperationId(),
                                     request.getReplyServer(), request.serializedMessageSignature, firstRequest.timestamp,
                                     request.numOfNonces, request.seed, regencies[consensusCount], leaders[consensusCount],
-                                    consId[consensusCount], cDecs[consensusCount].getConsMessages(), firstRequest, false);
+                                    consId[consensusCount], cDecs[consensusCount].getConsMessages(), firstRequest, false,
+                                    request.getMetadata());
                             if (requestCount + 1 == requestsFromConsensus.length) {
                                 
                                 msgCtx.setLastInBatch();
@@ -406,7 +405,8 @@ public class ServiceReplica {
                             m.getReqType(), m.getSession(), m.getSequence(), m.getOperationId(),
                             m.getReplyServer(), m.serializedMessageSignature, firstRequest.timestamp,
                             m.numOfNonces, m.seed, regencies[consensusCount], leaders[consensusCount],
-                            consId[consensusCount], cDecs[consensusCount].getConsMessages(), firstRequest, true);
+                            consId[consensusCount], cDecs[consensusCount].getConsMessages(), firstRequest, true,
+                                m.getMetadata());
                         msgCtx[line].setLastInBatch();
                         
                         line++;
