@@ -131,6 +131,8 @@ public class StandardStateManager extends StateManager {
     @Override
     public void SMRequestDeliver(SMMessage msg, boolean isBFT) {
         if (SVController.getStaticConf().isStateTransferEnabled() && dt.getRecoverer() != null) {
+            long start, end;
+            start = System.nanoTime();
             StandardSMMessage stdMsg = (StandardSMMessage) msg;
             boolean sendState = stdMsg.getReplica() == SVController.getStaticConf().getProcessId();
 
@@ -145,15 +147,23 @@ public class StandardStateManager extends StateManager {
             SMMessage smsg = new StandardSMMessage(SVController.getStaticConf().getProcessId(),
                     msg.getCID(), TOMUtil.SM_REPLY, -1, thisState, SVController.getCurrentView(),
                     tomLayer.getSynchronizer().getLCManager().getLastReg(), tomLayer.execManager.getCurrentLeader());
-
+            end = System.nanoTime();
+            double totalTime = (end - start) / 1_000_000.0;
+            logger.info("Took {} ms to reconstruct recovery state", totalTime);
+            start = System.nanoTime();
             logger.info("Sending state...");
             tomLayer.getCommunication().send(targets, smsg);
             logger.info("Sent");
+            end = System.nanoTime();
+            totalTime = (end - start) / 1_000_000.0;
+            logger.info("Took {} ms to send recovery state", totalTime);
         }
     }
 
     @Override
     public void SMReplyDeliver(SMMessage msg, boolean isBFT) {
+        long commTime = System.nanoTime();
+        double totalCommunicationTime = (commTime - recoveryStartTime) / 1_000_000.0;
         lockTimer.lock();
         if (SVController.getStaticConf().isStateTransferEnabled()) {
             if (waitingCID != -1 && msg.getCID() == waitingCID) {
@@ -199,8 +209,6 @@ public class StandardStateManager extends StateManager {
                 logger.debug("Verifying more than F replies");
                 if (enoughReplies()) {
                     logger.debug("More than F confirmed");
-                    long commTime = System.nanoTime();
-                    double totalCommunicationTime = (commTime - recoveryStartTime) / 1_000_000.0;
                     ApplicationState otherReplicaState = getOtherReplicaState();
                     int haveState = 0;
                     if (state != null) {
