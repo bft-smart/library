@@ -286,6 +286,7 @@ public class StandardStateManager extends StateManager {
 
                         dt.deliverLock();
                         waitingCID = -1;
+                        logger.info("Going to update state of {} bytes", state.getSerializedState());
                         dt.update(state);
 
                         if (!appStateOnly && execManager.stopped()) {
