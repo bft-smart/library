@@ -93,18 +93,6 @@ public final class DeliveryThread extends Thread {
 			decidedLock.lock();
 			decided.put(dec);
 
-			// clean the ordered messages from the pending buffer
-			TOMMessage[] requests = extractMessagesFromDecision(dec);
-			//****** ROBIN BEGIN ******//
-			for (TOMMessage request : requests) {
-				if (request.getMetadata() != null && request.getMetadata().length > 1
-						&& request.getMetadata()[1] == 1) {
-					tomLayer.clientsManager.injectPrivateContentTo(request);
-				}
-			}
-			//****** ROBIN END ******//
-			tomLayer.clientsManager.requestsOrdered(requests);
-
 			notEmptyQueue.signalAll();
 			decidedLock.unlock();
 			logger.debug("Consensus " + dec.getConsensusId() + " finished. Decided size=" + decided.size());
@@ -268,7 +256,18 @@ public final class DeliveryThread extends Thread {
 					cDecs = new CertifiedDecision[requests.length];
 					int count = 0;
 					for (Decision d : decisions) {
-						requests[count] = extractMessagesFromDecision(d);
+						TOMMessage[] decisionRequests = extractMessagesFromDecision(d);
+						//****** ROBIN BEGIN ******//
+						for (TOMMessage decisionRequest : decisionRequests) {
+							byte[] metadata = decisionRequest.getMetadata();
+							if (metadata != null && metadata.length > 1 && metadata[1] == 1) {
+								tomLayer.clientsManager.injectPrivateContentTo(decisionRequest);
+							}
+						}
+						tomLayer.clientsManager.requestsOrdered(decisionRequests);
+						//****** ROBIN END ******//
+
+						requests[count] = decisionRequests;
 						consensusIds[count] = d.getConsensusId();
 						leadersIds[count] = d.getLeader();
 						regenciesIds[count] = d.getRegency();
@@ -283,6 +282,9 @@ public final class DeliveryThread extends Thread {
 							long time = requests[count][0].timestamp;
 							long seed = requests[count][0].seed;
 							int numOfNonces = requests[count][0].numOfNonces;
+							//****** ROBIN BEGIN ******//
+							d.firstMessageProposed.setPrivateContent(requests[count][0].getPrivateContent());
+							//****** ROBIN END ******//
 							requests[count][0] = d.firstMessageProposed;
 							requests[count][0].timestamp = time;
 							requests[count][0].seed = seed;

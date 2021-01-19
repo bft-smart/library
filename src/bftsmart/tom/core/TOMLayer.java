@@ -167,6 +167,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         // or use a many as the number of cores available
         int nWorkers = this.controller.getStaticConf().getNumNettyWorkers();
         nWorkers = nWorkers > 0 ? nWorkers : Runtime.getRuntime().availableProcessors();
+        logger.info("Number of workers: {}", nWorkers);
         this.verifierExecutor = Executors.newWorkStealingPool(nWorkers);
 
         //do not create a timer manager if the timeout is 0
