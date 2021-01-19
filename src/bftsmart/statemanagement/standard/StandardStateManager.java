@@ -96,6 +96,8 @@ public class StandardStateManager extends StateManager {
 
         recoveryStartTime = System.nanoTime();
 
+        logger.info("Server {} will send full state", replica);
+
         SMMessage smsg = new StandardSMMessage(SVController.getStaticConf().getProcessId(),
                 waitingCID, TOMUtil.SM_REQUEST, replica, null, null, -1, -1);
         tomLayer.getCommunication().send(SVController.getCurrentViewOtherAcceptors(), smsg);
@@ -286,7 +288,6 @@ public class StandardStateManager extends StateManager {
 
                         dt.deliverLock();
                         waitingCID = -1;
-                        logger.info("Going to update state of {} bytes", state.getSerializedState());
                         dt.update(state);
 
                         if (!appStateOnly && execManager.stopped()) {
