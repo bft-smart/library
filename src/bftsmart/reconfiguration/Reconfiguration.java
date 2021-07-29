@@ -72,11 +72,11 @@ public class Reconfiguration {
         request.setProperty(prop, value);
     }
     
-    public ReconfigureReply execute(){
+    public ReconfigureReply execute(byte metadata){
         byte[] signature = TOMUtil.signMessage(proxy.getViewManager().getStaticConf().getPrivateKey(),
                 request.toString().getBytes());
         request.setSignature(signature);
-        byte[] reply = proxy.invoke(TOMMessageType.RECONFIG, TOMUtil.getBytes(request), null, (byte) -1);
+        byte[] reply = proxy.invoke(TOMMessageType.RECONFIG, TOMUtil.getBytes(request), null, metadata);
         request = null;
         return (ReconfigureReply)TOMUtil.getObject(reply);
     }

@@ -43,7 +43,7 @@ public class ReconfigurationTest {
         //rec.setReconfiguration(ReconfigurationManager.CHANGE_F,"1");
         rec.setF(2);
         
-        ReconfigureReply r = rec.execute();
+        ReconfigureReply r = rec.execute((byte) -1);
         
         
         

@@ -109,7 +109,7 @@ public class ViewManager {
 
     public void executeUpdates() {
         connect();
-        ReconfigureReply r = rec.execute();
+        ReconfigureReply r = rec.execute((byte) -1);
         View v = r.getView();
         logger.info("New view f: " + v.getF());
 
