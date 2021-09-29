@@ -108,7 +108,7 @@ public class ServerViewController extends ViewController {
     }
 
     public void enqueueUpdate(TOMMessage up) {
-        ReconfigureRequest request = (ReconfigureRequest) TOMUtil.getObject(up.getContent());
+        BatchReconfigurationRequest request = (BatchReconfigurationRequest) TOMUtil.getObject(up.getContent());
         if (request != null && request.getSender() == getStaticConf().getTTPId() 
                 && TOMUtil.verifySignature(getStaticConf().getPublicKey(request.getSender()),
                     request.toString().getBytes(), request.getSignature())) {
@@ -120,8 +120,6 @@ public class ServerViewController extends ViewController {
     }
 
     public byte[] executeUpdates(int cid) {
-
-
         List<Integer> jSet = new LinkedList<>();
         List<Integer> rSet = new LinkedList<>();
         int f = -1;
@@ -130,35 +128,33 @@ public class ServerViewController extends ViewController {
         
         
         for (int i = 0; i < updates.size(); i++) {
-            ReconfigureRequest request = (ReconfigureRequest) TOMUtil.getObject(updates.get(i).getContent());
-            Iterator<Integer> it = request.getProperties().keySet().iterator();
+            BatchReconfigurationRequest request = (BatchReconfigurationRequest)
+                    TOMUtil.getObject(updates.get(i).getContent());
 
-            while (it.hasNext()) {
-                int key = it.next();
-                String value = request.getProperties().get(key);
-
-                if (key == ADD_SERVER) {
-                    StringTokenizer str = new StringTokenizer(value, ":");
-                    if (str.countTokens() > 2) {
-                        int id = Integer.parseInt(str.nextToken());
-                        if(!isCurrentViewMember(id) && !contains(id, jSet)){
-                            jSetInfo.add(value);
-                            jSet.add(id);
-                            String host = str.nextToken();
-                            int port = Integer.valueOf(str.nextToken());
-                            int portRR = Integer.valueOf(str.nextToken());
-                            this.getStaticConf().addHostInfo(id, host, port, portRR);                        }
-                    }
-                } else if (key == REMOVE_SERVER) {
-                    if (isCurrentViewMember(Integer.parseInt(value))) {
-                        rSet.add(Integer.parseInt(value));
-                    }
-                } else if (key == CHANGE_F) {
-                    f = Integer.parseInt(value);
+            for (String joiningServer : request.getJoiningServers()) {
+                StringTokenizer str = new StringTokenizer(joiningServer, ":");
+                if (str.countTokens() > 2) {
+                    int id = Integer.parseInt(str.nextToken());
+                    if(!isCurrentViewMember(id) && !contains(id, jSet)){
+                        jSetInfo.add(joiningServer);
+                        jSet.add(id);
+                        String host = str.nextToken();
+                        int port = Integer.parseInt(str.nextToken());
+                        int portRR = Integer.parseInt(str.nextToken());
+                        this.getStaticConf().addHostInfo(id, host, port, portRR);                        }
                 }
             }
 
+            for (Integer leavingServer : request.getLeavingServers()) {
+                if (isCurrentViewMember(leavingServer)) {
+                    rSet.add(leavingServer);
+                }
+            }
+
+            if (request.getF() != -1)
+                f = request.getF();
         }
+
         return reconfigure(jSetInfo, jSet, rSet, f, cid);
     }
 

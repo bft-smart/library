@@ -15,6 +15,7 @@
  */
 package bftsmart.tom;
 
+import bftsmart.reconfiguration.IClientSideReconfigurationListener;
 import bftsmart.reconfiguration.ReconfigureReply;
 import bftsmart.reconfiguration.views.View;
 import bftsmart.tom.core.TOMSender;
@@ -62,6 +63,9 @@ public class ServiceProxy extends TOMSender {
 	private int replyServer;
 	private HashResponseController hashResponseController;
 	private int invokeUnorderedHashedTimeout = 10;
+	//****** ROBIN BEGIN ******//
+	private IClientSideReconfigurationListener reconfigurationListener;
+	//****** ROBIN END ******//
 
 	/**
 	 * Constructor
@@ -69,7 +73,7 @@ public class ServiceProxy extends TOMSender {
 	 * @see bellow
 	 */
 	public ServiceProxy(int processId) {
-		this(processId, null, null, null, null);
+		this(processId, null, null, null, null, null);
 	}
 
 	/**
@@ -78,7 +82,7 @@ public class ServiceProxy extends TOMSender {
 	 * @see bellow
 	 */
 	public ServiceProxy(int processId, String configHome) {
-		this(processId, configHome, null, null, null);
+		this(processId, configHome, null, null, null, null);
 	}
 
 	/**
@@ -87,8 +91,16 @@ public class ServiceProxy extends TOMSender {
 	 * @see bellow
 	 */
 	public ServiceProxy(int processId, String configHome, KeyLoader loader) {
-		this(processId, configHome, null, null, loader);
+		this(processId, configHome, null, null, loader, null);
 	}
+	//****** ROBIN BEGIN ******//
+	public ServiceProxy(int processId, String configHome,
+						Comparator<byte[]> replyComparator, Extractor replyExtractor, KeyLoader loader,
+						IClientSideReconfigurationListener reconfigurationListener) {
+		this(processId, configHome, replyComparator, replyExtractor, loader);
+		this.reconfigurationListener = reconfigurationListener;
+	}
+	//****** ROBIN END ******//
 
 	/**
 	 * Constructor
@@ -375,6 +387,10 @@ public class ServiceProxy extends TOMSender {
 		getViewManager().getViewStore().storeView(v);
 		replies = new TOMMessage[getViewManager().getCurrentViewN()];
 		getCommunicationSystem().updateConnections();
+		//****** ROBIN BEGIN ******//
+		if (reconfigurationListener != null)
+			reconfigurationListener.onReconfiguration(v);
+		//****** ROBIN END ******//
 	}
 	//******* EDUARDO END **************//
 
@@ -408,8 +424,7 @@ public class ServiceProxy extends TOMSender {
 				logger.debug("Receiving reply from " + reply.getSender()
 						+ " with reqId:" + reply.getSequence() + ". Putting on pos=" + pos);
 
-				if(requestType == TOMMessageType.UNORDERED_HASHED_REQUEST)
-				{
+				if(requestType == TOMMessageType.UNORDERED_HASHED_REQUEST) {
 					response = hashResponseController.getResponse(pos,reply);
 					if(response !=null){
 						reqId = -1;
@@ -418,7 +433,7 @@ public class ServiceProxy extends TOMSender {
 						return;
 					}
 
-				}else{
+				} else {
 					if (replies[pos] == null) {
 						receivedReplies++;
 					}
@@ -427,7 +442,6 @@ public class ServiceProxy extends TOMSender {
 					// Compare the reply just received, to the others
 
 					for (int i = 0; i < replies.length; i++) {
-
 						if ((i != pos || getViewManager().getCurrentViewN() == 1) && replies[i] != null
 								&& (comparator.compare(replies[i].getContent(), reply.getContent()) == 0)) {
 							sameContent++;
