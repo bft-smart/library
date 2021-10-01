@@ -36,11 +36,8 @@ import java.net.InetSocketAddress;
 import java.nio.channels.ClosedChannelException;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
-import java.util.HashMap;
-import java.util.Iterator;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Set;
-import java.util.ArrayList;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -85,6 +82,9 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 	private static int bossThreads = 8; /* listens and accepts on server socket; workers handle r/w I/O */
 	private static int connectionBacklog = 1024; /* pending connections boss thread will queue to accept */
 	private static int connectionTimeoutMsec = 40000; /* (40 seconds) */
+	private static final int RETRY_RESPONSE_INTERVAL = 4000; // replica retries sending a response if client connection
+															 // not established yet
+
 	private PrivateKey privKey;
 	/* Tulio Ribeiro */
 
@@ -293,6 +293,12 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 		this.requestReceiver = tl;
 	}
 
+	private void retrySend(int[] targets, TOMMessage sm, boolean serializeClassHeaders, int retry) {
+		retry--;
+		sm.retry = retry;
+		send(targets, (TOMMessage) sm, serializeClassHeaders);
+	}
+
 	@Override
 	public void send(int[] targets, TOMMessage sm, boolean serializeClassHeaders) {
 
@@ -332,13 +338,30 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 				sm.destination = target;
 				sessionReplicaToClient.get(target).getChannel().writeAndFlush(sm);
 			} else {
-				logger.debug("Client not into sessionReplicaToClient({}):{}, waiting and retrying.", target,
+				logger.error("Client not into sessionReplicaToClient({}):{}, waiting and retrying.", target,
 						sessionReplicaToClient.containsKey(target));
 				/*
 				 * ClientSession clientSession = new ClientSession(target, sm); new
 				 * Thread(clientSession).start();
 				 */
 				// should I wait for the client?
+				// cb: the below code fixes an issue that occurs if a replica tries to send a reply back to some client
+				// *before* the connection to that client is successfully established. The client may then fail to
+				// gather enough responses and run in a timeout. In this fix we periodically retry to send that response
+
+				if (sm.retry > 0) {
+					sm.retry = sm.retry - 1;
+					TOMMessage finalSm = sm;
+					TimerTask timertask = new TimerTask() {
+						@Override
+						public void run() {
+							retrySend(targets, (TOMMessage) finalSm, serializeClassHeaders, finalSm.retry);
+						}
+					};
+					Timer timer = new Timer("retry");
+					timer.schedule(timertask, RETRY_RESPONSE_INTERVAL);
+				}
+
 			}
 			rl.readLock().unlock();
 		}

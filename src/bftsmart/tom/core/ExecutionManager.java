@@ -17,14 +17,9 @@ package bftsmart.tom.core;
 
 import bftsmart.consensus.Consensus;
 import bftsmart.consensus.Epoch;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Queue;
-import java.util.TreeMap;
+
+import java.lang.reflect.Array;
+import java.util.*;
 import java.util.concurrent.locks.ReentrantLock;
 
 import bftsmart.consensus.Decision;
@@ -45,6 +40,8 @@ import org.slf4j.LoggerFactory;
  * @author Alysson
  */
 public final class ExecutionManager {
+
+    public static final int NUMBER_OF_STABLE_CONSENSUSES_SAVED = 100;
 
     private Logger logger = LoggerFactory.getLogger(this.getClass());
 
@@ -70,20 +67,25 @@ public final class ExecutionManager {
     private ReentrantLock stoppedMsgsLock = new ReentrantLock(); //lock for stopped messages
     private TOMLayer tomLayer; // TOM layer associated with this execution manager
     private int paxosHighMark; // Paxos high mark for consensus instances
-    
+
+    private HashMap<Integer, List<Integer>> toForward = new HashMap<Integer, List<Integer>>();
+    private HashMap<Integer, List<Integer>> forwarded = new HashMap<Integer, List<Integer>>();
+    private ReentrantLock toForwardLock = new ReentrantLock(); //lock for out of context
+
+
     /** THIS IS JOAO'S CODE, TO HANDLE THE STATE TRANSFER */
-    
+
     private int revivalHighMark; // Paxos high mark for consensus instances when this replica CID equals 0
     private int timeoutHighMark; // Paxos high mark for a timed-out replica
-    
+
     private int lastRemovedCID = 0; // Addition to fix memory leak
-        
+
     /******************************************************************/
-    
+
     // This is the new way of storing info about the leader,
     // uncoupled from any consensus instance
     private int currentLeader;
-    
+
     /**
      * Creates a new instance of ExecutionManager
      *
@@ -93,7 +95,7 @@ public final class ExecutionManager {
      * @param me This process ID
      */
     public ExecutionManager(ServerViewController controller, Acceptor acceptor,
-            Proposer proposer, int me) {
+                            Proposer proposer, int me) {
         //******* EDUARDO BEGIN **************//
         this.controller = controller;
         this.acceptor = acceptor;
@@ -106,19 +108,19 @@ public final class ExecutionManager {
         this.timeoutHighMark = this.controller.getStaticConf().getTimeoutHighMark();
         /******************************************************************/
         //******* EDUARDO END **************//
-        
+
         // Get initial leader
         if (controller.getCurrentViewAcceptors().length > 0)
             currentLeader = controller.getCurrentViewAcceptors()[0];
         else currentLeader = 0;
     }
-    
+
     /**
      * Set the current leader
      * @param leader Current leader
      */
-    public void setNewLeader (int leader) {
-            this.currentLeader = leader;
+    public void setNewLeader(int leader) {
+        this.currentLeader = leader;
     }
 
     /**
@@ -126,9 +128,9 @@ public final class ExecutionManager {
      * @return Current leader
      */
     public int getCurrentLeader() {
-            return currentLeader;
+        return currentLeader;
     }
-        
+
     /**
      * Sets the TOM layer associated with this execution manager
      * @param tom The TOM layer associated with this execution manager
@@ -158,7 +160,7 @@ public final class ExecutionManager {
         return proposer;
     }
 
-    
+
     public boolean stopped() {
         return stopped;
     }
@@ -170,10 +172,11 @@ public final class ExecutionManager {
     public Queue<ConsensusMessage> getStoppedMsgs() {
         return stoppedMsgs;
     }
-    
+
     public void clearStopped() {
         stoppedMsgs.clear();
     }
+
     /**
      * Stops this execution manager
      */
@@ -184,13 +187,13 @@ public final class ExecutionManager {
         if (tomLayer.getInExec() != -1) {
             stoppedEpoch = getConsensus(tomLayer.getInExec()).getLastEpoch();
             //stoppedEpoch.getTimeoutTask().cancel();
-            if (stoppedEpoch != null) logger.debug("Stopping epoch " + stoppedEpoch.getTimestamp() + " of consensus " + tomLayer.getInExec());
+            if (stoppedEpoch != null)
+                logger.debug("Stopping epoch " + stoppedEpoch.getTimestamp() + " of consensus " + tomLayer.getInExec());
         }
         stoppedMsgsLock.unlock();
     }
 
-    
-    
+
     /**
      * Restarts this execution manager
      */
@@ -217,15 +220,15 @@ public final class ExecutionManager {
      */
     public final boolean checkLimits(ConsensusMessage msg) {
         outOfContextLock.lock();
-        
+
         int lastConsId = tomLayer.getLastExec();
-        
+
         int inExec = tomLayer.getInExec();
-        
+
         logger.debug("Received message  " + msg);
-        logger.debug("I'm at consensus " + 
+        logger.debug("I'm at consensus " +
                 inExec + " and my last consensus is " + lastConsId);
-        
+
         boolean isRetrievingState = tomLayer.isRetrievingState();
 
         if (isRetrievingState) {
@@ -239,8 +242,8 @@ public final class ExecutionManager {
         // while a replica is receiving the state of the others and updating itself
         if (isRetrievingState || // Is this replica retrieving a state?
                 (!(lastConsId == -1 && msg.getNumber() >= (lastConsId + revivalHighMark)) && //not a recovered replica
-                (msg.getNumber() > lastConsId && (msg.getNumber() < (lastConsId + paxosHighMark))) && // not an ahead of time message
-                !(stopped && msg.getNumber() >= (lastConsId + timeoutHighMark)))) { // not a timed-out replica which needs to fetch the state
+                        (msg.getNumber() > lastConsId && (msg.getNumber() < (lastConsId + paxosHighMark))) && // not an ahead of time message
+                        !(stopped && msg.getNumber() >= (lastConsId + timeoutHighMark)))) { // not a timed-out replica which needs to fetch the state
 
             if (stopped) {//just an optimization to avoid calling the lock in normal case
                 stoppedMsgsLock.lock();
@@ -252,23 +255,23 @@ public final class ExecutionManager {
                 }
                 stoppedMsgsLock.unlock();
             } else {
-                if (isRetrievingState || 
-                        msg.getNumber() > (lastConsId + 1) || 
-                        (inExec != -1 && inExec < msg.getNumber()) || 
+                if (isRetrievingState ||
+                        msg.getNumber() > (lastConsId + 1) ||
+                        (inExec != -1 && inExec < msg.getNumber()) ||
                         (inExec == -1 && msg.getType() != MessageFactory.PROPOSE)) { //not propose message for the next consensus
-                    logger.debug("Message for consensus " + 
+                    logger.debug("Message for consensus " +
                             msg.getNumber() + " is out of context, adding it to out of context set");
-                    
+
 
                     //System.out.println("(ExecutionManager.checkLimits) Message for consensus " + 
-                     //       msg.getNumber() + " is out of context, adding it to out of context set; isRetrievingState="+isRetrievingState);
-                    
-                    
+                    //       msg.getNumber() + " is out of context, adding it to out of context set; isRetrievingState="+isRetrievingState);
+
+
                     addOutOfContextMessage(msg);
                 } else { //can process!
-                    logger.debug("Message for consensus " + 
+                    logger.debug("Message for consensus " +
                             msg.getNumber() + " can be processed");
-            
+
                     //Logger.debug = false;
                     canProcessTheMessage = true;
                 }
@@ -286,8 +289,7 @@ public final class ExecutionManager {
             if (controller.getStaticConf().isStateTransferEnabled()) {
                 //Logger.debug = true;
                 tomLayer.getStateManager().analyzeState(msg.getNumber());
-            }
-            else {
+            } else {
                 logger.warn("##################################################################################");
                 logger.warn("- Ahead-of-time message discarded");
                 logger.warn("- If many messages of the same consensus are discarded, the replica can halt!");
@@ -297,7 +299,40 @@ public final class ExecutionManager {
             }
             /******************************************************************/
         }
-        
+
+        // START DECISION-FORWARDING
+        if (msg.getPaxosVerboseType().equals("ACCEPT")) {
+            logger.debug(">>>> Received Accept, will check if a Decision needs to be requested");
+
+            Consensus consensus = getConsensus(msg.getNumber());
+            Epoch epoch = consensus.getEpoch(msg.getEpoch(), controller);
+            int[] requestDecisionFrom = checkRequestDecision(epoch, msg);
+
+            if (requestDecisionFrom != null) {
+                String receivers = "";
+                for (int i = 0; i < requestDecisionFrom.length; i++) {
+                    receivers = receivers + ", " + requestDecisionFrom[i];
+                }
+                logger.debug(">>>> Requesting a Decision and Proof from  " + receivers);
+                acceptor.sendRequestDecision(epoch, msg.getNumber(), requestDecisionFrom, epoch.propValueHash);
+            }
+
+        }
+
+        if (msg.getNumber() == lastConsId + 1 && msg.getPaxosVerboseType().equals("FWD_DECISION")) {
+            logger.debug(">>>> Received FWD_DECISION, will check if a Decision needs to be processed..");
+
+            canProcessTheMessage = true;
+
+        }
+
+        if (msg.getPaxosVerboseType().equals("REQ_DECISION")) {
+            logger.debug(">>>> Received REQ_DECISION, will check if a decision should be forwarded..");
+
+            canProcessTheMessage = true;
+        }
+        // END DECISION-FORWARDING
+
         outOfContextLock.unlock();
 
         return canProcessTheMessage;
@@ -318,6 +353,26 @@ public final class ExecutionManager {
         return result;
     }
 
+    public boolean receivedOutOfContextDecision(int cid) {
+        boolean receivedDecision = false;
+
+        outOfContextLock.lock();
+        /******* BEGIN OUTOFCONTEXT CRITICAL SECTION *******/
+        List<ConsensusMessage> consensusMessages = outOfContext.get(cid);
+        if (consensusMessages != null) {
+
+            for (ConsensusMessage cm: consensusMessages) {
+                if (cm.getPaxosVerboseType().equals("FWD_DECISION")) {
+                    receivedDecision = true;
+                }
+            }
+        }
+        /******* END OUTOFCONTEXT CRITICAL SECTION *******/
+        outOfContextLock.unlock();
+
+        return receivedDecision;
+    }
+
     /**
      * Removes a consensus from this manager
      * @param id ID of the consensus to be removed
@@ -331,7 +386,7 @@ public final class ExecutionManager {
         // Addition to fix memory leak
         for (int i = lastRemovedCID; i < id; i++) consensuses.remove(i);
         lastRemovedCID = id;
-        
+
         /******* END CONSENSUS CRITICAL SECTION *******/
         consensusesLock.unlock();
 
@@ -342,6 +397,17 @@ public final class ExecutionManager {
 
         /******* END OUTOFCONTEXT CRITICAL SECTION *******/
         outOfContextLock.unlock();
+
+        // Begin DECISION_FORWARDING
+        toForwardLock.lock();
+        /******* BEGIN TOFORWARD CRITICAL SECTION *******/
+
+        toForward.remove(id);
+        forwarded.remove(id);
+
+        /******* END TOFORWARD CRITICAL SECTION *******/
+        toForwardLock.unlock();
+        // End DECISION_FORWARDING
 
         return consensus;
     }
@@ -381,7 +447,7 @@ public final class ExecutionManager {
     public Consensus getConsensus(int cid) {
         consensusesLock.lock();
         /******* BEGIN CONSENSUS CRITICAL SECTION *******/
-        
+
         Consensus consensus = consensuses.get(cid);
 
         if (consensus == null) {//there is no consensus created with the given cid
@@ -399,7 +465,7 @@ public final class ExecutionManager {
 
         return consensus;
     }
-    
+
     public boolean isDecidable(int cid) {
         if (receivedOutOfContextPropose(cid)) {
             Consensus cons = getConsensus(cid);
@@ -411,29 +477,30 @@ public final class ExecutionManager {
             int countAccepts = 0;
             if (msgs != null) {
                 for (ConsensusMessage msg : msgs) {
-                    
+
                     if (msg.getEpoch() == epoch.getTimestamp() &&
                             Arrays.equals(propHash, msg.getValue())) {
-                        
+
                         if (msg.getType() == MessageFactory.WRITE) countWrites++;
                         else if (msg.getType() == MessageFactory.ACCEPT) countAccepts++;
                     }
                 }
             }
-            
-            if(controller.getStaticConf().isBFT()){
-            	return ((countWrites > (2*controller.getCurrentViewF())) &&
-            			(countAccepts > (2*controller.getCurrentViewF())));
-            }else{
-            	return (countAccepts > controller.getQuorum());
+
+            if (controller.getStaticConf().isBFT()) {
+                return ((countWrites > (2 * controller.getCurrentViewF())) &&
+                        (countAccepts > (2 * controller.getCurrentViewF())));
+            } else {
+                return (countAccepts > controller.getQuorum());
             }
         }
         return false;
     }
+
     public void processOutOfContextPropose(Consensus consensus) {
         outOfContextLock.lock();
         /******* BEGIN OUTOFCONTEXT CRITICAL SECTION *******/
-        
+
         ConsensusMessage prop = outOfContextProposes.remove(consensus.getId());
         if (prop != null) {
             logger.debug("[Consensus " + consensus.getId()
@@ -445,10 +512,42 @@ public final class ExecutionManager {
         outOfContextLock.unlock();
     }
 
+    public void processOutOfContextDecision(Consensus consensus) {
+        outOfContextLock.lock();
+        /******* BEGIN OUTOFCONTEXT CRITICAL SECTION *******/
+
+        List<ConsensusMessage> consensusMessages = outOfContext.get(consensus.getId());
+        if (consensusMessages != null) {
+            List<ConsensusMessage> toRemove = new LinkedList<>();
+            for (ConsensusMessage cm: consensusMessages) {
+                if (cm.getPaxosVerboseType().equals("FWD_DECISION")) {
+                    toRemove.add(cm);
+                }
+            }
+
+            ConsensusMessage validDecision = null;
+            for (ConsensusMessage fwdDecision: toRemove) {
+               validDecision = acceptor.verifyDecision(fwdDecision) ? fwdDecision : null;
+               if (validDecision != null) break;
+            }
+
+            consensusMessages.removeAll(toRemove);
+
+            if (validDecision != null) {
+                acceptor.processMessage(validDecision);
+            }
+        }
+
+        /******* END OUTOFCONTEXT CRITICAL SECTION *******/
+        outOfContextLock.unlock();
+    }
+
+
+
     public void processOutOfContext(Consensus consensus) {
         outOfContextLock.lock();
         /******* BEGIN OUTOFCONTEXT CRITICAL SECTION *******/
-        
+
         //then we have to put the pending paxos messages
         List<ConsensusMessage> messages = outOfContext.remove(consensus.getId());
         if (messages != null) {
@@ -456,7 +555,7 @@ public final class ExecutionManager {
                     + "] Processing other " + messages.size()
                     + " out of context messages.");
 
-            for (Iterator<ConsensusMessage> i = messages.iterator(); i.hasNext();) {
+            for (Iterator<ConsensusMessage> i = messages.iterator(); i.hasNext(); ) {
                 acceptor.processMessage(i.next());
                 if (consensus.isDecided()) {
                     logger.debug("Consensus "
@@ -499,8 +598,146 @@ public final class ExecutionManager {
         outOfContextLock.unlock();
     }
 
+
+    public int[] checkRequestDecision(Epoch epoch, ConsensusMessage message) {
+        boolean requestDecision = false;
+        int[] replicasToRequestDecisionFrom = new int[2*controller.getCurrentViewF()];
+        LinkedList<Integer> replicasToRequestDecision = new LinkedList<Integer>();
+
+        outOfContextLock.lock();
+        /******* BEGIN OUTOFCONTEXT CRITICAL SECTION *******/
+
+
+        int cid = epoch.getConsensus().getId();
+        logger.debug(">>>>>> epoch.getConsensus().getId() " + cid + " message.getNumber() " + message.getNumber());
+        if (message.getNumber() == cid && message.getPaxosVerboseType().equals("ACCEPT")) {
+            int countAccepts = 1;
+            replicasToRequestDecisionFrom[0] = message.getSender();
+            replicasToRequestDecision.add(message.getSender());
+
+            List<ConsensusMessage> cmlist = outOfContext.get(cid);
+
+            if (cmlist != null) {
+                for (ConsensusMessage cm : cmlist) {
+                    if (cm.getSender() != message.getSender() && cm.getPaxosVerboseType().equals("ACCEPT") && Arrays.equals(cm.getValue(), message.getValue())) {
+                        if (countAccepts < controller.getCurrentViewF() + 1) {
+                            replicasToRequestDecisionFrom[countAccepts] = cm.getSender();
+                            replicasToRequestDecision.add(cm.getSender());
+                        }
+                        countAccepts++;
+                    }
+                }
+
+                int[] otherAcceptors = controller.getCurrentViewOtherAcceptors();
+                for (int i = controller.getCurrentViewF()+1; i < controller.getCurrentViewF()*2; i++) {
+                    for (int j = 0; j < controller.getCurrentViewN(); j++) {
+                        if (!replicasToRequestDecision.contains(otherAcceptors[j])) {
+                            replicasToRequestDecision.add(otherAcceptors[j]);
+                            replicasToRequestDecisionFrom[i] = otherAcceptors[j];
+                            break;
+                        }
+                    }
+                }
+
+                logger.debug(">> >> I have " + countAccepts + " Accepts for cid " + cid);
+
+                if (countAccepts > controller.getCurrentViewF() && !epoch.decisionRequested &&
+                        (epoch.propValue == null || !Arrays.equals(epoch.propValueHash, message.getValue()))) {
+
+                    logger.debug(">> >> >> >> No Propose, or propose mismatch, I request a decision from others");
+                    requestDecision = true;
+                    epoch.decisionRequested = true;
+                }
+            } else {
+                // .. if "invalid" propose was sent and there are no "out of context" messages ?
+                if (epoch.countAccept(message.getValue()) > controller.getCurrentViewF() && !epoch.getConsensus().isDecided() &&
+                        !epoch.decisionRequested && (epoch.propValue == null || !Arrays.equals(epoch.propValueHash, message.getValue()))
+                ) {
+                    logger.debug(">> >> >> >>  propose mismatch, I request a decision from others");
+                    requestDecision = true;
+                    epoch.decisionRequested = true;
+                    int[] acceptsFrom = epoch.countAcceptFrom(message.getValue());
+                    for (int i = 0; i < controller.getCurrentViewF() + 1; i++) {
+                        replicasToRequestDecisionFrom[i] = acceptsFrom[i];
+                    }
+                }
+            }
+
+        }
+
+        /******* END OUTOFCONTEXT CRITICAL SECTION *******/
+        outOfContextLock.unlock();
+
+        return requestDecision ? replicasToRequestDecisionFrom : null;
+    }
+
+
     @Override
     public String toString() {
         return stoppedMsgs.toString();
     }
+
+
+    public void addToForward(int cid, int replica) {
+        toForwardLock.lock();
+        /******* BEGIN TOFORWARD CRITICAL SECTION *******/
+
+        List<Integer> toFwd = toForward.get(cid);
+        if (toFwd == null) {
+            toFwd = new ArrayList<>();
+            toForward.put(cid, toFwd);
+        }
+        toFwd.add(replica);
+
+        /******* END TOFORWARD CRITICAL SECTION *******/
+        toForwardLock.unlock();
+    }
+
+    public int[] getToForward(int cid) {
+        toForwardLock.lock();
+        /******* BEGIN TOFORWARD CRITICAL SECTION *******/
+
+        List<Integer> toFwd = toForward.get(cid);
+        if (toFwd != null) {
+            int[] receivers = new int[toFwd.size()];
+            for (int i = 0; i < toFwd.size(); i++) {
+                receivers[i] = toFwd.remove(0);
+            }
+            toForward.remove(cid);
+            /******* END TOFORWARD CRITICAL SECTION *******/
+            toForwardLock.unlock();
+
+            return receivers;
+        } else {
+            toForwardLock.unlock();
+        }
+
+        return null;
+    }
+
+    public void addForwarded(int cid, int replica) {
+        toForwardLock.lock();
+        /******* BEGIN TOFORWARD CRITICAL SECTION *******/
+
+        List<Integer> fwd = forwarded.get(cid);
+        if (fwd == null) {
+            fwd = new ArrayList<>();
+            toForward.put(cid, fwd);
+        }
+        fwd.add(replica);
+        /******* END TOFORWARD CRITICAL SECTION *******/
+        toForwardLock.unlock();
+    }
+
+    public boolean hasBeenForwardedAlready(int cid, int replica) {
+        toForwardLock.lock();
+        /******* BEGIN TOFORWARD CRITICAL SECTION *******/
+
+        List<Integer> fwd = forwarded.get(cid);
+
+        /******* END TOFORWARD CRITICAL SECTION *******/
+        toForwardLock.unlock();
+        return  (fwd!= null) && fwd.contains(replica);
+    }
+
 }

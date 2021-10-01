@@ -271,7 +271,12 @@ public class ServiceProxy extends TOMSender {
 			}else{ 
 				if (!this.sm.tryAcquire(invokeTimeout, TimeUnit.SECONDS)) {
 					logger.info("###################TIMEOUT#######################");
-					logger.info("Reply timeout for reqId=" + reqId + ", Replies received: " + receivedReplies);
+					String receivedFrom = "";
+					for (int i=0; i < replies.length; i++) {
+						if(replies[i]!=null) receivedFrom = receivedFrom + ", "+ i;
+					}
+					logger.info("Reply timeout in pid " + this.getProcessId() + " for reqId=" + reqId + ", Replies received: " + receivedReplies + " from replicas: " + receivedFrom);
+
 					canSendLock.unlock();
 
 					return null;

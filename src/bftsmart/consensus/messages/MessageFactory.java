@@ -25,6 +25,11 @@ public class MessageFactory{
     public static final int WRITE    = 44782;
     public static final int ACCEPT  = 44783;
 
+    // START DECISION-FORWARDING
+    public static final int REQ_DECISION  = 44784;
+    public static final int FWD_DECISION  = 44785;
+    // END DECISION-FORWARDING
+
     private int from; // Replica ID of the process which sent this message
 
     /**
@@ -74,6 +79,32 @@ public class MessageFactory{
     public ConsensusMessage createAccept(int id, int epoch, byte[] value) {
 
         return new ConsensusMessage(ACCEPT,id,epoch, from, value);
+
+    }
+
+
+    /**
+     * Creates a WRITE message to be sent by this process
+     * @param id Consensus's execution ID
+     * @param epoch Epoch number
+     * @return A consensus message of the REQ_DECISION type, with the specified id, epoch, and value
+     */
+    public ConsensusMessage createRequestDecision(int id, int epoch, byte[] value) {
+
+        return new ConsensusMessage(REQ_DECISION,id,epoch, from, value);
+
+    }
+
+    /**
+     * Creates a WRITE message to be sent by this process
+     * @param id Consensus's execution ID
+     * @param epoch Epoch number
+     * @param value Write value
+     * @return A consensus message of the FWD_DECISION type, with the specified id, epoch, and value
+     */
+    public ConsensusMessage createForwardDecision(int id, int epoch, byte[] value) {
+
+        return new ConsensusMessage(FWD_DECISION,id,epoch, from, value);
 
     }
 
