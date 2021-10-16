@@ -581,7 +581,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                                     privateContent = clientsManager.getPrivateContentOf(request.getSender(),
                                             request.getSequence());
                                     if (privateContent == null) {
-                                        //logger.info("Private Content is null {} {}!!!!!!!!!!!!!!!!!!!!!", request.getSender(), request.getSequence());
+                                        //logger.debug("Private Content is null {} {}", request.getSender(), request.getSequence());
                                         privateStateLock.lock();
                                         privateStateReceived.await();
                                         privateStateLock.unlock();
