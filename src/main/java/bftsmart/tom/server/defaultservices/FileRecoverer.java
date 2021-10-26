@@ -414,7 +414,7 @@ public class FileRecoverer {
 			long timestamp = 0;
 			for (File f : serverLogs) {
 				String[] nameItems = f.getName().split("\\.");
-				long filets = new Long(nameItems[1]).longValue();
+				long filets = Long.parseLong(nameItems[1]);
 				if(filets > timestamp) {
 					timestamp = filets;
 					latestFile = f.getAbsolutePath();

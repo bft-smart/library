@@ -88,7 +88,14 @@ Keys are stored in the `config/keys` folder. The command above creates key pairs
 
 ## Compiling
 
+**Before the integration of `gradle` (up to the commit `0f2d407`):**
+
 Make sure that you have Ant installed and simply type `ant` in the main directory. The jar file is stored in the `bin/` directory.
+
+**With `gradle` (after the commit `0f2d407`):**
+
+Type `.\gradlew installDist` in the main directory. The required jar files and default configuration files will be available in the `build/install/library` directory.
+
 
 ## Additional information and publications
 

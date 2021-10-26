@@ -42,7 +42,7 @@ public class YCSBServer extends DefaultRecoverable {
 
     public static void main(String[] args) throws Exception {
         if (args.length == 1) {
-            new YCSBServer(new Integer(args[0]));
+            new YCSBServer(Integer.parseInt(args[0]));
         } else {
             System.out.println("Usage: java ... YCSBServer <replica_id>");
         }
