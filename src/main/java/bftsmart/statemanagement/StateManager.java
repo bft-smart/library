@@ -219,11 +219,11 @@ public abstract class StateManager {
         
         if (SVController.getCurrentViewN() == 1) {
             logger.info("Replica state is up to date");
-            dt.deliverLock();
+            dt.pauseDecisionDelivery();
             isInitializing = false;
             tomLayer.setLastExec(-1);
             dt.canDeliver();
-            dt.deliverUnlock();
+            dt.resumeDecisionDelivery();
             return;
         }
         
@@ -314,11 +314,11 @@ public abstract class StateManager {
                     
                     if (cid == lastCID) {
                         logger.info("Replica state is up to date");
-                        dt.deliverLock();
+                        dt.pauseDecisionDelivery();
                         isInitializing = false;
                         tomLayer.setLastExec(cid);
                         dt.canDeliver();
-                        dt.deliverUnlock();
+                        dt.resumeDecisionDelivery();
                         break;
                     } else {
                         //ask for state
