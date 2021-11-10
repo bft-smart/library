@@ -446,12 +446,6 @@ public final class Acceptor {
 
 		if (targets != null) {  // Forwarding is necessary if toForward set is non-empty (non null)
 
-			// For debugging onlz
-			logger.debug("Targets: ");
-			for (int i = 0; i< targets.length; i++) {
-				logger.debug(""+targets[i]);
-			}
-
 			// Create the "FORWARD-DECISION" message
 			byte[] value = epoch.getConsensus().getDecision().getValue();
 			ConsensusMessage forwardDecision = factory.createForwardDecision(cid, epoch.getTimestamp(), value);
@@ -534,7 +528,6 @@ public final class Acceptor {
 				// Create and send a FWD-Decision message
 				ConsensusMessage forwardDecision = factory.createForwardDecision(cid, epoch.getTimestamp(), value);
 				forwardDecision.setProof(epoch.getProof());
-				logger.debug("Attaching proof for forwarded decision: " + cid + " | " + value + " | " + forwardDecision.getProof());
 				communication.send(targets, forwardDecision);
 				executionManager.addForwarded(msg.getNumber(), msg.getSender());
 			}
