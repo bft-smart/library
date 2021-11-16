@@ -55,9 +55,10 @@ public final class DeliveryThread extends Thread {
 	private final Condition notEmptyQueue = decidedLock.newCondition();
 
 	//Robin - BEGIN
-	private boolean stoppingDelivery;
-	public Lock stoppingDeliveryLock = new ReentrantLock(true);
-	Condition stoppingDeliveryCondition = stoppingDeliveryLock.newCondition();
+	//Variables used to pause/resume decisions delivery
+	private final Lock pausingDeliveryLock = new ReentrantLock();
+	private final Condition deliveryPausedCondition = pausingDeliveryLock.newCondition();
+	private int isPauseDelivery;
 	//Robin - END
 
 	/**
@@ -138,29 +139,39 @@ public final class DeliveryThread extends Thread {
 
 	public void deliverLock() {
 		// release the delivery lock to avoid blocking on state transfer
+		pauseDecisionDelivery();
+	}
+
+	public void deliverUnlock() {
+		resumeDecisionDelivery();
+	}
+	//****** ROBIN BEGIN ******//
+
+	public void pauseDecisionDelivery() {
+		pausingDeliveryLock.lock();
+		isPauseDelivery++;
+		pausingDeliveryLock.unlock();
+
+		// release the delivery lock to avoid blocking on state transfer
 		decidedLock.lock();
 
 		notEmptyQueue.signalAll();
 		decidedLock.unlock();
 
 		deliverLock.lock();
-	}
-
-	//****** ROBIN BEGIN ******//
-	public void pauseDecisionDelivery() {
-		stoppingDeliveryLock.lock();
-		stoppingDelivery = true;
-		decidedLock.lock();
-		notEmptyQueue.signalAll();
-		decidedLock.unlock();
-		stoppingDeliveryLock.unlock();
+		logger.info("Decision delivery paused");
 	}
 
 	public void resumeDecisionDelivery() {
-		stoppingDeliveryLock.lock();
-		stoppingDelivery = false;
-		stoppingDeliveryCondition.signalAll();
-		stoppingDeliveryLock.unlock();
+		pausingDeliveryLock.lock();
+		if (isPauseDelivery > 0) {
+			isPauseDelivery--;
+		}
+		if (isPauseDelivery == 0) {
+			deliveryPausedCondition.signalAll();
+		}
+		pausingDeliveryLock.unlock();
+		deliverLock.unlock();
 		logger.info("Decision delivery resumed");
 	}
 
@@ -169,10 +180,6 @@ public final class DeliveryThread extends Thread {
 	}
 
 	//****** ROBIN END ******//
-
-	public void deliverUnlock() {
-		deliverLock.unlock();
-	}
 
 	public void canDeliver() {
 		canDeliver.signalAll();
@@ -211,14 +218,15 @@ public final class DeliveryThread extends Thread {
 	public void run() {
 		boolean init = true;
 		while (doWork) {
-			stoppingDeliveryLock.lock();
-			if (stoppingDelivery) {
-				logger.info("Decision delivery paused");
-				stoppingDeliveryCondition.awaitUninterruptibly();
+			pausingDeliveryLock.lock();
+			while (isPauseDelivery > 0) {
+				deliveryPausedCondition.awaitUninterruptibly();
 			}
-			stoppingDeliveryLock.unlock();
-			/** THIS IS JOAO'S CODE, TO HANDLE STATE TRANSFER */
-			deliverLock();
+			pausingDeliveryLock.unlock();
+			deliverLock.lock();
+
+			/* THIS IS JOAO'S CODE, TO HANDLE STATE TRANSFER */
+			//deliverLock();
 			while (tomLayer.isRetrievingState()) {
 				logger.info("Retrieving State");
 				canDeliver.awaitUninterruptibly();
@@ -341,8 +349,9 @@ public final class DeliveryThread extends Thread {
 			}
 
 			/** THIS IS JOAO'S CODE, TO HANDLE STATE TRANSFER */
-			deliverUnlock();
+			//deliverUnlock();
 			/******************************************************************/
+			deliverLock.unlock();
 		}
 		logger.info("DeliveryThread stopped.");
 
