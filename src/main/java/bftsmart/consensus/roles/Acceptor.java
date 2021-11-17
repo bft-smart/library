@@ -202,9 +202,9 @@ public final class Acceptor {
 			if (cid == tomLayer.getLastExec() + 1) {
 				tomLayer.setInExec(cid);
 			}
-			epoch.deserializedPropValue = tomLayer.checkProposedValue(value, true);
+			boolean isValidProposal = tomLayer.checkProposedValue(epoch, true);
 
-			if (epoch.deserializedPropValue != null && !epoch.isWriteSent()) {
+			if (isValidProposal && !epoch.isWriteSent()) {
 				if (epoch.getConsensus().getDecision().firstMessageProposed == null) {
 					epoch.getConsensus().getDecision().firstMessageProposed = epoch.deserializedPropValue[0];
 				}
@@ -249,7 +249,7 @@ public final class Acceptor {
 				}
 				executionManager.processOutOfContext(epoch.getConsensus());
 
-			} else if (epoch.deserializedPropValue == null 
+			} else if (!isValidProposal
 					&& !tomLayer.isChangingLeader()) { // force a leader change
 				tomLayer.getSynchronizer().triggerTimeout(new LinkedList<>());
 			}

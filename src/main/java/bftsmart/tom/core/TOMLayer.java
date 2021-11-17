@@ -190,9 +190,9 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         }
 
         this.dt = new DeliveryThread(this, receiver, recoverer, this.controller); // Create delivery thread
-        this.dt.start();
         this.stateManager = recoverer.getStateManager();
         stateManager.init(this, dt);
+        this.dt.start();
 
         this.verifier = (verifier != null) ? verifier : ((request) -> true); // By default, never validate requests 
 
@@ -507,7 +507,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                     epoch.propValue = value;
                     epoch.propValueHash = computeHash(value);
                     epoch.getConsensus().addWritten(value);
-                    epoch.deserializedPropValue = checkProposedValue(value, true);
+                    checkProposedValue(epoch, true);
                     epoch.getConsensus().getDecision().firstMessageProposed = epoch.deserializedPropValue[0];
                     dec.setDecisionEpoch(epoch);
 
@@ -549,10 +549,10 @@ public final class TOMLayer extends Thread implements RequestReceiver {
      * @param addToClientManager add the requests to the client manager
      * @return Valid messages contained in the proposed value
      */
-    public TOMMessage[] checkProposedValue(byte[] proposedValue, boolean addToClientManager) {
+    public boolean checkProposedValue(Epoch epoch, boolean addToClientManager) {
 
         try{
-
+            byte[] proposedValue = epoch.propValue;
             logger.debug("Checking proposed value");
 
             BatchReader batchReader = new BatchReader(proposedValue,
@@ -563,7 +563,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             //deserialize the message
             //TODO: verify Timestamps and Nonces
             requests = batchReader.deserialiseRequests(this.controller);
-
+            epoch.deserializedPropValue = requests;
             if (addToClientManager) {
 
                 //use parallelization to validate the request
@@ -621,20 +621,20 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                     if (request.isValid == false) {
 
                         logger.warn("Request {} could not be added to the pending messages queue of its respective client", request);
-                        return null;
+                        return false;
                     }
                 }
             }
 
             logger.debug("Successfully deserialized batch");
 
-            return requests;
+            return true;
 
         } catch (Exception e) {
             logger.error("Failed to check proposed value",e);
             if (Thread.holdsLock(clientsManager.getClientsLock())) clientsManager.getClientsLock().unlock();
 
-            return null;
+            return false;
         }
     }
 

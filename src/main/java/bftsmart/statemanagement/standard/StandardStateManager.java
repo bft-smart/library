@@ -266,7 +266,7 @@ public class StandardStateManager extends StateManager {
                                 byte[] hash = tomLayer.computeHash(currentProof.getDecision());
                                 e.propValueHash = hash;
                                 e.propValue = currentProof.getDecision();
-                                e.deserializedPropValue = tomLayer.checkProposedValue(currentProof.getDecision(), false);
+                                tomLayer.checkProposedValue(e, false);
                                 cons.decided(e, false);
 
                                 logger.info("Successfully installed proof for consensus " + waitingCID);

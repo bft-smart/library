@@ -984,7 +984,7 @@ public class Synchronizer {
         e.propValueHash = hash;
         e.propValue = tempLastHighestCID.getDecision();
 
-        e.deserializedPropValue = tom.checkProposedValue(tempLastHighestCID.getDecision(), false);
+        tom.checkProposedValue(e, false);
 
         finalise(tempRegency, tempLastHighestCID,
                 tempSignedCollects, tempPropose, tempBatchSize, tempIAmLeader);
@@ -1074,7 +1074,7 @@ public class Synchronizer {
             byte[] hash = tom.computeHash(lastHighestCID.getDecision());
             e.propValueHash = hash;
             e.propValue = lastHighestCID.getDecision();
-            e.deserializedPropValue = tom.checkProposedValue(lastHighestCID.getDecision(), false);
+            tom.checkProposedValue(e, false);
 
             // Is this replica still executing the last decided consensus?
             if (tom.getLastExec() + 1 == lastHighestCID.getCID()) {
@@ -1165,10 +1165,10 @@ public class Synchronizer {
             e.propValueHash = hash;
             e.propValue = tmpval;
 
-            e.deserializedPropValue = tom.checkProposedValue(tmpval, false);
+            boolean isValidProposal = tom.checkProposedValue(e, false);
 
             if (cons.getDecision().firstMessageProposed == null) {
-                if (e.deserializedPropValue != null
+                if (isValidProposal
                         && e.deserializedPropValue.length > 0) {
                     cons.getDecision().firstMessageProposed = e.deserializedPropValue[0];
                 } else {
