@@ -28,7 +28,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class ClientData {
-    
+
+    public static final int MAX_SIZE_ORDERED_REQUESTS = 5;
+
     private Logger logger = LoggerFactory.getLogger(this.getClass());
 
     ReentrantLock clientLock = new ReentrantLock();
@@ -45,7 +47,7 @@ public class ClientData {
 
     private RequestList pendingRequests = new RequestList();
     //anb: new code to deal with client requests that arrive after their execution
-    private RequestList orderedRequests = new RequestList(5);
+    private RequestList orderedRequests = new RequestList(MAX_SIZE_ORDERED_REQUESTS);
 
     private Signature signatureVerificator = null;
     
@@ -157,5 +159,15 @@ public class ClientData {
             return null;
         }
     }
+
+    public TOMMessage getLastReply() {
+        TOMMessage request = orderedRequests.getLast();
+        return request != null ? request.reply : null;
+    }
+
+    public RequestList getLastReplies() {
+        return this.orderedRequests;
+    }
+
 
 }

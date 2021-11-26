@@ -277,7 +277,6 @@ public class ClientsManager {
      *
      * @param request the received request
      * @param fromClient the message was received from client or not?
-     * @param storeMessage the message should be stored or not? (read-only requests are not stored)
      * @param cs server com. system to be able to send replies to already processed requests
      *
      * @return true if the request is ok and is added to the pending messages
@@ -480,4 +479,40 @@ public class ClientsManager {
         
         return clientsData.size();
     }
+
+
+    /**
+     * Collects the last ordered request and their associated replies of each client in a HashMap  (clientID -> TOMMessage)
+     *
+     * @return hashmap of last request and replies
+     */
+    public HashMap<Integer, TOMMessage> getLastReplyOfEachClient() {
+        HashMap<Integer, TOMMessage> lastReplies = new HashMap<>();
+        for (Integer client: this.clientsData.keySet()) {
+            ClientData clientData = this.clientsData.get(client);
+            if (clientData != null && clientData.getLastReply() != null) {
+                lastReplies.put(client, clientData.getLastReply());
+            }
+        }
+        return lastReplies;
+    }
+
+    /**
+     * Collects the max number of last ordered requests of each client in a HashMap  (clientID -> RequestList)
+     *
+     * @return hashmap of lists of last request and replies per client
+     */
+    public HashMap<Integer, RequestList> getLastRepliesOfEachClient() {
+        // Todo: Should we add a garbage collection mechanism to ignore inactive (too old) clients?
+        HashMap<Integer, RequestList> lastReplies = new HashMap<>();
+        for (Integer client: this.clientsData.keySet()) {
+            ClientData clientData = this.clientsData.get(client);
+            if (clientData != null && clientData.getLastReplies() != null) {
+                lastReplies.put(client, clientData.getLastReplies());
+            }
+        }
+        return lastReplies;
+    }
+
+
 }
