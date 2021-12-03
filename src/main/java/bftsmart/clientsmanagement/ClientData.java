@@ -49,6 +49,8 @@ public class ClientData {
     //anb: new code to deal with client requests that arrive after their execution
     private RequestList orderedRequests = new RequestList(MAX_SIZE_ORDERED_REQUESTS);
 
+    private RequestList replyStore = new RequestList(MAX_SIZE_ORDERED_REQUESTS);
+
     private Signature signatureVerificator = null;
     
     /**
@@ -136,18 +138,13 @@ public class ClientData {
     }
 
     public boolean removeRequest(TOMMessage request) {
-	lastMessageDelivered = request.getSequence();
-	boolean result = pendingRequests.remove(request);
+
+	    lastMessageDelivered = request.getSequence();
+	    boolean result = pendingRequests.remove(request);
         //anb: new code to deal with client requests that arrive after their execution
         orderedRequests.addLast(request);
 
-	for(Iterator<TOMMessage> it = pendingRequests.iterator();it.hasNext();){
-		TOMMessage msg = it.next();
-		if(msg.getSequence()<request.getSequence()){
-			it.remove();
-		}
-	}
-
+        pendingRequests.removeIf(msg -> msg.getSequence() < request.getSequence());
     	return result;
     }
 
@@ -156,17 +153,22 @@ public class ClientData {
         if(request != null) {
             return request.reply;
         } else {
-            return null;
+            // if not in list of ordered requests, then check the reply store:
+            return replyStore.getBySequence(reqSequence);
         }
     }
 
-    public TOMMessage getLastReply() {
-        TOMMessage request = orderedRequests.getLast();
-        return request != null ? request.reply : null;
+    public void addToReplyStore(TOMMessage m) {
+        replyStore.addLast(m);
     }
 
-    public RequestList getLastReplies() {
-        return this.orderedRequests;
+    public TOMMessage getLastReply() {
+        // if not in list of the ordered requests, then check the reply store
+        return orderedRequests.getLast() != null ? orderedRequests.getLast().reply : replyStore.getLast();
+    }
+
+    public RequestList getReplyStore() {
+        return this.replyStore;
     }
 
 

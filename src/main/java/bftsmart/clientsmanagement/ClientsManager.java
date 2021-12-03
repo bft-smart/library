@@ -17,7 +17,6 @@ package bftsmart.clientsmanagement;
 
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.Set;
 import java.util.Map.Entry;
 import java.util.concurrent.locks.ReentrantLock;
 import bftsmart.communication.ServerCommunicationSystem;
@@ -31,9 +30,8 @@ import java.security.NoSuchAlgorithmException;
 import java.security.Signature;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Enumeration;
 import java.util.List;
-import java.util.Random;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -476,7 +474,7 @@ public class ClientsManager {
     }
     
     public int numClients() {
-        
+
         return clientsData.size();
     }
 
@@ -487,14 +485,40 @@ public class ClientsManager {
      * @return hashmap of last request and replies
      */
     public HashMap<Integer, TOMMessage> getLastReplyOfEachClient() {
+        this.clientsLock.lock();
         HashMap<Integer, TOMMessage> lastReplies = new HashMap<>();
         for (Integer client: this.clientsData.keySet()) {
             ClientData clientData = this.clientsData.get(client);
-            if (clientData != null && clientData.getLastReply() != null) {
-                lastReplies.put(client, clientData.getLastReply());
+            if (clientData != null) {
+                clientData.clientLock.lock();
+                if (clientData.getLastReply() != null) {
+                    lastReplies.put(client, clientData.getLastReply());
+                }
+                clientData.clientLock.unlock();
             }
         }
+        this.clientsLock.unlock();
         return lastReplies;
+    }
+
+    /**
+     * Sets the reply store of each client in a HashMap  (clientID -> TOMMessage)
+     */
+    public void setLastReplyOfEachClient(HashMap<Integer, TOMMessage> repliesToClients) {
+        for (TOMMessage m: repliesToClients.values()) {
+            m.setSender(this.controller.getStaticConf().getProcessId());
+        }
+        this.clientsLock.lock();
+        for (Integer client: this.clientsData.keySet()) {
+            ClientData clientData = this.clientsData.get(client);
+            if (clientData != null && repliesToClients.get(client) != null) {
+                clientData.clientLock.lock();
+                clientData.addToReplyStore(repliesToClients.get(client));
+                clientData.clientLock.unlock();
+            }
+        }
+        this.clientsLock.unlock();
+
     }
 
     /**
@@ -503,14 +527,19 @@ public class ClientsManager {
      * @return hashmap of lists of last request and replies per client
      */
     public HashMap<Integer, RequestList> getLastRepliesOfEachClient() {
+        this.clientsLock.lock();
         // Todo: Should we add a garbage collection mechanism to ignore inactive (too old) clients?
         HashMap<Integer, RequestList> lastReplies = new HashMap<>();
         for (Integer client: this.clientsData.keySet()) {
             ClientData clientData = this.clientsData.get(client);
-            if (clientData != null && clientData.getLastReplies() != null) {
-                lastReplies.put(client, clientData.getLastReplies());
+            if (clientData != null && clientData.getReplyStore() != null) {
+                clientData.clientLock.lock();
+                lastReplies.put(client, clientData.getReplyStore());
+                clientData.clientLock.unlock();
             }
         }
+        this.clientsLock.unlock();
+
         return lastReplies;
     }
 

@@ -19,6 +19,7 @@ import bftsmart.communication.ServerCommunicationSystem;
 import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.reconfiguration.util.TOMConfiguration;
 import bftsmart.reconfiguration.views.View;
+import bftsmart.tom.core.TOMLayer;
 
 /**
  * This class contains information related to the replica.
@@ -77,4 +78,5 @@ public class ReplicaContext {
     public ServerCommunicationSystem getServerCommunicationSystem() {
             return cs;
     }
+
 }

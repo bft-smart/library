@@ -23,6 +23,7 @@ import bftsmart.tom.leaderchange.CertifiedDecision;
 import bftsmart.tom.util.BatchBuilder;
 
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Set;
 /**
@@ -40,6 +41,10 @@ public class DefaultApplicationState implements ApplicationState {
     protected byte[] stateHash; // Hash of the state associated with the last checkpoint
     protected int lastCID = -1; // Consensus ID for the last messages batch delivered to the application
     protected boolean hasState; // indicates if the replica really had the requested state
+
+    protected HashMap<Integer, TOMMessage> lastReplies; // For each client id (Integer) remember the last ordered
+                                                        // TOM message (including reply)
+    protected byte[] lastRepliesHash; // Hash of lastReplies to confirm integrity
 
     private CommandsInfo[] messageBatches; // batches received since the last checkpoint.
     private int lastCheckpointCID; // Consensus ID for the last checkpoint
@@ -68,6 +73,14 @@ public class DefaultApplicationState implements ApplicationState {
     public DefaultApplicationState(CommandsInfo[] messageBatches, byte[] logHash, int lastCheckpointCID, int lastCID, byte[] state, byte[] stateHash, int pid) {
     	this(messageBatches, lastCheckpointCID, lastCID, state, stateHash, pid);
     	this.logHash = logHash;
+    }
+
+
+    public DefaultApplicationState(CommandsInfo[] messageBatches, int lastCheckpointCID, int lastCID, byte[] state,
+                                   byte[] stateHash, int pid, HashMap<Integer, TOMMessage> lastReplies, byte[] lastRepliesHash) {
+        this(messageBatches, lastCheckpointCID, lastCID, state, stateHash, pid);
+        this.lastReplies = lastReplies;
+        this.lastRepliesHash = lastRepliesHash;
     }
 
     /**
@@ -221,9 +234,9 @@ public class DefaultApplicationState implements ApplicationState {
                     //System.out.println("[DefaultApplicationState] returing FALSE2!");
                     return false;
                 }
-                
+
                 for (int i = 0; i < this.messageBatches.length; i++) {
-                    
+
                     if (this.messageBatches[i] == null && tState.messageBatches[i] != null) {
                         //System.out.println("[DefaultApplicationState] returing FALSE3!");
                         return false;
@@ -233,7 +246,7 @@ public class DefaultApplicationState implements ApplicationState {
                         //System.out.println("[DefaultApplicationState] returing FALSE4!");
                         return false;
                     }
-                    
+
                     if (!(this.messageBatches[i] == null && tState.messageBatches[i] == null) &&
                         (!this.messageBatches[i].equals(tState.messageBatches[i]))) {
                         //System.out.println("[DefaultApplicationState] returing FALSE5!" + (this.messageBatches[i] == null) + " " + (tState.messageBatches[i] == null));
@@ -242,6 +255,7 @@ public class DefaultApplicationState implements ApplicationState {
                 }
             }
             return (Arrays.equals(this.stateHash, tState.stateHash) &&
+                    Arrays.equals(this.lastRepliesHash, tState.lastRepliesHash) &&
                     tState.lastCheckpointCID == this.lastCheckpointCID &&
                     tState.lastCID == this.lastCID && tState.hasState == this.hasState);
         }

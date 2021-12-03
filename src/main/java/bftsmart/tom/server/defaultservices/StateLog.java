@@ -16,8 +16,11 @@ limitations under the License.
 package bftsmart.tom.server.defaultservices;
 
 import bftsmart.tom.MessageContext;
+import bftsmart.tom.core.messages.TOMMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.HashMap;
 
 /**
  * This classes serves as a log for the state associated with the last checkpoint, and the message
@@ -39,6 +42,10 @@ public class StateLog {
     private int lastCID; // Consensus ID for the last messages batch delivered to the application
     private int id; //replica ID
 
+    private HashMap<Integer, TOMMessage> lastReplies; // For each client id (Integer) remember the last ordered
+                                                        // TOM message (including reply) up until lastCID
+    private byte[] lastRepliesHash; // Hash of lastReplies to confirm integrity
+
     /**
      * Constructs a State log
      * @param id
@@ -55,6 +62,8 @@ public class StateLog {
         this.position = 0;
         this.lastCID = -1;
         this.id = id;
+        this.lastReplies = new HashMap<>();
+        this.lastRepliesHash = null;
     }
     
     /**
@@ -79,6 +88,8 @@ public class StateLog {
         this.stateHash = initialHash;
         this.lastCID = -1;
         this.id = id;
+        this.lastReplies = new HashMap<>();
+        this.lastRepliesHash = null;
     }
     
     /**
@@ -166,6 +177,22 @@ public class StateLog {
         setLastCID(lastConsensusId);
     }
 
+    public HashMap<Integer, TOMMessage> getLastReplies() {
+        return lastReplies;
+    }
+
+    public void setLastReplies(HashMap<Integer, TOMMessage> lastReplies) {
+        this.lastReplies = lastReplies;
+    }
+
+    public byte[] getLastRepliesHash() {
+        return lastRepliesHash;
+    }
+
+    public void setLastRepliesHash(byte[] lastRepliesHash) {
+        this.lastRepliesHash = lastRepliesHash;
+    }
+
     /**
      * Returns a batch of messages, given its correspondent consensus ID
      * @param cid Consensus ID associated with the batch to be fetched
@@ -219,7 +246,8 @@ public class StateLog {
                     batches[i] = messageBatches[i];
             }
             lastCID = cid;
-            return new DefaultApplicationState(batches, lastCheckpointCID, lastCID, (setState ? state : null), stateHash, this.id);
+            return new DefaultApplicationState(batches, lastCheckpointCID, lastCID, (setState ? state : null),
+                    stateHash, this.id, this.lastReplies, this.lastRepliesHash);
 
         }
         else return null;
@@ -243,6 +271,10 @@ public class StateLog {
         this.state = transState.getState();
 
         this.stateHash = transState.getStateHash();
+
+        this.lastReplies = transState.lastReplies;
+
+        this.lastRepliesHash = transState.lastRepliesHash;
 
         this.lastCID = transState.getLastCID();
     }

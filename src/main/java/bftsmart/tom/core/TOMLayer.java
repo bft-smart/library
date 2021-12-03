@@ -653,4 +653,8 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         if (this.communication != null) this.communication.shutdown();
  
     }
+
+    public ClientsManager getClientsManager() {
+        return clientsManager;
+    }
 }

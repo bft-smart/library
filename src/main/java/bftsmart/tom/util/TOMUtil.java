@@ -15,25 +15,21 @@ limitations under the License.
 */
 package bftsmart.tom.util;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
+import java.io.*;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.Signature;
 import java.security.SignatureException;
-import java.util.Arrays;
+import java.util.*;
 
 import bftsmart.reconfiguration.util.Configuration;
 import java.security.Security;
-import java.util.Random;
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.PBEKeySpec;
 
+import bftsmart.tom.core.messages.TOMMessage;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -261,5 +257,59 @@ public class TOMUtil {
 
         return new PBEKeySpec(password, salt, PBE_ITERATIONS, HASH_BYTE_SIZE);
         
+    }
+
+    public static byte[] computeHash(TOMMessage m) {
+
+        byte[] result = null;
+
+        try {
+            MessageDigest md = getHashEngine();
+
+            m.setSender(-1); // canonicalize the sender id
+
+            // serialize message
+            DataOutputStream dos = null;
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            dos = new DataOutputStream(baos);
+            m.wExternal(dos);
+            dos.flush();
+            m.serializedMessage = baos.toByteArray();
+
+            result = md.digest(m.serializedMessage);
+
+        } catch (NoSuchAlgorithmException | IOException e) {
+            logger.error("Failed to compute hash",e);
+        }
+        return result;
+    }
+
+    public static byte[] computeHashOfCollection(Collection<TOMMessage> messages) {
+
+        byte[] result = null;
+
+        List<byte[]> hashes = new LinkedList<>();
+
+        for (TOMMessage m: messages) {
+            byte[] hash = computeHash(m);
+            hashes.add(hash);
+        }
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        for (byte[] hash: hashes) {
+            try {
+                baos.write(hash);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        try {
+            MessageDigest md = getHashEngine();
+            result = md.digest(baos.toByteArray());
+
+        } catch (NoSuchAlgorithmException e) {
+            logger.error("Failed to compute hash",e);
+        }
+
+        return  result;
     }
 }

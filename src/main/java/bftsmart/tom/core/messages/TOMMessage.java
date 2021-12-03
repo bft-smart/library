@@ -86,8 +86,7 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 	
 	private int replyServer = -1;
 
-	public TOMMessage() {
-	}
+	public TOMMessage() {}
 
 	/**
 	 * Creates a new instance of TOMMessage
@@ -381,6 +380,9 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
                         
 		}
 
+	public void setSender(int sender) {
+		 this.sender = sender;
+	}
 
 	public int getReplyServer() {
 		return replyServer;

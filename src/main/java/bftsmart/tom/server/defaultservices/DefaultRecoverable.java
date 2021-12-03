@@ -21,8 +21,10 @@ package bftsmart.tom.server.defaultservices;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.concurrent.locks.ReentrantLock;
 
+import bftsmart.clientsmanagement.ClientsManager;
 import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.reconfiguration.util.TOMConfiguration;
 import bftsmart.statemanagement.ApplicationState;
@@ -30,6 +32,7 @@ import bftsmart.statemanagement.StateManager;
 import bftsmart.statemanagement.standard.StandardStateManager;
 import bftsmart.tom.MessageContext;
 import bftsmart.tom.ReplicaContext;
+import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.server.BatchExecutable;
 import bftsmart.tom.server.Recoverable;
 import bftsmart.tom.util.TOMUtil;
@@ -57,6 +60,7 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
     private MessageDigest md;
     private StateLog log;
     private StateManager stateManager;
+    private ClientsManager clientsManager;
 
     /**
      * Constructor
@@ -132,8 +136,10 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
             logger.info("Performing checkpoint for consensus " + cid);
             stateLock.lock();
             byte[] snapshot = getSnapshot();
+            HashMap<Integer, TOMMessage> lastReplies = clientsManager.getLastReplyOfEachClient();
             stateLock.unlock();
             saveState(snapshot, cid);
+            saveReplies(lastReplies, cid);
 
             System.arraycopy(firstHalfReplies, 0, replies, 0, firstHalfReplies.length);
 
@@ -190,6 +196,21 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
 
         logLock.unlock();
         logger.debug("(TOMLayer.saveState) Finished saving state of CID " + lastCID);
+    }
+
+    private void saveReplies(HashMap<Integer, TOMMessage> lastClientReplies, int lastCID) {
+
+        StateLog thisLog = getLog();
+
+        logger.debug("(TOMLayer.saveState) Saving reply store of CID " + lastCID);
+        logLock.lock();
+
+        thisLog.setLastReplies(lastClientReplies);
+        byte[] lastRepliesHash = TOMUtil.computeHashOfCollection(lastClientReplies.values());
+        this.log.setLastRepliesHash(lastRepliesHash);
+
+        logLock.unlock();
+        logger.debug("(TOMLayer.saveState) Finished saving reply store of CID " + lastCID);
     }
 
     /**
@@ -261,6 +282,11 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
                 initLog();
                 log.update(state);
                 installSnapshot(state.getSerializedState());
+
+                // Give the last replies from received state to the clientManager, re-send in case a client waits for it
+                if (clientsManager != null) {
+                    clientsManager.setLastReplyOfEachClient(state.lastReplies);
+                }
             }
 
             for (int cid = lastCheckpointCID + 1; cid <= lastCID; cid++) {
@@ -323,9 +349,7 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
      * commands, it is necessary to identify if the batch contains checkpoint
      * indexes.
      *
-     * @param msgCtxs the contexts of the consensus where the messages where
-     * executed. There is one msgCtx message for each command to be executed
-     *
+
      * @return the index in which a replica is supposed to take a checkpoint. If
      * there is no replica taking a checkpoint during the period comprised by
      * this command batch, it is returned -1
@@ -355,7 +379,6 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
      * transfer protocol to find the position of the log commands in the log
      * file.
      *
-     * @param msgCtx the message context of the commands executed by the
      * replica. There is one message context for each command
      * @param cid the CID of the consensus where a replica took a checkpoint
      * @return the higher position where the CID appears
@@ -403,6 +426,7 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
         this.controller = replicaContext.getSVController();
         initLog();
         getStateManager().askCurrentConsensusId();
+        this.clientsManager = replicaContext.getSVController().getTOMLayer().getClientsManager();
     }
 
     @Override
