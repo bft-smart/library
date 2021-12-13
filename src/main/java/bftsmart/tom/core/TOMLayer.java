@@ -42,6 +42,7 @@ import bftsmart.tom.core.messages.ForwardedMessage;
 import bftsmart.tom.leaderchange.RequestsTimer;
 import bftsmart.tom.server.Recoverable;
 import bftsmart.tom.server.RequestVerifier;
+import bftsmart.tom.server.defaultservices.DefaultRecoverable;
 import bftsmart.tom.util.BatchBuilder;
 import bftsmart.tom.util.BatchReader;
 import bftsmart.tom.util.TOMUtil;
@@ -179,15 +180,20 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             logger.error("Failed to get signature engine",e);
         }
 
+        this.verifier = (verifier != null) ? verifier : ((request) -> true); // By default, never validate requests
+
+        // I have a verifier, now create clients manager
+        this.clientsManager = new ClientsManager(this.controller, requestsTimer, this.verifier);
+
+        // If recoverer should use lastReplies of clients to recover, it needs reference to clientsManager
+        if (recoverer instanceof DefaultRecoverable) {
+            ((DefaultRecoverable) recoverer).setClientsManager(clientsManager);
+        }
+
         this.dt = new DeliveryThread(this, receiver, recoverer, this.controller); // Create delivery thread
         this.dt.start();
         this.stateManager = recoverer.getStateManager();
         stateManager.init(this, dt);
-        
-        this.verifier = (verifier != null) ? verifier : ((request) -> true); // By default, never validate requests 
-		
-        // I have a verifier, now create clients manager
-        this.clientsManager = new ClientsManager(this.controller, requestsTimer, this.verifier);
 
         this.syncher = new Synchronizer(this); // create synchronizer
         
@@ -551,7 +557,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                 
                 for (TOMMessage request : requests) {
                     
-                    if (request.isValid == false) {
+                    if (!request.isValid) {
                         
                         logger.warn("Request {} could not be added to the pending messages queue of its respective client", request);
                         return null;
@@ -654,7 +660,4 @@ public final class TOMLayer extends Thread implements RequestReceiver {
  
     }
 
-    public ClientsManager getClientsManager() {
-        return clientsManager;
-    }
 }

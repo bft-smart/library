@@ -16,6 +16,7 @@ limitations under the License.
 package bftsmart.tom.util;
 
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
@@ -259,31 +260,6 @@ public class TOMUtil {
         
     }
 
-    public static byte[] computeHash(TOMMessage m) {
-
-        byte[] result = null;
-
-        try {
-            MessageDigest md = getHashEngine();
-
-            m.setSender(-1); // canonicalize the sender id
-
-            // serialize message
-            DataOutputStream dos = null;
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            dos = new DataOutputStream(baos);
-            m.wExternal(dos);
-            dos.flush();
-            m.serializedMessage = baos.toByteArray();
-
-            result = md.digest(m.serializedMessage);
-
-        } catch (NoSuchAlgorithmException | IOException e) {
-            logger.error("Failed to compute hash",e);
-        }
-        return result;
-    }
-
     public static byte[] computeHashOfCollection(Collection<TOMMessage> messages) {
 
         byte[] result = null;
@@ -291,7 +267,8 @@ public class TOMUtil {
         List<byte[]> hashes = new LinkedList<>();
 
         for (TOMMessage m: messages) {
-            byte[] hash = computeHash(m);
+            m.setSender(-1); // canonicalize the sender id
+            byte[] hash = TOMUtil.computeHash(TOMMessage.messageToBytes(m));
             hashes.add(hash);
         }
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -311,5 +288,16 @@ public class TOMUtil {
         }
 
         return  result;
+    }
+
+    private static final byte[] HEX_ARRAY = "0123456789ABCDEF".getBytes(StandardCharsets.US_ASCII);
+    public static String bytesToHex(byte[] bytes) {
+        byte[] hexChars = new byte[bytes.length * 2];
+        for (int j = 0; j < bytes.length; j++) {
+            int v = bytes[j] & 0xFF;
+            hexChars[j * 2] = HEX_ARRAY[v >>> 4];
+            hexChars[j * 2 + 1] = HEX_ARRAY[v & 0x0F];
+        }
+        return new String(hexChars, StandardCharsets.UTF_8);
     }
 }

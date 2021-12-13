@@ -164,6 +164,8 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 			if(controller.getStaticConf().getUseSignatures() == 1) logger.info("Using Signatures");
                         else if (controller.getStaticConf().getUseSignatures() == 2) logger.info("Using benchmark signature verification");
 			logger.info("Binded replica to IP address " + myAddress);
+
+			logger.info("Optimizations: " + " Read-only Requests: " + (controller.getStaticConf().useReadOnlyRequests() ? "enabled" : "disabled"));
 			// ******* EDUARDO END **************//
 
 			/* Tulio Ribeiro */

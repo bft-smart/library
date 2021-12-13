@@ -281,6 +281,8 @@ public class DurableStateManager extends StateManager {
                         }
                     }
 
+                    // TODO replies_in_state check hash of ReplyStore?
+
                     logger.info("Current regency: " + currentRegency);
                     logger.info("Current leader: " + currentLeader);
                     logger.info("Current view: " + currentView);

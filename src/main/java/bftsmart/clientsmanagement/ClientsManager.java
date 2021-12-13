@@ -436,6 +436,25 @@ public class ClientsManager {
         clientsLock.unlock();
     }
 
+    public void requestsExecuted(TOMMessage[] requests) {
+        logger.debug("Requests executed()");
+        clientsLock.lock();
+        for (TOMMessage request : requests) {
+            requestExecuted(request);
+        }
+        logger.debug("Finished updating client manager");
+        clientsLock.unlock();
+    }
+
+    private void  requestExecuted(TOMMessage request) {
+        ClientData clientData = getClientData(request.getSender());
+        clientData.clientLock.lock();
+        if (request.reply != null) {
+            clientData.addToReplyStore(request.reply);
+        }
+        clientData.clientLock.unlock();
+    }
+
     /**
      * Cleans all state for this request (e.g., removes it from the pending
      * requests queue and stop any timer for it).
@@ -498,6 +517,7 @@ public class ClientsManager {
             }
         }
         this.clientsLock.unlock();
+        logger.debug("getLastReplyOfEachClient() SIZE " + lastReplies.size());
         return lastReplies;
     }
 
@@ -505,6 +525,7 @@ public class ClientsManager {
      * Sets the reply store of each client in a HashMap  (clientID -> TOMMessage)
      */
     public void setLastReplyOfEachClient(HashMap<Integer, TOMMessage> repliesToClients) {
+        logger.debug("Setting the reply store for the clients after state transfer: " + repliesToClients.size());
         for (TOMMessage m: repliesToClients.values()) {
             m.setSender(this.controller.getStaticConf().getProcessId());
         }
@@ -518,7 +539,6 @@ public class ClientsManager {
             }
         }
         this.clientsLock.unlock();
-
     }
 
     /**

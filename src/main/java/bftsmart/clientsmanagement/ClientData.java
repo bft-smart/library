@@ -159,12 +159,18 @@ public class ClientData {
     }
 
     public void addToReplyStore(TOMMessage m) {
-        replyStore.addLast(m);
+        if (replyStore.isEmpty() || m.getSequence() > replyStore.getLast().getSequence()) {
+            replyStore.addLast(m);
+        }
     }
 
     public TOMMessage getLastReply() {
-        // if not in list of the ordered requests, then check the reply store
-        return orderedRequests.getLast() != null ? orderedRequests.getLast().reply : replyStore.getLast();
+        if (replyStore.isEmpty()) {
+            logger.warn("ReplyStore is Empty getLastReply()");
+            return null;
+        } else {
+            return replyStore.getLast();
+        }
     }
 
     public RequestList getReplyStore() {
