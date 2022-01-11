@@ -255,8 +255,8 @@ public class ServiceProxy extends TOMSender {
 			TOMulticast(request, reqId, operationId, reqType);
 		}
 
-		logger.debug("Sending request (" + reqType + ") with reqId=" + reqId);
-		logger.debug("Expected number of matching replies: " + replyQuorum);
+		logger.info("Sending request (" + reqType + ") with reqId=" + reqId);
+		logger.info("Expected number of matching replies: " + replyQuorum);
 
 		// This instruction blocks the thread, until a response is obtained.
 		// The thread will be unblocked when the method replyReceived is invoked

@@ -39,7 +39,7 @@ public class ProcessExecutor extends Thread {
 		}
 	}
 
-	private void destroy() {
+	public void destroy() {
 		if (process != null)
 			process.destroy();
 		if (errorPrinter != null) {

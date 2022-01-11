@@ -170,10 +170,11 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             logger.error("Failed to get signature engine",e);
         }
 
-        this.verifier = (verifier != null) ? verifier : ((request) -> true); // By default, never validate requests
+        RequestVerifier verifier1 = (verifier != null) ? verifier : ((request) -> true); // By default, never validate requests
 
         // I have a verifier, now create clients manager
-        this.clientsManager = new ClientsManager(this.controller, requestsTimer, this.verifier);
+        this.clientsManager = new ClientsManager(this.controller, requestsTimer, verifier1);
+
 
         // If recoverer should use lastReplies of clients to recover, it needs reference to clientsManager
         if (recoverer instanceof DefaultRecoverable) {
@@ -185,10 +186,6 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         stateManager.init(this, dt);
         this.dt.start();
 
-        RequestVerifier verifier1 = (verifier != null) ? verifier : ((request) -> true); // By default, never validate requests
-
-        // I have a verifier, now create clients manager
-        this.clientsManager = new ClientsManager(this.controller, requestsTimer, verifier1);
 
         this.syncher = new Synchronizer(this); // create synchronizer
 
