@@ -170,10 +170,6 @@ public class ServiceReplica {
         initReplica();
     }
 
-    /**
-     * 
-     * @deprecated 
-     */
     public void joinMsgReceived(VMMessage msg) {
         ReconfigureReply r = msg.getReply();
 
@@ -194,9 +190,6 @@ public class ServiceReplica {
         repMan = new ReplyManager(SVController.getStaticConf().getNumRepliers(), cs);
     }
 
-    /**
-     * @deprecated 
-     */
     public final void receiveReadonlyMessage(TOMMessage message, MessageContext msgCtx) {
         TOMMessage response;
 
@@ -271,11 +264,7 @@ public class ServiceReplica {
         };
         t.start();
     }
-    
-    /**
-     * 
-     * @deprecated
-     */
+
     public void receiveMessages(int consId[], int regencies[], int leaders[], CertifiedDecision[] cDecs, TOMMessage[][] requests) {
         int numRequests = 0;
         int consensusCount = 0;
