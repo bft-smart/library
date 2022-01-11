@@ -20,7 +20,7 @@ import bftsmart.tom.core.messages.TOMMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashMap;
+import java.util.TreeMap;
 
 /**
  * This classes serves as a log for the state associated with the last checkpoint, and the message
@@ -42,7 +42,7 @@ public class StateLog {
     private int lastCID; // Consensus ID for the last messages batch delivered to the application
     private int id; //replica ID
 
-    private HashMap<Integer, TOMMessage> lastReplies; // For each client id (Integer) remember the last ordered
+    private TreeMap<Integer, TOMMessage> lastReplies; // For each client id (Integer) remember the last ordered
                                                         // TOM message (including reply) up until lastCID
     private byte[] lastRepliesHash; // Hash of lastReplies to confirm integrity
 
@@ -62,7 +62,7 @@ public class StateLog {
         this.position = 0;
         this.lastCID = -1;
         this.id = id;
-        this.lastReplies = new HashMap<>();
+        this.lastReplies = new TreeMap<>();
         this.lastRepliesHash = null;
     }
     
@@ -88,7 +88,7 @@ public class StateLog {
         this.stateHash = initialHash;
         this.lastCID = -1;
         this.id = id;
-        this.lastReplies = new HashMap<>();
+        this.lastReplies = new TreeMap<>();
         this.lastRepliesHash = null;
     }
     
@@ -177,18 +177,35 @@ public class StateLog {
         setLastCID(lastConsensusId);
     }
 
-    public HashMap<Integer, TOMMessage> getLastReplies() {
+    public TreeMap<Integer, TOMMessage> getLastReplies() {
         return lastReplies;
     }
 
-    public void setLastReplies(HashMap<Integer, TOMMessage> lastReplies) {
+    /**
+     * Retrieves the last replies sent to clients
+     *
+     * @param lastReplies last replies to clients
+     */
+    public void setLastReplies(TreeMap<Integer, TOMMessage> lastReplies) {
         this.lastReplies = lastReplies;
     }
 
+
+    /**
+     * Retrieves the last replies hash
+     *
+     * @param lastReplies last replies hash
+     */
     public byte[] getLastRepliesHash() {
         return lastRepliesHash;
     }
 
+
+    /**
+     * Sets the last replies hash
+     *
+     * @param lastReplies last replies to clients
+     */
     public void setLastRepliesHash(byte[] lastRepliesHash) {
         this.lastRepliesHash = lastRepliesHash;
     }

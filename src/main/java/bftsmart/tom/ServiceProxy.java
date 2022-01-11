@@ -271,6 +271,7 @@ public class ServiceProxy extends TOMSender {
 			}else{ 
 				if (!this.sm.tryAcquire(invokeTimeout, TimeUnit.SECONDS)) {
 					logger.info("###################TIMEOUT#######################");
+
 					String receivedFrom = "";
 					for (int i=0; i < replies.length; i++) {
 						if(replies[i]!=null) receivedFrom = receivedFrom + ", "+ i;
@@ -470,11 +471,14 @@ public class ServiceProxy extends TOMSender {
          * @return The quorum size for the amount of replies
          */
 	protected int getReplyQuorum() {
+		int n = getViewManager().getCurrentViewN();
+		int f = getViewManager().getCurrentViewF();
 		if (getViewManager().getStaticConf().isBFT()) {
-			return (int) Math.ceil((getViewManager().getCurrentViewN()
-					+ getViewManager().getCurrentViewF()) / 2) + 1;
+			// Note that a quorum ensures Linearizability when unordered requests are used
+			// f + 1 is sufficient in case the replicas' system configuration does not support unordered requests
+			return getViewManager().getStaticConf().useReadOnlyRequests() ? ((n + f) / 2 + 1) : f + 1;
 		} else {
-			return (int) Math.ceil((getViewManager().getCurrentViewN()) / 2) + 1;
+			return getViewManager().getStaticConf().useReadOnlyRequests() ? (n / 2 + 1) : 1;
 		}
 	}
 

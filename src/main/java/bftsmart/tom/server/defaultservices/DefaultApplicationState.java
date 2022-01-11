@@ -22,10 +22,8 @@ import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.leaderchange.CertifiedDecision;
 import bftsmart.tom.util.BatchBuilder;
 
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.Set;
+import java.util.*;
+
 /**
  * This class represents a state transfered from a replica to another. The state associated with the last
  * checkpoint together with all the batches of messages received do far, comprises the sender's
@@ -42,7 +40,7 @@ public class DefaultApplicationState implements ApplicationState {
     protected int lastCID = -1; // Consensus ID for the last messages batch delivered to the application
     protected boolean hasState; // indicates if the replica really had the requested state
 
-    protected HashMap<Integer, TOMMessage> lastReplies; // For each client id (Integer) remember the last reply
+    protected TreeMap<Integer, TOMMessage> lastReplies; // For each client id (Integer) remember the last reply
     protected byte[] lastRepliesHash; // Hash of lastReplies to confirm integrity
 
     private CommandsInfo[] messageBatches; // batches received since the last checkpoint.
@@ -76,7 +74,7 @@ public class DefaultApplicationState implements ApplicationState {
 
 
     public DefaultApplicationState(CommandsInfo[] messageBatches, int lastCheckpointCID, int lastCID, byte[] state,
-                                   byte[] stateHash, int pid, HashMap<Integer, TOMMessage> lastReplies, byte[] lastRepliesHash) {
+                                   byte[] stateHash, int pid, TreeMap<Integer, TOMMessage> lastReplies, byte[] lastRepliesHash) {
         this(messageBatches, lastCheckpointCID, lastCID, state, stateHash, pid);
         this.lastReplies = lastReplies;
         this.lastRepliesHash = lastRepliesHash;

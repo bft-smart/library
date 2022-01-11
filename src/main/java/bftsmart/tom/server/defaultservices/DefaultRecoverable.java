@@ -22,7 +22,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
-import java.util.HashMap;
+import java.util.TreeMap;
 import java.util.concurrent.locks.ReentrantLock;
 
 import bftsmart.clientsmanagement.ClientsManager;
@@ -34,7 +34,6 @@ import bftsmart.statemanagement.standard.StandardStateManager;
 import bftsmart.tom.MessageContext;
 import bftsmart.tom.ReplicaContext;
 import bftsmart.tom.core.messages.TOMMessage;
-import bftsmart.tom.core.messages.TOMMessageType;
 import bftsmart.tom.server.BatchExecutable;
 import bftsmart.tom.server.Recoverable;
 import bftsmart.tom.util.TOMUtil;
@@ -103,7 +102,7 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
 
             saveCommands(commands, msgCtxs);
 
-            if (!noop) {
+            if (!noop && controller.getStaticConf().useReadOnlyRequests()) {
                 saveReplies(commands, msgCtxs, replies, cid);
             }
         } else {
@@ -137,14 +136,20 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
                 firstHalfReplies = appExecuteBatch(firstHalf, firstHalfMsgCtx, true);
                 stateLock.unlock();
             }
-            saveReplies(firstHalf, firstHalfMsgCtx, firstHalfReplies, cid);
+            if (controller.getStaticConf().useReadOnlyRequests()) {
+                saveReplies(firstHalf, firstHalfMsgCtx, firstHalfReplies, cid);
+            }
             logger.info("Performing checkpoint for consensus " + cid);
             stateLock.lock();
+
             byte[] snapshot = getSnapshot();
-            HashMap<Integer, TOMMessage> lastReplies = clientsManager.getLastReplyOfEachClient();
+            TreeMap<Integer, TOMMessage> lastReplies = clientsManager.getLastReplyOfEachClient();
+
             stateLock.unlock();
             saveState(snapshot, cid);
-            saveReplies(lastReplies, cid);
+            if (controller.getStaticConf().useReadOnlyRequests()) {
+                saveReplies(lastReplies, cid);
+            }
 
             System.arraycopy(firstHalfReplies, 0, replies, 0, firstHalfReplies.length);
 
@@ -217,7 +222,7 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
         }
     }
 
-    private void saveReplies(HashMap<Integer, TOMMessage> lastClientReplies, int lastCID) {
+    private void saveReplies(TreeMap<Integer, TOMMessage> lastClientReplies, int lastCID) {
 
         StateLog thisLog = getLog();
 
@@ -228,12 +233,13 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
 
         for (TOMMessage m: lastClientReplies.values()) {
             if (m.getReqType() == null) {
+                logger.debug("(TOMLayer.saveState) Saving reply store of CID " + lastCID);
+
                 logger.warn("ReqType is NULL");
-                logger.info(">>>LastClientReply:  "  + m.getSequence() + " " + m.getSender());
+                logger.debug(">>>LastClientReply:  "  + m.getSequence() + " " + m.getSender());
             }
         }
 
-        // TODO replies hash for integrity check
          byte[] lastRepliesHash = TOMUtil.computeHashOfCollection(lastClientReplies.values());
          this.log.setLastRepliesHash(lastRepliesHash);
 
@@ -313,15 +319,17 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
                 log.update(state);
                 installSnapshot(state.getSerializedState());
 
-                if (state.lastReplies.size() == 0) {
-                    logger.warn("There are no replies to add to replica state");
-                }
-                // Give the last replies from received state to the clientManager, re-send in case a client waits for it
-                if (clientsManager != null) {
-                    clientsManager.setLastReplyOfEachClient(state.lastReplies);
+                if (controller.getStaticConf().useReadOnlyRequests()) {
+                    if (state.lastReplies.size() == 0) {
+                        logger.info("There are no replies to add to replica state");
+                    }
+                    // Give the last replies from received state to the clientManager, re-send in case a client waits for it
+                    if (clientsManager != null) {
+                        clientsManager.setLastReplyOfEachClient(state.lastReplies);
 
-                } else {
-                    logger.warn("client manager is null, cannot set las replies of clients");
+                    } else {
+                        logger.warn("client manager is null, cannot set last replies of clients");
+                    }
                 }
             }
 

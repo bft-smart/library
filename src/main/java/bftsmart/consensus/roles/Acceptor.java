@@ -155,15 +155,19 @@ public final class Acceptor {
 			acceptReceived(epoch, msg);
 		}
 			break;
+
 		// START DECISION FORWARDING
 		case MessageFactory.REQ_DECISION: {
-			requestDecisionReceived(epoch, msg);
+			if (controller.getStaticConf().useReadOnlyRequests())
+				requestDecisionReceived(epoch, msg);
 		}
 			break;
 		case MessageFactory.FWD_DECISION: {
-			forwardDecisionReceived(epoch, msg);
+			if (controller.getStaticConf().useReadOnlyRequests())
+				forwardDecisionReceived(epoch, msg);
 		}
 		// END DECISION FORWARDING
+
 		break;
 		}
 		consensus.lock.unlock();
@@ -430,7 +434,8 @@ public final class Acceptor {
 			decide(epoch);
 
 			// START DECISION_FORWARDING
-			forwardDecision(epoch);
+			if (controller.getStaticConf().useReadOnlyRequests())
+				forwardDecision(epoch);
 			// END DECISION_FORWARDING
 		}
 	}
@@ -626,7 +631,7 @@ public final class Acceptor {
 				boolean validSignature = TOMUtil.verifySignature(pubKey, data, signature);
 
 				if (!validSignature) {
-					logger.info(">!!! Signatue is invalid!");
+					logger.info(">!!! Signature is invalid!");
 				}
 
 				// The ACCEPT is valid and will be counted iff

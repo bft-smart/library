@@ -15,8 +15,7 @@ limitations under the License.
 */
 package bftsmart.clientsmanagement;
 
-import java.util.HashMap;
-import java.util.Iterator;
+import java.util.*;
 import java.util.Map.Entry;
 import java.util.concurrent.locks.ReentrantLock;
 import bftsmart.communication.ServerCommunicationSystem;
@@ -28,9 +27,6 @@ import bftsmart.tom.util.TOMUtil;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.Signature;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -503,17 +499,20 @@ public class ClientsManager {
      *
      * @return hashmap of last request and replies
      */
-    public HashMap<Integer, TOMMessage> getLastReplyOfEachClient() {
+    public TreeMap<Integer, TOMMessage> getLastReplyOfEachClient() {
+
         this.clientsLock.lock();
-        HashMap<Integer, TOMMessage> lastReplies = new HashMap<>();
-        for (Integer client: this.clientsData.keySet()) {
-            ClientData clientData = this.clientsData.get(client);
-            if (clientData != null) {
-                clientData.clientLock.lock();
-                if (clientData.getLastReply() != null) {
-                    lastReplies.put(client, clientData.getLastReply());
+        TreeMap<Integer, TOMMessage> lastReplies = new TreeMap<>();
+        if (controller.getStaticConf().useReadOnlyRequests()) {
+            for (Integer client : this.clientsData.keySet()) {
+                ClientData clientData = this.clientsData.get(client);
+                if (clientData != null) {
+                    clientData.clientLock.lock();
+                    if (clientData.getLastReply() != null) {
+                        lastReplies.put(client, clientData.getLastReply());
+                    }
+                    clientData.clientLock.unlock();
                 }
-                clientData.clientLock.unlock();
             }
         }
         this.clientsLock.unlock();
@@ -524,8 +523,8 @@ public class ClientsManager {
     /**
      * Sets the reply store of each client in a HashMap  (clientID -> TOMMessage)
      */
-    public void setLastReplyOfEachClient(HashMap<Integer, TOMMessage> repliesToClients) {
-        logger.debug("Setting the reply store for the clients after state transfer: " + repliesToClients.size());
+    public void setLastReplyOfEachClient(TreeMap<Integer, TOMMessage> repliesToClients) {
+        logger.info("Setting the reply store for the clients after state transfer: " + repliesToClients.size());
         for (TOMMessage m: repliesToClients.values()) {
             m.setSender(this.controller.getStaticConf().getProcessId());
         }
@@ -546,10 +545,10 @@ public class ClientsManager {
      *
      * @return hashmap of lists of last request and replies per client
      */
-    public HashMap<Integer, RequestList> getLastRepliesOfEachClient() {
+    public TreeMap<Integer, RequestList> getLastRepliesOfEachClient() {
         this.clientsLock.lock();
         // Todo: Should we add a garbage collection mechanism to ignore inactive (too old) clients?
-        HashMap<Integer, RequestList> lastReplies = new HashMap<>();
+        TreeMap<Integer, RequestList> lastReplies = new TreeMap<>();
         for (Integer client: this.clientsData.keySet()) {
             ClientData clientData = this.clientsData.get(client);
             if (clientData != null && clientData.getReplyStore() != null) {

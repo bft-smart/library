@@ -301,35 +301,38 @@ public final class ExecutionManager {
         }
 
         // START DECISION-FORWARDING
-        if (msg.getPaxosVerboseType().equals("ACCEPT")) {
-            logger.debug(">>>> Received Accept, will check if a Decision needs to be requested");
+        if (controller.getStaticConf().useReadOnlyRequests()) {
 
-            Consensus consensus = getConsensus(msg.getNumber());
-            Epoch epoch = consensus.getEpoch(msg.getEpoch(), controller);
-            int[] requestDecisionFrom = checkRequestDecision(epoch, msg);
+            if (msg.getPaxosVerboseType().equals("ACCEPT")) {
+                logger.debug(">>>> Received Accept, will check if a Decision needs to be requested");
 
-            if (requestDecisionFrom != null) {
-                String receivers = "";
-                for (int i = 0; i < requestDecisionFrom.length; i++) {
-                    receivers = receivers + ", " + requestDecisionFrom[i];
+                Consensus consensus = getConsensus(msg.getNumber());
+                Epoch epoch = consensus.getEpoch(msg.getEpoch(), controller);
+                int[] requestDecisionFrom = checkRequestDecision(epoch, msg);
+
+                if (requestDecisionFrom != null) {
+                    String receivers = "";
+                    for (int i = 0; i < requestDecisionFrom.length; i++) {
+                        receivers = receivers + ", " + requestDecisionFrom[i];
+                    }
+                    logger.debug(">>>> Requesting a Decision and Proof from  " + receivers);
+                    acceptor.sendRequestDecision(epoch, msg.getNumber(), requestDecisionFrom, epoch.propValueHash);
                 }
-                logger.debug(">>>> Requesting a Decision and Proof from  " + receivers);
-                acceptor.sendRequestDecision(epoch, msg.getNumber(), requestDecisionFrom, epoch.propValueHash);
+
             }
 
-        }
+            if (msg.getNumber() == lastConsId + 1 && msg.getPaxosVerboseType().equals("FWD_DECISION")) {
+                logger.debug(">>>> Received FWD_DECISION, will check if a Decision needs to be processed..");
 
-        if (msg.getNumber() == lastConsId + 1 && msg.getPaxosVerboseType().equals("FWD_DECISION")) {
-            logger.debug(">>>> Received FWD_DECISION, will check if a Decision needs to be processed..");
+                canProcessTheMessage = true;
 
-            canProcessTheMessage = true;
+            }
 
-        }
+            if (msg.getPaxosVerboseType().equals("REQ_DECISION")) {
+                logger.debug(">>>> Received REQ_DECISION, will check if a decision should be forwarded..");
 
-        if (msg.getPaxosVerboseType().equals("REQ_DECISION")) {
-            logger.debug(">>>> Received REQ_DECISION, will check if a decision should be forwarded..");
-
-            canProcessTheMessage = true;
+                canProcessTheMessage = true;
+            }
         }
         // END DECISION-FORWARDING
 
@@ -354,6 +357,10 @@ public final class ExecutionManager {
     }
 
     public boolean receivedOutOfContextDecision(int cid) {
+        if (!controller.getStaticConf().useReadOnlyRequests()) {
+            return false;
+        }
+
         boolean receivedDecision = false;
 
         outOfContextLock.lock();
@@ -399,14 +406,16 @@ public final class ExecutionManager {
         outOfContextLock.unlock();
 
         // Begin DECISION_FORWARDING
-        toForwardLock.lock();
-        /******* BEGIN TOFORWARD CRITICAL SECTION *******/
+        if (controller.getStaticConf().useReadOnlyRequests()) {
+            toForwardLock.lock();
+            /******* BEGIN TOFORWARD CRITICAL SECTION *******/
 
-        toForward.remove(id);
-        forwarded.remove(id);
+            toForward.remove(id);
+            forwarded.remove(id);
 
-        /******* END TOFORWARD CRITICAL SECTION *******/
-        toForwardLock.unlock();
+            /******* END TOFORWARD CRITICAL SECTION *******/
+            toForwardLock.unlock();
+        }
         // End DECISION_FORWARDING
 
         return consensus;

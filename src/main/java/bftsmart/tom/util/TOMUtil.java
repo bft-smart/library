@@ -260,6 +260,12 @@ public class TOMUtil {
         
     }
 
+    /**
+     * Computes a hash for a collection of TOM messages
+     *
+     * @param messages TOM messages
+     * @return hash
+     */
     public static byte[] computeHashOfCollection(Collection<TOMMessage> messages) {
 
         byte[] result = null;

@@ -22,7 +22,6 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-import bftsmart.consensus.Consensus;
 import bftsmart.consensus.Decision;
 import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.statemanagement.ApplicationState;
@@ -278,7 +277,6 @@ public final class DeliveryThread extends Thread {
 					int cid = lastDecision.getConsensusId();
 					if (cid >= ExecutionManager.NUMBER_OF_STABLE_CONSENSUSES_SAVED) {
 						int stableConsensus = cid - ExecutionManager.NUMBER_OF_STABLE_CONSENSUSES_SAVED;
-						// TODO DECISION_FORWARDING
 						// What is a good value of NUMBER_OF_STABLE_CONSENSUSES_SAVED
 						// And: how to avoid memory problems? (make sure sufficient memory is available)
 						tomLayer.execManager.removeConsensus(stableConsensus);

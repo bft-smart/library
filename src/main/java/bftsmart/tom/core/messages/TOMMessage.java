@@ -105,7 +105,7 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 	/**
 	 * Creates a new instance of TOMMessage. This one has an operationId parameter
 	 * used for FIFO executions
-	 * @param sender The client id
+	 * @param sender The client idmatching
 	 * @param session The session id of the sender
 	 * @param sequence The sequence number created based on the message type
 	 * @param operationId The operation sequence number disregarding message type
