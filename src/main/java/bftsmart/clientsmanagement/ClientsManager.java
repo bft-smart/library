@@ -432,6 +432,11 @@ public class ClientsManager {
         clientsLock.unlock();
     }
 
+    /**
+     * Notifies the ClientManager that these requests now have replies (computed by the application) attached to them
+     *
+     * @param requests the array of requests to account as executed
+     */
     public void requestsExecuted(TOMMessage[] requests) {
         logger.debug("Requests executed()");
         clientsLock.lock();
@@ -442,6 +447,11 @@ public class ClientsManager {
         clientsLock.unlock();
     }
 
+    /**
+     * Adds the reply associated to a client request to the reply store
+     *
+     * @param request the executed request
+     */
     private void  requestExecuted(TOMMessage request) {
         ClientData clientData = getClientData(request.getSender());
         clientData.clientLock.lock();
@@ -521,10 +531,13 @@ public class ClientsManager {
     }
 
     /**
-     * Sets the reply store of each client in a HashMap  (clientID -> TOMMessage)
+     * Sets the reply store of each client in a HashMap  (clientID -> TOMMessage).
+     * This method is called during recovery of a replica
+     *
+     * @param repliesToClients TreeMap of last reply for each client (clientID -> last reply)
      */
     public void setLastReplyOfEachClient(TreeMap<Integer, TOMMessage> repliesToClients) {
-        logger.info("Setting the reply store for the clients after state transfer: " + repliesToClients.size());
+        logger.info("Setting the reply store for #clients after state transfer: " + repliesToClients.size());
         for (TOMMessage m: repliesToClients.values()) {
             m.setSender(this.controller.getStaticConf().getProcessId());
         }
@@ -547,7 +560,6 @@ public class ClientsManager {
      */
     public TreeMap<Integer, RequestList> getLastRepliesOfEachClient() {
         this.clientsLock.lock();
-        // Todo: Should we add a garbage collection mechanism to ignore inactive (too old) clients?
         TreeMap<Integer, RequestList> lastReplies = new TreeMap<>();
         for (Integer client: this.clientsData.keySet()) {
             ClientData clientData = this.clientsData.get(client);

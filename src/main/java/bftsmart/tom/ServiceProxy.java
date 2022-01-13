@@ -255,8 +255,8 @@ public class ServiceProxy extends TOMSender {
 			TOMulticast(request, reqId, operationId, reqType);
 		}
 
-		logger.info("Sending request (" + reqType + ") with reqId=" + reqId);
-		logger.info("Expected number of matching replies: " + replyQuorum);
+		logger.debug("Sending request (" + reqType + ") with reqId=" + reqId);
+		logger.debug("Expected number of matching replies: " + replyQuorum);
 
 		// This instruction blocks the thread, until a response is obtained.
 		// The thread will be unblocked when the method replyReceived is invoked
@@ -274,9 +274,10 @@ public class ServiceProxy extends TOMSender {
 
 					String receivedFrom = "";
 					for (int i=0; i < replies.length; i++) {
-						if(replies[i]!=null) receivedFrom = receivedFrom + ", "+ i;
+						if (replies[i] != null) receivedFrom = receivedFrom + ", "+ i;
 					}
-					logger.info("Reply timeout in pid " + this.getProcessId() + " for reqId=" + reqId + ", Replies received: " + receivedReplies + " from replicas: " + receivedFrom);
+					logger.info("Reply timeout in pid " + this.getProcessId() + " for reqId=" + reqId +
+							", Replies received: " + receivedReplies + " from replicas: " + receivedFrom);
 
 					canSendLock.unlock();
 

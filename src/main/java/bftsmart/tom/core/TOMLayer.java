@@ -335,6 +335,12 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         if (readOnly) {
             logger.debug("Received read-only TOMMessage from client " + msg.getSender() + " with sequence number " + msg.getSequence() + " for session " + msg.getSession());
 
+            if (!controller.getStaticConf().useReadOnlyRequests()) {
+                logger.warn("!! Received unsupported read request from client " + msg.getSender()  + " with sequence number "
+                        + msg.getSequence() + " => I will not deliver this request");
+                logger.warn("Please enable the read-only optimization in system.config to support execution of unordered requests");
+                return;
+            }
             dt.deliverUnordered(msg, syncher.getLCManager().getLastReg());
         } else {
             logger.debug("Received TOMMessage from client " + msg.getSender() + " with sequence number " + msg.getSequence() + " for session " + msg.getSession());

@@ -73,6 +73,10 @@ public class DefaultApplicationState implements ApplicationState {
     }
 
 
+    /**
+     * Constructs a TansferableState
+     * This constructor should be used when there isn't a valid state to construct the object with
+     */
     public DefaultApplicationState(CommandsInfo[] messageBatches, int lastCheckpointCID, int lastCID, byte[] state,
                                    byte[] stateHash, int pid, TreeMap<Integer, TOMMessage> lastReplies, byte[] lastRepliesHash) {
         this(messageBatches, lastCheckpointCID, lastCID, state, stateHash, pid);

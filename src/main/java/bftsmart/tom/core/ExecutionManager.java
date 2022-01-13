@@ -308,6 +308,9 @@ public final class ExecutionManager {
 
                 Consensus consensus = getConsensus(msg.getNumber());
                 Epoch epoch = consensus.getEpoch(msg.getEpoch(), controller);
+
+                // requestDecisionFrom will be either "null" if the check finds it is unnecessary, else it will contain
+                // the target replicas to ask for a decision
                 int[] requestDecisionFrom = checkRequestDecision(epoch, msg);
 
                 if (requestDecisionFrom != null) {
@@ -521,6 +524,11 @@ public final class ExecutionManager {
         outOfContextLock.unlock();
     }
 
+    /**
+     * Process a forwarded decision message that was received in a specific consensus instance
+     *
+     * @param consensus consensus instance
+     */
     public void processOutOfContextDecision(Consensus consensus) {
         outOfContextLock.lock();
         /******* BEGIN OUTOFCONTEXT CRITICAL SECTION *******/
@@ -608,6 +616,15 @@ public final class ExecutionManager {
     }
 
 
+    /**
+     * This method checks if a decision should be requested from other replicas. The result will be either "null" that is
+     * if is not necessary to ask others about a decision yet, or an array containing the target ids of replicas which
+     * are being asked to forward a decision.
+     *
+     * @param epoch the current epoch
+     * @param message the last ACCEPT received
+     * @return array of targets to ask for a decision or null if it's not necessary
+     */
     public int[] checkRequestDecision(Epoch epoch, ConsensusMessage message) {
         boolean requestDecision = false;
         int[] replicasToRequestDecisionFrom = new int[2*controller.getCurrentViewF()];

@@ -18,7 +18,6 @@
  */
 package bftsmart.tom.server.defaultservices;
 
-import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
@@ -143,7 +142,8 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
             stateLock.lock();
 
             byte[] snapshot = getSnapshot();
-            TreeMap<Integer, TOMMessage> lastReplies = clientsManager.getLastReplyOfEachClient();
+            TreeMap<Integer, TOMMessage> lastReplies = controller.getStaticConf().useReadOnlyRequests() ?
+                    clientsManager.getLastReplyOfEachClient() : new TreeMap<>();
 
             stateLock.unlock();
             saveState(snapshot, cid);
@@ -319,6 +319,7 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
                 log.update(state);
                 installSnapshot(state.getSerializedState());
 
+                // Sets the reply store
                 if (controller.getStaticConf().useReadOnlyRequests()) {
                     if (state.lastReplies.size() == 0) {
                         logger.info("There are no replies to add to replica state");
@@ -472,6 +473,11 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
         getStateManager().askCurrentConsensusId();
     }
 
+    /**
+     * Set the ClientManager object
+     *
+     * @param clientsManager client manager
+     */
     public void setClientsManager(ClientsManager clientsManager) {
         this.clientsManager = clientsManager;
     }
@@ -505,7 +511,7 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
      * Given a snapshot received from the state transfer protocol, install it
      * @param state The serialized snapshot
      */
-    public abstract void  installSnapshot(byte[] state);
+    public abstract void installSnapshot(byte[] state);
     
     /**
      * Returns a serialized snapshot of the application state

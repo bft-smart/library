@@ -48,7 +48,6 @@ public class ClientData {
     private RequestList pendingRequests = new RequestList();
     //anb: new code to deal with client requests that arrive after their execution
     private RequestList orderedRequests = new RequestList(MAX_SIZE_ORDERED_REQUESTS);
-
     private RequestList replyStore = new RequestList(MAX_SIZE_ORDERED_REQUESTS);
 
     private Signature signatureVerificator = null;
@@ -138,7 +137,6 @@ public class ClientData {
     }
 
     public boolean removeRequest(TOMMessage request) {
-
 	    lastMessageDelivered = request.getSequence();
 	    boolean result = pendingRequests.remove(request);
         //anb: new code to deal with client requests that arrive after their execution

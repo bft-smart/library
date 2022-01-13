@@ -193,9 +193,7 @@ public class StateLog {
 
     /**
      * Retrieves the last replies hash
-     *
-     * @param lastReplies last replies hash
-     */
+     **/
     public byte[] getLastRepliesHash() {
         return lastRepliesHash;
     }
@@ -204,7 +202,7 @@ public class StateLog {
     /**
      * Sets the last replies hash
      *
-     * @param lastReplies last replies to clients
+     * @param lastRepliesHash last replies hash
      */
     public void setLastRepliesHash(byte[] lastRepliesHash) {
         this.lastRepliesHash = lastRepliesHash;
