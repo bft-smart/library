@@ -93,7 +93,7 @@ public class ThroughputLatencyClient {
 					if (isWrite) {
 						response = proxy.invokeOrdered(serializedWriteRequest);
 					} else {
-						response = proxy.invokeOrdered(serializedReadRequest);
+						response = proxy.invokeUnordered(serializedReadRequest);
 					}
 					t2 = System.nanoTime();
 					latency = t2 - t1;
