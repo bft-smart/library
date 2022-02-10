@@ -21,6 +21,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import bftsmart.communication.ServerCommunicationSystem;
 import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.tom.core.messages.TOMMessage;
+import bftsmart.tom.core.messages.TOMMessageType;
 import bftsmart.tom.leaderchange.RequestsTimer;
 import bftsmart.tom.server.RequestVerifier;
 import bftsmart.tom.util.TOMUtil;
@@ -43,6 +44,7 @@ public class ClientsManager {
     private RequestsTimer timer;
     private HashMap<Integer, ClientData> clientsData = new HashMap<Integer, ClientData>();
     private RequestVerifier verifier;
+    private ServerCommunicationSystem cs;
     
     //Used when the intention is to perform benchmarking with signature verification, but
     //without having to make the clients create one first. Useful to optimize resources
@@ -52,10 +54,11 @@ public class ClientsManager {
     
     private ReentrantLock clientsLock = new ReentrantLock();
 
-    public ClientsManager(ServerViewController controller, RequestsTimer timer, RequestVerifier verifier) {
+    public ClientsManager(ServerViewController controller, RequestsTimer timer, RequestVerifier verifier, ServerCommunicationSystem cs) {
         this.controller = controller;
         this.timer = timer;
         this.verifier = verifier;
+        this.cs = cs;
         
         if (controller.getStaticConf().getUseSignatures() == 2) {
             benchMsg = new byte []{3,5,6,7,4,3,5,6,4,7,4,1,7,7,5,4,3,1,4,85,7,5,7,3};
@@ -527,6 +530,11 @@ public class ClientsManager {
         }
         this.clientsLock.unlock();
         logger.debug("getLastReplyOfEachClient() SIZE " + lastReplies.size());
+
+        logger.info("getLastReplyOfEachClient()");
+        for (TOMMessage m: lastReplies.values()) {
+            logger.info(""+m);
+        }
         return lastReplies;
     }
 
@@ -538,17 +546,29 @@ public class ClientsManager {
      */
     public void setLastReplyOfEachClient(TreeMap<Integer, TOMMessage> repliesToClients) {
         logger.info("Setting the reply store for #clients after state transfer: " + repliesToClients.size());
+
         for (TOMMessage m: repliesToClients.values()) {
             m.setSender(this.controller.getStaticConf().getProcessId());
+            logger.info(""+m);
         }
         this.clientsLock.lock();
-        for (Integer client: this.clientsData.keySet()) {
-            ClientData clientData = this.clientsData.get(client);
-            if (clientData != null && repliesToClients.get(client) != null) {
-                clientData.clientLock.lock();
-                clientData.addToReplyStore(repliesToClients.get(client));
-                clientData.clientLock.unlock();
-            }
+
+        for (Integer client: repliesToClients.keySet()) {
+            ClientData clientData = getClientData(client);
+
+            TOMMessage reply = repliesToClients.get(client);
+
+            reply.setSender(controller.getStaticConf().getProcessId());
+            reply.type = TOMMessageType.ORDERED_REQUEST;
+
+            clientData.clientLock.lock();
+            clientData.addToReplyStore(reply);
+            clientData.clientLock.unlock();
+
+            int[] target = {client};
+            logger.info(">> Sending reply of client " + client + " seq " + reply.getSequence() + " session " + reply.getSession() + " opID " +reply.getOperationId());
+            cs.send(target, reply);
+
         }
         this.clientsLock.unlock();
     }

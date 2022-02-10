@@ -188,6 +188,10 @@ public class StateLog {
      */
     public void setLastReplies(TreeMap<Integer, TOMMessage> lastReplies) {
         this.lastReplies = lastReplies;
+        logger.info("The Last Replies Setted:");
+        for (TOMMessage reply: lastReplies.values()){
+            logger.info(""+reply);
+        }
     }
 
 

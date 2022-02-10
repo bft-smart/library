@@ -173,7 +173,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         RequestVerifier verifier1 = (verifier != null) ? verifier : ((request) -> true); // By default, never validate requests
 
         // I have a verifier, now create clients manager
-        this.clientsManager = new ClientsManager(this.controller, requestsTimer, verifier1);
+        this.clientsManager = new ClientsManager(this.controller, requestsTimer, verifier1, cs);
 
 
         // If recoverer should use lastReplies of clients to recover, it needs reference to clientsManager

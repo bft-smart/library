@@ -35,7 +35,7 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 
 	//******* EDUARDO BEGIN **************//
 	private int viewID; //current sender view
-	private TOMMessageType type; // request type: application or reconfiguration request
+	public TOMMessageType type; // request type: application or reconfiguration request
 	//******* EDUARDO END **************//
 
 	private int session; // Sequence number defined by the client

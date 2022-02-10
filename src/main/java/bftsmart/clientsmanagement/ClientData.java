@@ -159,6 +159,8 @@ public class ClientData {
     public void addToReplyStore(TOMMessage m) {
         if (replyStore.isEmpty() || m.getSequence() > replyStore.getLast().getSequence()) {
             replyStore.addLast(m);
+        } else {
+            logger.warn("Reply is too old and will not be added to reply store");
         }
     }
 

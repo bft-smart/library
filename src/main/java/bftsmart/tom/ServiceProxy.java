@@ -311,6 +311,7 @@ public class ServiceProxy extends TOMSender {
 			if (reqType == TOMMessageType.ORDERED_REQUEST) {
 				//Reply to a normal request!
 				if (response.getViewID() == getViewManager().getCurrentViewId()) {
+					logger.info("Response to " + response.getSequence());
 					ret = response.getContent(); // return the response
 				} else {//if(response.getViewID() > getViewManager().getCurrentViewId())
 					//updated view received

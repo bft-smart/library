@@ -210,15 +210,19 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
     }
 
 
-    private void saveReplies(byte[][] commands, MessageContext[] msgCtxs, byte[][] replies,  int lastCID) {
+    private void saveReplies(byte[][] commands, MessageContext[] msgCtxs, byte[][] results,  int lastCID) {
         TOMMessage[] executedRequests = new TOMMessage[msgCtxs.length];
         for (int i = 0; i < msgCtxs.length; i++) {
             executedRequests[i] = getTOMMessage(controller.getStaticConf().getProcessId(), controller.getCurrentViewId(),
-                    commands[i], msgCtxs[i], replies[i]);
+                    commands[i], msgCtxs[i], results[i]);
         }
         if (clientsManager != null) {
+            // Signal clientsManager that requests have been executed
             clientsManager.requestsExecuted(executedRequests);
+
             this.saveReplies(clientsManager.getLastReplyOfEachClient(), lastCID);
+        } else {
+            logger.warn("clientManager is null, should never reach here!");
         }
     }
 
@@ -327,7 +331,6 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
                     // Give the last replies from received state to the clientManager, re-send in case a client waits for it
                     if (clientsManager != null) {
                         clientsManager.setLastReplyOfEachClient(state.lastReplies);
-
                     } else {
                         logger.warn("client manager is null, cannot set last replies of clients");
                     }

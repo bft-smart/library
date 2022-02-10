@@ -289,4 +289,8 @@ public class DefaultApplicationState implements ApplicationState {
         return hash;
     }
 
+    public  TreeMap<Integer, TOMMessage> getLastReplies() {
+        return this.lastReplies;
+    }
+
 }

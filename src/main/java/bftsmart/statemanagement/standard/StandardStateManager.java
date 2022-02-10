@@ -16,14 +16,9 @@
 package bftsmart.statemanagement.standard;
 
 import bftsmart.statemanagement.StateManager;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Queue;
-import java.util.Timer;
-import java.util.TimerTask;
+
+import java.util.*;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.Random;
 
 import bftsmart.tom.core.ExecutionManager;
 import bftsmart.consensus.messages.ConsensusMessage;
@@ -33,6 +28,8 @@ import bftsmart.statemanagement.ApplicationState;
 import bftsmart.statemanagement.SMMessage;
 import bftsmart.tom.core.DeliveryThread;
 import bftsmart.tom.core.TOMLayer;
+import bftsmart.tom.core.messages.TOMMessage;
+import bftsmart.tom.server.defaultservices.DefaultApplicationState;
 import bftsmart.tom.util.TOMUtil;
 import bftsmart.consensus.Consensus;
 import bftsmart.consensus.Epoch;
@@ -144,6 +141,10 @@ public class StandardStateManager extends StateManager {
                     tomLayer.getSynchronizer().getLCManager().getLastReg(), tomLayer.execManager.getCurrentLeader());
 
             logger.info("Sending state...");
+            TreeMap<Integer, TOMMessage> sentLastReplies = ((DefaultApplicationState) smsg.getState()).getLastReplies();
+            for (TOMMessage m: sentLastReplies.values())
+                logger.info("Sent "+m);
+
             tomLayer.getCommunication().send(targets, smsg);
             logger.info("Sent");
         }
@@ -208,6 +209,10 @@ public class StandardStateManager extends StateManager {
                                 haveState = -1;
                             }
                         }
+                        TreeMap<Integer, TOMMessage> lastReplies = ((DefaultApplicationState) state).getLastReplies();
+                        logger.info("lastReplies has Treemap:");
+                        for (TOMMessage m: lastReplies.values())
+                            logger.info(""+m);
                     }
 
                     if (otherReplicaState != null && haveState == 1 && currentRegency > -1
