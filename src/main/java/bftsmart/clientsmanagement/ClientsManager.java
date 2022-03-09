@@ -306,6 +306,11 @@ public class ClientsManager {
 
         ClientData clientData = getClientData(clientId);
         
+        if(request.getSequence() < 0) {
+            //Do not accept this faulty message. -1 is the initial value which will bypass the sequence-checking further down in the function
+            return false;
+        }
+
         clientData.clientLock.lock();
         
         //Is this a leader replay attack?
