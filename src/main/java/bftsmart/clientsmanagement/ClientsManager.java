@@ -481,14 +481,14 @@ public class ClientsManager {
      * @param request the request ordered by the consensus
      */
     private void requestOrdered(TOMMessage request) {
+        ClientData clientData = getClientData(request.getSender());
+        clientData.clientLock.lock();
+
         //stops the timer associated with this message
         if (timer != null) {
             timer.unwatch(request);
         }
 
-        ClientData clientData = getClientData(request.getSender());
-
-        clientData.clientLock.lock();
         /******* BEGIN CLIENTDATA CRITICAL SECTION ******/
         if (!clientData.removeOrderedRequest(request)) {
             logger.debug("Request " + request + " does not exist in pending requests");
