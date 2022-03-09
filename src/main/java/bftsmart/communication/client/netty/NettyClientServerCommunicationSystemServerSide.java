@@ -257,6 +257,7 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 
 		// debugSessions();
 
+		rl.writeLock().lock();
 		Set s = sessionReplicaToClient.entrySet();
 		Iterator i = s.iterator();
 		while (i.hasNext()) {
@@ -268,6 +269,7 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 				break;
 			}
 		}
+		rl.writeLock().unlock();
 
 		logger.debug("Session Closed, active clients=" + sessionReplicaToClient.size());
 	}
