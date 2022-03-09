@@ -108,6 +108,8 @@ public class ClientsManager {
      */
     public RequestList getPendingRequests() {
         RequestList allReq = new RequestList();
+        long allReqSizeInBytes = 0;
+        boolean allReqSizeInBytesExceeded = false;
         
         clientsLock.lock();
         /******* BEGIN CLIENTS CRITICAL SECTION ******/
@@ -146,12 +148,17 @@ public class ClientsManager {
 
                 if (request != null) {
                     if(!request.alreadyProposed) {
-                        
-                        logger.debug("Selected request with sequence number {} from client {}", request.getSequence(), request.getSender());
-                        
-                        //this client have pending message
-                        request.alreadyProposed = true;
-                        allReq.addLast(request);
+                        if(allReqSizeInBytes + request.serializedMessage.length <= controller.getStaticConf().getMaxBatchSizeInBytes()) {
+
+                            logger.debug("Selected request with sequence number {} from client {}", request.getSequence(), request.getSender());
+
+                            //this client have pending message
+                            request.alreadyProposed = true;
+                            allReq.addLast(request);
+                            allReqSizeInBytes += request.serializedMessage.length;
+                        } else {
+                            allReqSizeInBytesExceeded = true;
+                        }
                     }
                 } else {
                     //this client don't have more pending requests
@@ -160,7 +167,8 @@ public class ClientsManager {
             }
             
             if(allReq.size() == controller.getStaticConf().getMaxBatchSize() ||
-                    noMoreMessages == clientsEntryList.size()) {
+                    noMoreMessages == clientsEntryList.size() ||
+                    allReqSizeInBytesExceeded) {
                 
                 break;
             }
@@ -207,11 +215,13 @@ public class ClientsManager {
     }
     
     /**
-     * Retrieves the number of pending requests
-     * @return Number of pending requests
+     * Retrieves the number of pending requests and their sizes
+     * and checks if there are enough to fill the next batch completely.
+     * @return true if there are enough requests and false otherwise
      */
-    public int countPendingRequests() {
+    public boolean isNextBatchReady() {
         int count = 0;
+        long size = 0;
 
         clientsLock.lock();
         /******* BEGIN CLIENTS CRITICAL SECTION ******/        
@@ -227,6 +237,7 @@ public class ClientsManager {
                 for(TOMMessage msg:reqs) {
                     if(!msg.alreadyProposed) {
                         count++;
+                        size += msg.serializedMessage.length;
                     }
                 }
             }
@@ -235,7 +246,8 @@ public class ClientsManager {
 
         /******* END CLIENTS CRITICAL SECTION ******/
         clientsLock.unlock();
-        return count;
+        return count >= controller.getStaticConf().getMaxBatchSize()
+                || size >= controller.getStaticConf().getMaxBatchSizeInBytes();
     }
 
     /**
@@ -317,9 +329,12 @@ public class ClientsManager {
             if (clientData.getPendingRequests().size() > controller.getStaticConf().getUseControlFlow()) {
                 //clients should not have more than defined in the config file
                 //outstanding messages, otherwise they will be dropped.
-                //just account for the message reception
-                clientData.setLastMessageReceived(request.getSequence());
-                clientData.setLastMessageReceivedTime(request.receptionTime);
+                //just account for the message reception //why is this necessary?
+                //Scenario: A faulty client sends its request to the leader first which will discard the message due to a full queue.
+                //          Then the client sends the message delayed (queue is now not full) to the followers, which will forward the message to the leader after the timeout.
+                //          The leader then would reject the message, because it already accounted for the message reception. -> leader change
+                //clientData.setLastMessageReceived(request.getSequence());
+                //clientData.setLastMessageReceivedTime(request.receptionTime);
 
                 clientData.clientLock.unlock();
                 return false;

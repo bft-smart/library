@@ -337,7 +337,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                     haveMessages();
                 } else {
 
-                    if (clientsManager.countPendingRequests() < controller.getStaticConf().getMaxBatchSize()) {
+                    if (!clientsManager.isNextBatchReady()) {
 
                         lastRequest = System.currentTimeMillis();
 
@@ -422,7 +422,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             messagesLock.lock();
             if (!clientsManager.havePendingRequests() ||
                     (controller.getStaticConf().getBatchTimeout() > -1
-                            && clientsManager.countPendingRequests() < controller.getStaticConf().getMaxBatchSize())) {
+                            && !clientsManager.isNextBatchReady())) {
 
                 logger.debug("Waiting for enough requests");
                 haveMessages.awaitUninterruptibly();
