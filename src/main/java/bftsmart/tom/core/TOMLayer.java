@@ -322,6 +322,21 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
         if (!doWork) return;
 
+        switch(msg.getReqType()) {
+		case RECONFIG:
+		case ASK_STATUS:
+		case REPLY:
+		case STATUS_REPLY:
+			// These kind of messages should never enter the replica
+			return;
+		case ORDERED_REQUEST:
+		case UNORDERED_HASHED_REQUEST:
+		case UNORDERED_REQUEST:
+			// These messages should be processed
+			break;
+        }
+
+
         // check if this request is valid and add it to the client' pending requests list
         boolean readOnly = (msg.getReqType() == TOMMessageType.UNORDERED_REQUEST
                 || msg.getReqType() == TOMMessageType.UNORDERED_HASHED_REQUEST);
