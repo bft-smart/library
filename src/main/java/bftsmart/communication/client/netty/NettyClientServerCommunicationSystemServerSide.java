@@ -234,7 +234,7 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 		if (requestReceiver == null)
 			logger.warn("Request receiver is still null!");
 		else
-			requestReceiver.requestReceived(sm);
+			requestReceiver.requestReceived(sm, true);
 	}
 
 	@Override

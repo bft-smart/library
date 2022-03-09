@@ -315,9 +315,10 @@ public final class TOMLayer extends Thread implements RequestReceiver {
      * order.
      *
      * @param msg The request being received
+     * @param fromClient Whether the request was received from a client or was part of a forwarded message
      */
     @Override
-    public void requestReceived(TOMMessage msg) {
+    public void requestReceived(TOMMessage msg, boolean fromClient) {
 
         if (!doWork) return;
 
@@ -331,7 +332,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         } else {
             logger.debug("Received TOMMessage from client " + msg.getSender() + " with sequence number " + msg.getSequence() + " for session " + msg.getSession());
 
-            if (clientsManager.requestReceived(msg, true, communication)) {
+            if (clientsManager.requestReceived(msg, fromClient, communication)) {
 
                 if(controller.getStaticConf().getBatchTimeout() == -1) {
                     haveMessages();
