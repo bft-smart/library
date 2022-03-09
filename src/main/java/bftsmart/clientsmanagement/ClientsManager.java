@@ -382,10 +382,10 @@ public class ClientsManager {
             
             //it is a valid new message and I have to verify it's signature
             if (isValid &&
-                    ((engine != null && benchMsg != null && benchSig != null && TOMUtil.verifySigForBenchmark(engine, benchMsg, benchSig)) || !request.signed ||
-                    clientData.verifySignature(request.serializedMessage,
-                            request.serializedMessageSignature))) {
-                
+                    ((engine != null && benchMsg != null && benchSig != null && TOMUtil.verifySigForBenchmark(engine, benchMsg, benchSig)) 
+                            || (((!request.signed) || clientData.verifySignature(request.serializedMessage, request.serializedMessageSignature)) // message is either not signed or if it is signed the signature is valid
+                                    && (controller.getStaticConf().getUseSignatures() != 1 || request.signed || !fromClient)))) { // additionally, unsigned messages from the client are not allowed when useSignatures == 1
+
                 logger.debug("Message from client {} is valid", clientData.getClientId());
 
                 //I don't have the message but it is valid, I will
