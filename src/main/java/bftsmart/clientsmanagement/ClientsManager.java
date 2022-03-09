@@ -353,7 +353,7 @@ public class ClientsManager {
             clientData.setLastMessageReceived(-1);
             clientData.setLastMessageDelivered(-1);
             clientData.getOrderedRequests().clear();
-            clientData.getPendingRequests().clear();
+            clearPendingRequests(clientData);
         }
 
         if ((clientData.getLastMessageReceived() == -1) || //first message received or new session (see above)
@@ -443,6 +443,21 @@ public class ClientsManager {
 
         return accounted;
     }
+
+    /**
+     * Caller must call lock() and unlock() on clientData.clientLock
+     * @param clientData the clientData associated with the client
+     */
+	private void clearPendingRequests(ClientData clientData) {
+        for(TOMMessage m : clientData.getPendingRequests()) {
+            if(timer != null) {
+                //Clear all pending timers before clearing the requests. (For synchronous closed-loop clients there are never pending requests.)
+                //Without clearing the timer a leader change would be triggered, because the removed request will never be processed.
+                timer.unwatch(m);
+	        }
+	    }
+        clientData.getPendingRequests().clear();
+	}
 
     /**
      * Notifies the ClientsManager that these requests were already executed.
