@@ -493,7 +493,13 @@ public class ClientsManager {
         if (!clientData.removeOrderedRequest(request)) {
             logger.debug("Request " + request + " does not exist in pending requests");
         }
-        clientData.setLastMessageDelivered(request.getSequence());
+        if(clientData.getSession() == request.getSession()) {
+            //When a client sends a message with a big sequence number and shortly afterwards a message with
+            //a new session and a lower sequence number, do not set the last delivered sequence number to the big number,
+            //which would cause all following messages of the new sequence to be invalid.
+            //-> only set the number if it is the same session
+            clientData.setLastMessageDelivered(request.getSequence());
+        }
 
         /******* END CLIENTDATA CRITICAL SECTION ******/
         clientData.clientLock.unlock();
