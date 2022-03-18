@@ -35,11 +35,11 @@ public class ProcessExecutor extends Thread {
 		} catch (IOException e) {
 			e.printStackTrace();
 		} finally {
-			destroy();
+			destroyProcess();
 		}
 	}
 
-	private void destroy() {
+	private void destroyProcess() {
 		if (process != null)
 			process.destroy();
 		if (errorPrinter != null) {
@@ -49,7 +49,7 @@ public class ProcessExecutor extends Thread {
 
 	@Override
 	public void interrupt() {
-		destroy();
+		destroyProcess();
 		super.interrupt();
 	}
 }
