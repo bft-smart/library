@@ -1,6 +1,9 @@
 package bftsmart.tests.recovery;
 
+import java.io.File;
 import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 /**
  * @author robin
@@ -12,9 +15,11 @@ public class RecoveryTest {
 		}
 		System.out.println("Running recovery test");
 		String workingDirectory = args[0];
-		String controllerCommand = "java -cp lib\\* controller.BenchmarkControllerStartup benchmark.config";
-		String clientPodCommand = "java -cp lib\\* pod.PodStartup 127.0.0.1 12000 bftsmart.tests.recovery.RecoveryTestClientEventProcessor";
-		String serverPodCommand = "java -cp lib\\* pod.PodStartup 127.0.0.1 12001 bftsmart.tests.recovery.RecoveryTestServerEventProcessor";
+		Path path = Paths.get("lib", "*");
+		System.out.println("lib path: " + path);
+		String controllerCommand = "java -cp " + path +" controller.BenchmarkControllerStartup benchmark.config";
+		String clientPodCommand = "java -cp " +  path +" pod.PodStartup 127.0.0.1 12000 bftsmart.tests.recovery.RecoveryTestClientEventProcessor";
+		String serverPodCommand = "java -cp " +  path +" pod.PodStartup 127.0.0.1 12001 bftsmart.tests.recovery.RecoveryTestServerEventProcessor";
 
 		ProcessExecutor controller = new ProcessExecutor(workingDirectory, controllerCommand);
 
@@ -22,13 +27,15 @@ public class RecoveryTest {
 		int nClients = 1;
 		ProcessExecutor[] servers = new ProcessExecutor[nServers];
 		for (int i = 0; i < nServers; i++) {
-			String currentServerDirectory = workingDirectory + "rep" + i + "\\";
+			System.out.println("Starting server " + i);
+			String currentServerDirectory = workingDirectory + "rep" + i + File.separator;
 			servers[i] = new ProcessExecutor(currentServerDirectory, serverPodCommand);
 		}
 
 		ProcessExecutor[] clients = new ProcessExecutor[nClients];
 		for (int i = 0; i < nClients; i++) {
-			String currentClientDirectory = workingDirectory + "cli" + i + "\\";
+			System.out.println("Starting client " + i);
+			String currentClientDirectory = workingDirectory + "cli" + i + File.separator;
 			clients[i] = new ProcessExecutor(currentClientDirectory, clientPodCommand);
 		}
 
