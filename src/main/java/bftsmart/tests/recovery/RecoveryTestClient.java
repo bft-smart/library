@@ -40,7 +40,7 @@ public class RecoveryTestClient {
 				byte[] serializedReadRequest = buffer.array();
 				System.out.println("Executing experiment");
 				for (int i = 0; i < numOperations; i++) {
-					byte[] response = proxy.invokeOrdered(serializedReadRequest);
+					byte[] response = proxy.invokeUnordered(serializedReadRequest);
 					for (int j = 0; j < requestSize; j++) {
 						if (response[j] != (byte) j) {
 							throw new IllegalStateException("The response is wrong");
