@@ -234,14 +234,15 @@ public final class DeliveryThread extends Thread {
 			while (tomLayer.isRetrievingState()) {
 				logger.info("Retrieving State");
 				canDeliver.awaitUninterruptibly();
-			}
-			// if (tomLayer.getLastExec() == -1)
-			if (init && tomLayer.stateManager != null && !tomLayer.isRetrievingState()) {
-				logger.info(
-						 		  "\n\t\t###################################"
-								+ "\n\t\t    Ready to process operations    "
-								+ "\n\t\t###################################");
-				init = false;
+
+				// if (tomLayer.getLastExec() == -1)
+				if (init) {
+					logger.info(
+									  "\n\t\t###################################"
+									+ "\n\t\t    Ready to process operations    "
+									+ "\n\t\t###################################");
+					init = false;
+				}
 			}
 
 			try {
