@@ -32,13 +32,19 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.nio.channels.ClosedChannelException;
 import java.security.PrivateKey;
-import java.util.*;
+
+import java.util.Timer;
+import java.util.TimerTask;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.Set;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-
 
 import org.slf4j.LoggerFactory;
 import org.slf4j.Logger;
@@ -48,8 +54,7 @@ import bftsmart.communication.client.RequestReceiver;
 import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.util.TOMUtil;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
+
 
 /**
  *
