@@ -82,11 +82,12 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 	//the reply associated with this message
 	public transient TOMMessage reply = null;
 	public transient boolean alreadyProposed = false;
-	public transient int retry = 5;
-	
+	public transient int retry = 3;
+
 	private int replyServer = -1;
 
-	public TOMMessage() {}
+	public TOMMessage() {
+	}
 
 	/**
 	 * Creates a new instance of TOMMessage
@@ -105,7 +106,7 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 	/**
 	 * Creates a new instance of TOMMessage. This one has an operationId parameter
 	 * used for FIFO executions
-	 * @param sender The client idmatching
+	 * @param sender The client id
 	 * @param session The session id of the sender
 	 * @param sequence The sequence number created based on the message type
 	 * @param operationId The operation sequence number disregarding message type

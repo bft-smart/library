@@ -32,15 +32,19 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.nio.channels.ClosedChannelException;
 import java.security.PrivateKey;
+
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.ArrayList;
 import java.util.Iterator;
-import java.util.Map.Entry;
 import java.util.Set;
+import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-
 
 import org.slf4j.LoggerFactory;
 import org.slf4j.Logger;
@@ -50,8 +54,7 @@ import bftsmart.communication.client.RequestReceiver;
 import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.util.TOMUtil;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
+
 
 /**
  *
@@ -80,9 +83,6 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 	private static int bossThreads = 8; /* listens and accepts on server socket; workers handle r/w I/O */
 	private static int connectionBacklog = 1024; /* pending connections boss thread will queue to accept */
 	private static int connectionTimeoutMsec = 40000; /* (40 seconds) */
-	private static final int RETRY_RESPONSE_INTERVAL = 4000; // replica retries sending a response if client connection
-															 // not established yet
-
 	private PrivateKey privKey;
 	/* Tulio Ribeiro */
 
@@ -161,7 +161,6 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 			if(controller.getStaticConf().getUseSignatures() == 1) logger.info("Using Signatures");
                         else if (controller.getStaticConf().getUseSignatures() == 2) logger.info("Using benchmark signature verification");
 			logger.info("Binded replica to IP address " + myAddress);
-
 			logger.info("Optimizations: " + " Read-only Requests: " + (controller.getStaticConf().useReadOnlyRequests() ? "enabled" : "disabled"));
 			// ******* EDUARDO END **************//
 
@@ -358,7 +357,7 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 						}
 					};
 					Timer timer = new Timer("retry");
-					timer.schedule(timertask, RETRY_RESPONSE_INTERVAL);
+					timer.schedule(timertask, controller.getStaticConf().getRequestTimeout());
 				}
 
 			}
