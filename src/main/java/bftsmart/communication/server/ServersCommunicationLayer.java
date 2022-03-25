@@ -122,9 +122,17 @@ public class ServersCommunicationLayer extends Thread {
         this.ssltlsProtocolVersion = controller.getStaticConf().getSSLTLSProtocolVersion();
 
         String myAddress;
-        String confAddress =
+        String confAddress = "";
+        try {
+            confAddress =
                     controller.getStaticConf().getRemoteAddress(controller.getStaticConf().getProcessId()).getAddress().getHostAddress();
-        
+        } catch (Exception e) {
+            // Now look what went wrong ...
+            logger.debug(" ####### Debugging at setting up the Communication layer ");
+            logger.debug("my Id is " + controller.getStaticConf().getProcessId()
+                + " my remote Address is  " + controller.getStaticConf().getRemoteAddress(controller.getStaticConf().getProcessId()));
+        }
+
         if (InetAddress.getLoopbackAddress().getHostAddress().equals(confAddress)) {
             myAddress = InetAddress.getLoopbackAddress().getHostAddress();
             }
@@ -132,7 +140,7 @@ public class ServersCommunicationLayer extends Thread {
             myAddress = InetAddress.getLocalHost().getHostAddress();
             //If the replica binds to the loopback address, clients will not be able to connect to replicas.
             //To solve that issue, we bind to the address supplied in config/hosts.config instead.
-            if (InetAddress.getLoopbackAddress().getHostAddress().equals(myAddress) && !myAddress.equals(confAddress)) {
+            if (!confAddress.equals("") && !myAddress.equals(confAddress)) {
                 myAddress = confAddress;
             }
         } else {
