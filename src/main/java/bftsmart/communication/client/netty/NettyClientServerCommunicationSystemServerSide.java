@@ -31,20 +31,16 @@ import io.netty.channel.socket.nio.NioServerSocketChannel;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.net.ConnectException;
 import java.net.InetSocketAddress;
 import java.nio.channels.ClosedChannelException;
-import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
-import java.util.HashMap;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Map.Entry;
 import java.util.Set;
-import java.util.ArrayList;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-import javax.crypto.Mac;
 
 import org.slf4j.LoggerFactory;
 import org.slf4j.Logger;
@@ -56,7 +52,6 @@ import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.util.TOMUtil;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-import java.util.logging.Level;
 
 /**
  *
@@ -137,8 +132,7 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 				// to replicas.
 				// To solve that issue, we bind to the address supplied in config/hosts.config
 				// instead.
-				if (InetAddress.getLoopbackAddress().getHostAddress().equals(myAddress)
-						&& !myAddress.equals(confAddress)) {
+				if (!confAddress.equals("") && !myAddress.equals(confAddress)) {
 
 					myAddress = confAddress;
 				}
