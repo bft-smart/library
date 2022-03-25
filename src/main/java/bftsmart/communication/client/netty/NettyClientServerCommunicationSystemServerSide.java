@@ -34,10 +34,8 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.channels.ClosedChannelException;
 import java.security.PrivateKey;
-import java.util.ArrayList;
-import java.util.Iterator;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -287,6 +285,12 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 		this.requestReceiver = tl;
 	}
 
+	private void retrySend(int[] targets, TOMMessage sm, boolean serializeClassHeaders, int retry) {
+		retry--;
+		sm.retry = retry;
+		send(targets, (TOMMessage) sm, serializeClassHeaders);
+	}
+
 	@Override
 	public void send(int[] targets, TOMMessage sm, boolean serializeClassHeaders) {
 
@@ -333,6 +337,23 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 				 * Thread(clientSession).start();
 				 */
 				// should I wait for the client?
+				// cb: the below code fixes an issue that occurs if a replica tries to send a reply back to some client
+				// *before* the connection to that client is successfully established. The client may then fail to
+				// gather enough responses and run in a timeout. In this fix we periodically retry to send that response
+
+				if (sm.retry > 0) {
+					sm.retry = sm.retry - 1;
+					TOMMessage finalSm = sm;
+					TimerTask timertask = new TimerTask() {
+						@Override
+						public void run() {
+							retrySend(targets, (TOMMessage) finalSm, serializeClassHeaders, finalSm.retry);
+						}
+					};
+					Timer timer = new Timer("retry");
+					timer.schedule(timertask, controller.getStaticConf().getRequestTimeout());
+				}
+
 			}
 			rl.readLock().unlock();
 		}

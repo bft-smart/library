@@ -82,7 +82,8 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 	//the reply associated with this message
 	public transient TOMMessage reply = null;
 	public transient boolean alreadyProposed = false;
-	
+	public transient int retry = 3;
+
 	private int replyServer = -1;
 
 	public TOMMessage() {
@@ -374,6 +375,7 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
                     clone.timeout = this.timeout;
                     clone.timestamp = this.timestamp;
                     clone.writeSentTime = this.writeSentTime;
+                    clone.retry = this.retry;
 
                     return clone;
                         
