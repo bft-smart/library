@@ -109,6 +109,7 @@ public class ServiceProxy extends TOMSender {
 		} else {
 			init(processId, configHome, loader);
 		}
+		this.invokeTimeout = getViewManager().getStaticConf().getClientInvokeOrderedTimeout();
 
 		replies = new TOMMessage[getViewManager().getCurrentViewN()];
 
@@ -463,10 +464,9 @@ public class ServiceProxy extends TOMSender {
          */
 	protected int getReplyQuorum() {
 		if (getViewManager().getStaticConf().isBFT()) {
-			return (int) Math.ceil((getViewManager().getCurrentViewN()
-					+ getViewManager().getCurrentViewF()) / 2) + 1;
+			return ((getViewManager().getCurrentViewN() + getViewManager().getCurrentViewF()) / 2) + 1;
 		} else {
-			return (int) Math.ceil((getViewManager().getCurrentViewN()) / 2) + 1;
+			return ((getViewManager().getCurrentViewN()) / 2) + 1;
 		}
 	}
 

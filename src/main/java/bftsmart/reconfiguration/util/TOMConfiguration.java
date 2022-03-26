@@ -62,14 +62,15 @@ public class TOMConfiguration extends Configuration {
     private boolean sameBatchSize;
     private boolean fairbatch;
     private String bindAddress;
-    
+    private int clientInvokeOrderedTimeout;
+
     /* Tulio Ribeiro*/
     //private Boolean ssltls=true;
     private String ssltlsProtocolVersion;
     private String keyStoreFile;
     private String [] enabledCiphers;
-    
-    
+
+
     /** Creates a new instance of TOMConfiguration */
     public TOMConfiguration(int processId, KeyLoader loader) {
         super(processId, loader);
@@ -401,7 +402,14 @@ public class TOMConfiguration extends Configuration {
 					break;
 				}
 			}
-            
+
+            s = (String) configs.remove("system.client.invokeOrderedTimeout");
+            if (s == null) {
+                clientInvokeOrderedTimeout = 40;
+            } else {
+                clientInvokeOrderedTimeout = Integer.parseInt(s);
+            }
+
         } catch (Exception e) {
             logger.error("Could not parse system configuration file",e);
         }
@@ -575,7 +583,11 @@ public class TOMConfiguration extends Configuration {
     public String getBindAddress() {
         return bindAddress;
     }
-    
+
+    public int getClientInvokeOrderedTimeout() {
+        return clientInvokeOrderedTimeout;
+    }
+
     /**
      * Tulio Ribeiro ## SSL/TLS getters.
      * */
@@ -590,5 +602,5 @@ public class TOMConfiguration extends Configuration {
 	public String[] getEnabledCiphers() {
 		return enabledCiphers;
 	}
-    
+
 }
