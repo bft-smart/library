@@ -2,8 +2,6 @@ package bftsmart.tests.recovery;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 
 /**
  * @author robin
@@ -15,7 +13,7 @@ public class RecoveryTest {
 		}
 		System.out.println("Running recovery test");
 		String workingDirectory = args[0];
-		Path path = Paths.get("lib", "*");
+		String path = "lib" + File.separator + "*";
 		System.out.println("lib path: " + path);
 		String controllerCommand = "java -cp " + path +" controller.BenchmarkControllerStartup benchmark.config";
 		String clientPodCommand = "java -cp " +  path +" pod.PodStartup 127.0.0.1 12000 bftsmart.tests.recovery.RecoveryTestClientEventProcessor";
