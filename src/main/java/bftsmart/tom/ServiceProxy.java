@@ -109,6 +109,7 @@ public class ServiceProxy extends TOMSender {
 		} else {
 			init(processId, configHome, loader);
 		}
+		this.invokeTimeout = getViewManager().getStaticConf().getClientInvokeOrderedTimeout();
 
 		replies = new TOMMessage[getViewManager().getCurrentViewN()];
 
@@ -271,14 +272,7 @@ public class ServiceProxy extends TOMSender {
 			}else{ 
 				if (!this.sm.tryAcquire(invokeTimeout, TimeUnit.SECONDS)) {
 					logger.info("###################TIMEOUT#######################");
-
-					String receivedFrom = "";
-					for (int i=0; i < replies.length; i++) {
-						if (replies[i] != null) receivedFrom = receivedFrom + ", "+ i;
-					}
-					logger.info("Reply timeout in pid " + this.getProcessId() + " for reqId=" + reqId +
-							", Replies received: " + receivedReplies + " from replicas: " + receivedFrom);
-
+					logger.info("Reply timeout for reqId=" + reqId + ", Replies received: " + receivedReplies);
 					canSendLock.unlock();
 
 					return null;

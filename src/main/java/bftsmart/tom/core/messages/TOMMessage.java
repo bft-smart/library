@@ -82,7 +82,7 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 	//the reply associated with this message
 	public transient TOMMessage reply = null;
 	public transient boolean alreadyProposed = false;
-	public transient int retry = 3;
+	public transient int retry = 4;
 
 	private int replyServer = -1;
 

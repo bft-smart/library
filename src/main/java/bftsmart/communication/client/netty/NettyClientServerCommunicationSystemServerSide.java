@@ -348,6 +348,8 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 				// gather enough responses and run in a timeout. In this fix we periodically retry to send that response
 
 				if (sm.retry > 0) {
+					int retryAfterMillis = (int) (1000 * // Double retry-timeout every time while approaching client's invokeOrdered timeout
+							((double) controller.getStaticConf().getClientInvokeOrderedTimeout() * Math.pow(2, -1 * sm.retry)));
 					sm.retry = sm.retry - 1;
 					TOMMessage finalSm = sm;
 					TimerTask timertask = new TimerTask() {
@@ -357,7 +359,7 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 						}
 					};
 					Timer timer = new Timer("retry");
-					timer.schedule(timertask, controller.getStaticConf().getRequestTimeout());
+					timer.schedule(timertask, retryAfterMillis);
 				}
 
 			}
