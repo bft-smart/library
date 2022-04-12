@@ -70,7 +70,7 @@ public class MessageFactory{
     }
 
     /**
-     * Creates a WRITE message to be sent by this process
+     * Creates an ACCEPT message to be sent by this process
      * @param id Consensus's execution ID
      * @param epoch Epoch number
      * @param value Accepted value
@@ -84,7 +84,7 @@ public class MessageFactory{
 
 
     /**
-     * Creates a WRITE message to be sent by this process
+     * Creates a REQUEST_DECISION message to be sent by this process
      * @param id Consensus's execution ID
      * @param epoch Epoch number
      * @return A consensus message of the REQ_DECISION type, with the specified id, epoch, and value
@@ -96,7 +96,7 @@ public class MessageFactory{
     }
 
     /**
-     * Creates a WRITE message to be sent by this process
+     * Creates a FWD_DECISION message to be sent by this process
      * @param id Consensus's execution ID
      * @param epoch Epoch number
      * @param value Write value
