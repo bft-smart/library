@@ -16,11 +16,16 @@
 package bftsmart.statemanagement.standard;
 
 import bftsmart.statemanagement.StateManager;
-
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Queue;
+import java.util.Timer;
+import java.util.TimerTask;
+import java.util.TreeMap;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.Random;
 
-import bftsmart.tom.core.ExecutionManager;
 import bftsmart.consensus.messages.ConsensusMessage;
 import bftsmart.consensus.messages.MessageFactory;
 import bftsmart.reconfiguration.views.View;
@@ -141,10 +146,6 @@ public class StandardStateManager extends StateManager {
                     tomLayer.getSynchronizer().getLCManager().getLastReg(), tomLayer.execManager.getCurrentLeader());
 
             logger.info("Sending state...");
-            TreeMap<Integer, TOMMessage> sentLastReplies = ((DefaultApplicationState) smsg.getState()).getLastReplies();
-            for (TOMMessage m: sentLastReplies.values())
-                logger.info("Sent "+m);
-
             tomLayer.getCommunication().send(targets, smsg);
             logger.info("Sent");
         }
@@ -210,9 +211,7 @@ public class StandardStateManager extends StateManager {
                             }
                         }
                         TreeMap<Integer, TOMMessage> lastReplies = ((DefaultApplicationState) state).getLastReplies();
-                        logger.info("lastReplies has Treemap:");
-                        for (TOMMessage m: lastReplies.values())
-                            logger.info(""+m);
+                        logger.debug("DefaultApplicationState lastReplies TreeMap :: size=" + lastReplies.size());
                     }
 
                     if (otherReplicaState != null && haveState == 1 && currentRegency > -1

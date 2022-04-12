@@ -160,13 +160,13 @@ public class ClientData {
         if (replyStore.isEmpty() || m.getSequence() > replyStore.getLast().getSequence()) {
             replyStore.addLast(m);
         } else {
-            logger.warn("Reply is too old and will not be added to reply store");
+            logger.debug("Reply is too old and will not be added to reply store");
         }
     }
 
     public TOMMessage getLastReply() {
         if (replyStore.isEmpty()) {
-            logger.warn("ReplyStore is Empty getLastReply()");
+            logger.debug("ReplyStore is empty :: getLastReply()");
             return null;
         } else {
             return replyStore.getLast();

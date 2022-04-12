@@ -94,6 +94,10 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 	private PrivateKey privKey;
 	/* end Tulio Ribeiro */
 
+	// Used for a re-transmission of the last (pending) request in case of a re-connect to some replica
+	private TOMMessage pendingRequest;
+	private boolean pendingRequestSign;
+
 	public NettyClientServerCommunicationSystemClientSide(int clientId, ClientViewController controller) {
 		super();
 
@@ -228,9 +232,14 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 						ChannelFuture future;
 						try {
 							future = connectToReplica(replicaId, secretKeyFactory);
+							// Re-transmit a request after re-connection
+							future.await();
+							retransmitMessage(this.pendingRequest, replicaId, this.pendingRequestSign);
 						} catch (InvalidKeyException | InvalidKeySpecException e) {
 							// TODO Auto-generated catch block
 							logger.error("Error in key.",e);
+						} catch (InterruptedException e) {
+							e.printStackTrace();
 						}
 						logger.info("ClientID {}, re-connection to replica {}, at address: {}", clientId, replicaId,
 								controller.getRemoteAddress(replicaId));
@@ -256,6 +265,9 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 	@Override
 	public void send(boolean sign, int[] targets, TOMMessage sm) {
 
+		this.pendingRequest = sm;
+		this.pendingRequestSign = sign;
+
 		int quorum;
 
 		Integer[] targetArray = Arrays.stream(targets).boxed().toArray(Integer[]::new);
@@ -273,18 +285,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 				+ Arrays.toString(targetArray));
 
 		if (sm.serializedMessage == null) {
-
-			// serialize message
-			DataOutputStream dos = null;
-			try {
-				ByteArrayOutputStream baos = new ByteArrayOutputStream();
-				dos = new DataOutputStream(baos);
-				sm.wExternal(dos);
-				dos.flush();
-				sm.serializedMessage = baos.toByteArray();
-			} catch (IOException ex) {
-				logger.debug("Impossible to serialize message: " + sm);
-			}
+			serializeMessage(sm);
 		}
 
 		// Logger.println("Sending message with "+sm.serializedMessage.length+" bytes of
@@ -332,6 +333,25 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 		}
 		if (targets.length == 1 && sent == 0)
 			throw new RuntimeException("Server not connected");
+	}
+
+	/**
+	 * Serializes the message to the serializedMessage field of the passed TOMMessage object
+	 *
+	 * @param sm TOMMessage to be serialized
+	 */
+	private void serializeMessage(TOMMessage sm) {
+		// serialize message
+		DataOutputStream dos = null;
+		try {
+			ByteArrayOutputStream baos = new ByteArrayOutputStream();
+			dos = new DataOutputStream(baos);
+			sm.wExternal(dos);
+			dos.flush();
+			sm.serializedMessage = baos.toByteArray();
+		} catch (IOException ex) {
+			logger.debug("Impossible to serialize message: " + sm);
+		}
 	}
 
 	public void sign(TOMMessage sm) {
@@ -533,5 +553,44 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 
 	public synchronized void removeClient(int clientId) {
 		sessionClientToReplica.remove(clientId);
+	}
+
+	/**
+	 * Re-transmits a pending request to a recovered replica after successful re-connection
+	 *
+	 * @param sm pending TOM Message
+	 * @param replicaId recovered replica's id
+	 * @param sign if a signature should be added
+	 */
+	private void retransmitMessage(TOMMessage sm, int replicaId, boolean sign) {
+		// No pending request then abort;
+		if (sm == null) {
+			return;
+		}
+		logger.debug("Re-transmitting request from " + sm.getSender() + " with sequence number " + sm.getSequence() + " to "
+				+ replicaId);
+		if (sm.serializedMessage == null) {
+			serializeMessage(sm);
+		}
+		if (sign && sm.serializedMessageSignature == null) {
+			sm.serializedMessageSignature = signMessage(privKey, sm.serializedMessage);
+		}
+		try {
+			sm = (TOMMessage) sm.clone();
+		} catch (CloneNotSupportedException e) {
+			logger.error("Failed to clone TOMMessage", e);
+		}
+		sm.destination = replicaId;
+		rl.readLock().lock();
+		Channel channel = sessionClientToReplica.get(replicaId).getChannel();
+		rl.readLock().unlock();
+		if (channel.isActive()) {
+			sm.signed = sign;
+			logger.debug("-- Write and Flush " + sm.getSequence());
+			ChannelFuture f = channel.writeAndFlush(sm);
+			f.addListener(listener);
+		} else {
+			logger.debug("Channel to " + replicaId + " is not connected");
+		}
 	}
 }

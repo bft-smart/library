@@ -219,7 +219,6 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
         if (clientsManager != null) {
             // Signal clientsManager that requests have been executed
             clientsManager.requestsExecuted(executedRequests);
-
             this.saveReplies(clientsManager.getLastReplyOfEachClient(), lastCID);
         } else {
             logger.warn("clientManager is null, should never reach here!");
@@ -330,7 +329,7 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
                     }
                     // Give the last replies from received state to the clientManager, re-send in case a client waits for it
                     if (clientsManager != null) {
-                        clientsManager.setLastReplyOfEachClient(state.lastReplies);
+                        clientsManager.manageLastReplyOfEachClientAfterRecovery(state.lastReplies);
                     } else {
                         logger.warn("client manager is null, cannot set last replies of clients");
                     }

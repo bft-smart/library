@@ -193,6 +193,10 @@ public class ServiceReplica {
     public final void receiveReadonlyMessage(TOMMessage message, MessageContext msgCtx) {
         TOMMessage response;
 
+        if (!SVController.getStaticConf().useReadOnlyRequests()) {
+           logger.warn("A read-only request was received, but read-only optimization is disabled");
+           return; // Abort operation
+        }
         // This is used to deliver the requests to the application and obtain a reply to deliver
         //to the clients. The raw decision does not need to be delivered to the recoverable since
         // it is not associated with any consensus instance, and therefore there is no need for

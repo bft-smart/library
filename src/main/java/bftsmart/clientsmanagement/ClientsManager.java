@@ -21,7 +21,6 @@ import java.util.concurrent.locks.ReentrantLock;
 import bftsmart.communication.ServerCommunicationSystem;
 import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.tom.core.messages.TOMMessage;
-import bftsmart.tom.core.messages.TOMMessageType;
 import bftsmart.tom.leaderchange.RequestsTimer;
 import bftsmart.tom.server.RequestVerifier;
 import bftsmart.tom.util.TOMUtil;
@@ -530,11 +529,6 @@ public class ClientsManager {
         }
         this.clientsLock.unlock();
         logger.debug("getLastReplyOfEachClient() SIZE " + lastReplies.size());
-
-        logger.info("getLastReplyOfEachClient()");
-        for (TOMMessage m: lastReplies.values()) {
-            logger.info(""+m);
-        }
         return lastReplies;
     }
 
@@ -544,31 +538,28 @@ public class ClientsManager {
      *
      * @param repliesToClients TreeMap of last reply for each client (clientID -> last reply)
      */
-    public void setLastReplyOfEachClient(TreeMap<Integer, TOMMessage> repliesToClients) {
+    public void manageLastReplyOfEachClientAfterRecovery(TreeMap<Integer, TOMMessage> repliesToClients) {
         logger.info("Setting the reply store for #clients after state transfer: " + repliesToClients.size());
-
         for (TOMMessage m: repliesToClients.values()) {
             m.setSender(this.controller.getStaticConf().getProcessId());
-            logger.info(""+m);
         }
         this.clientsLock.lock();
-
         for (Integer client: repliesToClients.keySet()) {
             ClientData clientData = getClientData(client);
 
             TOMMessage reply = repliesToClients.get(client);
 
+            // Add some properties to handle the right way of replying back to the client
+            reply.retry = 4;
             reply.setSender(controller.getStaticConf().getProcessId());
-            reply.type = TOMMessageType.ORDERED_REQUEST;
 
             clientData.clientLock.lock();
             clientData.addToReplyStore(reply);
             clientData.clientLock.unlock();
 
             int[] target = {client};
-            logger.info(">> Sending reply of client " + client + " seq " + reply.getSequence() + " session " + reply.getSession() + " opID " +reply.getOperationId());
+            logger.debug(">> Sending reply of client " + client + " seq " + reply.getSequence() + " session " + reply.getSession() + " opID " +reply.getOperationId());
             cs.send(target, reply);
-
         }
         this.clientsLock.unlock();
     }

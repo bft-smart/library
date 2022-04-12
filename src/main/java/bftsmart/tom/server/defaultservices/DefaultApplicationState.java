@@ -40,7 +40,7 @@ public class DefaultApplicationState implements ApplicationState {
     protected int lastCID = -1; // Consensus ID for the last messages batch delivered to the application
     protected boolean hasState; // indicates if the replica really had the requested state
 
-    protected TreeMap<Integer, TOMMessage> lastReplies; // For each client id (Integer) remember the last reply
+    protected TreeMap<Integer, TOMMessage> lastReplies = new TreeMap<>(); // For each client id (Integer) remember the last reply
     protected byte[] lastRepliesHash; // Hash of lastReplies to confirm integrity
 
     private CommandsInfo[] messageBatches; // batches received since the last checkpoint.

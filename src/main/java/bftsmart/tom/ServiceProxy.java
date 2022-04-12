@@ -67,7 +67,7 @@ public class ServiceProxy extends TOMSender {
 	/**
 	 * Constructor
 	 *
-	 * @see bellow
+	 * @see ServiceProxy#ServiceProxy(int, String, Comparator, Extractor, KeyLoader)
 	 */
 	public ServiceProxy(int processId) {
 		this(processId, null, null, null, null);
@@ -76,7 +76,7 @@ public class ServiceProxy extends TOMSender {
 	/**
 	 * Constructor
 	 *
-	 * @see bellow
+	 * @see ServiceProxy#ServiceProxy(int, String, Comparator, Extractor, KeyLoader)
 	 */
 	public ServiceProxy(int processId, String configHome) {
 		this(processId, configHome, null, null, null);
@@ -85,7 +85,7 @@ public class ServiceProxy extends TOMSender {
 	/**
 	 * Constructor
 	 *
-	 * @see bellow
+	 * @see ServiceProxy#ServiceProxy(int, String, Comparator, Extractor, KeyLoader)
 	 */
         public ServiceProxy(int processId, String configHome, KeyLoader loader) {
 		this(processId, configHome, null, null, loader);
@@ -305,7 +305,6 @@ public class ServiceProxy extends TOMSender {
 			if (reqType == TOMMessageType.ORDERED_REQUEST) {
 				//Reply to a normal request!
 				if (response.getViewID() == getViewManager().getCurrentViewId()) {
-					logger.info("Response to " + response.getSequence());
 					ret = response.getContent(); // return the response
 				} else {//if(response.getViewID() > getViewManager().getCurrentViewId())
 					//updated view received
