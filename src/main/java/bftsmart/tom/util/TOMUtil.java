@@ -15,7 +15,11 @@ limitations under the License.
 */
 package bftsmart.tom.util;
 
-import java.io.*;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -23,7 +27,11 @@ import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.Signature;
 import java.security.SignatureException;
-import java.util.*;
+import java.util.Arrays;
+import java.util.Random;
+import java.util.List;
+import java.util.LinkedList;
+import java.util.Collection;
 
 import bftsmart.reconfiguration.util.Configuration;
 import java.security.Security;

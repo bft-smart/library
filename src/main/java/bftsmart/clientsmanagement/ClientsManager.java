@@ -15,7 +15,8 @@ limitations under the License.
 */
 package bftsmart.clientsmanagement;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map.Entry;
 import java.util.concurrent.locks.ReentrantLock;
 import bftsmart.communication.ServerCommunicationSystem;
@@ -27,7 +28,10 @@ import bftsmart.tom.util.TOMUtil;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.Signature;
-
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.TreeMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

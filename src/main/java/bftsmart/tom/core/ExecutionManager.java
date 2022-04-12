@@ -17,10 +17,16 @@ package bftsmart.tom.core;
 
 import bftsmart.consensus.Consensus;
 import bftsmart.consensus.Epoch;
-
-import java.lang.reflect.Array;
-import java.util.*;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Queue;
+import java.util.TreeMap;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.ArrayList;
 
 import bftsmart.consensus.Decision;
 import bftsmart.consensus.messages.MessageFactory;

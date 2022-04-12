@@ -265,9 +265,6 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 	@Override
 	public void send(boolean sign, int[] targets, TOMMessage sm) {
 
-		this.pendingRequest = sm;
-		this.pendingRequestSign = sign;
-
 		int quorum;
 
 		Integer[] targetArray = Arrays.stream(targets).boxed().toArray(Integer[]::new);
@@ -283,6 +280,9 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 
 		logger.debug("Sending request from " + sm.getSender() + " with sequence number " + sm.getSequence() + " to "
 				+ Arrays.toString(targetArray));
+
+		this.pendingRequest = sm;
+		this.pendingRequestSign = sign;
 
 		if (sm.serializedMessage == null) {
 			serializeMessage(sm);

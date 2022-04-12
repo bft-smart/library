@@ -22,7 +22,10 @@ import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.leaderchange.CertifiedDecision;
 import bftsmart.tom.util.BatchBuilder;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.LinkedList;
+import java.util.Set;
+import java.util.TreeMap;
 
 /**
  * This class represents a state transfered from a replica to another. The state associated with the last

@@ -299,7 +299,6 @@ public class ServerViewController extends ViewController {
         return getStaticConf().isBFT() ? quorumBFT : quorumCFT;
     }
 
-
     public TOMLayer getTOMLayer() {
         return tomLayer;
     }
