@@ -31,20 +31,20 @@ import io.netty.channel.socket.nio.NioServerSocketChannel;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.net.ConnectException;
 import java.net.InetSocketAddress;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.nio.channels.ClosedChannelException;
-import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map.Entry;
-import java.util.Set;
+
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.Set;
+import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-
-import javax.crypto.Mac;
 
 import org.slf4j.LoggerFactory;
 import org.slf4j.Logger;
@@ -54,9 +54,7 @@ import bftsmart.communication.client.RequestReceiver;
 import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.util.TOMUtil;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
-import java.util.logging.Level;
+
 
 /**
  *
@@ -137,8 +135,7 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 				// to replicas.
 				// To solve that issue, we bind to the address supplied in config/hosts.config
 				// instead.
-				if (InetAddress.getLoopbackAddress().getHostAddress().equals(myAddress)
-						&& !myAddress.equals(confAddress)) {
+				if (!confAddress.equals("") && !myAddress.equals(confAddress)) {
 
 					myAddress = confAddress;
 				}
@@ -293,6 +290,12 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 		this.requestReceiver = tl;
 	}
 
+	private void retrySend(int[] targets, TOMMessage sm, boolean serializeClassHeaders, int retry) {
+		retry--;
+		sm.retry = retry;
+		send(targets, (TOMMessage) sm, serializeClassHeaders);
+	}
+
 	@Override
 	public void send(int[] targets, TOMMessage sm, boolean serializeClassHeaders) {
 
@@ -339,6 +342,25 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 				 * Thread(clientSession).start();
 				 */
 				// should I wait for the client?
+				// cb: the below code fixes an issue that occurs if a replica tries to send a reply back to some client
+				// *before* the connection to that client is successfully established. The client may then fail to
+				// gather enough responses and run in a timeout. In this fix we periodically retry to send that response
+
+				if (sm.retry > 0) {
+					int retryAfterMillis = (int) (1000 * // Double retry-timeout every time while approaching client's invokeOrdered timeout
+							((double) controller.getStaticConf().getClientInvokeOrderedTimeout() * Math.pow(2, -1 * sm.retry)));
+					sm.retry = sm.retry - 1;
+					TOMMessage finalSm = sm;
+					TimerTask timertask = new TimerTask() {
+						@Override
+						public void run() {
+							retrySend(targets, (TOMMessage) finalSm, serializeClassHeaders, finalSm.retry);
+						}
+					};
+					Timer timer = new Timer("retry");
+					timer.schedule(timertask, retryAfterMillis);
+				}
+
 			}
 			rl.readLock().unlock();
 		}

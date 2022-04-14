@@ -1,6 +1,7 @@
 plugins {
     id 'java'
     id 'distribution'
+    id 'org.hidetake.ssh' version '2.10.1'
 }
 
 group 'BFT-SMaRt'
@@ -20,6 +21,104 @@ jar {
     project.version=""
 }
 
+ssh.settings {
+    fileTransfer = 'scp'
+}
+
+remotes {
+    master {
+        host = '<ip>'
+        user = '<username>'
+        password = '<password>'
+        //identity='<private key>'
+    }
+}
+
+task remoteDeploy(dependsOn: installDist) {
+    doLast {
+        def fileSeparator = System.getProperty("file.separator")
+        def src = project.buildDir.name + fileSeparator + "install" + fileSeparator + project.name
+        def target = '~/'
+        ssh.run {
+            session(remotes.master) {
+                put from: src, into: target
+            }
+        }
+    }
+}
+
+task localDeploy(dependsOn: installDist) {
+    doLast {
+        int nServers = 4
+        int nClients = 1
+
+        def fileSeparator = System.getProperty("file.separator")
+        def src = project.buildDir.name + fileSeparator + "install" + fileSeparator + project.name
+        def workingDirectory = project.buildDir.name + fileSeparator + "local" + fileSeparator
+
+        println ("Deploying project into ${workingDirectory}")
+
+        for (i in 0..<nServers) {
+            def target = workingDirectory + "rep${i}"
+            copy {
+                from src
+                into target
+            }
+        }
+
+        for (i in 0..<nClients) {
+            def target = workingDirectory + "cli${i}"
+            copy {
+                from src
+                into target
+            }
+        }
+    }
+}
+
+task setupIntegrationTestingEnvironment(dependsOn: installDist) {
+    doFirst {
+        int nServers = 4
+        int nClients = 1
+
+        def fileSeparator = System.getProperty("file.separator")
+        def src = project.buildDir.name + fileSeparator + "install" + fileSeparator + project.name
+        def workingDirectory = project.buildDir.name + fileSeparator + "integration" + fileSeparator
+        copy {
+            from src + fileSeparator + "lib"
+            into workingDirectory + fileSeparator + "lib"
+        }
+        copy {
+            from project.projectDir.absolutePath + fileSeparator + "config" + fileSeparator + "benchmark.config"
+            into workingDirectory
+        }
+
+        for (i in 0..<nServers) {
+            def target = workingDirectory + "rep${i}"
+            copy {
+                from src
+                into target
+            }
+        }
+
+        for (i in 0..<nClients) {
+            def target = workingDirectory + "cli${i}"
+            copy {
+                from src
+                into target
+            }
+        }
+    }
+}
+
+task recoveryIntegrationTest(type: JavaExec, dependsOn: setupIntegrationTestingEnvironment) {
+    def fileSeparator = System.getProperty("file.separator")
+    String workingDirectory = project.buildDir.absolutePath + fileSeparator + "integration" + fileSeparator
+    classpath = sourceSets.main.runtimeClasspath
+    args(workingDirectory)
+    mainClass = 'bftsmart.tests.recovery.RecoveryTest'
+}
+
 distributions {
     main {
         contents {
@@ -31,6 +130,7 @@ distributions {
                 from(configurations.runtimeClasspath)
             }
             from 'runscripts/smartrun.sh'
+            from 'runscripts/smartrun.cmd'
         }
     }
 }

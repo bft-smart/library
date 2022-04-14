@@ -286,7 +286,7 @@ public class StandardStateManager extends StateManager {
                         //if (currentRegency > 0)
                         //    tomLayer.requestsTimer.setTimeout(tomLayer.requestsTimer.getTimeout() * (currentRegency * 2));
 
-                        dt.deliverLock();
+                        dt.pauseDecisionDelivery();
                         waitingCID = -1;
                         dt.update(state);
 
@@ -311,7 +311,7 @@ public class StandardStateManager extends StateManager {
                         isInitializing = false;
 
                         dt.canDeliver();
-                        dt.deliverUnlock();
+                        dt.resumeDecisionDelivery();
 
                         reset();
 

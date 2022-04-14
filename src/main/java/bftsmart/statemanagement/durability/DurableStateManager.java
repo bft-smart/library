@@ -349,7 +349,7 @@ public class DurableStateManager extends StateManager {
                         }
 
                         logger.debug("trying to acquire deliverlock");
-                        dt.deliverLock();
+                        dt.pauseDecisionDelivery();
                         logger.debug("acquired");
 
                         // this makes the isRetrievingState() evaluates to false
@@ -380,7 +380,7 @@ public class DurableStateManager extends StateManager {
                         isInitializing = false;
 
                         dt.canDeliver();
-                        dt.deliverUnlock();
+                        dt.resumeDecisionDelivery();
 
                         reset();
 

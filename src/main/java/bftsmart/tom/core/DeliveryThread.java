@@ -1,4 +1,4 @@
-/**
+/*
 Copyright (c) 2007-2013 Alysson Bessani, Eduardo Alchieri, Paulo Sousa, and the authors indicated in the @author tags
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,7 +30,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
-import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -38,15 +38,15 @@ import java.util.concurrent.locks.ReentrantLock;
 /**
  * This class implements a thread which will deliver totally ordered requests to
  * the application
- * 
+ *
  */
 public final class DeliveryThread extends Thread {
 
-	private Logger logger = LoggerFactory.getLogger(this.getClass());
+	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	private boolean doWork = true;
 	private int lastReconfig = -2;
-	private final LinkedBlockingDeque<Decision> decided;
+	private final LinkedBlockingQueue<Decision> decided;
 	private final TOMLayer tomLayer; // TOM layer
 	private final ServiceReplica receiver; // Object that receives requests from clients
 	private final Recoverable recoverer; // Object that uses state transfer
@@ -54,12 +54,10 @@ public final class DeliveryThread extends Thread {
 	private final Lock decidedLock = new ReentrantLock();
 	private final Condition notEmptyQueue = decidedLock.newCondition();
 
-	//Robin - BEGIN
 	//Variables used to pause/resume decisions delivery
 	private final Lock pausingDeliveryLock = new ReentrantLock();
 	private final Condition deliveryPausedCondition = pausingDeliveryLock.newCondition();
 	private int isPauseDelivery;
-	//Robin - END
 
 	/**
 	 * Creates a new instance of DeliveryThread
@@ -68,9 +66,9 @@ public final class DeliveryThread extends Thread {
 	 * @param receiver Object that receives requests from clients
 	 */
 	public DeliveryThread(TOMLayer tomLayer, ServiceReplica receiver, Recoverable recoverer,
-			ServerViewController controller) {
+						  ServerViewController controller) {
 		super("Delivery Thread");
-		this.decided = new LinkedBlockingDeque<>();
+		this.decided = new LinkedBlockingQueue<>();
 
 		this.tomLayer = tomLayer;
 		this.receiver = receiver;
@@ -114,7 +112,7 @@ public final class DeliveryThread extends Thread {
 			// define that end of this execution
 			tomLayer.setInExec(-1);
 		} // else if (tomLayer.controller.getStaticConf().getProcessId() == 0)
-			// System.exit(0);
+		// System.exit(0);
 		else {
 			logger.debug("Decision from consensus " + dec.getConsensusId() + " has reconfiguration");
 			lastReconfig = dec.getConsensusId();
@@ -133,20 +131,32 @@ public final class DeliveryThread extends Thread {
 		return false;
 	}
 	/** THIS IS JOAO'S CODE, TO HANDLE STATE TRANSFER */
-	private ReentrantLock deliverLock = new ReentrantLock();
-	private Condition canDeliver = deliverLock.newCondition();
+	private final ReentrantLock deliverLock = new ReentrantLock();
+	private final Condition canDeliver = deliverLock.newCondition();
 
 
+	/**
+	 * @deprecated This method does not always work when the replica was already delivering decisions.
+	 * This method is replaced by {@link #pauseDecisionDelivery()}.
+	 * Internally, the current implementation of this method uses {@link #pauseDecisionDelivery()}.
+	 */
+	@Deprecated
 	public void deliverLock() {
-		// release the delivery lock to avoid blocking on state transfer
 		pauseDecisionDelivery();
 	}
 
+	/**
+	 * @deprecated Replaced by {@link #resumeDecisionDelivery()} to work in pair with {@link #pauseDecisionDelivery()}.
+	 * Internally, the current implementation of this method calls {@link #resumeDecisionDelivery()}
+	 */
+	@Deprecated
 	public void deliverUnlock() {
 		resumeDecisionDelivery();
 	}
-	//****** ROBIN BEGIN ******//
 
+	/**
+	 * Pause the decision delivery.
+	 */
 	public void pauseDecisionDelivery() {
 		pausingDeliveryLock.lock();
 		isPauseDelivery++;
@@ -179,8 +189,10 @@ public final class DeliveryThread extends Thread {
 		recoverer.setState(state);
 	}
 
-	//****** ROBIN END ******//
 
+	/**
+	 * This method is used to restart the decision delivery after awaiting a state.
+	 */
 	public void canDeliver() {
 		canDeliver.signalAll();
 	}
@@ -234,14 +246,15 @@ public final class DeliveryThread extends Thread {
 				// if (tomLayer.getLastExec() == -1)
 				if (init) {
 					logger.info(
-							"\n\t\t###################################"
-					      + "\n\t\t    Ready to process operations    "
-						  + "\n\t\t###################################");
+									  "\n\t\t###################################"
+									+ "\n\t\t    Ready to process operations    "
+									+ "\n\t\t###################################");
 					init = false;
 				}
 			}
+
 			try {
-				ArrayList<Decision> decisions = new ArrayList<Decision>();
+				ArrayList<Decision> decisions = new ArrayList<>();
 				decidedLock.lock();
 				if (decided.isEmpty()) {
 					notEmptyQueue.await();
@@ -308,8 +321,7 @@ public final class DeliveryThread extends Thread {
 
 					Decision lastDecision = decisions.get(decisions.size() - 1);
 
-					if (requests != null && requests.length > 0) {
-						deliverMessages(consensusIds, regenciesIds, leadersIds, cDecs, requests);
+					deliverMessages(consensusIds, regenciesIds, leadersIds, cDecs, requests);
 
 						// ******* EDUARDO BEGIN ***********//
 						if (controller.hasUpdates()) {
@@ -329,8 +341,7 @@ public final class DeliveryThread extends Thread {
 							tomLayer.setInExec(-1);
 							// ******* EDUARDO END **************//
 
-							lastReconfig = -2;
-						}
+						lastReconfig = -2;
 					}
 
 					// define the last stable consensus... the stable consensus can
@@ -348,9 +359,9 @@ public final class DeliveryThread extends Thread {
 				logger.error("Error while processing decision", e);
 			}
 
-			/** THIS IS JOAO'S CODE, TO HANDLE STATE TRANSFER */
+			// THIS IS JOAO'S CODE, TO HANDLE STATE TRANSFER
 			//deliverUnlock();
-			/******************************************************************/
+			//******************************************************************
 			deliverLock.unlock();
 		}
 		logger.info("DeliveryThread stopped.");
@@ -358,7 +369,7 @@ public final class DeliveryThread extends Thread {
 	}
 
 	private TOMMessage[] extractMessagesFromDecision(Decision dec) {
-		TOMMessage[] requests = (TOMMessage[]) dec.getDeserializedValue();
+		TOMMessage[] requests = dec.getDeserializedValue();
 		if (requests == null) {
 			// there are no cached deserialized requests
 			// this may happen if this batch proposal was not verified
@@ -376,7 +387,7 @@ public final class DeliveryThread extends Thread {
 		return requests;
 	}
 
-	protected void deliverUnordered(TOMMessage request, int regency) {
+	public void deliverUnordered(TOMMessage request, int regency) {
 
 		MessageContext msgCtx = new MessageContext(request.getSender(), request.getViewID(), request.getReqType(),
 				request.getSession(), request.getSequence(), request.getOperationId(), request.getReplyServer(),
@@ -388,8 +399,8 @@ public final class DeliveryThread extends Thread {
 		receiver.receiveReadonlyMessage(request, msgCtx);
 	}
 
-	private void deliverMessages(int consId[], int regencies[], int leaders[], CertifiedDecision[] cDecs,
-			TOMMessage[][] requests) {
+	private void deliverMessages(int[] consId, int[] regencies, int[] leaders, CertifiedDecision[] cDecs,
+								 TOMMessage[][] requests) {
 		receiver.receiveMessages(consId, regencies, leaders, cDecs, requests);
 	}
 
@@ -398,10 +409,10 @@ public final class DeliveryThread extends Thread {
 		TOMMessage[] dests = controller.clearUpdates();
 
 		if (controller.getCurrentView().isMember(receiver.getId())) {
-			for (int i = 0; i < dests.length; i++) {
-				tomLayer.getCommunication().send(new int[] { dests[i].getSender() },
-						new TOMMessage(controller.getStaticConf().getProcessId(), dests[i].getSession(),
-								dests[i].getSequence(), dests[i].getOperationId(), null, response, null,
+			for (TOMMessage dest : dests) {
+				tomLayer.getCommunication().send(new int[]{dest.getSender()},
+						new TOMMessage(controller.getStaticConf().getProcessId(), dest.getSession(),
+								dest.getSequence(), dest.getOperationId(), response,
 								controller.getCurrentViewId(), TOMMessageType.RECONFIG));
 			}
 

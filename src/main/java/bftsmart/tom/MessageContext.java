@@ -271,10 +271,7 @@ public class MessageContext implements Serializable {
     public TOMMessage getFirstInBatch() {
         return firstInBatch;
     }
-    
-    /**
-     * @deprecated 
-     */
+
     public void setLastInBatch() {
     	lastInBatch = true;
     }
