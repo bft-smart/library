@@ -17,7 +17,6 @@ package bftsmart.clientsmanagement;
 
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.Set;
 import java.util.Map.Entry;
 import java.util.concurrent.locks.ReentrantLock;
 import bftsmart.communication.ServerCommunicationSystem;
@@ -31,9 +30,8 @@ import java.security.NoSuchAlgorithmException;
 import java.security.Signature;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Enumeration;
 import java.util.List;
-import java.util.Random;
+import java.util.TreeMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -49,6 +47,7 @@ public class ClientsManager {
     private RequestsTimer timer;
     private HashMap<Integer, ClientData> clientsData = new HashMap<Integer, ClientData>();
     private RequestVerifier verifier;
+    private ServerCommunicationSystem cs;
     
     //Used when the intention is to perform benchmarking with signature verification, but
     //without having to make the clients create one first. Useful to optimize resources
@@ -58,10 +57,11 @@ public class ClientsManager {
     
     private ReentrantLock clientsLock = new ReentrantLock();
 
-    public ClientsManager(ServerViewController controller, RequestsTimer timer, RequestVerifier verifier) {
+    public ClientsManager(ServerViewController controller, RequestsTimer timer, RequestVerifier verifier, ServerCommunicationSystem cs) {
         this.controller = controller;
         this.timer = timer;
         this.verifier = verifier;
+        this.cs = cs;
         
         if (controller.getStaticConf().getUseSignatures() == 2) {
             benchMsg = new byte []{3,5,6,7,4,3,5,6,4,7,4,1,7,7,5,4,3,1,4,85,7,5,7,3};
@@ -277,7 +277,6 @@ public class ClientsManager {
      *
      * @param request the received request
      * @param fromClient the message was received from client or not?
-     * @param storeMessage the message should be stored or not? (read-only requests are not stored)
      * @param cs server com. system to be able to send replies to already processed requests
      *
      * @return true if the request is ok and is added to the pending messages
@@ -440,6 +439,35 @@ public class ClientsManager {
     }
 
     /**
+     * Notifies the ClientManager that these requests now have replies (computed by the application) attached to them
+     *
+     * @param requests the array of requests to account as executed
+     */
+    public void requestsExecuted(TOMMessage[] requests) {
+        logger.debug("Requests executed()");
+        clientsLock.lock();
+        for (TOMMessage request : requests) {
+            requestExecuted(request);
+        }
+        logger.debug("Finished updating client manager");
+        clientsLock.unlock();
+    }
+
+    /**
+     * Adds the reply associated to a client request to the reply store
+     *
+     * @param request the executed request
+     */
+    private void  requestExecuted(TOMMessage request) {
+        ClientData clientData = getClientData(request.getSender());
+        clientData.clientLock.lock();
+        if (request.reply != null) {
+            clientData.addToReplyStore(request.reply);
+        }
+        clientData.clientLock.unlock();
+    }
+
+    /**
      * Cleans all state for this request (e.g., removes it from the pending
      * requests queue and stop any timer for it).
      *
@@ -477,7 +505,89 @@ public class ClientsManager {
     }
     
     public int numClients() {
-        
+
         return clientsData.size();
     }
+
+
+    /**
+     * Collects the last ordered request and their associated replies of each client in a HashMap  (clientID -> TOMMessage)
+     *
+     * @return hashmap of last request and replies
+     */
+    public TreeMap<Integer, TOMMessage> getLastReplyOfEachClient() {
+
+        this.clientsLock.lock();
+        TreeMap<Integer, TOMMessage> lastReplies = new TreeMap<>();
+        if (controller.getStaticConf().useReadOnlyRequests()) {
+            for (Integer client : this.clientsData.keySet()) {
+                ClientData clientData = this.clientsData.get(client);
+                if (clientData != null) {
+                    clientData.clientLock.lock();
+                    if (clientData.getLastReply() != null) {
+                        lastReplies.put(client, clientData.getLastReply());
+                    }
+                    clientData.clientLock.unlock();
+                }
+            }
+        }
+        this.clientsLock.unlock();
+        logger.debug("getLastReplyOfEachClient() SIZE " + lastReplies.size());
+        return lastReplies;
+    }
+
+    /**
+     * Sets the reply store of each client in a HashMap  (clientID -> TOMMessage).
+     * This method is called during recovery of a replica
+     *
+     * @param repliesToClients TreeMap of last reply for each client (clientID -> last reply)
+     */
+    public void manageLastReplyOfEachClientAfterRecovery(TreeMap<Integer, TOMMessage> repliesToClients) {
+        logger.info("Setting the reply store for #clients after state transfer: " + repliesToClients.size());
+        for (TOMMessage m: repliesToClients.values()) {
+            m.setSender(this.controller.getStaticConf().getProcessId());
+        }
+        this.clientsLock.lock();
+        for (Integer client: repliesToClients.keySet()) {
+            ClientData clientData = getClientData(client);
+
+            TOMMessage reply = repliesToClients.get(client);
+
+            // Add some properties to handle the right way of replying back to the client
+            reply.retry = 4;
+            reply.setSender(controller.getStaticConf().getProcessId());
+
+            clientData.clientLock.lock();
+            clientData.addToReplyStore(reply);
+            clientData.clientLock.unlock();
+
+            int[] target = {client};
+            logger.debug(">> Sending reply of client " + client + " seq " + reply.getSequence() + " session " + reply.getSession() + " opID " +reply.getOperationId());
+            cs.send(target, reply);
+        }
+        this.clientsLock.unlock();
+    }
+
+    /**
+     * Collects the max number of last ordered requests of each client in a HashMap  (clientID -> RequestList)
+     *
+     * @return hashmap of lists of last request and replies per client
+     */
+    public TreeMap<Integer, RequestList> getLastRepliesOfEachClient() {
+        this.clientsLock.lock();
+        TreeMap<Integer, RequestList> lastReplies = new TreeMap<>();
+        for (Integer client: this.clientsData.keySet()) {
+            ClientData clientData = this.clientsData.get(client);
+            if (clientData != null && clientData.getReplyStore() != null) {
+                clientData.clientLock.lock();
+                lastReplies.put(client, clientData.getReplyStore());
+                clientData.clientLock.unlock();
+            }
+        }
+        this.clientsLock.unlock();
+
+        return lastReplies;
+    }
+
+
 }

@@ -67,7 +67,7 @@ public class ServiceProxy extends TOMSender {
 	/**
 	 * Constructor
 	 *
-	 * @see bellow
+	 * @see ServiceProxy#ServiceProxy(int, String, Comparator, Extractor, KeyLoader)
 	 */
 	public ServiceProxy(int processId) {
 		this(processId, null, null, null, null);
@@ -76,7 +76,7 @@ public class ServiceProxy extends TOMSender {
 	/**
 	 * Constructor
 	 *
-	 * @see bellow
+	 * @see ServiceProxy#ServiceProxy(int, String, Comparator, Extractor, KeyLoader)
 	 */
 	public ServiceProxy(int processId, String configHome) {
 		this(processId, configHome, null, null, null);
@@ -85,7 +85,7 @@ public class ServiceProxy extends TOMSender {
 	/**
 	 * Constructor
 	 *
-	 * @see bellow
+	 * @see ServiceProxy#ServiceProxy(int, String, Comparator, Extractor, KeyLoader)
 	 */
         public ServiceProxy(int processId, String configHome, KeyLoader loader) {
 		this(processId, configHome, null, null, loader);
@@ -463,10 +463,14 @@ public class ServiceProxy extends TOMSender {
          * @return The quorum size for the amount of replies
          */
 	protected int getReplyQuorum() {
+		int n = getViewManager().getCurrentViewN();
+		int f = getViewManager().getCurrentViewF();
 		if (getViewManager().getStaticConf().isBFT()) {
-			return ((getViewManager().getCurrentViewN() + getViewManager().getCurrentViewF()) / 2) + 1;
+			// Note that a quorum ensures Linearizability when unordered requests are used
+			// f + 1 is sufficient in case the replicas' system configuration does not support unordered requests
+			return getViewManager().getStaticConf().useReadOnlyRequests() ? ((n + f) / 2 + 1) : f + 1;
 		} else {
-			return ((getViewManager().getCurrentViewN()) / 2) + 1;
+			return getViewManager().getStaticConf().useReadOnlyRequests() ? (n / 2 + 1) : 1;
 		}
 	}
 

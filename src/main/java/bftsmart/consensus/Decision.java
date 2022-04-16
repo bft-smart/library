@@ -126,7 +126,7 @@ public class Decision {
     }
 
     private void waitForPropose() {
-        while (decisionEpoch == null &&
+        while (decisionEpoch == null ||
                 decisionEpoch.deserializedPropValue == null) {
             try {
                 LoggerFactory.getLogger(this.getClass()).info("waiting for propose for consensus " + cid);
@@ -136,5 +136,14 @@ public class Decision {
                 LoggerFactory.getLogger(this.getClass()).error("Interruption during sleep",ie);
             }
         }
+    }
+
+    /**
+     * Sets the value of consensus
+     *
+     * @param value of consensus
+     */
+    public void setValue(byte[] value) {
+        this.value = value;
     }
 }
