@@ -451,7 +451,8 @@ public final class Acceptor {
 
 		logger.debug("Forwarding Decision necessary? for cid " + cid);
 
-		if (targets != null) {  // Forwarding is necessary if toForward set is non-empty (non null)
+		if (targets != null &&
+				executionManager.getCurrentLeader() != controller.getStaticConf().getProcessId()) {  // Forwarding is necessary if toForward set is non-empty (non null)
 
 			// Create the "FORWARD-DECISION" message
 			byte[] value = epoch.getConsensus().getDecision().getValue();

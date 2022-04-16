@@ -320,11 +320,6 @@ public final class ExecutionManager {
                 int[] requestDecisionFrom = checkRequestDecision(epoch, msg);
 
                 if (requestDecisionFrom != null) {
-                    String receivers = "";
-                    for (int i = 0; i < requestDecisionFrom.length; i++) {
-                        receivers = receivers + ", " + requestDecisionFrom[i];
-                    }
-                    logger.debug(">>>> Requesting a Decision and Proof from  " + receivers);
                     acceptor.sendRequestDecision(epoch, msg.getNumber(), requestDecisionFrom, epoch.propValueHash);
                 }
 
@@ -633,41 +628,21 @@ public final class ExecutionManager {
      */
     public int[] checkRequestDecision(Epoch epoch, ConsensusMessage message) {
         boolean requestDecision = false;
-        int[] replicasToRequestDecisionFrom = new int[2*controller.getCurrentViewF()];
-        LinkedList<Integer> replicasToRequestDecision = new LinkedList<Integer>();
 
         outOfContextLock.lock();
         /******* BEGIN OUTOFCONTEXT CRITICAL SECTION *******/
-
 
         int cid = epoch.getConsensus().getId();
         logger.debug(">>>>>> epoch.getConsensus().getId() " + cid + " message.getNumber() " + message.getNumber());
         if (message.getNumber() == cid && message.getPaxosVerboseType().equals("ACCEPT")) {
             int countAccepts = 1;
-            replicasToRequestDecisionFrom[0] = message.getSender();
-            replicasToRequestDecision.add(message.getSender());
 
             List<ConsensusMessage> cmlist = outOfContext.get(cid);
 
             if (cmlist != null) {
                 for (ConsensusMessage cm : cmlist) {
                     if (cm.getSender() != message.getSender() && cm.getPaxosVerboseType().equals("ACCEPT") && Arrays.equals(cm.getValue(), message.getValue())) {
-                        if (countAccepts < controller.getCurrentViewF() + 1) {
-                            replicasToRequestDecisionFrom[countAccepts] = cm.getSender();
-                            replicasToRequestDecision.add(cm.getSender());
-                        }
                         countAccepts++;
-                    }
-                }
-
-                int[] otherAcceptors = controller.getCurrentViewOtherAcceptors();
-                for (int i = controller.getCurrentViewF()+1; i < controller.getCurrentViewF()*2; i++) {
-                    for (int j = 0; j < controller.getCurrentViewN(); j++) {
-                        if (!replicasToRequestDecision.contains(otherAcceptors[j])) {
-                            replicasToRequestDecision.add(otherAcceptors[j]);
-                            replicasToRequestDecisionFrom[i] = otherAcceptors[j];
-                            break;
-                        }
                     }
                 }
 
@@ -688,19 +663,14 @@ public final class ExecutionManager {
                     logger.debug(">> >> >> >>  propose mismatch, I request a decision from others");
                     requestDecision = true;
                     epoch.decisionRequested = true;
-                    int[] acceptsFrom = epoch.countAcceptFrom(message.getValue());
-                    for (int i = 0; i < controller.getCurrentViewF() + 1; i++) {
-                        replicasToRequestDecisionFrom[i] = acceptsFrom[i];
-                    }
                 }
             }
-
         }
 
         /******* END OUTOFCONTEXT CRITICAL SECTION *******/
         outOfContextLock.unlock();
 
-        return requestDecision ? replicasToRequestDecisionFrom : null;
+        return requestDecision ? controller.getCurrentViewOtherAcceptors() : null;
     }
 
 
