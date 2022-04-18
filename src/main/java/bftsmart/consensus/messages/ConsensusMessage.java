@@ -218,5 +218,9 @@ public class ConsensusMessage extends SystemMessage {
                 getEpoch()+", from="+getSender();
     }
 
+    public void setValue(byte[] new_value) {
+        this.value = new_value;
+    }
+
 }
 

@@ -32,6 +32,8 @@ import bftsmart.consensus.Consensus;
 import bftsmart.consensus.Epoch;
 import bftsmart.consensus.messages.ConsensusMessage;
 import bftsmart.consensus.messages.MessageFactory;
+import bftsmart.forensic.Aggregate;
+import bftsmart.forensic.AuditStorage;
 import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.tom.core.ExecutionManager;
 import bftsmart.tom.core.TOMLayer;
@@ -64,6 +66,13 @@ public final class Acceptor {
 	 */
 	private PrivateKey privKey;
 
+	// Forensics
+	private AuditStorage storage;
+
+	public Acceptor(ServerCommunicationSystem communication, MessageFactory factory, ServerViewController controller) {
+		this(communication, factory, controller, null);
+	}
+
 	/**
 	 * Creates a new instance of Acceptor.
 	 * 
@@ -71,7 +80,10 @@ public final class Acceptor {
 	 * @param factory       Message factory for PaW messages
 	 * @param controller
 	 */
-	public Acceptor(ServerCommunicationSystem communication, MessageFactory factory, ServerViewController controller) {
+	public Acceptor(ServerCommunicationSystem communication, MessageFactory factory, ServerViewController controller,
+			AuditStorage storage) {
+		this.storage = storage;
+
 		this.communication = communication;
 		this.me = controller.getStaticConf().getProcessId();
 		this.factory = factory;
@@ -142,17 +154,17 @@ public final class Acceptor {
 		consensus.lock.lock();
 		Epoch epoch = consensus.getEpoch(msg.getEpoch(), controller);
 		switch (msg.getType()) {
-		case MessageFactory.PROPOSE: {
-			proposeReceived(epoch, msg);
-		}
-			break;
-		case MessageFactory.WRITE: {
-			writeReceived(epoch, msg.getSender(), msg.getValue());
-		}
-			break;
-		case MessageFactory.ACCEPT: {
-			acceptReceived(epoch, msg);
-		}
+			case MessageFactory.PROPOSE: {
+				proposeReceived(epoch, msg);
+			}
+				break;
+			case MessageFactory.WRITE: {
+				writeReceived(epoch, msg.getSender(), msg);
+			}
+				break;
+			case MessageFactory.ACCEPT: {
+				acceptReceived(epoch, msg);
+			}
 		}
 		consensus.lock.unlock();
 	}
@@ -220,9 +232,18 @@ public final class Acceptor {
 					epoch.setWrite(me, epoch.propValueHash);
 					epoch.getConsensus().getDecision().firstMessageProposed.writeSentTime = System.nanoTime();
 
+					/**
+					 * Forensics
+					 */
+					ConsensusMessage writeMessage = factory.createWrite(cid, epoch.getTimestamp(), epoch.propValueHash);
+					insertProof(writeMessage, epoch.deserializedPropValue); // insert proof in write message
+					epoch.addWriteProof(writeMessage);
+					/**
+					 * 
+					 */
+
 					logger.debug("Sending WRITE for cId:{}, I am:{}", cid, me);
-					communication.send(this.controller.getCurrentViewOtherAcceptors(),
-							factory.createWrite(cid, epoch.getTimestamp(), epoch.propValueHash));
+					communication.send(this.controller.getCurrentViewOtherAcceptors(), writeMessage);
 
 					epoch.writeSent();
 
@@ -249,7 +270,7 @@ public final class Acceptor {
 				}
 				executionManager.processOutOfContext(epoch.getConsensus());
 
-			} else if (epoch.deserializedPropValue == null 
+			} else if (epoch.deserializedPropValue == null
 					&& !tomLayer.isChangingLeader()) { // force a leader change
 				tomLayer.getSynchronizer().triggerTimeout(new LinkedList<>());
 			}
@@ -263,13 +284,21 @@ public final class Acceptor {
 	 * @param a     Replica that sent the message
 	 * @param value Value sent in the message
 	 */
-	private void writeReceived(Epoch epoch, int sender, byte[] value) {
+	private void writeReceived(Epoch epoch, int sender, ConsensusMessage msg) {
 		int cid = epoch.getConsensus().getId();
-		logger.debug("WRITE received from:{}, for consensus cId:{}", 
+		logger.debug("WRITE received from:{}, for consensus cId:{}",
 				sender, cid);
-		epoch.setWrite(sender, value);
+		epoch.setWrite(sender, msg.getValue());
 
-		computeWrite(cid, epoch, value);
+		/**
+		 * Forensics
+		 */
+		epoch.addWriteProof(msg);
+		/**
+		 * 
+		 */
+
+		computeWrite(cid, epoch, msg.getValue());
 	}
 
 	/**
@@ -285,10 +314,22 @@ public final class Acceptor {
 
 		logger.debug("I have {}, WRITE's for cId:{}, Epoch timestamp:{},", writeAccepted, cid, epoch.getTimestamp());
 
-		if (writeAccepted > controller.getQuorum() 
+		if (writeAccepted > controller.getQuorum()
 				&& Arrays.equals(value, epoch.propValueHash)) {
 
 			if (!epoch.isAcceptSent()) {
+
+				/**
+				 * Forensics
+				 * Who partecipated in write quorum
+				 */
+				if (storage != null) {
+					epoch.createWriteAggregate();
+					storage.addWriteAggregate(cid, epoch.getWriteAggregate());
+				}
+				/**
+				 * 
+				 */
 
 				logger.debug("Sending ACCEPT message, cId:{}, I am:{}", cid, me);
 
@@ -415,6 +456,19 @@ public final class Acceptor {
 
 		if (epoch.countAccept(value) > controller.getQuorum() && !epoch.getConsensus().isDecided()) {
 			logger.debug("Deciding consensus " + cid);
+
+			/**
+			 * Forensics
+			 * who partecipated in accept quorum
+			 */
+			if (storage != null) {
+				epoch.createAcceptAggregate();
+				storage.addAcceptAggregate(cid, epoch.getAcceptAggregate());
+			}
+			/**
+			 * 
+			 */
+
 			decide(epoch);
 		}
 	}
@@ -429,5 +483,11 @@ public final class Acceptor {
 			epoch.getConsensus().getDecision().firstMessageProposed.decisionTime = System.nanoTime();
 
 		epoch.getConsensus().decided(epoch, true);
+	}
+
+	/*************************** FORENSICS METHODS *******************************/
+
+	public AuditStorage getAudiStorage(){
+		return storage;
 	}
 }
