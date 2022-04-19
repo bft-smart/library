@@ -32,7 +32,9 @@ import bftsmart.consensus.Consensus;
 import bftsmart.consensus.Epoch;
 import bftsmart.consensus.messages.ConsensusMessage;
 import bftsmart.consensus.messages.MessageFactory;
+import bftsmart.forensic.AuditResult;
 import bftsmart.forensic.AuditStorage;
+import bftsmart.forensic.Auditor;
 import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.tom.core.ExecutionManager;
 import bftsmart.tom.core.TOMLayer;
@@ -68,6 +70,7 @@ public final class Acceptor {
 
 	// Forensics
 	private AuditStorage storage;
+	private Auditor audit;
 
 	public Acceptor(ServerCommunicationSystem communication, MessageFactory factory, ServerViewController controller) {
 		this(communication, factory, controller, null);
@@ -83,6 +86,7 @@ public final class Acceptor {
 	public Acceptor(ServerCommunicationSystem communication, MessageFactory factory, ServerViewController controller,
 			AuditStorage storage) {
 		this.storage = storage;
+		this.audit = new Auditor();
 
 		this.communication = communication;
 		this.me = controller.getStaticConf().getProcessId();
@@ -133,7 +137,8 @@ public final class Acceptor {
 	 * @param msg Paxos messages delivered by the communication layer
 	 */
 	public final void deliver(ConsensusMessage msg) {
-		if (executionManager.checkLimits(msg)) {
+		if (msg.getType() == MessageFactory.AUDIT || msg.getType() == MessageFactory.STORAGE
+				|| executionManager.checkLimits(msg)) {
 			logger.debug("Processing paxos msg with id " + msg.getNumber());
 			processMessage(msg);
 		} else {
@@ -479,6 +484,15 @@ public final class Acceptor {
 			 */
 
 			decide(epoch);
+
+			// Forensics
+			// placeholder for testing, should be modified to make all replicas audit from
+			// time to time
+			// in different cids
+			if (me == 0) {
+				System.out.println("### Starting Forensics ###");
+				sendAudit(cid, epoch);
+			}
 		}
 	}
 
@@ -509,7 +523,8 @@ public final class Acceptor {
 		System.out.println("Audit message received from " + msg.getSender());
 		TOMMessage response = new TOMMessage(me, msg.getSession(), msg.getSequence(),
 				msg.getOperationId(), this.storage.toByteArray(), msg.getViewID(), TOMMessageType.AUDIT);
-		communication.getClientsConn().send(new int[] { msg.getSender() }, response, false); // send to storage to sender client
+		communication.getClientsConn().send(new int[] { msg.getSender() }, response, false); // send to storage to
+																								// sender client
 	}
 
 	/**
@@ -520,14 +535,34 @@ public final class Acceptor {
 	 */
 	private void auditReceived(Epoch epoch, ConsensusMessage msg) {
 		System.out.println("Audit message received from " + msg.getSender());
-		ConsensusMessage cm = factory.createStorage(storage.toByteArray());
-		communication.getServersConn().send(new int[] { msg.getSender() }, cm, true);// send storage to sender replica
+		ConsensusMessage cm = factory.createStorage(epoch.getConsensus().getId(), epoch.getTimestamp(),
+				storage.toByteArray());
+		System.out.println("Will send storage to " + msg.getSender());
+		communication.getServersConn().send(new int[] { msg.getSender() }, cm, true); // send storage to sender replica
+	}
+
+	private void sendAudit(int cid, Epoch epoch) {
+		sendAudit(cid, epoch, this.storage);
+	}
+
+	private void sendAudit(int cid, Epoch epoch, AuditStorage storage) {
+		int[] targets = this.controller.getCurrentViewOtherAcceptors();
+		ConsensusMessage cm = this.factory.createAudit(cid, epoch.getTimestamp(), storage.toByteArray());
+		communication.getServersConn().send(targets, cm, true);
 	}
 
 	private void storageReceived(ConsensusMessage msg) {
 		System.out.println("Storage message received from " + msg.getSender());
 		AuditStorage receivedStorage = AuditStorage.fromByteArray(msg.getValue());
 
-		System.out.println(receivedStorage);
+		//TODO should after 2f-1 replies no need to test further storages for the same cid
+		AuditResult result =  audit.audit(this.storage, receivedStorage);
+
+		if (result.conflictFound()) {
+			System.out.println(result);
+			// TODO inform other replicas <PANIC MESSAGE>
+		} else {
+			System.out.println("No conflict found");
+		}
 	}
 }

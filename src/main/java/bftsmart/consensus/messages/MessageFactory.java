@@ -98,7 +98,7 @@ public class MessageFactory {
      *         and value
      */
     public ConsensusMessage createAudit(int id, int epoch, byte[] value) {
-        return new ConsensusMessage(AUDIT, id, epoch, from, value);
+        return new ConsensusMessage(AUDIT, id, epoch, from, value); // id and epoch should not be important
     }
 
     /**
@@ -111,7 +111,7 @@ public class MessageFactory {
      *         and value
      */
     public ConsensusMessage createAudit(int client, byte[] value) {
-        return new ConsensusMessage(AUDIT, -1, -1, client, value);
+        return new ConsensusMessage(AUDIT, -1, -1, client, value); // id and epoch should not be important
     }
 
     /**
@@ -125,11 +125,11 @@ public class MessageFactory {
      *         and value
      */
     public ConsensusMessage createStorage(int id, int epoch, byte[] value) {
-        return new ConsensusMessage(STORAGE, id, epoch, from, value);
+        return new ConsensusMessage(STORAGE, id, epoch, from, value); // id and epoch should not be important
     }
 
     public ConsensusMessage createStorage(byte[] value) {
-        return new ConsensusMessage(STORAGE, -1, -1, from, value);
+        return new ConsensusMessage(STORAGE, -1, -1, from, value); // id and epoch should not be important
     }
 
 }
