@@ -74,4 +74,39 @@ public class AuditStorage implements Serializable {
         }
         return builder.toString();
     }
+
+    public int getMinCID() {
+        int result = Integer.MAX_VALUE;
+        for (int cid : writeAggregate.keySet()) {
+            result = Math.min(result, cid);
+        }
+        for (int cid : acceptAggregate.keySet()) { // probably unecessary
+            result = Math.min(result, cid);
+        }
+        return result;
+    }
+
+    public int getMaxCID() {
+        int result = -1;
+        for (int cid : acceptAggregate.keySet()) {
+            result = Math.max(result, cid);
+        }
+        for (int cid : writeAggregate.keySet()) { // probably unecessary
+            result = Math.max(result, cid);
+        }
+        return result;
+    }
+
+    /**
+     * Removes unecessary proof until cid
+     * @param cid last cid to remove
+     */
+    public void removeProofsUntil(int cid) {
+        int minCid = getMinCID();
+        for (int i = minCid; i <= cid; i++) {
+            writeAggregate.remove(i);
+            acceptAggregate.remove(i);
+        }
+        //System.out.println("Size of proofs = " + writeAggregate.keySet().size());
+    }
 }

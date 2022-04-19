@@ -20,7 +20,9 @@ import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.security.PrivateKey;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.LinkedList;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -71,6 +73,9 @@ public final class Acceptor {
 	// Forensics
 	private AuditStorage storage;
 	private Auditor audit;
+	private int lastAudit = -1;
+	Map<Integer, Integer> nAudits = new HashMap<>(); // consensus id to number of storages receives (usefull for garbage
+														// collection)
 
 	public Acceptor(ServerCommunicationSystem communication, MessageFactory factory, ServerViewController controller) {
 		this(communication, factory, controller, null);
@@ -554,9 +559,13 @@ public final class Acceptor {
 	private void storageReceived(ConsensusMessage msg) {
 		System.out.println("Storage message received from " + msg.getSender());
 		AuditStorage receivedStorage = AuditStorage.fromByteArray(msg.getValue());
-
-		//TODO should after 2f-1 replies no need to test further storages for the same cid
-		AuditResult result =  audit.audit(this.storage, receivedStorage);
+		int minCid = receivedStorage.getMinCID();
+		int maxCid = receivedStorage.getMaxCID();
+		
+		if (maxCid <= lastAudit) {
+			return; //received storage does not have needed information...
+		}
+		AuditResult result = audit.audit(this.storage, receivedStorage, lastAudit+1);
 
 		if (result.conflictFound()) {
 			System.out.println(result);
@@ -564,5 +573,19 @@ public final class Acceptor {
 		} else {
 			System.out.println("No conflict found");
 		}
+
+		for (int i = minCid; i < maxCid; i++) {
+			if (nAudits.containsKey(i)) {
+				int reps = nAudits.get(i);
+				nAudits.put(i, reps + 1);
+			} else {
+				nAudits.put(i, 1);
+			}
+			if (nAudits.get(i) >= 2 * controller.getCurrentViewF() + 1) {
+				lastAudit = i; // this is the last cid that for certain is safe
+				storage.removeProofsUntil(i); // garbage collection for unecessary proofs
+			}
+		}
+		// TODO when to remove from nAudits Map?
 	}
 }

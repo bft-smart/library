@@ -36,10 +36,10 @@ public class Auditor {
             // System.out.println(storage.toString());
 
             // first check for problems in conflicting accepts
-            CheckAggregate(storage.getAcceptAggregate(), result, acceptMap);
+            CheckAggregate(storage.getAcceptAggregate(), result, acceptMap, 0);
 
             // second check for problems in conflicting Writes
-            CheckAggregate(storage.getWriteAggregate(), result, writetMap);
+            CheckAggregate(storage.getWriteAggregate(), result, writetMap, 0);
 
         }
         if (result.conflictFound()) {
@@ -79,15 +79,10 @@ public class Auditor {
     // return result;
     // }
 
-    /**
-     * 
-     * @param map
-     * @return true if no conflict was found false otherwise
-     */
-    public AuditResult audit(AuditStorage local_storage, AuditStorage received_storage) {
-
+    public AuditResult audit(AuditStorage local_storage, AuditStorage received_storage, int minCid) {
         AuditResult result = new AuditResult();
-        // fakeResponses(local_storage, received_storage); // used for testing coment otherwise
+        // fakeResponses(local_storage, received_storage); // used for testing coment
+        // otherwise
         // System.out.println("Local storage: " + local_storage);
         // System.out.println("Received storage: " + received_storage);
 
@@ -96,23 +91,27 @@ public class Auditor {
         Map<Integer, Map<Integer, ConsensusMessage>> writetMap = new HashMap<>();
 
         // first check for problems in conflicting Writes
-        CheckAggregate(local_storage.getWriteAggregate(), result, writetMap);
-        CheckAggregate(received_storage.getWriteAggregate(), result, writetMap);
+        CheckAggregate(local_storage.getWriteAggregate(), result, writetMap, minCid);
+        CheckAggregate(received_storage.getWriteAggregate(), result, writetMap, minCid);
 
         // second check for problems in conflicting Accepts
-        CheckAggregate(local_storage.getAcceptAggregate(), result, acceptMap);
-        CheckAggregate(received_storage.getAcceptAggregate(), result, acceptMap);
+        CheckAggregate(local_storage.getAcceptAggregate(), result, acceptMap, minCid);
+        CheckAggregate(received_storage.getAcceptAggregate(), result, acceptMap, minCid);
 
         // third check for writes conflicting with accepts
-        CheckAggregate(local_storage.getWriteAggregate(), result, acceptMap);
-        CheckAggregate(received_storage.getWriteAggregate(), result, acceptMap);
+        CheckAggregate(local_storage.getWriteAggregate(), result, acceptMap, minCid);
+        CheckAggregate(received_storage.getWriteAggregate(), result, acceptMap, minCid);
 
-        // System.out.println("Number of faulty replicas = " + faulty.size());
-
-        // if (result.conflictFound()) {
-        //     System.out.println(result);
-        // }
         return result;
+    }
+
+    /**
+     * 
+     * @param map
+     * @return true if no conflict was found false otherwise
+     */
+    public AuditResult audit(AuditStorage local_storage, AuditStorage received_storage) {
+        return audit(local_storage, received_storage, 0);
     }
 
     public AuditResult audit(AuditStorage received_storage) {
@@ -122,21 +121,23 @@ public class Auditor {
         Map<Integer, Map<Integer, ConsensusMessage>> writetMap = new HashMap<>();
 
         // first check for problems in conflicting Writes
-        CheckAggregate(received_storage.getWriteAggregate(), result, writetMap);
+        CheckAggregate(received_storage.getWriteAggregate(), result, writetMap, 0);
 
         // second check for problems in conflicting Accepts
-        CheckAggregate(received_storage.getAcceptAggregate(), result, acceptMap);
+        CheckAggregate(received_storage.getAcceptAggregate(), result, acceptMap, 0);
 
         // third check for writes conflicting with accepts
-        CheckAggregate(received_storage.getWriteAggregate(), result, acceptMap);
+        CheckAggregate(received_storage.getWriteAggregate(), result, acceptMap, 0);
 
         return result;
     }
 
     private void CheckAggregate(Map<Integer, Aggregate> aggregates, AuditResult result,
-            Map<Integer, Map<Integer, ConsensusMessage>> proofMap) {
+            Map<Integer, Map<Integer, ConsensusMessage>> proofMap, int minCid) {
 
         for (Integer consensusId : aggregates.keySet()) {
+            if (consensusId < minCid)
+                continue;
             if (proofMap.get(consensusId) == null) {
                 proofMap.put(consensusId, new HashMap<>());
             }
@@ -248,8 +249,8 @@ public class Auditor {
 
             // Signature verification throws expection... // TODO
             // if (!TOMUtil.verifySignature(keys.get(sender_id), data, signature)) {
-            //     System.out.println("Signature incorrect");
-            //     return false;
+            // System.out.println("Signature incorrect");
+            // return false;
             // }
         }
         return true;
