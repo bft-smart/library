@@ -3,12 +3,8 @@ package bftsmart.forensic;
 import java.security.PublicKey;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
-import java.util.Set;
 
 import bftsmart.consensus.messages.ConsensusMessage;
 import bftsmart.reconfiguration.util.Configuration;
@@ -27,24 +23,15 @@ public class Auditor {
         this.keys = keys;
     }
 
-    /**
-     * 
-     * @param map
-     * @return true if no conflict was found false otherwise
-     */
-    public AuditResult audit(List<AuditResponse> responses) {
+    public AuditResult audit(List<AuditStorage> storages) {
 
         AuditResult result = new AuditResult();
-        for (AuditResponse res : responses) {
-            System.out.println("Storage from " + res.getSender() + ":" + res.getStorage());
-        }
 
         // <consensus id, <sender, proof>>
         Map<Integer, Map<Integer, ConsensusMessage>> acceptMap = new HashMap<>();
         Map<Integer, Map<Integer, ConsensusMessage>> writetMap = new HashMap<>();
 
-        for (AuditResponse auditResponse : responses) { // iterate over all responses
-            AuditStorage storage = auditResponse.getStorage();
+        for (AuditStorage storage : storages) { // iterate over all responses
 
             // System.out.println(storage.toString());
 
@@ -55,12 +42,42 @@ public class Auditor {
             CheckAggregate(storage.getWriteAggregate(), result, writetMap);
 
         }
-        // System.out.println("Number of faulty replicas = " + faulty.size());
         if (result.conflictFound()) {
             System.out.println(result);
         }
         return result;
     }
+
+    // public AuditResult audit(List<AuditResponse> responses) {
+
+    // AuditResult result = new AuditResult();
+    // for (AuditResponse res : responses) {
+    // System.out.println("Storage from " + res.getSender() + ":" +
+    // res.getStorage());
+    // }
+
+    // // <consensus id, <sender, proof>>
+    // Map<Integer, Map<Integer, ConsensusMessage>> acceptMap = new HashMap<>();
+    // Map<Integer, Map<Integer, ConsensusMessage>> writetMap = new HashMap<>();
+
+    // for (AuditResponse auditResponse : responses) { // iterate over all responses
+    // AuditStorage storage = auditResponse.getStorage();
+
+    // // System.out.println(storage.toString());
+
+    // // first check for problems in conflicting accepts
+    // CheckAggregate(storage.getAcceptAggregate(), result, acceptMap);
+
+    // // second check for problems in conflicting Writes
+    // CheckAggregate(storage.getWriteAggregate(), result, writetMap);
+
+    // }
+    // // System.out.println("Number of faulty replicas = " + faulty.size());
+    // if (result.conflictFound()) {
+    // System.out.println(result);
+    // }
+    // return result;
+    // }
 
     /**
      * 
@@ -127,12 +144,12 @@ public class Auditor {
             Aggregate agg = aggregates.get(consensusId);
 
             // validade signature (comment for testing)
-            // boolean isValid = validSignature(agg);
-            // if (!isValid) {
-            // // TODO the sender of this aggregate is faulty (otimization)
-            // System.out.println("Aggregate Signatures Invalid!!");
-            // continue; // skip to next iteration
-            // }
+            boolean isValid = validSignature(agg);
+            if (!isValid) {
+                // TODO the this aggregate is faulty should not be tested
+                System.out.println("Aggregate Signatures Invalid!!");
+                continue; // skip to next iteration
+            }
 
             HashMap<Integer, ConsensusMessage> sender_proof = agg.getProofs();
 
@@ -150,8 +167,9 @@ public class Auditor {
                 } else if (!Arrays.equals((byte[]) proofMap.get(consensusId).get(sender).getValue(),
                         (byte[]) cm.getValue())) {
 
-                    //System.out.println(Arrays.toString((byte[]) proofMap.get(consensusId).get(sender).getValue()));
-                    //System.out.println(Arrays.toString((byte[]) cm.getValue()));
+                    // System.out.println(Arrays.toString((byte[])
+                    // proofMap.get(consensusId).get(sender).getValue()));
+                    // System.out.println(Arrays.toString((byte[]) cm.getValue()));
                     // if saved value is different than current value, replica is faulty
                     result.addReplica(sender);
                     if (consensusId < result.getFaultyView()) {
@@ -218,7 +236,7 @@ public class Auditor {
      * @return true if Aggregate proofs corresponds to the correct value, false
      *         otherwise
      */
-    private boolean validSignature(Aggregate agg) {
+    public boolean validSignature(Aggregate agg) {
         // PublicKey pubKey;
         // pubKey = SVController.getStaticConf().getPublicKey(sender);
         for (Integer sender_id : agg.get_senders()) {

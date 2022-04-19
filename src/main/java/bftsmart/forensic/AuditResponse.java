@@ -3,6 +3,9 @@ package bftsmart.forensic;
 import java.io.Serializable;
 import java.util.Map;
 
+/**
+ * Should be removed
+ */
 public class AuditResponse implements Serializable {
 
     private AuditStorage storage;

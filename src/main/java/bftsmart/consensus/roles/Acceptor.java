@@ -32,12 +32,12 @@ import bftsmart.consensus.Consensus;
 import bftsmart.consensus.Epoch;
 import bftsmart.consensus.messages.ConsensusMessage;
 import bftsmart.consensus.messages.MessageFactory;
-import bftsmart.forensic.Aggregate;
 import bftsmart.forensic.AuditStorage;
 import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.tom.core.ExecutionManager;
 import bftsmart.tom.core.TOMLayer;
 import bftsmart.tom.core.messages.TOMMessage;
+import bftsmart.tom.core.messages.TOMMessageType;
 import bftsmart.tom.util.TOMUtil;
 
 /**
@@ -165,6 +165,15 @@ public final class Acceptor {
 			case MessageFactory.ACCEPT: {
 				acceptReceived(epoch, msg);
 			}
+				break;
+			case MessageFactory.AUDIT: {
+				auditReceived(epoch, msg);
+			}
+				break;
+			case MessageFactory.STORAGE: {
+				storageReceived(msg);
+			}
+				break;
 		}
 		consensus.lock.unlock();
 	}
@@ -487,7 +496,38 @@ public final class Acceptor {
 
 	/*************************** FORENSICS METHODS *******************************/
 
-	public AuditStorage getAudiStorage(){
+	public AuditStorage getAudiStorage() {
 		return storage;
+	}
+
+	/**
+	 * Called when sender is client
+	 * 
+	 * @param msg
+	 */
+	public void auditReceived(TOMMessage msg) {
+		System.out.println("Audit message received from " + msg.getSender());
+		TOMMessage response = new TOMMessage(me, msg.getSession(), msg.getSequence(),
+				msg.getOperationId(), this.storage.toByteArray(), msg.getViewID(), TOMMessageType.AUDIT);
+		communication.getClientsConn().send(new int[] { msg.getSender() }, response, false); // send to storage to sender client
+	}
+
+	/**
+	 * Called when sender is replica
+	 * 
+	 * @param epoch
+	 * @param msg
+	 */
+	private void auditReceived(Epoch epoch, ConsensusMessage msg) {
+		System.out.println("Audit message received from " + msg.getSender());
+		ConsensusMessage cm = factory.createStorage(storage.toByteArray());
+		communication.getServersConn().send(new int[] { msg.getSender() }, cm, true);// send storage to sender replica
+	}
+
+	private void storageReceived(ConsensusMessage msg) {
+		System.out.println("Storage message received from " + msg.getSender());
+		AuditStorage receivedStorage = AuditStorage.fromByteArray(msg.getValue());
+
+		System.out.println(receivedStorage);
 	}
 }
