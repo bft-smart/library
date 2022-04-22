@@ -4,7 +4,8 @@ import java.io.Serializable;
 import java.util.Map;
 
 /**
- * Should be removed
+ * Unnecessary Class
+ * Should be removed in the future
  */
 public class AuditResponse implements Serializable {
 

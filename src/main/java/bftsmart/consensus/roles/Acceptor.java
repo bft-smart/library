@@ -494,10 +494,10 @@ public final class Acceptor {
 			// placeholder for testing, should be modified to make all replicas audit from
 			// time to time
 			// in different cids
-			if (me == 0) {
-				System.out.println("### Starting Forensics ###");
-				sendAudit(cid, epoch);
-			}
+			// if (me == 0) {
+			// System.out.println("### Starting Forensics ###");
+			// sendAudit(cid, epoch);
+			// }
 		}
 	}
 
@@ -520,9 +520,10 @@ public final class Acceptor {
 	}
 
 	/**
-	 * Called when sender is client
+	 * Called when audit sender is client
+	 * Receives audit message and sends storage to client
 	 * 
-	 * @param msg
+	 * @param msg message received
 	 */
 	public void auditReceived(TOMMessage msg) {
 		System.out.println("Audit message received from " + msg.getSender());
@@ -533,10 +534,11 @@ public final class Acceptor {
 	}
 
 	/**
-	 * Called when sender is replica
+	 * Called when audit sender is replica
+	 * Receives audit message and sends storage to sender replica
 	 * 
-	 * @param epoch
-	 * @param msg
+	 * @param epoch consensus epoch
+	 * @param msg   consensus message
 	 */
 	private void auditReceived(Epoch epoch, ConsensusMessage msg) {
 		System.out.println("Audit message received from " + msg.getSender());
@@ -546,26 +548,35 @@ public final class Acceptor {
 		communication.getServersConn().send(new int[] { msg.getSender() }, cm, true); // send storage to sender replica
 	}
 
+	/**
+	 * Sends audit message to all replicas
+	 * 
+	 * @param cid   consensus id
+	 * @param epoch consensus epoch
+	 */
 	private void sendAudit(int cid, Epoch epoch) {
-		sendAudit(cid, epoch, this.storage);
-	}
-
-	private void sendAudit(int cid, Epoch epoch, AuditStorage storage) {
 		int[] targets = this.controller.getCurrentViewOtherAcceptors();
-		ConsensusMessage cm = this.factory.createAudit(cid, epoch.getTimestamp(), storage.toByteArray());
+		ConsensusMessage cm = this.factory.createAudit(cid, epoch.getTimestamp());
 		communication.getServersConn().send(targets, cm, true);
 	}
 
+	/**
+	 * Called when storage message is received
+	 * Receives storage message and executes forensics
+	 * prints conflict if found
+	 * 
+	 * @param msg consensus message received
+	 */
 	private void storageReceived(ConsensusMessage msg) {
 		System.out.println("Storage message received from " + msg.getSender());
 		AuditStorage receivedStorage = AuditStorage.fromByteArray(msg.getValue());
 		int minCid = receivedStorage.getMinCID();
 		int maxCid = receivedStorage.getMaxCID();
-		
+
 		if (maxCid <= lastAudit) {
-			return; //received storage does not have needed information...
+			return; // received storage does not have needed information...
 		}
-		AuditResult result = audit.audit(this.storage, receivedStorage, lastAudit+1);
+		AuditResult result = audit.audit(this.storage, receivedStorage, lastAudit + 1);
 
 		if (result.conflictFound()) {
 			System.out.println(result);
@@ -574,7 +585,7 @@ public final class Acceptor {
 			System.out.println("No conflict found");
 		}
 
-		for (int i = minCid; i < maxCid; i++) {
+		for (int i = minCid; i < maxCid; i++) { // update information on audits executed
 			if (nAudits.containsKey(i)) {
 				int reps = nAudits.get(i);
 				nAudits.put(i, reps + 1);

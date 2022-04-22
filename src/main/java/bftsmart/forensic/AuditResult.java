@@ -4,6 +4,10 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
 
+/**
+ * Unnecessary Class
+ * Should be removed in the future
+ */
 public class AuditResult {
 
     private Set<Integer> replicas;

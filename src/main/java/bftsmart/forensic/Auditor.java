@@ -10,6 +10,9 @@ import bftsmart.consensus.messages.ConsensusMessage;
 import bftsmart.reconfiguration.util.Configuration;
 import bftsmart.tom.util.TOMUtil;
 
+/**
+ * Class responsible for receiving audit storages and check for conflict
+ */
 public class Auditor {
 
     private boolean verbose = false;
@@ -23,6 +26,12 @@ public class Auditor {
         this.keys = keys;
     }
 
+    /**
+     * Checks for conflict in a list of storages
+     * 
+     * @param storages list of storages
+     * @return audit result with conflicts if found
+     */
     public AuditResult audit(List<AuditStorage> storages) {
 
         AuditResult result = new AuditResult();
@@ -79,6 +88,14 @@ public class Auditor {
     // return result;
     // }
 
+    /**
+     * Checks for conflict between two storages
+     * 
+     * @param local_storage    local storage
+     * @param received_storage received storage
+     * @param minCid           lowest consensus id needed to be checked
+     * @return audit result with conflicts if found
+     */
     public AuditResult audit(AuditStorage local_storage, AuditStorage received_storage, int minCid) {
         AuditResult result = new AuditResult();
         // fakeResponses(local_storage, received_storage); // used for testing coment
@@ -106,32 +123,50 @@ public class Auditor {
     }
 
     /**
+     * Checks for conflict between two storages
      * 
-     * @param map
-     * @return true if no conflict was found false otherwise
+     * @param local_storage    local storage
+     * @param received_storage received storage
+     * @return audit result with conflicts if found
      */
     public AuditResult audit(AuditStorage local_storage, AuditStorage received_storage) {
         return audit(local_storage, received_storage, 0);
     }
 
-    public AuditResult audit(AuditStorage received_storage) {
+    /**
+     * Checks for conflict inside a single storage
+     * 
+     * @param storage storage
+     * @return audit result with conflicts if found
+     */
+    public AuditResult audit(AuditStorage storage) {
         AuditResult result = new AuditResult();
 
         Map<Integer, Map<Integer, ConsensusMessage>> acceptMap = new HashMap<>();
         Map<Integer, Map<Integer, ConsensusMessage>> writetMap = new HashMap<>();
 
         // first check for problems in conflicting Writes
-        CheckAggregate(received_storage.getWriteAggregate(), result, writetMap, 0);
+        CheckAggregate(storage.getWriteAggregate(), result, writetMap, 0);
 
         // second check for problems in conflicting Accepts
-        CheckAggregate(received_storage.getAcceptAggregate(), result, acceptMap, 0);
+        CheckAggregate(storage.getAcceptAggregate(), result, acceptMap, 0);
 
         // third check for writes conflicting with accepts
-        CheckAggregate(received_storage.getWriteAggregate(), result, acceptMap, 0);
+        CheckAggregate(storage.getWriteAggregate(), result, acceptMap, 0);
 
         return result;
     }
 
+    /**
+     * Checks several aggregates and fills proof map and audit result
+     * 
+     * @param aggregates map with aggregate from specific consensus ids (<consensus
+     *                   id, aggregate>)
+     * @param result     audit result to be filled
+     * @param proofMap   map filled with information from already checked aggregates
+     *                   (<consensus id, <sender, proof>>)
+     * @param minCid     lowest consensus id needed to be checked
+     */
     private void CheckAggregate(Map<Integer, Aggregate> aggregates, AuditResult result,
             Map<Integer, Map<Integer, ConsensusMessage>> proofMap, int minCid) {
 
@@ -199,9 +234,9 @@ public class Auditor {
      * This method changes the value proposed in one of the aggregates
      * Made to test if the detection of faulty replicas is correct
      * 
-     * @param responses    - responses
-     * @param concensus_id - consensus id to change value
-     * @param new_value    - new value to change
+     * @param responses    responses
+     * @param concensus_id consensus id to change value
+     * @param new_value    new value to change
      */
     private void changeValueInStorage(AuditStorage local, AuditStorage received, int concensus_id, byte[] new_value) {
 
@@ -233,7 +268,7 @@ public class Auditor {
      * If a signature does not decrypt to the values saved in the Aggregate
      * the aggregate is invalid
      * 
-     * @param agg - Aggregate to check
+     * @param agg Aggregate to check
      * @return true if Aggregate proofs corresponds to the correct value, false
      *         otherwise
      */

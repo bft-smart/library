@@ -8,23 +8,39 @@ import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * This Class represents an audit storage
+ * Contains Aggregates for each write and accept quorum created
+ */
 public class AuditStorage implements Serializable {
 
     private Map<Integer, Aggregate> writeAggregate; // consensus id to write aggregate
     private Map<Integer, Aggregate> acceptAggregate; // consensus id to accept aggregate
 
     public AuditStorage() {
-        //System.out.println("Audit store created...");
+        // System.out.println("Audit store created...");
         writeAggregate = new HashMap<>();
         acceptAggregate = new HashMap<>();
     }
 
+    /**
+     * Add write aggregate
+     * 
+     * @param cid consensus id
+     * @param agg aggregate
+     */
     public void addWriteAggregate(int cid, Aggregate agg) {
         if (writeAggregate.get(cid) == null) {
             writeAggregate.put(cid, agg);
         }
     }
 
+    /**
+     * Add accept aggregate
+     * 
+     * @param cid consensus id
+     * @param agg aggregate
+     */
     public void addAcceptAggregate(int cid, Aggregate agg) {
         if (acceptAggregate.get(cid) == null) {
             acceptAggregate.put(cid, agg);
@@ -45,7 +61,7 @@ public class AuditStorage implements Serializable {
                 ObjectOutputStream oos = new ObjectOutputStream(bos)) {
             oos.writeObject(this);
             oos.flush();
-            ret =  bos.toByteArray();
+            ret = bos.toByteArray();
         } catch (Exception e) {
             System.out.println("Error serializing storage");
         }
@@ -75,6 +91,11 @@ public class AuditStorage implements Serializable {
         return builder.toString();
     }
 
+    /**
+     * Gets the minimum consensus id present
+     * 
+     * @return minimum consensus id
+     */
     public int getMinCID() {
         int result = Integer.MAX_VALUE;
         for (int cid : writeAggregate.keySet()) {
@@ -86,6 +107,11 @@ public class AuditStorage implements Serializable {
         return result;
     }
 
+    /**
+     * Gets the maximum consensus id present
+     * 
+     * @return maximum consensus id
+     */
     public int getMaxCID() {
         int result = -1;
         for (int cid : acceptAggregate.keySet()) {
@@ -99,6 +125,7 @@ public class AuditStorage implements Serializable {
 
     /**
      * Removes unecessary proof until cid
+     * 
      * @param cid last cid to remove
      */
     public void removeProofsUntil(int cid) {
@@ -107,6 +134,6 @@ public class AuditStorage implements Serializable {
             writeAggregate.remove(i);
             acceptAggregate.remove(i);
         }
-        //System.out.println("Size of proofs = " + writeAggregate.keySet().size());
+        // System.out.println("Size of proofs = " + writeAggregate.keySet().size());
     }
 }

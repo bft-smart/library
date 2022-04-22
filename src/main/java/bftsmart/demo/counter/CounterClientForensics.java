@@ -73,7 +73,7 @@ public class CounterClientForensics {
                 // if (i != 0 && i % FORENSICSTHRESHOLD == 0) {
                 //     performForensics(counterProxy, i - FORENSICSTHRESHOLD, i);
                 // }
-                performForensics(counterProxy, i, i);
+                performForensics(counterProxy, i, i); // does forensisc every consensus id
             }
         } catch (IOException | NumberFormatException e) {
             counterProxy.close();

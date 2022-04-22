@@ -426,7 +426,7 @@ public class ServiceProxy extends TOMSender {
 					 * Forensics
 					 */
 					if (requestType == TOMMessageType.AUDIT) {
-						if (receivedReplies >= 2 * getViewManager().getCurrentViewF()) { // wait for 2f
+						if (receivedReplies >= 2 * getViewManager().getCurrentViewF()) { // wait for 2f ??
 
 							List<AuditStorage> storages = new ArrayList<>();
 

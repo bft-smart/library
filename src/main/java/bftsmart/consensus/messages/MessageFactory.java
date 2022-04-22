@@ -97,8 +97,8 @@ public class MessageFactory {
      * @return A consensus message of the AUDIT type, with the specified id, epoch,
      *         and value
      */
-    public ConsensusMessage createAudit(int id, int epoch, byte[] value) {
-        return new ConsensusMessage(AUDIT, id, epoch, from, value); // id and epoch should not be important
+    public ConsensusMessage createAudit(int id, int epoch) {
+        return new ConsensusMessage(AUDIT, id, epoch, from, null); // id and epoch should not be important
     }
 
     /**
