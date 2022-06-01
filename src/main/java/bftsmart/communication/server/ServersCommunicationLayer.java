@@ -35,6 +35,10 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 import bftsmart.communication.SystemMessage;
+import bftsmart.consensus.messages.ConsensusMessage;
+import bftsmart.aware.messages.MonitoringMessage;
+import bftsmart.aware.monitoring.MessageLatencyMonitor;
+import bftsmart.aware.monitoring.Monitor;
 import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.tom.ServiceReplica;
 import bftsmart.tom.util.TOMUtil;
@@ -65,19 +69,19 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Tulio A. Ribeiro.
- * 
+ *
  * Generate a KeyPair used by SSL/TLS connections. Note that keypass argument is
  * equal to the variable SECRET.
- * 
- * The command generates the secret key.*/ 
-//## Elliptic Curve 
-  //$keytool -genkey -keyalg EC -alias bftsmartEC -keypass MySeCreT_2hMOygBwY -keystore ./ecKeyPair -dname "CN=BFT-SMaRT" 
+ *
+ * The command generates the secret key.*/
+//## Elliptic Curve
+  //$keytool -genkey -keyalg EC -alias bftsmartEC -keypass MySeCreT_2hMOygBwY -keystore ./ecKeyPair -dname "CN=BFT-SMaRT"
   //$keytool -importkeystore -srckeystore ./ecKeyPair -destkeystore ./ecKeyPair -deststoretype pkcs12
 
-//## RSA 
+//## RSA
   //$keytool -genkey -keyalg RSA -keysize 2048 -alias bftsmartRSA -keypass MySeCreT_2hMOygBwY -keystore ./RSA_KeyPair_2048.pkcs12 -dname "CN=BFT-SMaRT"
   //$keytool -importkeystore -srckeystore ./RSA_KeyPair_2048.pkcs12 -destkeystore ./RSA_KeyPair_2048.pkcs12 -deststoretype pkcs12
- 
+
 
 public class ServersCommunicationLayer extends Thread {
     
@@ -94,8 +98,8 @@ public class ServersCommunicationLayer extends Thread {
     private ReentrantLock waitViewLock = new ReentrantLock();
     private List<PendingConnection> pendingConn = new LinkedList<PendingConnection>();
     private ServiceReplica replica;
-    
-    
+
+
     /**
 	 * Tulio A. Ribeiro
 	 * SSL / TLS.
@@ -111,8 +115,12 @@ public class ServersCommunicationLayer extends Thread {
 	private SSLServerSocket serverSocketSSLTLS;
 	private String ssltlsProtocolVersion;
 
+    // AWARE
+    public MessageLatencyMonitor writeLatenciesMonitor;
+    public MessageLatencyMonitor proposeLatenciesMonitor;
+
     public ServersCommunicationLayer(ServerViewController controller,
-            LinkedBlockingQueue<SystemMessage> inQueue, 
+            LinkedBlockingQueue<SystemMessage> inQueue,
             ServiceReplica replica) throws Exception {
 
         this.controller = controller;
@@ -120,6 +128,12 @@ public class ServersCommunicationLayer extends Thread {
         this.me = controller.getStaticConf().getProcessId();
         this.replica = replica;
         this.ssltlsProtocolVersion = controller.getStaticConf().getSSLTLSProtocolVersion();
+
+        /** AWARE **/
+        this.writeLatenciesMonitor = Monitor.getInstance(controller).getWriteLatencyMonitor();
+        this.proposeLatenciesMonitor = Monitor.getInstance(controller).getProposeLatencyMonitor();
+        /** END AWARE **/
+
 
         String myAddress;
         String confAddress = "";
@@ -187,12 +201,12 @@ public class ServersCommunicationLayer extends Thread {
 		serverSocketSSLTLS.setReuseAddress(true);
 		serverSocketSSLTLS.setNeedClientAuth(true);
 		serverSocketSSLTLS.setWantClientAuth(true);
-		
+
 
 		SecretKeyFactory fac = TOMUtil.getSecretFactory();
 		PBEKeySpec spec = TOMUtil.generateKeySpec(SECRET.toCharArray());
 		selfPwd = fac.generateSecret(spec);
-        
+
       //Try connecting if a member of the current view. Otherwise, wait until the Join has been processed!
         if (controller.isInCurrentView()) {
             int[] initialV = controller.getCurrentViewAcceptors();
@@ -202,12 +216,12 @@ public class ServersCommunicationLayer extends Thread {
                 }
             }
         }
-        
+
         start();
     }
 
     public SecretKey getSecretKey(int id) {
-        if (id == controller.getStaticConf().getProcessId()) 
+        if (id == controller.getStaticConf().getProcessId())
         	return selfPwd;
         else return connections.get(id).getSecretKey();
     }
@@ -251,7 +265,7 @@ public class ServersCommunicationLayer extends Thread {
         connectionsLock.lock();
         ServerConnection ret = this.connections.get(remoteId);
         if (ret == null) {
-            ret = new ServerConnection(controller, null, 
+            ret = new ServerConnection(controller, null,
             		remoteId, this.inQueue, this.replica);
             this.connections.put(remoteId, ret);
         }
@@ -262,6 +276,24 @@ public class ServersCommunicationLayer extends Thread {
 
 
     public final void send(int[] targets, SystemMessage sm, boolean useMAC) {
+
+
+        /** AWARE **/ // Generate a challenge for BFT
+        int challenge = -1;
+        if (sm instanceof ConsensusMessage && controller.getStaticConf().isBFT()) {
+            ConsensusMessage csm = ((ConsensusMessage) sm);
+            if (csm.getPaxosVerboseType().equals("WRITE") ||
+                csm.getPaxosVerboseType().equals("PROPOSE") ||
+                csm.getPaxosVerboseType().equals("DUMMY_PROPOSE")) {
+
+
+                challenge = (int) (Math.random() * 1000000000);
+                ((ConsensusMessage) sm).setChallenge(challenge);
+            }
+        }
+        /** End AWARE **/
+
+
         ByteArrayOutputStream bOut = new ByteArrayOutputStream(248);
         try {
             new ObjectOutputStream(bOut).writeObject(sm);
@@ -276,10 +308,25 @@ public class ServersCommunicationLayer extends Thread {
         // delayed in relation to the others.
         /*Tulio A. Ribeiro*/
         Integer[] targetsShuffled = Arrays.stream( targets ).boxed().toArray( Integer[]::new );
-        Collections.shuffle(Arrays.asList(targetsShuffled), new Random(System.nanoTime())); 
+        Collections.shuffle(Arrays.asList(targetsShuffled), new Random(System.nanoTime()));
 
         for (int target : targetsShuffled) {
 			try {
+                /** AWARE **/
+                if (sm instanceof ConsensusMessage && ((ConsensusMessage) sm).getPaxosVerboseType().equals("WRITE") &&
+                        writeLatenciesMonitor != null ) {
+                    Long timestamp = System.nanoTime();
+                    writeLatenciesMonitor.addSentTime(target, ((ConsensusMessage) sm).getNumber(), timestamp, challenge);
+                }
+                if (proposeLatenciesMonitor != null && (
+                        (sm instanceof ConsensusMessage && ((ConsensusMessage) sm).getPaxosVerboseType().equals("PROPOSE")) ||
+                         sm instanceof MonitoringMessage && ((MonitoringMessage) sm).getPaxosVerboseType().equals("DUMMY_PROPOSE")))
+                {
+                    Long timestamp = System.nanoTime();
+                    proposeLatenciesMonitor.addSentTime(target, ((ConsensusMessage) sm).getNumber(), timestamp, challenge);
+                }
+                /** End AWARE **/
+
 				if (target == me) {
 					sm.authenticated = true;
 					inQueue.put(sm);
@@ -380,7 +427,7 @@ public class ServersCommunicationLayer extends Thread {
                 this.connections.put(remoteId,
                 			new ServerConnection(controller, newSocket, remoteId, inQueue, replica));
             } else {
-                //reconnection	
+                //reconnection
             	logger.debug("ReConnecting with replica: {}", remoteId);
                 this.connections.get(remoteId).reconnect(newSocket);
             }
@@ -401,7 +448,7 @@ public class ServersCommunicationLayer extends Thread {
 			error("Failed to set TCPNODELAY", ex);
 		}
 	}
-    
+
     public static void setSocketOptions(Socket socket) {
         try {
             socket.setTcpNoDelay(true);

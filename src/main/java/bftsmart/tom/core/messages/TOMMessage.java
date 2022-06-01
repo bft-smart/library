@@ -44,6 +44,10 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 	private int sequence;
 	private int operationId; // Sequence number defined by the client
 
+
+	/**AWARE **/
+	private boolean isMonitoringMessage = false; // If this message is for disseminating monitoring information
+
 	private byte[] content = null; // Content of the message
 
 	//the fields bellow are not serialized!!!
@@ -234,6 +238,10 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 		out.writeInt(sequence);
 		out.writeInt(operationId);
 		out.writeInt(replyServer);
+
+		/** AWARE **/
+		out.writeBoolean(isMonitoringMessage);
+		/** End AWARE **/
 		
 		if (content == null) {
 			out.writeInt(-1);
@@ -251,6 +259,10 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 		sequence = in.readInt();
 		operationId = in.readInt();
 		replyServer = in.readInt();
+
+		/** AWARE **/
+		isMonitoringMessage = in.readBoolean();
+		/** End AWARE **/
 		
 		int toRead = in.readInt();
 		if (toRead != -1) {
@@ -376,6 +388,7 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
                     clone.timestamp = this.timestamp;
                     clone.writeSentTime = this.writeSentTime;
                     clone.retry = this.retry;
+					clone.isMonitoringMessage = this.isMonitoringMessage;
 
                     return clone;
                         
@@ -390,4 +403,19 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 	public void setReplyServer(int replyServer) {
 		this.replyServer = replyServer;
 	}
+
+
+	/*** AWARE */
+
+	public boolean getIsMonitoringMessage() {
+	 	return isMonitoringMessage;
+	}
+
+
+	public void setIsMonitoringMessage(boolean isMonitoringMessage) {
+	 	this.isMonitoringMessage = isMonitoringMessage;
+	}
+
+	/** End AWARE */
+
 }

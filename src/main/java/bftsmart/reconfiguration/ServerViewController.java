@@ -26,7 +26,6 @@ import bftsmart.tom.core.TOMLayer;
 import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.util.KeyLoader;
 import bftsmart.tom.util.TOMUtil;
-import java.security.Provider;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,43 +35,50 @@ import org.slf4j.LoggerFactory;
  * @author eduardo
  */
 public class ServerViewController extends ViewController {
-    
+
     private Logger logger = LoggerFactory.getLogger(this.getClass());
 
     public static final int ADD_SERVER = 0;
     public static final int REMOVE_SERVER = 1;
     public static final int CHANGE_F = 2;
-    
+
     private int quorumBFT; // ((n + f) / 2) replicas
     private int quorumCFT; // (n / 2) replicas
     private int[] otherProcesses;
     private int[] lastJoinStet;
     private List<TOMMessage> updates = new LinkedList<TOMMessage>();
-    private TOMLayer tomLayer;
-   // protected View initialView;
-    
+    public TOMLayer tomLayer;
+    // protected View initialView;
+
+    private int overlayN;
+    private int overlayF;
+    private int overlayQ_BFT;
+    private int overlayQ_CFT;
+
     public ServerViewController(int procId, KeyLoader loader) {
-        this(procId,"", loader);
-        /*super(procId);
-        initialView = new View(0, getStaticConf().getInitialView(), 
-                getStaticConf().getF(), getInitAdddresses());
-        getViewStore().storeView(initialView);
-        reconfigureTo(initialView);*/
+        this(procId, "", loader);
+        /*
+         * super(procId);
+         * initialView = new View(0, getStaticConf().getInitialView(),
+         * getStaticConf().getF(), getInitAdddresses());
+         * getViewStore().storeView(initialView);
+         * reconfigureTo(initialView);
+         */
     }
 
     public ServerViewController(int procId, String configHome, KeyLoader loader) {
         super(procId, configHome, loader);
         View cv = getViewStore().readView();
-        if(cv == null){
-            
+        if (cv == null) {
+
             logger.info("Creating current view from configuration file");
-            reconfigureTo(new View(0, getStaticConf().getInitialView(), 
-                getStaticConf().getF(), getInitAdddresses()));
-        }else{
+            reconfigureTo(new View(0, getStaticConf().getInitialView(),
+                    getStaticConf().getF(), getInitAdddresses(), getStaticConf().isBFT(), getStaticConf().getDelta()));
+        } else {
             logger.info("Using view stored on disk");
             reconfigureTo(cv);
         }
-       
+
     }
 
     private InetSocketAddress[] getInitAdddresses() {
@@ -85,12 +91,11 @@ public class ServerViewController extends ViewController {
 
         return addresses;
     }
-    
+
     public void setTomLayer(TOMLayer tomLayer) {
         this.tomLayer = tomLayer;
     }
 
-    
     public boolean isInCurrentView() {
         return this.currentView.isMember(getStaticConf().getProcessId());
     }
@@ -109,11 +114,11 @@ public class ServerViewController extends ViewController {
 
     public void enqueueUpdate(TOMMessage up) {
         ReconfigureRequest request = (ReconfigureRequest) TOMUtil.getObject(up.getContent());
-        if (request != null && request.getSender() == getStaticConf().getTTPId() 
+        if (request != null && request.getSender() == getStaticConf().getTTPId()
                 && TOMUtil.verifySignature(getStaticConf().getPublicKey(request.getSender()),
-                    request.toString().getBytes(), request.getSignature())) {
-            //if (request.getSender() == getStaticConf().getTTPId()) {
-                this.updates.add(up);
+                        request.toString().getBytes(), request.getSignature())) {
+            // if (request.getSender() == getStaticConf().getTTPId()) {
+            this.updates.add(up);
         } else {
             logger.warn("Invalid reconfiguration from {}, discarding", up.getSender());
         }
@@ -121,14 +126,12 @@ public class ServerViewController extends ViewController {
 
     public byte[] executeUpdates(int cid) {
 
-
         List<Integer> jSet = new LinkedList<>();
         List<Integer> rSet = new LinkedList<>();
         int f = -1;
-        
+
         List<String> jSetInfo = new LinkedList<>();
-        
-        
+
         for (int i = 0; i < updates.size(); i++) {
             ReconfigureRequest request = (ReconfigureRequest) TOMUtil.getObject(updates.get(i).getContent());
             Iterator<Integer> it = request.getProperties().keySet().iterator();
@@ -141,13 +144,14 @@ public class ServerViewController extends ViewController {
                     StringTokenizer str = new StringTokenizer(value, ":");
                     if (str.countTokens() > 2) {
                         int id = Integer.parseInt(str.nextToken());
-                        if(!isCurrentViewMember(id) && !contains(id, jSet)){
+                        if (!isCurrentViewMember(id) && !contains(id, jSet)) {
                             jSetInfo.add(value);
                             jSet.add(id);
                             String host = str.nextToken();
                             int port = Integer.valueOf(str.nextToken());
                             int portRR = Integer.valueOf(str.nextToken());
-                            this.getStaticConf().addHostInfo(id, host, port, portRR);                        }
+                            this.getStaticConf().addHostInfo(id, host, port, portRR);
+                        }
                     }
                 } else if (key == REMOVE_SERVER) {
                     if (isCurrentViewMember(Integer.parseInt(value))) {
@@ -175,7 +179,7 @@ public class ServerViewController extends ViewController {
         lastJoinStet = new int[jSet.size()];
         int[] nextV = new int[currentView.getN() + jSet.size() - rSet.size()];
         int p = 0;
-        
+
         boolean forceLC = false;
         for (int i = 0; i < jSet.size(); i++) {
             lastJoinStet[i] = jSet.get(i);
@@ -186,9 +190,9 @@ public class ServerViewController extends ViewController {
             if (!contains(currentView.getProcesses()[i], rSet)) {
                 nextV[p++] = currentView.getProcesses()[i];
             } else if (tomLayer.execManager.getCurrentLeader() == currentView.getProcesses()[i]) {
-                
+
                 forceLC = true;
- 
+
             }
         }
 
@@ -198,31 +202,32 @@ public class ServerViewController extends ViewController {
 
         InetSocketAddress[] addresses = new InetSocketAddress[nextV.length];
 
-        for(int i = 0 ;i < nextV.length ;i++)
-        	addresses[i] = getStaticConf().getRemoteAddress(nextV[i]);
+        for (int i = 0; i < nextV.length; i++)
+            addresses[i] = getStaticConf().getRemoteAddress(nextV[i]);
 
-        View newV = new View(currentView.getId() + 1, nextV, f,addresses);
+        View newV = new View(currentView.getId() + 1, nextV, f, addresses, getStaticConf().isBFT(),
+                getStaticConf().getDelta());
 
         logger.info("New view: " + newV);
         logger.info("Installed on CID: " + cid);
         logger.info("lastJoinSet: " + jSet);
 
-        //TODO:Remove all information stored about each process in rSet
-        //processes execute the leave!!!
+        // TODO:Remove all information stored about each process in rSet
+        // processes execute the leave!!!
         reconfigureTo(newV);
-        
+
         if (forceLC) {
-            
-            //TODO: Reactive it and make it work
+
+            // TODO: Reactive it and make it work
             logger.info("Shortening LC timeout");
             tomLayer.requestsTimer.stopTimer();
             tomLayer.requestsTimer.setShortTimeout(3000);
             tomLayer.requestsTimer.startTimer();
-            //tomLayer.triggerTimeout(new LinkedList<TOMMessage>());
-                
-        } 
+            // tomLayer.triggerTimeout(new LinkedList<TOMMessage>());
+
+        }
         return TOMUtil.getBytes(new ReconfigureReply(newV, jSetInfo.toArray(new String[0]),
-                 cid, tomLayer.execManager.getCurrentLeader()));
+                cid, tomLayer.execManager.getCurrentLeader()));
     }
 
     public TOMMessage[] clearUpdates() {
@@ -248,29 +253,28 @@ public class ServerViewController extends ViewController {
 
     public void processJoinResult(ReconfigureReply r) {
         this.reconfigureTo(r.getView());
-        
+
         String[] s = r.getJoinSet();
-        
+
         this.lastJoinStet = new int[s.length];
-        
-        for(int i = 0; i < s.length;i++){
-             StringTokenizer str = new StringTokenizer(s[i], ":");
-             int id = Integer.parseInt(str.nextToken());
-             this.lastJoinStet[i] = id;
-             String host = str.nextToken();
-             int port = Integer.valueOf(str.nextToken());
-             int portRR = Integer.valueOf(str.nextToken());
-             this.getStaticConf().addHostInfo(id, host, port, portRR);
+
+        for (int i = 0; i < s.length; i++) {
+            StringTokenizer str = new StringTokenizer(s[i], ":");
+            int id = Integer.parseInt(str.nextToken());
+            this.lastJoinStet[i] = id;
+            String host = str.nextToken();
+            int port = Integer.valueOf(str.nextToken());
+            int portRR = Integer.valueOf(str.nextToken());
+            this.getStaticConf().addHostInfo(id, host, port, portRR);
         }
     }
 
-    
     @Override
     public final void reconfigureTo(View newView) {
         this.currentView = newView;
         getViewStore().storeView(this.currentView);
         if (newView.isMember(getStaticConf().getProcessId())) {
-            //membro da view atual
+            // membro da view atual
             otherProcesses = new int[currentView.getProcesses().length - 1];
             int c = 0;
             for (int i = 0; i < currentView.getProcesses().length; i++) {
@@ -281,21 +285,71 @@ public class ServerViewController extends ViewController {
 
             this.quorumBFT = (int) Math.ceil((this.currentView.getN() + this.currentView.getF()) / 2);
             this.quorumCFT = (int) Math.ceil(this.currentView.getN() / 2);
+
+            this.overlayN = this.currentView.getOverlayN();
+            this.overlayF = this.currentView.getOverlayF();
+            this.overlayQ_BFT = (int) Math.ceil((this.overlayN + this.overlayF) / 2.0);
+            this.overlayQ_CFT = (int) Math.ceil(this.overlayN / 2.0);
         } else if (this.currentView != null && this.currentView.isMember(getStaticConf().getProcessId())) {
-            //TODO: Left the system in newView -> LEAVE
-            //CODE for LEAVE   
-        }else{
-            //TODO: Didn't enter the system yet
-            
+            // TODO: Left the system in newView -> LEAVE
+            // CODE for LEAVE
+        } else {
+            // TODO: Didn't enter the system yet
+
         }
+        System.out.println("Reconfigure:\n\tN = " + this.currentView.getN() + "\tt = " + this.currentView.getF()
+                + "\n\tDelta = " + this.currentView.getDelta());
     }
 
-    /*public int getQuorum2F() {
-        return quorum2F;
-    }*/
-    
+    /*
+     * public int getQuorum2F() {
+     * return quorum2F;
+     * }
+     */
 
     public int getQuorum() {
         return getStaticConf().isBFT() ? quorumBFT : quorumCFT;
+    }
+
+    public int getOverlayQuorum() {
+        return getStaticConf().isBFT() ? overlayQ_BFT : overlayQ_CFT;
+    }
+
+    /*************************** SWITCH METHODS *******************************/
+
+    private int K = 1; // granularity
+
+    public void switchToSaferConfig() {
+        View currentView = this.getCurrentView();
+        if (currentView.isSaferConfig()) return;
+
+        int N = currentView.getProcesses().length;
+        int max_faults = max_fault(N);
+        int new_faults = Math.min(max_faults, currentView.getF() + K);
+        int new_delta = calculateDelta(N, new_faults);
+        View newView = new View(currentView.getId() + 1, currentView.getProcesses(), new_faults,
+                currentView.getAddresses(), currentView.isBFT(), new_delta);
+        this.reconfigureTo(newView);
+    }
+
+    public void switchToFasterConfig() {
+        View currentView = this.getCurrentView();
+        if (currentView.isFastestConfig()) return;
+
+        int N = currentView.getProcesses().length;
+        int max_faults = max_fault(N);
+        int new_faults = Math.max((int) Math.round(max_faults / 2.0), currentView.getF() - K);
+        int new_delta = calculateDelta(N, new_faults);
+        View newView = new View(currentView.getId() + 1, currentView.getProcesses(), new_faults,
+                currentView.getAddresses(), currentView.isBFT(), new_delta);
+        this.reconfigureTo(newView);
+    }
+
+    private static int max_fault(int N) {
+        return (N - 1) / 3;
+    }
+
+    private static int calculateDelta(int N, int T) {
+        return N - 3 * T - 1;
     }
 }

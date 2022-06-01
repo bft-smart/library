@@ -17,6 +17,7 @@ package bftsmart.demo.counter;
 
 import bftsmart.tom.MessageContext;
 import bftsmart.tom.ServiceReplica;
+import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.server.defaultservices.DefaultSingleRecoverable;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -65,8 +66,9 @@ public final class CounterServer extends DefaultSingleRecoverable  {
         try {
             int increment = new DataInputStream(new ByteArrayInputStream(command)).readInt();
             counter += increment;
-            
-            System.out.println("(" + iterations + ") Counter was incremented. Current value = " + counter);
+
+            if (counter % 100 == 0)
+                System.out.println("(" + iterations + ") Counter was incremented. Current value = " + counter);
             
             ByteArrayOutputStream out = new ByteArrayOutputStream(4);
             new DataOutputStream(out).writeInt(counter);

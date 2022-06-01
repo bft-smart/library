@@ -58,14 +58,14 @@ public class ViewController {
         return this.viewStore;
     }
 
-    public View getCurrentView(){
+    public synchronized View getCurrentView(){
         if(this.currentView == null){
              this.currentView = getViewStore().readView();
         }
         return this.currentView;
     }
     
-    public View getLastView(){
+    public synchronized View getLastView(){
         return this.lastView;
     }
     
@@ -73,7 +73,7 @@ public class ViewController {
         return getCurrentView().getAddress(id);
     }
     
-    public void reconfigureTo(View newView) {
+    public synchronized void reconfigureTo(View newView) {
         this.lastView = this.currentView;
         this.currentView = newView;
     }
@@ -98,11 +98,11 @@ public class ViewController {
         return getCurrentView().getN();
     }
 
-    public int getCurrentViewPos(int id) {
+    public synchronized int getCurrentViewPos(int id) {
         return getCurrentView().getPos(id);
     }
 
-    public int[] getCurrentViewProcesses() {
+    public synchronized int[] getCurrentViewProcesses() {
         return getCurrentView().getProcesses();
     }
 }

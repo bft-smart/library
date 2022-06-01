@@ -15,9 +15,7 @@ limitations under the License.
 */
 package bftsmart.consensus.messages;
 
-import java.io.IOException;
-import java.io.ObjectInput;
-import java.io.ObjectOutput;
+import java.io.*;
 
 import bftsmart.communication.SystemMessage;
 
@@ -30,10 +28,14 @@ public class ConsensusMessage extends SystemMessage {
 
     private int number; //consensus ID for this message
     private int epoch; // Epoch to which this message belongs to
-    private int paxosType; // Message type
+    protected int paxosType; // Message type
     private byte[] value = null; // Value used when message type is PROPOSE
     private Object proof; // Proof used when message type is COLLECT
                               // Can be either a MAC vector or a signature
+
+
+    /** AWARE **/
+    protected int challenge = -1; // only necessary for BFT
 
     /**
      * Creates a consensus message. Not used. TODO: How about making it private?
@@ -76,6 +78,7 @@ public class ConsensusMessage extends SystemMessage {
 
     }
 
+
     // Implemented method of the Externalizable interface
     @Override
     public void writeExternal(ObjectOutput out) throws IOException {
@@ -86,7 +89,12 @@ public class ConsensusMessage extends SystemMessage {
         out.writeInt(epoch);
         out.writeInt(paxosType);
 
-        if(value == null) {
+
+        /*** AWARE **/
+        out.writeInt(challenge);
+        /*** End AWARE **/
+
+        if (value == null) {
 
             out.writeInt(-1);
 
@@ -97,14 +105,12 @@ public class ConsensusMessage extends SystemMessage {
 
         }
 
-        if(this.proof != null) {
+        if (this.proof != null) {
 
             out.writeBoolean(true);
             out.writeObject(proof);
 
-        }
-        
-        else {
+        } else {
             out.writeBoolean(false);
         }
 
@@ -120,26 +126,33 @@ public class ConsensusMessage extends SystemMessage {
         epoch = in.readInt();
         paxosType = in.readInt();
 
+
+        /** AWARE **/
+        challenge = in.readInt();
+        /*** End AWARE **/
+
+
+
         int toRead = in.readInt();
 
-        if(toRead != -1) {
+        if (toRead != -1) {
 
             value = new byte[toRead];
 
-            do{
+            do {
 
-                toRead -= in.read(value, value.length-toRead, toRead);
+                toRead -= in.read(value, value.length - toRead, toRead);
 
-            } while(toRead > 0);
+            } while (toRead > 0);
 
         }
 
         boolean asProof = in.readBoolean();
         if (asProof) {
-            
+
             proof = in.readObject();
         }
-        
+
     }
 
     /**
@@ -151,7 +164,7 @@ public class ConsensusMessage extends SystemMessage {
         return epoch;
 
     }
-    
+
     /**
      * Retrieves the value contained in the message.
      * @return The value
@@ -163,10 +176,10 @@ public class ConsensusMessage extends SystemMessage {
     }
 
     public void setProof(Object proof) {
-        
+
         this.proof = proof;
     }
-    
+
     /**
      * Returns the proof associated with a PROPOSE or COLLECT message
      * @return The proof
@@ -197,16 +210,24 @@ public class ConsensusMessage extends SystemMessage {
 
     }
 
+    public int getChallenge() {
+        return challenge;
+    }
+
+    public void setChallenge(int challenge) {
+        this.challenge = challenge;
+    }
+
     /**
      * Returns this message type as a verbose string
      * @return Message type
      */
     public String getPaxosVerboseType() {
-        if (paxosType==MessageFactory.PROPOSE)
+        if (paxosType == MessageFactory.PROPOSE)
             return "PROPOSE";
-        else if (paxosType==MessageFactory.ACCEPT)
+        else if (paxosType == MessageFactory.ACCEPT)
             return "ACCEPT";
-        else if (paxosType==MessageFactory.WRITE)
+        else if (paxosType == MessageFactory.WRITE)
             return "WRITE";
         else if (paxosType==MessageFactory.AUDIT)
             return "AUDIT";
@@ -218,8 +239,77 @@ public class ConsensusMessage extends SystemMessage {
 
     @Override
     public String toString() {
-        return "type="+getPaxosVerboseType()+", number="+getNumber()+", epoch="+
-                getEpoch()+", from="+getSender();
+        return "type=" + getPaxosVerboseType() + ", number=" + getNumber() + ", epoch=" +
+                getEpoch() + ", from=" + getSender();
+    }
+
+
+
+    private void readObject(ObjectInputStream in) throws ClassNotFoundException, IOException
+    {
+        sender = in.readInt();
+        number = in.readInt();
+        epoch = in.readInt();
+        paxosType = in.readInt();
+
+
+        /*** AWARE **/
+        challenge = in.readInt();
+
+
+        int toRead = in.readInt();
+
+        if (toRead != -1) {
+
+            value = new byte[toRead];
+
+            do {
+
+                toRead -= in.read(value, value.length - toRead, toRead);
+
+            } while (toRead > 0);
+        }
+
+        boolean asProof = in.readBoolean();
+        if (asProof) {
+
+            proof = in.readObject();
+        }
+
+    }
+
+    private void writeObject(ObjectOutputStream out) throws IOException
+    {
+        out.writeInt(sender);
+        out.writeInt(number);
+        out.writeInt(epoch);
+        out.writeInt(paxosType);
+
+
+        /*** AWARE **/
+        out.writeInt(challenge);
+
+
+        if (value == null) {
+
+            out.writeInt(-1);
+
+        } else {
+
+            out.writeInt(value.length);
+            out.write(value);
+
+        }
+
+        if (this.proof != null) {
+
+            out.writeBoolean(true);
+            out.writeObject(proof);
+
+        } else {
+            out.writeBoolean(false);
+        }
+
     }
 
     public void setValue(byte[] new_value) {

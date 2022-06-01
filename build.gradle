@@ -49,7 +49,7 @@ task remoteDeploy(dependsOn: installDist) {
 
 task localDeploy(dependsOn: installDist) {
     doLast {
-        int nServers = 4
+        int nServers = 5
         int nClients = 1
 
         def fileSeparator = System.getProperty("file.separator")
@@ -78,7 +78,7 @@ task localDeploy(dependsOn: installDist) {
 
 task setupIntegrationTestingEnvironment(dependsOn: installDist) {
     doFirst {
-        int nServers = 4
+        int nServers = 5
         int nClients = 1
 
         def fileSeparator = System.getProperty("file.separator")

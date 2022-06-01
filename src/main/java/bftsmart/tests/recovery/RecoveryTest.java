@@ -19,22 +19,22 @@ public class RecoveryTest {
 		String clientPodCommand = "java -cp " +  path +" pod.PodStartup 127.0.0.1 12000 bftsmart.tests.recovery.RecoveryTestClientEventProcessor";
 		String serverPodCommand = "java -cp " +  path +" pod.PodStartup 127.0.0.1 12001 bftsmart.tests.recovery.RecoveryTestServerEventProcessor";
 
-		ProcessExecutor controller = new ProcessExecutor(workingDirectory, controllerCommand);
+		ProcessExecutor controller = new ProcessExecutor(workingDirectory, controllerCommand, "controller_log");
 
-		int nServers = 4;
+		int nServers = 5;
 		int nClients = 1;
 		ProcessExecutor[] servers = new ProcessExecutor[nServers];
 		for (int i = 0; i < nServers; i++) {
 			System.out.println("Starting server " + i);
 			String currentServerDirectory = workingDirectory + "rep" + i + File.separator;
-			servers[i] = new ProcessExecutor(currentServerDirectory, serverPodCommand);
+			servers[i] = new ProcessExecutor(currentServerDirectory, serverPodCommand, "rep_log_"+i);
 		}
 
 		ProcessExecutor[] clients = new ProcessExecutor[nClients];
 		for (int i = 0; i < nClients; i++) {
 			System.out.println("Starting client " + i);
 			String currentClientDirectory = workingDirectory + "cli" + i + File.separator;
-			clients[i] = new ProcessExecutor(currentClientDirectory, clientPodCommand);
+			clients[i] = new ProcessExecutor(currentClientDirectory, clientPodCommand, "cli_log_"+i);
 		}
 
 		controller.start();

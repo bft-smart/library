@@ -31,14 +31,14 @@ import org.slf4j.LoggerFactory;
 
 import bftsmart.communication.ServerCommunicationSystem;
 import bftsmart.consensus.Consensus;
+import bftsmart.tom.core.ExecutionManager;
 import bftsmart.consensus.Epoch;
-import bftsmart.consensus.messages.ConsensusMessage;
 import bftsmart.consensus.messages.MessageFactory;
 import bftsmart.forensic.AuditResult;
 import bftsmart.forensic.AuditStorage;
 import bftsmart.forensic.Auditor;
+import bftsmart.consensus.messages.ConsensusMessage;
 import bftsmart.reconfiguration.ServerViewController;
-import bftsmart.tom.core.ExecutionManager;
 import bftsmart.tom.core.TOMLayer;
 import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.core.messages.TOMMessageType;
@@ -53,7 +53,9 @@ import bftsmart.tom.util.TOMUtil;
  */
 public final class Acceptor {
 
-	private Logger logger = LoggerFactory.getLogger(this.getClass());
+    private static final double THRESHOLD = -0.0000000001;
+
+    private Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	private int me; // This replica ID
 	private ExecutionManager executionManager; // Execution manager of consensus's executions
@@ -65,52 +67,65 @@ public final class Acceptor {
 	// thread pool used to paralelise creation of consensus proofs
 	private ExecutorService proofExecutor = null;
 
-	/**
-	 * Tulio Ribeiro
-	 */
-	private PrivateKey privKey;
+    /**
+     * Tulio Ribeiro
+     */
+    private PrivateKey privKey;
 
-	// Forensics
+    /**
+	 * Forensics
+	 * **/
 	private AuditStorage storage;
 	private Auditor audit;
 	private int lastAudit = -1;
 	Map<Integer, Integer> nAudits = new HashMap<>(); // consensus id to number of storages receives (usefull for garbage
 														// collection)
+	/**
+	 * END Forensics
+	 **/
+
+	/**BEGIN AWARE */
+	public ConsensusMessage[] proposeRecvd;
+	/**END AWARE */
+
 
 	public Acceptor(ServerCommunicationSystem communication, MessageFactory factory, ServerViewController controller) {
 		this(communication, factory, controller, null);
 	}
 
-	/**
-	 * Creates a new instance of Acceptor.
-	 * 
-	 * @param communication Replicas communication system
-	 * @param factory       Message factory for PaW messages
-	 * @param controller
-	 */
-	public Acceptor(ServerCommunicationSystem communication, MessageFactory factory, ServerViewController controller,
+
+    /**
+     * Creates a new instance of Acceptor.
+     *
+     * @param communication Replicas communication system
+     * @param factory Message factory for PaW messages
+     * @param controller
+     */
+    public Acceptor(ServerCommunicationSystem communication, MessageFactory factory, ServerViewController controller,
 			AuditStorage storage) {
 		this.storage = storage;
 		this.audit = new Auditor();
 
-		this.communication = communication;
-		this.me = controller.getStaticConf().getProcessId();
-		this.factory = factory;
-		this.controller = controller;
+        this.communication = communication;
+        this.me = controller.getStaticConf().getProcessId();
+        this.factory = factory;
+        this.controller = controller;
+
+		this.proposeRecvd = new ConsensusMessage[controller.getCurrentView().getN()];
 
 		/* Tulio Ribeiro */
-		this.privKey = controller.getStaticConf().getPrivateKey();
+        this.privKey = controller.getStaticConf().getPrivateKey();
 
-		// use either the same number of Netty workers threads if specified in the
-		// configuration
-		// or use a many as the number of cores available
-		/*
-		 * int nWorkers = this.controller.getStaticConf().getNumNettyWorkers(); nWorkers
-		 * = nWorkers > 0 ? nWorkers : Runtime.getRuntime().availableProcessors();
-		 * this.proofExecutor = Executors.newWorkStealingPool(nWorkers);
-		 */
-		this.proofExecutor = Executors.newSingleThreadExecutor();
-	}
+        // use either the same number of Netty workers threads if specified in the
+        // configuration
+        // or use a many as the number of cores available
+        /*
+         * int nWorkers = this.controller.getStaticConf().getNumNettyWorkers(); nWorkers
+         * = nWorkers > 0 ? nWorkers : Runtime.getRuntime().availableProcessors();
+         * this.proofExecutor = Executors.newWorkStealingPool(nWorkers);
+         */
+        this.proofExecutor = Executors.newSingleThreadExecutor();
+    }
 
 	public MessageFactory getFactory() {
 		return factory;
@@ -118,7 +133,7 @@ public final class Acceptor {
 
 	/**
 	 * Sets the execution manager for this acceptor
-	 * 
+	 *
 	 * @param manager Execution manager for this acceptor
 	 */
 	public void setExecutionManager(ExecutionManager manager) {
@@ -127,7 +142,7 @@ public final class Acceptor {
 
 	/**
 	 * Sets the TOM layer for this acceptor
-	 * 
+	 *
 	 * @param tom TOM layer for this acceptor
 	 */
 	public void setTOMLayer(TOMLayer tom) {
@@ -199,13 +214,21 @@ public final class Acceptor {
 		int ts = epoch.getConsensus().getEts();
 		int ets = executionManager.getConsensus(msg.getNumber()).getEts();
 		logger.debug("PROPOSE received from:{}, for consensus cId:{}, I am:{}", msg.getSender(), cid, me);
-		if (msg.getSender() == executionManager.getCurrentLeader() // Is the replica the leader?
-				&& epoch.getTimestamp() == 0 && ts == ets && ets == 0) { // Is all this in epoch 0?
-			executePropose(epoch, msg.getValue());
-		} else {
-			logger.debug("Propose received is not from the expected leader");
-		}
-	}
+    	if (msg.getSender() == executionManager.getCurrentLeader() // Is the replica the leader?
+                && epoch.getTimestamp() == 0 && ts == ets && ets == 0) { // Is all this in epoch 0?
+    		executePropose(epoch, msg.getValue());
+    	} else {
+    	    /**BEGIN AWARE */
+    	    if (epoch.getConsensus().getId() > 1 && epoch.getConsensus().getId() % this.controller.getStaticConf().getCalculationInterval() == 1) {
+                logger.debug("I remember Propose of " + msg.getSender() + " " + epoch.getConsensus().getId());
+                proposeRecvd[msg.getSender()] = msg; // Remember a non-leader proposal during a potential leader change
+            } else {
+             logger.warn("The Propose I received is not from the expected leader " + msg.getSender() + " " + epoch.getConsensus().getId());
+            }
+    	    /**END AWARE **/
+    		logger.debug("Propose received is not from the expected leader");
+    	}
+    }
 
 	/**
 	 * Executes actions related to a proposed value.
@@ -258,7 +281,7 @@ public final class Acceptor {
 					insertProof(writeMessage, epoch.deserializedPropValue); // insert proof in write message
 					epoch.addWriteProof(writeMessage);
 					/**
-					 * 
+					 *
 					 */
 
 					logger.debug("Sending WRITE for cId:{}, I am:{}", cid, me);
@@ -281,26 +304,26 @@ public final class Acceptor {
 					epoch.getConsensus().setQuorumWrites(epoch.propValueHash);
 					/*****************************************/
 
-					communication.send(this.controller.getCurrentViewOtherAcceptors(),
-							factory.createAccept(cid, epoch.getTimestamp(), epoch.propValueHash));
+                        communication.send(this.controller.getCurrentViewOtherAcceptors(),
+ 	                    factory.createAccept(cid, epoch.getTimestamp(), epoch.propValueHash));
 
-					epoch.acceptSent();
-					computeAccept(cid, epoch, epoch.propValueHash);
-				}
-				executionManager.processOutOfContext(epoch.getConsensus());
+                        epoch.acceptSent();
+                        computeAccept(cid, epoch, epoch.propValueHash);
+                }
+                executionManager.processOutOfContext(epoch.getConsensus());
 
-			} else if (epoch.deserializedPropValue == null
-					&& !tomLayer.isChangingLeader()) { // force a leader change
-				tomLayer.getSynchronizer().triggerTimeout(new LinkedList<>());
-			}
-		}
-	}
+            } else if (epoch.deserializedPropValue == null && !tomLayer.isChangingLeader()) { //force a leader change
+
+                tomLayer.getSynchronizer().triggerTimeout(new LinkedList<>());
+            }
+        }
+    }
 
 	/**
 	 * Called when a WRITE message is received
 	 *
 	 * @param epoch Epoch of the receives message
-	 * @param a     Replica that sent the message
+	 * @param sender Replica that sent the message
 	 * @param value Value sent in the message
 	 */
 	private void writeReceived(Epoch epoch, int sender, ConsensusMessage msg) {
@@ -314,31 +337,45 @@ public final class Acceptor {
 		 */
 		epoch.addWriteProof(msg);
 		/**
-		 * 
+		 *
 		 */
 
 		computeWrite(cid, epoch, msg.getValue());
 	}
 
-	/**
-	 * Computes WRITE values according to Byzantine consensus specification values
-	 * received).
-	 *
-	 * @param cid   Consensus ID of the received message
-	 * @param epoch Epoch of the receives message
-	 * @param value Value sent in the message
-	 */
-	private void computeWrite(int cid, Epoch epoch, byte[] value) {
-		int writeAccepted = epoch.countWrite(value);
+    /**
+     * Computes WRITE values according to Byzantine consensus specification
+     * values received).
+     *
+     * @param cid Consensus ID of the received message
+     * @param epoch Epoch of the receives message
+     * @param value Value sent in the message
+     */
+    private void computeWrite(int cid, Epoch epoch, byte[] value) {
+        //int writeAccepted = round.countWrite(value);
+        double writeWeigths = epoch.countWriteWeigths(value);
 
-		logger.debug("I have {}, WRITE's for cId:{}, Epoch timestamp:{},", writeAccepted, cid, epoch.getTimestamp());
+        //Logger.println("(Acceptor.computeWrite) I have " + writeAccepted +
+        //        " WRITEs for " + eid + "," + round.getNumber());
 
-		if (writeAccepted > controller.getQuorum()
-				&& Arrays.equals(value, epoch.propValueHash)) {
+        logger.debug(" I have " + writeWeigths +
+                " WRITEs weigths  and " + epoch.countWrite(value) + " WRITE messages for " + cid + "," + epoch.getTimestamp());
 
-			if (!epoch.isAcceptSent()) {
+        // code for classic quorums
+        //if (writeAccepted > controller.getQuorum() && Arrays.equals(value, epoch.propValueHash)) {
 
-				/**
+        //code for vote schemes
+        if (writeWeigths - ((double) controller.getOverlayQuorum()) > THRESHOLD && Arrays.equals(value, epoch.propValueHash)) {
+
+            if (controller.getStaticConf().getTentative()) { //code for tentative execution
+
+                logger.debug(" Tentatively Deciding " + cid);
+                decide(epoch);
+            }
+            else if (!epoch.isAcceptSent()) { //code for standard execution
+
+
+                /**
 				 * Forensics
 				 * Who partecipated in write quorum
 				 */
@@ -347,16 +384,16 @@ public final class Acceptor {
 					storage.addWriteAggregate(cid, epoch.getWriteAggregate());
 				}
 				/**
-				 * 
+				 *
 				 */
 
-				logger.debug("Sending ACCEPT message, cId:{}, I am:{}", cid, me);
+				logger.debug("Sending WRITE for " + cid);
+                //Logger.println("(Acceptor.computeWrite) sending WRITE for " + cid);
 
-				/**** LEADER CHANGE CODE! ******/
-				logger.debug("Setting consensus " + cid + " QuorumWrite tiemstamp to " + epoch.getConsensus().getEts()
-						+ " and value " + Arrays.toString(value));
-				epoch.getConsensus().setQuorumWrites(value);
-				/*****************************************/
+                /**** LEADER CHANGE CODE! ******/
+                logger.debug("Setting consensus " + cid + " QuorumWrite tiemstamp to " + epoch.getConsensus().getEts() + " and value " + Arrays.toString(value));
+                epoch.getConsensus().setQuorumWrites(value);
+                /*****************************************/
 
 				if (epoch.getConsensus().getDecision().firstMessageProposed != null) {
 
@@ -367,9 +404,8 @@ public final class Acceptor {
 				int[] targets = this.controller.getCurrentViewAcceptors();
 				epoch.acceptSent();
 
-				if (Arrays.equals(cm.getValue(), value)) { // make sure the ACCEPT message generated upon receiving the
-															// PROPOSE message
-															// still matches the value that ended up being written...
+                if (Arrays.equals(cm.getValue(), value)) { //make sure the ACCEPT message generated upon receiving the PROPOSE message
+                                                           //still matches the value that ended up being written...
 
 					logger.debug(
 							"Speculative ACCEPT message for consensus {} matches the written value, sending it to the other replicas",
@@ -420,12 +456,12 @@ public final class Acceptor {
 
 	/**
 	 * Create a cryptographic proof for a consensus message
-	 * 
+	 *
 	 * This method modifies the consensus message passed as an argument, so that it
 	 * contains a cryptographic proof.
-	 * 
+	 *
 	 * @param cm    The consensus message to which the proof shall be set
-	 * @param epoch The epoch during in which the consensus message was created
+	 * @param msgs messages
 	 */
 	private void insertProof(ConsensusMessage cm, TOMMessage[] msgs) {
 		ByteArrayOutputStream bOut = new ByteArrayOutputStream(248);
@@ -449,10 +485,9 @@ public final class Acceptor {
 
 	/**
 	 * Called when a ACCEPT message is received
-	 * 
+	 *
 	 * @param epoch Epoch of the receives message
-	 * @param a     Replica that sent the message
-	 * @param value Value sent in the message
+	 * @param msg message
 	 */
 	private void acceptReceived(Epoch epoch, ConsensusMessage msg) {
 		int cid = epoch.getConsensus().getId();
@@ -463,18 +498,28 @@ public final class Acceptor {
 		computeAccept(cid, epoch, msg.getValue());
 	}
 
-	/**
-	 * Computes ACCEPT values according to the Byzantine consensus specification
-	 * 
-	 * @param epoch Epoch of the receives message
-	 * @param value Value sent in the message
-	 */
-	private void computeAccept(int cid, Epoch epoch, byte[] value) {
-		logger.debug("I have {} ACCEPTs for cId:{}, Timestamp:{} ", epoch.countAccept(value), cid,
-				epoch.getTimestamp());
+    /**
+     * Computes ACCEPT values according to the Byzantine consensus
+     * specification
+     * @param epoch Epoch of the receives message
+     * @param value Value sent in the message
+     */
+    private void computeAccept(int cid, Epoch epoch, byte[] value) {
+        //Logger.println("(Acceptor.computeAccept) I have " + round.countAccept(value) +
+        //        " ACCEPTs for " + eid + "," + round.getNumber());
 
-		if (epoch.countAccept(value) > controller.getQuorum() && !epoch.getConsensus().isDecided()) {
-			logger.debug("Deciding consensus " + cid);
+        double acceptWeights = epoch.countAcceptWeigths(value);
+        logger.debug("I have " + acceptWeights +
+                " ACCEPT weigths and " + epoch.countAccept(value) + " ACCEPT messages for " + cid + "," + epoch.getTimestamp());
+
+        //normal code, for classic quorums
+        //if (round.countAccept(value) > controller.getQuorum() && !round.getExecution().isDecided()) {
+
+        //code for vote scheme
+        if (acceptWeights - ((double) controller.getOverlayQuorum()) > THRESHOLD && !epoch.getConsensus().isDecided()) {
+
+            //System.out.println("Decice " + cid + " weights: " + acceptWeights + "    Qv: " + controller.getOverlayQuorum());
+            logger.debug("Deciding consensus " + cid);
 
 			/**
 			 * Forensics
@@ -485,10 +530,10 @@ public final class Acceptor {
 				storage.addAcceptAggregate(cid, epoch.getAcceptAggregate());
 			}
 			/**
-			 * 
+			 *
 			 */
 
-			decide(epoch);
+            decide(epoch);
 
 			// Forensics
 			// placeholder for testing, should be modified to make all replicas audit from
@@ -498,12 +543,12 @@ public final class Acceptor {
 			// System.out.println("### Starting Forensics ###");
 			// sendAudit(cid, epoch);
 			// }
-		}
-	}
+        }
+    }
 
 	/**
 	 * This is the method invoked when a value is decided by this process
-	 * 
+	 *
 	 * @param epoch Epoch at which the decision is made
 	 */
 	private void decide(Epoch epoch) {
@@ -511,6 +556,20 @@ public final class Acceptor {
 			epoch.getConsensus().getDecision().firstMessageProposed.decisionTime = System.nanoTime();
 
 		epoch.getConsensus().decided(epoch, true);
+
+		if(epoch.getConsensus().getId() % 100 == 10){ // after a set number of consensus switch to faster cofiguration
+			System.out.println("###### SWITCH #####");
+			if (controller.getCurrentView().isFastestConfig()) {
+				System.out.println("System cant get any faster");
+			} else {
+				controller.switchToFasterConfig();
+			}
+		}
+		if(epoch.getConsensus().getId() % 100 == 10 + me*(100/controller.getCurrentViewProcesses().length)){ // after a set number of consensus perform forensics
+			// System.out.println("###### FORENSICS #####");
+			// sendAudit(epoch.getConsensus().getId(), epoch);
+		}
+		// System.out.println(this.storage);
 	}
 
 	/*************************** FORENSICS METHODS *******************************/
@@ -522,7 +581,7 @@ public final class Acceptor {
 	/**
 	 * Called when audit sender is client
 	 * Receives audit message and sends storage to client
-	 * 
+	 *
 	 * @param msg message received
 	 */
 	public void auditReceived(TOMMessage msg) {
@@ -536,7 +595,7 @@ public final class Acceptor {
 	/**
 	 * Called when audit sender is replica
 	 * Receives audit message and sends storage to sender replica
-	 * 
+	 *
 	 * @param epoch consensus epoch
 	 * @param msg   consensus message
 	 */
@@ -550,7 +609,7 @@ public final class Acceptor {
 
 	/**
 	 * Sends audit message to all replicas
-	 * 
+	 *
 	 * @param cid   consensus id
 	 * @param epoch consensus epoch
 	 */
@@ -564,7 +623,7 @@ public final class Acceptor {
 	 * Called when storage message is received
 	 * Receives storage message and executes forensics
 	 * prints conflict if found
-	 * 
+	 *
 	 * @param msg consensus message received
 	 */
 	private void storageReceived(ConsensusMessage msg) {
@@ -581,6 +640,9 @@ public final class Acceptor {
 		if (result.conflictFound()) {
 			System.out.println(result);
 			// TODO inform other replicas <PANIC MESSAGE>
+			// change config to safer config -> TODO remove faulty from view
+			controller.switchToSaferConfig();
+			// TODO Rollback
 		} else {
 			System.out.println("No conflict found");
 		}

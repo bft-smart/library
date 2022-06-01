@@ -65,6 +65,10 @@ public class Epoch implements Serializable {
 
     private ConsensusMessage acceptMsg = null;
 
+
+    private double[] sumWeightsWrite;
+    private double[] sumWeightsAccept;
+
     // Forensics
     private HashSet<ConsensusMessage> writeProofs; // write proof
     private Aggregate writeAgg;
@@ -72,7 +76,7 @@ public class Epoch implements Serializable {
 
     /**
      * Creates a new instance of Epoch for acceptors
-     * 
+     *
      * @param controller
      * @param parent     Consensus to which this epoch belongs
      * @param timestamp  Timestamp of the epoch
@@ -101,6 +105,10 @@ public class Epoch implements Serializable {
         acceptCreated = false;
 
         if (timestamp == 0) {
+
+            sumWeightsWrite = new double[n];
+            sumWeightsAccept = new double[n];
+
             this.write = new byte[n][];
             this.accept = new byte[n][];
 
@@ -109,6 +117,9 @@ public class Epoch implements Serializable {
 
         } else {
             Epoch previousEpoch = consensus.getEpoch(timestamp - 1, controller);
+
+            this.sumWeightsWrite = previousEpoch.getSumWeightsWrite();
+            this.sumWeightsAccept = previousEpoch.getSumWeightsAccept();
 
             this.write = previousEpoch.getWrite();
             this.accept = previousEpoch.getAccept();
@@ -121,8 +132,7 @@ public class Epoch implements Serializable {
 
     // If a view change takes place and concurrentely this consensus is still
     // receiving messages, the write and accept arrays must be updated
-    private void updateArrays() {
-
+    private synchronized void updateArrays() {
         if (lastView.getId() != controller.getCurrentViewId()) {
 
             int n = controller.getCurrentViewN();
@@ -172,7 +182,7 @@ public class Epoch implements Serializable {
 
     /**
      * Informs if this epoch was removed from its consensus instance
-     * 
+     *
      * @return True if it is removed, false otherwise
      */
     public boolean isRemoved() {
@@ -189,7 +199,7 @@ public class Epoch implements Serializable {
 
     /**
      * Retrieves the duration for the timeout
-     * 
+     *
      * @return Duration for the timeout
      */
     /*
@@ -200,7 +210,7 @@ public class Epoch implements Serializable {
 
     /**
      * Retrieves this epoch's timestamp
-     * 
+     *
      * @return This epoch's timestamp
      */
     public int getTimestamp() {
@@ -209,7 +219,7 @@ public class Epoch implements Serializable {
 
     /**
      * Retrieves this epoch's consensus
-     * 
+     *
      * @return This epoch's consensus
      */
     public Consensus getConsensus() {
@@ -218,12 +228,11 @@ public class Epoch implements Serializable {
 
     /**
      * Informs if there is a WRITE value from a replica
-     * 
+     *
      * @param acceptor The replica ID
      * @return True if there is a WRITE value from a replica, false otherwise
      */
-    public boolean isWriteSetted(int acceptor) {
-
+    public synchronized boolean isWriteSetted(int acceptor) {
         updateArrays();
 
         // ******* EDUARDO BEGIN **************//
@@ -238,7 +247,7 @@ public class Epoch implements Serializable {
 
     /**
      * Informs if there is a accepted value from a replica
-     * 
+     *
      * @param acceptor The replica ID
      * @return True if there is a accepted value from a replica, false otherwise
      */
@@ -258,7 +267,7 @@ public class Epoch implements Serializable {
 
     /**
      * Retrives the WRITE value from the specified replica
-     * 
+     *
      * @param acceptor The replica ID
      * @return The value from the specified replica
      */
@@ -276,37 +285,46 @@ public class Epoch implements Serializable {
         // ******* EDUARDO END **************//
     }
 
+    public double[] getSumWeightsWrite() {
+        return sumWeightsWrite;
+    }
+
+    public double[] getSumWeightsAccept() {
+        return sumWeightsAccept;
+    }
+
     /**
      * Retrieves all WRITE value from all replicas
-     * 
+     *
      * @return The values from all replicas
      */
-    public byte[][] getWrite() {
+    public synchronized byte[][] getWrite() {
         return this.write;
     }
 
     /**
      * Sets the WRITE value from the specified replica
-     * 
+     *
      * @param acceptor The replica ID
      * @param value    The valuefrom the specified replica
      */
-    public void setWrite(int acceptor, byte[] value) { // TODO: Race condition?
-
+    public synchronized void setWrite(int acceptor, byte[] value) { // TODO: Race condition?
         updateArrays();
-
+// TODO here is (or was)  a NullPointer in line 290
         // ******* EDUARDO BEGIN **************//
         int p = this.controller.getCurrentViewPos(acceptor);
         if (p >= 0 /* && !writeSetted[p] && !isFrozen() */) { // it can only be setted once
             write[p] = value;
             writeSetted[p] = true;
+            if (sumWeightsWrite != null)
+                 sumWeightsWrite[p]  = this.controller.getCurrentView().getWeight(acceptor);
         }
         // ******* EDUARDO END **************//
     }
 
     /**
      * Retrieves the accepted value from the specified replica
-     * 
+     *
      * @param acceptor The replica ID
      * @return The value accepted from the specified replica
      */
@@ -326,7 +344,7 @@ public class Epoch implements Serializable {
 
     /**
      * Retrieves all accepted values from all replicas
-     * 
+     *
      * @return The values accepted from all replicas
      */
     public byte[][] getAccept() {
@@ -335,12 +353,11 @@ public class Epoch implements Serializable {
 
     /**
      * Sets the accepted value from the specified replica
-     * 
+     *
      * @param acceptor The replica ID
      * @param value    The value accepted from the specified replica
      */
-    public void setAccept(int acceptor, byte[] value) { // TODO: race condition?
-
+    public synchronized void setAccept(int acceptor, byte[] value) { // TODO: race condition?
         updateArrays();
 
         // ******* EDUARDO BEGIN **************//
@@ -348,6 +365,7 @@ public class Epoch implements Serializable {
         if (p >= 0 /* && !strongSetted[p] && !isFrozen() */) { // it can only be setted once
             accept[p] = value;
             acceptSetted[p] = true;
+            sumWeightsAccept[p]  = this.controller.getCurrentView().getWeight(acceptor);
         }
         // ******* EDUARDO END **************//
     }
@@ -355,7 +373,7 @@ public class Epoch implements Serializable {
     /**
      * Retrieves the amount of replicas from which this process received a WRITE
      * value
-     * 
+     *
      * @param value The value in question
      * @return Amount of replicas from which this process received the specified
      *         value
@@ -367,7 +385,7 @@ public class Epoch implements Serializable {
     /**
      * Retrieves the amount of replicas from which this process accepted a specified
      * value
-     * 
+     *
      * @param value The value in question
      * @return Amount of replicas from which this process accepted the specified
      *         value
@@ -399,7 +417,7 @@ public class Epoch implements Serializable {
 
     /**
      * Indicates if the consensus instance already sent its WRITE message
-     * 
+     *
      * @return true if WRITE was indicated as sent, false otherwise
      */
     public boolean isWriteSent() {
@@ -408,7 +426,7 @@ public class Epoch implements Serializable {
 
     /**
      * Indicates if the consensus instance already sent its ACCEPT message
-     * 
+     *
      * @return true if ACCEPT was indicated as sent, false otherwise
      */
     public boolean isAcceptSent() {
@@ -417,7 +435,7 @@ public class Epoch implements Serializable {
 
     /**
      * Indicates if the consensus instance already created its ACCEPT message
-     * 
+     *
      * @return true if ACCEPT was indicated as created, false otherwise
      */
     public boolean isAcceptCreated() {
@@ -426,7 +444,7 @@ public class Epoch implements Serializable {
 
     /**
      * Set the speculative ACCEPT message
-     * 
+     *
      * @param acceptMsg The speculative ACCEPT message
      */
     public void setAcceptMsg(ConsensusMessage acceptMsg) {
@@ -440,7 +458,7 @@ public class Epoch implements Serializable {
     /**
      * Fetch the speculative ACCEPT message. This method blocks until such message
      * is set with setAcceptMsg(...);
-     * 
+     *
      * @return The speculative ACCEPT message
      */
     public ConsensusMessage fetchAccept() {
@@ -456,7 +474,7 @@ public class Epoch implements Serializable {
 
     /**
      * Counts how many times 'value' occurs in 'array'
-     * 
+     *
      * @param array Array where to count
      * @param value Value to count
      * @return Ammount of times that 'value' was find in 'array'
@@ -473,7 +491,42 @@ public class Epoch implements Serializable {
         }
         return 0;
     }
+    /**
+     * Retrieves the total weights from which this process received a WRITE value
+     * @param value The value in question
+     * @return total weights from which this process received the specified value
+     */
+    public synchronized double countWriteWeigths(byte[] value) {
+        return countWeigths(writeSetted,sumWeightsWrite, write, value);
+    }
 
+    /**
+     * Retrieves the total weights from which this process accepted a specified value
+     * @param value The value in question
+     * @return total weights from which this process accepted the specified value
+     */
+    public synchronized double countAcceptWeigths(byte[] value) {
+        return countWeigths(acceptSetted,sumWeightsAccept, accept, value);
+    }
+
+    /**
+     * Counts how many times 'value' occurs in 'array'
+     * @param array Array where to count
+     * @param value Value to count
+     * @return Ammount of times that 'value' was find in 'array'
+     */
+    private synchronized double countWeigths(boolean[] arraySetted, double[] arrayWeights, byte[][] array, byte[] value) {
+        if (value != null) {
+            double counter = 0.0;
+            for (int i = 0; i < array.length; i++) {
+                if (arrayWeights != null && arraySetted != null && arraySetted[i] && Arrays.equals(value, array[i])) {
+                    counter += arrayWeights[i];
+                }
+            }
+            return counter;
+        }
+        return 0;
+    }
     /*************************** DEBUG METHODS *******************************/
     /**
      * Print epoch information.
@@ -514,7 +567,7 @@ public class Epoch implements Serializable {
     /**
      * Clear all epoch info.
      */
-    public void clear() {
+    public synchronized void clear() {
 
         int n = controller.getCurrentViewN();
 
@@ -532,6 +585,8 @@ public class Epoch implements Serializable {
 
         this.proof = new HashSet<ConsensusMessage>();
 
+        sumWeightsWrite = new double[n];
+        sumWeightsAccept = new double[n];
         this.writeSent = false;
         this.acceptSent = false;
         this.acceptCreated = false;

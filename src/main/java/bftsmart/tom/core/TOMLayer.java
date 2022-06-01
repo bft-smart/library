@@ -25,6 +25,7 @@ import bftsmart.consensus.Decision;
 import bftsmart.consensus.Epoch;
 import bftsmart.consensus.messages.ConsensusMessage;
 import bftsmart.consensus.roles.Acceptor;
+import bftsmart.aware.messages.MonitoringMessageFactory;
 import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.statemanagement.StateManager;
 import bftsmart.tom.ServiceReplica;
@@ -43,6 +44,7 @@ import org.slf4j.LoggerFactory;
 import java.io.Serializable;
 import java.security.*;
 import java.util.HashMap;
+import java.util.NoSuchElementException;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.CountDownLatch;
@@ -114,7 +116,16 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
     public ServerViewController controller;
 
-    private final Synchronizer syncher;
+    private RequestVerifier verifier;
+
+    private Synchronizer syncher;
+
+
+    /** AWARE **/
+    public MonitoringMessageFactory monitoringMsgFactory;
+    //private ReentrantLock dummyProposeLock = new ReentrantLock();
+    //private Condition canDummyPropose = dummyProposeLock.newCondition();
+
 
     /**
      * Creates a new instance of TOMulticastLayer
@@ -182,11 +193,10 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         stateManager.init(this, dt);
         this.dt.start();
 
-        RequestVerifier verifier1 = (verifier != null) ? verifier : ((request) -> true); // By default, never validate
+        this.verifier = (verifier != null) ? verifier : ((request) -> true); // By default, never validate
                                                                                          // requests
-
         // I have a verifier, now create clients manager
-        this.clientsManager = new ClientsManager(this.controller, requestsTimer, verifier1);
+        this.clientsManager = new ClientsManager(this.controller, requestsTimer, this.verifier);
 
         this.syncher = new Synchronizer(this); // create synchronizer
 
@@ -209,6 +219,9 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
             }, 0, controller.getStaticConf().getBatchTimeout());
         }
+
+        // AWARE
+        monitoringMsgFactory = new MonitoringMessageFactory(this.controller.getStaticConf().getProcessId());
     }
 
     /**
@@ -335,7 +348,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         // Forensics, used when receiving audit message from Clients
         if (msg.getReqType() == TOMMessageType.AUDIT) {
             acceptor.auditReceived(msg);
-            return;   
+            return;
         }
 
         // check if this request is valid and add it to the client' pending requests
@@ -401,6 +414,8 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                 controller.getStaticConf().getUseSignatures() == 1);
     }
 
+
+
     /**
      * This is the main code for this thread. It basically waits until this
      * replica becomes the leader, and when so, proposes a value to the other
@@ -411,18 +426,22 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         logger.debug("Running."); // TODO: can't this be outside of the loop?
         while (doWork) {
 
-            // blocks until this replica learns to be the leader for the current epoch of
-            // the current consensus
-            leaderLock.lock();
-            logger.debug("Next leader for CID=" + (getLastExec() + 1) + ": " + execManager.getCurrentLeader());
+            if (!this.controller.getStaticConf().isUseDummyPropose()) {
 
-            // ******* EDUARDO BEGIN **************//
-            if (execManager.getCurrentLeader() != this.controller.getStaticConf().getProcessId()) {
-                iAmLeader.awaitUninterruptibly();
-                // waitForPaxosToFinish();
+
+                // blocks until this replica learns to be the leader for the current epoch of
+            // the current consensus
+                leaderLock.lock();
+                logger.debug("Next leader for CID=" + (getLastExec() + 1) + ": " + execManager.getCurrentLeader());
+
+                // ******* EDUARDO BEGIN **************//
+                if (execManager.getCurrentLeader() != this.controller.getStaticConf().getProcessId()) {
+                    iAmLeader.awaitUninterruptibly();
+                    // waitForPaxosToFinish();
+                }
+                // ******* EDUARDO END **************//
+                leaderLock.unlock();
             }
-            // ******* EDUARDO END **************//
-            leaderLock.unlock();
 
             if (!doWork)
                 break;
@@ -445,8 +464,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             messagesLock.lock();
             if (!clientsManager.havePendingRequests() ||
                     (controller.getStaticConf().getBatchTimeout() > -1
-                            && clientsManager.countPendingRequests() < controller.getStaticConf().getMaxBatchSize())) {
-
+                    		&& clientsManager.countPendingRequests() < controller.getStaticConf().getMaxBatchSize())) {
                 logger.debug("Waiting for enough requests");
                 haveMessages.awaitUninterruptibly();
                 logger.debug("Got enough requests");
@@ -458,9 +476,18 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
             logger.debug("There are requests to be ordered. I will propose.");
 
-            if ((execManager.getCurrentLeader() == this.controller.getStaticConf().getProcessId()) && // I'm the leader
-                    (clientsManager.havePendingRequests()) && // there are messages to be ordered
-                    (getInExec() == -1)) { // there is no consensus in execution
+
+            /** AWARE TODO **/
+            if (shouldDoDummyPropose()) {
+                logger.debug("I am going to DUMMY propose");
+                dummyPropose();
+                continue;
+            }
+            /** End AWARE **/
+
+            if ((execManager.getCurrentLeader() == this.controller.getStaticConf().getProcessId()) && //I'm the leader
+                    (clientsManager.havePendingRequests()) && //there are messages to be ordered
+                    (getInExec() == -1)) { //there is no consensus in execution
                 // Sets the current consensus
                 int execId = getLastExec() + 1;
                 setInExec(execId);
@@ -487,6 +514,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                     continue;
 
                 }
+                logger.debug("I am the leader and start consensus");
                 execManager.getProposer().startConsensus(execId, createPropose(dec));
             }
         }
@@ -657,4 +685,48 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             this.communication.shutdown();
 
     }
+
+    /**
+     * AWARE
+     */
+    private boolean shouldDoDummyPropose() {
+
+        int c = getLastExec();
+        double w = this.controller.getStaticConf().getMonitoringOverhead();
+        int id = this.controller.getStaticConf().getProcessId();
+        double n = (double) this.controller.getCurrentViewN();
+
+        boolean res = this.controller.getStaticConf().isUseDynamicWeights() && // Config says Dummy-Propose is enabled
+                (execManager.getCurrentLeader() != this.controller.getStaticConf().getProcessId()) && // I'm NOT the leader
+                (clientsManager.havePendingRequests()) && //there are messages to be ordered
+                (getInExec() == -1) && // Not currently in some execution
+                (int)((c+id)*w/n) != (int)((c-1+id)*w/n); // It's// my turn to send a dummy propose
+                                                        // Bounded by monitoring overhead param
+
+       // if (res) {
+       //     System.out.println("Monitoring overhead" + controller.getStaticConf().getMonitoringOverhead());
+       //     System.out.println("I will DUMMY PROPOSE for " + getLastExec());
+       // }
+
+
+        return res;
+    }
+
+    /**
+     * AWARE
+     */
+    private void dummyPropose() {
+            // Sets the current consensus
+            int execId = getLastExec() + 1;
+            setInExec(execId);
+            Decision dec = execManager.getConsensus(execId).getDecision();
+            try {
+                byte[] value = createPropose(dec); // Send (possibly large) dummy propose with consensus value
+                logger.debug("I SEND A DUMMY PROPOSE");
+                communication.send(this.controller.getCurrentViewAcceptors(),
+                        monitoringMsgFactory.createDummyPropose(execId, 0, value));
+            } catch (NoSuchElementException ex) {
+                logger.debug("No pending requests atm ?");
+            }
+        }
 }

@@ -420,7 +420,7 @@ public final class ExecutionManager {
                     }
                 }
             }
-            
+
             if(controller.getStaticConf().isBFT()){
             	return ((countWrites > (2*controller.getCurrentViewF())) &&
             			(countAccepts > (2*controller.getCurrentViewF())));
@@ -502,5 +502,9 @@ public final class ExecutionManager {
     @Override
     public String toString() {
         return stoppedMsgs.toString();
+    }
+
+    public int getLastExec() {
+        return this.tomLayer != null ? tomLayer.getLastExec() : -1;
     }
 }

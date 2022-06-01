@@ -171,6 +171,18 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 
 			mainChannel = f.channel();
 
+            /** AWARE **/
+            if (controller.getStaticConf().isUseWeights()) {
+                logger.info("Using WHEAT Extensions: ");
+                logger.info("Use dynamic weight adjustments (AWARE): " + controller.getStaticConf().isUseDynamicWeights());
+                logger.info("Use Leader selection optimization: " + controller.getStaticConf().isUseLeaderSelection());
+                logger.info("Use WRITE-RESPONSE: " + controller.getStaticConf().isUseWriteResponse());
+                logger.info("Use DUMMY-PROPOSE: " + controller.getStaticConf().isUseDummyPropose());
+                logger.info("Use PROPOSE-RESPONSE: " + controller.getStaticConf().isUseProposeResponse());
+                logger.info("Monitoring overhead: " + controller.getStaticConf().getMonitoringOverhead());
+                logger.info("Re-Calculate after x consensus: " + controller.getStaticConf().getCalculationInterval());
+            }
+
 		} catch (InterruptedException | UnknownHostException ex) {
 			logger.error("Failed to create Netty communication system", ex);
 		}

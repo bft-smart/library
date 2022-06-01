@@ -146,7 +146,7 @@ public class ServiceProxy extends TOMSender {
 	/**
 	 * Get the amount of time (in seconds) that this proxy will wait for
 	 * servers unordered hashed replies before returning null.
-	 * 
+	 *
 	 * @return the timeout value in seconds
 	 */
 	public int getInvokeUnorderedHashedTimeout() {
@@ -166,7 +166,7 @@ public class ServiceProxy extends TOMSender {
 	/**
 	 * Set the amount of time (in seconds) that this proxy will wait for
 	 * servers unordered hashed replies before returning null.
-	 * 
+	 *
 	 * @param timeout the timeout value to set
 	 */
 	public void setInvokeUnorderedHashedTimeout(int timeout) {
@@ -178,7 +178,7 @@ public class ServiceProxy extends TOMSender {
 	 * reply.
 	 * If the servers take more than invokeTimeout seconds the method returns null.
 	 * This method is thread-safe.
-	 * 
+	 *
 	 * @param request to be sent
 	 * @return The reply from the replicas related to request
 	 */
@@ -187,11 +187,20 @@ public class ServiceProxy extends TOMSender {
 	}
 
 	/**
+	 * AWARE
+	 * @param monitoringInformation
+	 * @return
+	 */
+	public byte[] invokeOrderedMonitoring(byte[] monitoringInformation) {
+		return invoke(monitoringInformation, TOMMessageType.MONITORING);
+	}
+
+        /**
 	 * This method sends an unordered request to the replicas, and returns the
 	 * related reply.
 	 * If the servers take more than invokeTimeout seconds the method returns null.
 	 * This method is thread-safe.
-	 * 
+	 *
 	 * @param request to be sent
 	 * @return The reply from the replicas related to request
 	 */
@@ -207,7 +216,7 @@ public class ServiceProxy extends TOMSender {
 	 * only send a hash of that response.
 	 * If the servers take more than invokeTimeout seconds the method returns null.
 	 * This method is thread-safe.
-	 * 
+	 *
 	 * @param request to be sent
 	 * @return The reply from the replicas related to request
 	 */
@@ -224,7 +233,7 @@ public class ServiceProxy extends TOMSender {
 	 * @param reqType ORDERED_REQUEST/UNORDERED_REQUEST/UNORDERED_HASHED_REQUEST for
 	 *                normal requests, and RECONFIG for
 	 *                reconfiguration requests.
-	 * 
+	 *
 	 * @return The reply from the replicas related to request
 	 */
 	public byte[] invoke(byte[] request, TOMMessageType reqType) {
@@ -247,7 +256,9 @@ public class ServiceProxy extends TOMSender {
 			replyServer = -1;
 			hashResponseController = null;
 
-			if (requestType == TOMMessageType.UNORDERED_HASHED_REQUEST) {
+			boolean isMonitoringMessage = reqType == TOMMessageType.MONITORING; // AWARE
+
+		if(requestType == TOMMessageType.UNORDERED_HASHED_REQUEST){
 
 				replyServer = getRandomlyServerId();
 				logger.debug("[" + this.getClass().getName() + "] replyServerId(" + replyServer + ") "
@@ -262,7 +273,12 @@ public class ServiceProxy extends TOMSender {
 
 				TOMulticast(sm);
 			} else {
+				if (isMonitoringMessage){
+					TOMulticast(request, reqId, operationId, TOMMessageType.ORDERED_REQUEST, true);
+					return null;  // just disseminate data, do not expect response
+			} else {
 				TOMulticast(request, reqId, operationId, reqType);
+			}
 			}
 			logger.debug("Sending request (" + reqType + ") with reqId=" + reqId);
 			logger.debug("Expected number of matching replies: " + replyQuorum);
@@ -366,7 +382,7 @@ public class ServiceProxy extends TOMSender {
 
 	// ******* EDUARDO BEGIN **************//
 	protected void reconfigureTo(View v) {
-		logger.debug("Installing a most up-to-date view with id=" + v.getId());
+		logger.info("Installing a most up-to-date view with id=" + v.getId());
 		getViewManager().reconfigureTo(v);
 		getViewManager().getViewStore().storeView(v);
 		replies = new TOMMessage[getViewManager().getCurrentViewN()];
@@ -402,6 +418,7 @@ public class ServiceProxy extends TOMSender {
 
 			int sameContent = 1;
 
+			double overlay = getViewManager().getCurrentView().getWeight(reply.getSender());
 			if (reply.getSequence() == reqId && reply.getReqType() == requestType) {
 
 				logger.debug("Receiving reply from " + reply.getSender()
@@ -445,22 +462,31 @@ public class ServiceProxy extends TOMSender {
 							reqId = -1;
 							this.sm.release();
 						}
-					} else {
+					} /**
+					 * END Forensics
+					 */
+
+					else {
 
 						// Compare the reply just received, to the others
 
 						for (int i = 0; i < replies.length; i++) {
 
-							if ((i != pos || getViewManager().getCurrentViewN() == 1) && replies[i] != null
-									&& (comparator.compare(replies[i].getContent(), reply.getContent()) == 0)) {
-								sameContent++;
-								if (sameContent >= replyQuorum) {
-									response = extractor.extractResponse(replies, sameContent, pos);
-									reqId = -1;
-									this.sm.release(); // resumes the thread that is executing the "invoke" method
-									canReceiveLock.unlock();
-									return;
-								}
+						if ((i != pos || getViewManager().getCurrentViewN() == 1 || replyQuorum == 1) && replies[i] != null
+								&& (comparator.compare(replies[i].getContent(), reply.getContent()) == 0)) {
+							sameContent++;
+                            overlay += getViewManager().getCurrentView().getWeight(replies[i].getSender());
+
+                            // code for classic quorums
+                            //if (sameContent >= replyQuorum) {
+
+                            //code for small quorum size
+                            if (overlay >= replyQuorum) {
+								response = extractor.extractResponse(replies, sameContent, pos);
+								reqId = -1;
+								this.sm.release(); // resumes the thread that is executing the "invoke" method
+								canReceiveLock.unlock();
+								return;}
 							}
 						}
 					}
@@ -498,16 +524,31 @@ public class ServiceProxy extends TOMSender {
 		}
 	}
 
+
 	/**
 	 * Retrieves the required quorum size for the amount of replies
-	 * 
+	 *
 	 * @return The quorum size for the amount of replies
 	 */
 	protected int getReplyQuorum() {
-		if (getViewManager().getStaticConf().isBFT()) {
+		// code for classic quorums
+		/*if (getViewManager().getStaticConf().isBFT()) {
 			return ((getViewManager().getCurrentViewN() + getViewManager().getCurrentViewF()) / 2) + 1;
 		} else {
 			return ((getViewManager().getCurrentViewN()) / 2) + 1;
+		}*/
+
+		// code for vote schemes
+		if (getViewManager().getStaticConf().isBFT()) {
+			return (int) Math.ceil(( (double) getViewManager().getCurrentView().getOverlayN()
+					+ (getViewManager().getCurrentView().getOverlayF() ) + 1) / 2);
+		} else {
+			//code for simple majority (of votes)
+			//return (int) Math.ceil(((getViewManager().getCurrentView().getOverlayN()) + 1) / 2);
+
+			//Code to only wait one reply
+			logger.debug("(ServiceProxy.getReplyQuorum) only one reply will be gathered");
+			return 1;
 		}
 	}
 

@@ -1,4 +1,4 @@
-/*
+/**
 Copyright (c) 2007-2013 Alysson Bessani, Eduardo Alchieri, Paulo Sousa, and the authors indicated in the @author tags
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,7 +15,9 @@ limitations under the License.
 */
 package bftsmart.tom.core;
 
+import bftsmart.aware.decisions.AwareController;
 import bftsmart.consensus.Decision;
+import bftsmart.aware.monitoring.Monitor;
 import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.statemanagement.ApplicationState;
 import bftsmart.tom.MessageContext;
@@ -241,18 +243,21 @@ public final class DeliveryThread extends Thread {
 									  "\n\t\t###################################"
 									+ "\n\t\t    Ready to process operations    "
 									+ "\n\t\t###################################");
-					init = false;
-				}
-			}
+                    init = false;
+					/** AWARE **/
+					if (controller.getStaticConf().isUseDynamicWeights())
+						Monitor.getInstance(controller).startSync();
+					/** End AWARE **/
+                }
+            }
+            try {
+                ArrayList<Decision> decisions = new ArrayList<>();
+                decidedLock.lock();
+                if(decided.isEmpty()) {
+                    notEmptyQueue.await();
+                }
 
-			try {
-				ArrayList<Decision> decisions = new ArrayList<>();
-				decidedLock.lock();
-				if (decided.isEmpty()) {
-					notEmptyQueue.await();
-				}
-
-				logger.debug("Current size of the decided queue: {}", decided.size());
+                logger.debug("Current size of the decided queue: {}", decided.size());
 
 				if (controller.getStaticConf().getSameBatchSize()) {
 					decided.drainTo(decisions, 1);
@@ -284,7 +289,7 @@ public final class DeliveryThread extends Thread {
 						cDecs[count] = cDec;
 
 						// cons.firstMessageProposed contains the performance counters
-						if (requests[count][0].equals(d.firstMessageProposed)) {
+						if (requests[count].length > 0 && requests[count][0].equals(d.firstMessageProposed)) {
 							long time = requests[count][0].timestamp;
 							long seed = requests[count][0].seed;
 							int numOfNonces = requests[count][0].numOfNonces;
@@ -295,6 +300,14 @@ public final class DeliveryThread extends Thread {
 						}
 
 						count++;
+
+						/**
+						 *  AWARE
+						 */
+						Monitor.getInstance(controller).handleMonitoringMessages(d);
+						AwareController.getInstance(controller, tomLayer.execManager).optimize(d.getConsensusId());
+						/**
+						 **/
 					}
 
 					Decision lastDecision = decisions.get(decisions.size() - 1);
@@ -365,7 +378,7 @@ public final class DeliveryThread extends Thread {
 		MessageContext msgCtx = new MessageContext(request.getSender(), request.getViewID(), request.getReqType(),
 				request.getSession(), request.getSequence(), request.getOperationId(), request.getReplyServer(),
 				request.serializedMessageSignature, System.currentTimeMillis(), 0, 0, regency, -1, -1, null, null,
-				false); // Since the request is unordered,
+				false, request.getIsMonitoringMessage()); // Since the request is unordered,
 		// there is no consensus info to pass
 
 		msgCtx.readOnly = true;

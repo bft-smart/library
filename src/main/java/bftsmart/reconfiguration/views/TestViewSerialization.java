@@ -29,10 +29,10 @@ public class TestViewSerialization {
         in[1] = new InetSocketAddress("127.0.0.1",1234);
         in[2] = new InetSocketAddress("127.0.0.1",1234);
         in[3] = new InetSocketAddress("127.0.0.1",1234);
-        View v = new View(10, ids,1,in);
-        
+        View v = new View(10, ids,1,in,true,0);
+
         String path = System.getProperty("user.dir") + System.getProperty("file.separator") + "config";
-        
+
         ViewStorage st = new DefaultViewStorage(path);
         st.storeView(v);
         

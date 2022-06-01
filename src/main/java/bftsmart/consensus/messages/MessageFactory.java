@@ -102,6 +102,18 @@ public class MessageFactory {
     }
 
     /**
+     * Creates a AUDIT message to be sent by this process
+     * 
+     * @param id    Consensus's execution ID
+     * @param value Audit value, should contain cid intervals
+     * @return A consensus message of the AUDIT type, with the specified id, epoch,
+     *         and value
+     */
+    public ConsensusMessage createAudit(int id) {
+        return new ConsensusMessage(AUDIT, id, 0, from, null); // id and epoch should not be important
+    }
+
+    /**
      * Creates a AUDIT message sended by the client
      * 
      * @param id    Consensus's execution ID
@@ -131,5 +143,6 @@ public class MessageFactory {
     public ConsensusMessage createStorage(byte[] value) {
         return new ConsensusMessage(STORAGE, -1, -1, from, value); // id and epoch should not be important
     }
+
 
 }

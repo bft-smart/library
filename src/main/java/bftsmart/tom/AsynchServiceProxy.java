@@ -1,6 +1,8 @@
 package bftsmart.tom;
 
 import bftsmart.communication.client.ReplyListener;
+import bftsmart.correctable.Consistency;
+import bftsmart.correctable.Correctable;
 import bftsmart.reconfiguration.views.View;
 import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.core.messages.TOMMessageType;
@@ -20,14 +22,14 @@ import org.slf4j.LoggerFactory;
  *
  */
 public class AsynchServiceProxy extends ServiceProxy {
-    
+
     private Logger logger = LoggerFactory.getLogger(this.getClass());
 
     private HashMap<Integer, RequestContext> requestsContext;
     private HashMap<Integer, TOMMessage[]> requestsReplies;
     private HashMap<Integer, Integer> requestsAlias;
 
-/**
+    /**
      * Constructor
      *
      * @see bellow
@@ -37,7 +39,7 @@ public class AsynchServiceProxy extends ServiceProxy {
         init();
     }
 
-/**
+    /**
      * Constructor
      *
      * @see bellow
@@ -46,7 +48,7 @@ public class AsynchServiceProxy extends ServiceProxy {
         super(processId, configHome);
         init();
     }
-    
+
     /**
      * Constructor
      *
@@ -56,21 +58,22 @@ public class AsynchServiceProxy extends ServiceProxy {
         super(processId, configHome, loader);
         init();
     }
-    
+
     /**
      * Constructor
      *
-     * @param processId Process id for this client (should be different from replicas)
-     * @param configHome Configuration directory for BFT-SMART
+     * @param processId       Process id for this client (should be different from
+     *                        replicas)
+     * @param configHome      Configuration directory for BFT-SMART
      * @param replyComparator Used for comparing replies from different servers
      *                        to extract one returned by f+1
-     * @param replyExtractor Used for extracting the response from the matching
-     *                       quorum of replies
-     * @param loader Used to load signature keys from disk
+     * @param replyExtractor  Used for extracting the response from the matching
+     *                        quorum of replies
+     * @param loader          Used to load signature keys from disk
      */
     public AsynchServiceProxy(int processId, String configHome,
             Comparator<byte[]> replyComparator, Extractor replyExtractor, KeyLoader loader) {
-        
+
         super(processId, configHome, replyComparator, replyExtractor, loader);
         init();
     }
@@ -80,12 +83,13 @@ public class AsynchServiceProxy extends ServiceProxy {
         requestsReplies = new HashMap<>();
         requestsAlias = new HashMap<>();
     }
-    
+
     private View newView(byte[] bytes) {
-        
+
         Object o = TOMUtil.getObject(bytes);
         return (o != null && o instanceof View ? (View) o : null);
     }
+
     /**
      * @see bellow
      */
@@ -96,10 +100,10 @@ public class AsynchServiceProxy extends ServiceProxy {
     /**
      * This method asynchronously sends a request to the replicas.
      * 
-     * @param request Request to be sent
-     * @param targets The IDs for the replicas to which to send the request
+     * @param request       Request to be sent
+     * @param targets       The IDs for the replicas to which to send the request
      * @param replyListener Callback object that handles reception of replies
-     * @param reqType Request type
+     * @param reqType       Request type
      * 
      * @return A unique identification for the request
      */
@@ -109,7 +113,8 @@ public class AsynchServiceProxy extends ServiceProxy {
 
     /**
      * Purges all information associated to the request.
-     * This should always be invoked once enough replies are received and processed by the ReplyListener callback.
+     * This should always be invoked once enough replies are received and processed
+     * by the ReplyListener callback.
      * 
      * @param requestId A unique identification for a previously sent request
      */
@@ -135,7 +140,8 @@ public class AsynchServiceProxy extends ServiceProxy {
      */
     @Override
     public void replyReceived(TOMMessage reply) {
-        logger.debug("Asynchronously received reply from " + reply.getSender() + " with sequence number " + reply.getSequence() + " and operation ID " + reply.getOperationId());
+        logger.debug("Asynchronously received reply from " + reply.getSender() + " with sequence number "
+                + reply.getSequence() + " and operation ID " + reply.getOperationId());
 
         try {
             canReceiveLock.lock();
@@ -149,20 +155,24 @@ public class AsynchServiceProxy extends ServiceProxy {
 
             if (contains(requestContext.getTargets(), reply.getSender())
                     && (reply.getSequence() == requestContext.getReqId())
-                    //&& (reply.getOperationId() == requestContext.getOperationId())
+                    // && (reply.getOperationId() == requestContext.getOperationId())
                     && (reply.getReqType().compareTo(requestContext.getRequestType())) == 0) {
 
-                logger.debug("Deliverying message from " + reply.getSender() + " with sequence number " + reply.getSequence() + " and operation ID " + reply.getOperationId() + " to the listener");
+                logger.debug("Deliverying message from " + reply.getSender() + " with sequence number "
+                        + reply.getSequence() + " and operation ID " + reply.getOperationId() + " to the listener");
 
                 ReplyListener replyListener = requestContext.getReplyListener();
-                
+
                 View v = null;
 
                 if (replyListener != null) {
 
-                    //if (reply.getViewID() > getViewManager().getCurrentViewId()) { // Deal with a system reconfiguration
-                    if ((v = newView(reply.getContent())) != null && !requestsAlias.containsKey(reply.getOperationId())) { // Deal with a system reconfiguration
-    
+                    // if (reply.getViewID() > getViewManager().getCurrentViewId()) { // Deal with a
+                    // system reconfiguration
+                    if ((v = newView(reply.getContent())) != null
+                            && !requestsAlias.containsKey(reply.getOperationId())) { // Deal with a system
+                                                                                     // reconfiguration
+
                         TOMMessage[] replies = requestsReplies.get(reply.getOperationId());
 
                         int sameContent = 1;
@@ -175,11 +185,12 @@ public class AsynchServiceProxy extends ServiceProxy {
                         for (int i = 0; i < replies.length; i++) {
 
                             if ((replies[i] != null) && (i != pos || getViewManager().getCurrentViewN() == 1)
-                                    && (reply.getReqType() != TOMMessageType.ORDERED_REQUEST || Arrays.equals(replies[i].getContent(), reply.getContent()))) {
+                                    && (reply.getReqType() != TOMMessageType.ORDERED_REQUEST
+                                            || Arrays.equals(replies[i].getContent(), reply.getContent()))) {
                                 sameContent++;
                             }
                         }
-                        
+
                         if (sameContent >= replyQuorum) {
 
                             if (v.getId() > getViewManager().getCurrentViewId()) {
@@ -194,7 +205,8 @@ public class AsynchServiceProxy extends ServiceProxy {
                                 @Override
                                 public void run() {
 
-                                    int id = invokeAsynch(requestContext.getRequest(), requestContext.getTargets(), requestContext.getReplyListener(), TOMMessageType.ORDERED_REQUEST);
+                                    int id = invokeAsynch(requestContext.getRequest(), requestContext.getTargets(),
+                                            requestContext.getReplyListener(), TOMMessageType.ORDERED_REQUEST);
 
                                     requestsAlias.put(reply.getOperationId(), id);
                                 }
@@ -204,16 +216,15 @@ public class AsynchServiceProxy extends ServiceProxy {
                             t.start();
 
                         }
-                        
-                        
+
                     } else if (!requestsAlias.containsKey(reply.getOperationId())) {
-                            
-                            requestContext.getReplyListener().replyReceived(requestContext, reply);
+
+                        requestContext.getReplyListener().replyReceived(requestContext, reply);
                     }
                 }
             }
         } catch (Exception ex) {
-            logger.error("Error processing received request",ex);
+            logger.error("Error processing received request", ex);
         } finally {
             canReceiveLock.unlock();
         }
@@ -233,7 +244,8 @@ public class AsynchServiceProxy extends ServiceProxy {
         try {
             logger.debug("Storing request context for " + requestContext.getOperationId());
             requestsContext.put(requestContext.getOperationId(), requestContext);
-            requestsReplies.put(requestContext.getOperationId(), new TOMMessage[super.getViewManager().getCurrentViewN()]);
+            requestsReplies.put(requestContext.getOperationId(),
+                    new TOMMessage[super.getViewManager().getCurrentViewN()]);
 
             sendMessageToTargets(request, requestContext.getReqId(), requestContext.getOperationId(), targets, reqType);
 
@@ -259,4 +271,100 @@ public class AsynchServiceProxy extends ServiceProxy {
         return false;
     }
 
+    /**
+     * Correctable method
+     */
+    public Correctable invokeCorrectable(byte[] request, Consistency[] levels) {
+        Correctable correctable = new Correctable();
+
+        int targets[] = super.getViewManager().getCurrentViewProcesses();
+        logger.debug("Asynchronously sending request to " + Arrays.toString(targets));
+
+        RequestContext requestContext = null;
+        TOMMessageType reqType = TOMMessageType.ORDERED_REQUEST;
+
+        canSendLock.lock();
+
+        requestContext = new RequestContext(generateRequestId(reqType), generateOperationId(),
+                reqType, targets, System.currentTimeMillis(), new ReplyListener() {
+
+                    int responces = 0;
+                    double votes = 0.0;
+                    int level_index = 0;
+
+                    @Override
+                    public void reset() {
+                        responces = 0;
+                        votes = 0;
+                        level_index = 0;
+                    }
+
+                    @Override
+                    public void replyReceived(RequestContext context, TOMMessage reply) {
+                        responces++;
+                        int sender = reply.getSender();
+                        votes += getViewManager().getCurrentView().getWeight(sender);
+
+                        View view = getViewManager().getCurrentView();
+                        int delta = view.getDelta();
+                        int t = view.getF();
+                        double Vmax = 1.0 + (double) delta / (double) t;
+                        // System.out.println("Vmax = " + Vmax);
+                        int N = view.getN();
+                        int T = (N - 1) / 3;
+
+                        double q = calculateConsistencyQ(levels[level_index], (double) t, Vmax);
+
+                        if (votes >= q) {
+                            if (levels[level_index].equals(Consistency.FINAL)) {
+                                int needed_responces = (int) Math.ceil((N + 2 * T - t + 1) / 2.0);
+                                if (votes >= q && responces > needed_responces) { // received weights votes and confirmations
+                                    System.out.println("Received enouch replies and confirmations, executing Update");
+                                    correctable.update(context, reply);
+                                    level_index++;
+                                }
+                            } else {
+                                System.out.println("Received enouch replies, executing Update");
+                                correctable.update(context, reply);
+                                level_index++;
+                            }
+                        }
+                        if (level_index >= levels.length) { // close after last level of consistency (can be lower than FINAL)
+                            cleanAsynchRequest(context.getOperationId());
+                            correctable.close(context, reply);
+                        }
+                    }
+                }, request);
+
+        try {
+            logger.debug("Storing request context for " + requestContext.getOperationId());
+            requestsContext.put(requestContext.getOperationId(), requestContext);
+            requestsReplies.put(requestContext.getOperationId(),
+                    new TOMMessage[super.getViewManager().getCurrentViewN()]);
+
+            sendMessageToTargets(request, requestContext.getReqId(), requestContext.getOperationId(), targets, reqType);
+
+        } finally {
+            canSendLock.unlock();
+        }
+        return correctable;
+    }
+
+    private double calculateConsistencyQ(Consistency level, double t, double Vmax) {
+        if (level.equals(Consistency.NONE)) {
+            return 1.0;
+        }
+        if (level.equals(Consistency.WEAK)) {
+            return t * Vmax + 1.0;
+
+        } else if (level.equals(Consistency.LINE)) {
+            return 2.0 * t * Vmax + 1.0;
+
+        } else if (level.equals(Consistency.FINAL)) {
+            // need further confirmations more than (N+2T-(t+1)+1)/2 responces
+            return 2.0 * t * Vmax + 1.0;
+        }
+        System.out.println("Consistency problem, could not calculate Quorum votes");
+        return 0.0; // should never reach here
+    }
 }

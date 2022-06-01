@@ -25,6 +25,8 @@ import bftsmart.communication.client.CommunicationSystemServerSideFactory;
 import bftsmart.communication.client.RequestReceiver;
 import bftsmart.communication.server.ServersCommunicationLayer;
 import bftsmart.consensus.roles.Acceptor;
+import bftsmart.aware.monitoring.MessageLatencyMonitor;
+import bftsmart.aware.monitoring.Monitor;
 import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.tom.ServiceReplica;
 import bftsmart.tom.core.TOMLayer;
@@ -45,10 +47,14 @@ public class ServerCommunicationSystem extends Thread {
     public final long MESSAGE_WAIT_TIME = 100;
     private LinkedBlockingQueue<SystemMessage> inQueue = null;//new LinkedBlockingQueue<SystemMessage>(IN_QUEUE_SIZE);
     protected MessageHandler messageHandler;
-    
+
     private ServersCommunicationLayer serversConn;
     private CommunicationSystemServerSide clientsConn;
     private ServerViewController controller;
+
+    /** AWARE **/
+    public MessageLatencyMonitor writeLatencyMonitor = null;
+    public MessageLatencyMonitor proposeLatencyMonitor = null;
 
     /**
      * Creates a new instance of ServerCommunicationSystem
@@ -63,6 +69,16 @@ public class ServerCommunicationSystem extends Thread {
         inQueue = new LinkedBlockingQueue<SystemMessage>(controller.getStaticConf().getInQueueSize());
 
         serversConn = new ServersCommunicationLayer(controller, inQueue, replica);
+
+        /** AWARE **/
+        if (controller.getStaticConf().isUseDynamicWeights())
+            writeLatencyMonitor = Monitor.getInstance(controller).getWriteLatencyMonitor();
+
+        /** AWARE **/
+        if (controller.getStaticConf().isUseDynamicWeights() && controller.getStaticConf().isUseDummyPropose())
+            proposeLatencyMonitor = Monitor.getInstance(controller).getProposeLatencyMonitor();
+
+
 
         //******* EDUARDO BEGIN **************//
             clientsConn = CommunicationSystemServerSideFactory.getCommunicationSystemServerSide(controller);
@@ -167,7 +183,7 @@ public class ServerCommunicationSystem extends Thread {
         clientsConn.shutdown();
         serversConn.shutdown();
     }
-    
+
     public SecretKey getSecretKey(int id) {
 		return serversConn.getSecretKey(id);
 	}

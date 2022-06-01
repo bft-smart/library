@@ -15,10 +15,7 @@ limitations under the License.
 */
 package bftsmart.communication;
 
-import java.io.Externalizable;
-import java.io.IOException;
-import java.io.ObjectInput;
-import java.io.ObjectOutput;
+import java.io.*;
 
 /**
  * This is the super-class for all other kinds of messages created by JBP
@@ -26,6 +23,9 @@ import java.io.ObjectOutput;
  */
 
 public abstract class SystemMessage implements Externalizable {
+
+    private static final long serialVersionUID = 7829136121241571165L;
+
 
     protected int sender; // ID of the process which sent the message
     public transient boolean authenticated; // set to TRUE if the message was received
@@ -63,5 +63,16 @@ public abstract class SystemMessage implements Externalizable {
     @Override
     public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
         sender = in.readInt();
+    }
+
+
+    private void readObject(ObjectInputStream inStream) throws ClassNotFoundException, IOException
+    {
+        sender = inStream.readInt();
+    }
+
+    private void writeObject(ObjectOutputStream outStream) throws IOException
+    {
+       outStream.writeInt(sender);
     }
 }

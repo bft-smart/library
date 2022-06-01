@@ -59,6 +59,8 @@ public class MessageContext implements Serializable {
     public boolean readOnly = false;
     
     private byte[] nonces;
+
+    private boolean isMonitoringMessage;
     
     /**
      * Constructor 
@@ -84,7 +86,7 @@ public class MessageContext implements Serializable {
     public MessageContext(int sender, int viewID, TOMMessageType type,
             int session, int sequence, int operationId, int replyServer, byte[] signature,
             long timestamp, int numOfNonces, long seed, int regency, int leader, int consensusId,
-            Set<ConsensusMessage> proof, TOMMessage firstInBatch, boolean noOp) {
+            Set<ConsensusMessage> proof, TOMMessage firstInBatch, boolean noOp, boolean isMonitoringMessage) {
         
         this.nonces = null;
                
@@ -107,6 +109,7 @@ public class MessageContext implements Serializable {
         this.proof = proof;
         this.firstInBatch = firstInBatch;
         this.noOp = noOp;
+        this.isMonitoringMessage = isMonitoringMessage;
     }
 
     /**
@@ -123,6 +126,14 @@ public class MessageContext implements Serializable {
      */
     public TOMMessageType getType() {
         return type;
+    }
+
+    public boolean isMonitoringMessage() {
+        return isMonitoringMessage;
+    }
+
+    public void setMonitoringMessage(boolean monitoringMessage) {
+        isMonitoringMessage = monitoringMessage;
     }
 
     /**

@@ -822,7 +822,7 @@ public class LCManager {
                 pubKey = SVController.getStaticConf().getPublicKey(consMsg.getSender());
                    
                 byte[] signature = (byte[]) consMsg.getProof();
-                            
+
                 if (Arrays.equals(consMsg.getValue(), hashedValue) &&
                         TOMUtil.verifySignature(pubKey, data, signature) && !alreadyCounted.contains(consMsg.getSender())) {
                     

@@ -21,15 +21,14 @@ import bftsmart.tom.server.defaultservices.CommandsInfo;
 import bftsmart.tom.server.defaultservices.DefaultRecoverable;
 import bftsmart.tom.util.Storage;
 import bftsmart.tom.util.TOMUtil;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.ObjectOutputStream;
-import java.io.RandomAccessFile;
+
+import java.io.*;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.charset.Charset;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
@@ -73,6 +72,9 @@ public final class ThroughputLatencyServer extends DefaultRecoverable{
     private RandomAccessFile randomAccessFile = null;
     private FileChannel channel = null;
 
+    long[] decisionTimes;
+    int decisionCounter = 0;
+
     public ThroughputLatencyServer(int id, int interval, int replySize, int stateSize, boolean context,  int signed, int write) {
 
         this.interval = interval;
@@ -96,6 +98,8 @@ public final class ThroughputLatencyServer extends DefaultRecoverable{
         proposeLatency = new Storage(interval);
         writeLatency = new Storage(interval);
         acceptLatency = new Storage(interval);
+
+        decisionTimes = new long[100000];
         
         batchSize = new Storage(interval);
         
@@ -227,7 +231,7 @@ public final class ThroughputLatencyServer extends DefaultRecoverable{
         iterations++;
 
         if (msgCtx != null && msgCtx.getFirstInBatch() != null) {
-            
+
 
             readOnly = msgCtx.readOnly;
                     
@@ -237,6 +241,7 @@ public final class ThroughputLatencyServer extends DefaultRecoverable{
 
             if (readOnly == false) {
 
+                decisionTimes[decisionCounter] = System.currentTimeMillis();
                 consensusLatency.store(msgCtx.getFirstInBatch().decisionTime - msgCtx.getFirstInBatch().consensusStartTime);
                 long temp = msgCtx.getFirstInBatch().consensusStartTime - msgCtx.getFirstInBatch().receptionTime;
                 preConsLatency.store(temp > 0 ? temp : 0);
@@ -244,7 +249,30 @@ public final class ThroughputLatencyServer extends DefaultRecoverable{
                 proposeLatency.store(msgCtx.getFirstInBatch().writeSentTime - msgCtx.getFirstInBatch().consensusStartTime);
                 writeLatency.store(msgCtx.getFirstInBatch().acceptSentTime - msgCtx.getFirstInBatch().writeSentTime);
                 acceptLatency.store(msgCtx.getFirstInBatch().decisionTime - msgCtx.getFirstInBatch().acceptSentTime);
-                
+
+                /*
+                String line = "\n";
+                if (decisionCounter == 0) {
+                    line += "Time, Consensus Latency, Configuration \n";
+                }
+
+                line += System.currentTimeMillis() + ", " + (msgCtx.getFirstInBatch().decisionTime - msgCtx.getFirstInBatch().consensusStartTime) + ", " +
+                        replica.getReplicaContext().getSVController().tomLayer.execManager.getCurrentLeader() + "," +
+                        replica.getReplicaContext().getCurrentView().getViewString() + ",";
+
+
+                Writer output;
+                try {
+                    output = new BufferedWriter(new FileWriter("measurement-server" + replica.getId(), true));
+                    output.append(line);
+                    output.close();
+
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+
+                decisionCounter++;
+                */
 
             } else {
             
@@ -273,37 +301,71 @@ public final class ThroughputLatencyServer extends DefaultRecoverable{
         }
         
         float tp = -1;
+
+
         if(iterations % interval == 0) {
             if (context) System.out.println("--- (Context)  iterations: "+ iterations + " // regency: " + msgCtx.getRegency() + " // consensus: " + msgCtx.getConsensusId() + " ---");
-            
+
+            String line = "" + replica.getReplicaContext().getCurrentView().getN() + ", " +
+                    replica.getReplicaContext().getCurrentView().getF() + ", " +
+                    replica.getReplicaContext().getSVController().tomLayer.execManager.getCurrentLeader() + "," +
+                    replica.getReplicaContext().getCurrentView().getViewString() + ",";
             System.out.println("--- Measurements after "+ iterations+" ops ("+interval+" samples) ---");
             
             tp = (float)(interval*1000/(float)(System.currentTimeMillis()-throughputMeasurementStartTime));
             
             if (tp > maxTp) maxTp = tp;
             
-            System.out.println("Throughput = " + tp +" operations/sec (Maximum observed: " + maxTp + " ops/sec)");            
-            
+            System.out.println("Throughput = " + tp +" operations/sec (Maximum observed: " + maxTp + " ops/sec)");
+            line += tp + ", ";
+            line += maxTp + ", ";
             System.out.println("Total latency = " + totalLatency.getAverage(false) / 1000 + " (+/- "+ (long)totalLatency.getDP(false) / 1000 +") us ");
+            line += totalLatency.getAverage(false) / 1000 + ",";
+            line += (long)totalLatency.getDP(false) / 1000 + ",";
             totalLatency.reset();
             System.out.println("Consensus latency = " + consensusLatency.getAverage(false) / 1000 + " (+/- "+ (long)consensusLatency.getDP(false) / 1000 +") us ");
+            line +=  consensusLatency.getAverage(false) / 1000 + ",";
+            line += (long)consensusLatency.getDP(false) / 1000 + ",";
             consensusLatency.reset();
             System.out.println("Pre-consensus latency = " + preConsLatency.getAverage(false) / 1000 + " (+/- "+ (long)preConsLatency.getDP(false) / 1000 +") us ");
+            line +=  preConsLatency.getAverage(false) / 1000 + ",";
+            line +=  (long)preConsLatency.getDP(false) / 1000 + ",";
             preConsLatency.reset();
             System.out.println("Pos-consensus latency = " + posConsLatency.getAverage(false) / 1000 + " (+/- "+ (long)posConsLatency.getDP(false) / 1000 +") us ");
+            line += posConsLatency.getAverage(false) / 1000 + ",";
+            line += (long)posConsLatency.getDP(false) / 1000 + ",";
             posConsLatency.reset();
             System.out.println("Propose latency = " + proposeLatency.getAverage(false) / 1000 + " (+/- "+ (long)proposeLatency.getDP(false) / 1000 +") us ");
+            line += proposeLatency.getAverage(false) / 1000 + "," + (long)proposeLatency.getDP(false) / 1000 + ",";
             proposeLatency.reset();
             System.out.println("Write latency = " + writeLatency.getAverage(false) / 1000 + " (+/- "+ (long)writeLatency.getDP(false) / 1000 +") us ");
+            line += writeLatency.getAverage(false) / 1000 + "," + (long)writeLatency.getDP(false) / 1000 + ",";
             writeLatency.reset();
             System.out.println("Accept latency = " + acceptLatency.getAverage(false) / 1000 + " (+/- "+ (long)acceptLatency.getDP(false) / 1000 +") us ");
+            line += acceptLatency.getAverage(false) / 1000 + "," + (long)acceptLatency.getDP(false) / 1000 + ",";
             acceptLatency.reset();
             
             System.out.println("Batch average size = " + batchSize.getAverage(false) + " (+/- "+ (long)batchSize.getDP(false) +") requests");
             batchSize.reset();
             
             throughputMeasurementStartTime = System.currentTimeMillis();
+
+
+            line += "\n";
+            Writer output;
+            try {
+                output = new BufferedWriter(new FileWriter("measurement-server" + replica.getId(), true));
+                output.append(line);
+                output.close();
+
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+
+
         }
+
 
         return reply;
     }

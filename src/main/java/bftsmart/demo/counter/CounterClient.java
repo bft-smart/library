@@ -50,14 +50,18 @@ public class CounterClient {
                 ByteArrayOutputStream out = new ByteArrayOutputStream(4);
                 new DataOutputStream(out).writeInt(inc);
 
-                System.out.print("Invocation " + i);
+                if (i % 100 == 0)
+                    System.out.print("Invocation " + i);
+
                 byte[] reply = (inc == 0)?
                         counterProxy.invokeUnordered(out.toByteArray()):
                 	counterProxy.invokeOrdered(out.toByteArray()); //magic happens here
                 
                 if(reply != null) {
                     int newValue = new DataInputStream(new ByteArrayInputStream(reply)).readInt();
-                    System.out.println(", returned value: " + newValue);
+
+                    if (newValue% 100 == 0)
+                     System.out.println(", returned value: " + newValue);
                 } else {
                     System.out.println(", ERROR! Exiting.");
                     break;

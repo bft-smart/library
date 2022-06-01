@@ -16,6 +16,9 @@ limitations under the License.
 package bftsmart.tom.util;
 
 
+import java.math.BigDecimal;
+import java.math.BigInteger;
+
 public class Storage {
     
     
@@ -92,6 +95,7 @@ public class Storage {
     }
     
     private double computeDP(long[] values, boolean percent){
+
         if(values.length <= 1){
             return 0;
         }
@@ -100,18 +104,32 @@ public class Storage {
         if(percent){
             limit = values.length/10;
         }
-        long num = 0;
+        int num = 0;
         double med = computeAverage(values,percent);
-        long quad = 0;
-        
-        for(int i = limit; i < values.length - limit;i++){
-            num++;
-            quad = quad + values[i]*values[i]; //Math.pow(values[i],2);
+        BigInteger quad = new BigInteger("0");
+
+        /**
+         * In wide area network the square of a latency (in nanoseconds) causes an overflow because the numeric range
+         * of long is not sufficient. Use big Integer instead
+         */
+        BigInteger[] largeValues = new BigInteger[values.length];
+        for (int i = 0; i< values.length; i++) {
+            largeValues[i] = BigInteger.valueOf(values[i]);
         }
-        double var = (quad - (num*(med*med)))/(num-1);
+
+
+        for (int i = limit; i < values.length - limit;i++){
+            num++;
+            quad = quad.add(largeValues[i].multiply(largeValues[i])); //Math.pow(values[i],2);
+        }
+
+        double toSubtract = num*(med*med);
+        BigInteger toSub =  BigDecimal.valueOf(toSubtract).toBigInteger();
+        BigInteger var = (quad.subtract(toSub)).divide(BigInteger.valueOf(num-1));
+        //double var = (quad - (num*(med*med)))/(num-1);
         ////br.ufsc.das.util.Logger.println("mim: "+values[limit]);
         ////br.ufsc.das.util.Logger.println("max: "+values[values.length-limit-1]);
-        return Math.sqrt(var);
+        return Math.sqrt(var.doubleValue());
     }
     
     public long getPercentile(double percentile) {

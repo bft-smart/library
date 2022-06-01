@@ -126,6 +126,20 @@ public abstract class TOMSender implements ReplyReceiver, Closeable, AutoCloseab
 						reqType));
 	}
 
+	/**
+	 * AWARE
+	 * @param m
+	 * @param reqId
+	 * @param operationId
+	 * @param reqType
+	 * @param isMonitoringMessage
+	 */
+	public void TOMulticast(byte[] m, int reqId, int operationId, TOMMessageType reqType, boolean isMonitoringMessage) {
+		TOMMessage message = new TOMMessage(me, session, reqId, operationId, m, viewController.getCurrentViewId(), reqType);
+		message.setIsMonitoringMessage(isMonitoringMessage);
+		this.TOMulticast(message);
+	}
+
 
 	public void sendMessageToTargets(byte[] m, int reqId, int operationId, int[] targets, TOMMessageType type) {
 		if(this.getViewManager().getStaticConf().isTheTTP()) {

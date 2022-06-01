@@ -22,6 +22,8 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
 import bftsmart.communication.ServerCommunicationSystem;
+import bftsmart.aware.decisions.AwareController;
+import bftsmart.aware.monitoring.Monitor;
 import bftsmart.tom.core.ExecutionManager;
 import bftsmart.consensus.messages.MessageFactory;
 import bftsmart.consensus.roles.Acceptor;
@@ -291,90 +293,81 @@ public class ServiceReplica {
 
         for (TOMMessage[] requestsFromConsensus : requests) {
 
+
+            if (requestsFromConsensus.length == 0) continue;
+
             TOMMessage firstRequest = requestsFromConsensus[0];
             int requestCount = 0;
             noop = true;
             for (TOMMessage request : requestsFromConsensus) {
 
+                /** AWARE: do not deliver monitoring messages to the application
+                 * (possible: consensus finished but no commands delived to application) **/
+                if (request.getIsMonitoringMessage()) continue;
+                 /** END AWARE **/
+
                 logger.debug("Processing TOMMessage from client " + request.getSender() + " with sequence number "
-                        + request.getSequence() + " for session " + request.getSession() + " decided in consensus "
-                        + consId[consensusCount]);
+                        + request.getSequence() + " for session " + request.getSession() + " decided in consensus " + consId[consensusCount]);
 
                 if (request.getViewID() == SVController.getCurrentViewId()) {
 
                     if (null == request.getReqType()) {
                         throw new RuntimeException("Should never reach here!");
-                    } else
-                        switch (request.getReqType()) {
-                            case ORDERED_REQUEST:
-                                noop = false;
-                                numRequests++;
-                                MessageContext msgCtx = new MessageContext(request.getSender(), request.getViewID(),
-                                        request.getReqType(), request.getSession(), request.getSequence(),
-                                        request.getOperationId(),
-                                        request.getReplyServer(), request.serializedMessageSignature,
-                                        firstRequest.timestamp,
-                                        request.numOfNonces, request.seed, regencies[consensusCount],
-                                        leaders[consensusCount],
-                                        consId[consensusCount], cDecs[consensusCount].getConsMessages(), firstRequest,
-                                        false);
-                                if (requestCount + 1 == requestsFromConsensus.length) {
+                    } else switch (request.getReqType()) {
+                        case ORDERED_REQUEST:
+                            noop = false;
+                            numRequests++;
+                            MessageContext msgCtx = new MessageContext(request.getSender(), request.getViewID(),
+                                    request.getReqType(), request.getSession(), request.getSequence(), request.getOperationId(),
+                                    request.getReplyServer(), request.serializedMessageSignature, firstRequest.timestamp,
+                                    request.numOfNonces, request.seed, regencies[consensusCount], leaders[consensusCount],
+                                    consId[consensusCount], cDecs[consensusCount].getConsMessages(), firstRequest, false,
+                                    request.getIsMonitoringMessage());
+                            if (requestCount + 1 == requestsFromConsensus.length) {
 
-                                    msgCtx.setLastInBatch();
+                                msgCtx.setLastInBatch();
+                            }   request.deliveryTime = System.nanoTime();
+                            if (executor instanceof BatchExecutable) {
+
+                               logger.debug("Batching request from " + request.getSender());
+
+                                // This is used to deliver the content decided by a consensus instance directly to
+                                // a Recoverable object. It is useful to allow the application to create a log and
+                                // store the proof associated with decisions (which are needed by replicas
+                                // that are asking for a state transfer).
+                                if (this.recoverer != null) this.recoverer.Op(msgCtx.getConsensusId(), request.getContent(), msgCtx);
+
+                                // deliver requests and contexts to the executor later
+                                msgCtxts.add(msgCtx);
+                                toBatch.add(request);
+                            } else if (executor instanceof SingleExecutable) {
+
+                                logger.debug("Delivering request from " + request.getSender() + " via SingleExecutable");
+
+                                // This is used to deliver the content decided by a consensus instance directly to
+                                // a Recoverable object. It is useful to allow the application to create a log and
+                                // store the proof associated with decisions (which are needed by replicas
+                                // that are asking for a state transfer).
+                                if (this.recoverer != null) this.recoverer.Op(msgCtx.getConsensusId(), request.getContent(), msgCtx);
+
+                                // This is used to deliver the requests to the application and obtain a reply to deliver
+                                //to the clients. The raw decision is passed to the application in the line above.
+                                TOMMessage response = ((SingleExecutable) executor).executeOrdered(id, SVController.getCurrentViewId(), request.getContent(), msgCtx);
+
+                                if (response != null) {
+
+                                    logger.debug("sending reply to " + response.getSender());
+                                    replier.manageReply(response, msgCtx);
                                 }
-                                request.deliveryTime = System.nanoTime();
-                                if (executor instanceof BatchExecutable) {
-
-                                    logger.debug("Batching request from " + request.getSender());
-
-                                    // This is used to deliver the content decided by a consensus instance directly
-                                    // to
-                                    // a Recoverable object. It is useful to allow the application to create a log
-                                    // and
-                                    // store the proof associated with decisions (which are needed by replicas
-                                    // that are asking for a state transfer).
-                                    if (this.recoverer != null)
-                                        this.recoverer.Op(msgCtx.getConsensusId(), request.getContent(), msgCtx);
-
-                                    // deliver requests and contexts to the executor later
-                                    msgCtxts.add(msgCtx);
-                                    toBatch.add(request);
-                                } else if (executor instanceof SingleExecutable) {
-
-                                    logger.debug(
-                                            "Delivering request from " + request.getSender() + " via SingleExecutable");
-
-                                    // This is used to deliver the content decided by a consensus instance directly
-                                    // to
-                                    // a Recoverable object. It is useful to allow the application to create a log
-                                    // and
-                                    // store the proof associated with decisions (which are needed by replicas
-                                    // that are asking for a state transfer).
-                                    if (this.recoverer != null)
-                                        this.recoverer.Op(msgCtx.getConsensusId(), request.getContent(), msgCtx);
-
-                                    // This is used to deliver the requests to the application and obtain a reply to
-                                    // deliver
-                                    // to the clients. The raw decision is passed to the application in the line
-                                    // above.
-                                    TOMMessage response = ((SingleExecutable) executor).executeOrdered(id,
-                                            SVController.getCurrentViewId(), request.getContent(), msgCtx);
-
-                                    if (response != null) {
-
-                                        logger.debug("sending reply to " + response.getSender());
-                                        replier.manageReply(response, msgCtx);
-                                    }
-                                } else { // this code should never be executed
-                                    throw new UnsupportedOperationException("Non-existent interface");
-                                }
-                                break;
-                            case RECONFIG:
-                                SVController.enqueueUpdate(request);
-                                break;
-                            default: // this code should never be executed
-                                throw new RuntimeException("Should never reach here!");
-                        }
+                            } else { //this code should never be executed
+                                throw new UnsupportedOperationException("Non-existent interface");
+                            }   break;
+                        case RECONFIG:
+                            SVController.enqueueUpdate(request);
+                            break;
+                        default: //this code should never be executed
+                            throw new RuntimeException("Should never reach here!");
+                    }
                 } else if (request.getViewID() < SVController.getCurrentViewId()) {
                     // message sender had an old view, resend the message to
                     // him (but only if it came from consensus an not state transfer)
@@ -389,16 +382,15 @@ public class ServiceReplica {
             }
 
             // This happens when a consensus finishes but there are no requests to deliver
-            // to the application. This can happen if a reconfiguration is issued and is the
-            // only
+            // to the application. This can happen if a reconfiguration is issued and is the only
             // operation contained in the batch. The recoverer must be notified about this,
             // hence the invocation of "noop"
             if (noop && this.recoverer != null) {
 
                 logger.debug("Delivering a no-op to the recoverer");
 
-                logger.info("A consensus instance finished, but there were no commands to deliver to the application.");
-                logger.info("Notifying recoverable about a blank consensus.");
+                logger.debug("A consensus instance finished, but there were no commands to deliver to the application.");
+                logger.debug("Notifying recoverable about a blank consensus.");
 
                 byte[][] batch = null;
                 MessageContext[] msgCtx = null;
@@ -416,7 +408,7 @@ public class ServiceReplica {
                                 m.getReqType(), m.getSession(), m.getSequence(), m.getOperationId(),
                                 m.getReplyServer(), m.serializedMessageSignature, firstRequest.timestamp,
                                 m.numOfNonces, m.seed, regencies[consensusCount], leaders[consensusCount],
-                                consId[consensusCount], cDecs[consensusCount].getConsMessages(), firstRequest, true);
+                                consId[consensusCount], cDecs[consensusCount].getConsMessages(), firstRequest, true, m.getIsMonitoringMessage());
                         msgCtx[line].setLastInBatch();
 
                         line++;
@@ -424,18 +416,13 @@ public class ServiceReplica {
                 }
 
                 this.recoverer.noOp(consId[consensusCount], batch, msgCtx);
-
-                // MessageContext msgCtx = new MessageContext(-1, -1, null, -1, -1, -1, -1,
-                // null, // Since it is a noop, there is no need to pass info about the
-                // client...
-                // -1, 0, 0, regencies[consensusCount], leaders[consensusCount],
-                // consId[consensusCount], cDecs[consensusCount].getConsMessages(), //... but
-                // there is still need to pass info about the consensus
-                // null, true); // there is no command that is the first of the batch, since it
-                // is a noop
-                // msgCtx.setLastInBatch();
-
-                // this.recoverer.noOp(msgCtx.getConsensusId(), msgCtx);
+                
+                //MessageContext msgCtx = new MessageContext(-1, -1, null, -1, -1, -1, -1, null, // Since it is a noop, there is no need to pass info about the client...
+                //        -1, 0, 0, regencies[consensusCount], leaders[consensusCount], consId[consensusCount], cDecs[consensusCount].getConsMessages(), //... but there is still need to pass info about the consensus
+                //        null, true); // there is no command that is the first of the batch, since it is a noop
+                //msgCtx.setLastInBatch();
+                
+                //this.recoverer.noOp(msgCtx.getConsensusId(), msgCtx);
             }
 
             consensusCount++;
@@ -529,6 +516,12 @@ public class ServiceReplica {
         tomLayer.start(); // start the layer execution
         tomStackCreated = true;
 
+        /** AWARE */
+        if (SVController.getStaticConf().isUseDynamicWeights()) {
+            Monitor.getInstance(SVController);
+            AwareController.getInstance(SVController, executionManager);
+        }
+        /** End AWARE */
     }
 
     /**
@@ -553,7 +546,7 @@ public class ServiceReplica {
 
     /**
      * Replica ID
-     * 
+     *
      * @return Replica ID
      */
     public int getId() {
