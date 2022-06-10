@@ -323,12 +323,12 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         if (!doWork) return;
 
         switch(msg.getReqType()) {
-		case RECONFIG:
 		case ASK_STATUS:
 		case REPLY:
 		case STATUS_REPLY:
 			// These kind of messages should never enter the replica
 			return;
+		case RECONFIG:
 		case ORDERED_REQUEST:
 		case UNORDERED_HASHED_REQUEST:
 		case UNORDERED_REQUEST:
