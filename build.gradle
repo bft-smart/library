@@ -27,10 +27,10 @@ ssh.settings {
 
 remotes {
     master {
-        host = '<ip>'
-        user = '<username>'
-        password = '<password>'
-        //identity='<private key>'
+        host = '194.117.20.195'
+        user = 'rvassantlal'
+        //password = '<password>'
+        identity=file('C:\\Users\\robin\\.ssh\\id_rsa')
     }
 }
 
@@ -112,10 +112,12 @@ task setupIntegrationTestingEnvironment(dependsOn: installDist) {
 }
 
 task recoveryIntegrationTest(type: JavaExec, dependsOn: setupIntegrationTestingEnvironment) {
+    int nServers = 4
+    int nClients = 1
     def fileSeparator = System.getProperty("file.separator")
     String workingDirectory = project.buildDir.absolutePath + fileSeparator + "integration" + fileSeparator
     classpath = sourceSets.main.runtimeClasspath
-    args(workingDirectory)
+    args(workingDirectory, nServers, nClients)
     mainClass = 'bftsmart.tests.recovery.RecoveryTest'
 }
 

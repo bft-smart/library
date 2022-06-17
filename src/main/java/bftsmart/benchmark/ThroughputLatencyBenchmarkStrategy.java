@@ -224,7 +224,7 @@ public class ThroughputLatencyBenchmarkStrategy implements IBenchmarkStrategy {
 										  double[] maxThroughput) {
 		String fileName = "measurements-" + dataSize + "bytes-" + (isWrite ? "write" : "read") +".csv";
 		try (BufferedWriter resultFile = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(fileName)))) {
-			resultFile.write("clients(#),avgLatency(ms),latencyDev(ms),avgThroughput(ops/s),throughputDev(ops/s),maxLatency(ms),maxThroughput(ops/s)\n");
+			resultFile.write("clients(#),avgLatency(ns),latencyDev(ns),avgThroughput(ops/s),throughputDev(ops/s),maxLatency(ns),maxThroughput(ops/s)\n");
 			for (int i = 0; i < totalRounds; i++) {
 				int clients = numMaxRealClients[i];
 				double aLat = avgLatency[i];
