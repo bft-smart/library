@@ -87,24 +87,20 @@ public final class DeliveryThread extends Thread {
 	 * @param dec Decision established from the consensus
 	 */
 	public void delivery(Decision dec) {
+		decidedLock.lock();
 
 		try {
-			decidedLock.lock();
 			decided.put(dec);
 
 			// clean the ordered messages from the pending buffer
 			TOMMessage[] requests = extractMessagesFromDecision(dec);
 			tomLayer.clientsManager.requestsOrdered(requests);
-
-			notEmptyQueue.signalAll();
-			decidedLock.unlock();
 			logger.debug("Consensus " + dec.getConsensusId() + " finished. Decided size=" + decided.size());
 		} catch (Exception e) {
-			logger.error("Could not insert decision into decided queue", e);
+			logger.error("Could not insert decision into decided queue and mark requests as delivered", e);
 		}
 
 		if (!containsReconfig(dec)) {
-
 			logger.debug("Decision from consensus " + dec.getConsensusId() + " does not contain reconfiguration");
 			// set this decision as the last one from this replica
 			tomLayer.setLastExec(dec.getConsensusId());
@@ -116,6 +112,9 @@ public final class DeliveryThread extends Thread {
 			logger.debug("Decision from consensus " + dec.getConsensusId() + " has reconfiguration");
 			lastReconfig = dec.getConsensusId();
 		}
+
+		notEmptyQueue.signalAll();
+		decidedLock.unlock();
 	}
 
 	private boolean containsReconfig(Decision dec) {

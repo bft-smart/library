@@ -265,12 +265,18 @@ public final class ExecutionManager {
                     
                     
                     addOutOfContextMessage(msg);
-                } else { //can process!
+                } else if(getConsensus(msg.getNumber()).getEpoch(msg.getEpoch(), controller).deserializedPropValue == null &&
+                        msg.getType() == MessageFactory.ACCEPT) { //if the propose message has not been processed yet, and a ACCEPT message is received -> out of context
+                    logger.debug("ACCEPT-Message for consensus " +
+                            msg.getNumber() + " received before PROPOSE, adding it to out of context set");
+                    addOutOfContextMessage(msg);
+                }else { //can process!
                     logger.debug("Message for consensus " + 
                             msg.getNumber() + " can be processed");
             
                     //Logger.debug = false;
                     canProcessTheMessage = true;
+
                 }
             }
         } else if ((lastConsId == -1 && msg.getNumber() >= (lastConsId + revivalHighMark)) || //recovered...

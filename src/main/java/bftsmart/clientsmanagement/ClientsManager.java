@@ -108,6 +108,8 @@ public class ClientsManager {
      */
     public RequestList getPendingRequests() {
         RequestList allReq = new RequestList();
+        long allReqSizeInBytes = 0;
+        boolean allReqSizeInBytesExceeded = false;
         
         clientsLock.lock();
         /******* BEGIN CLIENTS CRITICAL SECTION ******/
@@ -146,12 +148,17 @@ public class ClientsManager {
 
                 if (request != null) {
                     if(!request.alreadyProposed) {
-                        
-                        logger.debug("Selected request with sequence number {} from client {}", request.getSequence(), request.getSender());
-                        
-                        //this client have pending message
-                        request.alreadyProposed = true;
-                        allReq.addLast(request);
+                        if(allReqSizeInBytes + request.serializedMessage.length <= controller.getStaticConf().getMaxBatchSizeInBytes()) {
+
+                            logger.debug("Selected request with sequence number {} from client {}", request.getSequence(), request.getSender());
+
+                            //this client have pending message
+                            request.alreadyProposed = true;
+                            allReq.addLast(request);
+                            allReqSizeInBytes += request.serializedMessage.length;
+                        } else {
+                            allReqSizeInBytesExceeded = true;
+                        }
                     }
                 } else {
                     //this client don't have more pending requests
@@ -160,7 +167,8 @@ public class ClientsManager {
             }
             
             if(allReq.size() == controller.getStaticConf().getMaxBatchSize() ||
-                    noMoreMessages == clientsEntryList.size()) {
+                    noMoreMessages == clientsEntryList.size() ||
+                    allReqSizeInBytesExceeded) {
                 
                 break;
             }
@@ -207,11 +215,13 @@ public class ClientsManager {
     }
     
     /**
-     * Retrieves the number of pending requests
-     * @return Number of pending requests
+     * Retrieves the number of pending requests and their sizes
+     * and checks if there are enough to fill the next batch completely.
+     * @return true if there are enough requests and false otherwise
      */
-    public int countPendingRequests() {
+    public boolean isNextBatchReady() {
         int count = 0;
+        long size = 0;
 
         clientsLock.lock();
         /******* BEGIN CLIENTS CRITICAL SECTION ******/        
@@ -227,6 +237,7 @@ public class ClientsManager {
                 for(TOMMessage msg:reqs) {
                     if(!msg.alreadyProposed) {
                         count++;
+                        size += msg.serializedMessage.length;
                     }
                 }
             }
@@ -235,7 +246,8 @@ public class ClientsManager {
 
         /******* END CLIENTS CRITICAL SECTION ******/
         clientsLock.unlock();
-        return count;
+        return count >= controller.getStaticConf().getMaxBatchSize()
+                || size >= controller.getStaticConf().getMaxBatchSizeInBytes();
     }
 
     /**
@@ -294,6 +306,11 @@ public class ClientsManager {
 
         ClientData clientData = getClientData(clientId);
         
+        if(request.getSequence() < 0) {
+            //Do not accept this faulty message. -1 is the initial value which will bypass the sequence-checking further down in the function
+            return false;
+        }
+
         clientData.clientLock.lock();
         
         //Is this a leader replay attack?
@@ -317,9 +334,12 @@ public class ClientsManager {
             if (clientData.getPendingRequests().size() > controller.getStaticConf().getUseControlFlow()) {
                 //clients should not have more than defined in the config file
                 //outstanding messages, otherwise they will be dropped.
-                //just account for the message reception
-                clientData.setLastMessageReceived(request.getSequence());
-                clientData.setLastMessageReceivedTime(request.receptionTime);
+                //just account for the message reception //why is this necessary?
+                //Scenario: A faulty client sends its request to the leader first which will discard the message due to a full queue.
+                //          Then the client sends the message delayed (queue is now not full) to the followers, which will forward the message to the leader after the timeout.
+                //          The leader then would reject the message, because it already accounted for the message reception. -> leader change
+                //clientData.setLastMessageReceived(request.getSequence());
+                //clientData.setLastMessageReceivedTime(request.receptionTime);
 
                 clientData.clientLock.unlock();
                 return false;
@@ -333,7 +353,7 @@ public class ClientsManager {
             clientData.setLastMessageReceived(-1);
             clientData.setLastMessageDelivered(-1);
             clientData.getOrderedRequests().clear();
-            clientData.getPendingRequests().clear();
+            clearPendingRequests(clientData);
         }
 
         if ((clientData.getLastMessageReceived() == -1) || //first message received or new session (see above)
@@ -362,10 +382,10 @@ public class ClientsManager {
             
             //it is a valid new message and I have to verify it's signature
             if (isValid &&
-                    ((engine != null && benchMsg != null && benchSig != null && TOMUtil.verifySigForBenchmark(engine, benchMsg, benchSig)) || !request.signed ||
-                    clientData.verifySignature(request.serializedMessage,
-                            request.serializedMessageSignature))) {
-                
+                    ((engine != null && benchMsg != null && benchSig != null && TOMUtil.verifySigForBenchmark(engine, benchMsg, benchSig)) 
+                            || (((!request.signed) || clientData.verifySignature(request.serializedMessage, request.serializedMessageSignature)) // message is either not signed or if it is signed the signature is valid
+                                    && (controller.getStaticConf().getUseSignatures() != 1 || request.signed || !fromClient)))) { // additionally, unsigned messages from the client are not allowed when useSignatures == 1. Forwarded and proposed requests do not have 'signed' set to true.
+
                 logger.debug("Message from client {} is valid", clientData.getClientId());
 
                 //I don't have the message but it is valid, I will
@@ -425,6 +445,21 @@ public class ClientsManager {
     }
 
     /**
+     * Caller must call lock() and unlock() on clientData.clientLock
+     * @param clientData the clientData associated with the client
+     */
+	private void clearPendingRequests(ClientData clientData) {
+        for(TOMMessage m : clientData.getPendingRequests()) {
+            if(timer != null) {
+                //Clear all pending timers before clearing the requests. (For synchronous closed-loop clients there are never pending requests.)
+                //Without clearing the timer a leader change would be triggered, because the removed request will never be processed.
+                timer.unwatch(m);
+	        }
+	    }
+        clientData.getPendingRequests().clear();
+	}
+
+    /**
      * Notifies the ClientsManager that these requests were already executed.
      * 
      * @param requests the array of requests to account as ordered
@@ -446,19 +481,25 @@ public class ClientsManager {
      * @param request the request ordered by the consensus
      */
     private void requestOrdered(TOMMessage request) {
+        ClientData clientData = getClientData(request.getSender());
+        clientData.clientLock.lock();
+
         //stops the timer associated with this message
         if (timer != null) {
             timer.unwatch(request);
         }
 
-        ClientData clientData = getClientData(request.getSender());
-
-        clientData.clientLock.lock();
         /******* BEGIN CLIENTDATA CRITICAL SECTION ******/
         if (!clientData.removeOrderedRequest(request)) {
             logger.debug("Request " + request + " does not exist in pending requests");
         }
-        clientData.setLastMessageDelivered(request.getSequence());
+        if(clientData.getSession() == request.getSession()) {
+            //When a client sends a message with a big sequence number and shortly afterwards a message with
+            //a new session and a lower sequence number, do not set the last delivered sequence number to the big number,
+            //which would cause all following messages of the new sequence to be invalid.
+            //-> only set the number if it is the same session
+            clientData.setLastMessageDelivered(request.getSequence());
+        }
 
         /******* END CLIENTDATA CRITICAL SECTION ******/
         clientData.clientLock.unlock();

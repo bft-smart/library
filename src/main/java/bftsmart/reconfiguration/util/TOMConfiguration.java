@@ -37,6 +37,7 @@ public class TOMConfiguration extends Configuration {
     protected int timeoutHighMark;
     protected int replyVerificationTime;
     protected int maxBatchSize;
+    protected int maxBatchSizeInBytes;
     protected int numberOfNonces;
     protected int inQueueSize;
     protected int outQueueSize;
@@ -48,6 +49,7 @@ public class TOMConfiguration extends Configuration {
     private int checkpointPeriod;
     private int globalCheckpointPeriod;
     private int useControlFlow;
+    private int maxRequestSize;
     private int[] initialView;
     private int ttpId;
     private boolean isToLog;
@@ -161,6 +163,16 @@ public class TOMConfiguration extends Configuration {
                 maxBatchSize = Integer.parseInt(s);
             }
 
+            s = (String) configs.remove("system.totalordermulticast.maxBatchSizeInBytes");
+            if (s == null) {
+                maxBatchSizeInBytes = Integer.MAX_VALUE;
+            } else {
+                maxBatchSizeInBytes = Integer.parseInt(s);
+                if (maxBatchSizeInBytes < 1) {
+                    maxBatchSizeInBytes = Integer.MAX_VALUE;
+                }
+            }
+
             s = (String) configs.remove("system.totalordermulticast.replayVerificationTime");
             if (s == null) {
                 replyVerificationTime = 0;
@@ -215,6 +227,16 @@ public class TOMConfiguration extends Configuration {
                 useControlFlow = 0;
             } else {
                 useControlFlow = Integer.parseInt(s);
+            }
+
+            s = (String) configs.remove("system.communication.maxRequestSize");
+            if (s == null) {
+                maxRequestSize = Integer.MAX_VALUE;
+            } else {
+                maxRequestSize = Integer.parseInt(s);
+                if (maxRequestSize < 1) {
+                    maxRequestSize = Integer.MAX_VALUE;
+                }
             }
 
             s = (String) configs.remove("system.initial.view");
@@ -474,6 +496,14 @@ public class TOMConfiguration extends Configuration {
         return maxBatchSize;
     }
 
+    /**
+     * The maximum size a batch of messages can have in bytes. This limit is useful for performance and
+     * memory limiting reasons when handling large requests.
+     */
+    public int getMaxBatchSizeInBytes() {
+        return maxBatchSizeInBytes;
+    }
+
     public boolean isShutdownHookEnabled() {
         return shutdownHookEnabled;
     }
@@ -557,6 +587,14 @@ public class TOMConfiguration extends Configuration {
      */
     public int getUseControlFlow() {
         return useControlFlow;
+    }
+
+    /**
+     * Maximum size in bytes a request from a client may have. Larger messages are discarded.
+     * This setting is useful when malicious clients are present.
+     */
+    public int getMaxRequestSize() {
+        return maxRequestSize;
     }
 
     public boolean isBFT(){

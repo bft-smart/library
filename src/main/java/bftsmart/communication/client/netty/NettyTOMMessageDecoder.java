@@ -48,6 +48,7 @@ public class NettyTOMMessageDecoder extends ByteToMessageDecoder {
     private ViewController controller;
     private boolean firstTime;
     private ReentrantReadWriteLock rl;
+    private int bytesToSkip;
     
     
     public NettyTOMMessageDecoder(boolean isClient, 
@@ -59,6 +60,7 @@ public class NettyTOMMessageDecoder extends ByteToMessageDecoder {
         this.controller = controller;
         this.firstTime = true;
         this.rl = rl;
+        this.bytesToSkip = 0;
         logger.debug("new NettyTOMMessageDecoder!!, isClient=" + isClient);
         logger.trace("\n\t isClient: {};"
         		+ 	 "\n\t sessionTable: {};"
@@ -75,15 +77,47 @@ public class NettyTOMMessageDecoder extends ByteToMessageDecoder {
 
     @Override
     protected void decode(ChannelHandlerContext context, ByteBuf buffer, List<Object> list) throws Exception  {
-
-        // Wait until the length prefix is available.
-        if (buffer.readableBytes() < Integer.BYTES) {
-            return;
+        // Skip bytes if necessary.
+        if (bytesToSkip != 0) {
+            int readable = buffer.readableBytes();
+            if(readable > bytesToSkip) {
+                buffer.skipBytes(bytesToSkip);
+                bytesToSkip = 0;
+            } else {
+                buffer.skipBytes(readable);
+                bytesToSkip -= readable;
+                return;
+            }
         }
 
-        int dataLength = buffer.getInt(buffer.readerIndex());
+        int dataLength = 0;
+        do {
+            // Wait until the length prefix is available.
+            if (buffer.readableBytes() < Integer.BYTES) {
+                return;
+            }
 
-        //Logger.println("Receiving message with "+dataLength+" bytes.");
+            dataLength = buffer.getInt(buffer.readerIndex());
+
+            //Logger.println("Receiving message with "+dataLength+" bytes.");
+
+            // Skip the request if it is too large
+            if (dataLength > controller.getStaticConf().getMaxRequestSize() && !isClient) {
+                logger.warn("Discarding request with " + dataLength + " bytes");
+                buffer.skipBytes(Integer.BYTES);
+                int readableBytes = buffer.readableBytes();
+                if (dataLength >= readableBytes) {
+                    buffer.skipBytes(readableBytes);
+                    bytesToSkip = dataLength - readableBytes;
+                    return;
+                } else {
+                    buffer.skipBytes(dataLength);
+                    // Now read dataLength again.
+                }
+            } else {
+                break;
+            }
+        } while (true);
 
         // Wait until the whole data is available.
         if (buffer.readableBytes() < dataLength + Integer.BYTES) {
