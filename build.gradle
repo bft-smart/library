@@ -30,7 +30,7 @@ remotes {
         host = '<ip>'
         user = '<username>'
         //password = '<password>'
-        identity=file('<private key>')
+        identity=file('<private key file>')
     }
 }
 
