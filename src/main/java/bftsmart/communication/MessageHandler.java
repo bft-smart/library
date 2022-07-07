@@ -99,7 +99,7 @@ public class MessageHandler {
 
 				} else if (sm instanceof ForwardedMessage) {
 					TOMMessage request = ((ForwardedMessage) sm).getRequest();
-					tomLayer.requestReceived(request);
+					tomLayer.requestReceived(request, false);//false -> message was received from a replica -> do not drop it
 
 					/** This is Joao's code, to handle state transfer */
 				} else if (sm instanceof SMMessage) {

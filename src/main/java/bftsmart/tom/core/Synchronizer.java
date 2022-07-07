@@ -416,7 +416,7 @@ public class Synchronizer {
             logger.debug("Adding to client manager the requests contained in STOP messages");
 
             for (TOMMessage m : messagesFromSTOP) {
-                tom.requestReceived(m);
+                tom.requestReceived(m, false);
 
             }
         }

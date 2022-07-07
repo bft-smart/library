@@ -315,11 +315,27 @@ public final class TOMLayer extends Thread implements RequestReceiver {
      * order.
      *
      * @param msg The request being received
+     * @param fromClient Whether the request was received from a client or was part of a forwarded message
      */
     @Override
-    public void requestReceived(TOMMessage msg) {
+    public void requestReceived(TOMMessage msg, boolean fromClient) {
 
         if (!doWork) return;
+
+        switch(msg.getReqType()) {
+		case ASK_STATUS:
+		case REPLY:
+		case STATUS_REPLY:
+			// These kind of messages should never enter the replica
+			return;
+		case RECONFIG:
+		case ORDERED_REQUEST:
+		case UNORDERED_HASHED_REQUEST:
+		case UNORDERED_REQUEST:
+			// These messages should be processed
+			break;
+        }
+
 
         // check if this request is valid and add it to the client' pending requests list
         boolean readOnly = (msg.getReqType() == TOMMessageType.UNORDERED_REQUEST
@@ -331,13 +347,13 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         } else {
             logger.debug("Received TOMMessage from client " + msg.getSender() + " with sequence number " + msg.getSequence() + " for session " + msg.getSession());
 
-            if (clientsManager.requestReceived(msg, true, communication)) {
+            if (clientsManager.requestReceived(msg, fromClient, communication)) {
 
                 if(controller.getStaticConf().getBatchTimeout() == -1) {
                     haveMessages();
                 } else {
 
-                    if (clientsManager.countPendingRequests() < controller.getStaticConf().getMaxBatchSize()) {
+                    if (!clientsManager.isNextBatchReady()) {
 
                         lastRequest = System.currentTimeMillis();
 
@@ -422,7 +438,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             messagesLock.lock();
             if (!clientsManager.havePendingRequests() ||
                     (controller.getStaticConf().getBatchTimeout() > -1
-                            && clientsManager.countPendingRequests() < controller.getStaticConf().getMaxBatchSize())) {
+                            && !clientsManager.isNextBatchReady())) {
 
                 logger.debug("Waiting for enough requests");
                 haveMessages.awaitUninterruptibly();
