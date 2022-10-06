@@ -413,7 +413,9 @@ public final class Acceptor {
 		logger.debug("I have {} ACCEPTs for cId:{}, Timestamp:{} ", epoch.countAccept(value), cid,
 				epoch.getTimestamp());
 
-		if (epoch.countAccept(value) > controller.getQuorum() && !epoch.getConsensus().isDecided()) {
+		if (epoch.countAccept(value) > controller.getQuorum()
+				&& !epoch.getConsensus().isDecided()
+				&& Arrays.equals(value, epoch.propValueHash)) {
 			logger.debug("Deciding consensus " + cid);
 			decide(epoch);
 		}
