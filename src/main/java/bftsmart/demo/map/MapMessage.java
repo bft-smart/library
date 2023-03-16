@@ -33,11 +33,7 @@ public class MapMessage<K,V> implements Serializable {
         if(hasValue) {
             objOut.writeObject(message.getValue());
         }
-        boolean hasSize = message.getSize() > 0;
-        objOut.writeBoolean(hasSize);
-        if(hasSize) {
-            objOut.writeInt(message.getSize());
-        }
+        objOut.writeInt(message.getSize());
         boolean hasKeySet = message.getKeySet() != null;
         objOut.writeBoolean(hasKeySet);
         if(message.getKeySet() != null) {
@@ -72,10 +68,7 @@ public class MapMessage<K,V> implements Serializable {
         if(hasValue) {
             msg.setValue(objIn.readObject());
         }
-        boolean hasSize = objIn.readBoolean();
-        if(hasSize) {
-            msg.setSize(objIn.readInt());
-        }
+        msg.setSize(objIn.readInt());
         boolean hasKeySet = objIn.readBoolean();
         if(hasKeySet) {
             int setSize = objIn.readInt();
