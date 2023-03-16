@@ -8,7 +8,6 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutput;
 import java.io.ObjectOutputStream;
 import java.util.Map;
-import java.util.Set;
 import java.util.TreeMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -36,123 +35,83 @@ public class MapServer<K, V> extends DefaultSingleRecoverable {
 		new MapServer<String, String>(Integer.parseInt(args[0]));
 	}
 
-	@SuppressWarnings("unchecked")
 	@Override
 	public byte[] appExecuteOrdered(byte[] command, MessageContext msgCtx) {
-		byte[] reply = null;
-		K key = null;
-		V value = null;
-		boolean hasReply = false;
-		try (ByteArrayInputStream byteIn = new ByteArrayInputStream(command);
-				ObjectInput objIn = new ObjectInputStream(byteIn);
-				ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
-				ObjectOutput objOut = new ObjectOutputStream(byteOut);) {
-			MapRequestType reqType = (MapRequestType)objIn.readObject();
-			switch (reqType) {
-				case PUT:
-					key = (K)objIn.readObject();
-					value = (V)objIn.readObject();
+		try {
+			MapMessage<K,V> response = new MapMessage<>();
+			MapMessage<K,V> request = MapMessage.fromBytes(command);
+			MapRequestType cmd = request.getType();
 
-					V oldValue = replicaMap.put(key, value);
+
+			switch (cmd) {
+				//write operations on the map
+				case PUT:
+					V oldValue = replicaMap.put(request.getKey(), request.getValue());
+
 					if (oldValue != null) {
-						objOut.writeObject(oldValue);
-						hasReply = true;
+						response.setValue(oldValue);
+					}
+					return MapMessage.toBytes(response);
+				case REMOVE:
+
+					V value = replicaMap.remove(request.getKey());
+
+					if (value != null) {
+						response.setValue(value);
+						return MapMessage.toBytes(response);
 					}
 					break;
 				case GET:
-					key = (K)objIn.readObject();
-					value = replicaMap.get(key);
-					if (value != null) {
-						objOut.writeObject(value);
-						hasReply = true;
+					V ret = replicaMap.get(request.getKey());
+
+					if (ret != null) {
+						response.setValue(ret);
 					}
-					break;
-				case REMOVE:
-					key = (K)objIn.readObject();
-					value = replicaMap.remove(key);
-					if (value != null) {
-						objOut.writeObject(value);
-						hasReply = true;
-					}
-					break;
+					return MapMessage.toBytes(response);
 				case SIZE:
 					int size = replicaMap.size();
-					objOut.writeInt(size);
-					hasReply = true;
-					break;
+					response.setSize(size);
+					return MapMessage.toBytes(response);
 				case KEYSET:
-					keySet(objOut);
-					hasReply = true;
-					break;
+					response.setKeySet(replicaMap.keySet());
+					return MapMessage.toBytes(response);
 			}
-			if (hasReply) {
-				objOut.flush();
-				byteOut.flush();
-				reply = byteOut.toByteArray();
-			} else {
-				reply = new byte[0];
-			}
-
-		} catch (IOException | ClassNotFoundException e) {
-			logger.log(Level.SEVERE, "Ocurred during map operation execution", e);
+		} catch (IOException | ClassNotFoundException ex) {
+			logger.log(Level.SEVERE,"Failed to process ordered request", ex);
+			return new byte[0];
 		}
-		return reply;
+		return new byte[0];
 	}
 
-	@SuppressWarnings("unchecked")
 	@Override
 	public byte[] appExecuteUnordered(byte[] command, MessageContext msgCtx) {
-		byte[] reply = null;
-		K key = null;
-		V value = null;
-		boolean hasReply = false;
+		try {
+			MapMessage<K,V> response = new MapMessage<>();
+			MapMessage<K,V> request = MapMessage.fromBytes(command);
+			MapRequestType cmd = request.getType();
 
-		try (ByteArrayInputStream byteIn = new ByteArrayInputStream(command);
-				ObjectInput objIn = new ObjectInputStream(byteIn);
-				ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
-				ObjectOutput objOut = new ObjectOutputStream(byteOut);) {
-			MapRequestType reqType = (MapRequestType)objIn.readObject();
-			switch (reqType) {
+			switch (cmd) {
+				//read operations on the map
 				case GET:
-					key = (K)objIn.readObject();
-					value = replicaMap.get(key);
-					if (value != null) {
-						objOut.writeObject(value);
-						hasReply = true;
+					V ret = replicaMap.get(request.getKey());
+
+					if (ret != null) {
+						response.setValue(ret);
 					}
-					break;
+					return MapMessage.toBytes(response);
 				case SIZE:
 					int size = replicaMap.size();
-					objOut.writeInt(size);
-					hasReply = true;
-					break;
+					response.setSize(size);
+					return MapMessage.toBytes(response);
 				case KEYSET:
-					keySet(objOut);
-					hasReply = true;
-					break;
-				default:
-					logger.log(Level.WARNING, "in appExecuteUnordered only read operations are supported");
+					response.setKeySet(replicaMap.keySet());
+					return MapMessage.toBytes(response);
 			}
-			if (hasReply) {
-				objOut.flush();
-				byteOut.flush();
-				reply = byteOut.toByteArray();
-			} else {
-				reply = new byte[0];
-			}
-		} catch (IOException | ClassNotFoundException e) {
-			logger.log(Level.SEVERE, "Ocurred during map operation execution", e);
+		} catch (IOException | ClassNotFoundException ex) {
+			logger.log(Level.SEVERE, "Failed to process unordered request", ex);
+			return new byte[0];
 		}
-
-		return reply;
-	}
-
-	private void keySet(ObjectOutput out) throws IOException, ClassNotFoundException {
-		Set<K> keySet = replicaMap.keySet();
-		int size = replicaMap.size();
-		out.writeInt(size);
-		for (K key : keySet)
-			out.writeObject(key);
+		return new byte[0];
 	}
 
 	@Override
