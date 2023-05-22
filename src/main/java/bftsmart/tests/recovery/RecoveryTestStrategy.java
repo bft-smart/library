@@ -1,17 +1,21 @@
 package bftsmart.tests.recovery;
 
 import controller.IBenchmarkStrategy;
-import master.IProcessingResult;
-import master.client.ClientsMaster;
-import master.message.Message;
-import master.server.ServersMaster;
-import pod.ProcessInfo;
-import pod.WorkerCommands;
-import util.Configuration;
+import controller.IWorkerStatusListener;
+import controller.WorkerHandler;
+import worker.IProcessingResult;
+import worker.ProcessInformation;
 
+import java.io.*;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Properties;
+import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -19,113 +23,177 @@ import java.util.concurrent.locks.ReentrantLock;
 /**
  * @author robin
  */
-public class RecoveryTestStrategy implements IBenchmarkStrategy {
-	private final String workingDirectory;
+public class RecoveryTestStrategy implements IBenchmarkStrategy, IWorkerStatusListener {
 	private final String clientCommand;
 	private final String serverCommand;
-	private final int numServers;
 	private final int dataSize;
+	private final Set<Integer> serverWorkersIds;
+	private final Set<Integer> clientWorkersIds;
 	private final Lock lock;
 	private final Condition sleepCondition;
 	private CountDownLatch serversReadyCounter;
 	private CountDownLatch clientsReadyCounter;
+	private final AtomicBoolean error;
 
 	public RecoveryTestStrategy() {
-		int numLoadRequests = 1000_000;
-		this.workingDirectory = Configuration.getInstance().getWorkingDirectory();
-		dataSize = Configuration.getInstance().getDataSize();
-		numServers = Configuration.getInstance().getNumServerPods();
+		this.dataSize = 1024;
+		int nLoadRequests = 1_000_000;
 		this.clientCommand =  "java -Djava.security.properties=./config/java" +
-				".security -Dlogback.configurationFile=./config/logback.xml -cp lib/* bftsmart.tests.recovery.RecoveryTestClient " +
-				"100 " + numLoadRequests + " " + dataSize + " " + true;
+				".security -Dlogback.configurationFile=./config/logback.xml -cp lib/* " +
+				"bftsmart.tests.recovery.RecoveryTestClient " + "1000 " + nLoadRequests + " " + dataSize + " " + true;
 		this.serverCommand = "java -Djava.security.properties=./config/java" +
-				".security -Dlogback.configurationFile=./config/logback.xml -cp lib/* bftsmart.tests.recovery.RecoveryTestServer ";
+				".security -Dlogback.configurationFile=./config/logback.xml -cp lib/* " +
+				"bftsmart.tests.recovery.RecoveryTestServer ";
 		this.lock = new ReentrantLock(true);
 		this.sleepCondition = lock.newCondition();
+		this.serverWorkersIds = new HashSet<>();
+		this.clientWorkersIds = new HashSet<>();
+		this.error = new AtomicBoolean(false);
 	}
 
 	@Override
-	public void executeBenchmark(ServersMaster serversMaster, long[] serverPodsIds, ClientsMaster clientsMaster, long[] clientPodsIds) {
-			try {
-				lock.lock();
+	public void executeBenchmark(WorkerHandler[] workerHandlers, Properties benchmarkParameters) {
+		System.out.println("Running recovery test");
+		int f = Integer.parseInt(benchmarkParameters.getProperty("experiment.f"));
+		String workingDirectory = benchmarkParameters.getProperty("experiment.working_directory");
+		int nServers = 3 * f + 1;
 
-				System.out.println("Starting servers");
-				serversReadyCounter = new CountDownLatch(numServers);
-				WorkerCommands[] serverCommands = new WorkerCommands[numServers];
-				for (int i = 0; i < numServers; i++) {
-					ProcessInfo processInfo = new ProcessInfo(serverCommand + i + " " + dataSize, workingDirectory);
-					serverCommands[i] = new WorkerCommands(serverPodsIds[i], new ProcessInfo[]{processInfo});
-				}
-				serversMaster.startWorkers(0, serverCommands);
+		//Separate workers
+		WorkerHandler[] serverWorkers = new WorkerHandler[nServers];
+		WorkerHandler clientWorker = workerHandlers[workerHandlers.length - 1];
+		System.arraycopy(workerHandlers, 0, serverWorkers, 0, nServers);
+		Arrays.stream(serverWorkers).forEach(w -> serverWorkersIds.add(w.getWorkerId()));
+		clientWorkersIds.add(clientWorker.getWorkerId());
 
-				serversReadyCounter.await();
-				System.out.println("Servers are ready");
+		//Setup workers
+		String setupInformation = String.format("%d\t%d", nServers, f);
+		Arrays.stream(workerHandlers).forEach(w -> w.setupWorker(setupInformation));
 
-				System.out.println("Starting load client");
-				clientsReadyCounter = new CountDownLatch(1);
-				WorkerCommands[] clientCommands = new WorkerCommands[] {
-						new WorkerCommands(
-								clientPodsIds[0],
-								new ProcessInfo[] {
-										new ProcessInfo(clientCommand, workingDirectory)
-								}
-						)
+		try {
+			lock.lock();
+			//Start servers
+			startServers(workingDirectory, serverWorkers);
+			if (error.get())
+				return;
+
+			//Start client that continuously send requests
+			startClients(workingDirectory, clientWorker);
+			if (error.get())
+				return;
+
+			System.out.println("Clients are sending requests");
+
+			//Restarting servers to test recovery
+			for (int server = nServers - 1; server >= 0; server--) {
+				WorkerHandler serverWorker = serverWorkers[server];
+				System.out.println("Rebooting server " + server + " in 10 seconds [reboot will take around 20 seconds]");
+				sleepSeconds(10);
+
+				//Stop server
+				serverWorker.stopWorker();
+
+				sleepSeconds(20);
+
+				//Start server
+				serversReadyCounter = new CountDownLatch(1);
+				String command = serverCommand + server + " " + dataSize;
+				String currentWorkerDirectory = workingDirectory + "worker" + serverWorker.getWorkerId()
+						+ File.separator;
+				ProcessInformation[] commands = {
+						new ProcessInformation(command, currentWorkerDirectory)
 				};
-				clientsMaster.startWorkers(0, clientCommands);
 
-				clientsReadyCounter.await();
-				System.out.println("Clients are sending requests");
-
-				for (int server = numServers - 1; server >= 0; server--) {
-					sleepSeconds(20);
-					System.out.println("Restarting server " + server);
-					long podId = serverPodsIds[server];
-					serversMaster.stopWorker(podId);
-					sleepSeconds(10);
-					serversReadyCounter = new CountDownLatch(1);
-					WorkerCommands commands = new WorkerCommands(podId, new ProcessInfo[]{
-							new ProcessInfo(serverCommand + server + " " + dataSize, workingDirectory)
-					});
-					serversMaster.startWorker(0, commands);
-					serversReadyCounter.await();
-				}
-				System.out.println("All servers were restarted");
-				sleepSeconds(30);
-			} catch (InterruptedException ignored) {
-			} finally {
-				lock.unlock();
+				serverWorker.startWorker(0, commands, this);
+				serversReadyCounter.await();
+				if (error.get())
+					return;
 			}
+			System.out.println("Waiting 10 seconds");
+			sleepSeconds(10);
+			System.out.println("Recovery test was a success");
+		} catch (InterruptedException ignore) {
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		} finally {
+			lock.unlock();
+		}
+	}
+
+	private void startClients(String workingDirectory, WorkerHandler... clientWorkers) throws InterruptedException, IOException {
+		System.out.println("Starting client...");
+		clientsReadyCounter = new CountDownLatch(1);
+		String currentWorkerDirectory = workingDirectory + "worker" + clientWorkers[0].getWorkerId()
+				+ File.separator;
+		ProcessInformation[] commands = new ProcessInformation[] {
+				new ProcessInformation(clientCommand, currentWorkerDirectory)
+		};
+		clientWorkers[0].startWorker(50, commands, this);
+		clientsReadyCounter.await();
+	}
+
+	private void startServers(String workingDirectory, WorkerHandler... serverWorkers) throws InterruptedException, IOException {
+		System.out.println("Starting servers...");
+		serversReadyCounter = new CountDownLatch(serverWorkers.length);
+		for (int i = 0; i < serverWorkers.length; i++) {
+			String command = serverCommand + i + " " + dataSize;
+			WorkerHandler serverWorker = serverWorkers[i];
+			String currentWorkerDirectory = workingDirectory + "worker" + serverWorker.getWorkerId()
+					+ File.separator;
+			ProcessInformation[] commands = {
+					new ProcessInformation(command, currentWorkerDirectory)
+			};
+			serverWorker.startWorker(0, commands, this);
+			sleepSeconds(1);
+		}
+		serversReadyCounter.await();
 	}
 
 	private void sleepSeconds(long duration) throws InterruptedException {
 		lock.lock();
-		Executors.newSingleThreadScheduledExecutor().schedule(() -> {
+		ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
+		scheduledExecutorService.schedule(() -> {
 			lock.lock();
 			sleepCondition.signal();
 			lock.unlock();
 		}, duration, TimeUnit.SECONDS);
 		sleepCondition.await();
-		Executors.newSingleThreadExecutor().shutdown();
+		scheduledExecutorService.shutdown();
 		lock.unlock();
 	}
 
 	@Override
-	public void processServerReadyEvent(Message message) {
-		serversReadyCounter.countDown();
+	public void onReady(int workerId) {
+		if (serverWorkersIds.contains(workerId)) {
+			serversReadyCounter.countDown();
+		} else if (clientWorkersIds.contains(workerId)) {
+			clientsReadyCounter.countDown();
+		}
 	}
 
 	@Override
-	public void processClientReadyEvent(Message message) {
-		clientsReadyCounter.countDown();
+	public void onEnded(int workerId) {
+
 	}
 
 	@Override
-	public void deliverServerProcessingResult(IProcessingResult processingResult) {
-		System.out.println("Received server measurement result");
+	public void onError(int workerId, String errorMessage) {
+		if (serverWorkersIds.contains(workerId)) {
+			System.err.printf("Error in server worker %d\n", workerId);
+			if (serversReadyCounter != null) {
+				serversReadyCounter.countDown();
+			}
+		} else if (clientWorkersIds.contains(workerId)) {
+			System.err.printf("Error in client worker %d\n", workerId);
+			if (clientsReadyCounter != null)
+				clientsReadyCounter.countDown();
+		} else {
+			System.out.printf("Error in unused worker %d\n", workerId);
+		}
+		error.set(true);
 	}
 
 	@Override
-	public void deliverClientProcessingResult(IProcessingResult processingResult) {
-		System.out.println("Received client measurement result");
+	public void onResult(int workerId, IProcessingResult processingResult) {
+
 	}
 }

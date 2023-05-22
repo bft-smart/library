@@ -1,6 +1,6 @@
 package bftsmart.benchmark;
 
-import bftsmart.tests.recovery.Operation;
+import bftsmart.tests.util.Operation;
 import bftsmart.tom.ServiceProxy;
 
 import java.nio.ByteBuffer;
