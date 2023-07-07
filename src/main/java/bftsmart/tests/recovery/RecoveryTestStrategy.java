@@ -56,7 +56,15 @@ public class RecoveryTestStrategy implements IBenchmarkStrategy, IWorkerStatusLi
 		System.out.println("Running recovery test");
 		int f = Integer.parseInt(benchmarkParameters.getProperty("experiment.f"));
 		String workingDirectory = benchmarkParameters.getProperty("experiment.working_directory");
-		int nServers = 3 * f + 1;
+		boolean isbft = Boolean.parseBoolean(benchmarkParameters.getProperty("experiment.bft"));
+
+		String hosts = "0 127.0.0.1 11000 11001\n" + 
+				"1 127.0.0.1 11010 11011\n" + 
+				"2 127.0.0.1 11020 11021\n" + 
+				"3 127.0.0.1 11030 11031\n" + 
+				"\n7001 127.0.0.1 11100";
+
+		int nServers = (isbft ? 3*f+1 : 2*f+1);
 
 		//Separate workers
 		WorkerHandler[] serverWorkers = new WorkerHandler[nServers];
@@ -66,7 +74,7 @@ public class RecoveryTestStrategy implements IBenchmarkStrategy, IWorkerStatusLi
 		clientWorkersIds.add(clientWorker.getWorkerId());
 
 		//Setup workers
-		String setupInformation = String.format("%d\t%d", nServers, f);
+		String setupInformation = String.format("%b\t%d\t%s", isbft, f, hosts);
 		Arrays.stream(workerHandlers).forEach(w -> w.setupWorker(setupInformation));
 
 		try {
