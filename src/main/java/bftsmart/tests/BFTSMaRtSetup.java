@@ -1,15 +1,14 @@
 package bftsmart.tests;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import worker.ISetupWorker;
 
 import java.io.FileWriter;
 import java.io.IOException;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 public class BFTSMaRtSetup implements ISetupWorker {
-	private Logger logger = LoggerFactory.getLogger(this.getClass());
+	private final Logger logger = LoggerFactory.getLogger("benchmarking");
 	
 	@Override
 	public void setup(String setupInformation) {
@@ -19,11 +18,11 @@ public class BFTSMaRtSetup implements ISetupWorker {
 		int nServers = (Boolean.parseBoolean(args[0]) ? 3*f+1 : 2*f+1);
 		String hosts = args[2];
 		
-		logger.info("Creating hosts.config");
+		logger.debug("Creating hosts.config");
 		String fname = "config/hosts.config";
 		writeF(fname, hosts);
 
-		logger.info("Creating system.config");
+		logger.debug("Creating system.config");
 		fname="config/system.config";
 		String ctx=createSystemConf(nServers, args[1], args[0]);
 		writeF(fname, ctx);
@@ -33,7 +32,7 @@ public class BFTSMaRtSetup implements ISetupWorker {
 	private void writeF(String fname, String content){
 		try(FileWriter myWriter = new FileWriter(fname)){
 			myWriter.write(content);
-			logger.info("Successfully wrote to the file.");
+			logger.debug("Successfully wrote to the file.");
 		}catch (IOException e) {
 			logger.error("An error occurred.", e);
 		}

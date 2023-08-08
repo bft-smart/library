@@ -34,7 +34,8 @@ public abstract class AbstractIntegrationTest {
 
 		String fileSeparator = File.separator;
 		String path = "lib" + fileSeparator + "*";
-		String workerCommand = String.format("java -cp %s worker.WorkerStartup %s %d", path, controllerIp,
+		String workerCommand = String.format("java -cp %s -Dlogback.configurationFile=config\\logback.xml " +
+						"worker.WorkerStartup %s %d", path, controllerIp,
 				controllerPort);
 
 		//Starting controller

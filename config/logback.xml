@@ -42,6 +42,10 @@
 	<logger name="benchmark.worker" level="INFO">
 		<appender-ref ref="MIN-STDOUT" />
 	</logger>
+	benchmarking
+	<logger name="benchmarking" level="INFO">
+		<appender-ref ref="MIN-STDOUT" />
+	</logger>
 
 
 	<!-- SPECIFIC CLASS LOGS -->

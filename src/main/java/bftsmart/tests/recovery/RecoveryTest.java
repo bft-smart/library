@@ -11,17 +11,16 @@ public class RecoveryTest extends AbstractIntegrationTest {
 
 	private final String workingDirectory;
 	private final int f;
-	private final boolean isbft;
+	private final boolean isBFT;
 	private final Properties testParameters;
 
-	public RecoveryTest(String workingDirectory, int f, boolean isbft) {
+	public RecoveryTest(String workingDirectory, int f, boolean isBFT) {
 		this.workingDirectory = workingDirectory;
 		this.f = f;
-		this.isbft = isbft;
+		this.isBFT = isBFT;
 		this.testParameters = new Properties();
 		testParameters.setProperty("experiment.f", String.valueOf(f));
-		testParameters.setProperty("experiment.working_directory", workingDirectory);
-		testParameters.setProperty("experiment.bft", Boolean.toString(isbft));
+		testParameters.setProperty("experiment.bft", Boolean.toString(isBFT));
 	}
 
 	@Override
@@ -36,7 +35,7 @@ public class RecoveryTest extends AbstractIntegrationTest {
 
 	@Override
 	public int getNWorkers() {
-		return (isbft) ? 3 * f + 2 : 2 * f + 2;
+		return (isBFT) ? 3 * f + 2 : 2 * f + 2;
 	}
 
 	@Override
