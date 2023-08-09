@@ -101,7 +101,7 @@ public class ThroughputLatencyBenchmarkStrategy implements IBenchmarkStrategy, I
 		while (true) {
 			try {
 				lock.lock();
-				logger.info("============ Round: {} ============", round);
+				logger.info("============ Round {} out of {} ============", round, nRounds);
 				int nClients = clientsPerRound[round - 1];
 
 				//Distribute clients per workers
@@ -206,6 +206,7 @@ public class ThroughputLatencyBenchmarkStrategy implements IBenchmarkStrategy, I
 					new ProcessInformation(command, workingDirectory)
 			};
 			serverWorkers[i].startWorker(0, commands, this);
+			sleepSeconds(2);
 		}
 		serversReadyCounter.await();
 	}
