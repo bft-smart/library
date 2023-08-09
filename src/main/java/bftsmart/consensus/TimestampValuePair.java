@@ -15,14 +15,13 @@ limitations under the License.
 */
 package bftsmart.consensus;
 
+import org.apache.commons.codec.binary.Base64;
+
 import java.io.Externalizable;
 import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
-import java.math.BigInteger;
 import java.util.Arrays;
-
-import org.apache.commons.codec.binary.Base64;
 
 /**
  * This class associates a timestamp to a value
@@ -102,7 +101,7 @@ public class TimestampValuePair implements Externalizable {
     public int hashCode() {
         int hash = 1;
         hash = hash * 17 + timestamp;
-        hash = hash * 31 + (new BigInteger(value)).intValue();
+        hash = hash * 31 + Arrays.hashCode(value);
         return hash;
     }
 
