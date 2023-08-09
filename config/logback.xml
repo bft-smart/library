@@ -55,6 +55,8 @@
 
 	<logger name="benchmark.worker" level="INFO"/>
 
+	<logger name="benchmark.worker.process" level="INFO"/>
+
 	<logger name="benchmarking" level="INFO"/>
 
 	<!-- SPECIFIC CLASS LOGS -->

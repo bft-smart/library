@@ -23,16 +23,21 @@ public class ThroughputLatencyServer extends DefaultSingleRecoverable {
 	private double maxThroughput;
 
 	public static void main(String[] args) {
-		if (args.length != 1) {
-			System.out.println("USAGE: bftsmart.benchmark.ThroughputLatencyServer <process id>");
+		if (args.length != 2) {
+			System.out.println("USAGE: bftsmart.benchmark.ThroughputLatencyServer <process id> <state size>");
 			System.exit(-1);
 		}
 		int processId = Integer.parseInt(args[0]);
-		new ThroughputLatencyServer(processId);
+		int stateSize = Integer.parseInt(args[1]);
+		new ThroughputLatencyServer(processId, stateSize);
 	}
 
-	public ThroughputLatencyServer(int processId) {
+	public ThroughputLatencyServer(int processId, int stateSize) {
 		senders = new HashSet<>(1000);
+		state = new byte[stateSize];
+		for (int i = 0; i < stateSize; i++) {
+			state[i] = (byte) i;
+		}
 		new ServiceReplica(processId, this, this);
 	}
 
@@ -45,9 +50,6 @@ public class ThroughputLatencyServer extends DefaultSingleRecoverable {
 		byte[] response = null;
 		switch (op) {
 			case PUT:
-				int size = buffer.getInt();
-				state = new byte[size];
-				buffer.get(state);
 				response = new byte[0];
 				break;
 			case GET:

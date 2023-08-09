@@ -51,14 +51,9 @@ public class ThroughputLatencyClient {
 			clients[i].start();
 			Thread.sleep(10);
 		}
-		new Thread(() -> {
-			try {
-				latch.await();
-				System.out.println("Executing experiment");
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
-		}).start();
+
+		latch.await();
+		System.out.println("Executing experiment");
 	}
 
 	private static class Client extends Thread {
@@ -83,9 +78,6 @@ public class ThroughputLatencyClient {
 		public void run() {
 			try {
 				latch.countDown();
-				if (initialClientId == clientId) {
-					proxy.invokeOrdered(serializedWriteRequest);
-				}
 				for (int i = 0; i < numOperations; i++) {
 					long t1, t2, latency;
 					byte[] response;

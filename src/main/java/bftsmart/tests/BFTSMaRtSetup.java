@@ -81,8 +81,8 @@ public class BFTSMaRtSetup implements ISetupWorker {
 		ctx.append("system.totalordermulticast.log_parallel = false\n");
 		ctx.append("system.totalordermulticast.log_to_disk = false\n");
 		ctx.append("system.totalordermulticast.sync_log = false\n");
-		ctx.append("system.totalordermulticast.checkpoint_period = 1024\n");
-		ctx.append("system.totalordermulticast.global_checkpoint_period = 120000\n");
+		ctx.append("system.totalordermulticast.checkpoint_period = 1024000\n");
+		ctx.append("system.totalordermulticast.global_checkpoint_period = 1200000\n");
 		ctx.append("system.totalordermulticast.checkpoint_to_disk = false\n");
 		ctx.append("system.totalordermulticast.sync_ckp = false\n");
 		ctx.append("system.initial.view = " + iview + "\n");
