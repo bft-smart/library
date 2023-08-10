@@ -272,10 +272,8 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 		this.requestReceiver = tl;
 	}
 
-	private void retrySend(int[] targets, TOMMessage sm, boolean serializeClassHeaders, int retry) {
-		retry--;
-		sm.retry = retry;
-		send(targets, (TOMMessage) sm, serializeClassHeaders);
+	private void retrySend(int[] targets, TOMMessage sm, boolean serializeClassHeaders) {
+		send(targets, sm, serializeClassHeaders);
 	}
 
 	@Override
@@ -335,7 +333,7 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 					TimerTask timertask = new TimerTask() {
 						@Override
 						public void run() {
-							retrySend(targets, (TOMMessage) finalSm, serializeClassHeaders, finalSm.retry);
+							retrySend(targets, finalSm, serializeClassHeaders);
 						}
 					};
 					Timer timer = new Timer("retry");
