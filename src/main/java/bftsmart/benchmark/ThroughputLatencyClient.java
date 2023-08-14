@@ -90,7 +90,7 @@ public class ThroughputLatencyClient {
 					t2 = System.nanoTime();
 					latency = t2 - t1;
 					if (!isWrite && !Arrays.equals(data, response)) {
-						throw new IllegalStateException("The response is wrong");
+						throw new IllegalStateException("The response is wrong (" + Arrays.toString(response) + ")");
 					}
 					if (initialClientId == clientId && measurementLeader) {
 						System.out.println("M: " + latency);
