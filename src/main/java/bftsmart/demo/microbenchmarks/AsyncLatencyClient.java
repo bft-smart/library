@@ -223,7 +223,8 @@ public class AsyncLatencyClient {
                     if (i > (this.numberOfOps / 2)) st.store(System.nanoTime() - last_send_instant);
 
                     if (this.interval > 0 || this.rampup > 0) {
-                        Thread.sleep(Math.max(rand.nextInt(this.interval) + 1, this.rampup));
+                        int randomInterval = this.interval > 0 ? rand.nextInt(this.interval) : 0;
+                        Thread.sleep(Math.max(randomInterval + 1, this.rampup));
                         if (this.rampup > 0) this.rampup -= 100;
                     }
                     
