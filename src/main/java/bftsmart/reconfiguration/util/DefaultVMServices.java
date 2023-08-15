@@ -23,7 +23,7 @@ public class DefaultVMServices extends VMServices {
             (new DefaultVMServices()).removeServer(smartId);
             
                 
-        }else if(args.length == 3){
+        }else if(args.length == 4){
             System.out.println("####Tpp Service[Join]####");
 
             int smartId = Integer.parseInt(args[0]);
