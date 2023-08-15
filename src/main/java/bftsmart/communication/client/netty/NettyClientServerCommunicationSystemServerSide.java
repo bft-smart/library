@@ -1,59 +1,46 @@
 /**
-Copyright (c) 2007-2013 Alysson Bessani, Eduardo Alchieri, Paulo Sousa, and the authors indicated in the @author tags
+ Copyright (c) 2007-2013 Alysson Bessani, Eduardo Alchieri, Paulo Sousa, and the authors indicated in the @author tags
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
 
-http://www.apache.org/licenses/LICENSE-2.0
+ http://www.apache.org/licenses/LICENSE-2.0
 
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
  */
 package bftsmart.communication.client.netty;
-
-import io.netty.bootstrap.ServerBootstrap;
-import io.netty.channel.Channel;
-import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelHandler.Sharable;
-import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelInitializer;
-import io.netty.channel.ChannelOption;
-import io.netty.channel.EventLoopGroup;
-import io.netty.channel.SimpleChannelInboundHandler;
-import io.netty.channel.nio.NioEventLoopGroup;
-import io.netty.channel.socket.SocketChannel;
-import io.netty.channel.socket.nio.NioServerSocketChannel;
-
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
-import java.nio.channels.ClosedChannelException;
-import java.security.PrivateKey;
-
-import java.util.Timer;
-import java.util.TimerTask;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.Set;
-import java.util.Map.Entry;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
-
-import org.slf4j.LoggerFactory;
-import org.slf4j.Logger;
 
 import bftsmart.communication.client.CommunicationSystemServerSide;
 import bftsmart.communication.client.RequestReceiver;
 import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.util.TOMUtil;
+import io.netty.bootstrap.ServerBootstrap;
+import io.netty.channel.*;
+import io.netty.channel.ChannelHandler.Sharable;
+import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.channel.socket.SocketChannel;
+import io.netty.channel.socket.nio.NioServerSocketChannel;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.UnknownHostException;
+import java.nio.channels.ClosedChannelException;
+import java.security.PrivateKey;
+import java.util.*;
+import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 
 /**
@@ -64,7 +51,7 @@ import bftsmart.tom.util.TOMUtil;
 public class NettyClientServerCommunicationSystemServerSide extends SimpleChannelInboundHandler<TOMMessage>
 		implements CommunicationSystemServerSide {
 
-	private Logger logger = LoggerFactory.getLogger(this.getClass());
+	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	private RequestReceiver requestReceiver;
 	private ConcurrentHashMap<Integer, NettyClientServerSession> sessionReplicaToClient;
@@ -79,10 +66,10 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 	private NettyServerPipelineFactory serverPipelineFactory;
 
 	/* Tulio Ribeiro */
-	private static int tcpSendBufferSize = 8 * 1024 * 1024;
-	private static int bossThreads = 8; /* listens and accepts on server socket; workers handle r/w I/O */
-	private static int connectionBacklog = 1024; /* pending connections boss thread will queue to accept */
-	private static int connectionTimeoutMsec = 40000; /* (40 seconds) */
+	private static final int tcpSendBufferSize = 8 * 1024 * 1024;
+	private static final int bossThreads = 8; /* listens and accepts on server socket; workers handle r/w I/O */
+	private static final int connectionBacklog = 1024; /* pending connections boss thread will queue to accept */
+	private static final int connectionTimeoutMsec = 40000; /* (40 seconds) */
 	private PrivateKey privKey;
 	/* Tulio Ribeiro */
 
@@ -125,9 +112,7 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 
 				myAddress = InetAddress.getLoopbackAddress().getHostAddress();
 
-			}
-
-			else if (controller.getStaticConf().getBindAddress().equals("")) {
+			} else if (controller.getStaticConf().getBindAddress().isEmpty()) {
 
 				myAddress = InetAddress.getLocalHost().getHostAddress();
 
@@ -135,8 +120,7 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 				// to replicas.
 				// To solve that issue, we bind to the address supplied in config/hosts.config
 				// instead.
-				if (!confAddress.equals("") && !myAddress.equals(confAddress)) {
-
+				if (InetAddress.getByName(myAddress).isLoopbackAddress() && !myAddress.equals(confAddress)) {
 					myAddress = confAddress;
 				}
 
@@ -159,7 +143,7 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 			logger.info("requestTimeout = " + controller.getStaticConf().getRequestTimeout());
 			logger.info("maxBatch = " + controller.getStaticConf().getMaxBatchSize());
 			if(controller.getStaticConf().getUseSignatures() == 1) logger.info("Using Signatures");
-                        else if (controller.getStaticConf().getUseSignatures() == 2) logger.info("Using benchmark signature verification");
+			else if (controller.getStaticConf().getUseSignatures() == 2) logger.info("Using benchmark signature verification");
 			logger.info("Binded replica to IP address " + myAddress);
 			// ******* EDUARDO END **************//
 
@@ -218,7 +202,7 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 		else if (cause instanceof IOException) {
 			logger.error("Impossible to connect to client. (Connection reset by peer)");
 		} else {
-			logger.error("Connection problem. Cause:{}", cause);
+			logger.error("Connection problem.", cause);
 		}
 	}
 
@@ -258,13 +242,11 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 		// debugSessions();
 
 		rl.writeLock().lock();
-		Set s = sessionReplicaToClient.entrySet();
-		Iterator i = s.iterator();
-		while (i.hasNext()) {
-			Entry m = (Entry) i.next();
-			NettyClientServerSession value = (NettyClientServerSession) m.getValue();
+		Set<Entry<Integer, NettyClientServerSession>> s = sessionReplicaToClient.entrySet();
+		for (Entry<Integer, NettyClientServerSession> m : s) {
+			NettyClientServerSession value = m.getValue();
 			if (ctx.channel().equals(value.getChannel())) {
-				int key = (Integer) m.getKey();
+				int key = m.getKey();
 				toRemove(key);
 				break;
 			}
@@ -276,9 +258,7 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 
 	public synchronized void toRemove(Integer key) {
 
-		Iterator<Integer> it = sessionReplicaToClient.keySet().iterator();
-		while (it.hasNext()) {
-			Integer cli = (Integer) it.next();
+		for (Integer cli : sessionReplicaToClient.keySet()) {
 			logger.debug("SessionReplicaToClient: Key:{}, Value:{}", cli, sessionReplicaToClient.get(cli));
 		}
 
@@ -292,10 +272,8 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 		this.requestReceiver = tl;
 	}
 
-	private void retrySend(int[] targets, TOMMessage sm, boolean serializeClassHeaders, int retry) {
-		retry--;
-		sm.retry = retry;
-		send(targets, (TOMMessage) sm, serializeClassHeaders);
+	private void retrySend(int[] targets, TOMMessage sm, boolean serializeClassHeaders) {
+		send(targets, sm, serializeClassHeaders);
 	}
 
 	@Override
@@ -320,8 +298,7 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 		sm.signed = false;
 		// produce signature if necessary (never in the current version)
 		if (sm.signed) {
-			byte[] signature = TOMUtil.signMessage(privKey, data);
-			sm.serializedMessageSignature = signature;
+			sm.serializedMessageSignature = TOMUtil.signMessage(privKey, data);
 		}
 
 		for (int target : targets) {
@@ -356,7 +333,7 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 					TimerTask timertask = new TimerTask() {
 						@Override
 						public void run() {
-							retrySend(targets, (TOMMessage) finalSm, serializeClassHeaders, finalSm.retry);
+							retrySend(targets, finalSm, serializeClassHeaders);
 						}
 					};
 					Timer timer = new Timer("retry");
@@ -372,13 +349,12 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 	public int[] getClients() {
 
 		rl.readLock().lock();
-		Set s = sessionReplicaToClient.keySet();
+		Set<Integer> s = sessionReplicaToClient.keySet();
 		int[] clients = new int[s.size()];
-		Iterator it = s.iterator();
+		Iterator<Integer> it = s.iterator();
 		int i = 0;
 		while (it.hasNext()) {
-
-			clients[i] = ((Integer) it.next()).intValue();
+			clients[i] = it.next();
 			i++;
 		}
 

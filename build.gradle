@@ -1,162 +1,180 @@
 plugins {
-    id 'java'
-    id 'distribution'
-    id 'org.hidetake.ssh' version '2.10.1'
+	id 'java'
+	id 'distribution'
+	id 'org.hidetake.ssh' version '2.10.1'
 }
 
 group 'BFT-SMaRt'
 version '2.0'
 
 compileJava {
-    sourceCompatibility = 8
-    targetCompatibility = 8
+	sourceCompatibility = 8
+	targetCompatibility = 8
 }
 
 repositories {
-    mavenCentral()
+	mavenCentral()
 }
 
 jar {
-    archivesBaseName='BFT-SMaRt'
-    project.version=""
+	archivesBaseName='BFT-SMaRt'
+	project.version=""
 }
 
 ssh.settings {
-    fileTransfer = 'scp'
+	fileTransfer = 'scp'
 }
 
 remotes {
-    master {
-        host = '<ip>'
-        user = '<username>'
-        //password = '<password>'
-        identity=file('<private key file>')
-    }
+	master {
+		host = '<ip>'
+		user = '<username>'
+		//password = '<password>'
+		identity=file('<private key file>')
+	}
 }
 
 task remoteDeploy(dependsOn: installDist) {
-    doLast {
-        def fileSeparator = System.getProperty("file.separator")
-        def src = project.buildDir.name + fileSeparator + "install" + fileSeparator + project.name
-        def target = '~/'
-        ssh.run {
-            session(remotes.master) {
-                put from: src, into: target
-            }
-        }
-    }
+	doLast {
+		def fileSeparator = System.getProperty("file.separator")
+		def src = project.buildDir.name + fileSeparator + "install" + fileSeparator + project.name
+		def target = '~/'
+		ssh.run {
+			session(remotes.master) {
+				put from: src, into: target
+			}
+		}
+	}
 }
 
 task localDeploy(dependsOn: installDist) {
-    doLast {
-        int nServers = 4
-        int nClients = 1
+	doLast {
+		int nServers = 4
+		int nClients = 1
 
-        def fileSeparator = System.getProperty("file.separator")
-        def src = project.buildDir.name + fileSeparator + "install" + fileSeparator + project.name
-        def workingDirectory = project.buildDir.name + fileSeparator + "local" + fileSeparator
+		def fileSeparator = System.getProperty("file.separator")
+		def src = project.buildDir.name + fileSeparator + "install" + fileSeparator + project.name
+		def workingDirectory = project.buildDir.name + fileSeparator + "local" + fileSeparator
 
-        println ("Deploying project into ${workingDirectory}")
+		println ("Deploying project into ${workingDirectory}")
 
-        for (i in 0..<nServers) {
-            def target = workingDirectory + "rep${i}"
-            copy {
-                from src
-                into target
-            }
-        }
+		for (i in 0..<nServers) {
+			def target = workingDirectory + "rep${i}"
+			copy {
+				from src
+				into target
+			}
+		}
 
-        for (i in 0..<nClients) {
-            def target = workingDirectory + "cli${i}"
-            copy {
-                from src
-                into target
-            }
-        }
-    }
+		for (i in 0..<nClients) {
+			def target = workingDirectory + "cli${i}"
+			copy {
+				from src
+				into target
+			}
+		}
+	}
+}
+
+def setupIntegrationTestingEnvironment(nWorkers, workingDirectory) {
+	println("Creating folders for ${nWorkers} workers")
+	def fileSeparator = System.getProperty("file.separator")
+	def src = project.buildDir.name + fileSeparator + "install" + fileSeparator + project.name
+	copy {
+		from src + fileSeparator + "lib"
+		into workingDirectory + fileSeparator + "lib"
+	}
+	copy {
+		from project.projectDir.absolutePath + fileSeparator + "config" + fileSeparator + "benchmark.config"
+		into workingDirectory
+	}
+
+	for (i in 0..<nWorkers) {
+		def target = workingDirectory + "worker${i}"
+		copy {
+			from src
+			into target
+		}
+	}
 }
 
 task setupIntegrationTestingEnvironment(dependsOn: installDist) {
-    doFirst {
-        int nServers = 4
-        int nClients = 1
+	doFirst {
+		def f = 1
+		def nWorkers = 3 * f + 2
+		println("Creating folders for ${nWorkers} workers")
+		def fileSeparator = System.getProperty("file.separator")
+		def src = project.buildDir.name + fileSeparator + "install" + fileSeparator + project.name
+		def workingDirectory = project.buildDir.name + fileSeparator + "integration" + fileSeparator
+		copy {
+			from src + fileSeparator + "lib"
+			into workingDirectory + fileSeparator + "lib"
+		}
+		copy {
+			from project.projectDir.absolutePath + fileSeparator + "config" + fileSeparator + "benchmark.config"
+			into workingDirectory
+		}
 
-        def fileSeparator = System.getProperty("file.separator")
-        def src = project.buildDir.name + fileSeparator + "install" + fileSeparator + project.name
-        def workingDirectory = project.buildDir.name + fileSeparator + "integration" + fileSeparator
-        copy {
-            from src + fileSeparator + "lib"
-            into workingDirectory + fileSeparator + "lib"
-        }
-        copy {
-            from project.projectDir.absolutePath + fileSeparator + "config" + fileSeparator + "benchmark.config"
-            into workingDirectory
-        }
-
-        for (i in 0..<nServers) {
-            def target = workingDirectory + "rep${i}"
-            copy {
-                from src
-                into target
-            }
-        }
-
-        for (i in 0..<nClients) {
-            def target = workingDirectory + "cli${i}"
-            copy {
-                from src
-                into target
-            }
-        }
-    }
+		for (i in 0..<nWorkers) {
+			def target = workingDirectory + "worker${i}"
+			copy {
+				from src
+				into target
+			}
+		}
+	}
 }
 
-task recoveryIntegrationTest(type: JavaExec, dependsOn: setupIntegrationTestingEnvironment) {
-    int nServers = 4
-    int nClients = 1
-    def fileSeparator = System.getProperty("file.separator")
-    String workingDirectory = project.buildDir.absolutePath + fileSeparator + "integration" + fileSeparator
-    classpath = sourceSets.main.runtimeClasspath
-    args(workingDirectory, nServers, nClients)
-    mainClass = 'bftsmart.tests.recovery.RecoveryTest'
+task runIntegrationTest(type: JavaExec, dependsOn: installDist) {
+	int f = 1
+	int nWorkers = 3 * f + 2;
+	def fileSeparator = System.getProperty("file.separator")
+	String workingDirectory = project.buildDir.absolutePath + fileSeparator + "integration" + fileSeparator
+	doFirst {
+		setupIntegrationTestingEnvironment(nWorkers, workingDirectory)
+	}
+
+	classpath = sourceSets.main.runtimeClasspath
+	args(workingDirectory, f, true)
+	mainClass = 'bftsmart.tests.IntegrationTestsExecutor'
 }
 
 distributions {
-    main {
-        contents {
-            into('config') {
-                from 'config'
-            }
-            into('lib') {
-                from jar
-                from(configurations.runtimeClasspath)
-            }
-            from 'runscripts/smartrun.sh'
-            from 'runscripts/smartrun.cmd'
-        }
-    }
+	main {
+		contents {
+			into('config') {
+				from 'config'
+			}
+			into('lib') {
+				from jar
+				from(configurations.runtimeClasspath)
+			}
+			from 'runscripts/smartrun.sh'
+			from 'runscripts/smartrun.cmd'
+		}
+	}
 }
 
 dependencies {
-    implementation fileTree('lib'){include '*.jar'}
-    // https://mvnrepository.com/artifact/org.bouncycastle/bcpkix-jdk15on
-    implementation 'org.bouncycastle:bcpkix-jdk15on:1.69'
+	implementation fileTree('lib'){include '*.jar'}
+	// https://mvnrepository.com/artifact/org.bouncycastle/bcpkix-jdk15on
+	implementation 'org.bouncycastle:bcpkix-jdk15on:1.69'
 
-    // https://mvnrepository.com/artifact/org.bouncycastle/bcprov-jdk15on
-    implementation 'org.bouncycastle:bcprov-jdk15on:1.69'
+	// https://mvnrepository.com/artifact/org.bouncycastle/bcprov-jdk15on
+	implementation 'org.bouncycastle:bcprov-jdk15on:1.69'
 
-    // https://mvnrepository.com/artifact/commons-codec/commons-codec
-    implementation 'commons-codec:commons-codec:1.15'
+	// https://mvnrepository.com/artifact/commons-codec/commons-codec
+	implementation 'commons-codec:commons-codec:1.15'
 
-    // https://mvnrepository.com/artifact/ch.qos.logback/logback-core
-    implementation 'ch.qos.logback:logback-core:1.2.5'
+	// https://mvnrepository.com/artifact/ch.qos.logback/logback-core
+	implementation 'ch.qos.logback:logback-core:1.2.5'
 
-    // https://mvnrepository.com/artifact/ch.qos.logback/logback-classic
-    implementation 'ch.qos.logback:logback-classic:1.2.5'
+	// https://mvnrepository.com/artifact/ch.qos.logback/logback-classic
+	implementation 'ch.qos.logback:logback-classic:1.2.5'
 
-    // https://mvnrepository.com/artifact/io.netty/netty-all
-    implementation 'io.netty:netty-all:4.1.67.Final'
+	// https://mvnrepository.com/artifact/io.netty/netty-all
+	implementation 'io.netty:netty-all:4.1.67.Final'
 
-    // https://mvnrepository.com/artifact/org.slf4j/slf4j-api
-    implementation 'org.slf4j:slf4j-api:1.7.32'
+	// https://mvnrepository.com/artifact/org.slf4j/slf4j-api
+	implementation 'org.slf4j:slf4j-api:1.7.32'
 }

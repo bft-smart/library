@@ -1,6 +1,6 @@
 package bftsmart.benchmark;
 
-import bftsmart.tests.recovery.Operation;
+import bftsmart.tests.util.Operation;
 import bftsmart.tom.ServiceProxy;
 
 import java.nio.ByteBuffer;
@@ -51,14 +51,9 @@ public class ThroughputLatencyClient {
 			clients[i].start();
 			Thread.sleep(10);
 		}
-		new Thread(() -> {
-			try {
-				latch.await();
-				System.out.println("Executing experiment");
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
-		}).start();
+
+		latch.await();
+		System.out.println("Executing experiment");
 	}
 
 	private static class Client extends Thread {
@@ -83,9 +78,6 @@ public class ThroughputLatencyClient {
 		public void run() {
 			try {
 				latch.countDown();
-				if (initialClientId == clientId) {
-					proxy.invokeOrdered(serializedWriteRequest);
-				}
 				for (int i = 0; i < numOperations; i++) {
 					long t1, t2, latency;
 					byte[] response;
@@ -98,7 +90,7 @@ public class ThroughputLatencyClient {
 					t2 = System.nanoTime();
 					latency = t2 - t1;
 					if (!isWrite && !Arrays.equals(data, response)) {
-						throw new IllegalStateException("The response is wrong");
+						throw new IllegalStateException("The response is wrong (" + Arrays.toString(response) + ")");
 					}
 					if (initialClientId == clientId && measurementLeader) {
 						System.out.println("M: " + latency);

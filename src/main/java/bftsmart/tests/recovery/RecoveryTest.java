@@ -1,74 +1,65 @@
 package bftsmart.tests.recovery;
 
-import java.io.File;
-import java.io.IOException;
+import bftsmart.tests.AbstractIntegrationTest;
+
+import java.util.Properties;
 
 /**
  * @author robin
  */
-public class RecoveryTest {
-	public static void main(String[] args) throws IOException, InterruptedException {
-		if (args.length != 3) {
-			throw new IllegalArgumentException("USAGE: bftsmart.tests.recovery.RecoveryTest <working directory> <nServers> <nClients>");
-		}
-		String workingDirectory = args[0];
-		int nServers = Integer.parseInt(args[1]);
-		int nClients = Integer.parseInt(args[2]);
-		System.out.println("Running recovery test");
-		String path = "lib" + File.separator + "*";
-		System.out.println("lib path: " + path);
-		String controllerCommand = "java -cp " + path +" bftsmart.tests.BenchmarkControllerStarter" +
-				" master.listening.ip=127.0.0.1" +
-				" master.listening.port.client=12000" +
-				" master.listening.port.server=12001" +
-				" master.clients=" + nClients +
-				" master.servers=" + nServers +
-				" pod.network.interface=0" +
-				" controller.benchmark.strategy=bftsmart.tests.recovery.RecoveryTestStrategy" +
-				" master.rounds=1" +
-				" global.working.directory=." +
-				" global.clients.maxPerWorker=1" +
-				" global.isWrite=true" +
-				" global.data.size=1024";
-		String clientPodCommand = "java -cp " +  path +" pod.PodStartup 127.0.0.1 12000 bftsmart.tests.recovery.RecoveryTestClientEventProcessor";
-		String serverPodCommand = "java -cp " +  path +" pod.PodStartup 127.0.0.1 12001 bftsmart.tests.recovery.RecoveryTestServerEventProcessor";
+public class RecoveryTest extends AbstractIntegrationTest {
 
-		ProcessExecutor controller = new ProcessExecutor(workingDirectory, controllerCommand);
+	private final String workingDirectory;
+	private final int f;
+	private final boolean isBFT;
+	private final Properties testParameters;
 
-		ProcessExecutor[] servers = new ProcessExecutor[nServers];
-		for (int i = 0; i < nServers; i++) {
-			String currentServerDirectory = workingDirectory + "rep" + i + File.separator;
-			servers[i] = new ProcessExecutor(currentServerDirectory, serverPodCommand);
-		}
+	public RecoveryTest(String workingDirectory, int f, boolean isBFT) {
+		this.workingDirectory = workingDirectory;
+		this.f = f;
+		this.isBFT = isBFT;
+		this.testParameters = new Properties();
+		testParameters.setProperty("experiment.f", String.valueOf(f));
+		testParameters.setProperty("experiment.bft", Boolean.toString(isBFT));
+	}
 
-		ProcessExecutor[] clients = new ProcessExecutor[nClients];
-		for (int i = 0; i < nClients; i++) {
-			String currentClientDirectory = workingDirectory + "cli" + i + File.separator;
-			clients[i] = new ProcessExecutor(currentClientDirectory, clientPodCommand);
-		}
+	@Override
+	public String getControllerIP() {
+		return "127.0.0.1";
+	}
 
-		System.out.println("Starting controller");
-		controller.start();
-		Thread.sleep(3000);
+	@Override
+	public int getControllerPort() {
+		return 1200;
+	}
 
-		System.out.println("Starting servers");
-		for (ProcessExecutor server : servers) {
-			server.start();
-		}
+	@Override
+	public int getNWorkers() {
+		return (isBFT) ? 3 * f + 2 : 2 * f + 2;
+	}
 
-		System.out.println("Starting clients");
-		for (ProcessExecutor client : clients) {
-			client.start();
-		}
+	@Override
+	public String getWorkingDirectory() {
+		return workingDirectory;
+	}
 
-		controller.join();
-		for (ProcessExecutor server : servers) {
-			server.join();
-		}
+	@Override
+	public String getBenchmarkStrategyClassName() {
+		return "bftsmart.tests.recovery.RecoveryTestStrategy";
+	}
 
-		for (ProcessExecutor client : clients) {
-			client.join();
-		}
-		System.out.println("Test terminated");
+	@Override
+	public String getWorkerSetupClassName() {
+		return "bftsmart.tests.BFTSMaRtSetup";
+	}
+
+	@Override
+	public String getWorkerEventProcessClassName() {
+		return "bftsmart.tests.recovery.RecoveryEventProcessor";
+	}
+
+	@Override
+	public Properties getTestParameters() {
+		return testParameters;
 	}
 }
