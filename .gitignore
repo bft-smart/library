@@ -7,3 +7,6 @@ test
 
 # Ignore Gradle build output directory
 build
+
+# Ignore IntelliJ IDEA setting folder
+.idea

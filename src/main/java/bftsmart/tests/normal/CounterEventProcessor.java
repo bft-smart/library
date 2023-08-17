@@ -14,24 +14,34 @@ public class CounterEventProcessor implements IWorkerEventProcessor {
 	private final Logger logger = LoggerFactory.getLogger("benchmarking");
 	private static final String SERVER_READY_PATTERN = "Ready to process operations";
 	private static final String CLIENT_READY_PATTERN = "Executing experiment";
-	private static final String SAR_READY_PATTERN = "%";
+	private static String SAR_READY_PATTERN;
 	private boolean isReady;
-	ArrayList<String> cpu_measurements=new ArrayList<String>();
-	ArrayList<String> mem_measurements=new ArrayList<String>();
-	ArrayList<String> net_measurements=new ArrayList<String>();
+	private final ArrayList<String> cpu_measurements;
+	private final ArrayList<String> mem_measurements;
+	private final ArrayList<String> net_measurements;
+
+	private String pattern;
+	private Pattern timePattern;
+
+	public CounterEventProcessor() {
+		SAR_READY_PATTERN = "%";
+		cpu_measurements=new ArrayList<>();
+		mem_measurements=new ArrayList<>();
+		net_measurements=new ArrayList<>();
+		pattern = "^\\d{2}:\\d{2}:\\d{2}";
+		timePattern = Pattern.compile(pattern);
+	}
 
 	@Override
 	public void process(String line) {
 		logger.debug("{}", line);
 		if (!isReady && (line.contains(SERVER_READY_PATTERN) || line.contains(CLIENT_READY_PATTERN) || line.contains(SAR_READY_PATTERN))) 
 			isReady = true;
-		
-		String pattern = "^\\d{2}:\\d{2}:\\d{2}";
-		Pattern timePattern = Pattern.compile(pattern);
+
 		Matcher matcher = timePattern.matcher(line);
 
 		if ((matcher.find() || line.contains("Average:")) && !line.contains("%")) {
-			int ncol=line.split("\\s+").length;
+			int ncol = line.split("\\s+").length;
 			if(ncol==8){
 				cpu_measurements.add(line);
 			}else if(ncol==10){
