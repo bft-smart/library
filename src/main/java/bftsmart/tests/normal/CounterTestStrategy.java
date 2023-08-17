@@ -20,10 +20,14 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * @author nuria
  */
 public class CounterTestStrategy implements IBenchmarkStrategy, IWorkerStatusListener {
+	private final Logger logger = LoggerFactory.getLogger("benchmarking");
 	private String clientCommand;
 	private String serverCommand;
 	private final Set<Integer> serverWorkersIds;
@@ -55,7 +59,7 @@ public class CounterTestStrategy implements IBenchmarkStrategy, IWorkerStatusLis
 
 	@Override
 	public void executeBenchmark(WorkerHandler[] workerHandlers, Properties benchmarkParameters) {
-		System.out.println("Running counter strategy");
+		logger.info("Running counter strategy");
 		String workingDirectory = benchmarkParameters.getProperty("experiment.working_directory");
 		boolean isbft = Boolean.parseBoolean(benchmarkParameters.getProperty("experiment.bft"));
 		int f = Integer.parseInt(benchmarkParameters.getProperty("experiment.f"));
@@ -90,19 +94,20 @@ public class CounterTestStrategy implements IBenchmarkStrategy, IWorkerStatusLis
 			if (error.get())
 				return;
 
-			System.out.println("Client sending requests...");
+			logger.info("Client sending requests...");
 
-			System.out.println("Waiting 10 seconds");
+			logger.info("Waiting 10 seconds");
 			sleepSeconds(10);
-
-			//saving monitorization
-			System.out.println("Writing monitorization on file");
+			
+			//Saving monitoring
+			logger.info("Writing monitoring on file");
 			clientWorker.requestProcessingResult(); 
 			serverWorkers[0].requestProcessingResult();
 			serverWorkers[1].requestProcessingResult();
 			sleepSeconds(5);
 
-			System.out.println("Counter test was a success");
+
+			logger.info("Counter test was a success");
 		} catch (InterruptedException ignore) {
 		} catch (IOException e) {
 			throw new RuntimeException(e);
@@ -119,9 +124,10 @@ public class CounterTestStrategy implements IBenchmarkStrategy, IWorkerStatusLis
 		String currentWorkerDirectory = workingDirectory + "worker" + clientWorkers[0].getWorkerId()
 				+ File.separator;
 		ProcessInformation[] commands = new ProcessInformation[] {
-			new ProcessInformation("sar 1", currentWorkerDirectory),
-			new ProcessInformation(clientCommand, currentWorkerDirectory)
+				new ProcessInformation("sar -u -r -n DEV 1", currentWorkerDirectory),
+				new ProcessInformation(clientCommand, currentWorkerDirectory),
 		};
+
 		clientWorkers[0].startWorker(50, commands, this);
 		clientsReadyCounter.await();
 	}
@@ -142,17 +148,20 @@ public class CounterTestStrategy implements IBenchmarkStrategy, IWorkerStatusLis
 	}
 
 	private ProcessInformation[] commandList(int serverId, String command, String currentWorkerDirectory){
-		if(serverId<=1){
-			ProcessInformation[] commands= {
-				new ProcessInformation("sar 1", currentWorkerDirectory), 
+
+		ProcessInformation[] commands={
 				new ProcessInformation(command, currentWorkerDirectory)
-			};
+		};
+
+		if(serverId<=1){
+			commands = new ProcessInformation[] {
+                    new ProcessInformation("sar -u -r -n DEV 1", currentWorkerDirectory),
+                    new ProcessInformation(command, currentWorkerDirectory)
+            };
 			return commands;
 		}
-		 ProcessInformation[] commands={
-			new ProcessInformation(command, currentWorkerDirectory)
-		};
-		 return commands;
+
+		return commands;
 	}
 
 	private void sleepSeconds(long duration) throws InterruptedException {
@@ -203,29 +212,43 @@ public class CounterTestStrategy implements IBenchmarkStrategy, IWorkerStatusLis
 	public void onResult(int workerId, IProcessingResult processingResult) {
 		Measurement measurement = (Measurement) processingResult;
 		String[][] measurements = measurement.getMeasurements();
+
 		if(!(measurements == null || measurements.length == 0 || measurements[0].length == 0)){
-			storeResumedMeasurements(workerId, measurements.length, measurements);
+			storeResumedMeasurements(workerId, measurements);
 		}
 	}
-	private void storeResumedMeasurements(int workerId, int nlines, String[][] measurements) {
+
+	private void storeResumedMeasurements(int workerId, String[][] measurements) {
 		String fileName = "monitoring_data" + String.valueOf(workerId) + ".csv";
 		try (BufferedWriter resultFile = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(fileName)))) {
-		resultFile.write("CPU(#),user(%),nice(%),system(%),iowait(%),steal(%),idle(%)\n");
-		for (int i = 0; i < nlines; i++) {
-		String time = measurements[0][i];
-		String cpu = measurements[1][i];
-		String user = measurements[2][i].replace(",", ".");
-		String nice = measurements[3][i].replace(",", ".");
-		String sys = measurements[4][i].replace(",", ".");
-		String iowait = measurements[5][i].replace(",", ".");
-		String steal = measurements[6][i].replace(",", ".");
-		String idle = measurements[7][i].replace(",", ".");
+		resultFile.write("time(HH:mm:ss),user(%),system(%), mem_used(%)\n");
+		for (int i = 0; i < measurements[0].length; i++) {
 
-		resultFile.write(String.format("%s,%s,%s,%s,%s,%s,%s\n", time, cpu, user, nice, sys, iowait, steal, idle));
+			String time = measurements[0][i];
+			String user = measurements[1][i].replace(",",".");
+			String sys = measurements[2][i].replace(",",".");
+
+			String mem_used = measurements[3][i].replace(",",".");
+
+
+			resultFile.write(String.format("%s,%s,%s,%s\n", time, user, sys, mem_used));
 		}
+
+		resultFile.write("time(HH:mm:ss), iface, rxkB/s, txkB/s\n");
+		for (int i = 0; i < measurements[4].length; i++) {
+
+			String time = measurements[4][i];
+			String iface = measurements[5][i];
+			String r = measurements[6][i].replace(",",".");
+			String t = measurements[7][i].replace(",",".");
+
+
+			resultFile.write(String.format("%s,%s,%s,%s\n", time, iface, r, t));
+		}
+
 		resultFile.flush();
 		} catch (IOException e) {
-			System.out.println("Error while storing summarized results"+ e);
+		logger.error("Error while storing summarized results", e);
 		}
 	}
 }

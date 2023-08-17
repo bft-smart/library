@@ -22,4 +22,3 @@ public class Measurement implements IProcessingResult {
 				'}';
 	}
 }
-
