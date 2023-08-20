@@ -16,18 +16,18 @@ public class CounterEventProcessor implements IWorkerEventProcessor {
 	private static final String CLIENT_READY_PATTERN = "Executing experiment";
 	private static String SAR_READY_PATTERN;
 	private boolean isReady;
-	private final ArrayList<String> cpu_measurements;
-	private final ArrayList<String> mem_measurements;
-	private final ArrayList<String> net_measurements;
+	private final ArrayList<String> cpuMeasurements;
+	private final ArrayList<String> memMeasurements;
+	private final ArrayList<String> netMeasurements;
 
 	private String pattern;
 	private Pattern timePattern;
 
 	public CounterEventProcessor() {
 		SAR_READY_PATTERN = "%";
-		cpu_measurements=new ArrayList<>();
-		mem_measurements=new ArrayList<>();
-		net_measurements=new ArrayList<>();
+		cpuMeasurements=new ArrayList<>();
+		memMeasurements=new ArrayList<>();
+		netMeasurements=new ArrayList<>();
 		pattern = "^\\d{2}:\\d{2}:\\d{2}";
 		timePattern = Pattern.compile(pattern);
 	}
@@ -40,14 +40,14 @@ public class CounterEventProcessor implements IWorkerEventProcessor {
 
 		Matcher matcher = timePattern.matcher(line);
 
-		if ((matcher.find() || line.contains("Average:")) && !line.contains("%")) {
+		if (matcher.find() && !line.contains("%")) {
 			int ncol = line.split("\\s+").length;
 			if(ncol==8){
-				cpu_measurements.add(line);
+				cpuMeasurements.add(line);
 			}else if(ncol==10){
-				net_measurements.add(line);
+				netMeasurements.add(line);
 			}else{
-				mem_measurements.add(line);
+				memMeasurements.add(line);
 			}
 		}
 	
@@ -63,29 +63,29 @@ public class CounterEventProcessor implements IWorkerEventProcessor {
 
 	@Override
 	public IProcessingResult getProcessingResult() {
-		String[] cpu_time = new String[cpu_measurements.size()];
-		String[] user = new String[cpu_measurements.size()];
-		String[] sys = new String[cpu_measurements.size()];
+		String[] cpuTime = new String[cpuMeasurements.size()];
+		String[] user = new String[cpuMeasurements.size()];
+		String[] sys = new String[cpuMeasurements.size()];
 
 		int i = 0;
-		for (String measurement : cpu_measurements) {
+		for (String measurement : cpuMeasurements) {
 			String[] strValues = measurement.split("\\s+");
-			cpu_time[i] = strValues[0];
+			cpuTime[i] = strValues[0];
 			user[i] = strValues[2];
 			sys[i] = strValues[4];
 			i++;
 		}
 
 
-		String[] net_time = new String[net_measurements.size()];
-		String[] iface = new String[net_measurements.size()];
-		String[] r = new String[net_measurements.size()];
-		String[] t = new String[net_measurements.size()];
+		String[] netTime = new String[netMeasurements.size()];
+		String[] iface = new String[netMeasurements.size()];
+		String[] r = new String[netMeasurements.size()];
+		String[] t = new String[netMeasurements.size()];
 
 		i = 0;
-		for (String measurement : net_measurements) {
+		for (String measurement : netMeasurements) {
 			String[] strValues = measurement.split("\\s+");
-			net_time[i] = strValues[0];
+			netTime[i] = strValues[0];
 			iface[i] = strValues[1];
 			r[i] = strValues[4];
 			t[i] = strValues[5];
@@ -93,17 +93,19 @@ public class CounterEventProcessor implements IWorkerEventProcessor {
 		}
 
 
-		String[] mem_used = new String[mem_measurements.size()];
+		String[] memTime = new String[memMeasurements.size()];
+		String[] memUsed = new String[memMeasurements.size()];
 
 		i = 0;
-		for (String measurement : mem_measurements) {
+		for (String measurement : memMeasurements) {
 			String[] strValues = measurement.split("\\s+");
-			mem_used[i] = strValues[4];
+			memTime[i] = strValues[0];
+			memUsed[i] = strValues[4];
 			i++;
 		}
 
 
-		return new Measurement(cpu_time, user, sys, mem_used, net_time, iface, r, t);
+		return new Measurement(cpuTime, user, sys, memTime, memUsed, netTime, iface, r, t);
 	}
 
 	@Override

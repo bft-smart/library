@@ -40,6 +40,7 @@ public class CounterTestStrategy implements IBenchmarkStrategy, IWorkerStatusLis
 
 	private int nLoadRequests;
 	private int increment;
+	private String workingDirectory;
 
 	public CounterTestStrategy() {
 		increment = 5;
@@ -60,7 +61,7 @@ public class CounterTestStrategy implements IBenchmarkStrategy, IWorkerStatusLis
 	@Override
 	public void executeBenchmark(WorkerHandler[] workerHandlers, Properties benchmarkParameters) {
 		logger.info("Running counter strategy");
-		String workingDirectory = benchmarkParameters.getProperty("experiment.working_directory");
+		workingDirectory = benchmarkParameters.getProperty("experiment.working_directory");
 		boolean isbft = Boolean.parseBoolean(benchmarkParameters.getProperty("experiment.bft"));
 		int f = Integer.parseInt(benchmarkParameters.getProperty("experiment.f"));
 		String hosts = "0 127.0.0.1 11000 11001\n" + 
@@ -124,8 +125,8 @@ public class CounterTestStrategy implements IBenchmarkStrategy, IWorkerStatusLis
 		String currentWorkerDirectory = workingDirectory + "worker" + clientWorkers[0].getWorkerId()
 				+ File.separator;
 		ProcessInformation[] commands = new ProcessInformation[] {
-				new ProcessInformation("sar -u -r -n DEV 1", currentWorkerDirectory),
-				new ProcessInformation(clientCommand, currentWorkerDirectory),
+			new ProcessInformation("sar -u -r -n DEV 1", currentWorkerDirectory),
+			new ProcessInformation(clientCommand, currentWorkerDirectory),
 		};
 
 		clientWorkers[0].startWorker(50, commands, this);
@@ -150,13 +151,13 @@ public class CounterTestStrategy implements IBenchmarkStrategy, IWorkerStatusLis
 	private ProcessInformation[] commandList(int serverId, String command, String currentWorkerDirectory){
 
 		ProcessInformation[] commands={
-				new ProcessInformation(command, currentWorkerDirectory)
+			new ProcessInformation(command, currentWorkerDirectory)
 		};
 
 		if(serverId<=1){
 			commands = new ProcessInformation[] {
-                    new ProcessInformation("sar -u -r -n DEV 1", currentWorkerDirectory),
-                    new ProcessInformation(command, currentWorkerDirectory)
+				new ProcessInformation("sar -u -r -n DEV 1", currentWorkerDirectory),
+				new ProcessInformation(command, currentWorkerDirectory)
             };
 			return commands;
 		}
@@ -215,35 +216,37 @@ public class CounterTestStrategy implements IBenchmarkStrategy, IWorkerStatusLis
 
 		if(!(measurements == null || measurements.length == 0 || measurements[0].length == 0)){
 			storeResumedMeasurements(workerId, measurements);
+			
 		}
 	}
 
 	private void storeResumedMeasurements(int workerId, String[][] measurements) {
-		String fileName = "monitoring_data" + String.valueOf(workerId) + ".csv";
-		try (BufferedWriter resultFile = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(fileName)))) {
-		resultFile.write("time(HH:mm:ss),user(%),system(%), mem_used(%)\n");
+		String fileName = "monitoring_data" + workerId + ".csv";
+		try (BufferedWriter resultFile = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(workingDirectory + "worker" + workerId + File.separator + fileName)))) {
+		resultFile.write("time(HH:mm:ss),user(%),system(%), time(HH:mm:ss), mem_used(%)\n");
 		for (int i = 0; i < measurements[0].length; i++) {
 
-			String time = measurements[0][i];
+			String cpuTime = measurements[0][i];
 			String user = measurements[1][i].replace(",",".");
 			String sys = measurements[2][i].replace(",",".");
 
-			String mem_used = measurements[3][i].replace(",",".");
+			String memTime = measurements[3][i];
+			String memUsed = measurements[4][i].replace(",",".");
 
 
-			resultFile.write(String.format("%s,%s,%s,%s\n", time, user, sys, mem_used));
+			resultFile.write(String.format("%s,%s,%s,%s,%s\n", cpuTime, user, sys, memTime, memUsed));
 		}
 
 		resultFile.write("time(HH:mm:ss), iface, rxkB/s, txkB/s\n");
-		for (int i = 0; i < measurements[4].length; i++) {
+		for (int i = 0; i < measurements[5].length; i++) {
 
-			String time = measurements[4][i];
-			String iface = measurements[5][i];
-			String r = measurements[6][i].replace(",",".");
-			String t = measurements[7][i].replace(",",".");
+			String netTime = measurements[5][i];
+			String iface = measurements[6][i];
+			String r = measurements[7][i].replace(",",".");
+			String t = measurements[8][i].replace(",",".");
 
 
-			resultFile.write(String.format("%s,%s,%s,%s\n", time, iface, r, t));
+			resultFile.write(String.format("%s,%s,%s,%s\n", netTime, iface, r, t));
 		}
 
 		resultFile.flush();
