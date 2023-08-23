@@ -1,6 +1,7 @@
 package bftsmart.tests.normal;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -16,10 +17,9 @@ public class CounterEventProcessor implements IWorkerEventProcessor {
 	private static final String CLIENT_READY_PATTERN = "Executing experiment";
 	private static String SAR_READY_PATTERN;
 	private boolean isReady;
-	private final ArrayList<String> cpuMeasurements;
-	private final ArrayList<String> memMeasurements;
-	private final ArrayList<String> netMeasurements;
-
+	private ArrayList<String> cpuMeasurements;
+	private ArrayList<String> memMeasurements;
+	private ArrayList<String> netMeasurements;
 	private String pattern;
 	private Pattern timePattern;
 
@@ -63,49 +63,45 @@ public class CounterEventProcessor implements IWorkerEventProcessor {
 
 	@Override
 	public IProcessingResult getProcessingResult() {
-		String[] cpuTime = new String[cpuMeasurements.size()];
-		String[] user = new String[cpuMeasurements.size()];
-		String[] sys = new String[cpuMeasurements.size()];
 
+		double[] user = new double[cpuMeasurements.size()];
+		double[] sys = new double[cpuMeasurements.size()];
 		int i = 0;
 		for (String measurement : cpuMeasurements) {
-			String[] strValues = measurement.split("\\s+");
-			cpuTime[i] = strValues[0];
-			user[i] = strValues[2];
-			sys[i] = strValues[4];
+			String[] strValues = Arrays.stream(measurement.split("\\s+")).map(val -> val.replace(",",".")).toArray(String[]::new);
+			double[] dValues = Arrays.stream(Arrays.copyOfRange(strValues, 2, strValues.length)).mapToDouble(Double::parseDouble).toArray();
+			user[i] = dValues[0];
+			sys[i] = dValues[2];
 			i++;
 		}
 
 
-		String[] netTime = new String[netMeasurements.size()];
 		String[] iface = new String[netMeasurements.size()];
-		String[] r = new String[netMeasurements.size()];
-		String[] t = new String[netMeasurements.size()];
-
+		double[] r = new double[netMeasurements.size()];
+		double[] t = new double[netMeasurements.size()];
 		i = 0;
 		for (String measurement : netMeasurements) {
-			String[] strValues = measurement.split("\\s+");
-			netTime[i] = strValues[0];
+			String[] strValues = Arrays.stream(measurement.split("\\s+")).map(val -> val.replace(",",".")).toArray(String[]::new);
+			double[] dValues = Arrays.stream(Arrays.copyOfRange(strValues, 2, strValues.length)).mapToDouble(Double::parseDouble).toArray();
 			iface[i] = strValues[1];
-			r[i] = strValues[4];
-			t[i] = strValues[5];
+			r[i] = dValues[2];
+			t[i] = dValues[3];
 			i++;
 		}
+		iface = Arrays.stream(iface).distinct().toArray(String[]::new);
 
 
-		String[] memTime = new String[memMeasurements.size()];
-		String[] memUsed = new String[memMeasurements.size()];
-
+		double[] memUsed = new double[memMeasurements.size()];
 		i = 0;
 		for (String measurement : memMeasurements) {
-			String[] strValues = measurement.split("\\s+");
-			memTime[i] = strValues[0];
-			memUsed[i] = strValues[4];
+			String[] strValues = Arrays.stream(measurement.split("\\s+")).map(val -> val.replace(",",".")).toArray(String[]::new);
+			double[] dValues = Arrays.stream(Arrays.copyOfRange(strValues, 1, strValues.length)).mapToDouble(Double::parseDouble).toArray();
+			memUsed[i] = dValues[3];
 			i++;
 		}
 
 
-		return new Measurement(cpuTime, user, sys, memTime, memUsed, netTime, iface, r, t);
+		return new Measurement(iface, user, sys, memUsed, r, t);
 	}
 
 	@Override

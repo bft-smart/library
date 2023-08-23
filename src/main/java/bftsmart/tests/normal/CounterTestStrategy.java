@@ -7,6 +7,8 @@ import worker.IProcessingResult;
 import worker.ProcessInformation;
 
 import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Properties;
@@ -212,46 +214,73 @@ public class CounterTestStrategy implements IBenchmarkStrategy, IWorkerStatusLis
 	@Override
 	public void onResult(int workerId, IProcessingResult processingResult) {
 		Measurement measurement = (Measurement) processingResult;
-		String[][] measurements = measurement.getMeasurements();
+		double[][] measurements = measurement.getMeasurements();
+		String[] header = measurement.getHeader();
 
 		if(!(measurements == null || measurements.length == 0 || measurements[0].length == 0)){
-			storeResumedMeasurements(workerId, measurements);
+			storeResumedMeasurements(workerId, measurements, header);
 			
 		}
 	}
 
-	private void storeResumedMeasurements(int workerId, String[][] measurements) {
-		String fileName = "monitoring_data" + workerId + ".csv";
-		try (BufferedWriter resultFile = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(workingDirectory + "worker" + workerId + File.separator + fileName)))) {
-		resultFile.write("time(HH:mm:ss),user(%),system(%), time(HH:mm:ss), mem_used(%)\n");
-		for (int i = 0; i < measurements[0].length; i++) {
+	private void storeResumedMeasurements(int workerId, double[][] measurements, String[] header) {
 
-			String cpuTime = measurements[0][i];
-			String user = measurements[1][i].replace(",",".");
-			String sys = measurements[2][i].replace(",",".");
+		String fileName = "cpu_monitoring_data" + workerId + ".csv";
+		try (BufferedWriter resultFile = new BufferedWriter(new OutputStreamWriter(Files.newOutputStream(Paths.get(workingDirectory + "worker" + workerId + File.separator + fileName))))) {
 
-			String memTime = measurements[3][i];
-			String memUsed = measurements[4][i].replace(",",".");
+			resultFile.write("user(%),system(%)\n");
+			for (int i = 0; i < measurements[0].length; i++) {
 
+				double user = measurements[0][i];
+				double sys = measurements[1][i];
 
-			resultFile.write(String.format("%s,%s,%s,%s,%s\n", cpuTime, user, sys, memTime, memUsed));
-		}
+				resultFile.write(String.format("%s,%s\n", user, sys));
+			}
 
-		resultFile.write("time(HH:mm:ss), iface, rxkB/s, txkB/s\n");
-		for (int i = 0; i < measurements[5].length; i++) {
-
-			String netTime = measurements[5][i];
-			String iface = measurements[6][i];
-			String r = measurements[7][i].replace(",",".");
-			String t = measurements[8][i].replace(",",".");
-
-
-			resultFile.write(String.format("%s,%s,%s,%s\n", netTime, iface, r, t));
-		}
-
-		resultFile.flush();
+			resultFile.flush();
 		} catch (IOException e) {
-		logger.error("Error while storing summarized results", e);
+			logger.error("Error while storing measurement results", e);
 		}
+
+		fileName = "mem_monitoring_data" + workerId + ".csv";
+		try (BufferedWriter resultFile = new BufferedWriter(new OutputStreamWriter(Files.newOutputStream(Paths.get(workingDirectory + "worker" + workerId + File.separator + fileName))))) {
+
+			resultFile.write("mem_used(%)\n");
+
+			for (int i = 0; i < measurements[2].length; i++) {
+
+				double mem_used = measurements[2][i];
+
+				resultFile.write(String.format("%s\n", mem_used));
+			}
+
+			resultFile.flush();
+		} catch (IOException e) {
+			logger.error("Error while storing measurement results", e);
+		}
+
+		fileName = "net_monitoring_data" + workerId + ".csv";
+		try (BufferedWriter resultFile = new BufferedWriter(new OutputStreamWriter(Files.newOutputStream(Paths.get(workingDirectory + "worker" + workerId + File.separator + fileName))))) {
+
+			String iface= String.join(",", header);
+			resultFile.write(iface);
+
+			resultFile.write("\n");
+
+			// each interface has two columns corresponding to the rates rxkB/s,txkB/s
+			for (int i = 0; i < measurements[3].length; i+=header.length) {
+				for (int j = i; j < i+header.length; j++) {
+					double r = measurements[3][j];
+					double t = measurements[4][j];
+					resultFile.write(String.format("%s,%s,", r, t));
+				}
+				resultFile.newLine();
+			}
+
+			resultFile.flush();
+		} catch (IOException e) {
+			logger.error("Error while storing measurement results", e);
+		}
+
 	}
 }
