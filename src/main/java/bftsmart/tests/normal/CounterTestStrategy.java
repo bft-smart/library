@@ -88,12 +88,12 @@ public class CounterTestStrategy implements IBenchmarkStrategy, IWorkerStatusLis
 		try {
 			lock.lock();
 			//Start servers
-			startServers(workingDirectory, serverWorkers);
+			startServers(serverWorkers);
 			if (error.get())
 				return;
 
 			//Start client that continuously send requests
-			startClients(workingDirectory, clientWorker);
+			startClients(clientWorker);
 			if (error.get())
 				return;
 
@@ -121,45 +121,41 @@ public class CounterTestStrategy implements IBenchmarkStrategy, IWorkerStatusLis
 		}
 	}
 
-	private void startClients(String workingDirectory, WorkerHandler... clientWorkers) throws InterruptedException, IOException {
+	private void startClients(WorkerHandler... clientWorkers) throws InterruptedException, IOException {
 		System.out.println("Starting client...");
 		clientsReadyCounter = new CountDownLatch(1);
-		String currentWorkerDirectory = workingDirectory + "worker" + clientWorkers[0].getWorkerId()
-				+ File.separator;
 		ProcessInformation[] commands = new ProcessInformation[] {
-			new ProcessInformation("sar -u -r -n DEV 1", currentWorkerDirectory),
-			new ProcessInformation(clientCommand, currentWorkerDirectory),
+			new ProcessInformation("sar -u -r -n DEV 1", "."),
+			new ProcessInformation(clientCommand, "."),
 		};
 
 		clientWorkers[0].startWorker(50, commands, this);
 		clientsReadyCounter.await();
 	}
 
-	private void startServers(String workingDirectory, WorkerHandler... serverWorkers) throws InterruptedException, IOException {
+	private void startServers(WorkerHandler... serverWorkers) throws InterruptedException, IOException {
 		System.out.println("Starting servers...");
 		serversReadyCounter = new CountDownLatch(serverWorkers.length);
 		for (int i = 0; i < serverWorkers.length; i++) {
 			String command = serverCommand +i;
 			WorkerHandler serverWorker = serverWorkers[i];
-			String currentWorkerDirectory = workingDirectory + "worker" + serverWorker.getWorkerId()
-					+ File.separator;
-			ProcessInformation[] commands = commandList(i, command, currentWorkerDirectory);
+			ProcessInformation[] commands = commandList(i, command);
 			serverWorker.startWorker(0, commands, this);
 			sleepSeconds(1);
 		}
 		serversReadyCounter.await();
 	}
 
-	private ProcessInformation[] commandList(int serverId, String command, String currentWorkerDirectory){
+	private ProcessInformation[] commandList(int serverId, String command){
 
 		ProcessInformation[] commands={
-			new ProcessInformation(command, currentWorkerDirectory)
+			new ProcessInformation(command, ".")
 		};
 
 		if(serverId<=1){
 			commands = new ProcessInformation[] {
-				new ProcessInformation("sar -u -r -n DEV 1", currentWorkerDirectory),
-				new ProcessInformation(command, currentWorkerDirectory)
+				new ProcessInformation("sar -u -r -n DEV 1", "."),
+				new ProcessInformation(command, ".")
             };
 			return commands;
 		}
