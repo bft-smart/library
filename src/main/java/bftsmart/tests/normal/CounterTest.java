@@ -19,7 +19,6 @@ public class CounterTest extends AbstractIntegrationTest {
 		nWorkers = (isbft) ? 3 * f + 2 : 2 * f + 2;
 		this.testParameters = new Properties();
 		testParameters.setProperty("experiment.f", String.valueOf(f));
-		testParameters.setProperty("experiment.working_directory", workingDirectory);
 		testParameters.setProperty("experiment.bft", Boolean.toString(isbft));
 	}
 

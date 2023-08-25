@@ -3,10 +3,14 @@ package bftsmart.tests.normal;
 import controller.IBenchmarkStrategy;
 import controller.IWorkerStatusListener;
 import controller.WorkerHandler;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import worker.IProcessingResult;
 import worker.ProcessInformation;
 
-import java.io.*;
+import java.io.BufferedWriter;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Arrays;
@@ -22,16 +26,13 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 /**
  * @author nuria
  */
 public class CounterTestStrategy implements IBenchmarkStrategy, IWorkerStatusListener {
 	private final Logger logger = LoggerFactory.getLogger("benchmarking");
-	private String clientCommand;
-	private String serverCommand;
+	private final String clientCommand;
+	private final String serverCommand;
 	private final Set<Integer> serverWorkersIds;
 	private final Set<Integer> clientWorkersIds;
 	private final Lock lock;
@@ -40,13 +41,9 @@ public class CounterTestStrategy implements IBenchmarkStrategy, IWorkerStatusLis
 	private CountDownLatch clientsReadyCounter;
 	private final AtomicBoolean error;
 
-	private int nLoadRequests;
-	private int increment;
-	private String workingDirectory;
-
 	public CounterTestStrategy() {
-		increment = 5;
-		nLoadRequests = 1_000;
+		int increment = 5;
+		int nLoadRequests = 1_000;
 		this.clientCommand =  "java -Djava.security.properties=./config/java" +
 				".security -Dlogback.configurationFile=./config/logback.xml -cp lib/* " +
 				"bftsmart.tests.normal.CounterTestClient " + "1000 " + nLoadRequests + " " + increment;
@@ -63,8 +60,7 @@ public class CounterTestStrategy implements IBenchmarkStrategy, IWorkerStatusLis
 	@Override
 	public void executeBenchmark(WorkerHandler[] workerHandlers, Properties benchmarkParameters) {
 		logger.info("Running counter strategy");
-		workingDirectory = benchmarkParameters.getProperty("experiment.working_directory");
-		boolean isbft = Boolean.parseBoolean(benchmarkParameters.getProperty("experiment.bft"));
+		boolean isBFT = Boolean.parseBoolean(benchmarkParameters.getProperty("experiment.bft"));
 		int f = Integer.parseInt(benchmarkParameters.getProperty("experiment.f"));
 		String hosts = "0 127.0.0.1 11000 11001\n" + 
 					   "1 127.0.0.1 11010 11011\n" + 
@@ -72,7 +68,7 @@ public class CounterTestStrategy implements IBenchmarkStrategy, IWorkerStatusLis
 					   "3 127.0.0.1 11030 11031\n" + 
 					   "\n7001 127.0.0.1 11100";
 		
-		int nServers = (isbft ? 3*f+1 : 2*f+1);
+		int nServers = (isBFT ? 3*f+1 : 2*f+1);
 
 		//Separate workers
 		WorkerHandler[] serverWorkers = new WorkerHandler[nServers];
@@ -82,7 +78,7 @@ public class CounterTestStrategy implements IBenchmarkStrategy, IWorkerStatusLis
 		clientWorkersIds.add(clientWorker.getWorkerId());
 
 		//Setup workers
-		String setupInformation = String.format("%b\t%d\t"+hosts, isbft, f);
+		String setupInformation = String.format("%b\t%d\t"+hosts, isBFT, f);
 		Arrays.stream(workerHandlers).forEach(w -> w.setupWorker(setupInformation));
 
 		try {
@@ -222,7 +218,8 @@ public class CounterTestStrategy implements IBenchmarkStrategy, IWorkerStatusLis
 	private void storeResumedMeasurements(int workerId, double[][] measurements, String[] header) {
 
 		String fileName = "cpu_monitoring_data" + workerId + ".csv";
-		try (BufferedWriter resultFile = new BufferedWriter(new OutputStreamWriter(Files.newOutputStream(Paths.get(workingDirectory + "worker" + workerId + File.separator + fileName))))) {
+		try (BufferedWriter resultFile = new BufferedWriter(new OutputStreamWriter(
+				Files.newOutputStream(Paths.get(fileName))))) {
 
 			resultFile.write("user(%),system(%)\n");
 			for (int i = 0; i < measurements[0].length; i++) {
@@ -239,7 +236,8 @@ public class CounterTestStrategy implements IBenchmarkStrategy, IWorkerStatusLis
 		}
 
 		fileName = "mem_monitoring_data" + workerId + ".csv";
-		try (BufferedWriter resultFile = new BufferedWriter(new OutputStreamWriter(Files.newOutputStream(Paths.get(workingDirectory + "worker" + workerId + File.separator + fileName))))) {
+		try (BufferedWriter resultFile = new BufferedWriter(new OutputStreamWriter(
+				Files.newOutputStream(Paths.get(fileName))))) {
 
 			resultFile.write("mem_used(%)\n");
 
@@ -256,7 +254,8 @@ public class CounterTestStrategy implements IBenchmarkStrategy, IWorkerStatusLis
 		}
 
 		fileName = "net_monitoring_data" + workerId + ".csv";
-		try (BufferedWriter resultFile = new BufferedWriter(new OutputStreamWriter(Files.newOutputStream(Paths.get(workingDirectory + "worker" + workerId + File.separator + fileName))))) {
+		try (BufferedWriter resultFile = new BufferedWriter(new OutputStreamWriter(
+				Files.newOutputStream(Paths.get(fileName))))) {
 
 			String iface= String.join(",", header);
 			resultFile.write(iface);
