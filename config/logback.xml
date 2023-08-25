@@ -51,6 +51,8 @@
 
 	<logger name="bftsmart" level="INFO"/>
 
+	<logger name="bftsmart.proxy" level="INFO"/>
+
 	<logger name="benchmark.controller" level="INFO"/>
 
 	<logger name="benchmark.worker" level="INFO"/>

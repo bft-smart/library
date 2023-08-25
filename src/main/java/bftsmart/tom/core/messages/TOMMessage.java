@@ -229,7 +229,7 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 	public void wExternal(DataOutput out) throws IOException {
 		out.writeInt(sender);
 		out.writeInt(viewID);
-		out.writeInt(type.toInt());
+		out.writeInt(type.ordinal());
 		out.writeInt(session);
 		out.writeInt(sequence);
 		out.writeInt(operationId);
@@ -246,7 +246,7 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 	public void rExternal(DataInput in) throws IOException, ClassNotFoundException {
 		sender = in.readInt();
 		viewID = in.readInt();
-		type = TOMMessageType.fromInt(in.readInt());
+		type = TOMMessageType.getMessageType(in.readByte());
 		session = in.readInt();
 		sequence = in.readInt();
 		operationId = in.readInt();
