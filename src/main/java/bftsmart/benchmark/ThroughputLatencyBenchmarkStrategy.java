@@ -64,10 +64,10 @@ public class ThroughputLatencyBenchmarkStrategy implements IBenchmarkStrategy, I
 		long startTime = System.currentTimeMillis();
 		int n = Integer.parseInt(benchmarkParameters.getProperty("experiment.n"));
 		int f = Integer.parseInt(benchmarkParameters.getProperty("experiment.f"));
-		String workingDirectory = benchmarkParameters.getProperty("experiment.working_directory");
 		String[] tokens = benchmarkParameters.getProperty("experiment.clients_per_round").split(" ");
 		dataSize = Integer.parseInt(benchmarkParameters.getProperty("experiment.data_size"));
 		isWrite = Boolean.parseBoolean(benchmarkParameters.getProperty("experiment.is_write"));
+		boolean measureResources = true;
 
 		int nServerWorkers = n;
 		int nClientWorkers = workers.length - nServerWorkers;
@@ -111,10 +111,10 @@ public class ThroughputLatencyBenchmarkStrategy implements IBenchmarkStrategy, I
 				logger.info("Clients per worker: {} -> Total: {}", vector, total);
 
 				//Start servers
-				startServers(dataSize, nServerWorkers, workingDirectory, serverWorkers);
+				startServers(dataSize, nServerWorkers, serverWorkers);
 
 				//Start clients
-				startClients(nServerWorkers, workingDirectory, maxClientsPerProcess, nRequests, dataSize, isWrite,
+				startClients(nServerWorkers, maxClientsPerProcess, nRequests, dataSize, isWrite,
 						clientWorkers, measurementClient, clientsPerWorker);
 
 				//Wait for system to stabilize
@@ -169,7 +169,7 @@ public class ThroughputLatencyBenchmarkStrategy implements IBenchmarkStrategy, I
 		measurementDeliveredCounter.await();
 	}
 
-	private void startClients(int nServerWorkers, String workingDirectory, int maxClientsPerProcess, int nRequests,
+	private void startClients(int nServerWorkers, int maxClientsPerProcess, int nRequests,
 							  int dataSize, boolean isWrite, WorkerHandler[] clientWorkers, WorkerHandler measurementClient,
 							  int[] clientsPerWorker) throws InterruptedException {
 		logger.info("Starting clients...");
@@ -187,7 +187,7 @@ public class ThroughputLatencyBenchmarkStrategy implements IBenchmarkStrategy, I
 				int clientsPerProcess = Math.min(totalClientsPerWorker, maxClientsPerProcess);
 				String command = clientCommand + clientInitialId + " " + clientsPerProcess
 						+ " " + nRequests + " " + dataSize + " " + isWrite + " " + isMeasurementWorker;
-				commands[j] = new ProcessInformation(command, workingDirectory);
+				commands[j] = new ProcessInformation(command, ".");
 				totalClientsPerWorker -= clientsPerProcess;
 				clientInitialId += clientsPerProcess;
 			}
@@ -196,14 +196,14 @@ public class ThroughputLatencyBenchmarkStrategy implements IBenchmarkStrategy, I
 		clientsReadyCounter.await();
 	}
 
-	private void startServers(int dataSize, int nServerWorkers, String workingDirectory,
+	private void startServers(int dataSize, int nServerWorkers,
 							  WorkerHandler[] serverWorkers) throws InterruptedException {
 		logger.info("Starting servers...");
 		serversReadyCounter = new CountDownLatch(nServerWorkers);
 		for (int i = 0; i < serverWorkers.length; i++) {
 			String command = serverCommand + i + " " + dataSize;
 			ProcessInformation[] commands = {
-					new ProcessInformation(command, workingDirectory)
+					new ProcessInformation(command, ".")
 			};
 			serverWorkers[i].startWorker(0, commands, this);
 			sleepSeconds(2);
