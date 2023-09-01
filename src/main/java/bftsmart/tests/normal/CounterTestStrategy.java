@@ -1,4 +1,4 @@
-package bftsmart.tests.recovery;
+package bftsmart.tests.normal;
 
 import controller.IBenchmarkStrategy;
 import controller.IWorkerStatusListener;
@@ -17,52 +17,53 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
- * @author robin
+ * @author nuria
  */
-public class RecoveryTestStrategy implements IBenchmarkStrategy, IWorkerStatusListener {
+public class CounterTestStrategy implements IBenchmarkStrategy, IWorkerStatusListener {
 	private final Logger logger = LoggerFactory.getLogger("benchmarking");
 	private final String clientCommand;
 	private final String serverCommand;
-	private final int dataSize;
 	private final Set<Integer> serverWorkersIds;
 	private final Set<Integer> clientWorkersIds;
 	private final Lock lock;
 	private final Condition sleepCondition;
 	private CountDownLatch serversReadyCounter;
 	private CountDownLatch clientsReadyCounter;
+	private final AtomicBoolean error;
 
-	public RecoveryTestStrategy() {
-		this.dataSize = 1024;
-		int nLoadRequests = 1_000_000;
-		this.clientCommand =  "java -Djava.security.properties=config/java" +
-				".security -Dlogback.configurationFile=config/logback.xml -cp lib/* " +
-				"bftsmart.tests.recovery.RecoveryTestClient " + "1000 " + nLoadRequests + " " + dataSize + " " + true;
-		this.serverCommand = "java -Djava.security.properties=config/java" +
-				".security -Dlogback.configurationFile=config/logback.xml -cp lib/* " +
-				"bftsmart.tests.recovery.RecoveryTestServer ";
+	public CounterTestStrategy() {
+		int increment = 5;
+		int nLoadRequests = 1_000;
+		this.clientCommand =  "java -Djava.security.properties=./config/java" +
+				".security -Dlogback.configurationFile=./config/logback.xml -cp lib/* " +
+				"bftsmart.tests.normal.CounterTestClient " + "1000 " + nLoadRequests + " " + increment;
+		this.serverCommand = "java -Djava.security.properties=./config/java" +
+				".security -Dlogback.configurationFile=./config/logback.xml -cp lib/* " +
+				"bftsmart.demo.counter.CounterServer ";
 		this.lock = new ReentrantLock(true);
 		this.sleepCondition = lock.newCondition();
 		this.serverWorkersIds = new HashSet<>();
 		this.clientWorkersIds = new HashSet<>();
+		this.error = new AtomicBoolean(false);
 	}
 
 	@Override
 	public void executeBenchmark(WorkerHandler[] workerHandlers, Properties benchmarkParameters) {
-		logger.info("Running recovery strategy");
-		int f = Integer.parseInt(benchmarkParameters.getProperty("experiment.f"));
+		logger.info("Running counter strategy");
 		boolean isBFT = Boolean.parseBoolean(benchmarkParameters.getProperty("experiment.bft"));
-
+		int f = Integer.parseInt(benchmarkParameters.getProperty("experiment.f"));
 		String hosts = "0 127.0.0.1 11000 11001\n" + 
-				"1 127.0.0.1 11010 11011\n" + 
-				"2 127.0.0.1 11020 11021\n" + 
-				"3 127.0.0.1 11030 11031\n" + 
-				"\n7001 127.0.0.1 11100";
-
+					   "1 127.0.0.1 11010 11011\n" + 
+					   "2 127.0.0.1 11020 11021\n" + 
+					   "3 127.0.0.1 11030 11031\n" + 
+					   "\n7001 127.0.0.1 11100";
+		
 		int nServers = (isBFT ? 3*f+1 : 2*f+1);
 
 		//Separate workers
@@ -73,66 +74,63 @@ public class RecoveryTestStrategy implements IBenchmarkStrategy, IWorkerStatusLi
 		clientWorkersIds.add(clientWorker.getWorkerId());
 
 		//Setup workers
-		String setupInformation = String.format("%b\t%d\t%s", isBFT, f, hosts);
+		String setupInformation = String.format("%b\t%d\t"+hosts, isBFT, f);
 		Arrays.stream(workerHandlers).forEach(w -> w.setupWorker(setupInformation));
 
 		try {
 			lock.lock();
 			//Start servers
 			startServers(serverWorkers);
+			if (error.get())
+				return;
 
 			//Start client that continuously send requests
 			startClients(clientWorker);
+			if (error.get())
+				return;
 
-			logger.info("Clients are sending requests");
+			logger.info("Client sending requests...");
 
-			//Restarting servers to test recovery
-			for (int server = nServers - 1; server >= 0; server--) {
-				WorkerHandler serverWorker = serverWorkers[server];
-				logger.info("Rebooting server {} in 10 seconds [reboot will take around 20 seconds]", server);
-				sleepSeconds(10);
-
-				//Stop server
-				serverWorker.stopWorker();
-
-				sleepSeconds(20);
-
-				//Start server
-				serversReadyCounter = new CountDownLatch(1);
-				String command = serverCommand + server + " " + dataSize;
-				ProcessInformation[] commands = {
-						new ProcessInformation(command, ".")
-				};
-
-				serverWorker.startWorker(0, commands, this);
-				serversReadyCounter.await();
-			}
 			logger.info("Waiting 10 seconds");
 			sleepSeconds(10);
-			logger.info("Recovery test was a success");
+
+			//Stop processes
+			Arrays.stream(serverWorkers).forEach(WorkerHandler::stopWorker);
+			clientWorker.stopWorker();
+
+			sleepSeconds(5);
+
+			if (error.get()) {
+				logger.error("Counter test failed");
+			} else {
+				logger.info("Counter test was a success");
+			}
 		} catch (InterruptedException ignore) {
 		} catch (IOException e) {
 			throw new RuntimeException(e);
-		} finally {
+		} 
+		
+		finally {
 			lock.unlock();
 		}
 	}
 
 	private void startClients(WorkerHandler... clientWorkers) throws InterruptedException, IOException {
-		logger.info("Starting clients...");
+		logger.debug("Starting client...");
 		clientsReadyCounter = new CountDownLatch(1);
 		ProcessInformation[] commands = new ProcessInformation[] {
-				new ProcessInformation(clientCommand, ".")
+			new ProcessInformation(clientCommand, ".")
 		};
+
 		clientWorkers[0].startWorker(50, commands, this);
 		clientsReadyCounter.await();
 	}
 
 	private void startServers(WorkerHandler... serverWorkers) throws InterruptedException, IOException {
-		logger.info("Starting servers...");
+		logger.debug("Starting servers...");
 		serversReadyCounter = new CountDownLatch(serverWorkers.length);
 		for (int i = 0; i < serverWorkers.length; i++) {
-			String command = serverCommand + i + " " + dataSize;
+			String command = serverCommand + i;
 			WorkerHandler serverWorker = serverWorkers[i];
 			ProcessInformation[] commands = {
 					new ProcessInformation(command, ".")
@@ -173,12 +171,18 @@ public class RecoveryTestStrategy implements IBenchmarkStrategy, IWorkerStatusLi
 	@Override
 	public void onError(int workerId, String errorMessage) {
 		if (serverWorkersIds.contains(workerId)) {
-			logger.debug("Error in server worker {}: {}", workerId, errorMessage);
+			logger.error("Error in server worker {}", workerId);
+			if (serversReadyCounter != null) {
+				serversReadyCounter.countDown();
+			}
 		} else if (clientWorkersIds.contains(workerId)) {
-			logger.debug("Error in client worker {}: {}", workerId, errorMessage);
+			logger.error("Error in client worker {}", workerId);
+			if (clientsReadyCounter != null)
+				clientsReadyCounter.countDown();
 		} else {
-			logger.debug("Error in unused worker {}: {}", workerId, errorMessage);
+			logger.error("Error in unused worker {}", workerId);
 		}
+		error.set(true);
 	}
 
 	@Override
