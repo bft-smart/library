@@ -7,6 +7,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 
+import bftsmart.tests.recovery.RecoveryTest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,7 +36,7 @@ public class IntegrationTestsExecutor {
 		long start, end, delta;
 
 		AbstractIntegrationTest[] integrationTests = {
-				//new RecoveryTest(workingDirectory, f, isBFT),
+				new RecoveryTest(workingDirectory, f, isBFT),
 				new CounterTest(workingDirectory, f, isBFT)
 		};
 

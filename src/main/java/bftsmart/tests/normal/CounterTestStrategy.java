@@ -8,11 +8,7 @@ import org.slf4j.LoggerFactory;
 import worker.IProcessingResult;
 import worker.ProcessInformation;
 
-import java.io.BufferedWriter;
 import java.io.IOException;
-import java.io.OutputStreamWriter;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Properties;
@@ -97,16 +93,18 @@ public class CounterTestStrategy implements IBenchmarkStrategy, IWorkerStatusLis
 
 			logger.info("Waiting 10 seconds");
 			sleepSeconds(10);
-			
-			//Saving monitoring
-			logger.info("Writing monitoring on file");
-			clientWorker.requestProcessingResult(); 
-			serverWorkers[0].requestProcessingResult();
-			serverWorkers[1].requestProcessingResult();
+
+			//Stop processes
+			Arrays.stream(serverWorkers).forEach(WorkerHandler::stopWorker);
+			clientWorker.stopWorker();
+
 			sleepSeconds(5);
 
-
-			logger.info("Counter test was a success");
+			if (error.get()) {
+				logger.error("Counter test failed");
+			} else {
+				logger.info("Counter test was a success");
+			}
 		} catch (InterruptedException ignore) {
 		} catch (IOException e) {
 			throw new RuntimeException(e);
@@ -118,11 +116,10 @@ public class CounterTestStrategy implements IBenchmarkStrategy, IWorkerStatusLis
 	}
 
 	private void startClients(WorkerHandler... clientWorkers) throws InterruptedException, IOException {
-		System.out.println("Starting client...");
+		logger.debug("Starting client...");
 		clientsReadyCounter = new CountDownLatch(1);
 		ProcessInformation[] commands = new ProcessInformation[] {
-			new ProcessInformation("sar -u -r -n DEV 1", "."),
-			new ProcessInformation(clientCommand, "."),
+			new ProcessInformation(clientCommand, ".")
 		};
 
 		clientWorkers[0].startWorker(50, commands, this);
@@ -130,33 +127,18 @@ public class CounterTestStrategy implements IBenchmarkStrategy, IWorkerStatusLis
 	}
 
 	private void startServers(WorkerHandler... serverWorkers) throws InterruptedException, IOException {
-		System.out.println("Starting servers...");
+		logger.debug("Starting servers...");
 		serversReadyCounter = new CountDownLatch(serverWorkers.length);
 		for (int i = 0; i < serverWorkers.length; i++) {
-			String command = serverCommand +i;
+			String command = serverCommand + i;
 			WorkerHandler serverWorker = serverWorkers[i];
-			ProcessInformation[] commands = commandList(i, command);
+			ProcessInformation[] commands = {
+					new ProcessInformation(command, ".")
+			};
 			serverWorker.startWorker(0, commands, this);
 			sleepSeconds(1);
 		}
 		serversReadyCounter.await();
-	}
-
-	private ProcessInformation[] commandList(int serverId, String command){
-
-		ProcessInformation[] commands={
-			new ProcessInformation(command, ".")
-		};
-
-		if(serverId<=1){
-			commands = new ProcessInformation[] {
-				new ProcessInformation("sar -u -r -n DEV 1", "."),
-				new ProcessInformation(command, ".")
-            };
-			return commands;
-		}
-
-		return commands;
 	}
 
 	private void sleepSeconds(long duration) throws InterruptedException {
@@ -189,93 +171,22 @@ public class CounterTestStrategy implements IBenchmarkStrategy, IWorkerStatusLis
 	@Override
 	public void onError(int workerId, String errorMessage) {
 		if (serverWorkersIds.contains(workerId)) {
-			System.err.printf("Error in server worker %d\n", workerId);
+			logger.error("Error in server worker {}", workerId);
 			if (serversReadyCounter != null) {
 				serversReadyCounter.countDown();
 			}
 		} else if (clientWorkersIds.contains(workerId)) {
-			System.err.printf("Error in client worker %d\n", workerId);
+			logger.error("Error in client worker {}", workerId);
 			if (clientsReadyCounter != null)
 				clientsReadyCounter.countDown();
 		} else {
-			System.out.printf("Error in unused worker %d\n", workerId);
+			logger.error("Error in unused worker {}", workerId);
 		}
 		error.set(true);
 	}
 
 	@Override
 	public void onResult(int workerId, IProcessingResult processingResult) {
-		Measurement measurement = (Measurement) processingResult;
-		double[][] measurements = measurement.getMeasurements();
-		String[] header = measurement.getHeader();
-
-		if(!(measurements == null || measurements.length == 0 || measurements[0].length == 0)){
-			storeResumedMeasurements(workerId, measurements, header);
-			
-		}
-	}
-
-	private void storeResumedMeasurements(int workerId, double[][] measurements, String[] header) {
-
-		String fileName = "cpu_monitoring_data" + workerId + ".csv";
-		try (BufferedWriter resultFile = new BufferedWriter(new OutputStreamWriter(
-				Files.newOutputStream(Paths.get(fileName))))) {
-
-			resultFile.write("user(%),system(%)\n");
-			for (int i = 0; i < measurements[0].length; i++) {
-
-				double user = measurements[0][i];
-				double sys = measurements[1][i];
-
-				resultFile.write(String.format("%s,%s\n", user, sys));
-			}
-
-			resultFile.flush();
-		} catch (IOException e) {
-			logger.error("Error while storing measurement results", e);
-		}
-
-		fileName = "mem_monitoring_data" + workerId + ".csv";
-		try (BufferedWriter resultFile = new BufferedWriter(new OutputStreamWriter(
-				Files.newOutputStream(Paths.get(fileName))))) {
-
-			resultFile.write("mem_used(%)\n");
-
-			for (int i = 0; i < measurements[2].length; i++) {
-
-				double mem_used = measurements[2][i];
-
-				resultFile.write(String.format("%s\n", mem_used));
-			}
-
-			resultFile.flush();
-		} catch (IOException e) {
-			logger.error("Error while storing measurement results", e);
-		}
-
-		fileName = "net_monitoring_data" + workerId + ".csv";
-		try (BufferedWriter resultFile = new BufferedWriter(new OutputStreamWriter(
-				Files.newOutputStream(Paths.get(fileName))))) {
-
-			String iface= String.join(",", header);
-			resultFile.write(iface);
-
-			resultFile.write("\n");
-
-			// each interface has two columns corresponding to the rates rxkB/s,txkB/s
-			for (int i = 0; i < measurements[3].length; i+=header.length) {
-				for (int j = i; j < i+header.length; j++) {
-					double r = measurements[3][j];
-					double t = measurements[4][j];
-					resultFile.write(String.format("%s,%s,", r, t));
-				}
-				resultFile.newLine();
-			}
-
-			resultFile.flush();
-		} catch (IOException e) {
-			logger.error("Error while storing measurement results", e);
-		}
 
 	}
 }

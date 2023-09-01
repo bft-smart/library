@@ -51,11 +51,11 @@
 
 	<logger name="bftsmart" level="INFO"/>
 
-	<logger name="benchmark.controller" level="INFO"/>
+	<logger name="benchmark.controller" level="OFF"/>
 
-	<logger name="benchmark.worker" level="INFO"/>
+	<logger name="benchmark.worker" level="OFF"/>
 
-	<logger name="benchmark.worker.process" level="INFO"/>
+	<logger name="benchmark.worker.process" level="OFF"/>
 
 	<logger name="benchmarking" level="INFO"/>
 

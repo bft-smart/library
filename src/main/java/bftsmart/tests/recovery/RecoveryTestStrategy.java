@@ -8,7 +8,7 @@ import org.slf4j.LoggerFactory;
 import worker.IProcessingResult;
 import worker.ProcessInformation;
 
-import java.io.*;
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Properties;
@@ -17,7 +17,6 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -36,7 +35,6 @@ public class RecoveryTestStrategy implements IBenchmarkStrategy, IWorkerStatusLi
 	private final Condition sleepCondition;
 	private CountDownLatch serversReadyCounter;
 	private CountDownLatch clientsReadyCounter;
-	private final AtomicBoolean error;
 
 	public RecoveryTestStrategy() {
 		this.dataSize = 1024;
@@ -51,7 +49,6 @@ public class RecoveryTestStrategy implements IBenchmarkStrategy, IWorkerStatusLi
 		this.sleepCondition = lock.newCondition();
 		this.serverWorkersIds = new HashSet<>();
 		this.clientWorkersIds = new HashSet<>();
-		this.error = new AtomicBoolean(false);
 	}
 
 	@Override
@@ -83,13 +80,9 @@ public class RecoveryTestStrategy implements IBenchmarkStrategy, IWorkerStatusLi
 			lock.lock();
 			//Start servers
 			startServers(serverWorkers);
-			if (error.get())
-				return;
 
 			//Start client that continuously send requests
 			startClients(clientWorker);
-			if (error.get())
-				return;
 
 			logger.info("Clients are sending requests");
 
@@ -113,8 +106,6 @@ public class RecoveryTestStrategy implements IBenchmarkStrategy, IWorkerStatusLi
 
 				serverWorker.startWorker(0, commands, this);
 				serversReadyCounter.await();
-				if (error.get())
-					return;
 			}
 			logger.info("Waiting 10 seconds");
 			sleepSeconds(10);
@@ -182,18 +173,12 @@ public class RecoveryTestStrategy implements IBenchmarkStrategy, IWorkerStatusLi
 	@Override
 	public void onError(int workerId, String errorMessage) {
 		if (serverWorkersIds.contains(workerId)) {
-			logger.error("Error in server worker {}: {}", workerId, errorMessage);
-			if (serversReadyCounter != null) {
-				serversReadyCounter.countDown();
-			}
+			logger.debug("Error in server worker {}: {}", workerId, errorMessage);
 		} else if (clientWorkersIds.contains(workerId)) {
-			logger.error("Error in client worker {}: {}", workerId, errorMessage);
-			if (clientsReadyCounter != null)
-				clientsReadyCounter.countDown();
+			logger.debug("Error in client worker {}: {}", workerId, errorMessage);
 		} else {
-			logger.error("Error in unused worker {}: {}", workerId, errorMessage);
+			logger.debug("Error in unused worker {}: {}", workerId, errorMessage);
 		}
-		error.set(true);
 	}
 
 	@Override
