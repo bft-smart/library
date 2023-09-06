@@ -222,7 +222,6 @@ public class ServiceProxy extends TOMSender {
 			}
 
 			TOMMessage response = requestHandler.getResponse();
-			requestHandler = null;
 			logger.debug("Response extracted: " + response);
 
 			if (response == null) {

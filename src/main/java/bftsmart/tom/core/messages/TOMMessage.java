@@ -229,7 +229,7 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 	public void wExternal(DataOutput out) throws IOException {
 		out.writeInt(sender);
 		out.writeInt(viewID);
-		out.writeInt(type.ordinal());
+		out.writeByte(type.ordinal());
 		out.writeInt(session);
 		out.writeInt(sequence);
 		out.writeInt(operationId);
