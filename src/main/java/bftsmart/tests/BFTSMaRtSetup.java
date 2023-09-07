@@ -66,7 +66,7 @@ public class BFTSMaRtSetup implements ISetupWorker {
 		ctx.append("system.communication.bindaddress = auto\n");
 		ctx.append("system.servers.num = " + nServers + "\n");
 		ctx.append("system.servers.f = " + f + "\n");
-		ctx.append("system.totalordermulticast.timeout = 2000\n");
+		ctx.append("system.totalordermulticast.timeout = 30000\n");
 		ctx.append("system.totalordermulticast.batchtimeout = -1\n");
 		ctx.append("system.totalordermulticast.maxbatchsize = 1024\n");
 		ctx.append("system.totalordermulticast.maxBatchSizeInBytes = 1000000\n");
@@ -89,8 +89,8 @@ public class BFTSMaRtSetup implements ISetupWorker {
 		ctx.append("system.totalordermulticast.log_parallel = false\n");
 		ctx.append("system.totalordermulticast.log_to_disk = false\n");
 		ctx.append("system.totalordermulticast.sync_log = false\n");
-		ctx.append("system.totalordermulticast.checkpoint_period = 1024000\n");
-		ctx.append("system.totalordermulticast.global_checkpoint_period = 1200000\n");
+		ctx.append("system.totalordermulticast.checkpoint_period = 102400000\n");
+		ctx.append("system.totalordermulticast.global_checkpoint_period = 120000000\n");
 		ctx.append("system.totalordermulticast.checkpoint_to_disk = false\n");
 		ctx.append("system.totalordermulticast.sync_ckp = false\n");
 		ctx.append("system.initial.view = " + iview + "\n");
@@ -102,7 +102,5 @@ public class BFTSMaRtSetup implements ISetupWorker {
 		ctx.append("system.client.invokeOrderedTimeout = 40\n");
 		return ctx.toString();
 	}
-
-
 }
 

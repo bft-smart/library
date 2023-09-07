@@ -155,6 +155,10 @@ public class ServiceProxy extends TOMSender {
 		return invoke(request, TOMMessageType.ORDERED_REQUEST);
 	}
 
+	public byte[] invokeOrderedHashed(byte[] request) {
+		return invoke(request, TOMMessageType.ORDERED_HASHED_REQUEST);
+	}
+
 	/**
 	 * This method sends an unordered request to the replicas, and returns the related reply.
 	 * If the servers take more than invokeTimeout seconds the method returns null.
