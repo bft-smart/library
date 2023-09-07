@@ -9,9 +9,7 @@ import util.Storage;
 import worker.IProcessingResult;
 import worker.ProcessInformation;
 
-import java.io.BufferedWriter;
-import java.io.IOException;
-import java.io.OutputStreamWriter;
+import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.*;
@@ -71,6 +69,7 @@ public class ThroughputLatencyBenchmarkStrategy implements IBenchmarkStrategy, I
 		String[] tokens = benchmarkParameters.getProperty("experiment.clients_per_round").split(" ");
 		dataSize = Integer.parseInt(benchmarkParameters.getProperty("experiment.data_size"));
 		isWrite = Boolean.parseBoolean(benchmarkParameters.getProperty("experiment.is_write"));
+		String hostFile = benchmarkParameters.getProperty("experiment.hosts.file");
 		measureResources = Boolean.parseBoolean(benchmarkParameters.getProperty("experiment.measure_resources"));
 
 		int nServerWorkers = 3 * f + 1;
@@ -95,9 +94,23 @@ public class ThroughputLatencyBenchmarkStrategy implements IBenchmarkStrategy, I
 		serverWorkers = new WorkerHandler[nServerWorkers];
 		clientWorkers = new WorkerHandler[nClientWorkers];
 		System.arraycopy(workers, 0, serverWorkers, 0, nServerWorkers);
-		System.arraycopy(workers, nServerWorkers, clientWorkers, 0, nClientWorkers);
+		for (int i = 0, j = workers.length - 1; i < nClientWorkers; i++, j--) {
+			clientWorkers[i] = workers[j];
+		}
 		Arrays.stream(serverWorkers).forEach(w -> serverWorkersIds.add(w.getWorkerId()));
 		Arrays.stream(clientWorkers).forEach(w -> clientWorkersIds.add(w.getWorkerId()));
+
+		printWorkersInfo();
+
+		//Setup workers
+		if (hostFile != null) {
+			logger.info("Setting up workers...");
+			String hosts = loadHosts(hostFile);
+			if (hosts == null)
+				return;
+			String setupInformation = String.format("%b\t%d\t%s", true, f, hosts);
+			Arrays.stream(workers).forEach(w -> w.setupWorker(setupInformation));
+		}
 
 		int round = 1;
 		while (true) {
@@ -150,6 +163,38 @@ public class ThroughputLatencyBenchmarkStrategy implements IBenchmarkStrategy, I
 		}
 		long endTime = System.currentTimeMillis();
 		logger.info("Strategy execution duration: {}s", (endTime - startTime) / 1000);
+	}
+
+	private void printWorkersInfo() {
+		StringBuilder sb = new StringBuilder();
+		for (WorkerHandler serverWorker : serverWorkers) {
+			sb.append(serverWorker.getWorkerId());
+			sb.append(" ");
+		}
+		logger.info("Server workers: {}", sb);
+
+		sb = new StringBuilder();
+		for (WorkerHandler clientWorker : clientWorkers) {
+			sb.append(clientWorker.getWorkerId());
+			sb.append(" ");
+		}
+		logger.info("Client workers: {}", sb);
+	}
+
+	private String loadHosts(String hostFile) {
+		try (BufferedReader in = new BufferedReader(new FileReader(hostFile))) {
+			StringBuilder sb = new StringBuilder();
+			String line;
+			while ((line = in.readLine()) != null) {
+				sb.append(line);
+				sb.append("\n");
+			}
+			sb.deleteCharAt(sb.length() - 1);
+			return sb.toString();
+		} catch (IOException e) {
+			logger.error("Failed to load hosts file", e);
+			return null;
+		}
 	}
 
 	private void getMeasurements() throws InterruptedException {

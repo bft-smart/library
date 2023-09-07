@@ -6,12 +6,20 @@ import worker.ISetupWorker;
 
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 
 public class BFTSMaRtSetup implements ISetupWorker {
 	private final Logger logger = LoggerFactory.getLogger("benchmarking");
 	
 	@Override
 	public void setup(String setupInformation) {
+		String currentViewFile = "config/currentView";
+		try {
+			Files.deleteIfExists(Paths.get(currentViewFile));
+		} catch (IOException e) {
+			logger.error("Failed to delete currentView file", e);
+		}
 
 		String[] args = setupInformation.split("\t");
 		int f = Integer.parseInt(args[1]);
