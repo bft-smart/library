@@ -17,9 +17,10 @@ public class ThroughputLatencyClient {
 	private static byte[] serializedWriteRequest;
 
 	public static void main(String[] args) throws InterruptedException {
-		if (args.length != 6) {
+		if (args.length != 7) {
 			System.out.println("USAGE: bftsmart.benchmark.ThroughputLatencyClient <initial client id> " +
-					"<num clients> <number of operations per client> <request size> <isWrite?> <measurement leader?>");
+					"<num clients> <number of operations per client> <request size> <isWrite?> <use hashed response> " +
+					"<measurement leader?>");
 			System.exit(-1);
 		}
 
@@ -28,7 +29,8 @@ public class ThroughputLatencyClient {
 		int numOperationsPerClient = Integer.parseInt(args[2]);
 		int requestSize = Integer.parseInt(args[3]);
 		boolean isWrite = Boolean.parseBoolean(args[4]);
-		boolean measurementLeader = Boolean.parseBoolean(args[5]);
+		boolean useHashedResponse = Boolean.parseBoolean(args[5]);
+		boolean measurementLeader = Boolean.parseBoolean(args[6]);
 		CountDownLatch latch = new CountDownLatch(numClients);
 		Client[] clients = new Client[numClients];
 		data = new byte[requestSize];
@@ -47,7 +49,7 @@ public class ThroughputLatencyClient {
 
 		for (int i = 0; i < numClients; i++) {
 			clients[i] = new Client(initialClientId + i,
-					numOperationsPerClient, isWrite, measurementLeader, latch);
+					numOperationsPerClient, isWrite, useHashedResponse, measurementLeader, latch);
 			clients[i].start();
 			Thread.sleep(10);
 		}
@@ -62,12 +64,15 @@ public class ThroughputLatencyClient {
 		private final boolean isWrite;
 		private final ServiceProxy proxy;
 		private final CountDownLatch latch;
+		private final boolean useHashedResponse;
 		private final boolean measurementLeader;
 
-		public Client(int clientId, int numOperations, boolean isWrite, boolean measurementLeader, CountDownLatch latch) {
+		public Client(int clientId, int numOperations, boolean isWrite, boolean useHashedResponse,
+					  boolean measurementLeader, CountDownLatch latch) {
 			this.clientId = clientId;
 			this.numOperations = numOperations;
 			this.isWrite = isWrite;
+			this.useHashedResponse = useHashedResponse;
 			this.measurementLeader = measurementLeader;
 			this.proxy = new ServiceProxy(clientId);
 			this.latch = latch;
@@ -83,9 +88,17 @@ public class ThroughputLatencyClient {
 					byte[] response;
 					t1 = System.nanoTime();
 					if (isWrite) {
-						response = proxy.invokeOrderedHashed(serializedWriteRequest);
+						if (useHashedResponse) {
+							response = proxy.invokeOrderedHashed(serializedWriteRequest);
+						} else {
+							response = proxy.invokeOrdered(serializedWriteRequest);
+						}
 					} else {
-						response = proxy.invokeUnorderedHashed(serializedReadRequest);
+						if (useHashedResponse) {
+							response = proxy.invokeUnorderedHashed(serializedReadRequest);
+						} else {
+							response = proxy.invokeUnordered(serializedReadRequest);
+						}
 					}
 					t2 = System.nanoTime();
 					latency = t2 - t1;

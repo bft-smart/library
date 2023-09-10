@@ -48,6 +48,7 @@ public class ThroughputLatencyBenchmarkStrategy implements IBenchmarkStrategy, I
 	private boolean measureResources;
 	private String storageFileNamePrefix;
 	private int f;
+	private boolean useHashedResponse;
 
 	public ThroughputLatencyBenchmarkStrategy() {
 		this.lock = new ReentrantLock(true);
@@ -69,6 +70,7 @@ public class ThroughputLatencyBenchmarkStrategy implements IBenchmarkStrategy, I
 		String[] tokens = benchmarkParameters.getProperty("experiment.clients_per_round").split(" ");
 		dataSize = Integer.parseInt(benchmarkParameters.getProperty("experiment.data_size"));
 		isWrite = Boolean.parseBoolean(benchmarkParameters.getProperty("experiment.is_write"));
+		useHashedResponse = Boolean.parseBoolean(benchmarkParameters.getProperty("experiment.use_hashed_response"));
 		String hostFile = benchmarkParameters.getProperty("experiment.hosts.file");
 		measureResources = Boolean.parseBoolean(benchmarkParameters.getProperty("experiment.measure_resources"));
 
@@ -245,7 +247,8 @@ public class ThroughputLatencyBenchmarkStrategy implements IBenchmarkStrategy, I
 			for (int j = 0; j < nProcesses; j++) {
 				int clientsPerProcess = Math.min(totalClientsPerWorker, maxClientsPerProcess);
 				String command = clientCommand + clientInitialId + " " + clientsPerProcess
-						+ " " + nRequests + " " + dataSize + " " + isWrite + " " + isMeasurementWorker;
+						+ " " + nRequests + " " + dataSize + " " + isWrite + " " + useHashedResponse + " "
+						+ isMeasurementWorker;
 				commands[j] = new ProcessInformation(command, ".");
 				totalClientsPerWorker -= clientsPerProcess;
 				clientInitialId += clientsPerProcess;
