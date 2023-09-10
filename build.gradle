@@ -27,10 +27,11 @@ ssh.settings {
 
 remotes {
 	master {
-		host = '<ip>'
-		user = '<username>'
-		//password = '<password>'
-		identity=file('<private key file>')
+		//Create a gradle.properties and set the following properties: remoteDeployMasterHost, remoteDeployMasterUser,
+		// remoteDeployMasterPrivateKeyFile
+		host = remoteDeployMasterHost
+		user = remoteDeployMasterUser
+		identity = file(remoteDeployMasterPrivateKeyFile)
 	}
 }
 
@@ -140,6 +141,9 @@ task runIntegrationTest(type: JavaExec, dependsOn: installDist) {
 }
 
 distributions {
+	doFirst {
+		print(remoteDeployMasterHost)
+	}
 	main {
 		contents {
 			into('config') {

@@ -1,18 +1,20 @@
 package bftsmart.tests;
 
+import bftsmart.tests.normal.CounterTest;
+import bftsmart.tests.recovery.RecoveryTest;
+import bftsmart.tests.requests.hashed.OrderedHashedRequestTest;
+import bftsmart.tests.requests.hashed.UnorderedHashedRequestTest;
+import bftsmart.tests.requests.normal.OrderedRequestTest;
+import bftsmart.tests.requests.normal.UnorderedRequestTest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
-
-import bftsmart.tests.recovery.RecoveryTest;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import bftsmart.tests.normal.CounterTest;
-//import bftsmart.tests.recovery.RecoveryTest;
 
 public class IntegrationTestsExecutor {
 	private static final Logger logger = LoggerFactory.getLogger("testing");
@@ -36,8 +38,12 @@ public class IntegrationTestsExecutor {
 		long start, end, delta;
 
 		AbstractIntegrationTest[] integrationTests = {
-				new RecoveryTest(workingDirectory, f, isBFT),
-				new CounterTest(workingDirectory, f, isBFT)
+				//new RecoveryTest(workingDirectory, f, isBFT),
+				//new CounterTest(workingDirectory, f, isBFT)
+				new OrderedRequestTest(workingDirectory, f, isBFT),
+				new UnorderedRequestTest(workingDirectory, f, isBFT),
+				new OrderedHashedRequestTest(workingDirectory, f, isBFT),
+				new UnorderedHashedRequestTest(workingDirectory, f, isBFT)
 		};
 
 		for (AbstractIntegrationTest integrationTest : integrationTests) {

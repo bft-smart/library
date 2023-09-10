@@ -28,7 +28,7 @@ public class CounterEventProcessor implements IWorkerEventProcessor {
 
 	@Override
 	public IProcessingResult getProcessingResult() {
-		return new Measurement();
+		return null;
 	}
 
 	@Override
