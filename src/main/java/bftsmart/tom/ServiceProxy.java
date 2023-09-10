@@ -238,6 +238,7 @@ public class ServiceProxy extends TOMSender {
 					logger.debug("###################RETRY#######################");
 					return invokeOrdered(request);
 				} else {
+					requestHandler.printState();
 					throw new RuntimeException("Received n-f replies without f+1 of them matching.");
 				}
 			} else {
@@ -354,14 +355,7 @@ public class ServiceProxy extends TOMSender {
 				return;
 			}
 
-			if (reply.getSequence() == requestHandler.getSequenceId()
-					&& reply.getReqType() == requestHandler.getRequestType()) {
-				logger.debug("Received reply from {} with reqId: {}", reply.getSender(), reply.getSequence());
-				requestHandler.processReply(reply);
-			} else {
-				logger.debug("Ignoring reply from {} with reqId: {}. Currently wait reqId = {}", reply.getSender(),
-						reply.getSequence(), requestHandler.getSequenceId());
-			}
+			requestHandler.processReply(reply);
 		} catch (Exception ex) {
 			logger.error("Problem processing reply", ex);
 		} finally {

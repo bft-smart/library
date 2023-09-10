@@ -91,4 +91,6 @@ public abstract class AbstractRequestHandler {
 	public boolean isRequestTimeout() {
 		return requestTimeout;
 	}
+
+	public abstract void printState();
 }

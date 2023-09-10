@@ -29,6 +29,13 @@ public class NormalRequestHandler extends AbstractRequestHandler {
 
 	@Override
 	public void processReply(TOMMessage reply) {
+		logger.debug("(current reqId: {}) Received reply from {} with reqId: {}", sequenceId, reply.getSender(),
+				reply.getSequence());
+		if (sequenceId != reply.getSequence() || requestType != reply.getReqType()) {
+			logger.debug("Ignoring reply from {} with reqId {}. Currently wait reqId {} of type {}",
+					reply.getSender(), reply.getSequence(), sequenceId, requestType);
+			return;
+		}
 		if (replySenders.contains(reply.getSender())) {//process same reply only once
 			return;
 		}
@@ -57,6 +64,11 @@ public class NormalRequestHandler extends AbstractRequestHandler {
 		if (replySenders.size() == nReplicas) {
 			semaphore.release();
 		}
+
+	}
+
+	@Override
+	public void printState() {
 
 	}
 }

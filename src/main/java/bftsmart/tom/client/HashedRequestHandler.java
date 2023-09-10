@@ -30,6 +30,13 @@ public class HashedRequestHandler extends AbstractRequestHandler {
 
 	@Override
 	public void processReply(TOMMessage reply) {
+		logger.debug("(current reqId: {}) Received reply from {} with reqId: {}", sequenceId, reply.getSender(),
+				reply.getSequence());
+		if (sequenceId != reply.getSequence() || requestType != reply.getReqType()) {
+			logger.debug("Ignoring reply from {} with reqId {}. Currently wait reqId {} of type {}",
+					reply.getSender(), reply.getSequence(), sequenceId, requestType);
+			return;
+		}
 		if (replySenders.contains(reply.getSender())) {//process same reply only once
 			return;
 		}
@@ -67,5 +74,14 @@ public class HashedRequestHandler extends AbstractRequestHandler {
 			response = null;
 			semaphore.release();
 		}
+	}
+
+	@Override
+	public void printState() {
+		for (int i = 0; i < hashReplies.size(); i++) {
+			logger.info("hash of reply from {}: {} | {}", i, Arrays.hashCode(hashReplies.get(i)),
+					Arrays.toString(hashReplies.get(i)));
+		}
+		logger.info("Have received response from reply server {}: {}", replyServer, replyServerResponseHash != null);
 	}
 }
