@@ -141,9 +141,6 @@ task runIntegrationTest(type: JavaExec, dependsOn: installDist) {
 }
 
 distributions {
-	doFirst {
-		print(remoteDeployMasterHost)
-	}
 	main {
 		contents {
 			into('config') {
