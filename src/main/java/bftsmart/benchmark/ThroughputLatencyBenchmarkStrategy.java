@@ -213,10 +213,14 @@ public class ThroughputLatencyBenchmarkStrategy implements IBenchmarkStrategy, I
 
 		//Get measurement results
 		int nMeasurements;
-		if (measurementWorkers.size() == 3) {
-			nMeasurements = 5;
+		if (measureResources) {
+			if (measurementWorkers.size() == 3) {
+				nMeasurements = 5;
+			} else {
+				nMeasurements = 6;
+			}
 		} else {
-			nMeasurements = 6;
+			nMeasurements = 2;
 		}
 		logger.debug("Getting measurements from {} workers...", measurementWorkers.size());
 		measurementDeliveredCounter = new CountDownLatch(nMeasurements);
