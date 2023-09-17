@@ -18,7 +18,9 @@ package bftsmart.clientsmanagement;
 import java.security.PublicKey;
 import java.security.Signature;
 import java.security.SignatureException;
+import java.util.HashMap;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.concurrent.locks.ReentrantLock;
 
 import bftsmart.tom.core.messages.TOMMessage;
@@ -45,9 +47,10 @@ public class ClientData {
 
     private RequestList pendingRequests = new RequestList();
     //anb: new code to deal with client requests that arrive after their execution
-    private RequestList orderedRequests = new RequestList(5);
+    private RequestList orderedRequests = new RequestList(15);
 
     private Signature signatureVerificator = null;
+	private final Map<Integer, byte[]> replicaSpecificContents;
     
     /**
      * Class constructor. Just store the clientId and creates a signature
@@ -58,6 +61,7 @@ public class ClientData {
      */
     public ClientData(int clientId, PublicKey publicKey) {
         this.clientId = clientId;
+		this.replicaSpecificContents = new HashMap<>();
         if(publicKey != null) {
             try {
                 signatureVerificator = TOMUtil.getSigEngine();
@@ -158,4 +162,15 @@ public class ClientData {
         }
     }
 
+	public void storeReplicaSpecificContent(int sequence, byte[] replicaSpecificContent) {
+		replicaSpecificContents.put(sequence, replicaSpecificContent);
+	}
+
+	public byte[] removeReplicaSpecificContent(int sequence) {
+		return replicaSpecificContents.remove(sequence);
+	}
+
+	public byte[] getReplicaSpecificContent(int sequence) {
+		return replicaSpecificContents.get(sequence);
+	}
 }

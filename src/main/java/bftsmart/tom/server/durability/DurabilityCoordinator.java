@@ -1,17 +1,17 @@
 /**
-Copyright (c) 2007-2013 Alysson Bessani, Eduardo Alchieri, Paulo Sousa, and the authors indicated in the @author tags
+ Copyright (c) 2007-2013 Alysson Bessani, Eduardo Alchieri, Paulo Sousa, and the authors indicated in the @author tags
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
 
-http://www.apache.org/licenses/LICENSE-2.0
+ http://www.apache.org/licenses/LICENSE-2.0
 
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
  */
 package bftsmart.tom.server.durability;
 
@@ -31,6 +31,7 @@ import bftsmart.tom.ReplicaContext;
 import bftsmart.tom.server.BatchExecutable;
 import bftsmart.tom.server.Recoverable;
 import bftsmart.tom.server.defaultservices.CommandsInfo;
+import bftsmart.tom.util.ServiceContent;
 import bftsmart.tom.util.TOMUtil;
 
 import org.slf4j.Logger;
@@ -49,8 +50,8 @@ import org.slf4j.LoggerFactory;
  * @author Marcel Santos
  */
 public abstract class DurabilityCoordinator implements Recoverable, BatchExecutable {
-    
-        private Logger logger = LoggerFactory.getLogger(this.getClass());
+
+	private Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	private ReentrantLock logLock = new ReentrantLock();
 	private ReentrantLock hashLock = new ReentrantLock();
@@ -77,12 +78,19 @@ public abstract class DurabilityCoordinator implements Recoverable, BatchExecuta
 		}
 	}
 
-        @Override
-        public byte[][] executeBatch(byte[][] commands, MessageContext[] msgCtxs) {
-            return executeBatch(commands, msgCtxs, false);
-        }
-    
-        private byte[][] executeBatch(byte[][] commands, MessageContext[] msgCtx, boolean noop) {
+	@Override
+	public ServiceContent[] executeBatch(byte[][] commands, byte[][] replicaSpecificContents,
+										 MessageContext[] msgCtxs) {
+		byte[][] response = executeBatch(commands, replicaSpecificContents, msgCtxs, false);
+		ServiceContent[] serviceRespons = new ServiceContent[response.length];
+		for (int i = 0; i < response.length; i++) {
+			serviceRespons[i] = new ServiceContent(response[i]);
+		}
+		return serviceRespons;
+	}
+
+	private byte[][] executeBatch(byte[][] commands, byte[][] replicaSpecificContents, MessageContext[] msgCtx,
+								  boolean noop) {
 		int cid = msgCtx[msgCtx.length-1].getConsensusId();
 
 		int[] cids = consensusIds(msgCtx);
@@ -93,14 +101,14 @@ public abstract class DurabilityCoordinator implements Recoverable, BatchExecuta
 		// replicas is supposed to take a checkpoint, so the replica will only execute
 		// the command and return the replies
 		if(checkpointIndex == -1) {
-			
-                    if (!noop) {
-                        stateLock.lock();
-			replies = appExecuteBatch(commands, msgCtx);
-			stateLock.unlock();
-                    }
-                    logger.debug("Storing message batch in the state log for consensus " + cid);
-                    saveCommands(commands, msgCtx);
+
+			if (!noop) {
+				stateLock.lock();
+				replies = appExecuteBatch(commands, msgCtx);
+				stateLock.unlock();
+			}
+			logger.debug("Storing message batch in the state log for consensus " + cid);
+			saveCommands(commands, msgCtx);
 		} else {
 			// there is a replica supposed to take the checkpoint. In this case, the commands
 			// has to be executed in two steps. First the batch of commands containing commands
@@ -125,13 +133,13 @@ public abstract class DurabilityCoordinator implements Recoverable, BatchExecuta
 
 			// execute the first half
 			cid = msgCtx[checkpointIndex].getConsensusId();
-			
-                        if (!noop) {
-                            stateLock.lock();
-                            firstHalfReplies = appExecuteBatch(firstHalf, firstHalfMsgCtx);
-                            stateLock.unlock();
-                        }
-                        
+
+			if (!noop) {
+				stateLock.lock();
+				firstHalfReplies = appExecuteBatch(firstHalf, firstHalfMsgCtx);
+				stateLock.unlock();
+			}
+
 			if (cid % globalCheckpointPeriod == replicaCkpIndex && lastCkpCID < cid ) {
 				logger.debug("Performing checkpoint for consensus " + cid);
 				stateLock.lock();
@@ -151,12 +159,12 @@ public abstract class DurabilityCoordinator implements Recoverable, BatchExecuta
 				//	        	System.out.println("----THERE IS A SECOND HALF----");
 				cid = msgCtx[msgCtx.length - 1].getConsensusId();
 				if (!noop) {
-                                    
-                                    stateLock.lock();
-                                    secondHalfReplies = appExecuteBatch(secondHalf, secondHalfMsgCtx);
-                                    stateLock.unlock();
-                                    
-                                }
+
+					stateLock.lock();
+					secondHalfReplies = appExecuteBatch(secondHalf, secondHalfMsgCtx);
+					stateLock.unlock();
+
+				}
 				logger.debug("Storing message batch in the state log for consensus " + cid);
 				saveCommands(secondHalf, secondHalfMsgCtx);
 
@@ -180,10 +188,6 @@ public abstract class DurabilityCoordinator implements Recoverable, BatchExecuta
 	 * introduced with the durable techniques to improve state management. As several
 	 * consensus instances can be executed in the same batch of commands, it is necessary
 	 * to identify if the batch contains checkpoint indexes.
-
-	 * @param msgCtxs the contexts of the consensus where the messages where executed.
-	 * There is one msgCtx message for each command to be executed
-
 	 * @return the index in which a replica is supposed to take a checkpoint. If there is
 	 * no replica taking a checkpoint during the period comprised by this command batch, it
 	 * is returned -1
@@ -209,10 +213,7 @@ public abstract class DurabilityCoordinator implements Recoverable, BatchExecuta
 	 * Iterates over the message contexts to retrieve the index of the last
 	 * command executed prior to the checkpoint. That index is used by the
 	 * state transfer protocol to find the position of the log commands in
-	 * the log file. 
-	 * 
-	 * @param msgCtx the message context of the commands executed by the replica.
-	 * There is one message context for each command
+	 * the log file.
 	 * @param cid the CID of the consensus where a replica took a checkpoint
 	 * @return the higher position where the CID appears
 	 */
@@ -262,14 +263,14 @@ public abstract class DurabilityCoordinator implements Recoverable, BatchExecuta
 			for (int cid = lastCheckpointCID + 1; cid <= lastCID; cid++) {
 				try {
 					logger.debug("Processing  and verifying batched requests for CID " + cid);
-					CommandsInfo cmdInfo = state.getMessageBatch(cid); 
+					CommandsInfo cmdInfo = state.getMessageBatch(cid);
 					byte[][] commands = cmdInfo.commands;
 					MessageContext[] msgCtx = cmdInfo.msgCtx;
 
-                                        if (commands == null || msgCtx == null || msgCtx[0].isNoOp()) {
-                                            continue;
-                                        }
-                                        
+					if (commands == null || msgCtx == null || msgCtx[0].isNoOp()) {
+						continue;
+					}
+
 					appExecuteBatch(commands, msgCtx);
 				} catch (Exception e) {
 					logger.error("Failed to process and verify batched requests",e);
@@ -312,14 +313,14 @@ public abstract class DurabilityCoordinator implements Recoverable, BatchExecuta
 	 */
 	private void saveCommands(byte[][] commands, MessageContext[] msgCtx) {
 		if(!config.isToLog())
-			return;       
-                
-                if (commands.length != msgCtx.length) {
-                    logger.info("SIZE OF COMMANDS AND MESSAGE CONTEXTS IS DIFFERENT----");
-                    logger.info("COMMANDS: " + commands.length + ", CONTEXTS: " + msgCtx.length + " ----");
-                }
-                
-                logLock.lock();
+			return;
+
+		if (commands.length != msgCtx.length) {
+			logger.info("SIZE OF COMMANDS AND MESSAGE CONTEXTS IS DIFFERENT----");
+			logger.info("COMMANDS: " + commands.length + ", CONTEXTS: " + msgCtx.length + " ----");
+		}
+
+		logLock.lock();
 
 		int cid = msgCtx[0].getConsensusId();
 		int batchStart = 0;
@@ -401,7 +402,7 @@ public abstract class DurabilityCoordinator implements Recoverable, BatchExecuta
 			cids[i] = ctxs[i].getConsensusId();
 		return cids;
 	}
-        
+
 	@Override
 	public StateManager getStateManager() {
 		if(stateManager == null)
@@ -416,54 +417,52 @@ public abstract class DurabilityCoordinator implements Recoverable, BatchExecuta
 		return currentStateHash;
 	}
 
-        
-        
-        @Override
-        public byte[] executeUnordered(byte[] command, MessageContext msgCtx) {
-            return appExecuteUnordered(command, msgCtx);
-        }
-        
-        @Override
-        public void Op(int CID, byte[] requests, MessageContext msgCtx) {
-            //Requests are logged within 'executeBatch(...)' instead of in this method.
-        }
 
-        @Override
-    public void noOp(int CID, byte[][] operations, MessageContext[] msgCtxs) {
-        
-        executeBatch(operations, msgCtxs, true);
 
-    }
-        
-    /**
-     * Given a snapshot received from the state transfer protocol, install it
-     * @param state The serialized snapshot
-     */
-    public abstract void installSnapshot(byte[] state);
-        
-    /**
-     * Returns a serialized snapshot of the application state
-     * @return A serialized snapshot of the application state
-     */
-    public abstract byte[] getSnapshot();
-        
-    /**
-     * Execute a batch of ordered requests
-     * 
-     * @param commands The batch of requests
-     * @param msgCtxs The context associated to each request
-     * 
-     * @return the respective replies for each request
-     */
-    public abstract byte[][] appExecuteBatch(byte[][] commands, MessageContext[] msgCtxs);
-        
-    /**
-     * Execute an unordered request
-     * 
-     * @param command The unordered request
-     * @param msgCtx The context associated to the request
-     * 
-     * @return the reply for the request issued by the client
-     */
-    public abstract byte[] appExecuteUnordered(byte[] command, MessageContext msgCtx);
+	@Override
+	public ServiceContent executeUnordered(byte[] command, byte[] replicaSpecificContent, MessageContext msgCtx) {
+		return new ServiceContent(appExecuteUnordered(command, msgCtx));
+	}
+
+	@Override
+	public void Op(int CID, byte[] requests, byte[] replicaSpecificContent, MessageContext msgCtx) {
+		//Requests are logged within 'executeBatch(...)' instead of in this method.
+	}
+
+	@Override
+	public void noOp(int CID, byte[][] operations, byte[][] replicaSpecificContents, MessageContext[] msgCtxs) {
+		executeBatch(operations, replicaSpecificContents, msgCtxs, true);
+	}
+
+	/**
+	 * Given a snapshot received from the state transfer protocol, install it
+	 * @param state The serialized snapshot
+	 */
+	public abstract void installSnapshot(byte[] state);
+
+	/**
+	 * Returns a serialized snapshot of the application state
+	 * @return A serialized snapshot of the application state
+	 */
+	public abstract byte[] getSnapshot();
+
+	/**
+	 * Execute a batch of ordered requests
+	 *
+	 * @param commands The batch of requests
+	 * @param msgCtxs The context associated to each request
+	 *
+	 * @return the respective replies for each request
+	 */
+	public abstract byte[][] appExecuteBatch(byte[][] commands, MessageContext[] msgCtxs);
+
+	/**
+	 * Execute an unordered request
+	 *
+	 * @param command The unordered request
+	 * @param msgCtx The context associated to the request
+	 *
+	 * @return the reply for the request issued by the client
+	 */
+	public abstract byte[] appExecuteUnordered(byte[] command, MessageContext msgCtx);
 }

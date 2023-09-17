@@ -2,6 +2,7 @@ package bftsmart.tom.client;
 
 import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.core.messages.TOMMessageType;
+import bftsmart.tom.util.Extractor;
 import bftsmart.tom.util.TOMUtil;
 
 import java.util.ArrayList;
@@ -11,44 +12,37 @@ import java.util.List;
 public class HashedRequestHandler extends AbstractRequestHandler {
 	private final int replyServer;
 	private final List<byte[]> hashReplies;
+	private final Extractor responseExtractor;
 	private byte[] replyServerResponseHash;
+	private int fullResponseIndex;
 
 	public HashedRequestHandler(int me, int session, int sequenceId, int operationId, int viewId,
-								TOMMessageType requestType, int timeout, int nReplicas,
-								int replyQuorumSize, int replyServer) {
-		super(me, session, sequenceId, operationId, viewId, requestType, timeout, nReplicas, replyQuorumSize);
+								TOMMessageType requestType, int timeout, int[] replicas,
+								int replyQuorumSize, int replyServer, Extractor responseExtractor) {
+		super(me, session, sequenceId, operationId, viewId, requestType, timeout, replicas, replyQuorumSize);
 		this.replyServer = replyServer;
-		this.hashReplies = new ArrayList<>(nReplicas);
+		this.hashReplies = new ArrayList<>(replicas.length);
+		this.responseExtractor = responseExtractor;
+		this.fullResponseIndex = -1;
 	}
 
 	@Override
-	public TOMMessage createRequest(byte[] request) {
-		TOMMessage requestMessage = new TOMMessage(me, session, sequenceId, operationId, request, viewId, requestType);
+	public TOMMessage createRequest(byte[] request, boolean hasReplicaSpecificContent, byte metadata) {
+		TOMMessage requestMessage = new TOMMessage(me, session, sequenceId, operationId, request,
+				hasReplicaSpecificContent, metadata, viewId, requestType);
 		requestMessage.setReplyServer(replyServer);
 		return requestMessage;
 	}
 
 	@Override
-	public void processReply(TOMMessage reply) {
-		logger.debug("(current reqId: {}) Received reply from {} with reqId: {}", sequenceId, reply.getSender(),
-				reply.getSequence());
-		if (sequenceId != reply.getSequence() || requestType != reply.getReqType()) {
-			logger.debug("Ignoring reply from {} with reqId {}. Currently wait reqId {} of type {}",
-					reply.getSender(), reply.getSequence(), sequenceId, requestType);
-			return;
-		}
-		if (replySenders.contains(reply.getSender())) {//process same reply only once
-			return;
-		}
-		replySenders.add(reply.getSender());
-
+	public void processReply(TOMMessage reply, int lastReceivedIndex) {
 		byte[] replyContentHash;
 		if (reply.getSender() == replyServer) {
-			response = reply;
-			replyContentHash = TOMUtil.computeHash(reply.getContent());
+			fullResponseIndex = lastReceivedIndex;
+			replyContentHash = TOMUtil.computeHash(reply.getCommonContent());
 			replyServerResponseHash = replyContentHash;
 		} else {
-			replyContentHash = reply.getContent();
+			replyContentHash = reply.getCommonContent();
 		}
 
 		hashReplies.add(replyContentHash);
@@ -58,19 +52,23 @@ public class HashedRequestHandler extends AbstractRequestHandler {
 		if (replyServerResponseHash == null || replySenders.size() < replyQuorumSize) {
 			return;
 		}
+
 		logger.debug("Comparing {} hash responses with response from {}", hashReplies.size(), replyServer);
 		int sameContent = 0;
+
 		for (byte[] hash : hashReplies) {
 			if (Arrays.equals(hash, replyServerResponseHash)) {
 				sameContent++;
 				if (sameContent >= replyQuorumSize) {
+					response = responseExtractor.extractResponse(replies, sameContent, fullResponseIndex);
+					response.setViewID(reply.getViewID());
 					semaphore.release();
 					return;
 				}
 			}
 		}
 
-		if (replySenders.size() == nReplicas) {
+		if (replySenders.size() == replicas.length) {
 			response = null;
 			semaphore.release();
 		}

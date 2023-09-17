@@ -17,7 +17,6 @@ package bftsmart.clientsmanagement;
 
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.Set;
 import java.util.Map.Entry;
 import java.util.concurrent.locks.ReentrantLock;
 import bftsmart.communication.ServerCommunicationSystem;
@@ -31,9 +30,8 @@ import java.security.NoSuchAlgorithmException;
 import java.security.Signature;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Enumeration;
 import java.util.List;
-import java.util.Random;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -521,4 +519,33 @@ public class ClientsManager {
         
         return clientsData.size();
     }
+
+	public void extractReplicaSpecificContent(TOMMessage request) {
+		byte[] replicaSpecificContent = request.getReplicaSpecificContent();
+		if (replicaSpecificContent == null) {
+			return;
+		}
+		ClientData clientData = getClientData(request.getSender());
+		clientData.clientLock.lock();
+		clientData.storeReplicaSpecificContent(request.getSequence(), replicaSpecificContent);
+		clientData.clientLock.unlock();
+		request.setReplicaSpecificContent(null);
+	}
+
+	public void injectPrivateContentTo(TOMMessage request) {
+		ClientData clientData = getClientData(request.getSender());
+
+		clientData.clientLock.lock();
+		byte[] privateContent = clientData.removeReplicaSpecificContent(request.getSequence());
+		clientData.clientLock.unlock();
+		request.setReplicaSpecificContent(privateContent);
+	}
+
+	public byte[] getPrivateContentOf(int client, int sequence) {
+		ClientData clientData = getClientData(client);
+		clientData.clientLock.lock();
+		byte[] privateContent = clientData.getReplicaSpecificContent(sequence);
+		clientData.clientLock.unlock();
+		return privateContent;
+	}
 }

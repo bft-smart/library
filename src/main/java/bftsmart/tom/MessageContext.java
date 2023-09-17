@@ -59,6 +59,8 @@ public class MessageContext implements Serializable {
     public boolean readOnly = false;
     
     private byte[] nonces;
+
+	private final boolean hasReplicaSpecificContent;
     
     /**
      * Constructor 
@@ -84,7 +86,7 @@ public class MessageContext implements Serializable {
     public MessageContext(int sender, int viewID, TOMMessageType type,
             int session, int sequence, int operationId, int replyServer, byte[] signature,
             long timestamp, int numOfNonces, long seed, int regency, int leader, int consensusId,
-            Set<ConsensusMessage> proof, TOMMessage firstInBatch, boolean noOp) {
+            Set<ConsensusMessage> proof, TOMMessage firstInBatch, boolean noOp, boolean hasReplicaSpecificContent) {
         
         this.nonces = null;
                
@@ -107,9 +109,15 @@ public class MessageContext implements Serializable {
         this.proof = proof;
         this.firstInBatch = firstInBatch;
         this.noOp = noOp;
+
+		this.hasReplicaSpecificContent = hasReplicaSpecificContent;
     }
 
-    /**
+	public boolean hasReplicaSpecificContent() {
+		return hasReplicaSpecificContent;
+	}
+
+	/**
      * Returns the view ID
      * @return The view ID
      */
@@ -290,7 +298,8 @@ public class MessageContext implements Serializable {
      */
     public TOMMessage recreateTOMMessage(byte[] content) {
 
-        TOMMessage ret = new TOMMessage(sender, session, sequence, operationId, content, viewID, type);
+        TOMMessage ret = new TOMMessage(sender, session, sequence, operationId, content, hasReplicaSpecificContent,
+				viewID, type);
         ret.setReplyServer(replyServer);
         ret.serializedMessageSignature = signature;
         ret.serializedMessage = TOMMessage.messageToBytes(ret);

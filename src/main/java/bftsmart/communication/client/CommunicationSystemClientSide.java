@@ -17,19 +17,21 @@ package bftsmart.communication.client;
 
 import bftsmart.tom.core.messages.TOMMessage;
 
+import java.util.Map;
+
 /**
  * Methods that should be implemented by the client side of the client-server communication system
  *
  * @author Paulo
  */
 public interface CommunicationSystemClientSide {
-   public void send(boolean sign, int[] targets, TOMMessage sm);
-   public void setReplyReceiver(ReplyReceiver trr);
-   public void sign(TOMMessage sm);
-   public void close();
+   void send(boolean sign, int[] targets, TOMMessage sm, Map<Integer, byte[]> replicaSpecificContents);
+   void setReplyReceiver(ReplyReceiver trr);
+   void sign(TOMMessage sm);
+   void close();
 
    //******* EDUARDO BEGIN **************//
-   public void updateConnections();
+   void updateConnections();
    //******* EDUARDO END **************//
 
 }

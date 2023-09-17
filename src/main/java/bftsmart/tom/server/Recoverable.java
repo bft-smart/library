@@ -31,7 +31,7 @@ public interface Recoverable {
      * Sets the replica context
      * @param replicaContext  The replica context
      */
-    public void setReplicaContext(ReplicaContext replicaContext);
+	void setReplicaContext(ReplicaContext replicaContext);
 	
     /**
      * 
@@ -41,14 +41,14 @@ public interface Recoverable {
      * representation of the state instead of only the hash. False otherwise
      * @return  A representation of the application state
      */
-    public ApplicationState getState(int cid, boolean sendState);
+	ApplicationState getState(int cid, boolean sendState);
     
     /**
      * Sets the state to the representation obtained in the state transfer protocol
      * @param state State obtained in the state transfer protocol
-     * @return 
+     * @return Last cid included in the state
      */
-    public int setState(ApplicationState state);
+	int setState(ApplicationState state);
     
     /**
      * Recoverers implementing this interface will have to chose among
@@ -57,7 +57,7 @@ public interface Recoverable {
      * strategy to manage the state and return it in this method.
      * @return the implementation of state manager that suplies the strategy defined
      */
-    public StateManager getStateManager();
+	StateManager getStateManager();
     
     /**
      * This method is invoked by ServiceReplica to pass information that was
@@ -74,7 +74,7 @@ public interface Recoverable {
      * 
      * 
      */
-    public void Op(int CID, byte[] requests, MessageContext msgCtx);
+	void Op(int CID, byte[] requests, byte[] replicaSpecificContent, MessageContext msgCtx);
     
     /**
      * This method is invoked by ServiceReplica to indicate that a consensus instance
@@ -90,6 +90,6 @@ public interface Recoverable {
      * @param msgCtx Message context associated with the consensus instance. furthermore
      * msgCtx.getConsensusId() will be equal to CID.
      */
-    public void noOp(int CID, byte[][] operations, MessageContext msgCtx[]);
+	void noOp(int CID, byte[][] operations, byte[][] replicaSpecificContents, MessageContext[] msgCtx);
 	
 }

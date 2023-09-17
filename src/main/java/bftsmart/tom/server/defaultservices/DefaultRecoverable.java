@@ -32,6 +32,7 @@ import bftsmart.tom.MessageContext;
 import bftsmart.tom.ReplicaContext;
 import bftsmart.tom.server.BatchExecutable;
 import bftsmart.tom.server.Recoverable;
+import bftsmart.tom.util.ServiceContent;
 import bftsmart.tom.util.TOMUtil;
 
 import org.slf4j.Logger;
@@ -71,11 +72,18 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
     }
 
     @Override
-    public byte[][] executeBatch(byte[][] commands, MessageContext[] msgCtxs) {
-        return executeBatch(commands, msgCtxs, false);
+    public ServiceContent[] executeBatch(byte[][] commands, byte[][] replicaSpecificContents,
+										 MessageContext[] msgCtxs) {
+		byte[][] responses = executeBatch(commands, replicaSpecificContents, msgCtxs, false);
+		ServiceContent[] serviceRespons = new ServiceContent[responses.length];
+		for (int i = 0; i < responses.length; i++) {
+			serviceRespons[i] = new ServiceContent(responses[i]);
+		}
+		return serviceRespons;
     }
 
-    private byte[][] executeBatch(byte[][] commands, MessageContext[] msgCtxs, boolean noop) {
+    private byte[][] executeBatch(byte[][] commands, byte[][] replicaSpecificContents, MessageContext[] msgCtxs,
+								  boolean noop) {
 
         int cid = msgCtxs[msgCtxs.length-1].getConsensusId();
 
@@ -162,7 +170,7 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
         return replies;
     }
 
-    private final byte[] computeHash(byte[] data) {
+    private byte[] computeHash(byte[] data) {
         byte[] ret = null;
         hashLock.lock();
         ret = md.digest(data);
@@ -323,9 +331,6 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
      * commands, it is necessary to identify if the batch contains checkpoint
      * indexes.
      *
-     * @param msgCtxs the contexts of the consensus where the messages where
-     * executed. There is one msgCtx message for each command to be executed
-     *
      * @return the index in which a replica is supposed to take a checkpoint. If
      * there is no replica taking a checkpoint during the period comprised by
      * this command batch, it is returned -1
@@ -355,8 +360,6 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
      * transfer protocol to find the position of the log commands in the log
      * file.
      *
-     * @param msgCtx the message context of the commands executed by the
-     * replica. There is one message context for each command
      * @param cid the CID of the consensus where a replica took a checkpoint
      * @return the higher position where the CID appears
      */
@@ -414,19 +417,19 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
     }
 
     @Override
-    public byte[] executeUnordered(byte[] command, MessageContext msgCtx) {
-        return appExecuteUnordered(command, msgCtx);
+    public ServiceContent executeUnordered(byte[] command, byte[] replicaSpecificContent, MessageContext msgCtx) {
+        return new ServiceContent(appExecuteUnordered(command, msgCtx));
     }
     
     @Override
-    public void Op(int CID, byte[] requests, MessageContext msgCtx) {
+    public void Op(int CID, byte[] requests, byte[] replicaSpecificContent, MessageContext msgCtx) {
         //Requests are logged within 'executeBatch(...)' instead of in this method.
     }
     
     @Override
-    public void noOp(int CID, byte[][] operations, MessageContext[] msgCtxs) {
+    public void noOp(int CID, byte[][] operations, byte[][] replicaSpecificContents, MessageContext[] msgCtxs) {
         
-        executeBatch(operations, msgCtxs, true);
+        executeBatch(operations, replicaSpecificContents, msgCtxs, true);
 
     }
     

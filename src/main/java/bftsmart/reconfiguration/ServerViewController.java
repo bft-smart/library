@@ -108,7 +108,7 @@ public class ServerViewController extends ViewController {
     }
 
     public void enqueueUpdate(TOMMessage up) {
-        ReconfigureRequest request = (ReconfigureRequest) TOMUtil.getObject(up.getContent());
+        ReconfigureRequest request = (ReconfigureRequest) TOMUtil.getObject(up.getCommonContent());
         if (request != null && request.getSender() == getStaticConf().getTTPId() 
                 && TOMUtil.verifySignature(getStaticConf().getPublicKey(request.getSender()),
                     request.toString().getBytes(), request.getSignature())) {
@@ -130,7 +130,7 @@ public class ServerViewController extends ViewController {
         
         
         for (int i = 0; i < updates.size(); i++) {
-            ReconfigureRequest request = (ReconfigureRequest) TOMUtil.getObject(updates.get(i).getContent());
+            ReconfigureRequest request = (ReconfigureRequest) TOMUtil.getObject(updates.get(i).getCommonContent());
             Iterator<Integer> it = request.getProperties().keySet().iterator();
 
             while (it.hasNext()) {

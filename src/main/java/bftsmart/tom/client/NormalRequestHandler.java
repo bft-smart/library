@@ -3,65 +3,54 @@ package bftsmart.tom.client;
 import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.core.messages.TOMMessageType;
 import bftsmart.tom.util.Extractor;
+import bftsmart.tom.util.ServiceContent;
 
 import java.util.*;
 
 public class NormalRequestHandler extends AbstractRequestHandler {
-	private final List<TOMMessage> replies;
-	private final TOMMessage[] replyQuorum;
-	private final Comparator<byte[]> comparator;
+	private final Comparator<ServiceContent> comparator;
 	private final Extractor responseExtractor;
 
 	public NormalRequestHandler(int me, int session, int sequenceId, int operationId, int viewId,
-								TOMMessageType requestType, int timeout, int nReplicas,
-								int replyQuorumSize, Comparator<byte[]> comparator, Extractor responseExtractor) {
-		super(me, session, sequenceId, operationId, viewId, requestType, timeout, nReplicas, replyQuorumSize);
-		this.replies = new ArrayList<>(nReplicas);
-		this.replyQuorum = new TOMMessage[replyQuorumSize];
+								TOMMessageType requestType, int timeout, int[] replicas,
+								int replyQuorumSize, Comparator<ServiceContent> comparator,
+								Extractor responseExtractor) {
+		super(me, session, sequenceId, operationId, viewId, requestType, timeout, replicas, replyQuorumSize);
 		this.comparator = comparator;
 		this.responseExtractor = responseExtractor;
 	}
 
 	@Override
-	public TOMMessage createRequest(byte[] request) {
-		return new TOMMessage(me, session, sequenceId, operationId, request, viewId, requestType);
+	public TOMMessage createRequest(byte[] request, boolean hasReplicaSpecificContent, byte metadata) {
+		return new TOMMessage(me, session, sequenceId, operationId, request, hasReplicaSpecificContent,
+				metadata, viewId, requestType);
 	}
 
 	@Override
-	public void processReply(TOMMessage reply) {
-		logger.debug("(current reqId: {}) Received reply from {} with reqId: {}", sequenceId, reply.getSender(),
-				reply.getSequence());
-		if (sequenceId != reply.getSequence() || requestType != reply.getReqType()) {
-			logger.debug("Ignoring reply from {} with reqId {}. Currently wait reqId {} of type {}",
-					reply.getSender(), reply.getSequence(), sequenceId, requestType);
-			return;
-		}
-		if (replySenders.contains(reply.getSender())) {//process same reply only once
-			return;
-		}
-		replySenders.add(reply.getSender());
-		replies.add(reply);
-
+	public void processReply(TOMMessage reply, int lastReceivedIndex) {
 		//optimization - compare responses after having a quorum of replies
 		if (replySenders.size() < replyQuorumSize) {
 			return;
 		}
 
 		int sameContent = 0;
-		logger.debug("Comparing {} responses with response from {}", replies.size(), reply.getSender());
+
+		logger.debug("Comparing {} responses with response from {}", replySenders.size(), reply.getSender());
 		for (TOMMessage msg : replies) {
+			if (msg == null)
+				continue;
 			if (comparator.compare(msg.getContent(), reply.getContent()) == 0) {
-				replyQuorum[sameContent] = msg;
 				sameContent++;
 				if (sameContent >= replyQuorumSize) {
-					response = responseExtractor.extractResponse(replyQuorum, sameContent, sameContent - 1);
+					response = responseExtractor.extractResponse(replies, sameContent, lastReceivedIndex);
+					response.setViewID(reply.getViewID());
 					semaphore.release();
 					return;
 				}
 			}
 		}
 
-		if (replySenders.size() == nReplicas) {
+		if (replySenders.size() == replicas.length) {
 			semaphore.release();
 		}
 

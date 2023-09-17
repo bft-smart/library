@@ -1,17 +1,17 @@
 /**
-Copyright (c) 2007-2013 Alysson Bessani, Eduardo Alchieri, Paulo Sousa, and the authors indicated in the @author tags
+ Copyright (c) 2007-2013 Alysson Bessani, Eduardo Alchieri, Paulo Sousa, and the authors indicated in the @author tags
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
 
-http://www.apache.org/licenses/LICENSE-2.0
+ http://www.apache.org/licenses/LICENSE-2.0
 
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
  */
 package bftsmart.communication.client.netty;
 
@@ -25,10 +25,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.Signature;
 import java.security.spec.InvalidKeySpecException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Random;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
@@ -71,27 +68,27 @@ import io.netty.util.concurrent.GenericFutureListener;
 public class NettyClientServerCommunicationSystemClientSide extends SimpleChannelInboundHandler<TOMMessage>
 		implements CommunicationSystemClientSide {
 
-	private Logger logger = LoggerFactory.getLogger(this.getClass());
+	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
-	private int clientId;
+	private final int clientId;
 	protected ReplyReceiver trr;
 	// ******* EDUARDO BEGIN **************//
 	private ClientViewController controller;
 	// ******* EDUARDO END **************//
-	private ConcurrentHashMap<Integer, NettyClientServerSession> sessionClientToReplica = new ConcurrentHashMap<>();
+	private final ConcurrentHashMap<Integer, NettyClientServerSession> sessionClientToReplica = new ConcurrentHashMap<>();
 	private ReentrantReadWriteLock rl;
 	private Signature signatureEngine;
 	private boolean closed = false;
 
-	private EventLoopGroup workerGroup;
+	private final EventLoopGroup workerGroup;
 	private SyncListener listener;
 
 	private SecretKeyFactory secretKeyFactory;
 
 	/* Tulio Ribeiro */
-	private static int tcpSendBufferSize = 8 * 1024 * 1024;
-	private static int connectionTimeoutMsec = 40000; /* (40 seconds, timeout) */
-	private PrivateKey privKey;
+	private static final int tcpSendBufferSize = 8 * 1024 * 1024;
+	private static final int connectionTimeoutMsec = 40000; /* (40 seconds, timeout) */
+	private PrivateKey privateKey;
 	/* end Tulio Ribeiro */
 
 	public NettyClientServerCommunicationSystemClientSide(int clientId, ClientViewController controller) {
@@ -106,17 +103,15 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 			this.controller = controller;
 
 			/* Tulio Ribeiro */
-			privKey = controller.getStaticConf().getPrivateKey();
+			privateKey = controller.getStaticConf().getPrivateKey();
 
 			this.listener = new SyncListener();
 			this.rl = new ReentrantReadWriteLock();
 
 			int[] currV = controller.getCurrentViewProcesses();
 
-			for (int i = 0; i < currV.length; i++) {
-				int replicaId = currV[i];
+			for (int replicaId : currV) {
 				try {
-
 					ChannelFuture future = connectToReplica(replicaId, secretKeyFactory);
 
 					logger.debug("ClientID {}, connecting to replica {}, at address: {}", clientId, replicaId,
@@ -128,7 +123,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 						logger.error("Impossible to connect to " + replicaId);
 					}
 
-				} catch (java.lang.NullPointerException ex) {
+				} catch (NullPointerException ex) {
 					// What is this??? This is not possible!!!
 					logger.debug("Should fix the problem, and I think it has no other implications :-), "
 							+ "but we must make the servers store the view in a different place.");
@@ -146,10 +141,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 		int[] currV = controller.getCurrentViewProcesses();
 		try {
 			// open connections with new servers
-			for (int i = 0; i < currV.length; i++) {
-
-				int replicaId = currV[i];
-
+			for (int replicaId : currV) {
 				rl.readLock().lock();
 				if (sessionClientToReplica.get(replicaId) == null) {
 					rl.readLock().unlock();
@@ -213,16 +205,14 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 	}
 
 	public void reconnect(final ChannelHandlerContext ctx) {
-
 		rl.writeLock().lock();
 
-		ArrayList<NettyClientServerSession> sessions = new ArrayList<NettyClientServerSession>(
+		ArrayList<NettyClientServerSession> sessions = new ArrayList<>(
 				sessionClientToReplica.values());
 		for (NettyClientServerSession ncss : sessions) {
 			if (ncss.getChannel() == ctx.channel()) {
 				int replicaId = ncss.getReplicaId();
 				try {
-
 					if (controller.getRemoteAddress(replicaId) != null) {
 
 						ChannelFuture future;
@@ -254,65 +244,59 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 	}
 
 	@Override
-	public void send(boolean sign, int[] targets, TOMMessage sm) {
-
+	public void send(boolean sign, int[] targets, TOMMessage sm, Map<Integer, byte[]> replicaSpecificContents) {
 		int quorum;
-
 		Integer[] targetArray = Arrays.stream(targets).boxed().toArray(Integer[]::new);
 		Collections.shuffle(Arrays.asList(targetArray), new Random());
 
 		if (controller.getStaticConf().isBFT()) {
-			quorum = (int) Math.ceil((controller.getCurrentViewN() + controller.getCurrentViewF()) / 2) + 1;
+			quorum = (int) Math.ceil((controller.getCurrentViewN() + controller.getCurrentViewF()) / 2.0) + 1;
 		} else {
-			quorum = (int) Math.ceil((controller.getCurrentViewN()) / 2) + 1;
+			quorum = (int) Math.ceil((controller.getCurrentViewN()) / 2.0) + 1;
 		}
 
 		listener.waitForChannels(quorum); // wait for the previous transmission to complete
 
-		logger.debug("Sending request from " + sm.getSender() + " with sequence number " + sm.getSequence() + " to "
-				+ Arrays.toString(targetArray));
+		logger.debug("Sending request from {} with sequence number {} to {}", sm.getSender(), sm.getSequence(),
+				Arrays.toString(targetArray));
 
 		if (sm.serializedMessage == null) {
-
+			//sender(int) + viewID(int) + type(byte) + session(int) + sequence(int) + operationId(int)
+			// + replyServer(int) + commonContent.length(int) + commonContent(bytes) + metadata(byte)
+			int dataLength = Integer.BYTES * 7 + Byte.BYTES * 2
+					+ (sm.getCommonContent() == null ? 0 : sm.getCommonContent().length);
 			// serialize message
-			DataOutputStream dos = null;
-			try {
-				ByteArrayOutputStream baos = new ByteArrayOutputStream();
-				dos = new DataOutputStream(baos);
+			try (ByteArrayOutputStream baos = new ByteArrayOutputStream(dataLength);
+				 DataOutputStream dos = new DataOutputStream(baos)) {
 				sm.wExternal(dos);
 				dos.flush();
 				sm.serializedMessage = baos.toByteArray();
 			} catch (IOException ex) {
-				logger.debug("Impossible to serialize message: " + sm);
+				logger.debug("Impossible to serialize message: {}", sm);
 			}
 		}
 
-		// Logger.println("Sending message with "+sm.serializedMessage.length+" bytes of
-		// content.");
-
 		// produce signature
 		if (sign && sm.serializedMessageSignature == null) {
-			sm.serializedMessageSignature = signMessage(privKey, sm.serializedMessage);
+			sm.serializedMessageSignature = signMessage(privateKey, sm.serializedMessage);
 		}
 
 		int sent = 0;
 
 		for (int target : targetArray) {
-			// This is done to avoid a race condition with the writeAndFush method. Since
-			// the method is asynchronous,
-			// each iteration of this loop could overwrite the destination of the previous
-			// one
-			try {
-				sm = (TOMMessage) sm.clone();
-			} catch (CloneNotSupportedException e) {
-				logger.error("Failed to clone TOMMessage", e);
-				continue;
+			// This is done to avoid a race condition with the writeAndFlush method.
+			// Since the method is asynchronous, each iteration of this loop could overwrite
+			// the destination of the previous one
+			sm = sm.createCopy();
+
+			if (replicaSpecificContents != null) {
+				sm.setReplicaSpecificContent(replicaSpecificContents.get(target));
 			}
 
 			sm.destination = targets[target];
 
 			rl.readLock().lock();
-			Channel channel = ((NettyClientServerSession) sessionClientToReplica.get(targets[target])).getChannel();
+			Channel channel = sessionClientToReplica.get(targets[target]).getChannel();
 			rl.readLock().unlock();
 			if (channel.isActive()) {
 				sm.signed = sign;
@@ -322,7 +306,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 
 				sent++;
 			} else {
-				logger.debug("Channel to " + targets[target] + " is not connected");
+				logger.debug("Channel to {} is not connected", targets[target]);
 			}
 		}
 
@@ -336,39 +320,31 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 
 	public void sign(TOMMessage sm) {
 		// serialize message
-		DataOutputStream dos = null;
-		byte[] data = null;
-		try {
-			ByteArrayOutputStream baos = new ByteArrayOutputStream();
-			dos = new DataOutputStream(baos);
-			sm.wExternal(dos);
-			dos.flush();
-			data = baos.toByteArray();
-			sm.serializedMessage = data;
-		} catch (IOException ex) {
-
-			logger.error("Failed to sign TOMMessage", ex);
+		if (sm.serializedMessage == null) {
+			try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
+				 DataOutputStream dos = new DataOutputStream(baos)) {
+				sm.wExternal(dos);
+				dos.flush();
+				sm.serializedMessage = baos.toByteArray();
+			} catch (IOException ex) {
+				logger.error("Failed to sign TOMMessage", ex);
+			}
 		}
-
-		// produce signature
-		byte[] signature = signMessage(privKey, data);
-		sm.serializedMessageSignature = signature;
+		if (sm.serializedMessageSignature == null) {
+			// produce signature
+			sm.serializedMessageSignature = signMessage(privateKey, sm.serializedMessage);
+		}
 	}
 
 	public byte[] signMessage(PrivateKey key, byte[] message) {
-		// long startTime = System.nanoTime();
 		try {
 			if (signatureEngine == null) {
 				signatureEngine = TOMUtil.getSigEngine();
 			}
-			byte[] result = null;
-
 			signatureEngine.initSign(key);
 			signatureEngine.update(message);
-			result = signatureEngine.sign();
 
-			// st.store(System.nanoTime() - startTime);
-			return result;
+			return signatureEngine.sign();
 		} catch (Exception e) {
 			logger.error("Failed to sign message", e);
 			return null;
@@ -388,25 +364,23 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 		}
 	}
 
-	private ChannelInitializer getChannelInitializer() throws NoSuchAlgorithmException {
+	private ChannelInitializer<SocketChannel> getChannelInitializer() {
 
-		final NettyClientPipelineFactory nettyClientPipelineFactory = new NettyClientPipelineFactory(this,
+		NettyClientPipelineFactory nettyClientPipelineFactory = new NettyClientPipelineFactory(this,
 				sessionClientToReplica, controller, rl);
 
-		ChannelInitializer channelInitializer = new ChannelInitializer<SocketChannel>() {
+		return new ChannelInitializer<SocketChannel>() {
 			@Override
-			public void initChannel(SocketChannel ch) throws Exception {
+			public void initChannel(SocketChannel ch) {
 				ch.pipeline().addLast(nettyClientPipelineFactory.getDecoder());
 				ch.pipeline().addLast(nettyClientPipelineFactory.getEncoder());
 				ch.pipeline().addLast(nettyClientPipelineFactory.getHandler());
-
 			}
 		};
-		return channelInitializer;
 	}
 
 	@Override
-	public void channelUnregistered(final ChannelHandlerContext ctx) throws Exception {
+	public void channelUnregistered(final ChannelHandlerContext ctx) {
 		scheduleReconnect(ctx, 10);
 	}
 
@@ -483,9 +457,9 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 						+ " channel operations pending, waiting to complete");
 
 				try {
-					this.enoughCompleted.await(1000, TimeUnit.MILLISECONDS); // timeout if a malicous replica refuses to
-																				// acknowledge the operation as
-																				// completed
+					this.enoughCompleted.await(1000, TimeUnit.MILLISECONDS); // timeout if a malicious replica refuses to
+					// acknowledge the operation as
+					// completed
 				} catch (InterruptedException ex) {
 					logger.error("Interruption while waiting on condition", ex);
 				}

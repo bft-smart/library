@@ -273,7 +273,15 @@ public final class DeliveryThread extends Thread {
 					cDecs = new CertifiedDecision[requests.length];
 					int count = 0;
 					for (Decision d : decisions) {
-						requests[count] = extractMessagesFromDecision(d);
+						TOMMessage[] decisionRequests = extractMessagesFromDecision(d);
+
+						for (TOMMessage decisionRequest : decisionRequests) {
+							if (decisionRequest.hasReplicaSpecificContent()) {
+								tomLayer.clientsManager.injectPrivateContentTo(decisionRequest);
+							}
+						}
+
+						requests[count] = decisionRequests;
 						consensusIds[count] = d.getConsensusId();
 						leadersIds[count] = d.getLeader();
 						regenciesIds[count] = d.getRegency();
@@ -284,6 +292,7 @@ public final class DeliveryThread extends Thread {
 
 						// cons.firstMessageProposed contains the performance counters
 						if (requests[count][0].equals(d.firstMessageProposed)) {
+							d.firstMessageProposed.setReplicaSpecificContent(requests[count][0].getReplicaSpecificContent());
 							d.firstMessageProposed.timestamp = requests[count][0].timestamp;
 							d.firstMessageProposed.seed = requests[count][0].seed;
 							d.firstMessageProposed.numOfNonces = requests[count][0].numOfNonces;
@@ -359,8 +368,9 @@ public final class DeliveryThread extends Thread {
 
 		MessageContext msgCtx = new MessageContext(request.getSender(), request.getViewID(), request.getReqType(),
 				request.getSession(), request.getSequence(), request.getOperationId(), request.getReplyServer(),
-				request.serializedMessageSignature, System.currentTimeMillis(), 0, 0, regency, -1, -1, null, null,
-				false); // Since the request is unordered,
+				request.serializedMessageSignature, System.currentTimeMillis(), 0, 0, regency,
+				-1, -1, null, null,
+				false, request.hasReplicaSpecificContent()); // Since the request is unordered,
 		// there is no consensus info to pass
 
 		msgCtx.readOnly = true;
@@ -380,7 +390,7 @@ public final class DeliveryThread extends Thread {
 			for (TOMMessage dest : dests) {
 				tomLayer.getCommunication().send(new int[]{dest.getSender()},
 						new TOMMessage(controller.getStaticConf().getProcessId(), dest.getSession(),
-								dest.getSequence(), dest.getOperationId(), response,
+								dest.getSequence(), dest.getOperationId(), response, false,
 								controller.getCurrentViewId(), TOMMessageType.RECONFIG));
 			}
 

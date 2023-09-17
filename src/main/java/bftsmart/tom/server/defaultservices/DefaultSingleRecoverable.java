@@ -31,6 +31,7 @@ import bftsmart.tom.MessageContext;
 import bftsmart.tom.ReplicaContext;
 import bftsmart.tom.server.Recoverable;
 import bftsmart.tom.server.SingleExecutable;
+import bftsmart.tom.util.ServiceContent;
 import bftsmart.tom.util.TOMUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,16 +43,16 @@ import org.slf4j.LoggerFactory;
  */
 public abstract class DefaultSingleRecoverable implements Recoverable, SingleExecutable {
     
-    private Logger logger = LoggerFactory.getLogger(this.getClass());
+    private final Logger logger = LoggerFactory.getLogger(this.getClass());
     
     protected ReplicaContext replicaContext;
     private TOMConfiguration config;
     private ServerViewController controller;
     private int checkpointPeriod;
 
-    private ReentrantLock logLock = new ReentrantLock();
-    private ReentrantLock hashLock = new ReentrantLock();
-    private ReentrantLock stateLock = new ReentrantLock();
+    private final ReentrantLock logLock = new ReentrantLock();
+    private final ReentrantLock hashLock = new ReentrantLock();
+    private final ReentrantLock stateLock = new ReentrantLock();
     
     private MessageDigest md;
         
@@ -71,14 +72,12 @@ public abstract class DefaultSingleRecoverable implements Recoverable, SingleExe
     }
     
     @Override
-    public byte[] executeOrdered(byte[] command, MessageContext msgCtx) {
-        
-        return executeOrdered(command, msgCtx, false);
-        
+    public ServiceContent executeOrdered(byte[] command, byte[] replicaSpecificContent, MessageContext msgCtx) {
+        return new ServiceContent(executeOrdered(command, replicaSpecificContent, msgCtx, false));
     }
     
-    private byte[] executeOrdered(byte[] command, MessageContext msgCtx, boolean noop) {
-        
+    private byte[] executeOrdered(byte[] command, byte[] replicaSpecificContent, MessageContext msgCtx, boolean noop) {
+
         int cid = msgCtx.getConsensusId();
         
         byte[] reply = null;
@@ -292,20 +291,20 @@ public abstract class DefaultSingleRecoverable implements Recoverable, SingleExe
     }
           
     @Override
-    public byte[] executeUnordered(byte[] command, MessageContext msgCtx) {
-        return appExecuteUnordered(command, msgCtx);
+    public ServiceContent executeUnordered(byte[] command, byte[] replicaSpecificContent, MessageContext msgCtx) {
+        return new ServiceContent(appExecuteUnordered(command, msgCtx));
     }
     
     @Override
-    public void Op(int CID, byte[] requests, MessageContext msgCtx) {
+    public void Op(int CID, byte[] requests, byte[] replicaSpecificContent, MessageContext msgCtx) {
         //Requests are logged within 'executeOrdered(...)' instead of in this method.
     }
 
     @Override
-    public void noOp(int CID, byte[][] operations, MessageContext[] msgCtx) {
+    public void noOp(int CID, byte[][] operations, byte[][] replicaSpecificContents, MessageContext[] msgCtx) {
          
         for (int i = 0; i < msgCtx.length; i++) {
-            executeOrdered(operations[i], msgCtx[i], true);
+            executeOrdered(operations[i], replicaSpecificContents[i], msgCtx[i], true);
         }
     }
     

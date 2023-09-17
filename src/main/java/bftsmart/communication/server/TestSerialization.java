@@ -32,7 +32,7 @@ public class TestSerialization {
      */
     public static void main(String[] args) throws Exception {
         // TODO code application logic here
-        TOMMessage tm = new TOMMessage(0,0,0,0, new String("abc").getBytes(),0, TOMMessageType.ORDERED_REQUEST);
+        TOMMessage tm = new TOMMessage(0,0,0,0, new String("abc").getBytes(), false,0, TOMMessageType.ORDERED_REQUEST);
 
         ByteArrayOutputStream baos = new ByteArrayOutputStream(4);
         DataOutputStream oos = new DataOutputStream(baos);

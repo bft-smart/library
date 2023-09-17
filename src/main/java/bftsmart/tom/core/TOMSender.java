@@ -24,6 +24,7 @@ import bftsmart.tom.core.messages.TOMMessageType;
 import bftsmart.tom.util.KeyLoader;
 
 import java.io.Closeable;
+import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
@@ -95,14 +96,8 @@ public abstract class TOMSender implements ReplyReceiver, Closeable, AutoCloseab
 		return opCounter.getAndIncrement();
 	}
 
-	public void TOMulticast(TOMMessage sm) {
-		cs.send(useSignatures, this.viewController.getCurrentViewProcesses(), sm);
-	}
-
-	public void TOMulticast(byte[] m, int reqId, int operationId, TOMMessageType reqType) {
-		cs.send(useSignatures, viewController.getCurrentViewProcesses(),
-				new TOMMessage(me, session, reqId, operationId, m, viewController.getCurrentViewId(),
-						reqType));
+	public void TOMulticast(TOMMessage sm, Map<Integer, byte[]> replicaSpecificContents) {
+		cs.send(useSignatures, this.viewController.getCurrentViewProcesses(), sm, replicaSpecificContents);
 	}
 
 	public void sendMessageToTargets(byte[] m, int reqId, int operationId, int[] targets, TOMMessageType type) {
@@ -110,7 +105,8 @@ public abstract class TOMSender implements ReplyReceiver, Closeable, AutoCloseab
 			type = TOMMessageType.ASK_STATUS;
 		}
 		cs.send(useSignatures, targets,
-				new TOMMessage(me, session, reqId, operationId, m, viewController.getCurrentViewId(), type));
+				new TOMMessage(me, session, reqId, operationId, m, false,
+						viewController.getCurrentViewId(), type), null);
 	}
 
 	public int getSession(){

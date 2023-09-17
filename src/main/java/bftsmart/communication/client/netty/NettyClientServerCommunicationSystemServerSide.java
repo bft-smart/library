@@ -300,15 +300,10 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 		if (sm.signed) {
 			sm.serializedMessageSignature = TOMUtil.signMessage(privKey, data);
 		}
-
+		byte[] replicaSpecificContent = sm.getReplicaSpecificContent();
 		for (int target : targets) {
-			try {
-				sm = (TOMMessage) sm.clone();
-			} catch (CloneNotSupportedException ex) {
-				logger.error("Failed to clone TOMMessage", ex);
-				continue;
-			}
-
+			sm = sm.createCopy();
+			sm.setReplicaSpecificContent(replicaSpecificContent);
 			rl.readLock().lock();
 			if (sessionReplicaToClient.containsKey(target)) {
 				sm.destination = target;

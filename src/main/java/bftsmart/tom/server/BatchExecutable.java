@@ -17,6 +17,7 @@ package bftsmart.tom.server;
 
 import bftsmart.tom.MessageContext;
 import bftsmart.tom.core.messages.TOMMessage;
+import bftsmart.tom.util.ServiceContent;
 import bftsmart.tom.util.TOMUtil;
 
 /**
@@ -29,26 +30,27 @@ public interface BatchExecutable extends Executable {
 	
     /**
      * Execute a batch of requests.
-     * @param command The batch of requests
+     * @param commands The batch of requests
      * @param msgCtx The context associated to each request
-     * @return
+     * @return The replies for each request
      */
-    public byte[][] executeBatch(byte[][] command, MessageContext[] msgCtx);
+	ServiceContent[] executeBatch(byte[][] commands, byte[][] replicaSpecificContents, MessageContext[] msgCtx);
     
-    public default TOMMessage[] executeBatch(int processID, int viewID,boolean[] isReplyHash, byte[][] command,
-											 MessageContext[] msgCtx) {
+    default TOMMessage[] executeBatch(int processID, int viewID, boolean[] isReplyHash, byte[][] commonContents,
+									  byte[][] replicaSpecificContents, MessageContext[] msgCtx) {
         
-        TOMMessage[] replies = new TOMMessage[command.length];
-        
-        byte[][] results = executeBatch(command, msgCtx);
+        TOMMessage[] replies = new TOMMessage[commonContents.length];
+
+		ServiceContent[] serviceRespons = executeBatch(commonContents, replicaSpecificContents, msgCtx);
 		byte[] result;
-        for (int i = 0; i < results.length; i++) {
+        for (int i = 0; i < serviceRespons.length; i++) {
 			if (isReplyHash[i]) {
-				result = TOMUtil.computeHash(results[i]);
+				result = TOMUtil.computeHash(serviceRespons[i].getCommonContent());
 			} else {
-				result = results[i];
+				result = serviceRespons[i].getCommonContent();
 			}
-			replies[i] = getTOMMessage(processID, viewID, command[i], msgCtx[i], result);
+			replies[i] = getTOMMessage(processID, viewID, commonContents[i], msgCtx[i], result,
+					serviceRespons[i].getReplicaSpecificContent());
         }
         
         return replies;

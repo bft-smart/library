@@ -61,7 +61,7 @@ public class Test {
             if(id == 0) {
                 long time = System.nanoTime();
 
-                scl.send(targets, new TOMMessage(id,0,0, i,msg.getBytes(),0,TOMMessageType.ORDERED_REQUEST), true);
+                scl.send(targets, new TOMMessage(id,0,0, i,msg.getBytes(), false,0,TOMMessageType.ORDERED_REQUEST), true);
                 int rec = 0;
 
                 while(rec < n-1) {
@@ -73,7 +73,7 @@ public class Test {
                 System.out.println("Roundtrip "+((System.nanoTime()-time)/1000.0)+" us");
             } else {
                 TOMMessage m = (TOMMessage) inQueue.take();
-                scl.send(new int[]{m.getSender()}, new TOMMessage(id,0,0,i,m.getContent(),0,TOMMessageType.ORDERED_REQUEST), true);
+                scl.send(new int[]{m.getSender()}, new TOMMessage(id,0,0,i,m.getCommonContent(), false,0,TOMMessageType.ORDERED_REQUEST), true);
             }
         }
 
@@ -85,7 +85,7 @@ public class Test {
             if(id == 0) {
                 long time = System.nanoTime();
 
-                scl.send(targets, new TOMMessage(id,0,0,i,msg.getBytes(),0,TOMMessageType.ORDERED_REQUEST), true);
+                scl.send(targets, new TOMMessage(id,0,0,i,msg.getBytes(), false,0,TOMMessageType.ORDERED_REQUEST), true);
                 int rec = 0;
 
                 while(rec < n-1) {
@@ -96,7 +96,7 @@ public class Test {
                 st.store(System.nanoTime()-time);
             } else {
                 TOMMessage m = (TOMMessage) inQueue.take();
-                scl.send(new int[]{m.getSender()}, new TOMMessage(id,0,0,i,m.getContent(),0,TOMMessageType.ORDERED_REQUEST), true);
+                scl.send(new int[]{m.getSender()}, new TOMMessage(id,0,0,i,m.getCommonContent(), false,0,TOMMessageType.ORDERED_REQUEST), true);
             }
         }
 

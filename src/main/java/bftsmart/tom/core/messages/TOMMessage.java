@@ -1,18 +1,18 @@
 /**
-Copyright (c) 2007-2013 Alysson Bessani, Eduardo Alchieri, Paulo Sousa, and the authors indicated in the @author tags
+ Copyright (c) 2007-2013 Alysson Bessani, Eduardo Alchieri, Paulo Sousa, and the authors indicated in the @author tags
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
 
-http://www.apache.org/licenses/LICENSE-2.0
+ http://www.apache.org/licenses/LICENSE-2.0
 
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+ */
 package bftsmart.tom.core.messages;
 
 import java.io.ByteArrayInputStream;
@@ -25,13 +25,13 @@ import java.io.Externalizable;
 import java.io.IOException;
 
 import bftsmart.communication.SystemMessage;
-import bftsmart.tom.util.DebugInfo;
+import bftsmart.tom.util.ServiceContent;
 import org.slf4j.LoggerFactory;
 
 /**
  * This class represents a total ordered message
  */
-public class TOMMessage extends SystemMessage implements Externalizable, Comparable, Cloneable {
+public class TOMMessage extends SystemMessage implements Externalizable, Comparable<TOMMessage> {
 
 	//******* EDUARDO BEGIN **************//
 	private int viewID; //current sender view
@@ -40,44 +40,46 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 
 	private int session; // Sequence number defined by the client
 	// Sequence number defined by the client.
-	// There is a sequence number for ordered and anothre for unordered messages
+	// There is a sequence number for ordered and another for unordered messages
 	private int sequence;
 	private int operationId; // Sequence number defined by the client
 
-	private byte[] content = null; // Content of the message
+	private ServiceContent content; // The content of the message
+	private byte metadata; // Optional metadata of the message
+	private boolean hasReplicaSpecificContent;
 
 	//the fields bellow are not serialized!!!
 	private transient int id; // ID for this message. It should be unique
 
-	public transient long timestamp = 0; // timestamp to be used by the application
+	public transient long timestamp; // timestamp to be used by the application
 
-        public transient long seed = 0; // seed for the nonces
-        public transient int numOfNonces = 0; // number of nonces
-        
+	public transient long seed; // seed for the nonces
+	public transient int numOfNonces; // number of nonces
+
 	public transient int destination = -1; // message destination
-	public transient boolean signed = false; // is this message signed?
+	public transient boolean signed; // is this message signed?
 
 	public transient long receptionTime;//the reception time of this message (nanoseconds)
-	public transient long receptionTimestamp;//the reception timestamp of this message (miliseconds)
+	public transient long receptionTimestamp;//the reception timestamp of this message (milliseconds)
 
-        public transient boolean timeout = false;//this message was timed out?
-        
-        public transient boolean recvFromClient = false; // Did the client already sent this message to me, or did it arrived in the batch?
-        public transient boolean isValid = false; // Was this request already validated by the replica?
-        
+	public transient boolean timeout;//this message was timed out?
+
+	public transient boolean recvFromClient; // Did the client already sent this message to me, or did it arrive in the batch?
+	public transient boolean isValid; // Was this request already validated by the replica?
+
 	//the bytes received from the client and its MAC and signature
-	public transient byte[] serializedMessage = null;
-	public transient byte[] serializedMessageSignature = null;
-	public transient byte[] serializedMessageMAC = null;
+	public transient byte[] serializedMessage;
+	public transient byte[] serializedMessageSignature;
+	public transient byte[] serializedMessageMAC;
 
 	//for benchmarking purposes
-	public transient long consensusStartTime = 0; //time the consensus is created
-	public transient long proposeReceivedTime = 0; //time the propose is received
-	public transient long writeSentTime = 0; //time the replica' write message is sent
-	public transient long acceptSentTime = 0; //time the replica' accept message is sent
-	public transient long decisionTime = 0; //time the decision is established
-	public transient long deliveryTime =0; //time the request is delivered
-	public transient long executedTime =0; //time the request is executed
+	public transient long consensusStartTime; //time the consensus is created
+	public transient long proposeReceivedTime; //time the propose is received
+	public transient long writeSentTime; //time the replica' write message is sent
+	public transient long acceptSentTime; //time the replica' accept message is sent
+	public transient long decisionTime; //time the decision is established
+	public transient long deliveryTime; //time the request is delivered
+	public transient long executedTime; //time the request is executed
 
 	//the reply associated with this message
 	public transient TOMMessage reply = null;
@@ -90,61 +92,49 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 	}
 
 	/**
-	 * Creates a new instance of TOMMessage
+	 * Creates a new instance of TOMMessage with metadata as -1.
 	 *
-	 * @param sender ID of the process which sent the message
-	 * @param session Session id of the sender
-	 * @param sequence Sequence number defined by the client
-	 * @param content Content of the message
-	 * @param view ViewId of the message
-	 * @param type Type of the request
-	 */
-	//public TOMMessage(int sender, int session, int sequence, byte[] content, int view, TOMMessageType type) {
-	//	this(sender, session, sequence, -1, content, view, type);
-	//}
-
-	/**
-	 * Creates a new instance of TOMMessage. This one has an operationId parameter
-	 * used for FIFO executions
-	 * @param sender The client id
+	 * @param sender The sender id
 	 * @param session The session id of the sender
 	 * @param sequence The sequence number created based on the message type
 	 * @param operationId The operation sequence number disregarding message type
-	 * @param content The command to be executed
+	 * @param commonContent The common content of the message
+	 * @param hasReplicaSpecificContent Indicates if the message has or will have replica specific content
 	 * @param view The view in which the message was sent
-	 * @param type Ordered or Unordered request
+	 * @param type Type of the message
 	 */
-	public TOMMessage(int sender, int session, int sequence, int operationId, byte[] content, int view, TOMMessageType type) {
+	public TOMMessage(int sender, int session, int sequence, int operationId,
+					  byte[] commonContent, boolean hasReplicaSpecificContent, int view, TOMMessageType type) {
+		this(sender, session, sequence, operationId, commonContent, hasReplicaSpecificContent, (byte) -1, view, type);
+	}
+
+	/**
+	 * Creates a new instance of TOMMessage with metadata.
+	 *
+	 * @param sender The sender id
+	 * @param session The session id of the sender
+	 * @param sequence The sequence number created based on the message type
+	 * @param operationId The operation sequence number disregarding message type
+	 * @param commonContent The common content of the message
+	 * @param hasReplicaSpecificContent Indicates if the message has or will have replica specific content
+	 * @param metadata Metadata of the message
+	 * @param view The view in which the message was sent
+	 * @param type Type of the message
+	 */
+	public TOMMessage(int sender, int session, int sequence, int operationId,
+					  byte[] commonContent, boolean hasReplicaSpecificContent,
+					  byte metadata, int view, TOMMessageType type) {
 		super(sender);
 		this.session = session;
 		this.sequence = sequence;
 		this.operationId = operationId;
 		this.viewID = view;
+		this.hasReplicaSpecificContent = hasReplicaSpecificContent;
 		buildId();
-		this.content = content;
+		this.content = new ServiceContent(commonContent);
+		this.metadata = metadata;
 		this.type = type;
 	}
-
-
-	/** THIS IS JOAO'S CODE, FOR DEBUGGING */
-	private transient DebugInfo info = null; // Debug information
-
-	/**
-	 * Retrieves the debug info from the TOM layer
-	 * @return The debug info from the TOM layer
-	 */
-	public DebugInfo getDebugInfo() {
-		return info;
-	}
-
-	/**
-	 * Retrieves the debug info from the TOM layer
-	 */
-	public void  setDebugInfo(DebugInfo info) {
-		this.info = info;
-	}
-
-	/****************************************************/
 
 	/**
 	 * Retrieves the session id of this message
@@ -161,7 +151,7 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 	public int getSequence() {
 		return sequence;
 	}
-	
+
 	public int getOperationId() {
 		return operationId;
 	}
@@ -182,18 +172,60 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 		return id;
 	}
 
+
 	/**
 	 * Retrieves the content of the message
 	 * @return The content of the message
 	 */
-	public byte[] getContent() {
+	public ServiceContent getContent() {
 		return content;
+	}
+
+	/**
+	 * Retrieves the common content of the message
+	 * @return The common content of the message
+	 */
+	public byte[] getCommonContent() {
+		return content.getCommonContent();
+	}
+
+
+	/**
+	 * Indicate if the message has or should have replica specific content
+	 * @return True if the message has or should have replica specific content, false otherwise
+	 */
+	public boolean hasReplicaSpecificContent() {
+		return hasReplicaSpecificContent;
+	}
+
+	/**
+	 * Retrieves the replica specific content of the message
+	 * @return The replica specific content of the message
+	 */
+	public byte[] getReplicaSpecificContent() {
+		return content.getReplicaSpecificContent();
+	}
+
+
+	/**
+	 * Sets the replica specific content of the message
+	 * @param replicaSpecificContent The replica specific content of the message
+	 */
+	public void setReplicaSpecificContent(byte[] replicaSpecificContent) {
+		this.content.setReplicaSpecificContent(replicaSpecificContent);
+	}
+
+	/**
+	 * Retrieves the metadata of the message
+	 * @return The metadata of the message
+	 */
+	public byte getMetadata() {
+		return metadata;
 	}
 
 	/**
 	 * Verifies if two TOMMessage are equal. For performance reasons, the method
 	 * only verifies if the send and sequence are equal.
-	 *
 	 * Two TOMMessage are equal if they have the same sender, sequence number
 	 * and content.
 	 */
@@ -214,10 +246,6 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 
 	@Override
 	public int hashCode() {
-		/*int hash = 5;
-		hash = 59 * hash + this.sequence;
-		hash = 59 * hash + this.getSender();
-		hash = 59 * hash + this.getOperationId();*/
 		return this.id;
 	}
 
@@ -234,16 +262,14 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 		out.writeInt(sequence);
 		out.writeInt(operationId);
 		out.writeInt(replyServer);
-		
-		if (content == null) {
-			out.writeInt(-1);
-		} else {
-			out.writeInt(content.length);
-			out.write(content);
-		}
+
+		out.writeInt(content.getCommonContent() == null ? -1 : content.getCommonContent().length);
+		out.write(content.getCommonContent());
+		out.writeBoolean(hasReplicaSpecificContent);
+		out.write(metadata);
 	}
 
-	public void rExternal(DataInput in) throws IOException, ClassNotFoundException {
+	public void rExternal(DataInput in) throws IOException {
 		sender = in.readInt();
 		viewID = in.readInt();
 		type = TOMMessageType.getMessageType(in.readByte());
@@ -251,12 +277,15 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 		sequence = in.readInt();
 		operationId = in.readInt();
 		replyServer = in.readInt();
-		
+
 		int toRead = in.readInt();
 		if (toRead != -1) {
-			content = new byte[toRead];
-			in.readFully(content);
+			byte[] commonContent = new byte[toRead];
+			in.readFully(commonContent);
+			content = new ServiceContent(commonContent);
 		}
+		hasReplicaSpecificContent = in.readBoolean();
+		metadata = in.readByte();
 
 		buildId();
 	}
@@ -264,122 +293,110 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 	/**
 	 * Used to build an unique id for the message
 	 */
-	 private void buildId() {
-		 //id = (sender << 20) | sequence;
-             	int hash = 5;
- 		hash = 59 * hash + this.getSender();               
+	private void buildId() {
+		//id = (sender << 20) | sequence;
+		int hash = 5;
+		hash = 59 * hash + this.getSender();
 		hash = 59 * hash + this.sequence;
 		hash = 59 * hash + this.session;
 		id = hash;
-	 }
+	}
 
-	 /**
-	  * Retrieves the process ID of the sender given a message ID
-	  * @param id Message ID
-	  * @return Process ID of the sender
-	  */
-	 public static int getSenderFromId(int id) {
-		 return id >>> 20;
-	 }
+	/**
+	 * Retrieves the process ID of the sender given a message ID
+	 * @param id Message ID
+	 * @return Process ID of the sender
+	 */
+	public static int getSenderFromId(int id) {
+		return id >>> 20;
+	}
 
-	 public static byte[] messageToBytes(TOMMessage m) {
-		 ByteArrayOutputStream baos = new ByteArrayOutputStream();
-		 DataOutputStream dos = new DataOutputStream(baos);
-		 try{
-			 m.wExternal(dos);
-			 dos.flush();
-		 }catch(Exception e) {
-		 }
-		 return baos.toByteArray();
-	 }
-
-	 public static TOMMessage bytesToMessage(byte[] b) {
-		 ByteArrayInputStream bais = new ByteArrayInputStream(b);
-		 DataInputStream dis = new DataInputStream(bais);
-
-		 TOMMessage m = new TOMMessage();
-		 try{
-			 m.rExternal(dis);
-		 }catch(Exception e) {
-			 LoggerFactory.getLogger(TOMMessage.class).error("Failed to deserialize TOMMessage",e);
-			 return null;
-		 }
-
-		 return m;
-	 }
-
-	 @Override
-	 public int compareTo(Object o) {
-		 final int BEFORE = -1;
-		 final int EQUAL = 0;
-		 final int AFTER = 1;
-
-		 TOMMessage tm = (TOMMessage)o;
-
-		 if (this.equals(tm))
-			 return EQUAL;
-
-		 if (this.getSender() < tm.getSender())
-			 return BEFORE;
-		 if (this.getSender() > tm.getSender())
-			 return AFTER;
-
-		 if (this.getSession() < tm.getSession())
-			 return BEFORE;
-		 if (this.getSession() > tm.getSession())
-			 return AFTER;
-
-		 if (this.getSequence() < tm.getSequence())
-			 return BEFORE;
-		 if (this.getSequence() > tm.getSequence())
-			 return AFTER;
-
-		 if(this.getOperationId() < tm.getOperationId())
-			 return BEFORE;
-		 if(this.getOperationId() > tm.getOperationId())
-			 return AFTER;
-
-		 return EQUAL;
-	 }
-	 
-        @Override
-	 public Object clone() throws CloneNotSupportedException {
-             
-                          
-                    TOMMessage clone = new TOMMessage(sender, session, sequence,
-                            operationId, content, viewID, type);
-
-                    clone.setReplyServer(replyServer);
-                    
-                    clone.acceptSentTime = this.acceptSentTime;
-                    clone.alreadyProposed = this.alreadyProposed;
-                    clone.authenticated = this.authenticated;
-                    clone.consensusStartTime = this.consensusStartTime;
-                    clone.decisionTime = this.decisionTime;
-                    clone.deliveryTime = this.deliveryTime;
-                    clone.destination = this.destination;
-                    clone.executedTime = this.executedTime;
-                    clone.info = this.info;
-                    clone.isValid = this.isValid;
-                    clone.numOfNonces = this.numOfNonces;
-                    clone.proposeReceivedTime = this.proposeReceivedTime;
-                    clone.receptionTime = this.receptionTime;
-                    clone.receptionTimestamp = this.receptionTimestamp;
-                    clone.recvFromClient = this.recvFromClient;
-                    clone.reply = this.reply;
-                    clone.seed = this.seed;
-                    clone.serializedMessage = this.serializedMessage;
-                    clone.serializedMessageMAC = this.serializedMessageMAC;
-                    clone.serializedMessageSignature = this.serializedMessageSignature;
-                    clone.signed = this.signed;
-                    clone.timeout = this.timeout;
-                    clone.timestamp = this.timestamp;
-                    clone.writeSentTime = this.writeSentTime;
-                    clone.retry = this.retry;
-
-                    return clone;
-                        
+	public static byte[] messageToBytes(TOMMessage m) {
+		try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
+			 DataOutputStream dos = new DataOutputStream(baos)) {
+			m.wExternal(dos);
+			dos.flush();
+			return baos.toByteArray();
+		} catch(Exception e) {
+			LoggerFactory.getLogger(TOMMessage.class).error("Failed to serialize TOMMessage", e);
+			return null;
 		}
+	}
+
+	public static TOMMessage bytesToMessage(byte[] b) {
+		try (ByteArrayInputStream bais = new ByteArrayInputStream(b);
+			 DataInputStream dis = new DataInputStream(bais)) {
+			TOMMessage m = new TOMMessage();
+			m.rExternal(dis);
+			return m;
+		} catch(Exception e) {
+			LoggerFactory.getLogger(TOMMessage.class).error("Failed to deserialize TOMMessage",e);
+			return null;
+		}
+	}
+
+	@Override
+	public int compareTo(TOMMessage tm) {
+		final int BEFORE = -1;
+		final int EQUAL = 0;
+		final int AFTER = 1;
+
+		if (this.equals(tm))
+			return EQUAL;
+
+		if (this.getSender() < tm.getSender())
+			return BEFORE;
+		if (this.getSender() > tm.getSender())
+			return AFTER;
+
+		if (this.getSession() < tm.getSession())
+			return BEFORE;
+		if (this.getSession() > tm.getSession())
+			return AFTER;
+
+		if (this.getSequence() < tm.getSequence())
+			return BEFORE;
+		if (this.getSequence() > tm.getSequence())
+			return AFTER;
+
+		return Integer.compare(this.getOperationId(), tm.getOperationId());
+
+	}
+
+	public TOMMessage createCopy() {
+		TOMMessage clone = new TOMMessage(sender, session, sequence, operationId, content.getCommonContent(),
+				hasReplicaSpecificContent, metadata, viewID, type);
+
+		clone.setReplyServer(replyServer);
+
+		clone.acceptSentTime = this.acceptSentTime;
+		clone.alreadyProposed = this.alreadyProposed;
+		clone.authenticated = this.authenticated;
+		clone.consensusStartTime = this.consensusStartTime;
+		clone.decisionTime = this.decisionTime;
+		clone.deliveryTime = this.deliveryTime;
+		clone.destination = this.destination;
+		clone.executedTime = this.executedTime;
+		clone.isValid = this.isValid;
+		clone.numOfNonces = this.numOfNonces;
+		clone.proposeReceivedTime = this.proposeReceivedTime;
+		clone.receptionTime = this.receptionTime;
+		clone.receptionTimestamp = this.receptionTimestamp;
+		clone.recvFromClient = this.recvFromClient;
+		clone.reply = this.reply;
+		clone.seed = this.seed;
+		clone.serializedMessage = this.serializedMessage;
+		clone.serializedMessageMAC = this.serializedMessageMAC;
+		clone.serializedMessageSignature = this.serializedMessageSignature;
+		clone.signed = this.signed;
+		clone.timeout = this.timeout;
+		clone.timestamp = this.timestamp;
+		clone.writeSentTime = this.writeSentTime;
+		clone.retry = this.retry;
+
+		return clone;
+
+	}
 
 
 	public int getReplyServer() {

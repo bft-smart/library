@@ -35,21 +35,12 @@ import io.netty.handler.codec.ByteToMessageDecoder;
  * @author Paulo Sousa
  */
 public class NettyTOMMessageDecoder extends ByteToMessageDecoder {
-    
-    private Logger logger = LoggerFactory.getLogger(this.getClass());
-
-
-    /**
-     * number of measures used to calculate statistics
-     */
-    //private final int BENCHMARK_PERIOD = 10000;
-    private boolean isClient;
-    private ConcurrentHashMap<Integer, NettyClientServerSession> sessionTable;
-    private ViewController controller;
-    private boolean firstTime;
-    private ReentrantReadWriteLock rl;
+    private final Logger logger = LoggerFactory.getLogger(this.getClass());
+    private final boolean isClient;
+    private final ConcurrentHashMap<Integer, NettyClientServerSession> sessionTable;
+    private final ViewController controller;
+	private final ReentrantReadWriteLock rl;
     private int bytesToSkip;
-    
     
     public NettyTOMMessageDecoder(boolean isClient, 
     		ConcurrentHashMap<Integer, NettyClientServerSession> sessionTable, 
@@ -58,7 +49,7 @@ public class NettyTOMMessageDecoder extends ByteToMessageDecoder {
         this.isClient = isClient;
         this.sessionTable = sessionTable;
         this.controller = controller;
-        this.firstTime = true;
+		boolean firstTime = true;
         this.rl = rl;
         this.bytesToSkip = 0;
         logger.debug("new NettyTOMMessageDecoder!!, isClient=" + isClient);
@@ -70,8 +61,8 @@ public class NettyTOMMessageDecoder extends ByteToMessageDecoder {
         		+ 	 "\n\t signatureSize: {};", 
         		new Object[] {isClient, 
         					  sessionTable.toString(),
-        					  controller, 
-        					  firstTime, 
+        					  controller,
+						firstTime,
         					  rl});
     }
 
@@ -90,7 +81,7 @@ public class NettyTOMMessageDecoder extends ByteToMessageDecoder {
             }
         }
 
-        int dataLength = 0;
+        int dataLength;
         do {
             // Wait until the length prefix is available.
             if (buffer.readableBytes() < Integer.BYTES) {
@@ -139,20 +130,26 @@ public class NettyTOMMessageDecoder extends ByteToMessageDecoder {
             buffer.readBytes(signature);
         }
 
-        DataInputStream dis = null;
-        TOMMessage sm = null;
+		size = buffer.readInt();
+		byte[] replicaSpecificContent = null;
+		if (size > -1) {
+			replicaSpecificContent = new byte[size];
+			buffer.readBytes(replicaSpecificContent);
+		}
 
-        try {
-            ByteArrayInputStream bais = new ByteArrayInputStream(data);
-            dis = new DataInputStream(bais);
-            sm = new TOMMessage();
-            sm.rExternal(dis);
+
+		try (ByteArrayInputStream bais = new ByteArrayInputStream(data);
+			 DataInputStream dis = new DataInputStream(bais)) {
+			TOMMessage sm = new TOMMessage();
+			sm.rExternal(dis);
             sm.serializedMessage = data;
 
             if (signature != null) {
                 sm.serializedMessageSignature = signature;
                 sm.signed = true;
             }
+
+			sm.setReplicaSpecificContent(replicaSpecificContent);
 
             if (!isClient) {                
                 rl.readLock().lock();                
@@ -165,20 +162,19 @@ public class NettyTOMMessageDecoder extends ByteToMessageDecoder {
                                        
                     rl.writeLock().lock();
                     sessionTable.put(sm.getSender(), cs);
-                    logger.debug("Active clients: " + sessionTable.size());
+                    logger.debug("Active clients: {}", sessionTable.size());
                     rl.writeLock().unlock();
                     
                 }else {
                 	rl.readLock().unlock();   
                 }
             }
-            logger.debug("Decoded reply from " + sm.getSender() + " with sequence number " + sm.getSequence());
+            logger.debug("Decoded reply from {} with sequence number {}", sm.getSender(), sm.getSequence());
             list.add(sm);
         } catch (Exception ex) {
             
             logger.error("Failed to decode TOMMessage", ex);
         }
-        return;
-    }
+	}
 
 }

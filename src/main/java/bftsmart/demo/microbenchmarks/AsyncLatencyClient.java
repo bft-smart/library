@@ -207,7 +207,7 @@ public class AsyncLatencyClient {
                         public void replyReceived(RequestContext context, TOMMessage reply) {
                             StringBuilder builder = new StringBuilder();
                             builder.append("[RequestContext] id: " + context.getReqId() + " type: " + context.getRequestType());
-                            builder.append("[TOMMessage reply] sender id: " + reply.getSender() + " Hash content: " + Arrays.toString(reply.getContent()));
+                            builder.append("[TOMMessage reply] sender id: " + reply.getSender() + " Hash content: " + Arrays.toString(reply.getCommonContent()));
                             if (verbose) System.out.println(builder.toString());
 
                             replies++;
