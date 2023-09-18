@@ -15,31 +15,23 @@
  */
 package bftsmart.statemanagement.standard;
 
-import bftsmart.statemanagement.StateManager;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Queue;
-import java.util.Timer;
-import java.util.TimerTask;
-import java.util.concurrent.locks.ReentrantLock;
-import java.util.Random;
-
-import bftsmart.tom.core.ExecutionManager;
+import bftsmart.consensus.Consensus;
+import bftsmart.consensus.Epoch;
 import bftsmart.consensus.messages.ConsensusMessage;
 import bftsmart.consensus.messages.MessageFactory;
 import bftsmart.reconfiguration.views.View;
 import bftsmart.statemanagement.ApplicationState;
 import bftsmart.statemanagement.SMMessage;
+import bftsmart.statemanagement.StateManager;
 import bftsmart.tom.core.DeliveryThread;
 import bftsmart.tom.core.TOMLayer;
-import bftsmart.tom.util.TOMUtil;
-import bftsmart.consensus.Consensus;
-import bftsmart.consensus.Epoch;
 import bftsmart.tom.leaderchange.CertifiedDecision;
-
+import bftsmart.tom.util.TOMUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.*;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  *
@@ -48,13 +40,14 @@ import org.slf4j.LoggerFactory;
  */
 public class StandardStateManager extends StateManager {
 
-    private Logger logger = LoggerFactory.getLogger(this.getClass());
+    private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
     private int replica;
-    private ReentrantLock lockTimer = new ReentrantLock();
+    private final ReentrantLock lockTimer = new ReentrantLock();
     private Timer stateTimer = null;
     private final static long INIT_TIMEOUT = 40000;
     private long timeout = INIT_TIMEOUT;
+	private long recoveryStartTime;
 
     @Override
     public void init(TOMLayer tomLayer, DeliveryThread dt) {
@@ -93,6 +86,8 @@ public class StandardStateManager extends StateManager {
 
         changeReplica(); // always ask the complete state to a different replica
 
+		recoveryStartTime = System.nanoTime();
+
         SMMessage smsg = new StandardSMMessage(SVController.getStaticConf().getProcessId(),
                 waitingCID, TOMUtil.SM_REQUEST, replica, null, null, -1, -1);
         tomLayer.getCommunication().send(SVController.getCurrentViewOtherAcceptors(), smsg);
@@ -128,6 +123,8 @@ public class StandardStateManager extends StateManager {
     @Override
     public void SMRequestDeliver(SMMessage msg, boolean isBFT) {
         if (SVController.getStaticConf().isStateTransferEnabled() && dt.getRecoverer() != null) {
+			long start, end;
+			start = System.nanoTime();
             StandardSMMessage stdMsg = (StandardSMMessage) msg;
             boolean sendState = stdMsg.getReplica() == SVController.getStaticConf().getProcessId();
 
@@ -142,15 +139,23 @@ public class StandardStateManager extends StateManager {
             SMMessage smsg = new StandardSMMessage(SVController.getStaticConf().getProcessId(),
                     msg.getCID(), TOMUtil.SM_REPLY, -1, thisState, SVController.getCurrentView(),
                     tomLayer.getSynchronizer().getLCManager().getLastReg(), tomLayer.execManager.getCurrentLeader());
-
+			end = System.nanoTime();
+			double totalTime = (end - start) / 1_000_000.0;
+			logger.info("Took {} ms to reconstruct recovery state", totalTime);
+			start = System.nanoTime();
             logger.info("Sending state...");
             tomLayer.getCommunication().send(targets, smsg);
             logger.info("Sent");
+			end = System.nanoTime();
+			totalTime = (end - start) / 1_000_000.0;
+			logger.info("Took {} ms to send recovery state", totalTime);
         }
     }
 
     @Override
     public void SMReplyDeliver(SMMessage msg, boolean isBFT) {
+		long commTime = System.nanoTime();
+		double totalCommunicationTime = (commTime - recoveryStartTime) / 1_000_000.0;
         lockTimer.lock();
         if (SVController.getStaticConf().isStateTransferEnabled()) {
             if (waitingCID != -1 && msg.getCID() == waitingCID) {
@@ -212,7 +217,7 @@ public class StandardStateManager extends StateManager {
 
                     if (otherReplicaState != null && haveState == 1 && currentRegency > -1
                             && currentLeader > -1 && currentView != null && (!isBFT || currentProof != null || appStateOnly)) {
-
+						logger.info("Took {} ms to receive enough recovery states", totalCommunicationTime);
                         logger.info("Received state. Will install it");
 
                         tomLayer.getSynchronizer().getLCManager().setLastReg(currentRegency);
@@ -300,6 +305,10 @@ public class StandardStateManager extends StateManager {
                         reset();
 
                         logger.info("I updated the state!");
+
+						long recoveryEndTime = System.nanoTime();
+						double totalRecoveryTime = (recoveryEndTime - recoveryStartTime) / 1_000_000.0;
+						logger.info("Total recovery duration: {} ms", totalRecoveryTime);
 
                         tomLayer.requestsTimer.Enabled(true);
                         tomLayer.requestsTimer.startTimer();
