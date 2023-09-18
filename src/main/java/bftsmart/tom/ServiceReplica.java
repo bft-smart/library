@@ -293,7 +293,8 @@ public class ServiceReplica {
 									request.serializedMessageSignature, firstRequest.timestamp, request.numOfNonces,
 									request.seed, regencies[consensusCount], leaders[consensusCount],
 									consId[consensusCount], certifiedDecisions[consensusCount].getConsMessages(),
-									firstRequest, false, request.hasReplicaSpecificContent());
+									firstRequest, false, request.hasReplicaSpecificContent(),
+									request.getMetadata());
                             if (requestCount + 1 == requestsFromConsensus.length) {
                                 msgCtx.setLastInBatch();
                             }   request.deliveryTime = System.nanoTime();
@@ -332,8 +333,10 @@ public class ServiceReplica {
 										SVController.getCurrentViewId(), isReplyHash, request.getCommonContent(),
 										request.getReplicaSpecificContent(), msgCtx);
 
-                                if (response != null) {
+                                if (response != null && response.reply != null
+										&& response.reply.getCommonContent() != null) {
                                     logger.debug("sending reply to {}", response.getSender());
+									tomLayer.clientsManager.injectReply(response);
                                     replier.manageReply(response, msgCtx);
                                 }
                             } else { //this code should never be executed
@@ -387,7 +390,7 @@ public class ServiceReplica {
                             m.getReplyServer(), m.serializedMessageSignature, firstRequest.timestamp,
                             m.numOfNonces, m.seed, regencies[consensusCount], leaders[consensusCount],
                             consId[consensusCount], certifiedDecisions[consensusCount].getConsMessages(),
-								firstRequest, true, m.hasReplicaSpecificContent());
+								firstRequest, true, m.hasReplicaSpecificContent(), m.getMetadata());
                         msgCtx[line].setLastInBatch();
                         
                         line++;
@@ -426,6 +429,7 @@ public class ServiceReplica {
             //Send the replies back to the client
             if (replies != null) {
                 for (TOMMessage reply : replies) {
+					tomLayer.clientsManager.injectReply(reply);
                     if (SVController.getStaticConf().getNumRepliers() > 0) {
                         logger.debug("Sending reply to {} with sequence number {} and operation ID {} via ReplyManager",
 								reply.getSender(), reply.getSequence(), reply.getOperationId());

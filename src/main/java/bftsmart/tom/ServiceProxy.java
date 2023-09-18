@@ -249,7 +249,7 @@ public class ServiceProxy extends TOMSender {
 			requestHandler.waitForResponse();
 
 			if (requestHandler.isRequestTimeout()) {
-				logger.info("###### TIMEOUT ({}s) OF REQUEST {} | seqId: {} | replies received: {} ######",
+				logger.warn("###### TIMEOUT ({}s) OF REQUEST {} | seqId: {} | replies received: {} ######",
 						invokeTimeout, reqType, requestHandler.getSequenceId(),
 						requestHandler.getNumberReceivedReplies());
 				if (reqType == TOMMessageType.UNORDERED_HASHED_REQUEST || reqType == TOMMessageType.UNORDERED_REQUEST) {

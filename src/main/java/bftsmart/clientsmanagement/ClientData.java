@@ -31,11 +31,11 @@ import org.slf4j.LoggerFactory;
 
 public class ClientData {
     
-    private Logger logger = LoggerFactory.getLogger(this.getClass());
+    private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
     ReentrantLock clientLock = new ReentrantLock();
 
-    private int clientId;
+    private final int clientId;
     //private PublicKey publicKey = null;
 
     private int session = -1;
@@ -45,9 +45,9 @@ public class ClientData {
 
     private int lastMessageDelivered = -1;
 
-    private RequestList pendingRequests = new RequestList();
+    private final RequestList pendingRequests = new RequestList();
     //anb: new code to deal with client requests that arrive after their execution
-    private RequestList orderedRequests = new RequestList(15);
+    private final RequestList orderedRequests = new RequestList(20);
 
     private Signature signatureVerificator = null;
 	private final Map<Integer, byte[]> replicaSpecificContents;
@@ -156,8 +156,8 @@ public class ClientData {
     public TOMMessage getReply(int reqSequence) {
         TOMMessage request = orderedRequests.getBySequence(reqSequence);
         if(request != null) {
-            return request.reply;
-        } else {
+			return request.reply;
+		} else {
             return null;
         }
     }
@@ -172,5 +172,9 @@ public class ClientData {
 
 	public byte[] getReplicaSpecificContent(int sequence) {
 		return replicaSpecificContents.get(sequence);
+	}
+
+	public void storeReply(int sequence, TOMMessage reply) {
+		orderedRequests.getBySequence(sequence).reply = reply;
 	}
 }

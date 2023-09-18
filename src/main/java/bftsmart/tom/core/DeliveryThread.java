@@ -370,7 +370,7 @@ public final class DeliveryThread extends Thread {
 				request.getSession(), request.getSequence(), request.getOperationId(), request.getReplyServer(),
 				request.serializedMessageSignature, System.currentTimeMillis(), 0, 0, regency,
 				-1, -1, null, null,
-				false, request.hasReplicaSpecificContent()); // Since the request is unordered,
+				false, request.hasReplicaSpecificContent(), request.getMetadata()); // Since the request is unordered,
 		// there is no consensus info to pass
 
 		msgCtx.readOnly = true;
