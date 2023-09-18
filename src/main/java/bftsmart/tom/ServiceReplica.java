@@ -20,6 +20,7 @@ import bftsmart.communication.ServerCommunicationSystem;
 import bftsmart.consensus.messages.MessageFactory;
 import bftsmart.consensus.roles.Acceptor;
 import bftsmart.consensus.roles.Proposer;
+import bftsmart.reconfiguration.IReconfigurationListener;
 import bftsmart.reconfiguration.ReconfigureReply;
 import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.reconfiguration.VMMessage;
@@ -71,6 +72,7 @@ public class ServiceReplica {
     private final Replier replier;
     private final RequestVerifier verifier;
 	private final ProposeRequestVerifier proposeRequestVerifier;
+	private final IReconfigurationListener reconfigurationListener;
 
     /**
      * Constructor
@@ -80,13 +82,20 @@ public class ServiceReplica {
      * @param recoverer Recoverer
      */
     public ServiceReplica(int id, Executable executor, Recoverable recoverer) {
-        this(id, "", executor, recoverer, null, new DefaultReplier(), null, null);
+        this(id, "", executor, recoverer, null, new DefaultReplier(), null, null, null);
     }
 
 	public ServiceReplica(int id, Executable executor, Recoverable recoverer,
 						  ProposeRequestVerifier proposeRequestVerifier) {
 		this(id, "", executor, recoverer, null, new DefaultReplier(), null,
-				proposeRequestVerifier);
+				proposeRequestVerifier, null);
+	}
+
+	public ServiceReplica(int id, Executable executor, Recoverable recoverer,
+						  ProposeRequestVerifier proposeRequestVerifier,
+						  IReconfigurationListener reconfigurationListener) {
+		this(id, "", executor, recoverer, null, new DefaultReplier(), null,
+				proposeRequestVerifier, reconfigurationListener);
 	}
 
     /**
@@ -98,7 +107,7 @@ public class ServiceReplica {
      * @param verifier Requests verifier
      */
     public ServiceReplica(int id, Executable executor, Recoverable recoverer, RequestVerifier verifier) {
-        this(id, "", executor, recoverer, verifier, new DefaultReplier(), null, null);
+        this(id, "", executor, recoverer, verifier, new DefaultReplier(), null, null, null);
     }
     
     /**
@@ -107,7 +116,7 @@ public class ServiceReplica {
      */
     public ServiceReplica(int id, Executable executor, Recoverable recoverer, RequestVerifier verifier,
 						  Replier replier) {
-        this(id, "", executor, recoverer, verifier, replier, null, null);
+        this(id, "", executor, recoverer, verifier, replier, null, null, null);
     }
     
     /**
@@ -116,7 +125,7 @@ public class ServiceReplica {
      */
     public ServiceReplica(int id, Executable executor, Recoverable recoverer, RequestVerifier verifier,
 						  Replier replier, KeyLoader loader) {
-        this(id, "", executor, recoverer, verifier, replier, loader, null);
+        this(id, "", executor, recoverer, verifier, replier, loader, null, null);
     }
     /**
      * Constructor
@@ -128,10 +137,13 @@ public class ServiceReplica {
      * @param verifier Requests Verifier
      * @param replier Can be used to override the targets of the replies associated to each request.
      * @param loader Used to load signature keys from disk
+	 * @param proposeRequestVerifier Verifier for propose requests
+	 * @param reconfigurationListener Listener for reconfiguration events
      */
     public ServiceReplica(int id, String configHome, Executable executor, Recoverable recoverer,
 						  RequestVerifier verifier, Replier replier, KeyLoader loader,
-						  ProposeRequestVerifier proposeRequestVerifier) {
+						  ProposeRequestVerifier proposeRequestVerifier,
+						  IReconfigurationListener reconfigurationListener) {
         this.id = id;
         this.SVController = new ServerViewController(id, configHome, loader);
         this.executor = executor;
@@ -142,6 +154,7 @@ public class ServiceReplica {
         this.init();
         this.recoverer.setReplicaContext(replicaCtx);
         this.replier.setReplicaContext(replicaCtx);
+		this.reconfigurationListener = reconfigurationListener;
     }
 
     // this method initializes the object
@@ -171,6 +184,10 @@ public class ServiceReplica {
         }
         initReplica();
     }
+
+	public IReconfigurationListener getReconfigurationListener() {
+		return reconfigurationListener;
+	}
 
     public void joinMsgReceived(VMMessage msg) {
         ReconfigureReply r = msg.getReply();
@@ -344,6 +361,9 @@ public class ServiceReplica {
                             }   break;
                         case RECONFIG:
                             SVController.enqueueUpdate(request);
+							if (reconfigurationListener != null) {
+								reconfigurationListener.onReconfigurationRequest(request);
+							}
                             break;
                         default: //this code should never be executed
                             throw new RuntimeException("Should never reach here!");

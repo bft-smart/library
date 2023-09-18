@@ -15,6 +15,7 @@
  */
 package bftsmart.tom;
 
+import bftsmart.reconfiguration.IClientSideReconfigurationListener;
 import bftsmart.reconfiguration.ReconfigureReply;
 import bftsmart.reconfiguration.views.View;
 import bftsmart.tom.client.AbstractRequestHandler;
@@ -52,6 +53,7 @@ public class ServiceProxy extends TOMSender {
 	private int invokeUnorderedHashedTimeout = 10;
 
 	private AbstractRequestHandler requestHandler; //Active request context
+	private final IClientSideReconfigurationListener reconfigurationListener;
 
 	/**
 	 * Constructor
@@ -59,7 +61,11 @@ public class ServiceProxy extends TOMSender {
 	 * @see #ServiceProxy(int, String, Comparator, Extractor, KeyLoader)
 	 */
 	public ServiceProxy(int processId) {
-		this(processId, null, null, null, null);
+		this(processId, null, null, null, null, null);
+	}
+
+	public ServiceProxy(int processId, IClientSideReconfigurationListener reconfigurationListener) {
+		this(processId, null, null, null, null, reconfigurationListener);
 	}
 
 	/**
@@ -68,7 +74,7 @@ public class ServiceProxy extends TOMSender {
 	 * @see #ServiceProxy(int, String, Comparator, Extractor, KeyLoader)
 	 */
 	public ServiceProxy(int processId, String configHome) {
-		this(processId, configHome, null, null, null);
+		this(processId, configHome, null, null, null, null);
 	}
 
 	/**
@@ -77,7 +83,7 @@ public class ServiceProxy extends TOMSender {
 	 * @see #ServiceProxy(int, String, Comparator, Extractor, KeyLoader)
 	 */
 	public ServiceProxy(int processId, String configHome, KeyLoader loader) {
-		this(processId, configHome, null, null, loader);
+		this(processId, configHome, null, null, loader, null);
 	}
 
 	/**
@@ -93,6 +99,18 @@ public class ServiceProxy extends TOMSender {
 	 */
 	public ServiceProxy(int processId, String configHome,
 						Comparator<ServiceContent> replyComparator, Extractor replyExtractor, KeyLoader loader) {
+		this(processId, configHome, replyComparator, replyExtractor, loader, null);
+	}
+
+	public ServiceProxy(int processId, String configHome,
+						Comparator<ServiceContent> replyComparator, Extractor replyExtractor,
+						IClientSideReconfigurationListener reconfigurationListener) {
+		this(processId, configHome, replyComparator, replyExtractor, null, reconfigurationListener);
+	}
+
+	public ServiceProxy(int processId, String configHome,
+						Comparator<ServiceContent> replyComparator, Extractor replyExtractor, KeyLoader loader,
+						IClientSideReconfigurationListener reconfigurationListener) {
 		super(processId, configHome, loader);
 		this.invokeTimeout = getViewManager().getStaticConf().getClientInvokeOrderedTimeout();
 
@@ -101,6 +119,7 @@ public class ServiceProxy extends TOMSender {
 		extractor = (replyExtractor != null) ? replyExtractor :
 				(replies, sameContent, lastReceived)
 						-> new ServiceResponse(replies[lastReceived].getContent().getCommonContent());
+		this.reconfigurationListener = reconfigurationListener;
 	}
 
 	/**
@@ -366,6 +385,8 @@ public class ServiceProxy extends TOMSender {
 		getViewManager().reconfigureTo(v);
 		getViewManager().getViewStore().storeView(v);
 		getCommunicationSystem().updateConnections();
+		if (reconfigurationListener != null)
+			reconfigurationListener.onReconfiguration(v);
 	}
 	//******* EDUARDO END **************//
 

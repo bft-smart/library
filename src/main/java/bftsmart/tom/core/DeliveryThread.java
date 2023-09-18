@@ -16,6 +16,7 @@ limitations under the License.
 package bftsmart.tom.core;
 
 import bftsmart.consensus.Decision;
+import bftsmart.reconfiguration.IReconfigurationListener;
 import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.statemanagement.ApplicationState;
 import bftsmart.tom.MessageContext;
@@ -308,6 +309,10 @@ public final class DeliveryThread extends Thread {
 					// ******* EDUARDO BEGIN ***********//
 					if (controller.hasUpdates()) {
 						processReconfigMessages(lastDecision.getConsensusId());
+						IReconfigurationListener reconfigurationListener = receiver.getReconfigurationListener();
+						if (reconfigurationListener != null) {
+							reconfigurationListener.onReconfigurationComplete(lastDecision.getConsensusId());
+						}
 					}
 					if (lastReconfig > -2 && lastReconfig <= lastDecision.getConsensusId()) {
 
