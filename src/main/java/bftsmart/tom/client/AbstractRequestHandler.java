@@ -61,31 +61,25 @@ public abstract class AbstractRequestHandler {
 		}
 	}
 
-	/**
-	 * This method returns the response.
-	 * Call this method after calling waitForResponse() method.
-	 * @return Response to the request
-	 * @requires all this method after calling waitForResponse() method
-	 */
-	public ServiceResponse getResponse() {
-		return response;
+	public void responseIsReady() {
+		semaphore.release();
 	}
 
-	public void processReply(TOMMessage reply) {
+	public ServiceResponse processReply(TOMMessage reply) {
 		logger.debug("(current reqId: {}) Received reply from {} with reqId: {}", sequenceId, reply.getSender(),
 				reply.getSequence());
 		Integer i = replicaIndex.get(reply.getSender());
 		if (i == null) {
 			logger.error("Received reply from unknown replica {}", reply.getSender());
-			return;
+			return null;
 		}
 		if (sequenceId != reply.getSequence() || requestType != reply.getReqType()) {
 			logger.debug("Ignoring reply from {} with reqId {}. Currently wait reqId {} of type {}",
 					reply.getSender(), reply.getSequence(), sequenceId, requestType);
-			return;
+			return null;
 		}
 		if (replySenders.contains(reply.getSender())) {//process same reply only once
-			return;
+			return null;
 		}
 		replySenders.add(reply.getSender());
 		replies[i] = reply;
@@ -94,10 +88,10 @@ public abstract class AbstractRequestHandler {
 			thereIsReplicaSpecificContent = true;
 		}
 
-		processReply(reply, i);
+		return processReply(reply, i);
 	}
 
-	protected abstract void processReply(TOMMessage reply, int lastReceivedIndex);
+	protected abstract ServiceResponse processReply(TOMMessage reply, int lastReceivedIndex);
 
 	public int getSequenceId() {
 		return sequenceId;

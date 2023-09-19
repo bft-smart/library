@@ -175,6 +175,9 @@ public class ClientData {
 	}
 
 	public void storeReply(int sequence, TOMMessage reply) {
-		orderedRequests.getBySequence(sequence).reply = reply;
+		TOMMessage request = orderedRequests.getBySequence(sequence);
+		if (request != null) {
+			request.reply = reply;
+		}
 	}
 }

@@ -182,6 +182,10 @@ public final class DeliveryThread extends Thread {
 		deliverLock.unlock();
 	}
 
+	public void refreshState(ApplicationState state) {
+		recoverer.setState(state);
+	}
+
 	/**
 	 * This method is used to restart the decision delivery after awaiting a state.
 	 */

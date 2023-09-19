@@ -49,10 +49,12 @@ public class ServiceProxy extends TOMSender {
 	private int invokeTimeout;
 	private final Comparator<ServiceContent> comparator;
 	private final Extractor extractor;
+	private final HashedExtractor hashedExtractor;
 	private final Random rand = new Random(System.currentTimeMillis());
 	private int invokeUnorderedHashedTimeout = 10;
 
 	private AbstractRequestHandler requestHandler; //Active request context
+	private ServiceResponse response;
 	private final IClientSideReconfigurationListener reconfigurationListener;
 
 	/**
@@ -61,11 +63,11 @@ public class ServiceProxy extends TOMSender {
 	 * @see #ServiceProxy(int, String, Comparator, Extractor, KeyLoader)
 	 */
 	public ServiceProxy(int processId) {
-		this(processId, null, null, null, null, null);
+		this(processId, null, null, null, null, null, null);
 	}
 
 	public ServiceProxy(int processId, IClientSideReconfigurationListener reconfigurationListener) {
-		this(processId, null, null, null, null, reconfigurationListener);
+		this(processId, null, null, null, null, null, reconfigurationListener);
 	}
 
 	/**
@@ -74,7 +76,7 @@ public class ServiceProxy extends TOMSender {
 	 * @see #ServiceProxy(int, String, Comparator, Extractor, KeyLoader)
 	 */
 	public ServiceProxy(int processId, String configHome) {
-		this(processId, configHome, null, null, null, null);
+		this(processId, configHome, null, null, null, null, null);
 	}
 
 	/**
@@ -83,7 +85,7 @@ public class ServiceProxy extends TOMSender {
 	 * @see #ServiceProxy(int, String, Comparator, Extractor, KeyLoader)
 	 */
 	public ServiceProxy(int processId, String configHome, KeyLoader loader) {
-		this(processId, configHome, null, null, loader, null);
+		this(processId, configHome, null, null, null, loader, null);
 	}
 
 	/**
@@ -99,17 +101,26 @@ public class ServiceProxy extends TOMSender {
 	 */
 	public ServiceProxy(int processId, String configHome,
 						Comparator<ServiceContent> replyComparator, Extractor replyExtractor, KeyLoader loader) {
-		this(processId, configHome, replyComparator, replyExtractor, loader, null);
+		this(processId, configHome, replyComparator, replyExtractor, null, loader, null);
 	}
 
 	public ServiceProxy(int processId, String configHome,
 						Comparator<ServiceContent> replyComparator, Extractor replyExtractor,
-						IClientSideReconfigurationListener reconfigurationListener) {
-		this(processId, configHome, replyComparator, replyExtractor, null, reconfigurationListener);
+						HashedExtractor hashedReplyExtractor) {
+		this(processId, configHome, replyComparator, replyExtractor, hashedReplyExtractor, null, null);
 	}
 
 	public ServiceProxy(int processId, String configHome,
-						Comparator<ServiceContent> replyComparator, Extractor replyExtractor, KeyLoader loader,
+						Comparator<ServiceContent> replyComparator, Extractor replyExtractor,
+						HashedExtractor hashedReplyExtractor,
+						IClientSideReconfigurationListener reconfigurationListener) {
+		this(processId, configHome, replyComparator, replyExtractor, hashedReplyExtractor,
+				null, reconfigurationListener);
+	}
+
+	public ServiceProxy(int processId, String configHome,
+						Comparator<ServiceContent> replyComparator, Extractor replyExtractor,
+						HashedExtractor hashedReplyExtractor, KeyLoader loader,
 						IClientSideReconfigurationListener reconfigurationListener) {
 		super(processId, configHome, loader);
 		this.invokeTimeout = getViewManager().getStaticConf().getClientInvokeOrderedTimeout();
@@ -119,6 +130,9 @@ public class ServiceProxy extends TOMSender {
 		extractor = (replyExtractor != null) ? replyExtractor :
 				(replies, sameContent, lastReceived)
 						-> new ServiceResponse(replies[lastReceived].getContent().getCommonContent());
+		hashedExtractor = (hashedReplyExtractor != null) ? hashedReplyExtractor :
+				(replies, fullReply, fullReplyHash, sameContent)
+						-> new ServiceResponse(fullReply.getContent().getCommonContent());
 		this.reconfigurationListener = reconfigurationListener;
 	}
 
@@ -251,6 +265,7 @@ public class ServiceProxy extends TOMSender {
 								  byte metadata) {
 		try {
 			canSendLock.lock();
+			response = null;
 
 			requestHandler = createRequestHandler(reqType);
 
@@ -278,7 +293,6 @@ public class ServiceProxy extends TOMSender {
 				}
 			}
 
-			ServiceResponse response = requestHandler.getResponse();
 			logger.debug("Response extracted: " + response);
 
 			if (response == null) {
@@ -358,7 +372,7 @@ public class ServiceProxy extends TOMSender {
 					getViewManager().getCurrentViewProcesses(),
 					replyQuorumSize,
 					replyServer,
-					extractor
+					hashedExtractor
 			);
 		} else { // ORDERED_REQUEST or UNORDERED_REQUEST
 			requestHandler = new NormalRequestHandler(
@@ -401,7 +415,7 @@ public class ServiceProxy extends TOMSender {
 				reply.getSequence());
 		try {
 			canReceiveLock.lock();
-			if (requestHandler == null) {//no message being expected
+			if (requestHandler == null || response != null) {//no message being expected
 				logger.debug("throwing out request: sender = {} reqId = {}", reply.getSender(), reply.getSequence());
 				return;
 			}
@@ -411,7 +425,10 @@ public class ServiceProxy extends TOMSender {
 				return;
 			}
 
-			requestHandler.processReply(reply);
+			response = requestHandler.processReply(reply);
+			if (response != null) {
+				requestHandler.responseIsReady();
+			}
 		} catch (Exception ex) {
 			logger.error("Problem processing reply", ex);
 		} finally {

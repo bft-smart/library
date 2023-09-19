@@ -2,7 +2,8 @@ package bftsmart.tom.client;
 
 import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.core.messages.TOMMessageType;
-import bftsmart.tom.util.Extractor;
+import bftsmart.tom.util.HashedExtractor;
+import bftsmart.tom.util.ServiceResponse;
 import bftsmart.tom.util.TOMUtil;
 
 import java.util.ArrayList;
@@ -12,13 +13,13 @@ import java.util.List;
 public class HashedRequestHandler extends AbstractRequestHandler {
 	private final int replyServer;
 	private final List<byte[]> hashReplies;
-	private final Extractor responseExtractor;
+	private final HashedExtractor responseExtractor;
 	private byte[] replyServerResponseHash;
 	private int fullResponseIndex;
 
 	public HashedRequestHandler(int me, int session, int sequenceId, int operationId, int viewId,
 								TOMMessageType requestType, int timeout, int[] replicas,
-								int replyQuorumSize, int replyServer, Extractor responseExtractor) {
+								int replyQuorumSize, int replyServer, HashedExtractor responseExtractor) {
 		super(me, session, sequenceId, operationId, viewId, requestType, timeout, replicas, replyQuorumSize);
 		this.replyServer = replyServer;
 		this.hashReplies = new ArrayList<>(replicas.length);
@@ -35,7 +36,7 @@ public class HashedRequestHandler extends AbstractRequestHandler {
 	}
 
 	@Override
-	public void processReply(TOMMessage reply, int lastReceivedIndex) {
+	public ServiceResponse processReply(TOMMessage reply, int lastReceivedIndex) {
 		byte[] replyContentHash;
 		if (reply.getSender() == replyServer) {
 			fullResponseIndex = lastReceivedIndex;
@@ -50,7 +51,7 @@ public class HashedRequestHandler extends AbstractRequestHandler {
 
 		//optimization - compare responses after having a quorum of replies and response from reply server
 		if (replyServerResponseHash == null || replySenders.size() < replyQuorumSize) {
-			return;
+			return null;
 		}
 
 		logger.debug("Comparing {} hash responses with response from {}", hashReplies.size(), replyServer);
@@ -60,18 +61,18 @@ public class HashedRequestHandler extends AbstractRequestHandler {
 			if (Arrays.equals(hash, replyServerResponseHash)) {
 				sameContent++;
 				if (sameContent >= replyQuorumSize) {
-					response = responseExtractor.extractResponse(replies, sameContent, fullResponseIndex);
+					ServiceResponse response = responseExtractor.extractHashedResponse(replies, replies[fullResponseIndex],
+							replyServerResponseHash, sameContent);
 					response.setViewID(reply.getViewID());
-					semaphore.release();
-					return;
+					return response;
 				}
 			}
 		}
 
 		if (replySenders.size() == replicas.length) {
-			response = null;
 			semaphore.release();
 		}
+		return null;
 	}
 
 	@Override

@@ -38,12 +38,12 @@ public class ReconfigurationTest {
         
         ReconfigureReply r = (ReconfigureReply)TOMUtil.getObject(reply);*/
         
-        Reconfiguration rec = new Reconfiguration(id, "", null);
+        BatchReconfiguration rec = new BatchReconfiguration(id, "", null);
         
         //rec.setReconfiguration(ReconfigurationManager.CHANGE_F,"1");
         rec.setF(2);
         
-        ReconfigureReply r = rec.execute();
+        ReconfigureReply r = rec.execute((byte) -1);
         
         
         

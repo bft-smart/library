@@ -2,10 +2,7 @@ package bftsmart.tom;
 
 import bftsmart.reconfiguration.IClientSideReconfigurationListener;
 import bftsmart.tom.core.messages.TOMMessageType;
-import bftsmart.tom.util.Extractor;
-import bftsmart.tom.util.KeyLoader;
-import bftsmart.tom.util.ServiceContent;
-import bftsmart.tom.util.ServiceResponse;
+import bftsmart.tom.util.*;
 
 import java.util.Comparator;
 import java.util.Map;
@@ -24,8 +21,14 @@ public class ExtendedServiceProxy extends ServiceProxy {
 	}
 
 	public ExtendedServiceProxy(int processId, Comparator<ServiceContent> replyComparator,
-								Extractor replyExtractor, IClientSideReconfigurationListener reconfigurationListener) {
-		super(processId, null, replyComparator, replyExtractor, null, reconfigurationListener);
+								Extractor replyExtractor, HashedExtractor hashedReplyExtractor) {
+		super(processId, null, replyComparator, replyExtractor, hashedReplyExtractor, null);
+	}
+
+	public ExtendedServiceProxy(int processId, Comparator<ServiceContent> replyComparator,
+								Extractor replyExtractor, HashedExtractor hashedReplyExtractor,
+								IClientSideReconfigurationListener reconfigurationListener) {
+		super(processId, null, replyComparator, replyExtractor, hashedReplyExtractor, reconfigurationListener);
 	}
 
 	/**

@@ -4,6 +4,7 @@ import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.core.messages.TOMMessageType;
 import bftsmart.tom.util.Extractor;
 import bftsmart.tom.util.ServiceContent;
+import bftsmart.tom.util.ServiceResponse;
 
 import java.util.*;
 
@@ -27,10 +28,10 @@ public class NormalRequestHandler extends AbstractRequestHandler {
 	}
 
 	@Override
-	public void processReply(TOMMessage reply, int lastReceivedIndex) {
+	public ServiceResponse processReply(TOMMessage reply, int lastReceivedIndex) {
 		//optimization - compare responses after having a quorum of replies
 		if (replySenders.size() < replyQuorumSize) {
-			return;
+			return null;
 		}
 
 		int sameContent = 0;
@@ -42,10 +43,9 @@ public class NormalRequestHandler extends AbstractRequestHandler {
 			if (comparator.compare(msg.getContent(), reply.getContent()) == 0) {
 				sameContent++;
 				if (sameContent >= replyQuorumSize) {
-					response = responseExtractor.extractResponse(replies, sameContent, lastReceivedIndex);
+					ServiceResponse response = responseExtractor.extractResponse(replies, sameContent, lastReceivedIndex);
 					response.setViewID(reply.getViewID());
-					semaphore.release();
-					return;
+					return response;
 				}
 			}
 		}
@@ -53,7 +53,7 @@ public class NormalRequestHandler extends AbstractRequestHandler {
 		if (replySenders.size() == replicas.length) {
 			semaphore.release();
 		}
-
+		return null;
 	}
 
 	@Override
