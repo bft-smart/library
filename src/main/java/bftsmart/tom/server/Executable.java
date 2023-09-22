@@ -53,6 +53,9 @@ public interface Executable {
 	default TOMMessage executeUnordered(int processID, int viewID, boolean isReplyHash, byte[] commonContent,
 										byte[] replicaSpecificContent, MessageContext msgCtx) {
 		ServiceContent response = executeUnordered(commonContent, replicaSpecificContent, msgCtx);
+		if (response == null) {
+			return null;
+		}
 		byte[] commonResponse = response.getCommonContent();
 		if (isReplyHash) {
 			commonResponse = TOMUtil.computeHash(commonResponse);

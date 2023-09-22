@@ -46,6 +46,9 @@ public interface SingleExecutable extends Executable {
 									  byte[] replicaSpecificContent, MessageContext msgCtx) {
 
 		ServiceContent response = executeOrdered(commonContent, replicaSpecificContent, msgCtx);
+		if (response == null) {
+			return null;
+		}
 		byte[] result = response.getCommonContent();
 		if (isReplyHash) {
 			result = TOMUtil.computeHash(result);

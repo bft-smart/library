@@ -41,16 +41,19 @@ public interface BatchExecutable extends Executable {
         
         TOMMessage[] replies = new TOMMessage[commonContents.length];
 
-		ServiceContent[] serviceRespons = executeBatch(commonContents, replicaSpecificContents, msgCtx);
+		ServiceContent[] serviceResponse = executeBatch(commonContents, replicaSpecificContents, msgCtx);
 		byte[] result;
-        for (int i = 0; i < serviceRespons.length; i++) {
+        for (int i = 0; i < serviceResponse.length; i++) {
+			if (serviceResponse[i] == null) {
+				continue;
+			}
 			if (isReplyHash[i]) {
-				result = TOMUtil.computeHash(serviceRespons[i].getCommonContent());
+				result = TOMUtil.computeHash(serviceResponse[i].getCommonContent());
 			} else {
-				result = serviceRespons[i].getCommonContent();
+				result = serviceResponse[i].getCommonContent();
 			}
 			replies[i] = getTOMMessage(processID, viewID, commonContents[i], msgCtx[i], result,
-					serviceRespons[i].getReplicaSpecificContent());
+					serviceResponse[i].getReplicaSpecificContent());
         }
         
         return replies;
