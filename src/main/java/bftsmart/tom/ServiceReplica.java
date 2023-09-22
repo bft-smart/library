@@ -449,6 +449,9 @@ public class ServiceReplica {
             //Send the replies back to the client
             if (replies != null) {
                 for (TOMMessage reply : replies) {
+					if (reply == null || reply.reply == null)
+						continue;
+
 					tomLayer.clientsManager.injectReply(reply);
                     if (SVController.getStaticConf().getNumRepliers() > 0) {
                         logger.debug("Sending reply to {} with sequence number {} and operation ID {} via ReplyManager",
