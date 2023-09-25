@@ -267,7 +267,8 @@ public class ServiceProxy extends TOMSender {
 			canSendLock.lock();
 			response = null;
 
-			requestHandler = createRequestHandler(reqType);
+			AbstractRequestHandler requestHandler = createRequestHandler(reqType);
+			this.requestHandler = requestHandler;
 
 			TOMMessage requestMessage = requestHandler.createRequest(request,
 					replicaSpecificContents != null, metadata);
@@ -415,7 +416,7 @@ public class ServiceProxy extends TOMSender {
 				reply.getSequence());
 		try {
 			canReceiveLock.lock();
-			if (requestHandler == null || response != null) {//no message being expected
+			if (requestHandler == null) {//no message being expected
 				logger.debug("throwing out request: sender = {} reqId = {}", reply.getSender(), reply.getSequence());
 				return;
 			}
@@ -428,6 +429,7 @@ public class ServiceProxy extends TOMSender {
 			response = requestHandler.processReply(reply);
 			if (response != null) {
 				requestHandler.responseIsReady();
+				requestHandler = null;
 			}
 		} catch (Exception ex) {
 			logger.error("Problem processing reply", ex);
