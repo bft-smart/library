@@ -289,7 +289,6 @@ public class ServiceProxy extends TOMSender {
 		int replyQuorumSize = getReplyQuorum();// size of the reply quorum
 		int sequenceId = generateRequestId(requestType);
 		int operationId = generateOperationId();
-
 		if (requestType == TOMMessageType.UNORDERED_HASHED_REQUEST || requestType == TOMMessageType.ORDERED_HASHED_REQUEST) {
 			int replyServer = getRandomlyServerId();
 			logger.debug("[Client {}] replyServerId({}) pos({})", getProcessId(), replyServer,
@@ -302,7 +301,7 @@ public class ServiceProxy extends TOMSender {
 					getViewManager().getCurrentViewId(),
 					requestType,
 					invokeTimeout,
-					getViewManager().getCurrentViewN(),
+					getViewManager().getCurrentViewProcesses(),
 					replyQuorumSize,
 					replyServer
 			);
@@ -315,7 +314,7 @@ public class ServiceProxy extends TOMSender {
 					getViewManager().getCurrentViewId(),
 					requestType,
 					invokeTimeout,
-					getViewManager().getCurrentViewN(),
+					getViewManager().getCurrentViewProcesses(),
 					replyQuorumSize,
 					comparator,
 					extractor
@@ -345,16 +344,6 @@ public class ServiceProxy extends TOMSender {
 				reply.getSequence());
 		try {
 			canReceiveLock.lock();
-			if (requestHandler == null) {//no message being expected
-				logger.debug("throwing out request: sender = {} reqId = {}", reply.getSender(), reply.getSequence());
-				return;
-			}
-
-			int replicaPosition = getViewManager().getCurrentViewPos(reply.getSender());
-			if (replicaPosition < 0) {
-				return;
-			}
-
 			requestHandler.processReply(reply);
 		} catch (Exception ex) {
 			logger.error("Problem processing reply", ex);

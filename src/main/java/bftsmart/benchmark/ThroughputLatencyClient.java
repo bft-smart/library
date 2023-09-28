@@ -76,7 +76,6 @@ public class ThroughputLatencyClient {
 			this.measurementLeader = measurementLeader;
 			this.proxy = new ServiceProxy(clientId);
 			this.latch = latch;
-			this.proxy.setInvokeTimeout(40); // in seconds
 		}
 
 		@Override

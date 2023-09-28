@@ -29,9 +29,15 @@ remotes {
 	master {
 		//Create a gradle.properties and set the following properties: remoteDeployMasterHost, remoteDeployMasterUser,
 		// remoteDeployMasterPrivateKeyFile
-		host = remoteDeployMasterHost
-		user = remoteDeployMasterUser
-		identity = file(remoteDeployMasterPrivateKeyFile)
+		if (project.hasProperty("remoteDeployMasterHost")) {
+			host = remoteDeployMasterHost
+		}
+		if (project.hasProperty("remoteDeployMasterUser")) {
+			user = remoteDeployMasterUser
+		}
+		if (project.hasProperty("remoteDeployMasterPrivateKeyFile")) {
+			identity = file(remoteDeployMasterPrivateKeyFile)
+		}
 	}
 }
 
