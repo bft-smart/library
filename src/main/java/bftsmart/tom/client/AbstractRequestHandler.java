@@ -22,13 +22,13 @@ public abstract class AbstractRequestHandler {
 	protected final int viewId;
 	protected final TOMMessageType requestType;
 	private final int timeout;
-	protected final int[] replicas;
+	private final int[] replicas;
 	private final Map<Integer, Integer> replicaIndex;
 	protected final TOMMessage[] replies;
 	protected final int replyQuorumSize;
-	protected final Semaphore semaphore;
+	private final Semaphore semaphore;
 	protected Set<Integer> replySenders;
-	protected ServiceResponse response;
+	private ServiceResponse response;
 	private boolean requestTimeout;
 	protected boolean thereIsReplicaSpecificContent;
 
@@ -61,37 +61,49 @@ public abstract class AbstractRequestHandler {
 		}
 	}
 
-	public void responseIsReady() {
-		semaphore.release();
+	/**
+	 * This method returns the response.
+	 * Call this method after calling waitForResponse() method.
+	 * @return Response to the request
+	 * @requires all this method after calling waitForResponse() method
+	 */
+	public ServiceResponse getResponse() {
+		return response;
 	}
 
-	public ServiceResponse processReply(TOMMessage reply) {
+	public void processReply(TOMMessage reply) {
+		if (response != null) {//no message being expected
+			logger.debug("throwing out request: sender = {} reqId = {}", reply.getSender(), reply.getSequence());
+			return;
+		}
 		logger.debug("(current reqId: {}) Received reply from {} with reqId: {}", sequenceId, reply.getSender(),
 				reply.getSequence());
-		Integer i = replicaIndex.get(reply.getSender());
-		if (i == null) {
+		Integer lastSenderIndex = replicaIndex.get(reply.getSender());
+		if (lastSenderIndex == null) {
 			logger.error("Received reply from unknown replica {}", reply.getSender());
-			return null;
+			return;
 		}
 		if (sequenceId != reply.getSequence() || requestType != reply.getReqType()) {
 			logger.debug("Ignoring reply from {} with reqId {}. Currently wait reqId {} of type {}",
 					reply.getSender(), reply.getSequence(), sequenceId, requestType);
-			return null;
+			return;
 		}
 		if (replySenders.contains(reply.getSender())) {//process same reply only once
-			return null;
+			return;
 		}
 		replySenders.add(reply.getSender());
-		replies[i] = reply;
+		replies[lastSenderIndex] = reply;
 
 		if (reply.getReplicaSpecificContent() != null) {
 			thereIsReplicaSpecificContent = true;
 		}
-
-		return processReply(reply, i);
+		response = processReply(reply, lastSenderIndex);
+		if (response != null || replySenders.size() == replicas.length) {
+			semaphore.release();
+		}
 	}
 
-	protected abstract ServiceResponse processReply(TOMMessage reply, int lastReceivedIndex);
+	protected abstract ServiceResponse processReply(TOMMessage reply, int lastSenderIndex);
 
 	public int getSequenceId() {
 		return sequenceId;

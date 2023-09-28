@@ -28,30 +28,26 @@ public class NormalRequestHandler extends AbstractRequestHandler {
 	}
 
 	@Override
-	public ServiceResponse processReply(TOMMessage reply, int lastReceivedIndex) {
+	public ServiceResponse processReply(TOMMessage reply, int lastSenderIndex) {
 		//optimization - compare responses after having a quorum of replies
 		if (replySenders.size() < replyQuorumSize) {
 			return null;
 		}
 
 		int sameContent = 0;
-
 		logger.debug("Comparing {} responses with response from {}", replySenders.size(), reply.getSender());
 		for (TOMMessage msg : replies) {
-			if (msg == null)
+			if (msg == null) {
 				continue;
+			}
 			if (comparator.compare(msg.getContent(), reply.getContent()) == 0) {
 				sameContent++;
 				if (sameContent >= replyQuorumSize) {
-					ServiceResponse response = responseExtractor.extractResponse(replies, sameContent, lastReceivedIndex);
+					ServiceResponse response = responseExtractor.extractResponse(replies, sameContent, lastSenderIndex);
 					response.setViewID(reply.getViewID());
 					return response;
 				}
 			}
-		}
-
-		if (replySenders.size() == replicas.length) {
-			semaphore.release();
 		}
 		return null;
 	}

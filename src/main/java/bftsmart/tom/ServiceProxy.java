@@ -54,7 +54,6 @@ public class ServiceProxy extends TOMSender {
 	private int invokeUnorderedHashedTimeout = 10;
 
 	private AbstractRequestHandler requestHandler; //Active request context
-	private ServiceResponse response;
 	private final IClientSideReconfigurationListener reconfigurationListener;
 
 	/**
@@ -239,7 +238,6 @@ public class ServiceProxy extends TOMSender {
 	 *
 	 * @return The reply from the replicas related to request
 	 */
-
 	public byte[] invoke(byte[] request, TOMMessageType reqType) {
 		ServiceResponse response = invoke(reqType, request, null, (byte) -1);
 		if (response == null) {
@@ -265,10 +263,8 @@ public class ServiceProxy extends TOMSender {
 								  byte metadata) {
 		try {
 			canSendLock.lock();
-			response = null;
 
-			AbstractRequestHandler requestHandler = createRequestHandler(reqType);
-			this.requestHandler = requestHandler;
+			requestHandler = createRequestHandler(reqType);
 
 			TOMMessage requestMessage = requestHandler.createRequest(request,
 					replicaSpecificContents != null, metadata);
@@ -294,6 +290,7 @@ public class ServiceProxy extends TOMSender {
 				}
 			}
 
+			ServiceResponse response = requestHandler.getResponse();
 			logger.debug("Response extracted: " + response);
 
 			if (response == null) {
@@ -357,7 +354,6 @@ public class ServiceProxy extends TOMSender {
 		int replyQuorumSize = getReplyQuorum();// size of the reply quorum
 		int sequenceId = generateRequestId(requestType);
 		int operationId = generateOperationId();
-
 		if (requestType == TOMMessageType.UNORDERED_HASHED_REQUEST || requestType == TOMMessageType.ORDERED_HASHED_REQUEST) {
 			int replyServer = getRandomlyServerId();
 			logger.debug("[Client {}] replyServerId({}) pos({})", getProcessId(), replyServer,
@@ -416,21 +412,7 @@ public class ServiceProxy extends TOMSender {
 				reply.getSequence());
 		try {
 			canReceiveLock.lock();
-			if (requestHandler == null) {//no message being expected
-				logger.debug("throwing out request: sender = {} reqId = {}", reply.getSender(), reply.getSequence());
-				return;
-			}
-
-			int replicaPosition = getViewManager().getCurrentViewPos(reply.getSender());
-			if (replicaPosition < 0) {
-				return;
-			}
-
-			response = requestHandler.processReply(reply);
-			if (response != null) {
-				requestHandler.responseIsReady();
-				requestHandler = null;
-			}
+			requestHandler.processReply(reply);
 		} catch (Exception ex) {
 			logger.error("Problem processing reply", ex);
 		} finally {

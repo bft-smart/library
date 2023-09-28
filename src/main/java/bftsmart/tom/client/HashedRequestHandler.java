@@ -36,10 +36,10 @@ public class HashedRequestHandler extends AbstractRequestHandler {
 	}
 
 	@Override
-	public ServiceResponse processReply(TOMMessage reply, int lastReceivedIndex) {
+	public ServiceResponse processReply(TOMMessage reply, int lastSenderIndex) {
 		byte[] replyContentHash;
 		if (reply.getSender() == replyServer) {
-			fullResponseIndex = lastReceivedIndex;
+			fullResponseIndex = lastSenderIndex;
 			replyContentHash = TOMUtil.computeHash(reply.getCommonContent());
 			replyServerResponseHash = replyContentHash;
 		} else {
@@ -54,9 +54,8 @@ public class HashedRequestHandler extends AbstractRequestHandler {
 			return null;
 		}
 
-		logger.debug("Comparing {} hash responses with response from {}", hashReplies.size(), replyServer);
+		logger.debug("Comparing {} hash responses with response from {}", replySenders.size(), replyServer);
 		int sameContent = 0;
-
 		for (byte[] hash : hashReplies) {
 			if (Arrays.equals(hash, replyServerResponseHash)) {
 				sameContent++;
@@ -69,9 +68,6 @@ public class HashedRequestHandler extends AbstractRequestHandler {
 			}
 		}
 
-		if (replySenders.size() == replicas.length) {
-			semaphore.release();
-		}
 		return null;
 	}
 
