@@ -18,7 +18,6 @@ repositories {
 
 jar {
 	archivesBaseName='BFT-SMaRt'
-	project.version=""
 }
 
 ssh.settings {
