@@ -119,10 +119,10 @@ public class ThroughputLatencyBenchmarkStrategy implements IBenchmarkStrategy, I
 			try {
 				lock.lock();
 				logger.info("============ Round {} out of {} ============", round, nRounds);
+				int nClients = clientsPerRound[round - 1];
 				measurementWorkers.clear();
 				storageFileNamePrefix = String.format("f_%d_%d_bytes_%s_round_%d_", f, dataSize,
-						isWrite ? "write" : "read", round);
-				int nClients = clientsPerRound[round - 1];
+						isWrite ? "write" : "read", nClients);
 
 				//Distribute clients per workers
 				int[] clientsPerWorker = distributeClientsPerWorkers(nClientWorkers, nClients, maxClientsPerProcess);
@@ -222,7 +222,7 @@ public class ThroughputLatencyBenchmarkStrategy implements IBenchmarkStrategy, I
 		} else {
 			nMeasurements = 2;
 		}
-		logger.debug("Getting measurements from {} workers...", measurementWorkers.size());
+		logger.debug("Getting {} measurements from {} workers...", nMeasurements, measurementWorkers.size());
 		measurementDeliveredCounter = new CountDownLatch(nMeasurements);
 
 		measurementWorkers.values().forEach(WorkerHandler::requestProcessingResult);
@@ -298,7 +298,7 @@ public class ThroughputLatencyBenchmarkStrategy implements IBenchmarkStrategy, I
 			return new int[]{1, nClients};
 		}
 		nClientWorkers--; //for measurement client
-		int nWorkersToUse = Math.min(nClientWorkers - 1, nClients / maxClientsPerProcess);
+		int nWorkersToUse = Math.min(nClientWorkers, (int)Math.ceil((double) nClients / maxClientsPerProcess));
 		int[] distribution = new int[nWorkersToUse + 1];//one for measurement worker
 		Arrays.fill(distribution, nClients / nWorkersToUse);
 		distribution[0] = 1;
@@ -419,8 +419,8 @@ public class ThroughputLatencyBenchmarkStrategy implements IBenchmarkStrategy, I
 	private void processClientMeasurementResults(long[] latencies) {
 		saveClientMeasurements(latencies);
 		Storage st = new Storage(latencies);
-		logger.info("Client Measurement[ms] - avg:{} dev:{} max:{} [{} samples]", st.getAverage(true) / 1000000,
-				st.getDP(true) / 1000000, st.getMax(true) / 1000000, latencies.length);
+		logger.info("Client Measurement[ms] - avg:{} dev:{} max:{} [{} samples]", st.getAverage(true) / 1_000_000.0,
+				st.getDP(true) / 1_000_000.0, st.getMax(true) / 1_000_000.0, latencies.length);
 		avgLatency.add(st.getAverage(true));
 		latencyDev.add(st.getDP(true));
 		maxLatency.add((double) st.getMax(true));
@@ -492,7 +492,7 @@ public class ThroughputLatencyBenchmarkStrategy implements IBenchmarkStrategy, I
 	}
 
 	public void saveServerMeasurements(long[] clients, long[] nRequests, long[] delta) {
-		String fileName = storageFileNamePrefix + "throughput.csv";
+		String fileName = storageFileNamePrefix + "server_global.csv";
 		try (BufferedWriter resultFile = new BufferedWriter(new OutputStreamWriter(
 				Files.newOutputStream(Paths.get(fileName))))) {
 			int size = clients.length;
@@ -507,7 +507,7 @@ public class ThroughputLatencyBenchmarkStrategy implements IBenchmarkStrategy, I
 	}
 
 	public void saveClientMeasurements(long[] latencies) {
-		String fileName = storageFileNamePrefix + "latency.csv";
+		String fileName = storageFileNamePrefix + "client_global.csv";
 		try (BufferedWriter resultFile = new BufferedWriter(new OutputStreamWriter(
 				Files.newOutputStream(Paths.get(fileName))))) {
 			resultFile.write("latency(ns)\n");

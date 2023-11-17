@@ -69,9 +69,9 @@ public class BFTSMaRtSetup implements ISetupWorker {
 		ctx.append("system.totalordermulticast.timeout = 30000\n");
 		ctx.append("system.totalordermulticast.batchtimeout = -1\n");
 		ctx.append("system.totalordermulticast.maxbatchsize = 1024\n");
-		ctx.append("system.totalordermulticast.maxBatchSizeInBytes = 1000000\n");
+		ctx.append("system.totalordermulticast.maxBatchSizeInBytes = 100000000\n");
 		ctx.append("system.communication.useControlFlow = 60\n");
-		ctx.append("system.communication.maxRequestSize = 100000\n");
+		ctx.append("system.communication.maxRequestSize = 1000000\n");
 		ctx.append("system.totalordermulticast.fairbatch = false\n");
 		ctx.append("system.totalordermulticast.nonces = 10\n");
 		ctx.append("system.totalordermulticast.verifyTimestamps = false\n");
