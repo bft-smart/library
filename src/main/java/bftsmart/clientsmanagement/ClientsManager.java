@@ -543,10 +543,10 @@ public class ClientsManager {
 		return privateContent;
 	}
 
-	public void injectReply(TOMMessage response) {
-		ClientData clientData = getClientData(response.getSender());
+	public void injectReply(int client, int sequence, TOMMessage reply) {
+		ClientData clientData = getClientData(client);
 		clientData.clientLock.lock();
-		clientData.storeReply(response.getSequence(), response.reply);
+		clientData.storeReply(sequence, reply);
 		clientData.clientLock.unlock();
 	}
 }

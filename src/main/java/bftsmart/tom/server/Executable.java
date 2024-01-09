@@ -41,6 +41,10 @@ public interface Executable {
 	 */
 	ServiceContent executeUnordered(byte[] command, byte[] replicaSpecificContent, MessageContext msgCtx);
 
+	default void setResponseSender(IResponseSender responseSender) {
+
+	}
+
 	default TOMMessage getTOMMessage(int processID, int viewID, byte[] command, MessageContext msgCtx,
 									 byte[] commonResponse, byte[] replicaSpecificContent) {
 		TOMMessage reply = msgCtx.recreateTOMMessage(command);

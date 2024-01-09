@@ -33,6 +33,7 @@ import bftsmart.tom.leaderchange.CertifiedDecision;
 import bftsmart.tom.server.*;
 import bftsmart.tom.server.defaultservices.DefaultReplier;
 import bftsmart.tom.util.KeyLoader;
+import bftsmart.tom.util.ServiceContent;
 import bftsmart.tom.util.ShutdownHookThread;
 import bftsmart.tom.util.TOMUtil;
 import org.slf4j.Logger;
@@ -52,7 +53,7 @@ import java.util.concurrent.locks.ReentrantLock;
  * batch of messages is delivered to the application and ServiceReplica doesn't
  * need to organize the replies in batches.
  */
-public class ServiceReplica {
+public class ServiceReplica implements IResponseSender {
     
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
@@ -155,6 +156,7 @@ public class ServiceReplica {
         this.recoverer.setReplicaContext(replicaCtx);
         this.replier.setReplicaContext(replicaCtx);
 		this.reconfigurationListener = reconfigurationListener;
+		this.executor.setResponseSender(this);
     }
 
     // this method initializes the object
@@ -353,7 +355,8 @@ public class ServiceReplica {
                                 if (response != null && response.reply != null
 										&& response.reply.getCommonContent() != null) {
                                     logger.debug("sending reply to {}", response.getSender());
-									tomLayer.clientsManager.injectReply(response);
+									tomLayer.clientsManager.injectReply(response.getSender(), response.getSequence(),
+											response.reply);
                                     replier.manageReply(response, msgCtx);
                                 }
                             } else { //this code should never be executed
@@ -452,7 +455,7 @@ public class ServiceReplica {
 					if (reply == null || reply.reply == null)
 						continue;
 
-					tomLayer.clientsManager.injectReply(reply);
+					tomLayer.clientsManager.injectReply(reply.getSender(), reply.getSequence(), reply.reply);
                     if (SVController.getStaticConf().getNumRepliers() > 0) {
                         logger.debug("Sending reply to {} with sequence number {} and operation ID {} via ReplyManager",
 								reply.getSender(), reply.getSequence(), reply.getOperationId());
@@ -469,6 +472,38 @@ public class ServiceReplica {
             logger.debug("BATCH EXECUTOR END");
         }
     }
+
+	public void sendResponseTo(MessageContext requestMsgCtx, ServiceContent responseToSend) {
+		TOMMessageType requestType = requestMsgCtx.getType();
+		boolean isReplyHash = (requestType == TOMMessageType.ORDERED_HASHED_REQUEST
+				|| requestType == TOMMessageType.UNORDERED_HASHED_REQUEST)
+				&& requestMsgCtx.getReplyServer() != this.id;
+		int client = requestMsgCtx.getSender();
+		int viewID = SVController.getCurrentViewId();
+		int session = requestMsgCtx.getSession();
+		int sequence = requestMsgCtx.getSequence();
+		int operationId = requestMsgCtx.getOperationId();
+
+		byte[] commonResponse = responseToSend.getCommonContent();
+		if (isReplyHash) {
+			commonResponse = TOMUtil.computeHash(commonResponse);
+		}
+
+		byte[] replicaSpecificContent = responseToSend.getReplicaSpecificContent();
+
+		TOMMessage response = requestMsgCtx.recreateTOMMessage(new byte[]{});
+		TOMMessage reply = new TOMMessage(id, session, sequence, operationId,
+				commonResponse, replicaSpecificContent != null, viewID, requestType);
+		reply.setReplicaSpecificContent(replicaSpecificContent);
+		response.reply = reply;
+
+		if (response.reply.getCommonContent() != null) {
+			logger.debug("sending reply to {}", client);
+			tomLayer.clientsManager.injectReply(client, sequence, reply);
+			replier.manageReply(response, requestMsgCtx);
+		}
+
+	}
 
     /**
      * This method initializes the object
