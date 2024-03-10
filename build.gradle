@@ -7,11 +7,6 @@ plugins {
 group 'BFT-SMaRt'
 version '2.0'
 
-compileJava {
-	sourceCompatibility = 8
-	targetCompatibility = 8
-}
-
 repositories {
 	mavenCentral()
 }
