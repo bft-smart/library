@@ -56,6 +56,7 @@ import java.util.concurrent.locks.ReentrantLock;
 public class ServiceReplica implements IResponseSender {
     
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
+	private final Logger measurementLogger = LoggerFactory.getLogger("measurement");
 
     // replica ID
     private final int id;
@@ -221,9 +222,12 @@ public class ServiceReplica implements IResponseSender {
 
 		boolean isReplyHash = message.getReqType() == TOMMessageType.UNORDERED_HASHED_REQUEST
 				&& message.getReplyServer() != this.id;
-
+		long start, end;
+		start = System.nanoTime();
         response = executor.executeUnordered(id, SVController.getCurrentViewId(), isReplyHash,
 				message.getCommonContent(), message.getReplicaSpecificContent(), msgCtx);
+		end = System.nanoTime();
+		measurementLogger.debug("M-executeUnordered: {}", end - start);
 
         if (response != null) {
             if (SVController.getStaticConf().getNumRepliers() > 0) {
@@ -287,6 +291,7 @@ public class ServiceReplica implements IResponseSender {
         List<TOMMessage> toBatch = new ArrayList<>();
         List<MessageContext> msgCtxts = new ArrayList<>();
         boolean noop;
+		long start, end;
 
         for (TOMMessage[] requestsFromConsensus : requests) {
             TOMMessage firstRequest = requestsFromConsensus[0];
@@ -348,10 +353,12 @@ public class ServiceReplica implements IResponseSender {
                                 //to the clients. The raw decision is passed to the application in the line above.
 								boolean isReplyHash = request.getReqType() == TOMMessageType.ORDERED_HASHED_REQUEST
 										&& request.getReplyServer() != this.id;
+								start = System.nanoTime();
                                 TOMMessage response = ((SingleExecutable) executor).executeOrdered(id,
 										SVController.getCurrentViewId(), isReplyHash, request.getCommonContent(),
 										request.getReplicaSpecificContent(), msgCtx);
-
+								end = System.nanoTime();
+								measurementLogger.debug("M-executeOrdered: {}", end - start);
                                 if (response != null && response.reply != null
 										&& response.reply.getCommonContent() != null) {
                                     logger.debug("sending reply to {}", response.getSender());

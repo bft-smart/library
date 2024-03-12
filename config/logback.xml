@@ -61,6 +61,8 @@
 
 	<logger name="benchmarking" level="INFO"/>
 
+	<logger name="measurement" level="DEBUG"/>
+
 	<!-- SPECIFIC CLASS LOGS -->
 	<!--
 
@@ -70,6 +72,6 @@
 
 	 <logger name="bftsmart.reconfiguration.util.ECDSAKeyLoader" level="TRACE"></logger>
 	  -->
-	<logger name="bftsmart.reconfiguration.util.RSAKeyLoader" level="TRACE"></logger>
+	<logger name="bftsmart.reconfiguration.util.RSAKeyLoader" level="TRACE"/>
 
 </configuration>
