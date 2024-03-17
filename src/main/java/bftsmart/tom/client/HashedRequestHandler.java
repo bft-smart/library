@@ -47,14 +47,14 @@ public class HashedRequestHandler extends AbstractRequestHandler {
 		}
 
 		hashReplies.add(replyContentHash);
-		logger.debug("hash of reply from {}: {}", reply.getSender(), Arrays.toString(replyContentHash));
+		logger.debug("[Client {}] Hash of reply from {}: {}", me, reply.getSender(), Arrays.toString(replyContentHash));
 
 		//optimization - compare responses after having a quorum of replies and response from reply server
 		if (replyServerResponseHash == null || replySenders.size() < replyQuorumSize) {
 			return null;
 		}
 
-		logger.debug("Comparing {} hash responses with response from {}", replySenders.size(), replyServer);
+		logger.debug("[Client {}] Comparing {} hash responses with response from {}", me, replySenders.size(), replyServer);
 		int sameContent = 0;
 		for (byte[] hash : hashReplies) {
 			if (Arrays.equals(hash, replyServerResponseHash)) {
@@ -74,9 +74,10 @@ public class HashedRequestHandler extends AbstractRequestHandler {
 	@Override
 	public void printState() {
 		for (int i = 0; i < hashReplies.size(); i++) {
-			logger.info("hash of reply from {}: {} | {}", i, Arrays.hashCode(hashReplies.get(i)),
+			logger.info("[Client {}] Hash {}: {} | {}", me, i, Arrays.hashCode(hashReplies.get(i)),
 					Arrays.toString(hashReplies.get(i)));
 		}
-		logger.info("Have received response from reply server {}: {}", replyServer, replyServerResponseHash != null);
+		logger.info("[Client {}] Have received response from reply server {}: {}", me, replyServer,
+				replyServerResponseHash != null);
 	}
 }

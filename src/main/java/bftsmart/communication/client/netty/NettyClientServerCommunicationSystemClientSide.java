@@ -266,14 +266,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 			int dataLength = Integer.BYTES * 7 + Byte.BYTES * 2
 					+ (sm.getCommonContent() == null ? 0 : sm.getCommonContent().length);
 			// serialize message
-			try (ByteArrayOutputStream baos = new ByteArrayOutputStream(dataLength);
-				 DataOutputStream dos = new DataOutputStream(baos)) {
-				sm.wExternal(dos);
-				dos.flush();
-				sm.serializedMessage = baos.toByteArray();
-			} catch (IOException ex) {
-				logger.debug("Impossible to serialize message: {}", sm);
-			}
+			sm.getSerializedMessage();//this call initializes sm.serializedMessage
 		}
 
 		// produce signature
@@ -321,14 +314,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 	public void sign(TOMMessage sm) {
 		// serialize message
 		if (sm.serializedMessage == null) {
-			try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
-				 DataOutputStream dos = new DataOutputStream(baos)) {
-				sm.wExternal(dos);
-				dos.flush();
-				sm.serializedMessage = baos.toByteArray();
-			} catch (IOException ex) {
-				logger.error("Failed to sign TOMMessage", ex);
-			}
+			sm.getSerializedMessage();// this call initializes sm.serializedMessage
 		}
 		if (sm.serializedMessageSignature == null) {
 			// produce signature

@@ -42,7 +42,7 @@ public interface SingleExecutable extends Executable {
 	 */
 	ServiceContent executeOrdered(byte[] command, byte[] replicaSpecificContent, MessageContext msgCtx);
 
-	default TOMMessage executeOrdered(int processID, int viewID, boolean isReplyHash, byte[] commonContent,
+	default TOMMessage executeOrdered(int processID, int viewID, byte[] commonContent,
 									  byte[] replicaSpecificContent, MessageContext msgCtx) {
 
 		ServiceContent response = executeOrdered(commonContent, replicaSpecificContent, msgCtx);
@@ -50,9 +50,6 @@ public interface SingleExecutable extends Executable {
 			return null;
 		}
 		byte[] result = response.getCommonContent();
-		if (isReplyHash) {
-			result = TOMUtil.computeHash(result);
-		}
 
 		return getTOMMessage(processID, viewID, commonContent, msgCtx, result, response.getReplicaSpecificContent());
 

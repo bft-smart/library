@@ -15,18 +15,11 @@
  */
 package bftsmart.tom.core.messages;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.DataInput;
-import java.io.DataInputStream;
-import java.io.DataOutput;
-import java.io.DataOutputStream;
-import java.io.Externalizable;
-import java.io.IOException;
-
 import bftsmart.communication.SystemMessage;
 import bftsmart.tom.util.ServiceContent;
-import org.slf4j.LoggerFactory;
+import bftsmart.tom.util.TOMUtil;
+
+import java.io.Externalizable;
 
 /**
  * This class represents a total ordered message
@@ -47,6 +40,7 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 	private ServiceContent content; // The content of the message
 	private byte metadata; // Optional metadata of the message
 	private boolean hasReplicaSpecificContent;
+	private int replyServer = -1;
 
 	//the fields bellow are not serialized!!!
 	private transient int id; // ID for this message. It should be unique
@@ -84,9 +78,12 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 	//the reply associated with this message
 	public transient TOMMessage reply = null;
 	public transient boolean alreadyProposed = false;
-	public transient int retry = 4;
+	public transient int retry = 0;
 
-	private int replyServer = -1;
+	//when message type is UNORDERED_HASHED_REQUEST OR ORDERED_HASHED_REQUEST, this field
+	// contains the full commonContent and ServiceContent.commonContent will contain the hash
+	public transient byte[] fullCommonContent;
+
 
 	public TOMMessage() {
 	}
@@ -215,6 +212,15 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 		this.content.setReplicaSpecificContent(replicaSpecificContent);
 	}
 
+
+	/**
+	 * Sets the common content of the message
+	 * @param commonContent Common content
+	 */
+	public void setCommonContent(byte[] commonContent) {
+		this.content.setCommonContent(commonContent);
+	}
+
 	/**
 	 * Retrieves the metadata of the message
 	 * @return The metadata of the message
@@ -254,44 +260,113 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 		return "[" + sender + ":" + session + ":" + sequence + "]";
 	}
 
-	public void wExternal(DataOutput out) throws IOException {
-		out.writeInt(sender);
-		out.writeInt(viewID);
-		out.writeByte(type.ordinal());
-		out.writeInt(session);
-		out.writeInt(sequence);
-		out.writeInt(operationId);
-		out.writeInt(replyServer);
-
-		out.writeInt(content.getCommonContent() == null ? -1 : content.getCommonContent().length);
-		out.write(content.getCommonContent());
-		out.writeBoolean(hasReplicaSpecificContent);
-		out.write(metadata);
+	public int getSerializedSize() {
+		//7 integers: sender, viewID, session, sequence, operationID, replyServer, and commonContent size
+		//3 bytes: type, hasReplicaSpecificContent, and metadata
+		//x bytes: x = commonContent.length
+		return 7 * Integer.BYTES + 3 + (content.getCommonContent() == null ? 0 : content.getCommonContent().length);
 	}
 
-	public void rExternal(DataInput in) throws IOException {
-		sender = in.readInt();
-		viewID = in.readInt();
-		type = TOMMessageType.getMessageType(in.readByte());
-		session = in.readInt();
-		sequence = in.readInt();
-		operationId = in.readInt();
-		replyServer = in.readInt();
+	public byte[] getSerializedMessage() {
+		if (serializedMessage != null) {
+			return serializedMessage;
+		}
+		int serializedMessageSize = getSerializedSize();
+		serializedMessage = new byte[serializedMessageSize];
+		byte[] senderBytes = TOMUtil.toBytes(sender);
+		byte[] viewIDBytes = TOMUtil.toBytes(viewID);
+		byte[] sessionBytes = TOMUtil.toBytes(session);
+		byte[] sequenceBytes = TOMUtil.toBytes(sequence);
+		byte[] operationIDBytes = TOMUtil.toBytes(operationId);
+		byte[] replyServerBytes = TOMUtil.toBytes(replyServer);
+		byte[] commonContentSizeBytes = TOMUtil.toBytes(content.getCommonContent() == null
+				? -1 : content.getCommonContent().length);
 
-		int toRead = in.readInt();
-		if (toRead != -1) {
-			byte[] commonContent = new byte[toRead];
-			in.readFully(commonContent);
+		int offset = 0;
+
+		//serialize integers
+		offset = serializeArray(serializedMessage, offset, senderBytes);
+		offset = serializeArray(serializedMessage, offset, viewIDBytes);
+		offset = serializeArray(serializedMessage, offset, sessionBytes);
+		offset = serializeArray(serializedMessage, offset, sequenceBytes);
+		offset = serializeArray(serializedMessage, offset, operationIDBytes);
+		offset = serializeArray(serializedMessage, offset, replyServerBytes);
+		offset = serializeArray(serializedMessage, offset, commonContentSizeBytes);
+
+		//serialize bytes
+		serializedMessage[offset] = (byte) type.ordinal();
+		offset++;
+		serializedMessage[offset] = (byte) (hasReplicaSpecificContent ? 1 : 0);
+		offset++;
+		serializedMessage[offset] = metadata;
+		offset++;
+
+		//serialize commonContent
+		if (content.getCommonContent() != null) {
+			serializeArray(serializedMessage, offset, content.getCommonContent());
+		}
+
+		return serializedMessage;
+	}
+
+	public void deserialize(byte[] serializedMessage) {
+		int offset = 0;
+
+		//deserialize integers
+		byte[] senderBytes = new byte[Integer.BYTES];
+		byte[] viewIDBytes = new byte[Integer.BYTES];
+		byte[] sessionBytes = new byte[Integer.BYTES];
+		byte[] sequenceBytes = new byte[Integer.BYTES];
+		byte[] operationIDBytes = new byte[Integer.BYTES];
+		byte[] replyServerBytes = new byte[Integer.BYTES];
+		byte[] commonContentSizeBytes = new byte[Integer.BYTES];
+
+		offset = deserializeArray(serializedMessage, offset, senderBytes);
+		offset = deserializeArray(serializedMessage, offset, viewIDBytes);
+		offset = deserializeArray(serializedMessage, offset, sessionBytes);
+		offset = deserializeArray(serializedMessage, offset, sequenceBytes);
+		offset = deserializeArray(serializedMessage, offset, operationIDBytes);
+		offset = deserializeArray(serializedMessage, offset, replyServerBytes);
+		offset = deserializeArray(serializedMessage, offset, commonContentSizeBytes);
+
+		sender = TOMUtil.toNumber(senderBytes);
+		viewID = TOMUtil.toNumber(viewIDBytes);
+		session = TOMUtil.toNumber(sessionBytes);
+		sequence = TOMUtil.toNumber(sequenceBytes);
+		operationId = TOMUtil.toNumber(operationIDBytes);
+		replyServer = TOMUtil.toNumber(replyServerBytes);
+		int commonContentSize = TOMUtil.toNumber(commonContentSizeBytes);
+
+		//deserialize bytes
+		type = TOMMessageType.getMessageType(serializedMessage[offset]);
+		offset++;
+		hasReplicaSpecificContent = serializedMessage[offset] == 1;
+		offset++;
+		metadata = serializedMessage[offset];
+		offset++;
+
+		//deserialize commonContent
+		if (commonContentSize != -1) {
+			byte[] commonContent = new byte[commonContentSize];
+			deserializeArray(serializedMessage, offset, commonContent);
 			content = new ServiceContent(commonContent);
 		}
-		hasReplicaSpecificContent = in.readBoolean();
-		metadata = in.readByte();
-
+		this.serializedMessage = serializedMessage;
 		buildId();
 	}
 
+	private static int deserializeArray(byte[] input, int offset, byte[] output) {
+		System.arraycopy(input, offset, output, 0, output.length);
+		return offset + output.length;
+	}
+
+	private static int serializeArray(byte[] output, int offset, byte[] data) {
+		System.arraycopy(data, 0, output, offset, data.length);
+		return offset + data.length;
+	}
+
 	/**
-	 * Used to build an unique id for the message
+	 * Used to build a unique id for the message
 	 */
 	private void buildId() {
 		//id = (sender << 20) | sequence;
@@ -312,27 +387,13 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 	}
 
 	public static byte[] messageToBytes(TOMMessage m) {
-		try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
-			 DataOutputStream dos = new DataOutputStream(baos)) {
-			m.wExternal(dos);
-			dos.flush();
-			return baos.toByteArray();
-		} catch(Exception e) {
-			LoggerFactory.getLogger(TOMMessage.class).error("Failed to serialize TOMMessage", e);
-			return null;
-		}
+		return m.getSerializedMessage();
 	}
 
 	public static TOMMessage bytesToMessage(byte[] b) {
-		try (ByteArrayInputStream bais = new ByteArrayInputStream(b);
-			 DataInputStream dis = new DataInputStream(bais)) {
-			TOMMessage m = new TOMMessage();
-			m.rExternal(dis);
-			return m;
-		} catch(Exception e) {
-			LoggerFactory.getLogger(TOMMessage.class).error("Failed to deserialize TOMMessage",e);
-			return null;
-		}
+		TOMMessage m = new TOMMessage();
+		m.deserialize(b);
+		return m;
 	}
 
 	@Override
@@ -407,4 +468,6 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 	public void setReplyServer(int replyServer) {
 		this.replyServer = replyServer;
 	}
+
+
 }

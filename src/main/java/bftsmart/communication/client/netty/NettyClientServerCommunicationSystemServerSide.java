@@ -277,37 +277,29 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 	}
 
 	@Override
-	public void send(int[] targets, TOMMessage sm, boolean serializeClassHeaders) {
+	public void send(int[] targets, TOMMessage message, boolean serializeClassHeaders) {
 
-		// serialize message
-		DataOutputStream dos = null;
-
-		byte[] data = null;
-		try {
-			ByteArrayOutputStream baos = new ByteArrayOutputStream();
-			dos = new DataOutputStream(baos);
-			sm.wExternal(dos);
-			dos.flush();
-			data = baos.toByteArray();
-			sm.serializedMessage = data;
-		} catch (IOException ex) {
-			logger.error("Failed to serialize message.", ex);
+		byte[] data = message.serializedMessage;
+		if (data == null) {
+			data = message.getSerializedMessage();
 		}
 
 		// replies are not signed in the current JBP version
-		sm.signed = false;
+		message.signed = false;
 		// produce signature if necessary (never in the current version)
-		if (sm.signed) {
-			sm.serializedMessageSignature = TOMUtil.signMessage(privKey, data);
+		if (message.signed) {
+			message.serializedMessageSignature = TOMUtil.signMessage(privKey, data);
 		}
-		byte[] replicaSpecificContent = sm.getReplicaSpecificContent();
+		byte[] replicaSpecificContent = message.getReplicaSpecificContent();
+		TOMMessage copy;
 		for (int target : targets) {
-			sm = sm.createCopy();
-			sm.setReplicaSpecificContent(replicaSpecificContent);
+			copy = message.createCopy();
+			copy.setReplicaSpecificContent(replicaSpecificContent);
 			rl.readLock().lock();
 			if (sessionReplicaToClient.containsKey(target)) {
-				sm.destination = target;
-				sessionReplicaToClient.get(target).getChannel().writeAndFlush(sm);
+				copy.destination = target;
+				message.destination = target;
+				sessionReplicaToClient.get(target).getChannel().writeAndFlush(copy);
 			} else {
 				logger.debug("Client not into sessionReplicaToClient({}):{}, waiting and retrying.", target,
 						sessionReplicaToClient.containsKey(target));
@@ -320,11 +312,11 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 				// *before* the connection to that client is successfully established. The client may then fail to
 				// gather enough responses and run in a timeout. In this fix we periodically retry to send that response
 
-				if (sm.retry > 0) {
+				if (copy.retry > 0) {
 					int retryAfterMillis = (int) (1000 * // Double retry-timeout every time while approaching client's invokeOrdered timeout
-							((double) controller.getStaticConf().getClientInvokeOrderedTimeout() * Math.pow(2, -1 * sm.retry)));
-					sm.retry = sm.retry - 1;
-					TOMMessage finalSm = sm;
+							((double) controller.getStaticConf().getClientInvokeOrderedTimeout() * Math.pow(2, -1 * copy.retry)));
+					copy.retry = copy.retry - 1;
+					TOMMessage finalSm = copy;
 					TimerTask timertask = new TimerTask() {
 						@Override
 						public void run() {

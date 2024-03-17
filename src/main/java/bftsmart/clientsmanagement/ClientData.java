@@ -47,7 +47,7 @@ public class ClientData {
 
     private final RequestList pendingRequests = new RequestList();
     //anb: new code to deal with client requests that arrive after their execution
-    private final RequestList orderedRequests = new RequestList(20);
+    private final RequestList orderedRequests = new RequestList(4);
 
     private Signature signatureVerificator = null;
 	private final Map<Integer, byte[]> replicaSpecificContents;

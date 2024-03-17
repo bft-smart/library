@@ -73,18 +73,19 @@ public abstract class AbstractRequestHandler {
 
 	public void processReply(TOMMessage reply) {
 		if (response != null) {//no message being expected
-			logger.debug("throwing out request: sender = {} reqId = {}", reply.getSender(), reply.getSequence());
+			logger.debug("[Client {}] throwing out request: sender = {} reqId = {}", me, reply.getSender(),
+					reply.getSequence());
 			return;
 		}
-		logger.debug("(current reqId: {}) Received reply from {} with reqId: {}", sequenceId, reply.getSender(),
-				reply.getSequence());
+		logger.debug("[Client {}] (current reqId: {}) Received reply from {} with reqId: {}", me, sequenceId,
+				reply.getSender(), reply.getSequence());
 		Integer lastSenderIndex = replicaIndex.get(reply.getSender());
 		if (lastSenderIndex == null) {
-			logger.error("Received reply from unknown replica {}", reply.getSender());
+			logger.error("[Client {}] Received reply from unknown replica {}", me, reply.getSender());
 			return;
 		}
 		if (sequenceId != reply.getSequence() || requestType != reply.getReqType()) {
-			logger.debug("Ignoring reply from {} with reqId {}. Currently wait reqId {} of type {}",
+			logger.debug("[Client {}] Ignoring reply from {} with reqId {}. Currently wait reqId {} of type {}", me,
 					reply.getSender(), reply.getSequence(), sequenceId, requestType);
 			return;
 		}

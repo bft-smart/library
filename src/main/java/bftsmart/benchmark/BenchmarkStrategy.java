@@ -52,7 +52,6 @@ public class BenchmarkStrategy implements IBenchmarkStrategy, IWorkerStatusListe
 		this.sarCommand = "sar -u -r -n DEV 1";
 	}
 
-
 	@Override
 	public void executeBenchmark(WorkerHandler[] workers, Properties benchmarkParameters) {
 		logger.info("Starting throughput-latency benchmark strategy");
@@ -195,7 +194,7 @@ public class BenchmarkStrategy implements IBenchmarkStrategy, IWorkerStatusListe
 							 boolean useHashedResponse, int dataSize, int nRequests, int maxClientsPerProcess) throws InterruptedException {
 		logger.info("Starting clients...");
 		workersReadyCounter = new CountDownLatch(clientsPerWorker.length);
-		int initialClientId = 1000;
+		int initialClientId = 100000;
 		measurementWorkers.put(clientWorkers[0].getWorkerId(), clientWorkers[0]);
 
 		for (int i = 0; i < clientsPerWorker.length; i++) {
@@ -263,7 +262,7 @@ public class BenchmarkStrategy implements IBenchmarkStrategy, IWorkerStatusListe
 			nMeasurements = 2;
 		}
 
-		logger.info("Getting {} measurements from {} workers...", nMeasurements, measurementWorkers.size());
+		logger.debug("Getting {} measurements from {} workers...", nMeasurements, measurementWorkers.size());
 		measurementDeliveredCounter = new CountDownLatch(nMeasurements);
 
 		measurementWorkers.values().forEach(WorkerHandler::requestProcessingResult);
@@ -292,13 +291,13 @@ public class BenchmarkStrategy implements IBenchmarkStrategy, IWorkerStatusListe
 			if (workerId == serverWorkers[0].getWorkerId()) {
 				logger.debug("Received leader server resources measurements from worker {}", workerId);
 				tag = "primary_server";
-			} else if (workerId == serverWorkers[1].getWorkerId()) {
+			} else if (serverWorkers.length > 1 && workerId == serverWorkers[1].getWorkerId()) {
 				logger.debug("Received follower server resources measurements from worker {}", workerId);
 				tag = "secondary_server";
 			} else if (workerId == clientWorkers[0].getWorkerId()) {
 				logger.debug("Received measurement client resources measurements from worker {}", workerId);
 				tag = "primary_client";
-			} else if (workerId == clientWorkers[1].getWorkerId()) {
+			} else if (clientWorkers.length > 1 && workerId == clientWorkers[1].getWorkerId()) {
 				logger.debug("Received load client resources measurements from worker {}", workerId);
 				tag = "secondary_client";
 			}

@@ -30,7 +30,7 @@ import bftsmart.tom.util.TOMUtil;
 public interface Executable {
 
 	/**
-	 * Method called to execute a request totally ordered.
+	 * Method called to execute an unordered request.
 	 * The message context contains some useful information such as the command
 	 * sender.
 	 *
@@ -54,16 +54,13 @@ public interface Executable {
 		return reply;
 	}
 
-	default TOMMessage executeUnordered(int processID, int viewID, boolean isReplyHash, byte[] commonContent,
+	default TOMMessage executeUnordered(int processID, int viewID, byte[] commonContent,
 										byte[] replicaSpecificContent, MessageContext msgCtx) {
 		ServiceContent response = executeUnordered(commonContent, replicaSpecificContent, msgCtx);
 		if (response == null) {
 			return null;
 		}
 		byte[] commonResponse = response.getCommonContent();
-		if (isReplyHash) {
-			commonResponse = TOMUtil.computeHash(commonResponse);
-		}
 
 		return getTOMMessage(processID, viewID, commonContent, msgCtx, commonResponse,
 				response.getReplicaSpecificContent());

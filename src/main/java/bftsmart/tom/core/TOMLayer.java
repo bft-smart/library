@@ -30,6 +30,7 @@ import bftsmart.tom.ServiceReplica;
 import bftsmart.tom.core.messages.ForwardedMessage;
 import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.core.messages.TOMMessageType;
+import bftsmart.tom.core.response.ResponseManager;
 import bftsmart.tom.leaderchange.RequestsTimer;
 import bftsmart.tom.server.ProposeRequestVerifier;
 import bftsmart.tom.server.Recoverable;
@@ -114,6 +115,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 	public ServerViewController controller;
 
 	private final Synchronizer syncher;
+	private final ResponseManager responseManager;
 	private ProposeRequestVerifier proposeRequestVerifier;
 
 	/**
@@ -132,11 +134,13 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 					Recoverable recoverer,
 					Acceptor a,
 					ServerCommunicationSystem cs,
+					ResponseManager responseManager,
 					ServerViewController controller,
 					RequestVerifier verifier,
 					ProposeRequestVerifier proposeRequestVerifier) {
 
 		super("TOM Layer");
+		this.responseManager = responseManager;
 		this.proposeRequestVerifier = proposeRequestVerifier == null ?
 				(request -> true) : proposeRequestVerifier;
 		this.execManager = manager;
@@ -355,7 +359,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 		} else {
 			logger.debug("Received TOMMessage from client " + msg.getSender() + " with sequence number " + msg.getSequence() + " for session " + msg.getSession());
 
-			if (clientsManager.requestReceived(msg, fromClient, communication)) {
+			if (clientsManager.requestReceived(msg, fromClient, communication, responseManager)) {
 				if (msg.hasReplicaSpecificContent()) {
 					clientsManager.extractReplicaSpecificContent(msg);
 					replicaSpecificContentLock.lock();

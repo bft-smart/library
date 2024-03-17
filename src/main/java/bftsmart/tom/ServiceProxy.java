@@ -55,6 +55,7 @@ public class ServiceProxy extends TOMSender {
 
 	private AbstractRequestHandler requestHandler; //Active request context
 	private final IClientSideReconfigurationListener reconfigurationListener;
+	private final int me;
 
 	/**
 	 * Constructor
@@ -122,6 +123,7 @@ public class ServiceProxy extends TOMSender {
 						HashedExtractor hashedReplyExtractor, KeyLoader loader,
 						IClientSideReconfigurationListener reconfigurationListener) {
 		super(processId, configHome, loader);
+		this.me = processId;
 		this.invokeTimeout = getViewManager().getStaticConf().getClientInvokeOrderedTimeout();
 
 		comparator = (replyComparator != null) ? replyComparator
@@ -269,10 +271,10 @@ public class ServiceProxy extends TOMSender {
 			TOMMessage requestMessage = requestHandler.createRequest(request,
 					replicaSpecificContents != null, metadata);
 
-			logger.debug("Sending request ({}) with seqId = {}", reqType, requestHandler.getSequenceId());
+			logger.debug("[Client {}] Sending request ({}) with seqId = {}", me, reqType, requestHandler.getSequenceId());
 			TOMulticast(requestMessage, replicaSpecificContents);
 
-			logger.debug("Expected number of matching replies: {}", requestHandler.getReplyQuorumSize());
+			logger.debug("[Client {}] Expected number of matching replies: {}", me, requestHandler.getReplyQuorumSize());
 
 			// This instruction blocks the thread, until a response is obtained.
 			// The thread will be unblocked when the method replyReceived is invoked
@@ -280,8 +282,8 @@ public class ServiceProxy extends TOMSender {
 			requestHandler.waitForResponse();
 
 			if (requestHandler.isRequestTimeout()) {
-				logger.warn("###### TIMEOUT ({}s) OF REQUEST {} | seqId: {} | replies received: {} ######",
-						invokeTimeout, reqType, requestHandler.getSequenceId(),
+				logger.warn("[Client {}] ###### TIMEOUT ({}s) OF REQUEST {} | seqId: {} | replies received: {} ######",
+						me, invokeTimeout, reqType, requestHandler.getSequenceId(),
 						requestHandler.getNumberReceivedReplies());
 				if (reqType == TOMMessageType.UNORDERED_HASHED_REQUEST || reqType == TOMMessageType.UNORDERED_REQUEST) {
 					return invoke(TOMMessageType.ORDERED_REQUEST, request, replicaSpecificContents, metadata);
@@ -291,20 +293,20 @@ public class ServiceProxy extends TOMSender {
 			}
 
 			ServiceResponse response = requestHandler.getResponse();
-			logger.debug("Response extracted: " + response);
+			logger.debug("[Client {}] Response extracted: {}", me, response);
 
 			if (response == null) {
 				//the response can be null if n-f replies are received but there isn't
 				//a replyQuorumSize of matching replies
-				logger.debug("Received n-f replies and no response could be extracted.");
+				logger.debug("[Client {}] Received n-f replies and no response could be extracted.", me);
 
 				if (reqType == TOMMessageType.UNORDERED_REQUEST || reqType == TOMMessageType.UNORDERED_HASHED_REQUEST) {
 					//invoke the operation again, whitout the read-only flag
-					logger.debug("###################RETRY#######################");
+					logger.debug("[Client {}] ###################RETRY#######################", me);
 					return invoke(TOMMessageType.ORDERED_REQUEST, request, replicaSpecificContents, metadata);
 				} else {
 					requestHandler.printState();
-					throw new RuntimeException("Received n-f replies without f+1 of them matching.");
+					throw new RuntimeException("[Client " + me + "] Received n-f replies without f+1 of them matching.");
 				}
 			} else {
 				if (response.getViewID() == getViewManager().getCurrentViewId()) {// normal operation
@@ -318,7 +320,7 @@ public class ServiceProxy extends TOMSender {
 						// Ignore the response and request again because servers are in a later view
 						return invoke(TOMMessageType.ORDERED_REQUEST, request, replicaSpecificContents, metadata);
 					} else {// Reply to a reconfigure request!
-						logger.debug("Reconfiguration request' reply received!");
+						logger.debug("[Client {}] Reconfiguration request' reply received!", me);
 						Object r = TOMUtil.getObject(response.getContent());
 						if (r instanceof View) { //did not execute the request because it is using an outdated view
 							reconfigureTo((View) r);
@@ -327,17 +329,17 @@ public class ServiceProxy extends TOMSender {
 							reconfigureTo(((ReconfigureReply) r).getView());
 							return response;
 						} else{
-							logger.error("Unknown response type");
+							logger.error("[Client {}] Unknown response type", me);
 						}
 					}
 				} else {
-					logger.error("My view is ahead of the servers' view. This should never happen!");
+					logger.error("[Client {}] My view is ahead of the servers' view. This should never happen!", me);
 				}
 				return null;
 			}
 
 		} catch (InterruptedException e) {
-			logger.error("Failed to wait for a response. Returning null as response.", e);
+			logger.error("[Client {}] Failed to wait for a response. Returning null as response.", me, e);
 			return null;
 		} finally {
 			canSendLock.unlock(); //always release lock
@@ -356,10 +358,10 @@ public class ServiceProxy extends TOMSender {
 		int operationId = generateOperationId();
 		if (requestType == TOMMessageType.UNORDERED_HASHED_REQUEST || requestType == TOMMessageType.ORDERED_HASHED_REQUEST) {
 			int replyServer = getRandomlyServerId();
-			logger.debug("[Client {}] replyServerId({}) pos({})", getProcessId(), replyServer,
+			logger.debug("[Client {}] replyServerId({}) pos({})", me, replyServer,
 					getViewManager().getCurrentViewPos(replyServer));
 			requestHandler = new HashedRequestHandler(
-					getProcessId(),
+					me,
 					getSession(),
 					sequenceId,
 					operationId,
@@ -373,7 +375,7 @@ public class ServiceProxy extends TOMSender {
 			);
 		} else { // ORDERED_REQUEST or UNORDERED_REQUEST
 			requestHandler = new NormalRequestHandler(
-					getProcessId(),
+					me,
 					getSession(),
 					sequenceId,
 					operationId,
@@ -392,7 +394,7 @@ public class ServiceProxy extends TOMSender {
 
 	//******* EDUARDO BEGIN **************//
 	protected void reconfigureTo(View v) {
-		logger.debug("Installing a most up-to-date view with id=" + v.getId());
+		logger.debug("[Client {}] Installing a most up-to-date view with id={}", me, v.getId());
 		getViewManager().reconfigureTo(v);
 		getViewManager().getViewStore().storeView(v);
 		getCommunicationSystem().updateConnections();
@@ -408,13 +410,13 @@ public class ServiceProxy extends TOMSender {
 	 */
 	@Override
 	public void replyReceived(TOMMessage reply) {
-		logger.debug("Synchronously received reply from {} with sequence number {}", reply.getSender(),
+		logger.debug("[Client {}] Synchronously received reply from {} with sequence number {}", me, reply.getSender(),
 				reply.getSequence());
 		try {
 			canReceiveLock.lock();
 			requestHandler.processReply(reply);
 		} catch (Exception ex) {
-			logger.error("Problem processing reply", ex);
+			logger.error("[Client {}] Problem processing reply", me, ex);
 		} finally {
 			canReceiveLock.unlock();
 		}

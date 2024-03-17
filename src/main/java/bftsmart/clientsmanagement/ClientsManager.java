@@ -22,6 +22,8 @@ import java.util.concurrent.locks.ReentrantLock;
 import bftsmart.communication.ServerCommunicationSystem;
 import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.tom.core.messages.TOMMessage;
+import bftsmart.tom.core.messages.TOMMessageType;
+import bftsmart.tom.core.response.ResponseManager;
 import bftsmart.tom.leaderchange.RequestsTimer;
 import bftsmart.tom.server.RequestVerifier;
 import bftsmart.tom.util.TOMUtil;
@@ -278,7 +280,7 @@ public class ClientsManager {
 	}
 
 	public boolean requestReceived(TOMMessage request, boolean fromClient) {
-		return requestReceived(request, fromClient, null);
+		return requestReceived(request, fromClient, null, null);
 	}
 
 	/**
@@ -287,14 +289,13 @@ public class ClientsManager {
 	 *
 	 * @param request the received request
 	 * @param fromClient the message was received from client or not?
-	 * @param storeMessage the message should be stored or not? (read-only requests are not stored)
 	 * @param cs server com. system to be able to send replies to already processed requests
 	 *
 	 * @return true if the request is ok and is added to the pending messages
 	 * for this client, false if there is some problem and the message was not
 	 * accounted
 	 */
-	public boolean requestReceived(TOMMessage request, boolean fromClient, ServerCommunicationSystem cs) {
+	public boolean requestReceived(TOMMessage request, boolean fromClient, ServerCommunicationSystem cs, ResponseManager rm) {
 
 		long receptionTime = System.nanoTime();
 		long receptionTimestamp = System.currentTimeMillis();
@@ -411,13 +412,15 @@ public class ClientsManager {
 
 				//send reply if it is available
 				TOMMessage reply = clientData.getReply(request.getSequence());
-				if (reply != null && cs != null) {
+				if (reply != null && cs != null && rm != null) {
+					boolean isReplyHash = request.getReqType() == TOMMessageType.ORDERED_HASHED_REQUEST
+							&& request.getReplyServer() != reply.getSender();
 					if (reply.recvFromClient && fromClient) {
 						logger.info("[CACHE] re-send reply [Sender: {}, sequence: {}, session: {}]", reply.getSender(), reply.getSequence(), reply.getSession());
-						cs.send(new int[]{request.getSender()}, reply);
+						rm.send(reply, request.getSender(), isReplyHash);
 					} else if (!reply.recvFromClient && fromClient) {
 						reply.recvFromClient = true;
-						cs.send(new int[]{request.getSender()}, reply);
+						rm.send(reply, request.getSender(), isReplyHash);
 					}
 				}
 				accounted = true;

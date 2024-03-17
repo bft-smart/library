@@ -138,10 +138,9 @@ public class NettyTOMMessageDecoder extends ByteToMessageDecoder {
 		}
 
 
-		try (ByteArrayInputStream bais = new ByteArrayInputStream(data);
-			 DataInputStream dis = new DataInputStream(bais)) {
+		try {
 			TOMMessage sm = new TOMMessage();
-			sm.rExternal(dis);
+            sm.deserialize(data);
             sm.serializedMessage = data;
 
             if (signature != null) {

@@ -7,7 +7,7 @@ package bftsmart.tom.util;
  */
 public class ServiceContent {
 	// The common content is the same for all replicas.
-	private final byte[] commonContent;
+	private byte[] commonContent;
 
 	// The replica specific content is different for each replica.
 	private byte[] replicaSpecificContent;
@@ -31,5 +31,9 @@ public class ServiceContent {
 
 	public void setReplicaSpecificContent(byte[] replicaSpecificContent) {
 		this.replicaSpecificContent = replicaSpecificContent;
+	}
+
+	public void setCommonContent(byte[] commonContent) {
+		this.commonContent = commonContent;
 	}
 }
