@@ -25,15 +25,15 @@ The servers must be specified in the configuration file (see `config/hosts.confi
 
 The system configurations also have to be specified (see`config/system.config`). Most of the parameters are self explanatory.
 
-**Important tip #3:** When using the library in real systems, always make sure to set `system.communication.defaultkeys` to `false` and `system.communication.useSignatures` to `1`. Also make sure that only the `config/keys` directory only has the private key for the repective replica/client.
+**Important tip #3:** When using the library in real systems, always make sure to set `system.communication.defaultkeys` to `false` and `system.communication.useSignatures` to `1`. Also make sure that only the `config/keys` directory has the private key for the respective replica/client.
 
 You can run the counter demonstration by executing the following commands, from within the main directory across four different consoles (4 replicas, to tolerate 1 fault):
 
 ```
-./runscripts/smartrun.sh bftsmart.demo.counter.CounterServer 0
-./runscripts/smartrun.sh bftsmart.demo.counter.CounterServer 1
-./runscripts/smartrun.sh bftsmart.demo.counter.CounterServer 2
-./runscripts/smartrun.sh bftsmart.demo.counter.CounterServer 3
+./smartrun.sh bftsmart.demo.counter.CounterServer 0
+./smartrun.sh bftsmart.demo.counter.CounterServer 1
+./smartrun.sh bftsmart.demo.counter.CounterServer 2
+./smartrun.sh bftsmart.demo.counter.CounterServer 3
 ```
 
 **Important tip #4:** If you are getting timeout messages, it is possible that the application you are running takes too long to process the requests or the network delay is too high and PROPOSE messages from the leader does not arrive in time, so replicas may start the leader change protocol. To prevent that, try to increase the `system.totalordermulticast.timeout` parameter in 'config/system.config'.
@@ -43,7 +43,7 @@ You can run the counter demonstration by executing the following commands, from 
 Once all replicas are ready, the client can be launched as follows:
 
 ```
-./runscripts/smartrun.sh bftsmart.demo.counter.CounterClient 1001 <increment> [<number of operations>]
+./smartrun.sh bftsmart.demo.counter.CounterClient 1001 <increment> [<number of operations>]
 ```
 
 If `<increment>` equals 0 the request will be read-only. Default `<number of operations>` equals 1000.
@@ -66,8 +66,8 @@ The second, more advanced protocol can be used by extending the class
 The library also implements a reconfiguration protocol that can be used to add/remove replicas from the initial group. You can add/remove replicas on-the-fly by executing the following commands:
 
 ```
-./runscripts/smartrun.sh bftsmart.reconfiguration.util.DefaultVMServices <smart id> <ip address> <port> (to add a replica to the group)
-./runscripts/smartrun.sh bftsmart.reconfiguration.util.DefaultVMServices <smart id> (to remove a replica from the group)
+./smartrun.sh bftsmart.reconfiguration.util.DefaultVMServices <smart id> <ip address> <port> (to add a replica to the group)
+./smartrun.sh bftsmart.reconfiguration.util.DefaultVMServices <smart id> (to remove a replica from the group)
 ```
 
 **Important tip #9:** everytime you use the reconfiguration protocol, you must make sure that all replicas and the host where you invoke the above commands have the latest `config/currentView` file. The current implementation of BFT-SMaRt does not provide any mechanism to distribute this file, so you will need to distribute it on your own (e.g., using the `scp` command). You also need to make sure that any client that starts executing can read from the latest `config/currentView` file.
@@ -81,7 +81,7 @@ You can run BFT-SMaRt in crash-faults only mode by setting the `system.bft` para
 If you need to generate public/private keys for more replicas or clients, you can use the following command:
 
 ```
-./runscripts/smartrun.sh bftsmart.tom.util.RSAKeyPairGenerator <id> <key size>
+./smartrun.sh bftsmart.tom.util.RSAKeyPairGenerator <id> <key size>
 ```
 
 Keys are stored in the `config/keys` folder. The command above creates key pairs both for clients and replicas. Alternatively, you can set the `system.communication.defaultkeys` to `true` in the `config/system.config` file to forces all processes to use the same public/private keys pair and secret key. This is useful when deploying experiments and benchmarks, because it enables the programmer to avoid generating keys for all principals involved in the system. However, this must not be used in a real deployments.

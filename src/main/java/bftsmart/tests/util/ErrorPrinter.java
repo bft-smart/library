@@ -1,4 +1,4 @@
-package bftsmart.tests.recovery;
+package bftsmart.tests.util;
 
 import java.io.BufferedReader;
 import java.io.IOException;

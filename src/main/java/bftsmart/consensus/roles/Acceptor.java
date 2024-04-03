@@ -431,7 +431,9 @@ public final class Acceptor {
 		logger.debug("I have {} ACCEPTs for cId:{}, Timestamp:{} ", epoch.countAccept(value), cid,
 				epoch.getTimestamp());
 
-		if (epoch.countAccept(value) > controller.getQuorum() && !epoch.getConsensus().isDecided()) {
+		if (epoch.countAccept(value) > controller.getQuorum()
+				&& !epoch.getConsensus().isDecided()
+				&& Arrays.equals(value, epoch.propValueHash)) {
 			logger.debug("Deciding consensus " + cid);
 			decide(epoch);
 
@@ -540,12 +542,12 @@ public final class Acceptor {
 				executionManager.addForwarded(msg.getNumber(), msg.getSender());
 			}
 		} else {
-			boolean consensusIsDecidedButForgotten = msg.getNumber() <= tomLayer.getLastExec() - ExecutionManager.NUMBER_OF_STABLE_CONSENSUSES_SAVED;
+			boolean consensusIsDecidedButForgotten = msg.getNumber() <= tomLayer.getLastExec() - controller.getStaticConf().getCheckpointPeriod();
 			if (consensusIsDecidedButForgotten) {
 				// we will also arrive here if a replica forgets about past consensues, because the are removed from the consensuses map
 				// this means the requester is left far behind and needs to perform a state transfer to catch up
-				// TODO Send a <OUTDATED-REQ, proof> message back to notify the requester?
-				logger.debug("decision request is too old to handle (has been garbage collected) and will be ignored");
+
+				logger.warn("decision request is too old to handle (decision has been garbage collected) and will be ignored");
 			} else {
 				logger.debug(">>> >> >>  > Consensus " + cid  +
 						" is still undecided remembering replica " + msg.getSender() + " to be forwarded to after deciding");

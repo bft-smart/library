@@ -87,24 +87,20 @@ public final class DeliveryThread extends Thread {
 	 * @param dec Decision established from the consensus
 	 */
 	public void delivery(Decision dec) {
+		decidedLock.lock();
 
 		try {
-			decidedLock.lock();
 			decided.put(dec);
 
 			// clean the ordered messages from the pending buffer
 			TOMMessage[] requests = extractMessagesFromDecision(dec);
 			tomLayer.clientsManager.requestsOrdered(requests);
-
-			notEmptyQueue.signalAll();
-			decidedLock.unlock();
 			logger.debug("Consensus " + dec.getConsensusId() + " finished. Decided size=" + decided.size());
 		} catch (Exception e) {
-			logger.error("Could not insert decision into decided queue", e);
+			logger.error("Could not insert decision into decided queue and mark requests as delivered", e);
 		}
 
 		if (!containsReconfig(dec)) {
-
 			logger.debug("Decision from consensus " + dec.getConsensusId() + " does not contain reconfiguration");
 			// set this decision as the last one from this replica
 			tomLayer.setLastExec(dec.getConsensusId());
@@ -116,6 +112,9 @@ public final class DeliveryThread extends Thread {
 			logger.debug("Decision from consensus " + dec.getConsensusId() + " has reconfiguration");
 			lastReconfig = dec.getConsensusId();
 		}
+
+		notEmptyQueue.signalAll();
+		decidedLock.unlock();
 	}
 
 	private boolean containsReconfig(Decision dec) {
@@ -285,13 +284,9 @@ public final class DeliveryThread extends Thread {
 
 						// cons.firstMessageProposed contains the performance counters
 						if (requests[count][0].equals(d.firstMessageProposed)) {
-							long time = requests[count][0].timestamp;
-							long seed = requests[count][0].seed;
-							int numOfNonces = requests[count][0].numOfNonces;
-							requests[count][0] = d.firstMessageProposed;
-							requests[count][0].timestamp = time;
-							requests[count][0].seed = seed;
-							requests[count][0].numOfNonces = numOfNonces;
+							d.firstMessageProposed.timestamp = requests[count][0].timestamp;
+							d.firstMessageProposed.seed = requests[count][0].seed;
+							d.firstMessageProposed.numOfNonces = requests[count][0].numOfNonces;
 						}
 
 						count++;
@@ -322,8 +317,8 @@ public final class DeliveryThread extends Thread {
 					// TODO: Is this part necessary? If it is, can we put it
 					// inside setLastExec
 					int cid = lastDecision.getConsensusId();
-					if (cid >= ExecutionManager.NUMBER_OF_STABLE_CONSENSUSES_SAVED) {
-						int stableConsensus = cid - ExecutionManager.NUMBER_OF_STABLE_CONSENSUSES_SAVED;
+					if (cid >= controller.getStaticConf().getCheckpointPeriod()) {
+						int stableConsensus = cid - controller.getStaticConf().getCheckpointPeriod();
 						// What is a good value of NUMBER_OF_STABLE_CONSENSUSES_SAVED
 						// And: how to avoid memory problems? (make sure sufficient memory is available)
 						tomLayer.execManager.removeConsensus(stableConsensus);

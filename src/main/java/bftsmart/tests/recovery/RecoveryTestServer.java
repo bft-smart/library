@@ -1,5 +1,6 @@
 package bftsmart.tests.recovery;
 
+import bftsmart.tests.util.Operation;
 import bftsmart.tom.MessageContext;
 import bftsmart.tom.ServiceReplica;
 import bftsmart.tom.server.defaultservices.DefaultSingleRecoverable;

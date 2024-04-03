@@ -47,8 +47,6 @@ import org.slf4j.LoggerFactory;
  */
 public final class ExecutionManager {
 
-    public static final int NUMBER_OF_STABLE_CONSENSUSES_SAVED = 100;
-
     private Logger logger = LoggerFactory.getLogger(this.getClass());
 
     private ServerViewController controller;
@@ -272,7 +270,11 @@ public final class ExecutionManager {
                     //System.out.println("(ExecutionManager.checkLimits) Message for consensus " + 
                     //       msg.getNumber() + " is out of context, adding it to out of context set; isRetrievingState="+isRetrievingState);
 
-
+                    addOutOfContextMessage(msg);
+                } else if(getConsensus(msg.getNumber()).getEpoch(msg.getEpoch(), controller).deserializedPropValue == null &&
+                        msg.getType() == MessageFactory.ACCEPT) { //if the propose message has not been processed yet, and a ACCEPT message is received -> out of context
+                    logger.debug("ACCEPT-Message for consensus " +
+                            msg.getNumber() + " received before PROPOSE, adding it to out of context set");
                     addOutOfContextMessage(msg);
                 } else { //can process!
                     logger.debug("Message for consensus " +
@@ -280,6 +282,7 @@ public final class ExecutionManager {
 
                     //Logger.debug = false;
                     canProcessTheMessage = true;
+
                 }
             }
         } else if ((lastConsId == -1 && msg.getNumber() >= (lastConsId + revivalHighMark)) || //recovered...

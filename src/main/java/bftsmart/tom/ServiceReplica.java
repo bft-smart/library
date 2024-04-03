@@ -287,6 +287,7 @@ public class ServiceReplica {
                         throw new RuntimeException("Should never reach here!");
                     } else switch (request.getReqType()) {
                         case ORDERED_REQUEST:
+						case ORDERED_HASHED_REQUEST:
                             noop = false;
                             numRequests++;
                             MessageContext msgCtx = new MessageContext(request.getSender(), request.getViewID(),
@@ -323,8 +324,11 @@ public class ServiceReplica {
                                 
                                 // This is used to deliver the requests to the application and obtain a reply to deliver
                                 //to the clients. The raw decision is passed to the application in the line above.
-                                TOMMessage response = ((SingleExecutable) executor).executeOrdered(id, SVController.getCurrentViewId(), request.getContent(), msgCtx);
-                                
+								boolean isReplyHash = request.getReqType() == TOMMessageType.ORDERED_HASHED_REQUEST
+										&& request.getReplyServer() != this.id;
+                                TOMMessage response = ((SingleExecutable) executor).executeOrdered(id,
+										SVController.getCurrentViewId(), isReplyHash, request.getContent(), msgCtx);
+
                                 if (response != null) {
                                     
                                     logger.debug("sending reply to " + response.getSender());
@@ -399,11 +403,14 @@ public class ServiceReplica {
         if (executor instanceof BatchExecutable && numRequests > 0) {
             //Make new batch to deliver
             byte[][] batch = new byte[numRequests][];
+			boolean[] isReplyHashes = new boolean[numRequests];
 
             //Put messages in the batch
             int line = 0;
             for (TOMMessage m : toBatch) {
                 batch[line] = m.getContent();
+				isReplyHashes[line] = m.getReqType() == TOMMessageType.ORDERED_HASHED_REQUEST
+						&& m.getReplyServer() != this.id;
                 line++;
             }
 
@@ -411,7 +418,8 @@ public class ServiceReplica {
             msgContexts = msgCtxts.toArray(msgContexts);
             
             //Deliver the batch and wait for replies
-            TOMMessage[] replies = ((BatchExecutable) executor).executeBatch(id, SVController.getCurrentViewId(), batch, msgContexts);
+            TOMMessage[] replies = ((BatchExecutable) executor).executeBatch(id, SVController.getCurrentViewId(),
+					isReplyHashes, batch, msgContexts);
 
             //Send the replies back to the client
             if (replies != null) {

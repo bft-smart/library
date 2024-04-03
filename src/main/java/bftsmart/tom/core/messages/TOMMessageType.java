@@ -27,31 +27,12 @@ public enum TOMMessageType {
     RECONFIG, //3
     ASK_STATUS, // 4
     STATUS_REPLY,// 5
-    UNORDERED_HASHED_REQUEST; //6
-    
-    public int toInt() {
-        switch(this) {
-            case ORDERED_REQUEST: return 0;
-            case UNORDERED_REQUEST: return 1;
-            case REPLY: return 2;
-            case RECONFIG: return 3;
-            case ASK_STATUS: return 4;
-            case STATUS_REPLY: return 5;
-            case UNORDERED_HASHED_REQUEST: return 6;
-            default: return -1;
-        }
-    }
-    
-    public static TOMMessageType fromInt(int i) {
-        switch(i) {
-            case 0: return ORDERED_REQUEST;
-            case 1: return UNORDERED_REQUEST;
-            case 2: return REPLY;
-            case 3: return RECONFIG;
-            case 4: return ASK_STATUS;
-            case 5: return STATUS_REPLY;
-            case 6: return UNORDERED_HASHED_REQUEST;
-            default: return RECONFIG;
-        }            
-    }
+    UNORDERED_HASHED_REQUEST, //6
+	ORDERED_HASHED_REQUEST; //7
+
+	public static TOMMessageType[] values = values();
+
+	public static TOMMessageType getMessageType(int ordinal) {
+		return values[ordinal];
+	}
 }
