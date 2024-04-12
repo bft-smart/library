@@ -39,11 +39,11 @@ public class IntegrationTestsExecutor {
 
 		AbstractIntegrationTest[] integrationTests = {
 				new RecoveryTest(workingDirectory, f, isBFT),
-			/*	new CounterTest(workingDirectory, f, isBFT),
+				new CounterTest(workingDirectory, f, isBFT),
 				new OrderedRequestTest(workingDirectory, f, isBFT),
 				new UnorderedRequestTest(workingDirectory, f, isBFT),
 				new OrderedHashedRequestTest(workingDirectory, f, isBFT),
-				new UnorderedHashedRequestTest(workingDirectory, f, isBFT) */
+				new UnorderedHashedRequestTest(workingDirectory, f, isBFT)
 		};
 
 		for (AbstractIntegrationTest integrationTest : integrationTests) {
