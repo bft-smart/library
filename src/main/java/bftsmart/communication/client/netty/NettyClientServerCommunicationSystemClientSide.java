@@ -234,6 +234,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 							future = connectToReplica(replicaId, secretKeyFactory);
 							// Re-transmit a request after re-connection
 							future.await();
+							logger.info("Retransmitting message after a re-connect: " + this.pendingRequest.getSequence());
 							retransmitMessage(this.pendingRequest, replicaId, this.pendingRequestSign);
 						} catch (InvalidKeyException | InvalidKeySpecException e) {
 							// TODO Auto-generated catch block
@@ -265,16 +266,11 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 	@Override
 	public void send(boolean sign, int[] targets, TOMMessage sm) {
 
-		int quorum;
+		int quorum = controller.getReplyQuorum();
 
 		Integer[] targetArray = Arrays.stream(targets).boxed().toArray(Integer[]::new);
 		Collections.shuffle(Arrays.asList(targetArray), new Random());
 
-		if (controller.getStaticConf().isBFT()) {
-			quorum = (int) Math.ceil((controller.getCurrentViewN() + controller.getCurrentViewF()) / 2) + 1;
-		} else {
-			quorum = (int) Math.ceil((controller.getCurrentViewN()) / 2) + 1;
-		}
 
 		listener.waitForChannels(quorum); // wait for the previous transmission to complete
 
@@ -350,7 +346,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 			dos.flush();
 			sm.serializedMessage = baos.toByteArray();
 		} catch (IOException ex) {
-			logger.debug("Impossible to serialize message: " + sm);
+			logger.error("Impossible to serialize message: " + sm);
 		}
 	}
 
@@ -567,8 +563,8 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 		if (sm == null) {
 			return;
 		}
-		logger.debug("Re-transmitting request from " + sm.getSender() + " with sequence number " + sm.getSequence() + " to "
-				+ replicaId);
+		logger.info("Re-transmitting request from " + sm.getSender() + " with sequence number " + sm.getSequence()
+				+ " to " + replicaId);
 		if (sm.serializedMessage == null) {
 			serializeMessage(sm);
 		}
@@ -586,11 +582,10 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 		rl.readLock().unlock();
 		if (channel.isActive()) {
 			sm.signed = sign;
-			logger.debug("-- Write and Flush " + sm.getSequence());
 			ChannelFuture f = channel.writeAndFlush(sm);
 			f.addListener(listener);
 		} else {
-			logger.debug("Channel to " + replicaId + " is not connected");
+			logger.info("Channel to " + replicaId + " is not connected");
 		}
 	}
 }

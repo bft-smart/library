@@ -57,6 +57,8 @@ public class ClientsManager {
     
     private ReentrantLock clientsLock = new ReentrantLock();
 
+    private long startTime = -1;
+
     public ClientsManager(ServerViewController controller, RequestsTimer timer, RequestVerifier verifier, ServerCommunicationSystem cs) {
         this.controller = controller;
         this.timer = timer;
@@ -67,6 +69,7 @@ public class ClientsManager {
             benchMsg = new byte []{3,5,6,7,4,3,5,6,4,7,4,1,7,7,5,4,3,1,4,85,7,5,7,3};
             benchSig = TOMUtil.signMessage(controller.getStaticConf().getPrivateKey(), benchMsg);            
         }
+        startTime = System.currentTimeMillis() / 1000L ;
     }
 
     /**
@@ -296,7 +299,7 @@ public class ClientsManager {
      * accounted
      */
     public boolean requestReceived(TOMMessage request, boolean fromClient, ServerCommunicationSystem cs) {
-                
+
         long receptionTime = System.nanoTime();
         long receptionTimestamp = System.currentTimeMillis();
         
@@ -307,6 +310,7 @@ public class ClientsManager {
         
         if(request.getSequence() < 0) {
             //Do not accept this faulty message. -1 is the initial value which will bypass the sequence-checking further down in the function
+            logger.warn("Sequence number < 0");
             return false;
         }
 
@@ -341,6 +345,12 @@ public class ClientsManager {
                 //clientData.setLastMessageReceivedTime(request.receptionTime);
 
                 clientData.clientLock.unlock();
+                // A faulty clients spams too many requests
+                if (!thisReplicaWasRecovered()) {
+                    logger.warn("Client message from " + request.getSender() + " dropped due to flow control mechanism");
+                } else {
+                    logger.debug("Client message from " + request.getSender() + " dropped due to flow control mechanism");
+                }
                 return false;
             }
         }
@@ -414,7 +424,7 @@ public class ClientsManager {
                 TOMMessage reply = clientData.getReply(request.getSequence());
                 
                 if (reply != null && cs != null) {
-                    
+
                     if (reply.recvFromClient && fromClient) {
                         logger.info("[CACHE] re-send reply [Sender: " + reply.getSender() + ", sequence: " + reply.getSequence()+", session: " + reply.getSession()+ "]");
                         cs.send(new int[]{request.getSender()}, reply);
@@ -424,14 +434,14 @@ public class ClientsManager {
                     else if (!reply.recvFromClient && fromClient) {
                         reply.recvFromClient = true;
                     }
-                    
+
                 }
                 accounted = true;
             } else {
-                
-                logger.warn("Message from client {} is too forward", clientData.getClientId());
-                
-                //a too forward message... the client must be malicious
+                if (!thisReplicaWasRecovered())
+                    logger.warn("Message from client {} is too forward", clientData.getClientId());
+                    //a too forward message... the client must be malicious
+                    // this scenarios can also occur under a correct client if a replica recovers
                 accounted = false;
             }
         }
@@ -584,7 +594,7 @@ public class ClientsManager {
      * @param repliesToClients TreeMap of last reply for each client (clientID -> last reply)
      */
     public void manageLastReplyOfEachClientAfterRecovery(TreeMap<Integer, TOMMessage> repliesToClients) {
-        logger.info("Setting the reply store for #clients after state transfer: " + repliesToClients.size());
+        logger.warn("Setting the reply store for #clients after state transfer: " + repliesToClients.size());
         for (TOMMessage m: repliesToClients.values()) {
             m.setSender(this.controller.getStaticConf().getProcessId());
         }
@@ -603,7 +613,7 @@ public class ClientsManager {
             clientData.clientLock.unlock();
 
             int[] target = {client};
-            logger.debug(">> Sending reply of client " + client + " seq " + reply.getSequence() + " session " + reply.getSession() + " opID " +reply.getOperationId());
+            logger.info(">> Sending reply of client " + client + " seq " + reply.getSequence() + " session " + reply.getSession() + " opID " +reply.getOperationId());
             cs.send(target, reply);
         }
         this.clientsLock.unlock();
@@ -628,6 +638,14 @@ public class ClientsManager {
         this.clientsLock.unlock();
 
         return lastReplies;
+    }
+
+    /**
+     * Used to indicate a reboot, relevant to give more details in warning messages
+     * @return boolean IF the replica has been re-booted within the last 20 seconds
+     */
+    public boolean thisReplicaWasRecovered() { // reports IF the replica has been re-booted within the last 20 seconds
+        return ! (System.currentTimeMillis() / 1000L - startTime > 20000) ;
     }
 
 

@@ -319,8 +319,7 @@ public final class DeliveryThread extends Thread {
 					int cid = lastDecision.getConsensusId();
 					if (cid >= controller.getStaticConf().getCheckpointPeriod()) {
 						int stableConsensus = cid - controller.getStaticConf().getCheckpointPeriod();
-						// What is a good value of NUMBER_OF_STABLE_CONSENSUSES_SAVED
-						// And: how to avoid memory problems? (make sure sufficient memory is available)
+						// How to avoid memory problems? (make sure sufficient memory is available)
 						tomLayer.execManager.removeConsensus(stableConsensus);
 					}
 				}

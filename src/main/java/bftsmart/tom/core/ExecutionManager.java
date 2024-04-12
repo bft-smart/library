@@ -99,7 +99,7 @@ public final class ExecutionManager {
      * @param me This process ID
      */
     public ExecutionManager(ServerViewController controller, Acceptor acceptor,
-                            Proposer proposer, int me) {
+            Proposer proposer, int me) {
         //******* EDUARDO BEGIN **************//
         this.controller = controller;
         this.acceptor = acceptor;
@@ -123,8 +123,8 @@ public final class ExecutionManager {
      * Set the current leader
      * @param leader Current leader
      */
-    public void setNewLeader(int leader) {
-        this.currentLeader = leader;
+    public void setNewLeader (int leader) {
+            this.currentLeader = leader;
     }
 
     /**
@@ -132,7 +132,7 @@ public final class ExecutionManager {
      * @return Current leader
      */
     public int getCurrentLeader() {
-        return currentLeader;
+            return currentLeader;
     }
 
     /**
@@ -191,11 +191,11 @@ public final class ExecutionManager {
         if (tomLayer.getInExec() != -1) {
             stoppedEpoch = getConsensus(tomLayer.getInExec()).getLastEpoch();
             //stoppedEpoch.getTimeoutTask().cancel();
-            if (stoppedEpoch != null)
-                logger.debug("Stopping epoch " + stoppedEpoch.getTimestamp() + " of consensus " + tomLayer.getInExec());
+            if (stoppedEpoch != null) logger.debug("Stopping epoch " + stoppedEpoch.getTimestamp() + " of consensus " + tomLayer.getInExec());
         }
         stoppedMsgsLock.unlock();
     }
+
 
 
     /**
@@ -313,7 +313,7 @@ public final class ExecutionManager {
         if (controller.getStaticConf().useReadOnlyRequests()) {
 
             if (msg.getPaxosVerboseType().equals("ACCEPT")) {
-                logger.debug(">>>> Received Accept, will check if a Decision needs to be requested");
+                logger.debug("ExecutionManager.checkLimits: Received Accept, will check if a Decision needs to be requested");
 
                 Consensus consensus = getConsensus(msg.getNumber());
                 Epoch epoch = consensus.getEpoch(msg.getEpoch(), controller);
@@ -329,14 +329,14 @@ public final class ExecutionManager {
             }
 
             if (msg.getNumber() == lastConsId + 1 && msg.getPaxosVerboseType().equals("FWD_DECISION")) {
-                logger.debug(">>>> Received FWD_DECISION, will check if a Decision needs to be processed..");
+                logger.debug("ExecutionManager.checkLimits: Received FWD_DECISION, will check if a Decision needs to be processed..");
 
                 canProcessTheMessage = true;
 
             }
 
             if (msg.getPaxosVerboseType().equals("REQ_DECISION")) {
-                logger.debug(">>>> Received REQ_DECISION, will check if a decision should be forwarded..");
+                logger.debug("ExecutionManager.checkLimits: Received REQ_DECISION, will check if a decision should be forwarded..");
 
                 canProcessTheMessage = true;
             }
@@ -503,11 +503,11 @@ public final class ExecutionManager {
                 }
             }
 
-            if (controller.getStaticConf().isBFT()) {
-                return ((countWrites > (2 * controller.getCurrentViewF())) &&
-                        (countAccepts > (2 * controller.getCurrentViewF())));
-            } else {
-                return (countAccepts > controller.getQuorum());
+            if(controller.getStaticConf().isBFT()){
+            	return ((countWrites > (2*controller.getCurrentViewF())) &&
+            			(countAccepts > (2*controller.getCurrentViewF())));
+            }else{
+            	return (countAccepts > controller.getQuorum());
             }
         }
         return false;
@@ -636,7 +636,7 @@ public final class ExecutionManager {
         /******* BEGIN OUTOFCONTEXT CRITICAL SECTION *******/
 
         int cid = epoch.getConsensus().getId();
-        logger.debug(">>>>>> epoch.getConsensus().getId() " + cid + " message.getNumber() " + message.getNumber());
+        logger.debug("ExecutionManager.checkRequestDecision: epoch.getConsensus().getId() " + cid + " message.getNumber() " + message.getNumber());
         if (message.getNumber() == cid && message.getPaxosVerboseType().equals("ACCEPT")) {
             int countAccepts = 1;
 
@@ -649,12 +649,12 @@ public final class ExecutionManager {
                     }
                 }
 
-                logger.debug(">> >> I have " + countAccepts + " Accepts for cid " + cid);
+                logger.debug("ExecutionManager.checkRequestDecision: I have " + countAccepts + " Accepts for cid " + cid);
 
                 if (countAccepts > controller.getCurrentViewF() && !epoch.decisionRequested &&
                         (epoch.propValue == null || !Arrays.equals(epoch.propValueHash, message.getValue()))) {
 
-                    logger.debug(">> >> >> >> No Propose, or propose mismatch, I request a decision from others");
+                    logger.debug("ExecutionManager.checkRequestDecision: No Propose, or propose mismatch, I request a decision from others");
                     requestDecision = true;
                     epoch.decisionRequested = true;
                 }
@@ -663,7 +663,7 @@ public final class ExecutionManager {
                 if (epoch.countAccept(message.getValue()) > controller.getCurrentViewF() && !epoch.getConsensus().isDecided() &&
                         !epoch.decisionRequested && (epoch.propValue == null || !Arrays.equals(epoch.propValueHash, message.getValue()))
                 ) {
-                    logger.debug(">> >> >> >>  propose mismatch, I request a decision from others");
+                    logger.debug("ExecutionManager.checkRequestDecision: propose mismatch, I request a decision from others");
                     requestDecision = true;
                     epoch.decisionRequested = true;
                 }

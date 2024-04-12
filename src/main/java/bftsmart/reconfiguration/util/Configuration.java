@@ -165,7 +165,7 @@ public class Configuration {
 
 			s = (String) configs.remove("system.optimizations.readonly_requests");
 			if (s == null) {
-				useReadOnlyRequests = false;
+				useReadOnlyRequests = true;
 			} else {
 				useReadOnlyRequests = (s.equalsIgnoreCase("true"));
 			}

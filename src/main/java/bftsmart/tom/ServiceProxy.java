@@ -352,23 +352,6 @@ public class ServiceProxy extends TOMSender {
 		}
 	}
 
-	/**
-	 * Retrieves the required quorum size for the amount of replies
-	 *
-	 * @return The quorum size for the amount of replies
-	 */
-	protected int getReplyQuorum() {
-		int n = getViewManager().getCurrentViewN();
-		int f = getViewManager().getCurrentViewF();
-		if (getViewManager().getStaticConf().isBFT()) {
-			// Note that a quorum ensures Linearizability when unordered requests are used
-			// f + 1 is sufficient in case the replicas' system configuration does not support unordered requests
-			return getViewManager().getStaticConf().useReadOnlyRequests() ? ((n + f) / 2 + 1) : f + 1;
-		} else {
-			return getViewManager().getStaticConf().useReadOnlyRequests() ? (n / 2 + 1) : 1;
-		}
-	}
-
 	private int getRandomlyServerId(){
 		int numServers = super.getViewManager().getCurrentViewProcesses().length;
 		int pos = rand.nextInt(numServers);

@@ -148,7 +148,7 @@ public class ClientData {
 
     public TOMMessage getReply(int reqSequence) {
         TOMMessage request = orderedRequests.getBySequence(reqSequence);
-        if(request != null) {
+        if (request != null) {
             return request.reply;
         } else {
             // if not in list of ordered requests, then check the reply store:

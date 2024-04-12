@@ -34,6 +34,7 @@ import bftsmart.tom.leaderchange.RequestsTimer;
 import bftsmart.tom.server.Recoverable;
 import bftsmart.tom.server.RequestVerifier;
 import bftsmart.tom.server.defaultservices.DefaultRecoverable;
+import bftsmart.tom.server.defaultservices.DefaultSingleRecoverable;
 import bftsmart.tom.util.BatchBuilder;
 import bftsmart.tom.util.BatchReader;
 import bftsmart.tom.util.TOMUtil;
@@ -177,9 +178,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
 
         // If recoverer should use lastReplies of clients to recover, it needs reference to clientsManager
-        if (recoverer instanceof DefaultRecoverable) {
-            ((DefaultRecoverable) recoverer).setClientsManager(clientsManager);
-        }
+        recoverer.setClientsManager(clientsManager);
 
         this.dt = new DeliveryThread(this, receiver, recoverer, this.controller); // Create delivery thread
         this.stateManager = recoverer.getStateManager();
@@ -378,7 +377,11 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
                 }
             } else {
-                logger.warn("The received TOMMessage " + msg + " was discarded.");
+                if (clientsManager.thisReplicaWasRecovered()){
+                    logger.debug("The received TOMMessage " + msg + " was discarded.");
+                } else {
+                    logger.warn("The received TOMMessage " + msg + " was discarded.");
+                }
             }
         }
     }
@@ -667,5 +670,4 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         if (this.communication != null) this.communication.shutdown();
 
     }
-
 }

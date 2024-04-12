@@ -226,30 +226,18 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
     }
 
     private void saveReplies(TreeMap<Integer, TOMMessage> lastClientReplies, int lastCID) {
-
         StateLog thisLog = getLog();
-
         logger.debug("(TOMLayer.saveState) Saving reply store of CID " + lastCID);
         logLock.lock();
-
         thisLog.setLastReplies(lastClientReplies);
-
         for (TOMMessage m: lastClientReplies.values()) {
             if (m.getReqType() == null) {
-                logger.debug("(TOMLayer.saveState) Saving reply store of CID " + lastCID);
-
-                logger.warn("ReqType is NULL");
-                logger.debug(">>>LastClientReply:  "  + m.getSequence() + " " + m.getSender());
+                logger.warn("(TOMLayer.saveState) received equest Type is Null");
             }
         }
-
-         byte[] lastRepliesHash = TOMUtil.computeHashOfCollection(lastClientReplies.values());
-         this.log.setLastRepliesHash(lastRepliesHash);
-
-        //logger.info(" CID, hash " + lastCID +  "  " + TOMUtil.bytesToHex(lastRepliesHash));
-
+        byte[] lastRepliesHash = TOMUtil.computeHashOfCollection(lastClientReplies.values());
+        this.log.setLastRepliesHash(lastRepliesHash);
         logLock.unlock();
-        logger.debug("(TOMLayer.saveState) Finished saving reply store of CID " + lastCID);
     }
 
     /**
@@ -325,13 +313,13 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
                 // Sets the reply store
                 if (controller.getStaticConf().useReadOnlyRequests()) {
                     if (state.lastReplies.size() == 0) {
-                        logger.info("There are no replies to add to replica state");
+                        logger.info("(DefaultRecoverable.setState): There are no replies to add to replica state");
                     }
                     // Give the last replies from received state to the clientManager, re-send in case a client waits for it
                     if (clientsManager != null) {
                         clientsManager.manageLastReplyOfEachClientAfterRecovery(state.lastReplies);
                     } else {
-                        logger.warn("client manager is null, cannot set last replies of clients");
+                        logger.warn("(DefaultRecoverable.setState): client manager is null, cannot set last replies of clients");
                     }
                 }
             }

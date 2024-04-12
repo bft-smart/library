@@ -606,9 +606,9 @@ public final class Acceptor {
 	public boolean verifyDecision(ConsensusMessage msg) {
 		HashSet<ConsensusMessage> proof = (HashSet<ConsensusMessage>) msg.getProof();
 		if (proof == null) {
-			logger.info("!!!!!!!! Received proof is NULL");
+			logger.warn("ACCEPTOR.verifyDecision: Received proof is NULL");
 		} else {
-			logger.debug("Received Proof for forwarded decision: " + msg.getNumber() + " | " + msg.getValue() + " | " + proof);
+			logger.debug("ACCEPTOR.verifyDecision: Received Proof for forwarded decision: " + msg.getNumber() + " | " + msg.getValue() + " | " + proof);
 
 			byte[] decisionHash = tomLayer.computeHash(msg.getValue());
 			int numberOfValidAccepts = 0;
@@ -624,20 +624,20 @@ public final class Acceptor {
 				try {
 					new ObjectOutputStream(bOut).writeObject(cm);
 				} catch (IOException ex) {
-					logger.error("Could not serialize message", ex);
+					logger.error("ACCEPTOR.verifyDecision: Could not serialize message", ex);
 				}
 
 				byte[] data = bOut.toByteArray();
 				byte[] signature = (byte[]) accept.getProof();
 
-				logger.debug("Proof made of Signatures");
+				logger.debug("ACCEPTOR.verifyDecision: Proof made of Signatures");
 
 				// Verify the signature of the ACCEPT
 				PublicKey pubKey = controller.getStaticConf().getPublicKey(accept.getSender());
 				boolean validSignature = TOMUtil.verifySignature(pubKey, data, signature);
 
 				if (!validSignature) {
-					logger.info(">!!! Signature is invalid!");
+					logger.warn("ACCEPTOR.verifyDecision:  Signature is invalid!");
 				}
 
 				// The ACCEPT is valid and will be counted iff
@@ -653,7 +653,7 @@ public final class Acceptor {
 			// A quorum certificate of valid ACCEPTs makes a decision valid
 			boolean decisionIsValid = numberOfValidAccepts > controller.getQuorum();
 			if(!decisionIsValid) {
-				logger.info("Too few signed accepts received; # " + numberOfValidAccepts + " " + proof);
+				logger.warn("ACCEPTOR.verifyDecision: Too few signed accepts received; # " + numberOfValidAccepts + " " + proof);
 			}
 			return  decisionIsValid;
 		}

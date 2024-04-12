@@ -61,4 +61,16 @@ public class ClientViewController extends ViewController {
 
         return addresses;
     }
+
+    public int getReplyQuorum() {
+        int n = getCurrentViewN();
+        int f = getCurrentViewF();
+        if (getStaticConf().isBFT()) {
+            // Note that a quorum ensures Linearizability when unordered requests are used
+            // f + 1 is sufficient in case the replicas' system configuration does not support unordered requests
+            return getStaticConf().useReadOnlyRequests() ? ((n + f) / 2 + 1) : f + 1;
+        } else {
+            return getStaticConf().useReadOnlyRequests() ? (n / 2 + 1) : 1;
+        }
+    }
 }
