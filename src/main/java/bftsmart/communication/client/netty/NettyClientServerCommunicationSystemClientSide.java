@@ -309,10 +309,10 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 				continue;
 			}
 
-			sm.destination = targets[target];
+			sm.destination = target;
 
 			rl.readLock().lock();
-			Channel channel = ((NettyClientServerSession) sessionClientToReplica.get(targets[target])).getChannel();
+			Channel channel = ((NettyClientServerSession) sessionClientToReplica.get(target)).getChannel();
 			rl.readLock().unlock();
 			if (channel.isActive()) {
 				sm.signed = sign;
@@ -322,7 +322,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 
 				sent++;
 			} else {
-				logger.debug("Channel to " + targets[target] + " is not connected");
+				logger.debug("Channel to " + target + " is not connected");
 			}
 		}
 
