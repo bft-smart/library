@@ -210,6 +210,10 @@ public class ServerViewController extends ViewController {
         //TODO:Remove all information stored about each process in rSet
         //processes execute the leave!!!
         reconfigureTo(newV);
+
+        for (int process : newV.getProcesses()) {
+            tomLayer.loadPublicKey(process);
+        }
         
         if (forceLC) {
             
