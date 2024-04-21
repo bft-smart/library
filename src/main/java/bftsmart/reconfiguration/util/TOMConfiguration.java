@@ -404,7 +404,7 @@ public class TOMConfiguration extends Configuration {
             
 			s = (String) configs.remove("system.ssltls.protocol_version");
 			if (s == null) {
-				ssltlsProtocolVersion = "TLSv1.2";
+				ssltlsProtocolVersion = "TLSv1.2";				
 			} else {
 				switch (s) {
 				case "SSLv3":
@@ -419,9 +419,6 @@ public class TOMConfiguration extends Configuration {
 				case "TLSv1.2":
 					ssltlsProtocolVersion = "TLSv1.2";
 					break;
-                case "TLSv1.3":
-                    ssltlsProtocolVersion = "TLSv1.3";
-                    break;
 				default:
 					ssltlsProtocolVersion = "TLSv1.2";
 					break;
