@@ -225,6 +225,10 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         }
     }
 
+    public void loadPublicKey(int target){
+        publicKey.computeIfAbsent(target, v -> controller.getStaticConf().getPublicKey(target));
+    }
+
     /**
      * Verifies the signature of a signed object
      *
