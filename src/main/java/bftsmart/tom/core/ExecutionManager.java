@@ -17,16 +17,9 @@ package bftsmart.tom.core;
 
 import bftsmart.consensus.Consensus;
 import bftsmart.consensus.Epoch;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Queue;
-import java.util.TreeMap;
+
+import java.util.*;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.ArrayList;
 
 import bftsmart.consensus.Decision;
 import bftsmart.consensus.messages.MessageFactory;
@@ -323,7 +316,38 @@ public final class ExecutionManager {
                 int[] requestDecisionFrom = checkRequestDecision(epoch, msg);
 
                 if (requestDecisionFrom != null) {
+
                     acceptor.sendRequestDecision(epoch, msg.getNumber(), requestDecisionFrom, epoch.propValueHash);
+                    /*
+                    Thread t1 = new Thread() {
+
+                        public void run() {
+                            try {
+                                Thread.sleep(10000);
+                            } catch (InterruptedException e) {
+                                System.out.println("RequestDecision Thread Interrupted");
+                            }
+                            int[] requestDecisionFrom = checkRequestDecision(epoch, msg);
+                            if (requestDecisionFrom != null) {
+                                acceptor.sendRequestDecision(epoch, msg.getNumber(), requestDecisionFrom, epoch.propValueHash);
+                            }
+                        }
+                    };
+                    t1.start();
+                    /*
+                    TimerTask requestDecisionTask = new TimerTask() {
+                        public void run() {
+
+                            int[] requestDecisionFrom = checkRequestDecision(epoch, msg);
+                            if (requestDecisionFrom != null) {
+                                acceptor.sendRequestDecision(epoch, msg.getNumber(), requestDecisionFrom, epoch.propValueHash);
+                            }
+                        }
+                    };
+                    Timer timer = new Timer("RequestDecision");
+                    timer.schedule(requestDecisionTask, 10);
+                    */
+
                 }
 
             }
@@ -673,7 +697,7 @@ public final class ExecutionManager {
         /******* END OUTOFCONTEXT CRITICAL SECTION *******/
         outOfContextLock.unlock();
 
-        return requestDecision ? controller.getCurrentViewOtherAcceptors() : null;
+        return requestDecision ? controller.getReplicasWithout(controller.getCurrentViewOtherAcceptors(), getCurrentLeader()) : null;
     }
 
 

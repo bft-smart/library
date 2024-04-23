@@ -461,7 +461,7 @@ public final class Acceptor {
 			ConsensusMessage forwardDecision = factory.createForwardDecision(cid, epoch.getTimestamp(), value);
 			forwardDecision.setProof(epoch.getProof());
 
-			logger.debug("Attaching proof for forwarded decision: " + cid + " | " + value + " | " + forwardDecision.getProof());
+			logger.info("Attaching proof for forwarded decision: " + cid + " | " + value + " | " + forwardDecision.getProof());
 
 			// Forward to all targets.
 			communication.send(targets, forwardDecision);
@@ -494,7 +494,8 @@ public final class Acceptor {
 
 		logger.debug("Attaching proof for forwarded decision: " + cid + " | " + value + " | " + forwardDecision.getProof());
 
-		communication.send(controller.getCurrentViewAcceptors(), forwardDecision);
+		communication.send(controller.getReplicasWithout(controller.getCurrentViewOtherAcceptors(),
+				executionManager.getCurrentLeader()), forwardDecision);
 	}
 
 
@@ -507,6 +508,7 @@ public final class Acceptor {
 	 * @param value epoch.propValueHash
 	 */
 	public void sendRequestDecision(Epoch epoch, int cid, int[] receivers, byte[] value) {
+		logger.info("Send a REQ_DECISION message in cid " + cid);
 		communication.send(receivers, factory.createRequestDecision(cid, epoch.getTimestamp(), value));
 	}
 
@@ -519,17 +521,17 @@ public final class Acceptor {
 	private void requestDecisionReceived(Epoch epoch, ConsensusMessage msg) {
 		int cid = epoch.getConsensus().getId();
 
-		logger.debug(">>>>>>> Received REQ_DECISION from " + msg.getSender()  + " for consensus " + cid);
+		logger.info(">>>>>>> Received REQ_DECISION from " + msg.getSender()  + " for consensus " + cid);
 
 		// Check if consensus cid is already decided
 		// if it is, we can directly forward the decision to the requester
 		if (epoch.getConsensus().isDecided()) {
-			logger.debug(">>> >> >>  > Consensus " + cid  + " is already decided ");
+			logger.info(">>> >> >>  > Consensus " + cid  + " is already decided ");
 			Decision decision = epoch.getConsensus().getDecision();
 
 			// Dont forward a decision twice for the same requester in the same consensus instance
 			if ( !executionManager.hasBeenForwardedAlready(msg.getEpoch(), msg.getSender())) {
-				logger.debug(">>> >> >> >> > Send FWD_DECISION for epoch " + epoch.getTimestamp() + " to replica " + msg.getSender());
+				logger.info(">>> >> >> >> > Send FWD_DECISION for epoch " + epoch.getTimestamp() + " to replica " + msg.getSender());
 
 				byte[] value = decision.getValue();
 				int[] targets = new int[1];
@@ -549,11 +551,11 @@ public final class Acceptor {
 
 				logger.warn("decision request is too old to handle (decision has been garbage collected) and will be ignored");
 			} else {
-				logger.debug(">>> >> >>  > Consensus " + cid  +
+				logger.info(">>> >> >>  > Consensus " + cid  +
 						" is still undecided remembering replica " + msg.getSender() + " to be forwarded to after deciding");
 
 				// Consensus still undecided, remember to forward decision
-				logger.debug("Remember cid for addToForward " + msg.getEpoch());
+				logger.info("Remember cid for addToForward " + msg.getEpoch());
 				executionManager.addToForward(msg.getNumber(), msg.getSender());
 			}
 		}
@@ -567,7 +569,7 @@ public final class Acceptor {
 	 */
 	private void forwardDecisionReceived(Epoch epoch, ConsensusMessage msg) {
 		int cid = epoch.getConsensus().getId();
-		logger.debug(">>>>>>> Received FWD_DECISION from " + msg.getSender()  + " for consensus " + cid);
+		logger.info(">>>>>>> Received FWD_DECISION from " + msg.getSender()  + " for consensus " + cid);
 
 		// Use proof to Check if decision is valid
 		boolean decisionIsValid = verifyDecision(msg);
