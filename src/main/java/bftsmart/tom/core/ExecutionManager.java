@@ -316,38 +316,7 @@ public final class ExecutionManager {
                 int[] requestDecisionFrom = checkRequestDecision(epoch, msg);
 
                 if (requestDecisionFrom != null) {
-
                     acceptor.sendRequestDecision(epoch, msg.getNumber(), requestDecisionFrom, epoch.propValueHash);
-                    /*
-                    Thread t1 = new Thread() {
-
-                        public void run() {
-                            try {
-                                Thread.sleep(10000);
-                            } catch (InterruptedException e) {
-                                System.out.println("RequestDecision Thread Interrupted");
-                            }
-                            int[] requestDecisionFrom = checkRequestDecision(epoch, msg);
-                            if (requestDecisionFrom != null) {
-                                acceptor.sendRequestDecision(epoch, msg.getNumber(), requestDecisionFrom, epoch.propValueHash);
-                            }
-                        }
-                    };
-                    t1.start();
-                    /*
-                    TimerTask requestDecisionTask = new TimerTask() {
-                        public void run() {
-
-                            int[] requestDecisionFrom = checkRequestDecision(epoch, msg);
-                            if (requestDecisionFrom != null) {
-                                acceptor.sendRequestDecision(epoch, msg.getNumber(), requestDecisionFrom, epoch.propValueHash);
-                            }
-                        }
-                    };
-                    Timer timer = new Timer("RequestDecision");
-                    timer.schedule(requestDecisionTask, 10);
-                    */
-
                 }
 
             }
