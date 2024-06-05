@@ -21,8 +21,10 @@ package bftsmart.tom.server.defaultservices;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
+import java.util.TreeMap;
 import java.util.concurrent.locks.ReentrantLock;
 
+import bftsmart.clientsmanagement.ClientsManager;
 import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.reconfiguration.util.TOMConfiguration;
 import bftsmart.statemanagement.ApplicationState;
@@ -30,6 +32,7 @@ import bftsmart.statemanagement.StateManager;
 import bftsmart.statemanagement.standard.StandardStateManager;
 import bftsmart.tom.MessageContext;
 import bftsmart.tom.ReplicaContext;
+import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.server.BatchExecutable;
 import bftsmart.tom.server.Recoverable;
 import bftsmart.tom.util.TOMUtil;
@@ -57,6 +60,7 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
     private MessageDigest md;
     private StateLog log;
     private StateManager stateManager;
+    private ClientsManager clientsManager;
 
     /**
      * Constructor
@@ -93,10 +97,13 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
                 stateLock.lock();
                 replies = appExecuteBatch(commands, msgCtxs, true);
                 stateLock.unlock();
-
             }
 
             saveCommands(commands, msgCtxs);
+
+            if (!noop && controller.getStaticConf().useReadOnlyRequests()) {
+                saveReplies(commands, msgCtxs, replies, cid);
+            }
         } else {
             // there is a replica supposed to take the checkpoint. In this case, the commands
             // must be executed in two steps. First the batch of commands containing commands
@@ -128,12 +135,21 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
                 firstHalfReplies = appExecuteBatch(firstHalf, firstHalfMsgCtx, true);
                 stateLock.unlock();
             }
-
+            if (controller.getStaticConf().useReadOnlyRequests()) {
+                saveReplies(firstHalf, firstHalfMsgCtx, firstHalfReplies, cid);
+            }
             logger.info("Performing checkpoint for consensus " + cid);
             stateLock.lock();
+
             byte[] snapshot = getSnapshot();
+            TreeMap<Integer, TOMMessage> lastReplies = controller.getStaticConf().useReadOnlyRequests() ?
+                    clientsManager.getLastReplyOfEachClient() : new TreeMap<>();
+
             stateLock.unlock();
             saveState(snapshot, cid);
+            if (controller.getStaticConf().useReadOnlyRequests()) {
+                saveReplies(lastReplies, cid);
+            }
 
             System.arraycopy(firstHalfReplies, 0, replies, 0, firstHalfReplies.length);
 
@@ -150,6 +166,7 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
 
                 logger.debug("Storing message batch in the state log for consensus " + cid);
                 saveCommands(secondHalf, secondHalfMsgCtx);
+                saveReplies(secondHalf, secondHalfMsgCtx, secondHalfReplies, cid);
 
                 System.arraycopy(secondHalfReplies, 0, replies, firstHalfReplies.length, secondHalfReplies.length);
             }
@@ -190,6 +207,37 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
 
         logLock.unlock();
         logger.debug("(TOMLayer.saveState) Finished saving state of CID " + lastCID);
+    }
+
+
+    private void saveReplies(byte[][] commands, MessageContext[] msgCtxs, byte[][] results,  int lastCID) {
+        TOMMessage[] executedRequests = new TOMMessage[msgCtxs.length];
+        for (int i = 0; i < msgCtxs.length; i++) {
+            executedRequests[i] = getTOMMessage(controller.getStaticConf().getProcessId(), controller.getCurrentViewId(),
+                    commands[i], msgCtxs[i], results[i]);
+        }
+        if (clientsManager != null) {
+            // Signal clientsManager that requests have been executed
+            clientsManager.requestsExecuted(executedRequests);
+            this.saveReplies(clientsManager.getLastReplyOfEachClient(), lastCID);
+        } else {
+            logger.warn("clientManager is null, should never reach here!");
+        }
+    }
+
+    private void saveReplies(TreeMap<Integer, TOMMessage> lastClientReplies, int lastCID) {
+        StateLog thisLog = getLog();
+        logger.debug("(TOMLayer.saveState) Saving reply store of CID " + lastCID);
+        logLock.lock();
+        thisLog.setLastReplies(lastClientReplies);
+        for (TOMMessage m: lastClientReplies.values()) {
+            if (m.getReqType() == null) {
+                logger.warn("(TOMLayer.saveState) received equest Type is Null");
+            }
+        }
+        byte[] lastRepliesHash = TOMUtil.computeHashOfCollection(lastClientReplies.values());
+        this.log.setLastRepliesHash(lastRepliesHash);
+        logLock.unlock();
     }
 
     /**
@@ -261,6 +309,19 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
                 initLog();
                 log.update(state);
                 installSnapshot(state.getSerializedState());
+
+                // Sets the reply store
+                if (controller.getStaticConf().useReadOnlyRequests()) {
+                    if (state.lastReplies.size() == 0) {
+                        logger.info("(DefaultRecoverable.setState): There are no replies to add to replica state");
+                    }
+                    // Give the last replies from received state to the clientManager, re-send in case a client waits for it
+                    if (clientsManager != null) {
+                        clientsManager.manageLastReplyOfEachClientAfterRecovery(state.lastReplies);
+                    } else {
+                        logger.warn("(DefaultRecoverable.setState): client manager is null, cannot set last replies of clients");
+                    }
+                }
             }
 
             for (int cid = lastCheckpointCID + 1; cid <= lastCID; cid++) {
@@ -323,9 +384,7 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
      * commands, it is necessary to identify if the batch contains checkpoint
      * indexes.
      *
-     * @param msgCtxs the contexts of the consensus where the messages where
-     * executed. There is one msgCtx message for each command to be executed
-     *
+
      * @return the index in which a replica is supposed to take a checkpoint. If
      * there is no replica taking a checkpoint during the period comprised by
      * this command batch, it is returned -1
@@ -355,7 +414,6 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
      * transfer protocol to find the position of the log commands in the log
      * file.
      *
-     * @param msgCtx the message context of the commands executed by the
      * replica. There is one message context for each command
      * @param cid the CID of the consensus where a replica took a checkpoint
      * @return the higher position where the CID appears
@@ -403,6 +461,15 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
         this.controller = replicaContext.getSVController();
         initLog();
         getStateManager().askCurrentConsensusId();
+    }
+
+    /**
+     * Set the ClientManager object
+     *
+     * @param clientsManager client manager
+     */
+    public void setClientsManager(ClientsManager clientsManager) {
+        this.clientsManager = clientsManager;
     }
 
     @Override

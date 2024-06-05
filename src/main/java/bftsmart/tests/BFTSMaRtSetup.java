@@ -70,7 +70,7 @@ public class BFTSMaRtSetup implements ISetupWorker {
 		ctx.append("system.totalordermulticast.batchtimeout = -1\n");
 		ctx.append("system.totalordermulticast.maxbatchsize = 1024\n");
 		ctx.append("system.totalordermulticast.maxBatchSizeInBytes = 100000000\n");
-		ctx.append("system.communication.useControlFlow = 60\n");
+		ctx.append("system.communication.useControlFlow = 1000\n");
 		ctx.append("system.communication.maxRequestSize = 1000000\n");
 		ctx.append("system.totalordermulticast.fairbatch = false\n");
 		ctx.append("system.totalordermulticast.nonces = 10\n");
@@ -100,6 +100,8 @@ public class BFTSMaRtSetup implements ISetupWorker {
 		ctx.append("system.ssltls.key_store_file=EC_KeyPair_256.pkcs12\n");
 		ctx.append("system.ssltls.enabled_ciphers = TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,\n");
 		ctx.append("system.client.invokeOrderedTimeout = 40\n");
+		ctx.append("system.optimizations.readonly_requests = true\n");
+
 		return ctx.toString();
 	}
 }

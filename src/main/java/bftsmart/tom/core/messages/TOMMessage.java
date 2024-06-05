@@ -23,6 +23,8 @@ import java.io.DataOutput;
 import java.io.DataOutputStream;
 import java.io.Externalizable;
 import java.io.IOException;
+import java.io.ObjectOutput;
+import java.io.ObjectInput;
 
 import bftsmart.communication.SystemMessage;
 import bftsmart.tom.util.DebugInfo;
@@ -381,6 +383,9 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
                         
 		}
 
+	public void setSender(int sender) {
+		 this.sender = sender;
+	}
 
 	public int getReplyServer() {
 		return replyServer;
@@ -390,4 +395,21 @@ public class TOMMessage extends SystemMessage implements Externalizable, Compara
 	public void setReplyServer(int replyServer) {
 		this.replyServer = replyServer;
 	}
+
+
+	/**
+	 * 	This two methods implement the Externalizable interface --- only used for serialization of forwarded requests/replies
+	 * 	when used for transferring ** replica application state ** that includes these.
+	 * 	Not used for the total order multicast protocol or the client-server communication.
+ 	 */
+	@Override
+	public void writeExternal(ObjectOutput out) throws IOException {
+		this.wExternal(out);
+	}
+
+	@Override
+	public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
+		this.rExternal(in);
+	}
+
 }

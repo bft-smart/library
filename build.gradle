@@ -142,7 +142,7 @@ task runIntegrationTest(type: JavaExec, dependsOn: installDist) {
 	}
 
 	classpath = sourceSets.main.runtimeClasspath
-	args(workingDirectory, f, true)
+	args(workingDirectory, project.getPath() + fileSeparator + "src", f, true)
 	mainClass = 'bftsmart.tests.IntegrationTestsExecutor'
 }
 

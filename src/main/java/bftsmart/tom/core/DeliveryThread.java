@@ -317,9 +317,9 @@ public final class DeliveryThread extends Thread {
 					// TODO: Is this part necessary? If it is, can we put it
 					// inside setLastExec
 					int cid = lastDecision.getConsensusId();
-					if (cid > 2) {
-						int stableConsensus = cid - 3;
-
+					if (cid >= controller.getStaticConf().getCheckpointPeriod()) {
+						int stableConsensus = cid - controller.getStaticConf().getCheckpointPeriod();
+						// How to avoid memory problems? (make sure sufficient memory is available)
 						tomLayer.execManager.removeConsensus(stableConsensus);
 					}
 				}

@@ -116,4 +116,13 @@ public abstract class TOMSender implements ReplyReceiver, Closeable, AutoCloseab
 	public int getSession(){
 		return session;
 	}
+
+	/**
+	 * Retrieves the required quorum size for the amount of replies
+	 *
+	 * @return The quorum size for the amount of replies
+	 */
+	public int getReplyQuorum() {
+		return getViewManager().getReplyQuorum();
+	}
 }

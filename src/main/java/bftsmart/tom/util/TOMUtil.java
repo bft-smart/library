@@ -20,6 +20,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
@@ -27,13 +28,17 @@ import java.security.PublicKey;
 import java.security.Signature;
 import java.security.SignatureException;
 import java.util.Arrays;
+import java.util.Random;
+import java.util.List;
+import java.util.LinkedList;
+import java.util.Collection;
 
 import bftsmart.reconfiguration.util.Configuration;
 import java.security.Security;
-import java.util.Random;
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.PBEKeySpec;
 
+import bftsmart.tom.core.messages.TOMMessage;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -261,5 +266,52 @@ public class TOMUtil {
 
         return new PBEKeySpec(password, salt, PBE_ITERATIONS, HASH_BYTE_SIZE);
         
+    }
+
+    /**
+     * Computes a hash for a collection of TOM messages
+     *
+     * @param messages TOM messages
+     * @return hash
+     */
+    public static byte[] computeHashOfCollection(Collection<TOMMessage> messages) {
+
+        byte[] result = null;
+
+        List<byte[]> hashes = new LinkedList<>();
+
+        for (TOMMessage m: messages) {
+            m.setSender(-1); // canonicalize the sender id
+            byte[] hash = TOMUtil.computeHash(TOMMessage.messageToBytes(m));
+            hashes.add(hash);
+        }
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        for (byte[] hash: hashes) {
+            try {
+                baos.write(hash);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        try {
+            MessageDigest md = getHashEngine();
+            result = md.digest(baos.toByteArray());
+
+        } catch (NoSuchAlgorithmException e) {
+            logger.error("Failed to compute hash",e);
+        }
+
+        return  result;
+    }
+
+    private static final byte[] HEX_ARRAY = "0123456789ABCDEF".getBytes(StandardCharsets.US_ASCII);
+    public static String bytesToHex(byte[] bytes) {
+        byte[] hexChars = new byte[bytes.length * 2];
+        for (int j = 0; j < bytes.length; j++) {
+            int v = bytes[j] & 0xFF;
+            hexChars[j * 2] = HEX_ARRAY[v >>> 4];
+            hexChars[j * 2 + 1] = HEX_ARRAY[v & 0x0F];
+        }
+        return new String(hexChars, StandardCharsets.UTF_8);
     }
 }
