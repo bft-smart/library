@@ -16,17 +16,13 @@ limitations under the License.
 package bftsmart.reconfiguration;
 
 import java.net.InetSocketAddress;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.StringTokenizer;
+import java.util.*;
 
 import bftsmart.reconfiguration.views.View;
 import bftsmart.tom.core.TOMLayer;
 import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.util.KeyLoader;
 import bftsmart.tom.util.TOMUtil;
-import java.security.Provider;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -97,6 +93,20 @@ public class ServerViewController extends ViewController {
 
     public int[] getCurrentViewOtherAcceptors() {
         return this.otherProcesses;
+    }
+    public int[] getReplicasWithout(int[] replicas, int without) {
+        int index = -1;
+        for (int i = 0; i < replicas.length; i++) {
+            if (replicas[i] == without) {
+                index = i;
+                break;
+            }
+        }
+        if (index != -1) {
+            System.arraycopy(replicas, index + 1, replicas, index, replicas.length - index - 1);
+            replicas = Arrays.copyOfRange(replicas, 0, replicas.length - 1);
+        }
+        return replicas;
     }
 
     public int[] getCurrentViewAcceptors() {
@@ -301,5 +311,9 @@ public class ServerViewController extends ViewController {
 
     public int getQuorum() {
         return getStaticConf().isBFT() ? quorumBFT : quorumCFT;
+    }
+
+    public TOMLayer getTOMLayer() {
+        return tomLayer;
     }
 }

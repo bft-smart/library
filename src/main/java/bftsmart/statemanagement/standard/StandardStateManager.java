@@ -22,10 +22,10 @@ import java.util.List;
 import java.util.Queue;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.TreeMap;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.Random;
 
-import bftsmart.tom.core.ExecutionManager;
 import bftsmart.consensus.messages.ConsensusMessage;
 import bftsmart.consensus.messages.MessageFactory;
 import bftsmart.reconfiguration.views.View;
@@ -33,6 +33,8 @@ import bftsmart.statemanagement.ApplicationState;
 import bftsmart.statemanagement.SMMessage;
 import bftsmart.tom.core.DeliveryThread;
 import bftsmart.tom.core.TOMLayer;
+import bftsmart.tom.core.messages.TOMMessage;
+import bftsmart.tom.server.defaultservices.DefaultApplicationState;
 import bftsmart.tom.util.TOMUtil;
 import bftsmart.consensus.Consensus;
 import bftsmart.consensus.Epoch;
@@ -208,6 +210,8 @@ public class StandardStateManager extends StateManager {
                                 haveState = -1;
                             }
                         }
+                        TreeMap<Integer, TOMMessage> lastReplies = ((DefaultApplicationState) state).getLastReplies();
+                        logger.debug("DefaultApplicationState lastReplies TreeMap :: size=" + lastReplies.size());
                     }
 
                     if (otherReplicaState != null && haveState == 1 && currentRegency > -1

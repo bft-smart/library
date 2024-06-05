@@ -19,9 +19,11 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.TreeMap;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.Arrays;
 
+import bftsmart.clientsmanagement.ClientsManager;
 import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.reconfiguration.util.TOMConfiguration;
 import bftsmart.statemanagement.ApplicationState;
@@ -29,6 +31,7 @@ import bftsmart.statemanagement.StateManager;
 import bftsmart.statemanagement.standard.StandardStateManager;
 import bftsmart.tom.MessageContext;
 import bftsmart.tom.ReplicaContext;
+import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.server.Recoverable;
 import bftsmart.tom.server.SingleExecutable;
 import bftsmart.tom.util.TOMUtil;
@@ -43,7 +46,7 @@ import org.slf4j.LoggerFactory;
 public abstract class DefaultSingleRecoverable implements Recoverable, SingleExecutable {
     
     private Logger logger = LoggerFactory.getLogger(this.getClass());
-    
+
     protected ReplicaContext replicaContext;
     private TOMConfiguration config;
     private ServerViewController controller;
@@ -57,9 +60,13 @@ public abstract class DefaultSingleRecoverable implements Recoverable, SingleExe
         
     private StateLog log;
     private List<byte[]> commands = new ArrayList<>();
+
+    private List<byte[]> replies = new ArrayList<>();
     private List<MessageContext> msgContexts = new ArrayList<>();
     
     private StateManager stateManager;
+
+    private ClientsManager clientsManager;
     
     public DefaultSingleRecoverable() {
 
@@ -91,10 +98,12 @@ public abstract class DefaultSingleRecoverable implements Recoverable, SingleExe
         
         commands.add(command);
         msgContexts.add(msgCtx);
+        replies.add(reply);
         
         if(msgCtx.isLastInBatch()) {
+            saveReplies(commands.toArray(new byte[0][]), msgContexts.toArray(new MessageContext[0]), replies.toArray(new byte[0][]), cid);
 	        if ((cid > 0) && ((cid % checkpointPeriod) == 0)) {
-	            logger.debug("Performing checkpoint for consensus " + cid);
+	            logger.warn("Performing checkpoint for consensus " + cid);
 	            stateLock.lock();
 	            byte[] snapshot = getSnapshot();
 	            stateLock.unlock();
@@ -104,7 +113,8 @@ public abstract class DefaultSingleRecoverable implements Recoverable, SingleExe
 	        }
 			getStateManager().setLastCID(cid);
 	        commands = new ArrayList<>();
-                msgContexts = new ArrayList<>();
+            msgContexts = new ArrayList<>();
+            replies = new ArrayList<>();
         }
         return reply;
     }
@@ -209,6 +219,19 @@ public abstract class DefaultSingleRecoverable implements Recoverable, SingleExe
             stateLock.lock();
             installSnapshot(state.getState());
 
+            // Sets the reply store
+            if (controller.getStaticConf().useReadOnlyRequests()) {
+                if (state.lastReplies.size() == 0) {
+                    logger.warn("(DefaultSingleRecoverable.setState): There are no replies to add to replica state");
+                }
+                // Give the last replies from received state to the clientManager, re-send in case a client waits for it
+                if (clientsManager != null) {
+                    clientsManager.manageLastReplyOfEachClientAfterRecovery(state.lastReplies);
+                } else {
+                    logger.warn("(DefaultSingleRecoverable.setState): client manager is null, cannot set last replies of clients");
+                }
+            }
+
             for (int cid = lastCheckpointCID + 1; cid <= lastCID; cid++) {
                 try {
                     logger.debug("Processing and verifying batched requests for CID " + cid);
@@ -289,6 +312,46 @@ public abstract class DefaultSingleRecoverable implements Recoverable, SingleExe
             } else
             	log = new StateLog(controller.getStaticConf().getProcessId(), checkpointPeriod, state, computeHash(state));
     	}
+    }
+
+
+    private void saveReplies(byte[][] commands, MessageContext[] msgCtxs, byte[][] results,  int lastCID) {
+        TOMMessage[] executedRequests = new TOMMessage[msgCtxs.length];
+        for (int i = 0; i < msgCtxs.length; i++) {
+            executedRequests[i] = getTOMMessage(controller.getStaticConf().getProcessId(), controller.getCurrentViewId(),
+                    commands[i], msgCtxs[i], results[i]);
+        }
+        if (clientsManager != null) {
+            // Signal clientsManager that requests have been executed
+            clientsManager.requestsExecuted(executedRequests);
+            this.saveReplies(clientsManager.getLastReplyOfEachClient(), lastCID);
+        } else {
+            logger.warn("clientManager is null, should never reach here!");
+        }
+    }
+
+    private void saveReplies(TreeMap<Integer, TOMMessage> lastClientReplies, int lastCID) {
+        StateLog thisLog = getLog();
+        logger.debug("(TOMLayer.saveState) Saving reply store of CID " + lastCID);
+        logLock.lock();
+        thisLog.setLastReplies(lastClientReplies);
+        for (TOMMessage m: lastClientReplies.values()) {
+            if (m.getReqType() == null) {
+                logger.warn("ReqType of a received request is NULL");
+            }
+        }
+        byte[] lastRepliesHash = TOMUtil.computeHashOfCollection(lastClientReplies.values());
+        this.log.setLastRepliesHash(lastRepliesHash);
+        logLock.unlock();
+    }
+
+    /**
+     * Set the ClientManager object
+     *
+     * @param clientsManager client manager
+     */
+    public void setClientsManager(ClientsManager clientsManager) {
+        this.clientsManager = clientsManager;
     }
           
     @Override

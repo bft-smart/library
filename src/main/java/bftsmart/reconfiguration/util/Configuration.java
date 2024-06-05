@@ -69,6 +69,8 @@ public class Configuration {
 
 	protected boolean defaultKeys = false;
 
+	protected boolean useReadOnlyRequests;
+
 	public Configuration(int procId, KeyLoader loader) {
 		logger = LoggerFactory.getLogger(this.getClass());
 		processId = procId;
@@ -158,7 +160,14 @@ public class Configuration {
 			if (s == null) {
 				defaultKeys = false;
 			} else {
-				defaultKeys = (s.equalsIgnoreCase("true")) ? true : false;
+				defaultKeys = (s.equalsIgnoreCase("true"));
+			}
+
+			s = (String) configs.remove("system.optimizations.readonly_requests");
+			if (s == null) {
+				useReadOnlyRequests = true;
+			} else {
+				useReadOnlyRequests = (s.equalsIgnoreCase("true"));
 			}
 
 			if (keyLoader == null) {
@@ -208,6 +217,10 @@ public class Configuration {
 
 	public final boolean useBlockingChannels() {
 		return this.channelsBlocking;
+	}
+
+	public final boolean useReadOnlyRequests() {
+		return this.useReadOnlyRequests;
 	}
 
 	public final int getAutoConnectLimit() {
