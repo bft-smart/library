@@ -58,6 +58,15 @@ If `<increment>` equals 0 the request will be read-only. Default `<number of ope
 
 **Important tip #6:** Always make sure that each client uses a unique ID. Otherwise, clients may not be able to complete their operations.
 
+## Read-only optimization
+
+BFT-SMaRt implements a read-only optimization that allows replicas to process read-only requests without executing consensus protocol.
+Recent work (see section Additional information and publications) has shown that this optimization could violate the liveness property of the system.
+
+The recent BFT-SMaRt version implements the proposed solution, which guarantees that the system will not violate the live property when using the read-only optimization.
+However, due to the high memory consumption of the current implementation, this optimization is turned off by default but can be enabled by setting the `system.optimizations.readonly_requests` parameter to `true` in the `config/system.config` file.
+
+
 ## State transfer protocol(s)
 
 BFT-SMaRt offers two state transfer protocols. The first is a basic protocol that can be used by extending the classes `bftsmart.tom.server.defaultservices.DefaultRecoverable` and `bftsmart.tom.server.defaultservices.DefaultSingleRecoverable`. Thee classes logs requests into memory and periodically takes snapshots of the application state.
@@ -109,8 +118,9 @@ The commands above create key pairs both for clients and replicas. Alternatively
 
 If you are interested in learning more about BFT-SMaRt, you can read:
 
-- The paper about its state machine protocol published in [EDCC'12](http://www.di.fc.ul.pt/~bessani/publications/edcc12-modsmart.pdf):
-- The paper about its advanced state transfer protocol published in [Usenix'13](http://www.di.fc.ul.pt/~bessani/publications/usenix13-dsmr.pdf):
-- The tool description published in [DSN'14](http://www.di.fc.ul.pt/~bessani/publications/dsn14-bftsmart.pdf):
+- The paper about its state machine protocol published in [EDCC'12](http://www.di.fc.ul.pt/~bessani/publications/edcc12-modsmart.pdf);
+- The paper about its advanced state transfer protocol published in [Usenix'13](http://www.di.fc.ul.pt/~bessani/publications/usenix13-dsmr.pdf);
+- The tool description published in [DSN'14](http://www.di.fc.ul.pt/~bessani/publications/dsn14-bftsmart.pdf);
+- The paper about read-only optimization published in [SRDS'21](https://arxiv.org/pdf/2107.11144).
 
 ***Feel free to contact us if you have any questions!***
