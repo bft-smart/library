@@ -100,7 +100,7 @@ public class BFTSMaRtSetup implements ISetupWorker {
 		ctx.append("system.ssltls.key_store_file=EC_KeyPair_256.pkcs12\n");
 		ctx.append("system.ssltls.enabled_ciphers = TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,\n");
 		ctx.append("system.client.invokeOrderedTimeout = 40\n");
-		ctx.append("system.optimizations.readonly_requests = true\n");
+		ctx.append("system.optimizations.readonly_requests = false\n");
 
 		return ctx.toString();
 	}
