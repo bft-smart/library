@@ -162,6 +162,13 @@ distributions {
 	}
 }
 
+tasks.withType(Javadoc) {
+	failOnError false
+	options.addStringOption('Xdoclint:none', '-quiet')
+	options.addStringOption('encoding', 'UTF-8')
+	options.addStringOption('charSet', 'UTF-8')
+}
+
 dependencies {
 	implementation fileTree('lib'){include '*.jar'}
 	// https://mvnrepository.com/artifact/org.bouncycastle/bcpkix-jdk15on

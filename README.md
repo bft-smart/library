@@ -2,7 +2,7 @@
 
 This is a Byzantine fault-tolerant state machine replication project named BFT-SMaRt, a Java open source library maintained by the LASIGE Computer Science and Engineering Research Centre at the University of Lisbon.
 
-This package contains the source code (src/), dependencies (lib/), documentation (doc/), running scripts (runscripts/), and configuration files (config/) for version 2.0 of the project.
+This package contains the source code (src/), dependencies (lib/), documentation (docs/), running scripts (runscripts/), and configuration files (config/) for version 2.0 of the project.
 
 ## Quick start
 
