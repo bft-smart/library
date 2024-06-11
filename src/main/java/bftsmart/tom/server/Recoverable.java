@@ -15,6 +15,7 @@ limitations under the License.
 */
 package bftsmart.tom.server;
 
+import bftsmart.clientsmanagement.ClientsManager;
 import bftsmart.statemanagement.ApplicationState;
 import bftsmart.statemanagement.StateManager;
 import bftsmart.tom.MessageContext;
@@ -58,7 +59,15 @@ public interface Recoverable {
      * @return the implementation of state manager that suplies the strategy defined
      */
 	StateManager getStateManager();
-    
+
+    /**
+     * Recoverers implement this interface to access and save replies from the ClientManager as replies need to be
+     * transfered to a recovering replica as part of its replica state (which is enriched by a replies storage object)
+     * To access the clientManager, the recoverer needs to set its reference
+     */
+    void setClientsManager(ClientsManager clientsManager);
+
+
     /**
      * This method is invoked by ServiceReplica to pass information that was
      * decided in a particular consensus instance. This method is always invoked before

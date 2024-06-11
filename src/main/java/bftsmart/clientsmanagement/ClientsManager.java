@@ -1,18 +1,18 @@
 /**
- Copyright (c) 2007-2013 Alysson Bessani, Eduardo Alchieri, Paulo Sousa, and the authors indicated in the @author tags
+Copyright (c) 2007-2013 Alysson Bessani, Eduardo Alchieri, Paulo Sousa, and the authors indicated in the @author tags
 
- Licensed under the Apache License, Version 2.0 (the "License");
- you may not use this file except in compliance with the License.
- You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
- http://www.apache.org/licenses/LICENSE-2.0
+http://www.apache.org/licenses/LICENSE-2.0
 
- Unless required by applicable law or agreed to in writing, software
- distributed under the License is distributed on an "AS IS" BASIS,
- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- See the License for the specific language governing permissions and
- limitations under the License.
- */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
 package bftsmart.clientsmanagement;
 
 import java.util.HashMap;
@@ -33,7 +33,7 @@ import java.security.Signature;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-
+import java.util.TreeMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -49,7 +49,7 @@ public class ClientsManager {
 	private RequestsTimer timer;
 	private HashMap<Integer, ClientData> clientsData = new HashMap<Integer, ClientData>();
 	private RequestVerifier verifier;
-
+	private ServerCommunicationSystem cs;
 	//Used when the intention is to perform benchmarking with signature verification, but
 	//without having to make the clients create one first. Useful to optimize resources
 	private byte[] benchMsg = null;
@@ -58,16 +58,19 @@ public class ClientsManager {
 
 	private ReentrantLock clientsLock = new ReentrantLock();
 
-	public ClientsManager(ServerViewController controller, RequestsTimer timer, RequestVerifier verifier) {
+	private long startTime = -1;
+
+    public ClientsManager(ServerViewController controller, RequestsTimer timer, RequestVerifier verifier, ServerCommunicationSystem cs) {
 		this.controller = controller;
 		this.timer = timer;
-		this.verifier = verifier;
+		this.verifier = verifier;this.cs = cs;
 
 		if (controller.getStaticConf().getUseSignatures() == 2) {
 			benchMsg = new byte []{3,5,6,7,4,3,5,6,4,7,4,1,7,7,5,4,3,1,4,85,7,5,7,3};
 			benchSig = TOMUtil.signMessage(controller.getStaticConf().getPrivateKey(), benchMsg);
 		}
-	}
+		startTime = System.currentTimeMillis() / 1000L ;
+    }
 
 	/**
 	 * We are assuming that no more than one thread will access
@@ -307,7 +310,7 @@ public class ClientsManager {
 
 		if(request.getSequence() < 0) {
 			//Do not accept this faulty message. -1 is the initial value which will bypass the sequence-checking further down in the function
-			return false;
+			logger.warn("Sequence number < 0");return false;
 		}
 
 		clientData.clientLock.lock();
@@ -341,7 +344,12 @@ public class ClientsManager {
 				//clientData.setLastMessageReceivedTime(request.receptionTime);
 
 				clientData.clientLock.unlock();
-				return false;
+				// A faulty clients spams too many requests
+                if (!thisReplicaWasRecovered()) {
+                    logger.warn("Client message from " + request.getSender() + " dropped due to flow control mechanism");
+                } else {
+                    logger.debug("Client message from " + request.getSender() + " dropped due to flow control mechanism");
+                }return false;
 			}
 		}
 		/* ################################################ */
@@ -425,9 +433,10 @@ public class ClientsManager {
 				}
 				accounted = true;
 			} else {
+				if (!thisReplicaWasRecovered())
 				logger.warn("Message from client {} is too forward", clientData.getClientId());
 
-				//a too forward message... the client must be malicious
+				//a too forward message... the client must be malicious// this scenarios can also occur under a correct client if a replica recovers
 				accounted = false;
 			}
 		}
@@ -470,6 +479,35 @@ public class ClientsManager {
 	}
 
 	/**
+     * Notifies the ClientManager that these requests now have replies (computed by the application) attached to them
+     *
+     * @param requests the array of requests to account as executed
+     */
+    public void requestsExecuted(TOMMessage[] requests) {
+        logger.debug("Requests executed()");
+        clientsLock.lock();
+        for (TOMMessage request : requests) {
+            requestExecuted(request);
+        }
+        logger.debug("Finished updating client manager");
+        clientsLock.unlock();
+    }
+
+    /**
+     * Adds the reply associated to a client request to the reply store
+     *
+     * @param request the executed request
+     */
+    private void  requestExecuted(TOMMessage request) {
+        ClientData clientData = getClientData(request.getSender());
+        clientData.clientLock.lock();
+        if (request.reply != null) {
+            clientData.addToReplyStore(request.reply);
+        }
+        clientData.clientLock.unlock();
+    }
+
+    /**
 	 * Cleans all state for this request (e.g., removes it from the pending
 	 * requests queue and stop any timer for it).
 	 *
@@ -552,4 +590,92 @@ public class ClientsManager {
 		clientData.storeReply(sequence, reply);
 		clientData.clientLock.unlock();
 	}
+
+
+    /**
+     * Collects the last ordered request and their associated replies of each client in a HashMap  (clientID -> TOMMessage)
+     *
+     * @return hashmap of last request and replies
+     */
+    public TreeMap<Integer, TOMMessage> getLastReplyOfEachClient() {
+
+        this.clientsLock.lock();
+        TreeMap<Integer, TOMMessage> lastReplies = new TreeMap<>();
+        if (controller.getStaticConf().useReadOnlyRequests()) {
+            for (Integer client : this.clientsData.keySet()) {
+                ClientData clientData = this.clientsData.get(client);
+                if (clientData != null) {
+                    clientData.clientLock.lock();
+                    if (clientData.getLastReply() != null) {
+                        lastReplies.put(client, clientData.getLastReply());
+                    }
+                    clientData.clientLock.unlock();
+                }
+            }
+        }
+        this.clientsLock.unlock();
+        logger.debug("getLastReplyOfEachClient() SIZE " + lastReplies.size());
+        return lastReplies;
+    }
+
+    /**
+     * Sets the reply store of each client in a HashMap  (clientID -> TOMMessage).
+     * This method is called during recovery of a replica
+     *
+     * @param repliesToClients TreeMap of last reply for each client (clientID -> last reply)
+     */
+    public void manageLastReplyOfEachClientAfterRecovery(TreeMap<Integer, TOMMessage> repliesToClients) {
+        logger.warn("Setting the reply store for #clients after state transfer: " + repliesToClients.size());
+        for (TOMMessage m: repliesToClients.values()) {
+            m.setSender(this.controller.getStaticConf().getProcessId());
+        }
+        this.clientsLock.lock();
+        for (Integer client: repliesToClients.keySet()) {
+            ClientData clientData = getClientData(client);
+
+            TOMMessage reply = repliesToClients.get(client);
+
+            // Add some properties to handle the right way of replying back to the client
+            reply.retry = 4;
+            reply.setSender(controller.getStaticConf().getProcessId());
+
+            clientData.clientLock.lock();
+            clientData.addToReplyStore(reply);
+            clientData.clientLock.unlock();
+
+            int[] target = {client};
+            logger.info(">> Sending reply of client " + client + " seq " + reply.getSequence() + " session " + reply.getSession() + " opID " +reply.getOperationId());
+            cs.send(target, reply);
+        }
+        this.clientsLock.unlock();
+    }
+
+    /**
+     * Collects the max number of last ordered requests of each client in a HashMap  (clientID -> RequestList)
+     *
+     * @return hashmap of lists of last request and replies per client
+     */
+    public TreeMap<Integer, RequestList> getLastRepliesOfEachClient() {
+        this.clientsLock.lock();
+        TreeMap<Integer, RequestList> lastReplies = new TreeMap<>();
+        for (Integer client: this.clientsData.keySet()) {
+            ClientData clientData = this.clientsData.get(client);
+            if (clientData != null && clientData.getReplyStore() != null) {
+                clientData.clientLock.lock();
+                lastReplies.put(client, clientData.getReplyStore());
+                clientData.clientLock.unlock();
+            }
+        }
+        this.clientsLock.unlock();
+
+        return lastReplies;
+    }
+
+    /**
+     * Used to indicate a reboot, relevant to give more details in warning messages
+     * @return boolean IF the replica has been re-booted within the last 20 seconds
+     */
+    public boolean thisReplicaWasRecovered() { // reports IF the replica has been re-booted within the last 20 seconds
+        return ! (System.currentTimeMillis() / 1000L - startTime > 20000) ;
+    }
 }

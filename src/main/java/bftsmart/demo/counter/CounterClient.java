@@ -37,11 +37,8 @@ public class CounterClient {
             System.out.println("       default <number of operations> equals 1000");
             System.exit(-1);
         }
-
-        ServiceProxy counterProxy = new ServiceProxy(Integer.parseInt(args[0]));
         
-        try {
-
+        try (ServiceProxy counterProxy = new ServiceProxy(Integer.parseInt(args[0]))) {
             int inc = Integer.parseInt(args[1]);
             int numberOfOps = (args.length > 2) ? Integer.parseInt(args[2]) : 1000;
 
@@ -63,8 +60,6 @@ public class CounterClient {
                     break;
                 }
             }
-        } catch(IOException | NumberFormatException e){
-            counterProxy.close();
         }
     }
 }

@@ -208,6 +208,12 @@ public class ConsensusMessage extends SystemMessage {
             return "ACCEPT";
         else if (paxosType==MessageFactory.WRITE)
             return "WRITE";
+        // START DECISION-FORWARDING
+        else if (paxosType==MessageFactory.REQ_DECISION)
+            return "REQ_DECISION";
+        else if(paxosType==MessageFactory.FWD_DECISION)
+            return "FWD_DECISION";
+        // END DECISION-FORWARDING
         else
             return "";
     }

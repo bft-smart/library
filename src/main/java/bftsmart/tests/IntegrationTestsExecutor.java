@@ -38,7 +38,7 @@ public class IntegrationTestsExecutor {
 		long start, end, delta;
 
 		AbstractIntegrationTest[] integrationTests = {
-				//new RecoveryTest(workingDirectory, f, isBFT),
+				new RecoveryTest(workingDirectory, f, isBFT),
 				new CounterTest(workingDirectory, f, isBFT),
 				new OrderedRequestTest(workingDirectory, f, isBFT),
 				new UnorderedRequestTest(workingDirectory, f, isBFT),

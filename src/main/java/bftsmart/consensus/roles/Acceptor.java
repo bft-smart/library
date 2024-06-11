@@ -19,11 +19,14 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.security.PrivateKey;
+import java.security.PublicKey;
 import java.util.Arrays;
 import java.util.LinkedList;
+import java.util.HashSet;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import bftsmart.consensus.Decision;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -69,7 +72,7 @@ public final class Acceptor {
 	 * 
 	 * @param communication Replicas communication system
 	 * @param factory       Message factory for PaW messages
-	 * @param controller
+	 * @param controller sever view controller
 	 */
 	public Acceptor(ServerCommunicationSystem communication, MessageFactory factory, ServerViewController controller) {
 		this.communication = communication;
@@ -153,6 +156,21 @@ public final class Acceptor {
 		case MessageFactory.ACCEPT: {
 			acceptReceived(epoch, msg);
 		}
+			break;
+
+		// START DECISION FORWARDING
+		case MessageFactory.REQ_DECISION: {
+			if (controller.getStaticConf().useReadOnlyRequests())
+				requestDecisionReceived(epoch, msg);
+		}
+			break;
+		case MessageFactory.FWD_DECISION: {
+			if (controller.getStaticConf().useReadOnlyRequests())
+				forwardDecisionReceived(epoch, msg);
+		}
+		// END DECISION FORWARDING
+
+		break;
 		}
 		consensus.lock.unlock();
 	}
@@ -260,7 +278,7 @@ public final class Acceptor {
 	 * Called when a WRITE message is received
 	 *
 	 * @param epoch Epoch of the receives message
-	 * @param a     Replica that sent the message
+	 * @param sender     Replica that sent the message
 	 * @param value Value sent in the message
 	 */
 	private void writeReceived(Epoch epoch, int sender, byte[] value) {
@@ -364,8 +382,8 @@ public final class Acceptor {
 	 * This method modifies the consensus message passed as an argument, so that it
 	 * contains a cryptographic proof.
 	 * 
-	 * @param cm    The consensus message to which the proof shall be set
-	 * @param epoch The epoch during in which the consensus message was created
+	 * @param cm   The consensus message to which the proof shall be set
+	 * @param msgs tom messages
 	 */
 	private void insertProof(ConsensusMessage cm, TOMMessage[] msgs) {
 		ByteArrayOutputStream bOut = new ByteArrayOutputStream(248);
@@ -391,8 +409,7 @@ public final class Acceptor {
 	 * Called when a ACCEPT message is received
 	 * 
 	 * @param epoch Epoch of the receives message
-	 * @param a     Replica that sent the message
-	 * @param value Value sent in the message
+	 * @param msg Consenus Message
 	 */
 	private void acceptReceived(Epoch epoch, ConsensusMessage msg) {
 		int cid = epoch.getConsensus().getId();
@@ -405,7 +422,8 @@ public final class Acceptor {
 
 	/**
 	 * Computes ACCEPT values according to the Byzantine consensus specification
-	 * 
+	 *
+	 * @param cid id of consensus
 	 * @param epoch Epoch of the receives message
 	 * @param value Value sent in the message
 	 */
@@ -418,6 +436,37 @@ public final class Acceptor {
 				&& Arrays.equals(value, epoch.propValueHash)) {
 			logger.debug("Deciding consensus " + cid);
 			decide(epoch);
+
+			// START DECISION_FORWARDING
+			if (controller.getStaticConf().useReadOnlyRequests())
+				forwardDecision(epoch);
+			// END DECISION_FORWARDING
+		}
+	}
+
+	private void forwardDecision(Epoch epoch) {
+		int cid = epoch.getConsensus().getId();
+
+		// the "toForward" set defines replicas we remembered to forward the decision to
+		// these are the replicas from which we received a "REQ-DECISION" message, i.e. a request to forward the decision
+		int[] targets = executionManager.getToForward(cid);
+
+		logger.debug("Forwarding Decision necessary? for cid " + cid);
+
+		if (targets != null &&
+				executionManager.getCurrentLeader() != controller.getStaticConf().getProcessId()) {  // Forwarding is necessary if toForward set is non-empty (non null)
+
+			// Create the "FORWARD-DECISION" message
+			byte[] value = epoch.getConsensus().getDecision().getValue();
+			ConsensusMessage forwardDecision = factory.createForwardDecision(cid, epoch.getTimestamp(), value);
+			forwardDecision.setProof(epoch.getProof());
+
+			logger.debug("Attaching proof for forwarded decision: " + cid + " | " + value + " | " + forwardDecision.getProof());
+
+			// Forward to all targets.
+			communication.send(targets, forwardDecision);
+		} else {
+			logger.debug("No replicas in toForward set" + cid);
 		}
 	}
 
@@ -432,4 +481,184 @@ public final class Acceptor {
 
 		epoch.getConsensus().decided(epoch, true);
 	}
+
+
+	private void broadcastDecision(Epoch epoch) {
+		int cid = epoch.getConsensus().getId();
+		logger.debug("Forwarding Decision for cid " + cid);
+
+		// Create the "FORWARD-DECISION" message
+		byte[] value = epoch.getConsensus().getDecision().getValue();
+		ConsensusMessage forwardDecision = factory.createForwardDecision(cid, epoch.getTimestamp(), value);
+		forwardDecision.setProof(epoch.getProof());
+
+		logger.debug("Attaching proof for forwarded decision: " + cid + " | " + value + " | " + forwardDecision.getProof());
+
+		communication.send(controller.getReplicasWithout(controller.getCurrentViewOtherAcceptors(),
+				executionManager.getCurrentLeader()), forwardDecision);
+	}
+
+
+	/**
+	 * Send a REQ_DECISION to others
+	 *
+	 * @param epoch the current epoch
+	 * @param cid consensus id
+	 * @param receivers the replicas that are asked
+	 * @param value epoch.propValueHash
+	 */
+	public void sendRequestDecision(Epoch epoch, int cid, int[] receivers, byte[] value) {
+		communication.send(receivers, factory.createRequestDecision(cid, epoch.getTimestamp(), value));
+	}
+
+	/**
+	 * Called when a REQUEST_DECISION message is received
+	 *
+	 * @param epoch Epoch of the receives message
+	 * @param msg the message
+	 */
+	private void requestDecisionReceived(Epoch epoch, ConsensusMessage msg) {
+		int cid = epoch.getConsensus().getId();
+
+		logger.debug(">>>>>>> Received REQ_DECISION from " + msg.getSender()  + " for consensus " + cid);
+
+		// Check if consensus cid is already decided
+		// if it is, we can directly forward the decision to the requester
+		if (epoch.getConsensus().isDecided()) {
+			logger.debug(">>> >> >>  > Consensus " + cid  + " is already decided ");
+			Decision decision = epoch.getConsensus().getDecision();
+
+			// Dont forward a decision twice for the same requester in the same consensus instance
+			if ( !executionManager.hasBeenForwardedAlready(msg.getEpoch(), msg.getSender())) {
+				logger.debug(">>> >> >> >> > Send FWD_DECISION for epoch " + epoch.getTimestamp() + " to replica " + msg.getSender());
+
+				byte[] value = decision.getValue();
+				int[] targets = new int[1];
+				targets[0] = msg.getSender();
+
+				// Create and send a FWD-Decision message
+				ConsensusMessage forwardDecision = factory.createForwardDecision(cid, epoch.getTimestamp(), value);
+				forwardDecision.setProof(epoch.getProof());
+				communication.send(targets, forwardDecision);
+				executionManager.addForwarded(msg.getNumber(), msg.getSender());
+			}
+		} else {
+			boolean consensusIsDecidedButForgotten = msg.getNumber() <= tomLayer.getLastExec() - controller.getStaticConf().getCheckpointPeriod();
+			if (consensusIsDecidedButForgotten) {
+				// we will also arrive here if a replica forgets about past consensues, because the are removed from the consensuses map
+				// this means the requester is left far behind and needs to perform a state transfer to catch up
+
+				logger.warn("decision request is too old to handle (decision has been garbage collected) and will be ignored");
+			} else {
+				logger.debug(">>> >> >>  > Consensus " + cid  +
+						" is still undecided remembering replica " + msg.getSender() + " to be forwarded to after deciding");
+
+				// Consensus still undecided, remember to forward decision
+				logger.debug("Remember cid for addToForward " + msg.getEpoch());
+				executionManager.addToForward(msg.getNumber(), msg.getSender());
+			}
+		}
+	}
+
+	/**
+	 * Called when a FORWARD_DECISION message is received
+	 *
+	 * @param epoch Epoch of the receives message
+	 * @param msg the message
+	 */
+	private void forwardDecisionReceived(Epoch epoch, ConsensusMessage msg) {
+		int cid = epoch.getConsensus().getId();
+		logger.debug(">>>>>>> Received FWD_DECISION from " + msg.getSender()  + " for consensus " + cid);
+
+		// Use proof to Check if decision is valid
+		boolean decisionIsValid = verifyDecision(msg);
+
+		// Still undecided and decision is valid and can be accepted, then
+		if (!epoch.getConsensus().isDecided() && decisionIsValid) {
+
+			logger.debug("Deciding consensus " + cid + " using the forwarded decision!");
+			// If decision is valid, set deserializedPropValue in epoch
+			epoch.deserializedPropValue = tomLayer.checkProposedValue(msg.getValue(), true);
+
+			// Attach decision to epoch
+			Decision decision = epoch.getConsensus().getDecision();
+			decision.setValue(msg.getValue());
+			decision.setDecisionEpoch(epoch);
+
+			// Attach proof to epoch
+			epoch.setProof((HashSet<ConsensusMessage>) msg.getProof());
+
+			// Decide the epoch!
+			decide(epoch);
+
+			// broadcast the decision to ensure correctness
+			broadcastDecision(epoch);
+		}
+	}
+
+
+	/**
+	 * verifyDecision takes a FORWARDED-DECISION message and checks if the contained decision can be verified using
+	 * the attached proof. The proof is a set of ACCEPT messages which
+	 *
+	 * @param msg a Consensus Message: must be a FORWARD-DECISION
+	 * @return if the FORWARD-DECISION is good
+	 */
+	public boolean verifyDecision(ConsensusMessage msg) {
+		HashSet<ConsensusMessage> proof = (HashSet<ConsensusMessage>) msg.getProof();
+		if (proof == null) {
+			logger.warn("ACCEPTOR.verifyDecision: Received proof is NULL");
+		} else {
+			logger.debug("ACCEPTOR.verifyDecision: Received Proof for forwarded decision: " + msg.getNumber() + " | " + msg.getValue() + " | " + proof);
+
+			byte[] decisionHash = tomLayer.computeHash(msg.getValue());
+			int numberOfValidAccepts = 0;
+			HashSet<Integer> replicaID_already_counted = new HashSet<>();
+
+			// For each ACCEPT message contained in the proof, check if the signature is correct
+			for (ConsensusMessage accept : proof) {
+
+				ConsensusMessage cm = new ConsensusMessage(accept.getType(), accept.getNumber(), accept.getEpoch(),
+						 accept.getSender(), accept.getValue());
+
+				ByteArrayOutputStream bOut = new ByteArrayOutputStream(248);
+				try {
+					new ObjectOutputStream(bOut).writeObject(cm);
+				} catch (IOException ex) {
+					logger.error("ACCEPTOR.verifyDecision: Could not serialize message", ex);
+				}
+
+				byte[] data = bOut.toByteArray();
+				byte[] signature = (byte[]) accept.getProof();
+
+				logger.debug("ACCEPTOR.verifyDecision: Proof made of Signatures");
+
+				// Verify the signature of the ACCEPT
+				PublicKey pubKey = controller.getStaticConf().getPublicKey(accept.getSender());
+				boolean validSignature = TOMUtil.verifySignature(pubKey, data, signature);
+
+				if (!validSignature) {
+					logger.warn("ACCEPTOR.verifyDecision:  Signature is invalid!");
+				}
+
+				// The ACCEPT is valid and will be counted iff
+				if (Arrays.equals(accept.getValue(), decisionHash)    // decision hash equals digest in ACCEPT
+						&& validSignature 							  // ACCEPT's signature was successfully verified
+						&& !replicaID_already_counted.contains(accept.getSender())) { // unique: a replica may vote only once!
+
+					replicaID_already_counted.add(accept.getSender());
+					numberOfValidAccepts++;
+				}
+			}
+
+			// A quorum certificate of valid ACCEPTs makes a decision valid
+			boolean decisionIsValid = numberOfValidAccepts > controller.getQuorum();
+			if(!decisionIsValid) {
+				logger.warn("ACCEPTOR.verifyDecision: Too few signed accepts received; # " + numberOfValidAccepts + " " + proof);
+			}
+			return  decisionIsValid;
+		}
+		return false;
+	}
+
 }

@@ -7,9 +7,9 @@ plugins {
 group 'BFT-SMaRt'
 version '2.0'
 
-compileJava {
-	sourceCompatibility = 8
-	targetCompatibility = 8
+java {
+	sourceCompatibility = JavaLanguageVersion.of(8)
+	targetCompatibility = JavaLanguageVersion.of(8)
 }
 
 repositories {
@@ -142,7 +142,7 @@ task runIntegrationTest(type: JavaExec, dependsOn: installDist) {
 	}
 
 	classpath = sourceSets.main.runtimeClasspath
-	args(workingDirectory, f, true)
+	args(workingDirectory, project.getPath() + fileSeparator + "src", f, true)
 	mainClass = 'bftsmart.tests.IntegrationTestsExecutor'
 }
 
@@ -160,6 +160,13 @@ distributions {
 			from 'runscripts/smartrun.cmd'
 		}
 	}
+}
+
+tasks.withType(Javadoc) {
+	failOnError false
+	options.addStringOption('Xdoclint:none', '-quiet')
+	options.addStringOption('encoding', 'UTF-8')
+	options.addStringOption('charSet', 'UTF-8')
 }
 
 dependencies {

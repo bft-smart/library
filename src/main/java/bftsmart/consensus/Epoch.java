@@ -65,6 +65,10 @@ public class Epoch implements Serializable {
     
     private ConsensusMessage acceptMsg = null;
 
+    // DECISION_FORWARDING
+    public boolean decisionRequested = false;
+
+
     /**
      * Creates a new instance of Epoch for acceptors
      * @param controller
@@ -173,7 +177,11 @@ public class Epoch implements Serializable {
     public void addToProof(ConsensusMessage pm) {
         proof.add(pm);
     }
-    
+
+    public void setProof(HashSet<ConsensusMessage> proof) {
+        this.proof = proof;
+    }
+
     public Set<ConsensusMessage> getProof() {
         return proof;
     }
@@ -346,6 +354,16 @@ public class Epoch implements Serializable {
     public int countAccept(byte[] value) {
         return count(acceptSetted,accept, value);
     }
+
+    /**
+     * Retrieves th replicas from which this process accepted a specified value
+     * @param value The value in question
+     * @return replicas from which this process accepted the specified value
+     */
+    public int[] countAcceptFrom(byte[] value) {
+        return countFrom(acceptSetted,accept, value);
+
+    }
     
     /**
      * Indicate that the consensus instance already sent its WRITE message
@@ -436,6 +454,27 @@ public class Epoch implements Serializable {
             return counter;
         }
         return 0;
+    }
+
+    /**
+     * Counts how many times 'value' occurs in 'array'
+     * @param array Array where to count
+     * @param value Value to count
+     * @return replicas from which 'value' was found in 'array'
+     */
+    private int[] countFrom(boolean[] arraySetted,byte[][] array, byte[] value) {
+        int[] acceptFrom = new int[controller.getCurrentViewN()];
+        if (value != null) {
+            int counter = 0;
+            for (int i = 0; i < array.length; i++) {
+                if (arraySetted != null && arraySetted[i] && Arrays.equals(value, array[i])) {
+                    counter++;
+                    acceptFrom[counter] = i;
+                }
+            }
+            return acceptFrom;
+        }
+        return null;
     }
 
     /*************************** DEBUG METHODS *******************************/

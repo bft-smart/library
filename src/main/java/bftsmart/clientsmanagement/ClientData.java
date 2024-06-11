@@ -30,7 +30,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class ClientData {
-    
+
+    public static final int MAX_SIZE_ORDERED_REQUESTS = 5;
+
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
     ReentrantLock clientLock = new ReentrantLock();
@@ -47,11 +49,12 @@ public class ClientData {
 
     private final RequestList pendingRequests = new RequestList();
     //anb: new code to deal with client requests that arrive after their execution
-    private final RequestList orderedRequests = new RequestList(4);
+    private RequestList orderedRequests = new RequestList(MAX_SIZE_ORDERED_REQUESTS);
+    private RequestList replyStore = new RequestList(MAX_SIZE_ORDERED_REQUESTS);
 
     private Signature signatureVerificator = null;
 	private final Map<Integer, byte[]> replicaSpecificContents;
-    
+
     /**
      * Class constructor. Just store the clientId and creates a signature
      * verificator for a given client public key.
@@ -138,28 +141,44 @@ public class ClientData {
     }
 
     public boolean removeRequest(TOMMessage request) {
-	lastMessageDelivered = request.getSequence();
-	boolean result = pendingRequests.remove(request);
+	    lastMessageDelivered = request.getSequence();
+	    boolean result = pendingRequests.remove(request);
         //anb: new code to deal with client requests that arrive after their execution
         orderedRequests.addLast(request);
 
-	for(Iterator<TOMMessage> it = pendingRequests.iterator();it.hasNext();){
-		TOMMessage msg = it.next();
-		if(msg.getSequence()<request.getSequence()){
-			it.remove();
-		}
-	}
-
+        pendingRequests.removeIf(msg -> msg.getSequence() < request.getSequence());
     	return result;
     }
 
     public TOMMessage getReply(int reqSequence) {
         TOMMessage request = orderedRequests.getBySequence(reqSequence);
-        if(request != null) {
+        if (request != null) {
 			return request.reply;
 		} else {
-            return null;
+            // if not in list of ordered requests, then check the reply store:
+            return replyStore.getBySequence(reqSequence);
         }
+    }
+
+    public void addToReplyStore(TOMMessage m) {
+        if (replyStore.isEmpty() || m.getSequence() > replyStore.getLast().getSequence()) {
+            replyStore.addLast(m);
+        } else {
+            logger.debug("Reply is too old and will not be added to reply store");
+        }
+    }
+
+    public TOMMessage getLastReply() {
+        if (replyStore.isEmpty()) {
+            logger.debug("ReplyStore is empty :: getLastReply()");
+            return null;
+        } else {
+            return replyStore.getLast();
+        }
+    }
+
+    public RequestList getReplyStore() {
+        return this.replyStore;
     }
 
 	public void storeReplicaSpecificContent(int sequence, byte[] replicaSpecificContent) {

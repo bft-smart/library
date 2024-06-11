@@ -137,4 +137,13 @@ public class Decision {
             }
         }
     }
+
+    /**
+     * Sets the value of consensus
+     *
+     * @param value of consensus
+     */
+    public void setValue(byte[] value) {
+        this.value = value;
+    }
 }

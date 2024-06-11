@@ -1,17 +1,17 @@
 /**
- Copyright (c) 2007-2013 Alysson Bessani, Eduardo Alchieri, Paulo Sousa, and the authors indicated in the @author tags
+Copyright (c) 2007-2013 Alysson Bessani, Eduardo Alchieri, Paulo Sousa, and the authors indicated in the @author tags
 
- Licensed under the Apache License, Version 2.0 (the "License");
- you may not use this file except in compliance with the License.
- You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
- http://www.apache.org/licenses/LICENSE-2.0
+http://www.apache.org/licenses/LICENSE-2.0
 
- Unless required by applicable law or agreed to in writing, software
- distributed under the License is distributed on an "AS IS" BASIS,
- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- See the License for the specific language governing permissions and
- limitations under the License.
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
  */
 package bftsmart.communication.client.netty;
 
@@ -25,7 +25,10 @@ import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.Signature;
 import java.security.spec.InvalidKeySpecException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
@@ -90,6 +93,10 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 	private static final int connectionTimeoutMsec = 40000; /* (40 seconds, timeout) */
 	private PrivateKey privateKey;
 	/* end Tulio Ribeiro */
+
+	// Used for a re-transmission of the last (pending) request in case of a re-connect to some replica
+	private TOMMessage pendingRequest;
+	private boolean pendingRequestSign;
 
 	public NettyClientServerCommunicationSystemClientSide(int clientId, ClientViewController controller) {
 		super();
@@ -218,9 +225,15 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 						ChannelFuture future;
 						try {
 							future = connectToReplica(replicaId, secretKeyFactory);
+							// Re-transmit a request after re-connection
+							future.await();
+							logger.info("Retransmitting message after a re-connect: " + this.pendingRequest.getSequence());
+							retransmitMessage(this.pendingRequest, replicaId, this.pendingRequestSign);
 						} catch (InvalidKeyException | InvalidKeySpecException e) {
 							// TODO Auto-generated catch block
 							logger.error("Error in key.",e);
+						} catch (InterruptedException e) {
+							e.printStackTrace();
 						}
 						logger.info("ClientID {}, re-connection to replica {}, at address: {}", clientId, replicaId,
 								controller.getRemoteAddress(replicaId));
@@ -245,26 +258,20 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 
 	@Override
 	public void send(boolean sign, int[] targets, TOMMessage sm, Map<Integer, byte[]> replicaSpecificContents) {
-		int quorum;
+		int quorum = controller.getReplyQuorum();
 		Integer[] targetArray = Arrays.stream(targets).boxed().toArray(Integer[]::new);
 		Collections.shuffle(Arrays.asList(targetArray), new Random());
 
-		if (controller.getStaticConf().isBFT()) {
-			quorum = (int) Math.ceil((controller.getCurrentViewN() + controller.getCurrentViewF()) / 2.0) + 1;
-		} else {
-			quorum = (int) Math.ceil((controller.getCurrentViewN()) / 2.0) + 1;
-		}
 
 		listener.waitForChannels(quorum); // wait for the previous transmission to complete
 
 		logger.debug("Sending request from {} with sequence number {} to {}", sm.getSender(), sm.getSequence(),
 				Arrays.toString(targetArray));
 
+		this.pendingRequest = sm;
+		this.pendingRequestSign = sign;
+
 		if (sm.serializedMessage == null) {
-			//sender(int) + viewID(int) + type(byte) + session(int) + sequence(int) + operationId(int)
-			// + replyServer(int) + commonContent.length(int) + commonContent(bytes) + metadata(byte)
-			int dataLength = Integer.BYTES * 7 + Byte.BYTES * 2
-					+ (sm.getCommonContent() == null ? 0 : sm.getCommonContent().length);
 			// serialize message
 			sm.getSerializedMessage();//this call initializes sm.serializedMessage
 		}
@@ -286,10 +293,10 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 				sm.setReplicaSpecificContent(replicaSpecificContents.get(target));
 			}
 
-			sm.destination = targets[target];
+			sm.destination = target;
 
 			rl.readLock().lock();
-			Channel channel = sessionClientToReplica.get(targets[target]).getChannel();
+			Channel channel = sessionClientToReplica.get(target).getChannel();
 			rl.readLock().unlock();
 			if (channel.isActive()) {
 				sm.signed = sign;
@@ -299,7 +306,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 
 				sent++;
 			} else {
-				logger.debug("Channel to {} is not connected", targets[target]);
+				logger.debug("Channel to {} is not connected", target);
 			}
 		}
 
@@ -493,5 +500,43 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 
 	public synchronized void removeClient(int clientId) {
 		sessionClientToReplica.remove(clientId);
+	}
+
+	/**
+	 * Re-transmits a pending request to a recovered replica after successful re-connection
+	 *
+	 * @param sm pending TOM Message
+	 * @param replicaId recovered replica's id
+	 * @param sign if a signature should be added
+	 */
+	private void retransmitMessage(TOMMessage sm, int replicaId, boolean sign) {
+		// No pending request then abort;
+		if (sm == null) {
+			return;
+		}
+		logger.info("Re-transmitting request from " + sm.getSender() + " with sequence number " + sm.getSequence()
+				+ " to " + replicaId);
+		if (sm.serializedMessage == null) {
+			serializeMessage(sm);
+		}
+		if (sign && sm.serializedMessageSignature == null) {
+			sm.serializedMessageSignature = signMessage(privKey, sm.serializedMessage);
+		}
+		try {
+			sm = (TOMMessage) sm.clone();
+		} catch (CloneNotSupportedException e) {
+			logger.error("Failed to clone TOMMessage", e);
+		}
+		sm.destination = replicaId;
+		rl.readLock().lock();
+		Channel channel = sessionClientToReplica.get(replicaId).getChannel();
+		rl.readLock().unlock();
+		if (channel.isActive()) {
+			sm.signed = sign;
+			ChannelFuture f = channel.writeAndFlush(sm);
+			f.addListener(listener);
+		} else {
+			logger.info("Channel to " + replicaId + " is not connected");
+		}
 	}
 }
