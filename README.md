@@ -69,7 +69,7 @@ However, due to the high memory consumption of the current implementation, this 
 
 ## State transfer protocol(s)
 
-BFT-SMaRt offers two state transfer protocols. The first is a basic protocol that can be used by extending the classes `bftsmart.tom.server.defaultservices.DefaultRecoverable` and `bftsmart.tom.server.defaultservices.DefaultSingleRecoverable`. Thee classes logs requests into memory and periodically takes snapshots of the application state.
+BFT-SMaRt offers two state transfer protocols. The first is a basic protocol that can be used by extending the classes `bftsmart.tom.server.defaultservices.DefaultRecoverable` and `bftsmart.tom.server.defaultservices.DefaultSingleRecoverable`. These classes log requests into memory and periodically take snapshots of the application state.
 
 The second, more advanced protocol can be used by extending the class 
 `bftsmart.tom.server.defaultservices.durability.DurabilityCoordinator`. This protocol stores its logs to disk. To mitigate the latency of writing to disk, such tasks are done in batches and in parallel with the requests' execution. Additionally, the snapshots are taken at different points of the execution in different replicas.

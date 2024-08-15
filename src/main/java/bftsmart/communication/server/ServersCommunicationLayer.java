@@ -61,7 +61,6 @@ public class ServersCommunicationLayer extends Thread {
 	private final ServerViewController controller;
 	private final LinkedBlockingQueue<SystemMessage> inQueue;
 	private final HashMap<Integer, ServerConnection> connections = new HashMap<>();
-	private ServerSocket serverSocket;
 	private final int me;
 	private boolean doWork = true;
 	private final Lock connectionsLock = new ReentrantLock();
@@ -320,7 +319,7 @@ public class ServersCommunicationLayer extends Thread {
 		}
 
 		try {
-			serverSocket.close();
+			serverSocketSSLTLS.close();
 		} catch (IOException ex) {
 			logger.error("Failed to close server socket", ex);
 		}
