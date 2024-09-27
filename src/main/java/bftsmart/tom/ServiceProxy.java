@@ -344,6 +344,10 @@ public class ServiceProxy extends TOMSender {
 				reply.getSequence());
 		try {
 			canReceiveLock.lock();
+			if (requestHandler == null) {//no message being expected
+				logger.debug("throwing out request: sender = {} reqId = {}", reply.getSender(), reply.getSequence());
+				return;
+			}
 			requestHandler.processReply(reply);
 		} catch (Exception ex) {
 			logger.error("Problem processing reply", ex);
