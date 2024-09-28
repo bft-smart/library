@@ -1,25 +1,29 @@
-package bftsmart.tests.requests;
+package bftsmart.tests.normal;
 
 import bftsmart.tests.AbstractIntegrationTest;
+import bftsmart.tom.core.messages.TOMMessageType;
 
 import java.util.Properties;
 
-public abstract class AbstractRequestTest extends AbstractIntegrationTest {
+public abstract class AbstractNormalTest extends AbstractIntegrationTest {
 	private final int nWorkers;
 	private final String workingDirectory;
 	private final Properties testParameters;
 
-	public AbstractRequestTest(String workingDirectory, int f, boolean isBFT) {
+	public AbstractNormalTest(String workingDirectory, int f, boolean isBFT, boolean isUnorderedRequestEnabled,
+								 TOMMessageType requestType) {
 		this.workingDirectory = workingDirectory;
-		this.nWorkers = isBFT ? 3 * f + 2 : 2 * f + 2;
+		this.nWorkers = (isBFT ? 3 * f + 1 : 2 * f + 1) + 1;// +1 for a client
 		this.testParameters = new Properties();
-		String clientClass = getRequestClientClassName();
+		String clientClass = getClientClass();
 		testParameters.setProperty("experiment.clientClass", clientClass);
+		testParameters.setProperty("experiment.requestType", requestType.name());
 		testParameters.setProperty("experiment.f", String.valueOf(f));
 		testParameters.setProperty("experiment.bft", Boolean.toString(isBFT));
+		testParameters.setProperty("experiment.isUnorderedRequestEnabled", Boolean.toString(isUnorderedRequestEnabled));
 	}
 
-	public abstract String getRequestClientClassName();
+	public abstract String getClientClass();
 
 	@Override
 	public String getControllerIP() {
@@ -43,17 +47,17 @@ public abstract class AbstractRequestTest extends AbstractIntegrationTest {
 
 	@Override
 	public String getBenchmarkStrategyClassName() {
-		return "bftsmart.tests.requests.RequestsTestStrategy";
+		return "bftsmart.tests.normal.NormalRequestsTestStrategy";
 	}
 
 	@Override
 	public String getWorkerSetupClassName() {
-		return "bftsmart.tests.BFTSMaRtSetup";
+		return "bftsmart.tests.common.BFTSMaRtSetup";
 	}
 
 	@Override
 	public String getWorkerEventProcessClassName() {
-		return "bftsmart.tests.requests.SimpleServiceEventProcessor";
+		return "bftsmart.tests.common.SimpleServiceEventProcessor";
 	}
 
 	@Override

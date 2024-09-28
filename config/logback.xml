@@ -57,7 +57,7 @@
 
 	<logger name="benchmark.worker" level="ERROR"/>
 
-	<logger name="benchmark.worker.process" level="ERROR"/>
+	<logger name="benchmark.worker.process" level="OFF"/>
 
 	<logger name="benchmarking" level="INFO"/>
 

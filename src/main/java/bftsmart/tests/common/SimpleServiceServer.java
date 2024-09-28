@@ -1,11 +1,8 @@
-package bftsmart.tests.requests;
+package bftsmart.tests.common;
 
-import bftsmart.tests.util.Operation;
 import bftsmart.tom.MessageContext;
 import bftsmart.tom.ServiceReplica;
 import bftsmart.tom.server.defaultservices.DefaultSingleRecoverable;
-
-import java.nio.ByteBuffer;
 
 public class SimpleServiceServer extends DefaultSingleRecoverable {
 	private byte[] state;
@@ -38,29 +35,26 @@ public class SimpleServiceServer extends DefaultSingleRecoverable {
 	}
 
 	@Override
-	public byte[] appExecuteOrdered(byte[] command, MessageContext msgCtx) {
-		ByteBuffer buffer = ByteBuffer.wrap(command);
-		Operation op = Operation.getOperation(buffer.get());
-		byte[] response = null;
-		switch (op) {
-			case PUT:
-				response = new byte[0];
-				break;
-			case GET:
-				response = state;
-				break;
+	public byte[] appExecuteOrdered(byte[] requestData, MessageContext msgCtx) {
+		//verifying data
+		for (int i = 0; i < requestData.length; i++) {
+			if (requestData[i] != (byte) i) {
+				throw new IllegalStateException("Received wrong data in put request");
+			}
 		}
-		return response;
+
+		return state;
 	}
 
 	@Override
-	public byte[] appExecuteUnordered(byte[] command, MessageContext msgCtx) {
-		ByteBuffer buffer = ByteBuffer.wrap(command);
-		Operation op = Operation.getOperation(buffer.get());
-		byte[] response = null;
-		if (op == Operation.GET) {
-			response = state;
+	public byte[] appExecuteUnordered(byte[] requestData, MessageContext msgCtx) {
+		//verifying data
+		for (int i = 0; i < requestData.length; i++) {
+			if (requestData[i] != (byte) i) {
+				throw new IllegalStateException("Received wrong data in put request");
+			}
 		}
-		return response;
+
+		return state;
 	}
 }

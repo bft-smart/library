@@ -1,4 +1,4 @@
-package bftsmart.tests;
+package bftsmart.tests.common;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,23 +22,25 @@ public class BFTSMaRtSetup implements ISetupWorker {
 		}
 
 		String[] args = setupInformation.split("\t");
+		boolean isBFT = Boolean.parseBoolean(args[0]);
 		int f = Integer.parseInt(args[1]);
-		int nServers = (Boolean.parseBoolean(args[0]) ? 3*f+1 : 2*f+1);
 		String hosts = args[2];
-		
+		String isUnorderedRequestEnabled = args[3];
+		int nServers = (isBFT ? 3*f+1 : 2*f+1);
+
 		logger.debug("Creating hosts.config");
 		String fname = "config/hosts.config";
 		writeF(fname, hosts);
 
 		logger.debug("Creating system.config");
 		fname="config/system.config";
-		String ctx=createSystemConf(nServers, args[1], args[0]);
+		String ctx=createSystemConf(nServers, args[1], args[0], isUnorderedRequestEnabled);
 		writeF(fname, ctx);
 
 	}
 
-	private void writeF(String fname, String content){
-		try(FileWriter myWriter = new FileWriter(fname)){
+	private void writeF(String fName, String content){
+		try(FileWriter myWriter = new FileWriter(fName)){
 			myWriter.write(content);
 			logger.debug("Successfully wrote to the file.");
 		}catch (IOException e) {
@@ -46,12 +48,12 @@ public class BFTSMaRtSetup implements ISetupWorker {
 		}
 	}
 
-	private String createSystemConf(int nServers, String f, String bft){
-		String iview= "";
-		for(int i=0; i<nServers;i++){
-			iview+=i+",";
+	private String createSystemConf(int nServers, String f, String bft, String isUnorderedRequestEnabled){
+		StringBuilder viewBuilder = new StringBuilder();
+		for(int i = 0; i < nServers; i++){
+			viewBuilder.append(i).append(",");
 		}
-		iview=iview.substring(0, iview.length()-1);
+		String view = viewBuilder.substring(0, viewBuilder.length() - 1);
 
 		StringBuilder ctx = new StringBuilder();
 		ctx.append("system.communication.secretKeyAlgorithm = PBKDF2WithHmacSHA1\n");
@@ -64,8 +66,8 @@ public class BFTSMaRtSetup implements ISetupWorker {
 		ctx.append("system.communication.useSenderThread = true\n");
 		ctx.append("system.communication.defaultkeys = true\n");
 		ctx.append("system.communication.bindaddress = auto\n");
-		ctx.append("system.servers.num = " + nServers + "\n");
-		ctx.append("system.servers.f = " + f + "\n");
+		ctx.append("system.servers.num = ").append(nServers).append("\n");
+		ctx.append("system.servers.f = ").append(f).append("\n");
 		ctx.append("system.totalordermulticast.timeout = 30000\n");
 		ctx.append("system.totalordermulticast.batchtimeout = -1\n");
 		ctx.append("system.totalordermulticast.maxbatchsize = 1024\n");
@@ -93,14 +95,14 @@ public class BFTSMaRtSetup implements ISetupWorker {
 		ctx.append("system.totalordermulticast.global_checkpoint_period = 120000000\n");
 		ctx.append("system.totalordermulticast.checkpoint_to_disk = false\n");
 		ctx.append("system.totalordermulticast.sync_ckp = false\n");
-		ctx.append("system.initial.view = " + iview + "\n");
+		ctx.append("system.initial.view = ").append(view).append("\n");
 		ctx.append("system.ttp.id = 7002\n");
-		ctx.append("system.bft = " + bft + "\n");
+		ctx.append("system.bft = ").append(bft).append("\n");
 		ctx.append("system.ssltls.protocol_version = TLSv1.2\n");
 		ctx.append("system.ssltls.key_store_file=EC_KeyPair_256.pkcs12\n");
 		ctx.append("system.ssltls.enabled_ciphers = TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,\n");
 		ctx.append("system.client.invokeOrderedTimeout = 40\n");
-		ctx.append("system.optimizations.readonly_requests = false\n");
+		ctx.append("system.optimizations.readonly_requests = ").append(isUnorderedRequestEnabled).append("\n");
 
 		return ctx.toString();
 	}
