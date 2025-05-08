@@ -555,43 +555,43 @@ public class Synchronizer {
 
                     //Do I have info on my last executed consensus?
                     if (cons != null && cons.getDecisionEpoch() != null && cons.getDecisionEpoch().propValue != null) {
+                            
+                        out.writeBoolean(true);
+                        out.writeInt(last);
+                        //byte[] decision = exec.getLearner().getDecision();
+
+                        byte[] decision = cons.getDecisionEpoch().propValue;
+                        Set<ConsensusMessage> proof = cons.getDecisionEpoch().getProof();
+
+                        out.writeObject(decision);
+                        out.writeObject(proof);
+                        // TODO: WILL BE NECESSARY TO ADD A PROOF!!!
+
+                    } else {
+                        out.writeBoolean(false);
                         
-                    out.writeBoolean(true);
-                    out.writeInt(last);
-                    //byte[] decision = exec.getLearner().getDecision();
+                        ////// THIS IS TO CATCH A BUG!!!!!
+                        if (last > -1) {
+                            logger.debug("[DEBUG INFO FOR LAST CID #1]");
 
-                    byte[] decision = cons.getDecisionEpoch().propValue;
-                    Set<ConsensusMessage> proof = cons.getDecisionEpoch().getProof();
+                            if (cons == null) {
+                                if (last > -1) logger.debug("No consensus instance for cid " + last);
 
-                    out.writeObject(decision);
-                    out.writeObject(proof);
-                    // TODO: WILL BE NECESSARY TO ADD A PROOF!!!
-
-                } else {
-                    out.writeBoolean(false);
-                    
-                    ////// THIS IS TO CATCH A BUG!!!!!
-                    if (last > -1) {
-                        logger.debug("[DEBUG INFO FOR LAST CID #1]");
-
-                        if (cons == null) {
-                            if (last > -1) logger.debug("No consensus instance for cid " + last);
-
-                        }
-                        else if (cons.getDecisionEpoch() == null) {
-                            logger.debug("No decision epoch for cid " + last);
-                        } else {
-                            logger.debug("epoch for cid: " + last + ": " + cons.getDecisionEpoch().toString());
-
-                            if (cons.getDecisionEpoch().propValue == null) {
-                                logger.debug("No propose for cid " + last);
+                            }
+                            else if (cons.getDecisionEpoch() == null) {
+                                logger.debug("No decision epoch for cid " + last);
                             } else {
-                                logger.debug("Propose hash for cid " + last + ": " + Base64.encodeBase64String(tom.computeHash(cons.getDecisionEpoch().propValue)));
+                                logger.debug("epoch for cid: " + last + ": " + cons.getDecisionEpoch().toString());
+
+                                if (cons.getDecisionEpoch().propValue == null) {
+                                    logger.debug("No propose for cid " + last);
+                                } else {
+                                    logger.debug("Propose hash for cid " + last + ": " + Base64.encodeBase64String(tom.computeHash(cons.getDecisionEpoch().propValue)));
+                                }
                             }
                         }
-                    }
 
-                }
+                    }
 
                     if (in > -1) { // content of cid in execution
 
