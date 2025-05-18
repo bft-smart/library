@@ -76,7 +76,8 @@ public class LCManager {
     /**
      * Constructor
      *
-     * @param reconfManager The reconfiguration manager from TOM layer
+     * @param tomLayer The TOM layer
+     * @param SVController The reconfiguration manager from TOM layer
      * @param md The message digest engine from TOM layer
      */
     public LCManager(TOMLayer tomLayer,ServerViewController SVController, MessageDigest md) {
@@ -203,7 +204,7 @@ public class LCManager {
 
     /**
      * Set the next regency
-     * @param nextts next regency
+     * @param nextreg next regency
      */
     public void setNextReg(int nextreg) {
         this.nextreg = nextreg;
@@ -231,7 +232,7 @@ public class LCManager {
 
     /**
      * Discard information about STOP messages up to specified regency
-     * @param ts timestamp up to which to discard messages
+     * @param regency timestamp up to which to discard messages
      */
     public void removeStops(int regency) {
         Integer[] keys = new Integer[stops.keySet().size()];
@@ -309,7 +310,7 @@ public class LCManager {
 
     /**
      * Keep collect from an incoming SYNC message
-     * @param ts the current regency
+     * @param regency the current regency
      * @param signedCollect the signed collect data
      */
     public void addCollect(int regency, SignedObject signedCollect) {
