@@ -38,7 +38,6 @@ import bftsmart.consensus.messages.MessageFactory;
 import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.tom.core.ExecutionManager;
 import bftsmart.tom.core.TOMLayer;
-import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.util.TOMUtil;
 
 /**
@@ -345,7 +344,7 @@ public final class Acceptor {
 						// Create a cryptographic proof for this ACCEPT message
 						logger.debug(
 								"Creating cryptographic proof for the correct ACCEPT message from consensus " + cid);
-						insertProof(correctAccept, epoch.deserializedPropValue);
+						insertProof(correctAccept);
 
 						communication.getServersConn().send(targets, correctAccept, true);
 
@@ -368,7 +367,7 @@ public final class Acceptor {
 
 				// Create a cryptographic proof for this ACCEPT message
 				logger.debug("Creating cryptographic proof for speculative ACCEPT message from consensus " + cid);
-				insertProof(cm, epoch.deserializedPropValue);
+				insertProof(cm);
 
 				epoch.setAcceptMsg(cm);
 
@@ -383,9 +382,8 @@ public final class Acceptor {
 	 * contains a cryptographic proof.
 	 * 
 	 * @param cm   The consensus message to which the proof shall be set
-	 * @param msgs tom messages
-	 */
-	private void insertProof(ConsensusMessage cm, TOMMessage[] msgs) {
+     */
+	private void insertProof(ConsensusMessage cm) {
 		ByteArrayOutputStream bOut = new ByteArrayOutputStream(248);
 		try {
 			ObjectOutputStream obj = new ObjectOutputStream(bOut);
