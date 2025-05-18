@@ -707,6 +707,10 @@ public class LCManager {
     private HashSet<CollectData> getSignedCollects(HashSet<SignedObject> signedCollects) {
 
         HashSet<CollectData> colls = new HashSet<CollectData>();
+        HashSet<Integer> currentViewMembers = new HashSet<>();
+        for (int processId : SVController.getCurrentViewAcceptors()) {
+            currentViewMembers.add(processId);
+        }
 
         for (SignedObject so : signedCollects) {
 
@@ -714,7 +718,7 @@ public class LCManager {
             try {
                 c = (CollectData) so.getObject();
                 int sender = c.getPid();
-                if (tomLayer.verifySignature(so, sender)) {
+                if (currentViewMembers.contains(sender) && tomLayer.verifySignature(so, sender)) {
                     colls.add(c);
                 }
             } catch (IOException | ClassNotFoundException ex) {
@@ -737,7 +741,9 @@ public class LCManager {
         for (CollectData c : collects) {
 
             if (c.getCid() == cid) {
-                result.add(c);
+                if (c.getEts() == regency) {
+                    result.add(c);
+                }
             }
             else {
                 result.add(new CollectData(c.getPid(), cid, regency, new TimestampValuePair(0, new byte[0]), new HashSet<TimestampValuePair>()));
