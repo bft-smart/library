@@ -54,11 +54,11 @@ public final class Acceptor {
 	private int me; // This replica ID
 	private ExecutionManager executionManager; // Execution manager of consensus's executions
 	private MessageFactory factory; // Factory for PaW messages
-	private ServerCommunicationSystem communication; // Replicas comunication system
+	private ServerCommunicationSystem communication; // Replicas communication system
 	private TOMLayer tomLayer; // TOM layer
 	private ServerViewController controller;
 
-	// thread pool used to paralelise creation of consensus proofs
+	// thread pool used to parallelize creation of consensus proofs
 	private ExecutorService proofExecutor = null;
 
 	/**
@@ -377,7 +377,6 @@ public final class Acceptor {
 
 	/**
 	 * Create a cryptographic proof for a consensus message
-	 * 
 	 * This method modifies the consensus message passed as an argument, so that it
 	 * contains a cryptographic proof.
 	 * 
@@ -407,7 +406,7 @@ public final class Acceptor {
 	 * Called when a ACCEPT message is received
 	 * 
 	 * @param epoch Epoch of the receives message
-	 * @param msg Consenus Message
+	 * @param msg Consensus Message
 	 */
 	private void acceptReceived(Epoch epoch, ConsensusMessage msg) {
 		int cid = epoch.getConsensus().getId();
