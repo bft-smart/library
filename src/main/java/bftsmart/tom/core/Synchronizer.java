@@ -260,15 +260,19 @@ public class Synchronizer {
 
             lcManager.addCollect(regency, signedCollect);
 
-            int bizantineQuorum = (controller.getCurrentViewN() + controller.getCurrentViewF()) / 2;
+            int byzantineQuorum = (controller.getCurrentViewN() + controller.getCurrentViewF()) / 2;
             int cftQuorum = (controller.getCurrentViewN()) / 2;
 
             // Did I already got messages from a Byzantine/Crash quorum,
             // related to the last cid as well as for the current?
-            boolean conditionBFT = (controller.getStaticConf().isBFT() && lcManager.getLastCIDsSize(regency) > bizantineQuorum
-                    && lcManager.getCollectsSize(regency) > bizantineQuorum);
+            boolean conditionBFT = (lcManager.getLastCIDsSize(regency) > byzantineQuorum
+                    && lcManager.getCollectsSize(regency) > byzantineQuorum
+            );
 
-            boolean conditionCFT = (lcManager.getLastCIDsSize(regency) > cftQuorum && lcManager.getCollectsSize(regency) > cftQuorum);
+            boolean conditionCFT = (!controller.getStaticConf().isBFT()
+                    && lcManager.getLastCIDsSize(regency) > cftQuorum
+                    && lcManager.getCollectsSize(regency) > cftQuorum
+            );
 
             if (conditionBFT || conditionCFT) {
                 catch_up(regency);
