@@ -615,14 +615,15 @@ public final class Acceptor {
 			// For each ACCEPT message contained in the proof, check if the signature is correct
 			for (ConsensusMessage accept : proof) {
 
-				ConsensusMessage cm = new ConsensusMessage(accept.getType(), accept.getNumber(), accept.getEpoch(),
-						 accept.getSender(), accept.getValue());
+				ConsensusMessage cm = new ConsensusMessage(MessageFactory.ACCEPT, msg.getNumber(), msg.getEpoch(),
+						 accept.getSender(), decisionHash);
 
 				ByteArrayOutputStream bOut = new ByteArrayOutputStream(248);
 				try {
 					new ObjectOutputStream(bOut).writeObject(cm);
 				} catch (IOException ex) {
 					logger.error("ACCEPTOR.verifyDecision: Could not serialize message", ex);
+					continue;
 				}
 
 				byte[] data = bOut.toByteArray();
@@ -639,8 +640,7 @@ public final class Acceptor {
 				}
 
 				// The ACCEPT is valid and will be counted iff
-				if (Arrays.equals(accept.getValue(), decisionHash)    // decision hash equals digest in ACCEPT
-						&& validSignature 							  // ACCEPT's signature was successfully verified
+				if (validSignature 							  					      // ACCEPT's signature was successfully verified
 						&& !replicaID_already_counted.contains(accept.getSender())) { // unique: a replica may vote only once!
 
 					replicaID_already_counted.add(accept.getSender());
