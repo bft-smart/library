@@ -1,13 +1,11 @@
 package bftsmart.benchmark;
 
-import bftsmart.tests.util.Operation;
 import bftsmart.tom.MessageContext;
 import bftsmart.tom.ServiceReplica;
 import bftsmart.tom.server.defaultservices.DefaultSingleRecoverable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.nio.ByteBuffer;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -15,7 +13,8 @@ import java.util.Set;
  * @author robin
  */
 public class ThroughputLatencyServer extends DefaultSingleRecoverable {
-	private final Logger logger = LoggerFactory.getLogger("bftsmart");
+	private final Logger measurementLogger = LoggerFactory.getLogger("measurement");
+	private final Logger logger = LoggerFactory.getLogger("benchmarking");
 	private byte[] state;
 	private long startTime;
 	private long numRequests;
@@ -43,47 +42,36 @@ public class ThroughputLatencyServer extends DefaultSingleRecoverable {
 
 	@Override
 	public byte[] appExecuteOrdered(byte[] command, MessageContext msgCtx) {
-		numRequests++;
-		senders.add(msgCtx.getSender());
-		ByteBuffer buffer = ByteBuffer.wrap(command);
-		Operation op = Operation.getOperation(buffer.get());
-		byte[] response = null;
-		switch (op) {
-			case PUT:
-				response = new byte[0];
-				break;
-			case GET:
-				response = state;
-				break;
-		}
-		printMeasurement();
-		return response;
+		return processRequest(msgCtx);
 	}
 
 	@Override
 	public byte[] appExecuteUnordered(byte[] command, MessageContext msgCtx) {
+		return processRequest(msgCtx);
+	}
+
+	private byte[] processRequest(MessageContext msgCtx) {
 		numRequests++;
 		senders.add(msgCtx.getSender());
-		ByteBuffer buffer = ByteBuffer.wrap(command);
-		Operation op = Operation.getOperation(buffer.get());
-		byte[] response = null;
-		if (op == Operation.GET) {
-			response = state;
-		}
 		printMeasurement();
-		return response;
+		return state;
 	}
 
 	private void printMeasurement() {
 		long currentTime = System.nanoTime();
-		double deltaTime = (currentTime - startTime) / 1_000_000_000.0;
-		if ((int) (deltaTime / 2) > 0) {
-			long delta = currentTime - startTime;
-			double throughput = numRequests / deltaTime;
+		long delay = currentTime - startTime;
+		if (delay >= 2_000_000_000) {//more than 2 seconds
+			measurementLogger.info("M-clients: {}", senders.size());
+			measurementLogger.info("M-delta: {}", delay);
+			measurementLogger.info("M-requests: {}", numRequests);
+
+			//compute throughput
+			double throughput = numRequests / (delay / 1_000_000_000.0);
 			if (throughput > maxThroughput)
 				maxThroughput = throughput;
-			logger.info("M:(clients[#]|requests[#]|delta[ns]|throughput[ops/s], max[ops/s])>({}|{}|{}|{}|{})",
-					senders.size(), numRequests, delta, throughput, maxThroughput);
+			logger.info("(clients[#]|requests[#]|delta[ns]|throughput[ops/s], max[ops/s])>({}|{}|{}|{}|{})",
+					senders.size(), numRequests, delay, throughput, maxThroughput);
+
 			numRequests = 0;
 			startTime = currentTime;
 			senders.clear();
@@ -97,6 +85,6 @@ public class ThroughputLatencyServer extends DefaultSingleRecoverable {
 
 	@Override
 	public byte[] getSnapshot() {
-		return state == null ? new byte[0] : state;
+		return state;
 	}
 }
