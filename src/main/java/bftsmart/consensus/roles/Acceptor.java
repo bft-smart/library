@@ -38,12 +38,11 @@ import bftsmart.consensus.messages.MessageFactory;
 import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.tom.core.ExecutionManager;
 import bftsmart.tom.core.TOMLayer;
-import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.util.TOMUtil;
 
 /**
  * This class represents the acceptor role in the consensus protocol. This class
- * work together with the TOMLayer class in order to supply a atomic multicast
+ * work together with the TOMLayer class in order to supply an atomic multicast
  * service.
  *
  * @author Alysson Bessani
@@ -55,11 +54,11 @@ public final class Acceptor {
 	private int me; // This replica ID
 	private ExecutionManager executionManager; // Execution manager of consensus's executions
 	private MessageFactory factory; // Factory for PaW messages
-	private ServerCommunicationSystem communication; // Replicas comunication system
+	private ServerCommunicationSystem communication; // Replicas communication system
 	private TOMLayer tomLayer; // TOM layer
 	private ServerViewController controller;
 
-	// thread pool used to paralelise creation of consensus proofs
+	// thread pool used to parallelize creation of consensus proofs
 	private ExecutorService proofExecutor = null;
 
 	/**
@@ -134,7 +133,7 @@ public final class Acceptor {
 	}
 
 	/**
-	 * Called when a Consensus message is received or when a out of context message
+	 * Called when a Consensus message is received or when an out of context message
 	 * must be processed. It processes the received message according to its type
 	 *
 	 * @param msg The message to be processed
@@ -311,7 +310,7 @@ public final class Acceptor {
 				logger.debug("Sending ACCEPT message, cId:{}, I am:{}", cid, me);
 
 				/**** LEADER CHANGE CODE! ******/
-				logger.debug("Setting consensus " + cid + " QuorumWrite tiemstamp to " + epoch.getConsensus().getEts()
+				logger.debug("Setting consensus " + cid + " QuorumWrite timestamp to " + epoch.getConsensus().getEts()
 						+ " and value " + Arrays.toString(value));
 				epoch.getConsensus().setQuorumWrites(value);
 				/*****************************************/
@@ -345,7 +344,7 @@ public final class Acceptor {
 						// Create a cryptographic proof for this ACCEPT message
 						logger.debug(
 								"Creating cryptographic proof for the correct ACCEPT message from consensus " + cid);
-						insertProof(correctAccept, epoch.deserializedPropValue);
+						insertProof(correctAccept);
 
 						communication.getServersConn().send(targets, correctAccept, true);
 
@@ -368,7 +367,7 @@ public final class Acceptor {
 
 				// Create a cryptographic proof for this ACCEPT message
 				logger.debug("Creating cryptographic proof for speculative ACCEPT message from consensus " + cid);
-				insertProof(cm, epoch.deserializedPropValue);
+				insertProof(cm);
 
 				epoch.setAcceptMsg(cm);
 
@@ -378,14 +377,12 @@ public final class Acceptor {
 
 	/**
 	 * Create a cryptographic proof for a consensus message
-	 * 
 	 * This method modifies the consensus message passed as an argument, so that it
 	 * contains a cryptographic proof.
 	 * 
 	 * @param cm   The consensus message to which the proof shall be set
-	 * @param msgs tom messages
-	 */
-	private void insertProof(ConsensusMessage cm, TOMMessage[] msgs) {
+     */
+	private void insertProof(ConsensusMessage cm) {
 		ByteArrayOutputStream bOut = new ByteArrayOutputStream(248);
 		try {
 			ObjectOutputStream obj = new ObjectOutputStream(bOut);
@@ -409,7 +406,7 @@ public final class Acceptor {
 	 * Called when a ACCEPT message is received
 	 * 
 	 * @param epoch Epoch of the receives message
-	 * @param msg Consenus Message
+	 * @param msg Consensus Message
 	 */
 	private void acceptReceived(Epoch epoch, ConsensusMessage msg) {
 		int cid = epoch.getConsensus().getId();
@@ -528,7 +525,7 @@ public final class Acceptor {
 			logger.debug(">>> >> >>  > Consensus " + cid  + " is already decided ");
 			Decision decision = epoch.getConsensus().getDecision();
 
-			// Dont forward a decision twice for the same requester in the same consensus instance
+			// Don't forward a decision twice for the same requester in the same consensus instance
 			if ( !executionManager.hasBeenForwardedAlready(msg.getEpoch(), msg.getSender())) {
 				logger.debug(">>> >> >> >> > Send FWD_DECISION for epoch " + epoch.getTimestamp() + " to replica " + msg.getSender());
 
@@ -545,7 +542,7 @@ public final class Acceptor {
 		} else {
 			boolean consensusIsDecidedButForgotten = msg.getNumber() <= tomLayer.getLastExec() - controller.getStaticConf().getCheckpointPeriod();
 			if (consensusIsDecidedButForgotten) {
-				// we will also arrive here if a replica forgets about past consensues, because the are removed from the consensuses map
+				// we will also arrive here if a replica forgets about past consensuses, because they are removed from the consensuses map
 				// this means the requester is left far behind and needs to perform a state transfer to catch up
 
 				logger.warn("decision request is too old to handle (decision has been garbage collected) and will be ignored");
@@ -618,14 +615,15 @@ public final class Acceptor {
 			// For each ACCEPT message contained in the proof, check if the signature is correct
 			for (ConsensusMessage accept : proof) {
 
-				ConsensusMessage cm = new ConsensusMessage(accept.getType(), accept.getNumber(), accept.getEpoch(),
-						 accept.getSender(), accept.getValue());
+				ConsensusMessage cm = new ConsensusMessage(MessageFactory.ACCEPT, msg.getNumber(), msg.getEpoch(),
+						 accept.getSender(), decisionHash);
 
 				ByteArrayOutputStream bOut = new ByteArrayOutputStream(248);
 				try {
 					new ObjectOutputStream(bOut).writeObject(cm);
 				} catch (IOException ex) {
 					logger.error("ACCEPTOR.verifyDecision: Could not serialize message", ex);
+					continue;
 				}
 
 				byte[] data = bOut.toByteArray();
@@ -642,8 +640,7 @@ public final class Acceptor {
 				}
 
 				// The ACCEPT is valid and will be counted iff
-				if (Arrays.equals(accept.getValue(), decisionHash)    // decision hash equals digest in ACCEPT
-						&& validSignature 							  // ACCEPT's signature was successfully verified
+				if (validSignature 							  					      // ACCEPT's signature was successfully verified
 						&& !replicaID_already_counted.contains(accept.getSender())) { // unique: a replica may vote only once!
 
 					replicaID_already_counted.add(accept.getSender());

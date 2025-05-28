@@ -75,7 +75,7 @@ public class Synchronizer {
     private final Acceptor acceptor;
     private final MessageDigest md;
             
-    // Attributes to temporarely store synchronization info
+    // Attributes to temporarily store synchronization info
     // if state transfer is required for synchronization
     private int tempRegency = -1;
     private CertifiedDecision tempLastHighestCID = null;
@@ -99,7 +99,7 @@ public class Synchronizer {
         this.md = this.tom.md;
         
         this.outOfContextLC = new HashSet<>();
-	this.lcManager = new LCManager(this.tom,this.controller, this.md);
+	    this.lcManager = new LCManager(this.tom,this.controller, this.md);
     }
 
     public LCManager getLCManager() {
@@ -260,15 +260,19 @@ public class Synchronizer {
 
             lcManager.addCollect(regency, signedCollect);
 
-            int bizantineQuorum = (controller.getCurrentViewN() + controller.getCurrentViewF()) / 2;
+            int byzantineQuorum = (controller.getCurrentViewN() + controller.getCurrentViewF()) / 2;
             int cftQuorum = (controller.getCurrentViewN()) / 2;
 
             // Did I already got messages from a Byzantine/Crash quorum,
             // related to the last cid as well as for the current?
-            boolean conditionBFT = (controller.getStaticConf().isBFT() && lcManager.getLastCIDsSize(regency) > bizantineQuorum
-                    && lcManager.getCollectsSize(regency) > bizantineQuorum);
+            boolean conditionBFT = (lcManager.getLastCIDsSize(regency) > byzantineQuorum
+                    && lcManager.getCollectsSize(regency) > byzantineQuorum
+            );
 
-            boolean conditionCFT = (lcManager.getLastCIDsSize(regency) > cftQuorum && lcManager.getCollectsSize(regency) > cftQuorum);
+            boolean conditionCFT = (!controller.getStaticConf().isBFT()
+                    && lcManager.getLastCIDsSize(regency) > cftQuorum
+                    && lcManager.getCollectsSize(regency) > cftQuorum
+            );
 
             if (conditionBFT || conditionCFT) {
                 catch_up(regency);
@@ -341,7 +345,7 @@ public class Synchronizer {
     }
 
     // Deserializes requests that were included in STOP messages
-    private TOMMessage[] deserializeTOMMessages(byte[] playload) {
+    private TOMMessage[] deserializeTOMMessages(byte[] payload) {
 
         ByteArrayInputStream bis;
         ObjectInputStream ois;
@@ -350,7 +354,7 @@ public class Synchronizer {
 
         try { // deserialize the content of the STOP message
 
-            bis = new ByteArrayInputStream(playload);
+            bis = new ByteArrayInputStream(payload);
             ois = new ObjectInputStream(bis);
 
             boolean hasReqs = ois.readBoolean();
@@ -437,7 +441,7 @@ public class Synchronizer {
         }
 
     }
-    // this method is called when a timeout occurs or when a STOP message is recevied
+    // this method is called when a timeout occurs or when a STOP message is received
     private void startSynchronization(int nextReg) {
 
         boolean condition;
@@ -453,7 +457,7 @@ public class Synchronizer {
         // Ask to start the synchronizations phase if enough messages have been received already
         if (condition && lcManager.getNextReg() == lcManager.getLastReg()) {
             
-            logger.debug("Initialize synch phase");
+            logger.debug("Initialize sync phase");
             requestsTimer.Enabled(false);
             requestsTimer.stopTimer();
 
@@ -471,7 +475,7 @@ public class Synchronizer {
             addSTOPedRequestsToClientManager();
             List<TOMMessage> messages = getRequestsToRelay();
 
-            try { // serialize conent to send in the STOP message
+            try { // serialize content to send in the STOP message
                 bos = new ByteArrayOutputStream();
                 out = new ObjectOutputStream(bos);
 
@@ -555,43 +559,43 @@ public class Synchronizer {
 
                     //Do I have info on my last executed consensus?
                     if (cons != null && cons.getDecisionEpoch() != null && cons.getDecisionEpoch().propValue != null) {
+                            
+                        out.writeBoolean(true);
+                        out.writeInt(last);
+                        //byte[] decision = exec.getLearner().getDecision();
+
+                        byte[] decision = cons.getDecisionEpoch().propValue;
+                        Set<ConsensusMessage> proof = cons.getDecisionEpoch().getProof();
+
+                        out.writeObject(decision);
+                        out.writeObject(proof);
+                        // TODO: WILL BE NECESSARY TO ADD A PROOF!!!
+
+                    } else {
+                        out.writeBoolean(false);
                         
-                    out.writeBoolean(true);
-                    out.writeInt(last);
-                    //byte[] decision = exec.getLearner().getDecision();
+                        ////// THIS IS TO CATCH A BUG!!!!!
+                        if (last > -1) {
+                            logger.debug("[DEBUG INFO FOR LAST CID #1]");
 
-                    byte[] decision = cons.getDecisionEpoch().propValue;
-                    Set<ConsensusMessage> proof = cons.getDecisionEpoch().getProof();
+                            if (cons == null) {
+                                if (last > -1) logger.debug("No consensus instance for cid " + last);
 
-                    out.writeObject(decision);
-                    out.writeObject(proof);
-                    // TODO: WILL BE NECESSARY TO ADD A PROOF!!!
-
-                } else {
-                    out.writeBoolean(false);
-                    
-                    ////// THIS IS TO CATCH A BUG!!!!!
-                    if (last > -1) {
-                        logger.debug("[DEBUG INFO FOR LAST CID #1]");
-
-                        if (cons == null) {
-                            if (last > -1) logger.debug("No consensus instance for cid " + last);
-
-                        }
-                        else if (cons.getDecisionEpoch() == null) {
-                            logger.debug("No decision epoch for cid " + last);
-                        } else {
-                            logger.debug("epoch for cid: " + last + ": " + cons.getDecisionEpoch().toString());
-
-                            if (cons.getDecisionEpoch().propValue == null) {
-                                logger.debug("No propose for cid " + last);
+                            }
+                            else if (cons.getDecisionEpoch() == null) {
+                                logger.debug("No decision epoch for cid " + last);
                             } else {
-                                logger.debug("Propose hash for cid " + last + ": " + Base64.encodeBase64String(tom.computeHash(cons.getDecisionEpoch().propValue)));
+                                logger.debug("epoch for cid: " + last + ": " + cons.getDecisionEpoch().toString());
+
+                                if (cons.getDecisionEpoch().propValue == null) {
+                                    logger.debug("No propose for cid " + last);
+                                } else {
+                                    logger.debug("Propose hash for cid " + last + ": " + Base64.encodeBase64String(tom.computeHash(cons.getDecisionEpoch().propValue)));
+                                }
                             }
                         }
-                    }
 
-                }
+                    }
 
                     if (in > -1) { // content of cid in execution
 
@@ -874,7 +878,7 @@ public class Synchronizer {
                 boolean isExpectedSync = (regency == lcManager.getLastReg() && regency == lcManager.getNextReg());
 
                 // Is this sync what I wanted to get in the previous iteration of the synchoronization phase?
-                boolean islateSync = (regency == lcManager.getLastReg() && regency == (lcManager.getNextReg() - 1));
+                boolean isLateSync = (regency == lcManager.getLastReg() && regency == (lcManager.getNextReg() - 1));
 
                 //Did I already sent a stopdata in this iteration?
                 boolean sentStopdata = (lcManager.getStopsSize(lcManager.getNextReg()) == 0); //if 0, I already purged the stops,
@@ -883,7 +887,7 @@ public class Synchronizer {
 
                 // I am (or was) waiting for this message, and did I received it from the new leader?
                 if ((isExpectedSync || // Expected case
-                        (islateSync && !sentStopdata)) && // might happen if I timeout before receiving the SYNC
+                        (isLateSync && !sentStopdata)) && // might happen if I timeout before receiving the SYNC
                         (msg.getSender() == execManager.getCurrentLeader())) {
 
                 //if (msg.getReg() == lcManager.getLastReg() &&
