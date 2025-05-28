@@ -42,7 +42,7 @@ import bftsmart.tom.util.TOMUtil;
 
 /**
  * This class represents the acceptor role in the consensus protocol. This class
- * work together with the TOMLayer class in order to supply a atomic multicast
+ * work together with the TOMLayer class in order to supply an atomic multicast
  * service.
  *
  * @author Alysson Bessani
@@ -133,7 +133,7 @@ public final class Acceptor {
 	}
 
 	/**
-	 * Called when a Consensus message is received or when a out of context message
+	 * Called when a Consensus message is received or when an out of context message
 	 * must be processed. It processes the received message according to its type
 	 *
 	 * @param msg The message to be processed
@@ -310,7 +310,7 @@ public final class Acceptor {
 				logger.debug("Sending ACCEPT message, cId:{}, I am:{}", cid, me);
 
 				/**** LEADER CHANGE CODE! ******/
-				logger.debug("Setting consensus " + cid + " QuorumWrite tiemstamp to " + epoch.getConsensus().getEts()
+				logger.debug("Setting consensus " + cid + " QuorumWrite timestamp to " + epoch.getConsensus().getEts()
 						+ " and value " + Arrays.toString(value));
 				epoch.getConsensus().setQuorumWrites(value);
 				/*****************************************/
@@ -525,7 +525,7 @@ public final class Acceptor {
 			logger.debug(">>> >> >>  > Consensus " + cid  + " is already decided ");
 			Decision decision = epoch.getConsensus().getDecision();
 
-			// Dont forward a decision twice for the same requester in the same consensus instance
+			// Don't forward a decision twice for the same requester in the same consensus instance
 			if ( !executionManager.hasBeenForwardedAlready(msg.getEpoch(), msg.getSender())) {
 				logger.debug(">>> >> >> >> > Send FWD_DECISION for epoch " + epoch.getTimestamp() + " to replica " + msg.getSender());
 
@@ -542,7 +542,7 @@ public final class Acceptor {
 		} else {
 			boolean consensusIsDecidedButForgotten = msg.getNumber() <= tomLayer.getLastExec() - controller.getStaticConf().getCheckpointPeriod();
 			if (consensusIsDecidedButForgotten) {
-				// we will also arrive here if a replica forgets about past consensues, because the are removed from the consensuses map
+				// we will also arrive here if a replica forgets about past consensuses, because they are removed from the consensuses map
 				// this means the requester is left far behind and needs to perform a state transfer to catch up
 
 				logger.warn("decision request is too old to handle (decision has been garbage collected) and will be ignored");

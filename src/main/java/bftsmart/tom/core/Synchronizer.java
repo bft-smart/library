@@ -75,7 +75,7 @@ public class Synchronizer {
     private final Acceptor acceptor;
     private final MessageDigest md;
             
-    // Attributes to temporarely store synchronization info
+    // Attributes to temporarily store synchronization info
     // if state transfer is required for synchronization
     private int tempRegency = -1;
     private CertifiedDecision tempLastHighestCID = null;
@@ -99,7 +99,7 @@ public class Synchronizer {
         this.md = this.tom.md;
         
         this.outOfContextLC = new HashSet<>();
-	this.lcManager = new LCManager(this.tom,this.controller, this.md);
+	    this.lcManager = new LCManager(this.tom,this.controller, this.md);
     }
 
     public LCManager getLCManager() {
@@ -345,7 +345,7 @@ public class Synchronizer {
     }
 
     // Deserializes requests that were included in STOP messages
-    private TOMMessage[] deserializeTOMMessages(byte[] playload) {
+    private TOMMessage[] deserializeTOMMessages(byte[] payload) {
 
         ByteArrayInputStream bis;
         ObjectInputStream ois;
@@ -354,7 +354,7 @@ public class Synchronizer {
 
         try { // deserialize the content of the STOP message
 
-            bis = new ByteArrayInputStream(playload);
+            bis = new ByteArrayInputStream(payload);
             ois = new ObjectInputStream(bis);
 
             boolean hasReqs = ois.readBoolean();
@@ -441,7 +441,7 @@ public class Synchronizer {
         }
 
     }
-    // this method is called when a timeout occurs or when a STOP message is recevied
+    // this method is called when a timeout occurs or when a STOP message is received
     private void startSynchronization(int nextReg) {
 
         boolean condition;
@@ -457,7 +457,7 @@ public class Synchronizer {
         // Ask to start the synchronizations phase if enough messages have been received already
         if (condition && lcManager.getNextReg() == lcManager.getLastReg()) {
             
-            logger.debug("Initialize synch phase");
+            logger.debug("Initialize sync phase");
             requestsTimer.Enabled(false);
             requestsTimer.stopTimer();
 
@@ -475,7 +475,7 @@ public class Synchronizer {
             addSTOPedRequestsToClientManager();
             List<TOMMessage> messages = getRequestsToRelay();
 
-            try { // serialize conent to send in the STOP message
+            try { // serialize content to send in the STOP message
                 bos = new ByteArrayOutputStream();
                 out = new ObjectOutputStream(bos);
 
@@ -878,7 +878,7 @@ public class Synchronizer {
                 boolean isExpectedSync = (regency == lcManager.getLastReg() && regency == lcManager.getNextReg());
 
                 // Is this sync what I wanted to get in the previous iteration of the synchoronization phase?
-                boolean islateSync = (regency == lcManager.getLastReg() && regency == (lcManager.getNextReg() - 1));
+                boolean isLateSync = (regency == lcManager.getLastReg() && regency == (lcManager.getNextReg() - 1));
 
                 //Did I already sent a stopdata in this iteration?
                 boolean sentStopdata = (lcManager.getStopsSize(lcManager.getNextReg()) == 0); //if 0, I already purged the stops,
@@ -887,7 +887,7 @@ public class Synchronizer {
 
                 // I am (or was) waiting for this message, and did I received it from the new leader?
                 if ((isExpectedSync || // Expected case
-                        (islateSync && !sentStopdata)) && // might happen if I timeout before receiving the SYNC
+                        (isLateSync && !sentStopdata)) && // might happen if I timeout before receiving the SYNC
                         (msg.getSender() == execManager.getCurrentLeader())) {
 
                 //if (msg.getReg() == lcManager.getLastReg() &&
