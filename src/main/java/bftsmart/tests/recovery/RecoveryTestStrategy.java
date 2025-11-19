@@ -37,7 +37,7 @@ public class RecoveryTestStrategy implements IBenchmarkStrategy, IWorkerStatusLi
 	private CountDownLatch clientsReadyCounter;
 
 	public RecoveryTestStrategy() {
-		this.dataSize = 1024;
+		this.dataSize = 10;
 		int nLoadRequests = 1_000_000;
 		this.clientCommand =  "java -Djava.security.properties=config/java" +
 				".security -Dlogback.configurationFile=config/logback.xml -cp lib/* " +
@@ -53,17 +53,12 @@ public class RecoveryTestStrategy implements IBenchmarkStrategy, IWorkerStatusLi
 
 	@Override
 	public void executeBenchmark(WorkerHandler[] workerHandlers, Properties benchmarkParameters) {
-		logger.info("Running recovery strategy");
 		int f = Integer.parseInt(benchmarkParameters.getProperty("experiment.f"));
 		boolean isBFT = Boolean.parseBoolean(benchmarkParameters.getProperty("experiment.bft"));
 
-		String hosts = "0 127.0.0.1 11000 11001\n" + 
-				"1 127.0.0.1 11010 11011\n" + 
-				"2 127.0.0.1 11020 11021\n" + 
-				"3 127.0.0.1 11030 11031\n" + 
-				"\n7001 127.0.0.1 11100";
-
 		int nServers = (isBFT ? 3*f+1 : 2*f+1);
+
+		String hosts = generateLocalHosts(nServers);
 
 		//Separate workers
 		WorkerHandler[] serverWorkers = new WorkerHandler[nServers];
@@ -73,7 +68,7 @@ public class RecoveryTestStrategy implements IBenchmarkStrategy, IWorkerStatusLi
 		clientWorkersIds.add(clientWorker.getWorkerId());
 
 		//Setup workers
-		String setupInformation = String.format("%b\t%d\t%s", isBFT, f, hosts);
+		String setupInformation = String.format("%b\t%d\t%s\tfalse", isBFT, f, hosts);
 		Arrays.stream(workerHandlers).forEach(w -> w.setupWorker(setupInformation));
 
 		try {
@@ -84,13 +79,13 @@ public class RecoveryTestStrategy implements IBenchmarkStrategy, IWorkerStatusLi
 			//Start client that continuously send requests
 			startClients(clientWorker);
 
-			logger.info("Clients are sending requests");
+			logger.info("Client is sending requests");
 
 			//Restarting servers to test recovery
 			for (int server = nServers - 1; server >= 0; server--) {
 				WorkerHandler serverWorker = serverWorkers[server];
-				logger.info("Rebooting server {} in 10 seconds [reboot will take around 20 seconds]", server);
 				sleepSeconds(10);
+				logger.info("Rebooting server {}", server);
 
 				//Stop server
 				serverWorker.stopWorker();
@@ -107,9 +102,9 @@ public class RecoveryTestStrategy implements IBenchmarkStrategy, IWorkerStatusLi
 				serverWorker.startWorker(0, commands, this);
 				serversReadyCounter.await();
 			}
-			logger.info("Waiting 10 seconds");
+
 			sleepSeconds(10);
-			logger.info("Recovery test was a success");
+			logger.info("success");
 		} catch (InterruptedException ignore) {
 		} catch (IOException e) {
 			throw new RuntimeException(e);
@@ -119,7 +114,6 @@ public class RecoveryTestStrategy implements IBenchmarkStrategy, IWorkerStatusLi
 	}
 
 	private void startClients(WorkerHandler... clientWorkers) throws InterruptedException, IOException {
-		logger.info("Starting clients...");
 		clientsReadyCounter = new CountDownLatch(1);
 		ProcessInformation[] commands = new ProcessInformation[] {
 				new ProcessInformation(clientCommand, ".")
@@ -129,7 +123,6 @@ public class RecoveryTestStrategy implements IBenchmarkStrategy, IWorkerStatusLi
 	}
 
 	private void startServers(WorkerHandler... serverWorkers) throws InterruptedException, IOException {
-		logger.info("Starting servers...");
 		serversReadyCounter = new CountDownLatch(serverWorkers.length);
 		for (int i = 0; i < serverWorkers.length; i++) {
 			String command = serverCommand + i + " " + dataSize;
@@ -172,17 +165,21 @@ public class RecoveryTestStrategy implements IBenchmarkStrategy, IWorkerStatusLi
 
 	@Override
 	public void onError(int workerId, String errorMessage) {
-		if (serverWorkersIds.contains(workerId)) {
-			logger.debug("Error in server worker {}: {}", workerId, errorMessage);
-		} else if (clientWorkersIds.contains(workerId)) {
-			logger.debug("Error in client worker {}: {}", workerId, errorMessage);
-		} else {
-			logger.debug("Error in unused worker {}: {}", workerId, errorMessage);
-		}
+
 	}
 
 	@Override
 	public void onResult(int workerId, IProcessingResult processingResult) {
 
+	}
+
+	private String generateLocalHosts(int nServers) {
+		StringBuilder hosts = new StringBuilder();
+		for (int i = 0; i < nServers; i++) {
+			hosts.append(i).append(" ").append("127.0.0.1").append(" ").append(11000 + 10 * i).append(" ")
+					.append(11001 + 10 * i + 1).append("\n");
+		}
+		hosts.append("\n7001 127.0.0.1 11100");
+		return hosts.toString();
 	}
 }

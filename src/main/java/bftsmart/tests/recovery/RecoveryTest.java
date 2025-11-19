@@ -50,7 +50,7 @@ public class RecoveryTest extends AbstractIntegrationTest {
 
 	@Override
 	public String getWorkerSetupClassName() {
-		return "bftsmart.tests.BFTSMaRtSetup";
+		return "bftsmart.tests.common.BFTSMaRtSetup";
 	}
 
 	@Override

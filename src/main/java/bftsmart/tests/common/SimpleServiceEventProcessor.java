@@ -1,4 +1,4 @@
-package bftsmart.tests.requests;
+package bftsmart.tests.common;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

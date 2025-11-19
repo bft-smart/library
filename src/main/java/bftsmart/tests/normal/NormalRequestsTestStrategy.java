@@ -1,4 +1,4 @@
-package bftsmart.tests.requests;
+package bftsmart.tests.normal;
 
 import controller.IBenchmarkStrategy;
 import controller.IWorkerStatusListener;
@@ -12,16 +12,13 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Properties;
 import java.util.Set;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-public class RequestsTestStrategy implements IBenchmarkStrategy, IWorkerStatusListener {
+public class NormalRequestsTestStrategy implements IBenchmarkStrategy, IWorkerStatusListener {
 	private final Logger logger = LoggerFactory.getLogger("benchmarking");
 	private final Lock lock;
 	private final Condition sleepCondition;
@@ -31,8 +28,9 @@ public class RequestsTestStrategy implements IBenchmarkStrategy, IWorkerStatusLi
 	private CountDownLatch serversReadyCounter;
 	private CountDownLatch clientsReadyCounter;
 	private final AtomicBoolean error;
+	private final Semaphore ended;
 
-	public RequestsTestStrategy() {
+	public NormalRequestsTestStrategy() {
 		this.commandPrefix = "java -Djava.security.properties=./config/java.security " +
 				"-Dlogback.configurationFile=./config/logback.xml -cp lib/* ";
 		this.lock = new ReentrantLock(true);
@@ -40,20 +38,21 @@ public class RequestsTestStrategy implements IBenchmarkStrategy, IWorkerStatusLi
 		this.serverWorkersIds = new HashSet<>();
 		this.clientWorkersIds = new HashSet<>();
 		this.error = new AtomicBoolean(false);
+		this.ended = new Semaphore(0);
 	}
 
 	@Override
 	public void executeBenchmark(WorkerHandler[] workerHandlers, Properties properties) {
-		int nOperations = 100_000_000;
-		int stateSize = 1024;
+		int nOperations = 5_000;
+		int stateSize = 100;
 		String clientClass = properties.getProperty("experiment.clientClass");
+		String requestType = properties.getProperty("experiment.requestType");
 		boolean isBFT = Boolean.parseBoolean(properties.getProperty("experiment.bft"));
 		int f = Integer.parseInt(properties.getProperty("experiment.f"));
+		boolean isUnorderedRequestEnabled = Boolean.parseBoolean(properties.getProperty("experiment.isUnorderedRequestEnabled"));
 
-		String clientCommand = commandPrefix + clientClass + " 100 " + nOperations + " " + stateSize;
-		String serverCommand = commandPrefix + "bftsmart.tests.requests.SimpleServiceServer " + stateSize + " ";
-
-		logger.info("Running requests strategy of {} client", clientClass);
+		String clientCommand = commandPrefix + clientClass + " 100 " + requestType + " " + nOperations + " " + stateSize;
+		String serverCommand = commandPrefix + "bftsmart.tests.common.SimpleServiceServer " + stateSize + " ";
 
 		int nServers = isBFT ? 3 * f + 1 : 2 * f + 1;
 		String hosts = generateLocalHosts(nServers);
@@ -69,9 +68,8 @@ public class RequestsTestStrategy implements IBenchmarkStrategy, IWorkerStatusLi
 		clientWorkersIds.add(clientWorker.getWorkerId());
 
 		//Setup workers
-		String setupInformation = String.format("%b\t%d\t%s", isBFT, f, hosts);
+		String setupInformation = String.format("%b\t%d\t%s\t%s", isBFT, f, hosts, isUnorderedRequestEnabled);
 		Arrays.stream(workerHandlers).forEach(w -> w.setupWorker(setupInformation));
-
 
 		try {
 			lock.lock();
@@ -86,10 +84,9 @@ public class RequestsTestStrategy implements IBenchmarkStrategy, IWorkerStatusLi
 			if (error.get())
 				return;
 
-			logger.info("Client sending requests...");
+			ended.acquire();
 
-			logger.info("Waiting 30 seconds");
-			sleepSeconds(30);
+			sleepSeconds(5);
 
 			//Stop processes
 			clientWorker.stopWorker();
@@ -98,9 +95,9 @@ public class RequestsTestStrategy implements IBenchmarkStrategy, IWorkerStatusLi
 			sleepSeconds(5);
 
 			if (error.get()) {
-				logger.error("Request test of {} client failed", clientClass);
+				logger.error("failed");
 			} else {
-				logger.info("Request test of {} client was a success", clientClass);
+				logger.info("success");
 			}
 		} catch (InterruptedException ignore) {
 		} finally {
@@ -155,24 +152,25 @@ public class RequestsTestStrategy implements IBenchmarkStrategy, IWorkerStatusLi
 
 	@Override
 	public void onEnded(int workerId) {
-
+		ended.release();
 	}
 
 	@Override
 	public void onError(int workerId, String errorMessage) {
 		if (serverWorkersIds.contains(workerId)) {
-			logger.error("Error in server worker {}: {}", workerId, errorMessage);
+			//logger.error("Error in server worker {}: {}", workerId, errorMessage);
 			if (serversReadyCounter != null) {
 				serversReadyCounter.countDown();
 			}
 		} else if (clientWorkersIds.contains(workerId)) {
-			logger.error("Error in client worker {}: {}", workerId, errorMessage);
+			//logger.error("Error in client worker {}: {}", workerId, errorMessage);
 			if (clientsReadyCounter != null)
 				clientsReadyCounter.countDown();
 		} else {
 			logger.error("Error in unused worker {}: {}", workerId, errorMessage);
 		}
 		error.set(true);
+		ended.release();
 	}
 
 	@Override
