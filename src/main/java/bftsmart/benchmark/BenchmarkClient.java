@@ -1,6 +1,5 @@
 package bftsmart.benchmark;
 
-import bftsmart.tests.util.Operation;
 import bftsmart.tom.ServiceProxy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -10,14 +9,14 @@ import java.util.concurrent.CountDownLatch;
 /**
  * @author robin
  */
-public class ThroughputLatencyClient {
+public class BenchmarkClient {
 	private static final Logger measurementLogger = LoggerFactory.getLogger("measurement");
 	private static int initialClientId;
 	private static byte[] request;
 
 	public static void main(String[] args) throws InterruptedException {
 		if (args.length != 7) {
-			System.out.println("USAGE: bftsmart.benchmark.ThroughputLatencyClient <initial client id> " +
+			System.out.println("USAGE: bftsmart.benchmark.BenchmarkClient <initial client id> " +
 					"<num clients> <number of operations per client> <request size> <sendOrderedRequest?> <use hashed response> " +
 					"<measurement leader?>");
 			System.exit(-1);

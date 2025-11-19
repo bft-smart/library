@@ -70,12 +70,12 @@ public class AsyncRequestClient {
 			}
 			int sameContent = 1;
 			for (int i = 0; i < index; i++) {
-				if (Arrays.equals(reply.getContent(), replies[i].getContent())) {
+				if (Arrays.equals(reply.getContent().getCommonContent(), replies[i].getContent().getCommonContent())) {
 					sameContent++;
 				}
 			}
 			if (sameContent >= serviceProxy.getViewManager().getReplyQuorum()) {
-				byte[] response = reply.getContent();
+				byte[] response = reply.getContent().getCommonContent();
 				for (int i = 0; i < response.length; i++) {
 					if (response[i] != (byte) i) {
 						throw new IllegalStateException("Server response is wrong");

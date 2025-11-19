@@ -222,7 +222,7 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
         TOMMessage[] executedRequests = new TOMMessage[msgCtxs.length];
         for (int i = 0; i < msgCtxs.length; i++) {
             executedRequests[i] = getTOMMessage(controller.getStaticConf().getProcessId(), controller.getCurrentViewId(),
-                    commands[i], msgCtxs[i], results[i]);
+                    commands[i], msgCtxs[i], results[i], null);
         }
         if (clientsManager != null) {
             // Signal clientsManager that requests have been executed

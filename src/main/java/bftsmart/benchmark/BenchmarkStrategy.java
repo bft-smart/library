@@ -51,26 +51,25 @@ public class BenchmarkStrategy implements IBenchmarkStrategy, IWorkerStatusListe
 		this.clientCommand = initialCommand + "bftsmart.benchmark.BenchmarkClient ";
 		this.sarCommand = "sar -u -r -n DEV 1";
 	}
-
 	@Override
 	public void executeBenchmark(WorkerHandler[] workers, Properties benchmarkParameters) {
 		logger.info("Starting throughput-latency benchmark strategy");
 		long startTime = System.currentTimeMillis();
-		int f = Integer.parseInt(benchmarkParameters.getProperty("experiment.f"));
 		String hostsFile = benchmarkParameters.getProperty("experiment.hosts.file");
-		String[] clientsPerRoundTokens = benchmarkParameters.getProperty("experiment.clients_per_round").split(" ");
+		int f = Integer.parseInt(benchmarkParameters.getProperty("experiment.f"));
+		String[] tokens = benchmarkParameters.getProperty("experiment.clients_per_round").split(" ");
 		boolean measureResources = Boolean.parseBoolean(benchmarkParameters.getProperty("experiment.measure_resources"));
-		boolean isWrite = Boolean.parseBoolean(benchmarkParameters.getProperty("experiment.is_write"));
-		boolean useHashedResponse = Boolean.parseBoolean(benchmarkParameters.getProperty("experiment.use_hashed_response"));
 		int requestDataSize = Integer.parseInt(benchmarkParameters.getProperty("experiment.request_data_size"));
 		int responseDataSize = Integer.parseInt(benchmarkParameters.getProperty("experiment.response_data_size"));
+		boolean isSendOrderedRequest = Boolean.parseBoolean(benchmarkParameters.getProperty("experiment.send_ordered_request"));
+		boolean useHashedResponse = Boolean.parseBoolean(benchmarkParameters.getProperty("experiment.use_hashed_response"));
 		int nRequests = 10_000_000;
 		int maxClientsPerProcess = 30;
-		int sleepBetweenRounds = 30;
+		int sleepBetweenRounds = 10;
 
-		int[] clientsPerRound = new int[clientsPerRoundTokens.length];
-		for (int i = 0; i < clientsPerRoundTokens.length; i++) {
-			clientsPerRound[i] = Integer.parseInt(clientsPerRoundTokens[i]);
+		int[] clientsPerRound = new int[tokens.length];
+		for (int i = 0; i < tokens.length; i++) {
+			clientsPerRound[i] = Integer.parseInt(tokens[i]);
 		}
 
 		int nRounds = clientsPerRound.length;
@@ -83,7 +82,7 @@ public class BenchmarkStrategy implements IBenchmarkStrategy, IWorkerStatusListe
 		System.arraycopy(workers, 0, serverWorkers, 0, nServerWorkers);
 		System.arraycopy(workers, nServerWorkers, clientWorkers, 0, nClientWorkers);
 
-		//Client workers in ascending order to use always the same client for measurements
+		//Client workers in descending order to use always the same client for measurements
 		Arrays.sort(clientWorkers, (o1, o2) -> -Integer.compare(o1.getWorkerId(), o2.getWorkerId()));
 		Arrays.stream(serverWorkers).forEach(w -> serverWorkersIds.add(w.getWorkerId()));
 		Arrays.stream(clientWorkers).forEach(w -> clientWorkersIds.add(w.getWorkerId()));
@@ -94,10 +93,10 @@ public class BenchmarkStrategy implements IBenchmarkStrategy, IWorkerStatusListe
 		logger.info("Hosts file: {}", hostsFile);
 		logger.info("Clients per round: {}", Arrays.toString(clientsPerRound));
 		logger.info("Measure resources: {}", measureResources);
-		logger.info("Is write: {}", isWrite);
-		logger.info("Use hashed response: {}", useHashedResponse);
-		logger.info("Request data size: {} bytes", requestDataSize);
-		logger.info("Response data size: {} bytes", responseDataSize);
+		logger.info("Request size: {}", requestDataSize);
+		logger.info("Response size: {}", responseDataSize);
+		logger.info("Request type: {}", isSendOrderedRequest ? "ordered" : "unordered");
+		logger.info("Response type: {}", useHashedResponse ? "hashed" : "full");
 
 		//Setup workers
 		if (hostsFile != null) {
@@ -105,7 +104,7 @@ public class BenchmarkStrategy implements IBenchmarkStrategy, IWorkerStatusListe
 			String hosts = loadHosts(hostsFile);
 			if (hosts == null)
 				return;
-			String setupInformation = String.format("%b\t%d\t%s", true, f, hosts);
+			String setupInformation = String.format("%b\t%d\t%s\t%b", true, f, hosts, false);
 			Arrays.stream(workers).forEach(w -> w.setupWorker(setupInformation));
 		}
 
@@ -115,12 +114,12 @@ public class BenchmarkStrategy implements IBenchmarkStrategy, IWorkerStatusListe
 				lock.lock();
 				logger.info("============ Round {} out of {} ============", round, nRounds);
 				int nClients = clientsPerRound[round - 1];
-				storageFileNamePrefix = String.format("f_%d_request_%d_bytes_response_%d_bytes_op_%s_response_%s_round_%d_",
-						f, requestDataSize, responseDataSize, isWrite ? "write" : "read",
-						useHashedResponse ? "hashed" : "full", nClients);
+				measurementWorkers.clear();
+				storageFileNamePrefix = String.format("f_%d_%d_%d_bytes_%s_request_%s_response_round_%d_", f, requestDataSize, responseDataSize,
+						isSendOrderedRequest ? "ordered" : "unordered", useHashedResponse ? "hashed" : "full", nClients);
 
-				//Distribute clients among workers
-				int[] clientsPerWorker = distributeClientsPerWorkers(nClientWorkers, nClients);
+				//Distribute clients per workers
+				int[] clientsPerWorker = distributeClientsPerWorkers(nClientWorkers, nClients, maxClientsPerProcess);
 				String vector = Arrays.toString(clientsPerWorker);
 				int total = Arrays.stream(clientsPerWorker).sum();
 				logger.info("Clients per worker: {} -> Total: {}", vector, total);
@@ -129,8 +128,8 @@ public class BenchmarkStrategy implements IBenchmarkStrategy, IWorkerStatusListe
 				startServers(serverWorkers, responseDataSize);
 
 				//Start clients
-				startClient(clientWorkers, clientsPerWorker, isWrite, useHashedResponse, requestDataSize, nRequests,
-						maxClientsPerProcess);
+				startClients(clientWorkers, clientsPerWorker, isSendOrderedRequest, useHashedResponse, requestDataSize,
+						nRequests, maxClientsPerProcess);
 
 				//Start resource measurement
 				if (measureResources) {
@@ -142,8 +141,8 @@ public class BenchmarkStrategy implements IBenchmarkStrategy, IWorkerStatusListe
 				}
 
 				//Wait for system to stabilize
-				logger.info("Waiting 15s...");
-				sleepSeconds(15);
+				logger.info("Waiting 10s...");
+				sleepSeconds(10);
 
 				//Get measurements
 				getMeasurements(measureResources);
@@ -165,79 +164,40 @@ public class BenchmarkStrategy implements IBenchmarkStrategy, IWorkerStatusListe
 				lock.unlock();
 			}
 		}
-
 		long endTime = System.currentTimeMillis();
 		logger.info("Strategy execution duration: {}s", (endTime - startTime) / 1000);
 	}
 
-	private void startResourceMeasurements(int nServerResourceMeasurementWorkers,
-										   int nClientResourceMeasurementWorkers) throws InterruptedException {
-		WorkerHandler[] resourceMeasurementWorkers =
-				new WorkerHandler[nServerResourceMeasurementWorkers + nClientResourceMeasurementWorkers];
-		System.arraycopy(serverWorkers, 0, resourceMeasurementWorkers, 0, nServerResourceMeasurementWorkers);
-		System.arraycopy(clientWorkers, 0, resourceMeasurementWorkers, nServerResourceMeasurementWorkers,
-				nClientResourceMeasurementWorkers);
-
-		logger.info("Starting resource measurements...");
-		workersReadyCounter = new CountDownLatch(resourceMeasurementWorkers.length);
-		for (WorkerHandler worker : resourceMeasurementWorkers) {
-			measurementWorkers.put(worker.getWorkerId(), worker);
-			ProcessInformation[] commands = {
-					new ProcessInformation(sarCommand, ".")
-			};
-			worker.startWorker(0, commands, this);
+	private void printWorkersInfo() {
+		StringBuilder sb = new StringBuilder();
+		for (WorkerHandler serverWorker : serverWorkers) {
+			sb.append(serverWorker.getWorkerId());
+			sb.append(" ");
 		}
-		workersReadyCounter.await();
+		logger.info("Server workers[{}]: {}", serverWorkers.length, sb);
+
+		sb = new StringBuilder();
+		for (WorkerHandler clientWorker : clientWorkers) {
+			sb.append(clientWorker.getWorkerId());
+			sb.append(" ");
+		}
+		logger.info("Client workers[{}]: {}", clientWorkers.length, sb);
 	}
 
-	private void startClient(WorkerHandler[] clientWorkers, int[] clientsPerWorker, boolean isWrite,
-							 boolean useHashedResponse, int dataSize, int nRequests, int maxClientsPerProcess) throws InterruptedException {
-		logger.info("Starting clients...");
-		workersReadyCounter = new CountDownLatch(clientsPerWorker.length);
-		int initialClientId = 100000;
-		measurementWorkers.put(clientWorkers[0].getWorkerId(), clientWorkers[0]);
-
-		for (int i = 0; i < clientsPerWorker.length; i++) {
-			WorkerHandler clientWorker = clientWorkers[i];
-			int totalClientsPerWorker = clientsPerWorker[i];
-			int nProcesses = totalClientsPerWorker / maxClientsPerProcess
-					+ (totalClientsPerWorker % maxClientsPerProcess == 0 ? 0 : 1);
-			ProcessInformation[] commandInfo = new ProcessInformation[nProcesses];
-			boolean isMeasurementWorker = i == 0;// First client is measurement client
-
-			for (int j = 0; j < nProcesses; j++) {
-				int clientsPerProcess = Math.min(totalClientsPerWorker, maxClientsPerProcess);
-				String command = clientCommand + initialClientId + " " + clientsPerProcess
-						+ " " + nRequests + " " + dataSize + " " + isWrite + " " + useHashedResponse
-						+ " " + isMeasurementWorker;
-				commandInfo[j] = new ProcessInformation(command, ".");
-				totalClientsPerWorker -= clientsPerProcess;
-				initialClientId += clientsPerProcess;
+	private String loadHosts(String hostFile) {
+		try (BufferedReader in = new BufferedReader(new FileReader(hostFile))) {
+			StringBuilder sb = new StringBuilder();
+			String line;
+			while ((line = in.readLine()) != null) {
+				sb.append(line);
+				sb.append("\n");
 			}
-
-			clientWorker.startWorker(0, commandInfo, this);
+			sb.deleteCharAt(sb.length() - 1);
+			return sb.toString();
+		} catch (IOException e) {
+			logger.error("Failed to load hosts file", e);
+			return null;
 		}
-
-		workersReadyCounter.await();
-	}
-
-	private void startServers(WorkerHandler[] serverWorkers, int dataSize) throws InterruptedException {
-		logger.info("Starting servers...");
-		workersReadyCounter = new CountDownLatch(serverWorkers.length);
-		measurementWorkers.put(serverWorkers[0].getWorkerId(), serverWorkers[0]);
-
-		for (int i = 0; i < serverWorkers.length; i++) {
-			WorkerHandler serverWorker = serverWorkers[i];
-			logger.debug("Using server worker {}", serverWorker.getWorkerId());
-			String command = serverCommand + " " + i + " " + dataSize;
-			ProcessInformation[] commandInfo = {
-					new ProcessInformation(command, ".")
-			};
-			serverWorker.startWorker(0, commandInfo, this);
-			sleepSeconds(2);
-		}
-
-		workersReadyCounter.await();
 	}
 
 	private void getMeasurements(boolean measureResources) throws InterruptedException {
@@ -268,6 +228,119 @@ public class BenchmarkStrategy implements IBenchmarkStrategy, IWorkerStatusListe
 		measurementWorkers.values().forEach(WorkerHandler::requestProcessingResult);
 
 		measurementDeliveredCounter.await();
+	}
+
+	private void startResourceMeasurements(int nServerResourceMeasurementWorkers,
+										   int nClientResourceMeasurementWorkers) throws InterruptedException {
+		WorkerHandler[] resourceMeasurementWorkers =
+				new WorkerHandler[nServerResourceMeasurementWorkers + nClientResourceMeasurementWorkers];
+		System.arraycopy(serverWorkers, 0, resourceMeasurementWorkers, 0, nServerResourceMeasurementWorkers);
+		System.arraycopy(clientWorkers, 0, resourceMeasurementWorkers, nServerResourceMeasurementWorkers,
+				nClientResourceMeasurementWorkers);
+
+		logger.info("Starting resource measurements...");
+		workersReadyCounter = new CountDownLatch(resourceMeasurementWorkers.length);
+		for (WorkerHandler worker : resourceMeasurementWorkers) {
+			measurementWorkers.put(worker.getWorkerId(), worker);
+			ProcessInformation[] commands = {
+					new ProcessInformation(sarCommand, ".")
+			};
+			worker.startWorker(0, commands, this);
+		}
+		workersReadyCounter.await();
+	}
+
+	private void startClients(WorkerHandler[] clientWorkers, int[] clientsPerWorker, boolean isSendOrderedRequest,
+							  boolean useHashedResponse, int dataSize, int nRequests, int maxClientsPerProcess) throws InterruptedException {
+		logger.info("Starting clients...");
+		workersReadyCounter = new CountDownLatch(clientsPerWorker.length);
+		int initialClientId = 100000;
+		measurementWorkers.put(clientWorkers[0].getWorkerId(), clientWorkers[0]);
+
+		for (int i = 0; i < clientsPerWorker.length; i++) {
+			WorkerHandler clientWorker = clientWorkers[i];
+			int totalClientsPerWorker = clientsPerWorker[i];
+			int nProcesses = totalClientsPerWorker / maxClientsPerProcess
+					+ (totalClientsPerWorker % maxClientsPerProcess == 0 ? 0 : 1);
+			ProcessInformation[] commandInfo = new ProcessInformation[nProcesses];
+			boolean isMeasurementWorker = i == 0;// First client is measurement client
+
+			for (int j = 0; j < nProcesses; j++) {
+				int clientsPerProcess = Math.min(totalClientsPerWorker, maxClientsPerProcess);
+				String command = clientCommand + initialClientId + " " + clientsPerProcess
+						+ " " + nRequests + " " + dataSize + " " + isSendOrderedRequest + " " + useHashedResponse + " "
+						+ isMeasurementWorker;
+				commandInfo[j] = new ProcessInformation(command, ".");
+				totalClientsPerWorker -= clientsPerProcess;
+				initialClientId += clientsPerProcess;
+			}
+			clientWorker.startWorker(0, commandInfo, this);
+		}
+		workersReadyCounter.await();
+	}
+
+	private void startServers(WorkerHandler[] serverWorkers, int dataSize) throws InterruptedException {
+		logger.info("Starting servers...");
+		workersReadyCounter = new CountDownLatch(serverWorkers.length);
+		measurementWorkers.put(serverWorkers[0].getWorkerId(), serverWorkers[0]);
+
+		for (int i = 0; i < serverWorkers.length; i++) {
+			WorkerHandler serverWorker = serverWorkers[i];
+			String command = serverCommand + i + " " + dataSize;
+			logger.debug("Using server worker {} ({})", serverWorker.getWorkerId(), command);
+			ProcessInformation[] commandInfo = {
+					new ProcessInformation(command, ".")
+			};
+			serverWorker.startWorker(0, commandInfo, this);
+			sleepSeconds(2);
+		}
+		workersReadyCounter.await();
+	}
+
+	private int[] distributeClientsPerWorkers(int nClientWorkers, int nClients, int maxClientsPerProcess) {
+		if (nClients == 1 || nClientWorkers == 1) {
+			return new int[]{nClients};
+		}
+		nClients--; //Subtract the measurement client
+		nClientWorkers--; //Subtract the measurement client
+
+		if (nClients <= nClientWorkers) {
+			int[] distribution = new int[1 + nClients];
+			Arrays.fill(distribution, 1);
+			return distribution;
+		}
+
+		int[] distribution = new int[1 + nClientWorkers];
+		int nClientsPerWorker = nClients / nClientWorkers;
+		Arrays.fill(distribution, nClientsPerWorker);
+		distribution[0] = 1;//Measurement client
+		int remainingClients = nClients % nClientWorkers;
+		for (int i = 1; i <= remainingClients; i++) {
+			distribution[i]++;
+		}
+		return distribution;
+	}
+
+	@Override
+	public void onReady(int workerId) {
+		logger.debug("Worker {} is ready", workerId);
+		workersReadyCounter.countDown();
+	}
+
+	@Override
+	public void onEnded(int workerId) {
+
+	}
+
+	@Override
+	public void onError(int workerId, String errorMessage) {
+		if (serverWorkersIds.contains(workerId)) {
+			logger.error("Error in server worker {}: {}", workerId, errorMessage);
+		} else if (clientWorkersIds.contains(workerId)) {
+			logger.error("Error in client worker {}: {}", workerId, errorMessage);
+		} else {
+			logger.error("Error in unused worker {}: {}", workerId, errorMessage);
+		}
 	}
 
 	@Override
@@ -346,8 +419,8 @@ public class BenchmarkStrategy implements IBenchmarkStrategy, IWorkerStatusListe
 		}
 		sb += String.format("\tClients[#]: min:%d max:%d\n", minClients, maxClients);
 		sb += String.format("\tThroughput [ops/s]: avg:%.3f dev:%.3f max: %d",
-						throughputStorage.getAverage(true), throughputStorage.getDP(true),
-						throughputStorage.getMax(true));
+				throughputStorage.getAverage(true), throughputStorage.getDP(true),
+				throughputStorage.getMax(true));
 		logger.info(sb);
 	}
 
@@ -361,6 +434,25 @@ public class BenchmarkStrategy implements IBenchmarkStrategy, IWorkerStatusListe
 						st.getAverage(true) / 1_000_000.0, st.getDP(true) / 1_000_000.0,
 						st.getMax(true) / 1_000_000);
 		logger.info(sb);
+	}
+
+	private void processResourcesMeasurements(ResourcesMeasurements resourcesMeasurements, String tag) {
+		long[] cpu = resourcesMeasurements.getCpu();
+		long[] mem = resourcesMeasurements.getMemory();
+		long[][] netReceived = resourcesMeasurements.getNetReceived();
+		long[][] netTransmitted = resourcesMeasurements.getNetTransmitted();
+
+		String fileName = storageFileNamePrefix + "cpu_" + tag + ".csv";
+		saveResourcesMeasurements(fileName, cpu);
+
+		fileName = storageFileNamePrefix + "mem_" + tag + ".csv";
+		saveResourcesMeasurements(fileName, mem);
+
+		fileName = storageFileNamePrefix + "net_received_" + tag + ".csv";
+		saveResourcesMeasurements(fileName, netReceived);
+
+		fileName = storageFileNamePrefix + "net_transmitted_" + tag + ".csv";
+		saveResourcesMeasurements(fileName, netTransmitted);
 	}
 
 	private void saveServerMeasurements(Map<String, long[]> measurements) {
@@ -431,25 +523,6 @@ public class BenchmarkStrategy implements IBenchmarkStrategy, IWorkerStatusListe
 		}
 	}
 
-	private void processResourcesMeasurements(ResourcesMeasurements resourcesMeasurements, String tag) {
-		long[] cpu = resourcesMeasurements.getCpu();
-		long[] mem = resourcesMeasurements.getMemory();
-		long[][] netReceived = resourcesMeasurements.getNetReceived();
-		long[][] netTransmitted = resourcesMeasurements.getNetTransmitted();
-
-		String fileName = storageFileNamePrefix + "cpu_" + tag + ".csv";
-		saveResourcesMeasurements(fileName, cpu);
-
-		fileName = storageFileNamePrefix + "mem_" + tag + ".csv";
-		saveResourcesMeasurements(fileName, mem);
-
-		fileName = storageFileNamePrefix + "net_received_" + tag + ".csv";
-		saveResourcesMeasurements(fileName, netReceived);
-
-		fileName = storageFileNamePrefix + "net_transmitted_" + tag + ".csv";
-		saveResourcesMeasurements(fileName, netTransmitted);
-	}
-
 	private void saveResourcesMeasurements(String fileName, long[]... data) {
 		try (BufferedWriter resultFile = new BufferedWriter(new OutputStreamWriter(
 				Files.newOutputStream(Paths.get(fileName))))) {
@@ -458,9 +531,7 @@ public class BenchmarkStrategy implements IBenchmarkStrategy, IWorkerStatusListe
 			while (i < size) {
 				StringBuilder sb = new StringBuilder();
 				for (long[] datum : data) {
-					if (i < datum.length) {
-						sb.append(String.format("%.2f", datum[i] / 100.0));
-					}
+					sb.append(String.format("%.2f", datum[i] / 100.0));
 					sb.append(",");
 				}
 				sb.deleteCharAt(sb.length() - 1);
@@ -470,85 +541,6 @@ public class BenchmarkStrategy implements IBenchmarkStrategy, IWorkerStatusListe
 			resultFile.flush();
 		} catch (IOException e) {
 			logger.error("Error while storing resources measurements results", e);
-		}
-	}
-
-	@Override
-	public synchronized void onReady(int workerId) {
-		logger.debug("Worker {} is ready", workerId);
-		workersReadyCounter.countDown();
-	}
-
-	@Override
-	public synchronized void onEnded(int workerId) {
-
-	}
-
-	@Override
-	public synchronized void onError(int workerId, String errorMessage) {
-		if (serverWorkersIds.contains(workerId)) {
-			logger.error("Error in server worker {}: {}", workerId, errorMessage);
-		} else if (clientWorkersIds.contains(workerId)) {
-			logger.error("Error in client worker {}: {}", workerId, errorMessage);
-		} else {
-			logger.error("Error in unused worker {}: {}", workerId, errorMessage);
-		}
-	}
-
-	private int[] distributeClientsPerWorkers(int nClientWorkers, int nClients) {
-		if (nClients == 1 || nClientWorkers == 1) {
-			return new int[]{nClients};
-		}
-
-		nClients--; //Subtract the measurement client
-		nClientWorkers--; //Subtract the measurement client
-
-		if (nClients <= nClientWorkers) {
-			int[] distribution = new int[1 + nClients];
-			Arrays.fill(distribution, 1);
-			return distribution;
-		}
-
-		int[] distribution = new int[1 + nClientWorkers];
-		int nClientsPerWorker = nClients / nClientWorkers;
-		Arrays.fill(distribution, nClientsPerWorker);
-		distribution[0] = 1;//Measurement client
-		int remainingClients = nClients % nClientWorkers;
-		for (int i = 1; i <= remainingClients; i++) {
-			distribution[i]++;
-		}
-		return distribution;
-	}
-
-	private void printWorkersInfo() {
-		StringBuilder sb = new StringBuilder();
-		for (WorkerHandler serverWorker : serverWorkers) {
-			sb.append(serverWorker.getWorkerId());
-			sb.append(" ");
-		}
-		logger.info("Server workers[{}]: {}", serverWorkers.length, sb);
-
-		sb = new StringBuilder();
-		for (WorkerHandler clientWorker : clientWorkers) {
-			sb.append(clientWorker.getWorkerId());
-			sb.append(" ");
-		}
-		logger.info("Client workers[{}]: {}", clientWorkers.length, sb);
-	}
-
-	private String loadHosts(String hostFile) {
-		try (BufferedReader in = new BufferedReader(new FileReader(hostFile))) {
-			StringBuilder sb = new StringBuilder();
-			String line;
-			while ((line = in.readLine()) != null) {
-				sb.append(line);
-				sb.append("\n");
-			}
-			sb.deleteCharAt(sb.length() - 1);
-			return sb.toString();
-		} catch (IOException e) {
-			logger.error("Failed to load hosts file", e);
-			return null;
 		}
 	}
 

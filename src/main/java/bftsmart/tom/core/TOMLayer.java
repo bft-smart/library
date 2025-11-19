@@ -194,9 +194,6 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 		stateManager.init(this, dt);
 		this.dt.start();
 
-		// I have a verifier, now create clients manager
-		this.clientsManager = new ClientsManager(this.controller, requestsTimer, verifier1);
-
 		this.syncher = new Synchronizer(this); // create synchronizer
 
 		if (controller.getStaticConf().getBatchTimeout() > -1) {

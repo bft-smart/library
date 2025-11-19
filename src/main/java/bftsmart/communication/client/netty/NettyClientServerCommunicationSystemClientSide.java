@@ -25,10 +25,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.Signature;
 import java.security.spec.InvalidKeySpecException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Random;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
@@ -517,16 +514,14 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 		logger.info("Re-transmitting request from " + sm.getSender() + " with sequence number " + sm.getSequence()
 				+ " to " + replicaId);
 		if (sm.serializedMessage == null) {
-			serializeMessage(sm);
+			sm.getSerializedMessage();
 		}
 		if (sign && sm.serializedMessageSignature == null) {
-			sm.serializedMessageSignature = signMessage(privKey, sm.serializedMessage);
+			sm.serializedMessageSignature = signMessage(privateKey, sm.serializedMessage);
 		}
-		try {
-			sm = (TOMMessage) sm.clone();
-		} catch (CloneNotSupportedException e) {
-			logger.error("Failed to clone TOMMessage", e);
-		}
+
+		sm = sm.createCopy();
+
 		sm.destination = replicaId;
 		rl.readLock().lock();
 		Channel channel = sessionClientToReplica.get(replicaId).getChannel();
