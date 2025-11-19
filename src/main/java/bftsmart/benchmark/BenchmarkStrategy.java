@@ -55,25 +55,21 @@ public class BenchmarkStrategy implements IBenchmarkStrategy, IWorkerStatusListe
 	public void executeBenchmark(WorkerHandler[] workers, Properties benchmarkParameters) {
 		logger.info("Starting throughput-latency benchmark strategy");
 		long startTime = System.currentTimeMillis();
-		String hostsFile = benchmarkParameters.getProperty("experiment.hosts.file");
-		int f = Integer.parseInt(benchmarkParameters.getProperty("experiment.f"));
-		String[] tokens = benchmarkParameters.getProperty("experiment.clients_per_round").split(" ");
-		boolean measureResources = Boolean.parseBoolean(benchmarkParameters.getProperty("experiment.measure_resources"));
-		int requestDataSize = Integer.parseInt(benchmarkParameters.getProperty("experiment.request_data_size"));
-		int responseDataSize = Integer.parseInt(benchmarkParameters.getProperty("experiment.response_data_size"));
-		boolean isSendOrderedRequest = Boolean.parseBoolean(benchmarkParameters.getProperty("experiment.send_ordered_request"));
-		boolean useHashedResponse = Boolean.parseBoolean(benchmarkParameters.getProperty("experiment.use_hashed_response"));
+		String serverIpsInput = benchmarkParameters.getProperty("server_ips", "");
+		int faultThreshold = Integer.parseInt(benchmarkParameters.getProperty("fault_threshold"));
+		int[] clientsPerRound = Arrays.stream(benchmarkParameters.getProperty("clients_per_round").split(" ")).mapToInt(Integer::parseInt).toArray();
+		boolean measureResources = Boolean.parseBoolean(benchmarkParameters.getProperty("measure_resources"));
+		int requestDataSize = Integer.parseInt(benchmarkParameters.getProperty("request_data_size"));
+		int responseDataSize = Integer.parseInt(benchmarkParameters.getProperty("response_data_size"));
+		boolean isSendOrderedRequest = Boolean.parseBoolean(benchmarkParameters.getProperty("send_ordered_request"));
+		boolean useHashedResponse = Boolean.parseBoolean(benchmarkParameters.getProperty("use_hashed_response"));
+		int measurementDuration = Integer.parseInt(benchmarkParameters.getProperty("measurement_duration"));
 		int nRequests = 10_000_000;
 		int maxClientsPerProcess = 30;
 		int sleepBetweenRounds = 10;
 
-		int[] clientsPerRound = new int[tokens.length];
-		for (int i = 0; i < tokens.length; i++) {
-			clientsPerRound[i] = Integer.parseInt(tokens[i]);
-		}
-
 		int nRounds = clientsPerRound.length;
-		int nServerWorkers = 3 * f + 1;
+		int nServerWorkers = 3 * faultThreshold + 1;
 		int nClientWorkers = workers.length - nServerWorkers;
 
 		//Separate workers
@@ -87,26 +83,30 @@ public class BenchmarkStrategy implements IBenchmarkStrategy, IWorkerStatusListe
 		Arrays.stream(serverWorkers).forEach(w -> serverWorkersIds.add(w.getWorkerId()));
 		Arrays.stream(clientWorkers).forEach(w -> clientWorkersIds.add(w.getWorkerId()));
 
+		String serverIps;
+		if (serverIpsInput.isEmpty()) {
+			serverIps = generateLocalhostIPs(nServerWorkers);
+		} else {
+			serverIps = selectServerIPs(serverIpsInput, nServerWorkers);
+		}
+
+		//Setup workers
+		logger.info("Setting up workers...");
+		boolean isBFT = true;
+		boolean enableReadOnlyOperations = !isSendOrderedRequest;
+		String setupInformation = String.format("%b\t%d\t%s\t%b", isBFT, faultThreshold, serverIps, enableReadOnlyOperations);
+		Arrays.stream(workers).forEach(w -> w.setupWorker(setupInformation));
+
 		logger.info("============ Strategy Parameters ============");
 		printWorkersInfo();
-		logger.info("f: {}", f);
-		logger.info("Hosts file: {}", hostsFile);
+		logger.info("Fault threshold: {}", faultThreshold);
+		logger.info("Servers IPs: {}", serverIps);
 		logger.info("Clients per round: {}", Arrays.toString(clientsPerRound));
 		logger.info("Measure resources: {}", measureResources);
 		logger.info("Request size: {}", requestDataSize);
 		logger.info("Response size: {}", responseDataSize);
 		logger.info("Request type: {}", isSendOrderedRequest ? "ordered" : "unordered");
 		logger.info("Response type: {}", useHashedResponse ? "hashed" : "full");
-
-		//Setup workers
-		if (hostsFile != null) {
-			logger.info("Setting up workers...");
-			String hosts = loadHosts(hostsFile);
-			if (hosts == null)
-				return;
-			String setupInformation = String.format("%b\t%d\t%s\t%b", true, f, hosts, false);
-			Arrays.stream(workers).forEach(w -> w.setupWorker(setupInformation));
-		}
 
 		int round = 1;
 		while (true) {
@@ -115,7 +115,8 @@ public class BenchmarkStrategy implements IBenchmarkStrategy, IWorkerStatusListe
 				logger.info("============ Round {} out of {} ============", round, nRounds);
 				int nClients = clientsPerRound[round - 1];
 				measurementWorkers.clear();
-				storageFileNamePrefix = String.format("f_%d_%d_%d_bytes_%s_request_%s_response_round_%d_", f, requestDataSize, responseDataSize,
+				storageFileNamePrefix = String.format("f_%d_%d_%d_bytes_%s_request_%s_response_clients_%d_",
+						faultThreshold, requestDataSize, responseDataSize,
 						isSendOrderedRequest ? "ordered" : "unordered", useHashedResponse ? "hashed" : "full", nClients);
 
 				//Distribute clients per workers
@@ -145,7 +146,7 @@ public class BenchmarkStrategy implements IBenchmarkStrategy, IWorkerStatusListe
 				sleepSeconds(10);
 
 				//Get measurements
-				getMeasurements(measureResources);
+				getMeasurements(measureResources, measurementDuration);
 
 				//Stop processes
 				Arrays.stream(workers).forEach(WorkerHandler::stopWorker);
@@ -200,14 +201,14 @@ public class BenchmarkStrategy implements IBenchmarkStrategy, IWorkerStatusListe
 		}
 	}
 
-	private void getMeasurements(boolean measureResources) throws InterruptedException {
+	private void getMeasurements(boolean measureResources, int measurementDuration) throws InterruptedException {
 		//Start measurements
 		logger.info("Getting measurements...");
 		measurementWorkers.values().forEach(WorkerHandler::startProcessing);
 
 		//Wait for measurements
-		logger.info("Measuring during {}s", 60 * 2);
-		sleepSeconds(60 * 2);
+		logger.info("Measuring during {}s", measurementDuration);
+		sleepSeconds(measurementDuration);
 
 		//Stop measurements
 		measurementWorkers.values().forEach(WorkerHandler::stopProcessing);
@@ -542,6 +543,30 @@ public class BenchmarkStrategy implements IBenchmarkStrategy, IWorkerStatusListe
 		} catch (IOException e) {
 			logger.error("Error while storing resources measurements results", e);
 		}
+	}
+
+	private String selectServerIPs(String serverIps, int nServerWorkers) {
+		StringBuilder sb = new StringBuilder();
+		String[] ips = serverIps.split(" ");
+		if (ips.length < nServerWorkers) {
+			logger.warn("Not enough server IPs provided. Using localhost for remaining servers.");
+		}
+		for (int i = 0; i < nServerWorkers; i++) {
+			if (i < ips.length) {
+				sb.append(ips[i]).append(" ");
+			} else {
+				sb.append("127.0.0.1 ");
+			}
+		}
+		return sb.toString().trim();
+	}
+
+	private String generateLocalhostIPs(int nServerWorkers) {
+		StringBuilder sb = new StringBuilder();
+		for (int i = 0; i < nServerWorkers; i++) {
+			sb.append("127.0.0.1 ");
+		}
+		return sb.toString().trim();
 	}
 
 	private void sleepSeconds(long duration) throws InterruptedException {

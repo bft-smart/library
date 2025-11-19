@@ -56,29 +56,25 @@ task remoteDeploy(dependsOn: installDist) {
 
 task localDeploy(dependsOn: installDist) {
 	doLast {
-		int nServers = 4
-		int nClients = 1
+		int nWorkers = project.hasProperty('nWorkers') ? project.nWorkers.toInteger() : 6
 
 		def fileSeparator = System.getProperty("file.separator")
 		def src = project.buildDir.name + fileSeparator + "install" + fileSeparator + project.name
 		def workingDirectory = project.buildDir.name + fileSeparator + "local" + fileSeparator
 
 		println ("Deploying project into ${workingDirectory}")
-
-		for (i in 0..<nServers) {
-			def target = workingDirectory + "rep${i}"
+		for (i in 0..<nWorkers) {
+			def target = workingDirectory + "worker${i}"
 			copy {
 				from src
 				into target
 			}
 		}
 
-		for (i in 0..<nClients) {
-			def target = workingDirectory + "cli${i}"
-			copy {
-				from src
-				into target
-			}
+		def target = workingDirectory + "controller"
+		copy {
+			from src
+			into target
 		}
 	}
 }
@@ -142,7 +138,7 @@ task runIntegrationTest(type: JavaExec, dependsOn: installDist) {
 	}
 
 	classpath = sourceSets.main.runtimeClasspath
-	args(workingDirectory, project.getPath() + fileSeparator + "src", f, true)
+	args(workingDirectory, project.projectDir.absolutePath + fileSeparator + "src", f, true)
 	mainClass = 'bftsmart.tests.IntegrationTestsExecutor'
 }
 

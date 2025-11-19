@@ -102,7 +102,7 @@ public abstract class DefaultSingleRecoverable implements Recoverable, SingleExe
         if(msgCtx.isLastInBatch()) {
             saveReplies(commands.toArray(new byte[0][]), msgContexts.toArray(new MessageContext[0]), replies.toArray(new byte[0][]), cid);
 	        if ((cid > 0) && ((cid % checkpointPeriod) == 0)) {
-	            logger.warn("Performing checkpoint for consensus " + cid);
+	            logger.info("Performing checkpoint for consensus " + cid);
 	            stateLock.lock();
 	            byte[] snapshot = getSnapshot();
 	            stateLock.unlock();

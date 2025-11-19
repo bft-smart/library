@@ -29,20 +29,42 @@ public class BenchmarkSetup implements ISetupWorker {
 		int nServers = (isBFT ? 3*f+1 : 2*f+1);
 
 		logger.debug("Creating hosts.config");
-		String fname = "config/hosts.config";
-		writeF(fname, hosts);
+		writeHosts(hosts);
 
 		logger.debug("Creating system.config");
-		fname="config/system.config";
 		String ctx=createSystemConf(nServers, args[1], args[0], isUnorderedRequestEnabled);
-		writeF(fname, ctx);
+		writeSystemConfig(ctx);
 
 	}
 
-	private void writeF(String fName, String content){
+	private void writeHosts(String servers){
+		String fName = "config/hosts.config";
+		try(FileWriter myWriter = new FileWriter(fName)){
+			String[] ips = servers.split(" ");
+			String localHostIp = "127.0.0.1";
+			String ports;
+			for(int i=0; i<ips.length;i++){
+				String ip = ips[i];
+				if (ip.equals(localHostIp)) {
+					ports = (11000 + i * 10) + " " + (11001 + i * 10);
+				} else {
+					ports = "11000 11001";
+				}
+				myWriter.write(i + " " + ip + " " + ports + "\n");
+			}
+
+			myWriter.write("7001 127.0.0.1 20000");
+			logger.debug("Successfully wrote to the file.");
+		}catch (IOException e) {
+			logger.error("An error occurred.", e);
+		}
+	}
+
+	private void writeSystemConfig(String content){
+		String fName = "config/system.config";
 		try(FileWriter myWriter = new FileWriter(fName)){
 			myWriter.write(content);
-			logger.debug("Successfully wrote to the file.");
+			logger.debug("Successfully wrote to the system file.");
 		}catch (IOException e) {
 			logger.error("An error occurred.", e);
 		}
@@ -91,8 +113,8 @@ public class BenchmarkSetup implements ISetupWorker {
 		ctx.append("system.totalordermulticast.log_parallel = false\n");
 		ctx.append("system.totalordermulticast.log_to_disk = false\n");
 		ctx.append("system.totalordermulticast.sync_log = false\n");
-		ctx.append("system.totalordermulticast.checkpoint_period = 102400000\n");
-		ctx.append("system.totalordermulticast.global_checkpoint_period = 120000000\n");
+		ctx.append("system.totalordermulticast.checkpoint_period = 100\n");
+		ctx.append("system.totalordermulticast.global_checkpoint_period = 100\n");
 		ctx.append("system.totalordermulticast.checkpoint_to_disk = false\n");
 		ctx.append("system.totalordermulticast.sync_ckp = false\n");
 		ctx.append("system.initial.view = ").append(view).append("\n");
