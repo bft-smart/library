@@ -102,11 +102,15 @@ public class ServerViewController extends ViewController {
                 break;
             }
         }
-        if (index != -1) {
-            System.arraycopy(replicas, index + 1, replicas, index, replicas.length - index - 1);
-            replicas = Arrays.copyOfRange(replicas, 0, replicas.length - 1);
+
+        if (index == -1) {
+            return Arrays.copyOf(replicas, replicas.length);
         }
-        return replicas;
+
+        int[] copy = new int[replicas.length - 1];
+        System.arraycopy(replicas, 0, copy, 0, index);
+        System.arraycopy(replicas, index + 1, copy, index, replicas.length - index - 1);
+        return copy;
     }
 
     public int[] getCurrentViewAcceptors() {
