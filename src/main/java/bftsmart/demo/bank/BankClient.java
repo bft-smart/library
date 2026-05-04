@@ -54,8 +54,8 @@ public class BankClient {
 
             DataInputStream in = new DataInputStream(new ByteArrayInputStream(reply));
             boolean ok = in.readBoolean();
-            double val = in.readDouble();
-            return new Reply(ok, val);
+            double balance = in.readDouble();
+            return new Reply(ok, balance);
         } else {
             System.out.println("ERROR! Exiting.");
             return new Reply(false, 0);
@@ -90,7 +90,7 @@ public class BankClient {
                 break;
         }
 
-        System.out.printf("Operation: %b, Balance: %.2f%n", reply.ok, reply.value);
+        System.out.printf("Success: %b, Balance: %.2f%n", reply.ok, reply.value);
         // close the client to release resources
         client.close();
     }
