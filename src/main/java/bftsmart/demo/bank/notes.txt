@@ -1,0 +1,3 @@
+./smartrun.sh bftsmart.demo.bank.BankClient 10 alice deposit 500.01
+./smartrun.sh bftsmart.demo.bank.BankClient 11 alice balance
+./smartrun.sh bftsmart.demo.bank.BankClient 12 alice withdraw 200
