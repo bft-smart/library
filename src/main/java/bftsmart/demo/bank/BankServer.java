@@ -62,7 +62,7 @@ public final class BankServer extends DefaultSingleRecoverable {
 
             int operation = in.readInt();
             String owner = in.readUTF();
-            double amount = (operation != BALANCE) ? in.readDouble() : 0;
+            double amount = in.readDouble();
 
             switch (operation) {
                 case DEPOSIT:
@@ -81,7 +81,7 @@ public final class BankServer extends DefaultSingleRecoverable {
                     } else {
                         out.writeBoolean(false);
                         out.writeDouble(balance);
-                        System.out.printf("[WITHDRAW FAILED] %s saldo insuficiente (%.2f < %.2f)%n", owner, balance,
+                        System.out.printf("[WITHDRAW FAILED] %s (%.2f < %.2f)%n", owner, balance,
                                 amount);
                     }
                     break;
