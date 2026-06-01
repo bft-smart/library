@@ -296,6 +296,13 @@ public class ServerViewController extends ViewController {
         for (int i = 0; i < nextL.length; i++)
             listenerAddresses[i] = getStaticConf().getRemoteAddress(nextL[i]);
 
+        int minVoters = getStaticConf().isBFT() ? (3 * f + 1) : (2 * f + 1);
+        if (nextV.length < minVoters) {
+            logger.warn("Reconfiguration leaves {} voter(s), below the minimum {} required for f={} ({}). "
+                    + "Liveness/safety may be compromised; consider lowering f.",
+                    nextV.length, minVoters, f, getStaticConf().isBFT() ? "BFT" : "CFT");
+        }
+
         View newV = new View(currentView.getId() + 1, nextV, f, addresses, nextL, listenerAddresses);
 
         // The reply must advertise every node that needs to install the new view: new voters,
