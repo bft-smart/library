@@ -1,0 +1,18 @@
+// bftsmart-core: protocol layers (consensus, TOM, reconfiguration, state transfer)
+// and the networking SPI. It does NOT contain any concrete transport implementation
+// and has no dependency on any networking library (Netty lives in bftsmart-tls).
+
+jar {
+	archiveBaseName = 'bftsmart-core'
+}
+
+dependencies {
+	// Exposed as 'api' so that transport modules (e.g. bftsmart-tls) and applications
+	// depending on bftsmart-core inherit the shared third-party libraries.
+	api 'org.bouncycastle:bcpkix-jdk15on:1.69'
+	api 'org.bouncycastle:bcprov-jdk15on:1.69'
+	api 'commons-codec:commons-codec:1.15'
+	api 'ch.qos.logback:logback-core:1.2.5'
+	api 'ch.qos.logback:logback-classic:1.2.5'
+	api 'org.slf4j:slf4j-api:1.7.32'
+}

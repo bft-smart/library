@@ -1,0 +1,166 @@
+// bftsmart-tls: the default networking transport for BFT-SMaRt, built on TLS server
+// sockets (replica-to-replica) and Netty (client-to-server), exposed through
+// bftsmart.communication.tls.TLSNettyCommunicationFactory. It also hosts the runnable
+// demos, integration tests and benchmarks, which wire this transport as the default.
+
+plugins {
+	id 'distribution'
+	id 'org.hidetake.ssh' version '2.10.1'
+}
+
+jar {
+	archiveBaseName = 'BFT-SMaRt'
+}
+
+dependencies {
+	// The protocol layers and the networking SPI.
+	api project(':bftsmart-core')
+
+	// Netty backs the client-to-server transport implemented in this module.
+	implementation 'io.netty:netty-all:4.1.67.Final'
+
+	// Third-party jars bundled in the repository (YCSB core, benchmark executor),
+	// used by the demos/benchmarks living in this module.
+	implementation fileTree(dir: "${rootProject.projectDir}/lib", include: ['*.jar'])
+}
+
+ssh.settings {
+	fileTransfer = 'scp'
+}
+
+remotes {
+	master {
+		//Create a gradle.properties and set the following properties: remoteDeployMasterHost, remoteDeployMasterUser,
+		// remoteDeployMasterPrivateKeyFile
+		if (project.hasProperty("remoteDeployMasterHost")) {
+			host = remoteDeployMasterHost
+		}
+		if (project.hasProperty("remoteDeployMasterUser")) {
+			user = remoteDeployMasterUser
+		}
+		if (project.hasProperty("remoteDeployMasterPrivateKeyFile")) {
+			identity = file(remoteDeployMasterPrivateKeyFile)
+		}
+	}
+}
+
+task remoteDeploy(dependsOn: installDist) {
+	doLast {
+		def fileSeparator = System.getProperty("file.separator")
+		def src = project.buildDir.name + fileSeparator + "install" + fileSeparator + project.name
+		def target = '~/'
+		ssh.run {
+			session(remotes.master) {
+				put from: src, into: target
+			}
+		}
+	}
+}
+
+task localDeploy(dependsOn: installDist) {
+	doLast {
+		int nServers = 4
+		int nClients = 1
+
+		def fileSeparator = System.getProperty("file.separator")
+		def src = project.buildDir.name + fileSeparator + "install" + fileSeparator + project.name
+		def workingDirectory = project.buildDir.name + fileSeparator + "local" + fileSeparator
+
+		println ("Deploying project into ${workingDirectory}")
+
+		for (i in 0..<nServers) {
+			def target = workingDirectory + "rep${i}"
+			copy {
+				from src
+				into target
+			}
+		}
+
+		for (i in 0..<nClients) {
+			def target = workingDirectory + "cli${i}"
+			copy {
+				from src
+				into target
+			}
+		}
+	}
+}
+
+def setupIntegrationTestingEnvironment(nWorkers, workingDirectory) {
+	println("Creating folders for ${nWorkers} workers")
+	def fileSeparator = System.getProperty("file.separator")
+	def src = project.buildDir.name + fileSeparator + "install" + fileSeparator + project.name
+	copy {
+		from src + fileSeparator + "lib"
+		into workingDirectory + fileSeparator + "lib"
+	}
+	copy {
+		from rootProject.projectDir.absolutePath + fileSeparator + "config" + fileSeparator + "benchmark.config"
+		into workingDirectory
+	}
+
+	for (i in 0..<nWorkers) {
+		def target = workingDirectory + "worker${i}"
+		copy {
+			from src
+			into target
+		}
+	}
+}
+
+task setupIntegrationTestingEnvironment(dependsOn: installDist) {
+	doFirst {
+		def f = 1
+		def nWorkers = 3 * f + 2
+		println("Creating folders for ${nWorkers} workers")
+		def fileSeparator = System.getProperty("file.separator")
+		def src = project.buildDir.name + fileSeparator + "install" + fileSeparator + project.name
+		def workingDirectory = project.buildDir.name + fileSeparator + "integration" + fileSeparator
+		copy {
+			from src + fileSeparator + "lib"
+			into workingDirectory + fileSeparator + "lib"
+		}
+		copy {
+			from rootProject.projectDir.absolutePath + fileSeparator + "config" + fileSeparator + "benchmark.config"
+			into workingDirectory
+		}
+
+		for (i in 0..<nWorkers) {
+			def target = workingDirectory + "worker${i}"
+			copy {
+				from src
+				into target
+			}
+		}
+	}
+}
+
+task runIntegrationTest(type: JavaExec, dependsOn: installDist) {
+	int f = 1
+	int nWorkers = 3 * f + 2;
+	def fileSeparator = System.getProperty("file.separator")
+	String workingDirectory = project.buildDir.absolutePath + fileSeparator + "integration" + fileSeparator
+	doFirst {
+		setupIntegrationTestingEnvironment(nWorkers, workingDirectory)
+	}
+
+	classpath = sourceSets.main.runtimeClasspath
+	args(workingDirectory, project.projectDir.absolutePath + fileSeparator + "src", f, true)
+	mainClass = 'bftsmart.tests.IntegrationTestsExecutor'
+}
+
+distributions {
+	main {
+		contents {
+			into('config') {
+				from rootProject.file('config')
+			}
+			into('lib') {
+				from jar
+				from(configurations.runtimeClasspath)
+			}
+			from rootProject.file('runscripts/smartrun.sh')
+			from rootProject.file('runscripts/smartrun.cmd')
+		}
+	}
+}
