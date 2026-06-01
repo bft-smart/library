@@ -181,6 +181,74 @@ a voter reduces `n`, so the remaining voters must still satisfy `n >= 3f+1` (BFT
 Reproducible tests: `bftsmart-tls/scripts/listener-replication-test.sh` and
 `listener-hardening-test.sh` (late-join state transfer + leader change with a listener).
 
+## Programmatic API — basic functions
+
+A quick reference of the core operations, all driven from code. Replace the demo
+`Counter` with your own `Recoverable` / `Executable`.
+
+**1. Build a group's configuration (no config files):**
+```java
+TOMConfiguration conf = new TOMConfigurationBuilder()
+        .servers(4).f(1).initialView(0, 1, 2, 3)
+        .defaultKeys(true).useSignatures(false)
+        .enabledCiphers("TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256")
+        .host(0, "127.0.0.1", 11000, 11001)
+        .host(1, "127.0.0.1", 11010, 11011)
+        .host(2, "127.0.0.1", 11020, 11021)
+        .host(3, "127.0.0.1", 11030, 11031)
+        // start node 4 directly as a LISTENER: .listeners(4).host(4,"127.0.0.1",11040,11041)
+        .build(myId);
+```
+
+**2. Start a replica and a client:**
+```java
+Counter service = new Counter();                       // your DefaultSingleRecoverable
+new ServiceReplica(conf, service, service, null, null, // executor == recoverer
+                   new TLSNettyCommunicationFactory());
+// file-less / isolated: add a per-instance view storage:
+//   new ServiceReplica(conf, service, service, null, null,
+//                      new TLSNettyCommunicationFactory(), new InMemoryViewStorage());
+
+ServiceProxy proxy = new ServiceProxy(conf, null, null, new TLSNettyCommunicationFactory());
+byte[] reply = proxy.invokeOrdered(request);   // ordered (consensus); invokeUnordered() for reads
+proxy.close();
+```
+
+**3. Add voters / listeners at runtime (consensus-ordered view change):**
+```java
+VMServices vm = new VMServices();                  // issued by the configured TTP
+vm.addServer(4, "127.0.0.1", 11040, 11041);        // add a VOTER (participates in consensus)
+vm.addListener(5, "127.0.0.1", 11050, 11051);      // add a LISTENER (replicates, no vote)
+vm.promoteToVoter(5);                              // LISTENER -> VOTER (already state-synced)
+vm.demoteToListener(4);                            // VOTER -> LISTENER (keep n >= 3f+1)
+vm.removeServer(4);                                // remove a member
+```
+
+Listeners can also be declared statically in `config/system.config`:
+```
+system.servers.listeners = 4      # comma-separated ids
+```
+
+**4. Host several consensus groups in one process (multi-group / multi-raft):**
+```java
+MultiGroupReplica mgr = new MultiGroupReplica("config");        // dir for per-group view files
+mgr.addGroup(0, group0Conf, svcA, svcA, new TLSNettyCommunicationFactory());          // durable view
+mgr.addInMemoryGroup(1, group1Conf, svcB, svcB, new TLSNettyCommunicationFactory());  // ephemeral view
+ServiceReplica g0 = mgr.group(0);
+```
+Each group is fully isolated (own view, consensus sequence, leader, state machine and
+view storage). Use distinct ports per group. A node may be a voter in one group and a
+listener in another. (An experimental `addSharedGroup(...)` multiplexes groups over a
+single replica-to-replica port; see the multi-group branch.)
+
+**The state machine** to implement (`DefaultSingleRecoverable`):
+```java
+byte[] appExecuteOrdered(byte[] command, MessageContext ctx);   // mutate + reply
+byte[] appExecuteUnordered(byte[] command, MessageContext ctx); // read-only reply
+byte[] getSnapshot();                                           // full state -> bytes
+void   installSnapshot(byte[] state);                           // bytes -> full state
+```
+
 ## Running the counter demonstration
 You can run the counter demonstration by executing the following commands, from within the folders containing compiled code across four different consoles (4 replicas, to tolerate 1 fault):
 
