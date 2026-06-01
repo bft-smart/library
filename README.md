@@ -33,8 +33,7 @@ and the legacy constructors, behaviour is unchanged; the new capabilities are op
 3. **Programmatic, file-less configuration.** Besides `system.config` / `hosts.config`,
    the system can now be configured entirely in memory via `TOMConfigurationBuilder`
    and the new `TOMConfiguration(...)`-accepting constructors of `ServiceReplica` /
-   `ServiceProxy`. See *Programmatic configuration* and
-   `bftsmart.demo.programmatic.ProgrammaticConfigDemo`.
+   `ServiceProxy`. See *Programmatic configuration* below.
 
 4. **View storage without reflection.** The `view.storage.handler` reflective plug-in
    was replaced by programmatic injection (`ViewStorageProvider.setFactory(...)`),
@@ -147,9 +146,8 @@ new ServiceReplica(conf, service, service, null, null, new TLSNettyCommunication
 // client: new ServiceProxy(conf, null, null, new TLSNettyCommunicationFactory());
 ```
 
-Runnable example: `bftsmart.demo.programmatic.ProgrammaticConfigDemo`. (For the default
-TLS transport the keystore under `config/keysSSL_TLS/` is still read from disk — that is
-crypto material, not BFT-SMaRt configuration.)
+(For the default TLS transport the keystore under `config/keysSSL_TLS/` is still read
+from disk — that is crypto material, not BFT-SMaRt configuration.)
 
 ## Listeners (non-voting members)
 
