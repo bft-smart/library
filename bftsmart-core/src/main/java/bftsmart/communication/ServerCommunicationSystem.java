@@ -49,6 +49,8 @@ public class ServerCommunicationSystem extends Thread {
     private CommunicationSystemServerSide clientsConn;
     private ServerViewController controller;
     private final CommunicationFactory communicationFactory;
+    private int groupId = 0; // consensus group this stack belongs to (0 = default)
+    private boolean ownsServersConn = true; // false when attached to a shared transport
 
     /**
      * Creates a new instance of ServerCommunicationSystem using the default
@@ -77,6 +79,33 @@ public class ServerCommunicationSystem extends Thread {
         //******* EDUARDO BEGIN **************//
             clientsConn = communicationFactory.newCommunicationSystemServerSide(controller);
         //******* EDUARDO END **************//
+    }
+
+    /**
+     * Creates a communication system for one consensus group that attaches to a SHARED
+     * replica-to-replica transport (multi-group / multi-raft): instead of opening its own
+     * server-to-server layer, it registers this group's inqueue with {@code sharedServersConn}
+     * (which demultiplexes inbound messages by groupId), while still using its own
+     * client-facing side. Outbound server messages are tagged with {@code groupId}.
+     */
+    public ServerCommunicationSystem(ServerViewController controller, ServiceReplica replica,
+                                     CommunicationFactory communicationFactory,
+                                     int groupId, ServerCommunicationLayer sharedServersConn) throws Exception {
+        super("Server Comm. System (group " + groupId + ")");
+
+        this.controller = controller;
+        this.communicationFactory = communicationFactory;
+        this.groupId = groupId;
+
+        messageHandler = new MessageHandler();
+
+        inQueue = new LinkedBlockingQueue<SystemMessage>(controller.getStaticConf().getInQueueSize());
+
+        this.serversConn = sharedServersConn;
+        this.ownsServersConn = false; // the shared transport is owned by the multi-group host
+        sharedServersConn.registerGroupInQueue(groupId, inQueue);
+
+        clientsConn = communicationFactory.newCommunicationSystemServerSide(controller);
     }
 
     //******* EDUARDO BEGIN **************//
@@ -152,6 +181,8 @@ public class ServerCommunicationSystem extends Thread {
             clientsConn.send(targets, (TOMMessage) sm, false);
         } else {
         	logger.debug("--> sending message from: {} -> {}" + sm.getSender(), targets);
+            // tag the message with this group's id so a shared transport can route it
+            sm.setGroupId(groupId);
             serversConn.send(targets, sm, true);
         }
     }
@@ -173,9 +204,11 @@ public class ServerCommunicationSystem extends Thread {
         
         logger.info("Shutting down communication layer");
         
-        this.doWork = false;        
+        this.doWork = false;
         clientsConn.shutdown();
-        serversConn.shutdown();
+        if (ownsServersConn) {
+            serversConn.shutdown();
+        }
     }
     
     public SecretKey getSecretKey(int id) {

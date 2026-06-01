@@ -18,7 +18,12 @@ package bftsmart.multigroup;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import java.util.concurrent.LinkedBlockingQueue;
+
 import bftsmart.communication.CommunicationFactory;
+import bftsmart.communication.SystemMessage;
+import bftsmart.communication.server.ServerCommunicationLayer;
+import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.reconfiguration.util.TOMConfiguration;
 import bftsmart.reconfiguration.views.InMemoryViewStorage;
 import bftsmart.reconfiguration.views.NamespacedFileViewStorage;
@@ -45,6 +50,8 @@ public final class MultiGroupReplica {
 
     private final Map<Integer, ServiceReplica> groups = new ConcurrentHashMap<>();
     private final String configHome;
+    // A2 (shared transport): a single replica-to-replica transport multiplexed across groups.
+    private ServerCommunicationLayer sharedServersConn = null;
 
     /** @param configHome directory for the per-group persistent view files (production). */
     public MultiGroupReplica(String configHome) {
@@ -84,6 +91,32 @@ public final class MultiGroupReplica {
             throw new IllegalArgumentException("Group already present: " + groupId);
         }
         ServiceReplica replica = new ServiceReplica(conf, executor, recoverer, null, null, factory, viewStore);
+        groups.put(groupId, replica);
+        return replica;
+    }
+
+    /**
+     * Adds a group that shares a single replica-to-replica transport with the other
+     * shared groups (A2 densification: one TLS server-to-server port and one connection
+     * mesh for all groups, demultiplexed by groupId). All shared groups must have the
+     * same membership/server-to-server ports (the common multi-shard case); they may use
+     * distinct client ports. The shared transport is created lazily from the first group's
+     * configuration.
+     */
+    public synchronized ServiceReplica addSharedGroup(int groupId, TOMConfiguration conf, Executable executor,
+                                                      Recoverable recoverer, CommunicationFactory factory,
+                                                      ViewStorage viewStore) throws Exception {
+        if (groups.containsKey(groupId)) {
+            throw new IllegalArgumentException("Group already present: " + groupId);
+        }
+        if (sharedServersConn == null) {
+            // Build the shared transport once, from the (membership-equivalent) first group.
+            ServerViewController transportController = new ServerViewController(conf, new InMemoryViewStorage());
+            sharedServersConn = factory.newServerCommunicationLayer(
+                    transportController, new LinkedBlockingQueue<SystemMessage>(), null);
+        }
+        ServiceReplica replica = new ServiceReplica(conf, executor, recoverer, null, null,
+                factory, viewStore, groupId, sharedServersConn);
         groups.put(groupId, replica);
         return replica;
     }

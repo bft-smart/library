@@ -82,6 +82,10 @@ public class ServiceReplica {
     private Replier replier = null;
     private RequestVerifier verifier = null;
     private final CommunicationFactory communicationFactory;
+    // Multi-group: when set, this replica attaches its group to a shared replica-to-replica
+    // transport instead of opening its own (see MultiGroupReplica).
+    private int groupId = 0;
+    private bftsmart.communication.server.ServerCommunicationLayer sharedServersConn = null;
 
     /**
      * Constructor
@@ -188,8 +192,20 @@ public class ServiceReplica {
      * {@code config/currentView} file. A {@code null} storage uses the default.
      */
     public ServiceReplica(TOMConfiguration conf, Executable executor, Recoverable recoverer, RequestVerifier verifier, Replier replier, CommunicationFactory communicationFactory, bftsmart.reconfiguration.views.ViewStorage viewStore) {
+        this(conf, executor, recoverer, verifier, replier, communicationFactory, viewStore, 0, null);
+    }
+
+    /**
+     * Multi-group constructor: the replica's group attaches to a SHARED replica-to-replica
+     * transport ({@code sharedServersConn}) under {@code groupId}, instead of opening its own.
+     * Used by {@link bftsmart.multigroup.MultiGroupReplica} for the shared-transport (A2)
+     * layout. A {@code null} sharedServersConn means a private transport (default).
+     */
+    public ServiceReplica(TOMConfiguration conf, Executable executor, Recoverable recoverer, RequestVerifier verifier, Replier replier, CommunicationFactory communicationFactory, bftsmart.reconfiguration.views.ViewStorage viewStore, int groupId, bftsmart.communication.server.ServerCommunicationLayer sharedServersConn) {
         this.id = conf.getProcessId();
         this.communicationFactory = communicationFactory;
+        this.groupId = groupId;
+        this.sharedServersConn = sharedServersConn;
         this.SVController = new ServerViewController(conf, viewStore);
         this.executor = executor;
         this.recoverer = recoverer;
@@ -203,7 +219,9 @@ public class ServiceReplica {
     // this method initializes the object
     private void init() {
         try {
-            cs = new ServerCommunicationSystem(this.SVController, this, this.communicationFactory);
+            cs = (sharedServersConn != null)
+                    ? new ServerCommunicationSystem(this.SVController, this, this.communicationFactory, this.groupId, this.sharedServersConn)
+                    : new ServerCommunicationSystem(this.SVController, this, this.communicationFactory);
         } catch (Exception ex) {
             logger.error("Failed to initialize replica-to-replica communication system", ex);
             throw new RuntimeException("Unable to build a communication system.");

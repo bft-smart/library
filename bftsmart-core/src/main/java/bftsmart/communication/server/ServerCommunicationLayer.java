@@ -70,4 +70,15 @@ public interface ServerCommunicationLayer {
      * @throws InterruptedException if the calling thread is interrupted while waiting
      */
     void join() throws InterruptedException;
+
+    /**
+     * Registers (or replaces) the inbound queue of a consensus group, so that this
+     * (possibly shared) transport delivers messages tagged with {@code groupId} to it.
+     * This is what lets several consensus groups multiplex over a single transport
+     * (multi-group / multi-raft); group 0 is the default group.
+     *
+     * @param groupId the consensus group id
+     * @param inQueue the queue receiving that group's inbound messages
+     */
+    void registerGroupInQueue(int groupId, java.util.concurrent.LinkedBlockingQueue<SystemMessage> inQueue);
 }
