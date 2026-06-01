@@ -68,6 +68,14 @@ public class TOMConfiguration extends Configuration {
     private boolean fairbatch;
     private String bindAddress;
     private int clientInvokeOrderedTimeout;
+    // Per-group durable storage: path used by DiskStateLog / DurableStateLog.
+    // Defaults to DiskStateLog.DEFAULT_DIR ("files/"); multi-group hosts set this
+    // to an isolated sub-directory via GroupStorageLayout so groups never collide.
+    private String storageDir;
+    // Base port for the durable state-transfer channel (DurableStateManager).
+    // Actual port = stateTransferPortBase + replicaId. Default 4444.
+    // For multi-group in one JVM, each group must use a distinct base (e.g. 4444, 5444, 6444).
+    private int stateTransferPortBase = 4444;
 
     /* Tulio Ribeiro*/
     //private Boolean ssltls=true;
@@ -684,5 +692,37 @@ public class TOMConfiguration extends Configuration {
 	public String[] getEnabledCiphers() {
 		return enabledCiphers;
 	}
+
+    /**
+     * Directory used by DiskStateLog / DurableStateLog for checkpoint and log files.
+     * Returns {@code "files/"} when not overridden. In multi-group deployments each group
+     * sets a distinct, isolated sub-directory via {@link bftsmart.multigroup.GroupStorageLayout}.
+     */
+    public String getStorageDir() {
+        return (storageDir != null) ? storageDir
+                : bftsmart.tom.server.defaultservices.DiskStateLog.DEFAULT_DIR;
+    }
+
+    /** Overrides the storage directory for this group's durable state files. */
+    public void setStorageDir(String dir) {
+        if (dir != null && !dir.endsWith(java.io.File.separator) && !dir.endsWith("/")) {
+            dir = dir + java.io.File.separator;
+        }
+        this.storageDir = dir;
+    }
+
+    /**
+     * Base port for the durable state-transfer channel. The actual listening port is
+     * {@code stateTransferPortBase + replicaId}. Default is 4444. In multi-group JVM
+     * deployments each group must use a distinct base to avoid port collisions.
+     */
+    public int getStateTransferPortBase() {
+        return stateTransferPortBase;
+    }
+
+    /** Sets the durable state-transfer port base for this group. */
+    public void setStateTransferPortBase(int base) {
+        this.stateTransferPortBase = base;
+    }
 
 }

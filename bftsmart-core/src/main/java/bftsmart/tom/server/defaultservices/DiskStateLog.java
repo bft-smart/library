@@ -35,6 +35,8 @@ public class DiskStateLog extends StateLog {
 			.getProperty("file.separator"));
 	private static final int INT_BYTE_SIZE = 4;
 	private static final int EOF = 0;
+	// Instance-level storage directory (defaults to DEFAULT_DIR; overridden per-group in multi-group).
+	private String baseDir;
 
 	private RandomAccessFile log;
 	private boolean syncLog;
@@ -47,19 +49,31 @@ public class DiskStateLog extends StateLog {
 	
 	public DiskStateLog(int id, byte[] initialState, byte[] initialHash,
 			boolean isToLog, boolean syncLog, boolean syncCkp) {
+		this(id, initialState, initialHash, isToLog, syncLog, syncCkp, DEFAULT_DIR);
+	}
+
+	/**
+	 * Constructor with an explicit storage directory. Use this in multi-group deployments
+	 * so each group writes its checkpoint and log files to an isolated sub-directory,
+	 * avoiding collisions between groups sharing the same JVM.
+	 *
+	 * @param baseDir directory path (trailing separator added automatically if missing)
+	 */
+	public DiskStateLog(int id, byte[] initialState, byte[] initialHash,
+			boolean isToLog, boolean syncLog, boolean syncCkp, String baseDir) {
 		super(id, initialState, initialHash);
 		this.id = id;
 		this.isToLog = isToLog;
 		this.syncLog = syncLog;
 		this.syncCkp = syncCkp;
 		this.logPointers = new HashMap<>();
-                
-                File directory = new File(DEFAULT_DIR);
-                if (!directory.exists()) directory.mkdir();
+		this.baseDir = normalizeDir(baseDir);
+		File directory = new File(this.baseDir);
+		if (!directory.exists()) directory.mkdirs();
 	}
 
 	private void createLogFile() {
-		logPath = DEFAULT_DIR + String.valueOf(id) + "."
+		logPath = baseDir + String.valueOf(id) + "."
 				+ System.currentTimeMillis() + ".log";
 		try {
 			log = new RandomAccessFile(logPath, (syncLog ? "rwd" : "rw"));
@@ -114,7 +128,7 @@ public class DiskStateLog extends StateLog {
 
         @Override
 	public void newCheckpoint(byte[] state, byte[] stateHash, int consensusId) {
-		String ckpPath = DEFAULT_DIR + String.valueOf(id) + "."
+		String ckpPath = baseDir + String.valueOf(id) + "."
 				+ System.currentTimeMillis() + ".tmp";
 		try {
 			checkpointLock.lock();
@@ -195,7 +209,7 @@ public class DiskStateLog extends StateLog {
 
 			int size = cid - lastCheckpointCID;
 
-			FileRecoverer fr = new FileRecoverer(id, DEFAULT_DIR);
+			FileRecoverer fr = new FileRecoverer(id, baseDir);
 
 //			if (size > 0 && sendState) {
 			if (size > 0) {
@@ -251,8 +265,14 @@ public class DiskStateLog extends StateLog {
 		setLastCheckpointCID(transState.getLastCheckpointCID());
 	}
 	
+	private static String normalizeDir(String dir) {
+		if (dir == null || dir.isEmpty()) return DEFAULT_DIR;
+		String sep = System.getProperty("file.separator");
+		return (dir.endsWith(sep) || dir.endsWith("/")) ? dir : dir + sep;
+	}
+
 	protected ApplicationState loadDurableState() {
-		FileRecoverer fr = new FileRecoverer(id, DEFAULT_DIR);
+		FileRecoverer fr = new FileRecoverer(id, baseDir);
 		lastCkpPath = fr.getLatestFile(".ckp");
 		logPath = fr.getLatestFile(".log");
 		byte[] checkpoint = null;

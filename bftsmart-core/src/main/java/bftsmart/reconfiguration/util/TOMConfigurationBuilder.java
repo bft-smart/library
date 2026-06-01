@@ -99,6 +99,26 @@ public class TOMConfigurationBuilder {
         return property("system.ssltls.enabled_ciphers", sb.toString());
     }
 
+    /**
+     * Sets the durable state storage directory for this group. In multi-group deployments
+     * pass the result of {@link bftsmart.multigroup.GroupStorageLayout#dirFor(int)} here so
+     * each group writes its checkpoint/log files to an isolated sub-directory.
+     */
+    public TOMConfigurationBuilder storageDir(String dir) {
+        props.put("__storageDir__", dir);
+        return this;
+    }
+
+    /**
+     * Sets the durable state-transfer port base. Actual port = base + replicaId.
+     * Default is 4444. Set a distinct base per group in multi-group JVM deployments
+     * (e.g. group 0 → 4444, group 1 → 5444, group 2 → 6444).
+     */
+    public TOMConfigurationBuilder stateTransferPortBase(int portBase) {
+        props.put("__stateTransferPortBase__", String.valueOf(portBase));
+        return this;
+    }
+
     /** Builds the configuration for the given process, using the default key loader. */
     public TOMConfiguration build(int processId) {
         return build(processId, null);
@@ -106,7 +126,12 @@ public class TOMConfigurationBuilder {
 
     /** Builds the configuration for the given process, using the supplied key loader. */
     public TOMConfiguration build(int processId, KeyLoader loader) {
-        return new TOMConfiguration(processId, loader, new HashMap<>(props), hosts);
+        TOMConfiguration conf = new TOMConfiguration(processId, loader, new HashMap<>(props), hosts);
+        String sd = props.get("__storageDir__");
+        if (sd != null) conf.setStorageDir(sd);
+        String ptb = props.get("__stateTransferPortBase__");
+        if (ptb != null) conf.setStateTransferPortBase(Integer.parseInt(ptb));
+        return conf;
     }
 
     private static String join(int[] ids) {

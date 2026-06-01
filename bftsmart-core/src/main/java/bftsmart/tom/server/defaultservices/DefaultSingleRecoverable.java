@@ -278,7 +278,8 @@ public abstract class DefaultSingleRecoverable implements Recoverable, SingleExe
                 boolean isToLog = config.isToLog();
                 boolean syncLog = config.isToWriteSyncLog();
                 boolean syncCkp = config.isToWriteSyncCkp();
-                log = new DiskStateLog(replicaId, state, computeHash(state), isToLog, syncLog, syncCkp);
+                log = new DiskStateLog(replicaId, state, computeHash(state), isToLog, syncLog, syncCkp,
+                        config.getStorageDir());
 
                 ApplicationState storedState = ((DiskStateLog) log).loadDurableState();
                 if (storedState.getLastCID() > 0) {
@@ -308,7 +309,8 @@ public abstract class DefaultSingleRecoverable implements Recoverable, SingleExe
             	boolean isToLog = config.isToLog();
             	boolean syncLog = config.isToWriteSyncLog();
             	boolean syncCkp = config.isToWriteSyncCkp();
-            	log = new DiskStateLog(replicaId, state, computeHash(state), isToLog, syncLog, syncCkp);
+            	log = new DiskStateLog(replicaId, state, computeHash(state), isToLog, syncLog, syncCkp,
+            	        config.getStorageDir());
             } else
             	log = new StateLog(controller.getStaticConf().getProcessId(), checkpointPeriod, state, computeHash(state));
     	}
