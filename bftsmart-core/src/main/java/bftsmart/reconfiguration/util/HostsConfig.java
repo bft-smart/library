@@ -33,7 +33,14 @@ public class HostsConfig {
     public HostsConfig(String configHome, String fileName) {
         loadConfig(configHome, fileName);
     }
-    
+
+    /**
+     * Creates an empty hosts configuration to be populated programmatically (no file is
+     * read). Use {@link #add(int, String, int, int)} to register hosts.
+     */
+    public HostsConfig() {
+    }
+
     private void loadConfig(String configHome, String fileName){
         try{
             String path =  "";

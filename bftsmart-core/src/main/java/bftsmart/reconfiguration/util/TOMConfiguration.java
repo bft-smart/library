@@ -83,6 +83,20 @@ public class TOMConfiguration extends Configuration {
         super(processId, configHome, loader);
     }
 
+    /**
+     * Programmatic (file-less) constructor: builds the configuration from in-memory data
+     * instead of reading system.config / hosts.config.
+     *
+     * @param processId this process id
+     * @param loader the key loader
+     * @param configs the system.config properties as a map (missing keys use defaults)
+     * @param hosts the hosts, built programmatically
+     */
+    public TOMConfiguration(int processId, KeyLoader loader,
+                            java.util.Map<String, String> configs, HostsConfig hosts) {
+        super(processId, loader, configs, hosts);
+    }
+
 
     @Override
     protected void init() {

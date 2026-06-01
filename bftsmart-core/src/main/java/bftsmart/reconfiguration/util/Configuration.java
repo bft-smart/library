@@ -71,6 +71,11 @@ public class Configuration {
 
 	protected boolean useReadOnlyRequests;
 
+	// Programmatic (file-less) configuration: when non-null, init() uses these instead of
+	// reading system.config / hosts.config from disk.
+	protected Map<String, String> programmaticConfigs = null;
+	protected HostsConfig programmaticHosts = null;
+
 	public Configuration(int procId, KeyLoader loader) {
 		logger = LoggerFactory.getLogger(this.getClass());
 		processId = procId;
@@ -86,12 +91,37 @@ public class Configuration {
 		init();
 	}
 
+	/**
+	 * Programmatic constructor: configures the system purely from in-memory data,
+	 * without reading system.config or hosts.config from disk.
+	 *
+	 * @param procId this process id
+	 * @param loader the key loader (keys may also be supplied programmatically)
+	 * @param programmaticConfigs the system.config properties as a map (e.g. key
+	 *        "system.servers.num" -> "4"); missing keys fall back to defaults
+	 * @param programmaticHosts the hosts, built programmatically (see {@link HostsConfig})
+	 */
+	public Configuration(int procId, KeyLoader loader,
+						  Map<String, String> programmaticConfigs, HostsConfig programmaticHosts) {
+		logger = LoggerFactory.getLogger(this.getClass());
+		processId = procId;
+		keyLoader = loader;
+		this.programmaticConfigs = programmaticConfigs;
+		this.programmaticHosts = programmaticHosts;
+		init();
+	}
+
 	protected void init() {
 		logger = LoggerFactory.getLogger(this.getClass());
 		try {
-			hosts = new HostsConfig(configHome, hostsFileName);
-
-			loadConfig();
+			if (programmaticConfigs != null) {
+				// File-less mode: use the supplied properties and hosts.
+				hosts = (programmaticHosts != null) ? programmaticHosts : new HostsConfig();
+				configs = new HashMap<>(programmaticConfigs);
+			} else {
+				hosts = new HostsConfig(configHome, hostsFileName);
+				loadConfig();
+			}
 
 			String s = (String) configs.remove("system.autoconnect");
 			if (s == null) {
