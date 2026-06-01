@@ -7,7 +7,7 @@ import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.core.messages.TOMMessageType;
 import bftsmart.tom.util.Extractor;
 import bftsmart.tom.util.KeyLoader;
-import bftsmart.tom.util.TOMUtil;
+import bftsmart.tom.util.io.StateCodecs;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -106,8 +106,8 @@ public class AsynchServiceProxy extends ServiceProxy {
     
     private View newView(byte[] bytes) {
         
-        Object o = TOMUtil.getObject(bytes);
-        return (o != null && o instanceof View ? (View) o : null);
+        Object o = StateCodecs.reconfigReplyContentFromBytes(bytes);
+        return (o instanceof View ? (View) o : null);
     }
     /**
      * @see bellow

@@ -23,6 +23,7 @@ import bftsmart.tom.core.TOMLayer;
 import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.util.KeyLoader;
 import bftsmart.tom.util.TOMUtil;
+import bftsmart.tom.util.io.StateCodecs;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -118,8 +119,8 @@ public class ServerViewController extends ViewController {
     }
 
     public void enqueueUpdate(TOMMessage up) {
-        ReconfigureRequest request = (ReconfigureRequest) TOMUtil.getObject(up.getContent());
-        if (request != null && request.getSender() == getStaticConf().getTTPId() 
+        ReconfigureRequest request = StateCodecs.reconfigureRequestFromBytes(up.getContent());
+        if (request != null && request.getSender() == getStaticConf().getTTPId()
                 && TOMUtil.verifySignature(getStaticConf().getPublicKey(request.getSender()),
                     request.toString().getBytes(), request.getSignature())) {
             //if (request.getSender() == getStaticConf().getTTPId()) {
@@ -140,7 +141,7 @@ public class ServerViewController extends ViewController {
         
         
         for (int i = 0; i < updates.size(); i++) {
-            ReconfigureRequest request = (ReconfigureRequest) TOMUtil.getObject(updates.get(i).getContent());
+            ReconfigureRequest request = StateCodecs.reconfigureRequestFromBytes(updates.get(i).getContent());
             Iterator<Integer> it = request.getProperties().keySet().iterator();
 
             while (it.hasNext()) {
@@ -235,7 +236,7 @@ public class ServerViewController extends ViewController {
             //tomLayer.triggerTimeout(new LinkedList<TOMMessage>());
                 
         } 
-        return TOMUtil.getBytes(new ReconfigureReply(newV, jSetInfo.toArray(new String[0]),
+        return StateCodecs.reconfigReplyContentToBytes(new ReconfigureReply(newV, jSetInfo.toArray(new String[0]),
                  cid, tomLayer.execManager.getCurrentLeader()));
     }
 

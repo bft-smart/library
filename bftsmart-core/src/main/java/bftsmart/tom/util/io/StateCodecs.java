@@ -33,6 +33,8 @@ import java.util.TreeMap;
 
 import bftsmart.consensus.TimestampValuePair;
 import bftsmart.consensus.messages.ConsensusMessage;
+import bftsmart.reconfiguration.ReconfigureReply;
+import bftsmart.reconfiguration.ReconfigureRequest;
 import bftsmart.reconfiguration.views.View;
 import bftsmart.statemanagement.ApplicationState;
 import bftsmart.statemanagement.durability.CSTRequestF1;
@@ -671,6 +673,93 @@ public final class StateCodecs {
                     checkpointCID, lastCID, pid);
         }
     };
+
+    // ------------------------------------------------------------------
+    // Reconfiguration request / reply content (replaces TOMUtil.getBytes/getObject
+    // on the reconfiguration path). The reply content is polymorphic (a View when the
+    // client's view is stale, or a ReconfigureReply when a reconfiguration executed),
+    // so it carries a leading type tag. These helpers return null on malformed input,
+    // matching the lenient behaviour of the TOMUtil helpers they replace.
+    // ------------------------------------------------------------------
+
+    private static final byte CONTENT_VIEW = 0;
+    private static final byte CONTENT_RECONFIGURE_REPLY = 1;
+
+    /** Serializes a {@link ReconfigureRequest} (RECONFIG request content) to bytes. */
+    public static byte[] reconfigureRequestToBytes(ReconfigureRequest request) {
+        try {
+            ByteArrayOutputStream bos = new ByteArrayOutputStream();
+            request.writeExternal(new DataObjectOutput(new DataOutputStream(bos)));
+            return bos.toByteArray();
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to serialize ReconfigureRequest", e);
+        }
+    }
+
+    /** Reconstructs a {@link ReconfigureRequest}; returns {@code null} on malformed input. */
+    public static ReconfigureRequest reconfigureRequestFromBytes(byte[] bytes) {
+        if (bytes == null) {
+            return null;
+        }
+        try {
+            ReconfigureRequest request = new ReconfigureRequest();
+            request.readExternal(new DataObjectInput(new DataInputStream(new ByteArrayInputStream(bytes))));
+            return request;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /**
+     * Serializes the (polymorphic) content of a reconfiguration/view reply: either a
+     * {@link View} or a {@link ReconfigureReply}, with a leading type tag.
+     */
+    public static byte[] reconfigReplyContentToBytes(Object content) {
+        try {
+            ByteArrayOutputStream bos = new ByteArrayOutputStream();
+            DataOutputStream dos = new DataOutputStream(bos);
+            if (content instanceof View) {
+                dos.writeByte(CONTENT_VIEW);
+                writeView((View) content, dos);
+            } else if (content instanceof ReconfigureReply) {
+                dos.writeByte(CONTENT_RECONFIGURE_REPLY);
+                ((ReconfigureReply) content).writeExternal(new DataObjectOutput(dos));
+            } else {
+                throw new IOException("Unsupported reconfiguration reply content: "
+                        + (content == null ? "null" : content.getClass().getName()));
+            }
+            dos.flush();
+            return bos.toByteArray();
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to serialize reconfiguration reply content", e);
+        }
+    }
+
+    /**
+     * Reconstructs the content written by {@link #reconfigReplyContentToBytes} as a
+     * {@link View} or {@link ReconfigureReply}; returns {@code null} on malformed input.
+     */
+    public static Object reconfigReplyContentFromBytes(byte[] bytes) {
+        if (bytes == null) {
+            return null;
+        }
+        try {
+            DataInputStream dis = new DataInputStream(new ByteArrayInputStream(bytes));
+            byte tag = dis.readByte();
+            switch (tag) {
+                case CONTENT_VIEW:
+                    return readView(dis);
+                case CONTENT_RECONFIGURE_REPLY:
+                    ReconfigureReply reply = new ReconfigureReply();
+                    reply.readExternal(new DataObjectInput(dis));
+                    return reply;
+                default:
+                    return null;
+            }
+        } catch (Exception e) {
+            return null;
+        }
+    }
 
     // Registered after the codec fields are initialized (static initializers run in textual order).
     static {
