@@ -199,10 +199,10 @@ public class DurableStateLog extends StateLog {
 	    		logger.info("sending checkpoint: " + ckpState.length);
 	    		CommandsInfo[] logLower = fr.getLogState(requestF1.getLogLowerSize(), logPath);
 	    		CommandsInfo[] logUpper = fr.getLogState(logPointers.get(requestF1.getLogUpper()), 0, requestF1.getLogUpperSize(), logPath);
-	    		byte[] logLowerBytes = TOMUtil.getBytes(logLower);
+	    		byte[] logLowerBytes = StateCodecs.commandsInfoArrayToBytes(logLower);
 	    		logger.debug(logLower.length + " Log lower bytes size: " + logLowerBytes.length);
 	    		byte[] logLowerHash = TOMUtil.computeHash(logLowerBytes);
-	    		byte[] logUpperBytes = TOMUtil.getBytes(logUpper);
+	    		byte[] logUpperBytes = StateCodecs.commandsInfoArrayToBytes(logUpper);
 	    		logger.debug(logUpper.length + " Log upper bytes size: " + logUpperBytes.length);
 	    		byte[] logUpperHash = TOMUtil.computeHash(logUpperBytes);
 	    		CSTState cstState = new CSTState(ckpState, null, null, logLowerHash, null, logUpperHash, lastCheckpointCID, lastCID, this.id);
@@ -211,7 +211,7 @@ public class DurableStateLog extends StateLog {
 				// This replica is expected to send the lower part of the log
 	    		logger.info("Sending lower log: " + requestF1.getLogLowerSize() + " from " + logPointers.get(requestF1.getCheckpointReplica())) ;
 	    		CommandsInfo[] logLower = fr.getLogState(logPointers.get(requestF1.getCheckpointReplica()), 0, requestF1.getLogLowerSize(), logPath);
-	    		logger.debug(" " + TOMUtil.getBytes(logLower).length + " bytes");
+	    		logger.debug(" " + StateCodecs.commandsInfoArrayToBytes(logLower).length + " bytes");
 	    		CSTState cstState = new CSTState(null, null, logLower, null, null, null, lastCheckpointCID, lastCID, this.id);
 	    		return cstState;
 			} else {

@@ -33,6 +33,7 @@ import bftsmart.statemanagement.StateManager;
 import bftsmart.tom.server.defaultservices.CommandsInfo;
 import bftsmart.tom.server.durability.DurabilityCoordinator;
 import bftsmart.tom.util.TOMUtil;
+import bftsmart.tom.util.io.StateCodecs;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -229,10 +230,10 @@ public class DurableStateManager extends StateManager {
                     }
 
                     boolean haveState = false;
-                    byte[] lowerbytes = TOMUtil.getBytes(lowerLog);
+                    byte[] lowerbytes = StateCodecs.commandsInfoArrayToBytes(lowerLog);
                     logger.debug("Log lower bytes size: "
                             + lowerbytes.length);
-                    byte[] upperbytes = TOMUtil.getBytes(upperLog);
+                    byte[] upperbytes = StateCodecs.commandsInfoArrayToBytes(upperLog);
                     logger.debug("Log upper bytes size: "
                             + upperbytes.length);
 
@@ -251,6 +252,10 @@ public class DurableStateManager extends StateManager {
                         logger.error("Upper log does not match");
                     }
 
+                    // Note: this hashCheckpoint argument keeps the original behaviour. It is a
+                    // plain byte[] (ObjectOutputStream writes byte arrays as an efficient block,
+                    // not via reflection) and statePlusLower.getHashCheckpoint() is not used for
+                    // validation here (line below validates against stateUpper), so it is left as-is.
                     CSTState statePlusLower = new CSTState(stateCkp.getSerializedState(),
                             TOMUtil.getBytes(stateCkp.getSerializedState()),
                             stateLower.getLogLower(), stateCkp.getHashLogLower(), null, null,

@@ -153,6 +153,29 @@ public final class StateCodecs {
         return COMMANDS_INFO.decode(new DataInputStream(new ByteArrayInputStream(bytes)));
     }
 
+    /**
+     * Serializes a (possibly null) {@code CommandsInfo[]} (a log portion) to a standalone
+     * byte array. Used by the durable collaborative state transfer to hash log portions;
+     * the encoding is deterministic for a given in-memory array, matching across replicas
+     * that all use this codec.
+     */
+    public static byte[] commandsInfoArrayToBytes(CommandsInfo[] batches) {
+        try {
+            ByteArrayOutputStream bos = new ByteArrayOutputStream();
+            DataOutputStream dos = new DataOutputStream(bos);
+            writeCommandsInfoArray(batches, dos);
+            dos.flush();
+            return bos.toByteArray();
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to serialize CommandsInfo[]", e);
+        }
+    }
+
+    /** Reconstructs a {@code CommandsInfo[]} from bytes produced by {@link #commandsInfoArrayToBytes}. */
+    public static CommandsInfo[] commandsInfoArrayFromBytes(byte[] bytes) throws IOException {
+        return readCommandsInfoArray(new DataInputStream(new ByteArrayInputStream(bytes)));
+    }
+
     /** Writes a (possibly null) {@link View} (a leading boolean flags presence). */
     public static void writeView(View view, DataOutput out) throws IOException {
         if (view == null) {
