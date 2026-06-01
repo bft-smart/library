@@ -44,6 +44,14 @@ public class ViewController {
         this.staticConf = new TOMConfiguration(procId, configHome, loader);
     }
 
+    /**
+     * Uses a pre-built (e.g. programmatic/file-less) configuration instead of loading it
+     * from disk.
+     */
+    public ViewController(TOMConfiguration staticConf) {
+        this.staticConf = staticConf;
+    }
+
     
     public final ViewStorage getViewStore() {
         if (this.viewStore == null) {

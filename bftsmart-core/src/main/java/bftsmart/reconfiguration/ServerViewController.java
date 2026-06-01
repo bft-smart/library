@@ -18,6 +18,7 @@ package bftsmart.reconfiguration;
 import java.net.InetSocketAddress;
 import java.util.*;
 
+import bftsmart.reconfiguration.util.TOMConfiguration;
 import bftsmart.reconfiguration.views.View;
 import bftsmart.tom.core.TOMLayer;
 import bftsmart.tom.core.messages.TOMMessage;
@@ -61,15 +62,31 @@ public class ServerViewController extends ViewController {
         super(procId, configHome, loader);
         View cv = getViewStore().readView();
         if(cv == null){
-            
+
             logger.info("Creating current view from configuration file");
-            reconfigureTo(new View(0, getStaticConf().getInitialView(), 
+            reconfigureTo(new View(0, getStaticConf().getInitialView(),
                 getStaticConf().getF(), getInitAdddresses()));
         }else{
             logger.info("Using view stored on disk");
             reconfigureTo(cv);
         }
-       
+
+    }
+
+    /**
+     * Uses a pre-built (e.g. programmatic/file-less) configuration.
+     */
+    public ServerViewController(TOMConfiguration conf) {
+        super(conf);
+        View cv = getViewStore().readView();
+        if (cv == null) {
+            logger.info("Creating current view from programmatic configuration");
+            reconfigureTo(new View(0, getStaticConf().getInitialView(),
+                getStaticConf().getF(), getInitAdddresses()));
+        } else {
+            logger.info("Using view stored on disk");
+            reconfigureTo(cv);
+        }
     }
 
     private InetSocketAddress[] getInitAdddresses() {

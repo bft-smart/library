@@ -17,6 +17,7 @@ package bftsmart.tom;
 
 import bftsmart.communication.CommunicationFactory;
 import bftsmart.reconfiguration.ReconfigureReply;
+import bftsmart.reconfiguration.util.TOMConfiguration;
 import bftsmart.reconfiguration.views.View;
 import bftsmart.tom.client.AbstractRequestHandler;
 import bftsmart.tom.client.HashedRequestHandler;
@@ -122,6 +123,21 @@ public class ServiceProxy extends TOMSender {
 						Comparator<byte[]> replyComparator, Extractor replyExtractor, KeyLoader loader,
 						CommunicationFactory communicationFactory) {
 		super(processId, configHome, loader, communicationFactory);
+		this.invokeTimeout = getViewManager().getStaticConf().getClientInvokeOrderedTimeout();
+
+		comparator = (replyComparator != null) ? replyComparator
+				: (o1, o2) -> Arrays.equals(o1, o2) ? 0 : -1;
+		extractor = (replyExtractor != null) ? replyExtractor
+				: (replies, sameContent, lastReceived) -> replies[lastReceived];
+	}
+
+	/**
+	 * Creates a proxy from a pre-built, programmatic (file-less) {@link TOMConfiguration}
+	 * and an explicit transport factory.
+	 */
+	public ServiceProxy(TOMConfiguration conf, Comparator<byte[]> replyComparator,
+						Extractor replyExtractor, CommunicationFactory communicationFactory) {
+		super(conf, communicationFactory);
 		this.invokeTimeout = getViewManager().getStaticConf().getClientInvokeOrderedTimeout();
 
 		comparator = (replyComparator != null) ? replyComparator

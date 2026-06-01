@@ -16,6 +16,7 @@ limitations under the License.
 package bftsmart.reconfiguration;
 
 import java.net.InetSocketAddress;
+import bftsmart.reconfiguration.util.TOMConfiguration;
 import bftsmart.reconfiguration.views.View;
 import bftsmart.tom.util.KeyLoader;
 import java.security.Provider;
@@ -41,9 +42,23 @@ public class ClientViewController extends ViewController {
         super(procId, configHome, loader);
         View cv = getViewStore().readView();
         if(cv == null){
-            reconfigureTo(new View(0, getStaticConf().getInitialView(), 
+            reconfigureTo(new View(0, getStaticConf().getInitialView(),
                 getStaticConf().getF(), getInitAdddresses()));
         }else{
+            reconfigureTo(cv);
+        }
+    }
+
+    /**
+     * Uses a pre-built (e.g. programmatic/file-less) configuration.
+     */
+    public ClientViewController(TOMConfiguration conf) {
+        super(conf);
+        View cv = getViewStore().readView();
+        if (cv == null) {
+            reconfigureTo(new View(0, getStaticConf().getInitialView(),
+                getStaticConf().getF(), getInitAdddresses()));
+        } else {
             reconfigureTo(cv);
         }
     }

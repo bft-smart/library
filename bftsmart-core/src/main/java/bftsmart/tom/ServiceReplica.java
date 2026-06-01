@@ -30,6 +30,7 @@ import bftsmart.consensus.roles.Acceptor;
 import bftsmart.consensus.roles.Proposer;
 import bftsmart.reconfiguration.ReconfigureReply;
 import bftsmart.reconfiguration.ServerViewController;
+import bftsmart.reconfiguration.util.TOMConfiguration;
 import bftsmart.reconfiguration.VMMessage;
 import bftsmart.tom.core.ReplyManager;
 import bftsmart.tom.core.TOMLayer;
@@ -154,6 +155,31 @@ public class ServiceReplica {
         this.id = id;
         this.communicationFactory = communicationFactory;
         this.SVController = new ServerViewController(id, configHome, loader);
+        this.executor = executor;
+        this.recoverer = recoverer;
+        this.replier = (replier != null ? replier : new DefaultReplier());
+        this.verifier = verifier;
+        this.init();
+        this.recoverer.setReplicaContext(replicaCtx);
+        this.replier.setReplicaContext(replicaCtx);
+    }
+
+    /**
+     * Constructor that takes a pre-built, programmatic (file-less) {@link TOMConfiguration}
+     * and an explicit transport {@link CommunicationFactory}. No system.config / hosts.config
+     * is read from disk.
+     *
+     * @param conf The programmatic configuration (e.g. from TOMConfigurationBuilder)
+     * @param executor The executor implementation
+     * @param recoverer The recoverer implementation
+     * @param verifier Requests Verifier
+     * @param replier Can be used to override the targets of the replies
+     * @param communicationFactory The transport factory used to build the communication systems
+     */
+    public ServiceReplica(TOMConfiguration conf, Executable executor, Recoverable recoverer, RequestVerifier verifier, Replier replier, CommunicationFactory communicationFactory) {
+        this.id = conf.getProcessId();
+        this.communicationFactory = communicationFactory;
+        this.SVController = new ServerViewController(conf);
         this.executor = executor;
         this.recoverer = recoverer;
         this.replier = (replier != null ? replier : new DefaultReplier());
