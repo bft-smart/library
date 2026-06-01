@@ -62,8 +62,9 @@ public class ServerViewController extends ViewController {
         if(cv == null){
             
             logger.info("Creating current view from configuration file");
-            reconfigureTo(new View(0, getStaticConf().getInitialView(), 
-                getStaticConf().getF(), getInitAdddresses()));
+            reconfigureTo(new View(0, getStaticConf().getInitialView(),
+                getStaticConf().getF(), getInitAdddresses(),
+                getStaticConf().getListeners(), getListenerInitAddresses()));
         }else{
             logger.info("Using view stored on disk");
             reconfigureTo(cv);
@@ -81,6 +82,15 @@ public class ServerViewController extends ViewController {
 
         return addresses;
     }
+
+    private InetSocketAddress[] getListenerInitAddresses() {
+        int[] ls = getStaticConf().getListeners();
+        InetSocketAddress[] addresses = new InetSocketAddress[ls.length];
+        for (int i = 0; i < ls.length; i++) {
+            addresses[i] = getStaticConf().getRemoteAddress(ls[i]);
+        }
+        return addresses;
+    }
     
     public void setTomLayer(TOMLayer tomLayer) {
         this.tomLayer = tomLayer;
@@ -89,6 +99,21 @@ public class ServerViewController extends ViewController {
     
     public boolean isInCurrentView() {
         return this.currentView.isMember(getStaticConf().getProcessId());
+    }
+
+    /**
+     * @return whether this process belongs to the current view in any role,
+     *         i.e. as a voter ({@link #isInCurrentView()}) or as a listener.
+     */
+    public boolean isInCurrentViewAnyRole() {
+        return this.currentView.isInView(getStaticConf().getProcessId());
+    }
+
+    /**
+     * @return whether this process is a non-voting member (listener) of the current view.
+     */
+    public boolean amIListener() {
+        return this.currentView.isListener(getStaticConf().getProcessId());
     }
 
     public int[] getCurrentViewOtherAcceptors() {
@@ -283,13 +308,18 @@ public class ServerViewController extends ViewController {
     public final void reconfigureTo(View newView) {
         this.currentView = newView;
         getViewStore().storeView(this.currentView);
-        if (newView.isMember(getStaticConf().getProcessId())) {
-            //membro da view atual
-            otherProcesses = new int[currentView.getProcesses().length - 1];
+        if (newView.isInView(getStaticConf().getProcessId())) {
+            // Part of the current view as a voter or as a listener.
+            // 'otherProcesses' are the other acceptors (voters) to talk to. A voter excludes
+            // itself; a listener is not a voter, so all voters are "other" acceptors.
+            int myId = getStaticConf().getProcessId();
+            int[] voters = currentView.getProcesses();
+            boolean meIsVoter = currentView.isMember(myId);
+            otherProcesses = new int[meIsVoter ? voters.length - 1 : voters.length];
             int c = 0;
-            for (int i = 0; i < currentView.getProcesses().length; i++) {
-                if (currentView.getProcesses()[i] != getStaticConf().getProcessId()) {
-                    otherProcesses[c++] = currentView.getProcesses()[i];
+            for (int voter : voters) {
+                if (voter != myId) {
+                    otherProcesses[c++] = voter;
                 }
             }
 

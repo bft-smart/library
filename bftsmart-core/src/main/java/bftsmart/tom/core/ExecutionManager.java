@@ -357,7 +357,9 @@ public final class ExecutionManager {
     }
 
     public boolean receivedOutOfContextDecision(int cid) {
-        if (!controller.getStaticConf().useReadOnlyRequests()) {
+        // Listeners replicate state purely from forwarded decisions, which are delivered
+        // out of context (no PROPOSE drives them), so they must be processed here too.
+        if (!controller.getStaticConf().useReadOnlyRequests() && !controller.amIListener()) {
             return false;
         }
 

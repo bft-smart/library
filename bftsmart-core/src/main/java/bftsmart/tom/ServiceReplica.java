@@ -175,6 +175,12 @@ public class ServiceReplica {
         if (this.SVController.isInCurrentView()) {
             logger.info("In current view: " + this.SVController.getCurrentView());
             initTOMLayer(); // initiaze the TOM layer
+        } else if (this.SVController.amIListener()) {
+            // Non-voting member (listener): run the full delivery stack so that decisions
+            // forwarded by the voters (with proof) are verified and applied, replicating
+            // state without participating in consensus or leader change.
+            logger.info("Starting as listener (non-voting) in current view: " + this.SVController.getCurrentView());
+            initTOMLayer();
         } else {
             logger.info("Not in current view: " + this.SVController.getCurrentView());
             
@@ -473,8 +479,8 @@ public class ServiceReplica {
             return;
         }
 
-        if (!SVController.isInCurrentView()) {
-            throw new RuntimeException("I'm not an acceptor!");
+        if (!SVController.isInCurrentView() && !SVController.amIListener()) {
+            throw new RuntimeException("I'm neither an acceptor nor a listener in the current view!");
         }
 
         // Assemble the total order messaging layer

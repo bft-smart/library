@@ -122,4 +122,20 @@ public class ViewController {
     public boolean isCurrentViewListener(int id) {
         return getCurrentView().isListener(id);
     }
+
+    /**
+     * @param id a process id
+     * @return whether the id belongs to the current view in any role (voter or listener).
+     */
+    public boolean isCurrentViewMemberOrListener(int id) {
+        return getCurrentView().isInView(id);
+    }
+
+    /**
+     * @return every member of the current view (voters + listeners). Used to set up the
+     *         networking topology; it is NOT used for any quorum computation.
+     */
+    public int[] getCurrentViewMembers() {
+        return getCurrentView().getAllMembers();
+    }
 }

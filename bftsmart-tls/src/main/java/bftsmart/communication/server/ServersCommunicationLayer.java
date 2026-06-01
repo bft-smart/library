@@ -152,9 +152,10 @@ public class ServersCommunicationLayer extends Thread implements ServerCommunica
 		PBEKeySpec spec = TOMUtil.generateKeySpec(SECRET.toCharArray());
 		selfPwd = fac.generateSecret(spec);
 
-		//Try connecting if a member of the current view. Otherwise, wait until the Join has been processed!
-		if (controller.isInCurrentView()) {
-			int[] initialV = controller.getCurrentViewAcceptors();
+		//Try connecting if part of the current view (voter or listener). Otherwise, wait until the Join has been processed!
+		// The topology includes listeners so that decisions can be forwarded to them.
+		if (controller.isInCurrentViewAnyRole()) {
+			int[] initialV = controller.getCurrentViewMembers();
 			for (int j : initialV) {
 				if (j != me) {
 					getConnection(j);
@@ -175,13 +176,13 @@ public class ServersCommunicationLayer extends Thread implements ServerCommunica
 	public void updateConnections() {
 		connectionsLock.lock();
 
-		if (this.controller.isInCurrentView()) {
+		if (this.controller.isInCurrentViewAnyRole()) {
 
 			Iterator<Integer> it = this.connections.keySet().iterator();
 			List<Integer> toRemove = new LinkedList<>();
 			while (it.hasNext()) {
 				int rm = it.next();
-				if (!this.controller.isCurrentViewMember(rm)) {
+				if (!this.controller.isCurrentViewMemberOrListener(rm)) {
 					toRemove.add(rm);
 				}
 			}
@@ -189,7 +190,7 @@ public class ServersCommunicationLayer extends Thread implements ServerCommunica
 				this.connections.remove(integer).shutdown();
 			}
 
-			int[] newV = controller.getCurrentViewAcceptors();
+			int[] newV = controller.getCurrentViewMembers();
 			for (int j : newV) {
 				if (j != me) {
 					getConnection(j);
@@ -259,7 +260,7 @@ public class ServersCommunicationLayer extends Thread implements ServerCommunica
 		doWork = false;
 
 		//******* EDUARDO BEGIN **************//
-		int[] activeServers = controller.getCurrentViewAcceptors();
+		int[] activeServers = controller.getCurrentViewMembers();
 
 		for (int activeServer : activeServers) {
 			if (me != activeServer) {
@@ -298,7 +299,7 @@ public class ServersCommunicationLayer extends Thread implements ServerCommunica
 				int remoteId = new DataInputStream(newSocket.getInputStream()).readInt();
 
 				//******* EDUARDO BEGIN **************//
-				if (!this.controller.isInCurrentView() &&
+				if (!this.controller.isInCurrentViewAnyRole() &&
 						(this.controller.getStaticConf().getTTPId() != remoteId)) {
 					waitViewLock.lock();
 					pendingConn.add(new PendingConnection(newSocket, remoteId));
@@ -329,7 +330,7 @@ public class ServersCommunicationLayer extends Thread implements ServerCommunica
 
 	//******* EDUARDO BEGIN **************//
 	private void establishConnection(SSLSocket newSocket, int remoteId) throws IOException {
-		if ((this.controller.getStaticConf().getTTPId() == remoteId) || this.controller.isCurrentViewMember(remoteId)) {
+		if ((this.controller.getStaticConf().getTTPId() == remoteId) || this.controller.isCurrentViewMemberOrListener(remoteId)) {
 			connectionsLock.lock();
 			if (this.connections.get(remoteId) == null) { //This must never happen!!!
 				//first time that this connection is being established
@@ -371,7 +372,7 @@ public class ServersCommunicationLayer extends Thread implements ServerCommunica
 	@Override
 	public String toString() {
 		StringBuilder str = new StringBuilder("inQueue=" + inQueue.toString());
-		int[] activeServers = controller.getCurrentViewAcceptors();
+		int[] activeServers = controller.getCurrentViewMembers();
 		for (int activeServer : activeServers) {
 			if (me != activeServer) {
 				str.append(", connections[").append(activeServer).append("]: outQueue=").append(getConnection(activeServer).outQueue);

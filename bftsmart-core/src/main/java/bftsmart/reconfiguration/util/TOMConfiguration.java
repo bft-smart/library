@@ -51,6 +51,9 @@ public class TOMConfiguration extends Configuration {
     private int useControlFlow;
     private int maxRequestSize;
     private int[] initialView;
+    // No field initializer on purpose: init() (invoked from the superclass constructor)
+    // sets this; a '= new int[0]' initializer would run afterwards and wipe the parsed value.
+    private int[] listeners;
     private int ttpId;
     private boolean isToLog;
     private boolean syncLog;
@@ -250,6 +253,17 @@ public class TOMConfiguration extends Configuration {
                 initialView = new int[str.countTokens()];
                 for (int i = 0; i < initialView.length; i++) {
                     initialView[i] = Integer.parseInt(str.nextToken());
+                }
+            }
+
+            s = (String) configs.remove("system.servers.listeners");
+            if (s == null || s.trim().isEmpty()) {
+                listeners = new int[0];
+            } else {
+                StringTokenizer str = new StringTokenizer(s, ",");
+                listeners = new int[str.countTokens()];
+                for (int i = 0; i < listeners.length; i++) {
+                    listeners[i] = Integer.parseInt(str.nextToken().trim());
                 }
             }
 
@@ -454,6 +468,14 @@ public class TOMConfiguration extends Configuration {
 
     public final int[] getInitialView() {
         return this.initialView;
+    }
+
+    /**
+     * @return the ids of the initial non-voting members (listeners), read from
+     *         {@code system.servers.listeners}. Empty if none are configured.
+     */
+    public final int[] getListeners() {
+        return (this.listeners != null) ? this.listeners : new int[0];
     }
 
     public int getTTPId() {

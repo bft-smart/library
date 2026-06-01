@@ -133,6 +133,18 @@ public class View implements Serializable {
  		return isMember(id) || isListener(id);
  	}
 
+ 	/**
+ 	 * @return all members of this view, voters first then listeners. Used for the
+ 	 *         networking topology (everyone needs connections), NOT for quorum math.
+ 	 */
+ 	public int[] getAllMembers(){
+ 		int[] ls = getListeners();
+ 		int[] all = new int[processes.length + ls.length];
+ 		System.arraycopy(processes, 0, all, 0, processes.length);
+ 		System.arraycopy(ls, 0, all, processes.length, ls.length);
+ 		return all;
+ 	}
+
  	@Override
  	public String toString(){
  		String ret = "ID:"+id+"; F:"+f+"; Processes:";
