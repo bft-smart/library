@@ -701,10 +701,16 @@ public final class StateCodecs {
     // Reconfiguration request / reply content (replaces TOMUtil.getBytes/getObject
     // on the reconfiguration path). The reply content is polymorphic (a View when the
     // client's view is stale, or a ReconfigureReply when a reconfiguration executed),
-    // so it carries a leading type tag. These helpers return null on malformed input,
-    // matching the lenient behaviour of the TOMUtil helpers they replace.
+    // so it carries a leading type tag.
+    //
+    // Each blob starts with a 4-byte magic. The async client sniffs *every* reply with
+    // reconfigReplyContentFromBytes to detect a view change, so this method is routinely
+    // handed arbitrary application reply bytes; the magic lets it reject those up-front
+    // (returning null without parsing any untrusted length field), the same robustness
+    // the previous Java-serialization header (STREAM_MAGIC) provided.
     // ------------------------------------------------------------------
 
+    private static final int RECONFIG_MAGIC = 0x42465452; // "BFTR"
     private static final byte CONTENT_VIEW = 0;
     private static final byte CONTENT_RECONFIGURE_REPLY = 1;
 
@@ -712,7 +718,10 @@ public final class StateCodecs {
     public static byte[] reconfigureRequestToBytes(ReconfigureRequest request) {
         try {
             ByteArrayOutputStream bos = new ByteArrayOutputStream();
-            request.writeExternal(new DataObjectOutput(new DataOutputStream(bos)));
+            DataOutputStream dos = new DataOutputStream(bos);
+            dos.writeInt(RECONFIG_MAGIC);
+            request.writeExternal(new DataObjectOutput(dos));
+            dos.flush();
             return bos.toByteArray();
         } catch (IOException e) {
             throw new RuntimeException("Failed to serialize ReconfigureRequest", e);
@@ -725,8 +734,12 @@ public final class StateCodecs {
             return null;
         }
         try {
+            DataInputStream dis = new DataInputStream(new ByteArrayInputStream(bytes));
+            if (dis.readInt() != RECONFIG_MAGIC) {
+                return null;
+            }
             ReconfigureRequest request = new ReconfigureRequest();
-            request.readExternal(new DataObjectInput(new DataInputStream(new ByteArrayInputStream(bytes))));
+            request.readExternal(new DataObjectInput(dis));
             return request;
         } catch (Exception e) {
             return null;
@@ -735,12 +748,13 @@ public final class StateCodecs {
 
     /**
      * Serializes the (polymorphic) content of a reconfiguration/view reply: either a
-     * {@link View} or a {@link ReconfigureReply}, with a leading type tag.
+     * {@link View} or a {@link ReconfigureReply}, behind a magic header and a type tag.
      */
     public static byte[] reconfigReplyContentToBytes(Object content) {
         try {
             ByteArrayOutputStream bos = new ByteArrayOutputStream();
             DataOutputStream dos = new DataOutputStream(bos);
+            dos.writeInt(RECONFIG_MAGIC);
             if (content instanceof View) {
                 dos.writeByte(CONTENT_VIEW);
                 writeView((View) content, dos);
@@ -760,7 +774,8 @@ public final class StateCodecs {
 
     /**
      * Reconstructs the content written by {@link #reconfigReplyContentToBytes} as a
-     * {@link View} or {@link ReconfigureReply}; returns {@code null} on malformed input.
+     * {@link View} or {@link ReconfigureReply}; returns {@code null} on malformed input
+     * (including arbitrary application reply bytes, which fail the magic check).
      */
     public static Object reconfigReplyContentFromBytes(byte[] bytes) {
         if (bytes == null) {
@@ -768,6 +783,9 @@ public final class StateCodecs {
         }
         try {
             DataInputStream dis = new DataInputStream(new ByteArrayInputStream(bytes));
+            if (dis.readInt() != RECONFIG_MAGIC) {
+                return null;
+            }
             byte tag = dis.readByte();
             switch (tag) {
                 case CONTENT_VIEW:
