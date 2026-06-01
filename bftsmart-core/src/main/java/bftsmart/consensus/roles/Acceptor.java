@@ -163,7 +163,9 @@ public final class Acceptor {
 		}
 			break;
 		case MessageFactory.FWD_DECISION: {
-			if (controller.getStaticConf().useReadOnlyRequests())
+			// Listeners rely on forwarded decisions to replicate state without voting,
+			// so they must process them even when the read-only-requests optimization is off.
+			if (controller.getStaticConf().useReadOnlyRequests() || controller.amIListener())
 				forwardDecisionReceived(epoch, msg);
 		}
 		// END DECISION FORWARDING
@@ -429,7 +431,43 @@ public final class Acceptor {
 			if (controller.getStaticConf().useReadOnlyRequests())
 				forwardDecision(epoch);
 			// END DECISION_FORWARDING
+
+			// Push the decision (with its proof) to the non-voting members (listeners),
+			// so they can replicate state without participating in consensus.
+			sendDecisionToListeners(epoch);
 		}
+	}
+
+	/**
+	 * Forwards a freshly decided value, together with its quorum certificate (proof),
+	 * to the non-voting members (listeners) of the current view. Listeners verify the
+	 * proof and apply the decision via {@link #forwardDecisionReceived}, replicating the
+	 * state without taking part in consensus.
+	 *
+	 * <p>The proof is a set of signed ACCEPT messages, so this requires signatures to be
+	 * enabled; if no proof is available the push is skipped (listeners would not be able
+	 * to verify the decision).</p>
+	 *
+	 * @param epoch the decided epoch
+	 */
+	private void sendDecisionToListeners(Epoch epoch) {
+		int[] listeners = controller.getCurrentViewListeners();
+		if (listeners == null || listeners.length == 0)
+			return;
+
+		if (epoch.getProof() == null || epoch.getProof().isEmpty()) {
+			logger.warn("Cannot forward decision {} to {} listener(s): no proof available "
+					+ "(listeners require signatures to be enabled)",
+					epoch.getConsensus().getId(), listeners.length);
+			return;
+		}
+
+		int cid = epoch.getConsensus().getId();
+		byte[] value = epoch.getConsensus().getDecision().getValue();
+		ConsensusMessage forwardDecision = factory.createForwardDecision(cid, epoch.getTimestamp(), value);
+		forwardDecision.setProof(epoch.getProof());
+		logger.debug("Forwarding decision for cid {} to {} listener(s)", cid, listeners.length);
+		communication.send(listeners, forwardDecision);
 	}
 
 	private void forwardDecision(Epoch epoch) {

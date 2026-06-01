@@ -31,8 +31,9 @@ public class ClientViewController extends ViewController {
         super(procId, loader);
         View cv = getViewStore().readView();
         if(cv == null){
-            reconfigureTo(new View(0, getStaticConf().getInitialView(), 
-                getStaticConf().getF(), getInitAdddresses()));
+            reconfigureTo(new View(0, getStaticConf().getInitialView(),
+                getStaticConf().getF(), getInitAdddresses(),
+                getStaticConf().getListeners(), getListenerInitAddresses()));
         }else{
             reconfigureTo(cv);
         }
@@ -43,7 +44,8 @@ public class ClientViewController extends ViewController {
         View cv = getViewStore().readView();
         if(cv == null){
             reconfigureTo(new View(0, getStaticConf().getInitialView(),
-                getStaticConf().getF(), getInitAdddresses()));
+                getStaticConf().getF(), getInitAdddresses(),
+                getStaticConf().getListeners(), getListenerInitAddresses()));
         }else{
             reconfigureTo(cv);
         }
@@ -57,7 +59,8 @@ public class ClientViewController extends ViewController {
         View cv = getViewStore().readView();
         if (cv == null) {
             reconfigureTo(new View(0, getStaticConf().getInitialView(),
-                getStaticConf().getF(), getInitAdddresses()));
+                getStaticConf().getF(), getInitAdddresses(),
+                getStaticConf().getListeners(), getListenerInitAddresses()));
         } else {
             reconfigureTo(cv);
         }
@@ -74,6 +77,15 @@ public class ClientViewController extends ViewController {
             addresses[i] = getStaticConf().getRemoteAddress(nextV[i]);
         }
 
+        return addresses;
+    }
+
+    private InetSocketAddress[] getListenerInitAddresses() {
+        int[] ls = getStaticConf().getListeners();
+        InetSocketAddress[] addresses = new InetSocketAddress[ls.length];
+        for (int i = 0; i < ls.length; i++) {
+            addresses[i] = getStaticConf().getRemoteAddress(ls[i]);
+        }
         return addresses;
     }
 

@@ -104,6 +104,20 @@ public class ViewManager {
         rec.removeServer(id);
     }
 
+    public void addListener(int id, String ip, int port, int portRR) {
+        this.controller.getStaticConf().addHostInfo(id, ip, port, portRR);
+        rec.addListener(id, ip, port, portRR);
+        addIds.add(id);
+    }
+
+    public void promoteToVoter(int id) {
+        rec.promoteToVoter(id);
+    }
+
+    public void demoteToListener(int id) {
+        rec.demoteToListener(id);
+    }
+
     public void setF(int f) {
         rec.setF(f);
     }

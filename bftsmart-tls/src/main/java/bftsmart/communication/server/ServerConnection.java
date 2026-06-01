@@ -215,9 +215,10 @@ public class ServerConnection implements ReplicaConnection {
 			return true;
 		}
 		boolean ret = false;
-		if (this.controller.isInCurrentView()) {
+		if (this.controller.isInCurrentViewAnyRole()) {
 
 			//in this case, the node with higher ID starts the connection
+			// (listeners take part in the topology too, so use the any-role check)
 			if (this.controller.getStaticConf().getProcessId() > remoteId) {
 				ret = true;
 			}
