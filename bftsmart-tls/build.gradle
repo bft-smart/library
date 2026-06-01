@@ -16,6 +16,9 @@ dependencies {
 	// The protocol layers and the networking SPI.
 	api project(':bftsmart-core')
 
+	// Netty backs the client-to-server transport implemented in this module.
+	implementation 'io.netty:netty-all:4.1.67.Final'
+
 	// Third-party jars bundled in the repository (YCSB core, benchmark executor),
 	// used by the demos/benchmarks living in this module.
 	implementation fileTree(dir: "${rootProject.projectDir}/lib", include: ['*.jar'])

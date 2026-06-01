@@ -6,10 +6,7 @@ package bftsmart.tom.core;
 
 import bftsmart.communication.ServerCommunicationSystem;
 import bftsmart.tom.core.messages.TOMMessage;
-import io.netty.channel.Channel;
-import java.util.HashMap;
 import java.util.LinkedList;
-import java.util.Map;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
@@ -56,13 +53,10 @@ class ReplyThread extends Thread {
     
     private final Lock queueLock = new ReentrantLock();
     private final Condition notEmptyQueue = queueLock.newCondition();
-    
-    private Map<Integer, Channel> channels;
-    
+
     ReplyThread(ServerCommunicationSystem cs) {
         this.cs = cs;
         this.replies = new LinkedBlockingQueue<TOMMessage>();
-        this.channels = new HashMap<>();
     }
     
     void send(TOMMessage msg) {
