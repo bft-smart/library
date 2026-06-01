@@ -17,11 +17,13 @@ package bftsmart.reconfiguration.views;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
+
+import bftsmart.tom.util.io.StateCodecs;
 
 /**
  *
@@ -46,10 +48,10 @@ public class DefaultViewStorage implements ViewStorage {
         if (!view.equals(readView())) {
             File f = new File(path);
             try {
-                ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(f));
-                oos.writeObject(view);
-                oos.flush();
-                oos.close();
+                DataOutputStream dos = new DataOutputStream(new FileOutputStream(f));
+                StateCodecs.writeView(view, dos);
+                dos.flush();
+                dos.close();
                 return true;
             } catch (Exception e) {
                 return false;
@@ -65,10 +67,10 @@ public class DefaultViewStorage implements ViewStorage {
             return null;
         }
         try {
-            ObjectInputStream ois = new ObjectInputStream(new FileInputStream(f));
-            View ret = (View) ois.readObject();
-            ois.close();
-            
+            DataInputStream dis = new DataInputStream(new FileInputStream(f));
+            View ret = StateCodecs.readView(dis);
+            dis.close();
+
             return ret;
         } catch (Exception e) {
             return null;
@@ -77,9 +79,10 @@ public class DefaultViewStorage implements ViewStorage {
 
     public byte[] getBytes(View view) {
         try {
-            ByteArrayOutputStream baos = new ByteArrayOutputStream(4);
-            ObjectOutputStream oos = new ObjectOutputStream(baos);
-            oos.writeObject(view);
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            DataOutputStream dos = new DataOutputStream(baos);
+            StateCodecs.writeView(view, dos);
+            dos.flush();
             return baos.toByteArray();
         } catch (Exception e) {
             return null;
@@ -88,9 +91,7 @@ public class DefaultViewStorage implements ViewStorage {
 
     public View getView(byte[] bytes) {
         try {
-            ByteArrayInputStream bais = new ByteArrayInputStream(bytes);
-            ObjectInputStream ois = new ObjectInputStream(bais);
-            return (View) ois.readObject();
+            return StateCodecs.readView(new DataInputStream(new ByteArrayInputStream(bytes)));
         } catch (Exception e) {
             return null;
         }

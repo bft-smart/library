@@ -21,6 +21,7 @@ import java.io.ObjectInput;
 import java.io.ObjectOutput;
 
 import bftsmart.reconfiguration.views.View;
+import bftsmart.tom.util.io.StateCodecs;
 
 /**
  *
@@ -78,7 +79,7 @@ public class ReconfigureReply implements Externalizable {
     
     @Override
     public void writeExternal(ObjectOutput out) throws IOException {
-       out.writeObject(newView);
+       StateCodecs.writeView(newView, out);
        out.writeInt(this.lastExecConsId);
        out.writeInt(this.execLeader);
        
@@ -91,7 +92,7 @@ public class ReconfigureReply implements Externalizable {
 
     @Override
     public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
-        newView = (View) in.readObject();
+        newView = StateCodecs.readView(in);
         this.lastExecConsId = in.readInt();
         this.execLeader = in.readInt();
         joinSet = new String[in.readInt()];

@@ -66,6 +66,14 @@ public class CSTRequestF1 extends CSTRequest {
 		return logUpperSize;
 	}
 
+	public void setLogUpperSize(int logUpperSize) {
+		this.logUpperSize = logUpperSize;
+	}
+
+	public void setLogLowerSize(int logLowerSize) {
+		this.logLowerSize = logLowerSize;
+	}
+
 	
 	/**
 	 * Define and set the attributes of this CST Request according to the

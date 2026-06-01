@@ -15,11 +15,9 @@ limitations under the License.
 */
 package bftsmart.tom.server.defaultservices;
 
-import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.ObjectOutputStream;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
@@ -28,6 +26,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import bftsmart.statemanagement.ApplicationState;
 import bftsmart.tom.MessageContext;
+import bftsmart.tom.util.io.StateCodecs;
 
 public class DiskStateLog extends StateLog {
 
@@ -94,13 +93,8 @@ public class DiskStateLog extends StateLog {
 	}
 
 	private void writeCommandToDisk(CommandsInfo commandsInfo, int consensusId) {
-		ByteArrayOutputStream bos = new ByteArrayOutputStream();
 		try {
-			ObjectOutputStream oos = new ObjectOutputStream(bos);
-			oos.writeObject(commandsInfo);
-			oos.flush();
-
-			byte[] batchBytes = bos.toByteArray();
+			byte[] batchBytes = StateCodecs.commandsInfoToBytes(commandsInfo);
 
 			ByteBuffer bf = ByteBuffer.allocate(3 * INT_BYTE_SIZE
 					+ batchBytes.length);

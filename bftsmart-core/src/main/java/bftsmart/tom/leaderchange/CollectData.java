@@ -22,6 +22,7 @@ import java.io.ObjectOutput;
 import java.util.HashSet;
 
 import bftsmart.consensus.TimestampValuePair;
+import bftsmart.tom.util.io.StateCodecs;
 
 /**
  * This class represents a COLLECT object with the information about the running consensus
@@ -126,8 +127,8 @@ public class CollectData implements Externalizable {
         out.writeInt(pid);
         out.writeInt(cid);
         out.writeInt(ets);
-        out.writeObject(quorumWrites);
-        out.writeObject(writeSet);
+        StateCodecs.writeTimestampValuePair(quorumWrites, out);
+        StateCodecs.writeTimestampValuePairSet(writeSet, out);
     }
 
     public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException{
@@ -135,7 +136,7 @@ public class CollectData implements Externalizable {
         pid = in.readInt();
         cid = in.readInt();
         ets = in.readInt();
-        quorumWrites = (TimestampValuePair) in.readObject();
-        writeSet = (HashSet<TimestampValuePair>) in.readObject();
+        quorumWrites = StateCodecs.readTimestampValuePair(in);
+        writeSet = StateCodecs.readTimestampValuePairSet(in);
     }
 }

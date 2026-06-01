@@ -172,4 +172,9 @@ public class CSTState implements ApplicationState {
     public byte[] getHashCheckpoint() {
         return hashCheckpoint;
     }
+
+    /** Process id that produced this state, used by the binary codec. */
+    public int getPid() {
+        return pid;
+    }
 }

@@ -46,7 +46,7 @@ import bftsmart.tom.server.SingleExecutable;
 import bftsmart.tom.server.defaultservices.DefaultReplier;
 import bftsmart.tom.util.KeyLoader;
 import bftsmart.tom.util.ShutdownHookThread;
-import bftsmart.tom.util.TOMUtil;
+import bftsmart.tom.util.io.StateCodecs;
 import java.security.Provider;
 
 import org.slf4j.Logger;
@@ -369,7 +369,7 @@ public class ServiceReplica {
                     // him (but only if it came from consensus an not state transfer)
                     
                     tomLayer.getCommunication().send(new int[]{request.getSender()}, new TOMMessage(SVController.getStaticConf().getProcessId(),
-                            request.getSession(), request.getSequence(), request.getOperationId(), TOMUtil.getBytes(SVController.getCurrentView()), SVController.getCurrentViewId(), request.getReqType()));
+                            request.getSession(), request.getSequence(), request.getOperationId(), StateCodecs.reconfigReplyContentToBytes(SVController.getCurrentView()), SVController.getCurrentViewId(), request.getReqType()));
                 }
                 requestCount++;
             }

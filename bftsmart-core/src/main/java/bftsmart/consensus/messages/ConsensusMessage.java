@@ -20,6 +20,7 @@ import java.io.ObjectInput;
 import java.io.ObjectOutput;
 
 import bftsmart.communication.SystemMessage;
+import bftsmart.tom.util.io.StateCodecs;
 
 
 
@@ -97,16 +98,7 @@ public class ConsensusMessage extends SystemMessage {
 
         }
 
-        if(this.proof != null) {
-
-            out.writeBoolean(true);
-            out.writeObject(proof);
-
-        }
-        
-        else {
-            out.writeBoolean(false);
-        }
+        StateCodecs.writeProofObject(proof, out);
 
     }
 
@@ -134,12 +126,8 @@ public class ConsensusMessage extends SystemMessage {
 
         }
 
-        boolean asProof = in.readBoolean();
-        if (asProof) {
-            
-            proof = in.readObject();
-        }
-        
+        proof = StateCodecs.readProofObject(in);
+
     }
 
     /**

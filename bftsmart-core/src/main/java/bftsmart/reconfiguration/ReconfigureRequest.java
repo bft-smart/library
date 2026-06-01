@@ -15,6 +15,7 @@ limitations under the License.
 */
 package bftsmart.reconfiguration;
 
+import bftsmart.tom.util.io.BinaryIO;
 import java.io.Externalizable;
 import java.io.IOException;
 import java.io.ObjectInput;
@@ -77,11 +78,10 @@ public class ReconfigureRequest implements Externalizable{
             out.writeInt(key);
             out.writeUTF(value);
         }
-        
-        
-        out.writeInt(signature.length);
-        out.write(signature);
-       
+
+
+        BinaryIO.writeBytes(out, signature);
+
     }
 
      
@@ -96,10 +96,9 @@ public class ReconfigureRequest implements Externalizable{
             String value = in.readUTF();
             properties.put(key, value);
         }
-        
-        this.signature = new byte[in.readInt()];
-        in.read(this.signature);
-        
+
+        this.signature = BinaryIO.readBytes(in);
+
     }
     
     

@@ -15,9 +15,9 @@ limitations under the License.
 */
 package bftsmart.communication.tls;
 
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -28,6 +28,7 @@ import org.slf4j.LoggerFactory;
 
 import bftsmart.communication.server.StateTransferSender;
 import bftsmart.statemanagement.ApplicationState;
+import bftsmart.tom.util.io.StateCodecs;
 
 /**
  * Socket-based implementation of the bulk state-transfer channel used by the durable
@@ -62,10 +63,11 @@ final class SocketStateTransfer {
      */
     static ApplicationState fetch(InetSocketAddress address) throws IOException {
         try (Socket socket = new Socket(address.getHostName(), address.getPort());
-             ObjectInputStream in = new ObjectInputStream(socket.getInputStream())) {
-            return (ApplicationState) in.readObject();
-        } catch (ClassNotFoundException e) {
-            throw new IOException("Failed to deserialize application state object", e);
+             DataInputStream in = new DataInputStream(socket.getInputStream())) {
+            int length = in.readInt();
+            byte[] bytes = new byte[length];
+            in.readFully(bytes);
+            return StateCodecs.applicationStateFromBytes(bytes);
         }
     }
 
@@ -93,9 +95,11 @@ final class SocketStateTransfer {
             try (Socket socket = server.accept()) {
                 ApplicationState state = stateSupplier.get();
                 logger.debug("Sending state over the bulk state-transfer channel");
-                ObjectOutputStream oos = new ObjectOutputStream(socket.getOutputStream());
-                oos.writeObject(state);
-                oos.flush();
+                byte[] bytes = StateCodecs.applicationStateToBytes(state);
+                DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
+                dos.writeInt(bytes.length);
+                dos.write(bytes);
+                dos.flush();
                 logger.debug("Sent state over the bulk state-transfer channel");
             } catch (IOException e) {
                 logger.error("Problem serving state over the bulk state-transfer channel", e);

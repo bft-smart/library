@@ -15,14 +15,14 @@ limitations under the License.
 */
 package bftsmart.tom.server.defaultservices;
 
-import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FilenameFilter;
 import java.io.IOException;
-import java.io.ObjectInputStream;
 import java.io.RandomAccessFile;
 import java.util.ArrayList;
 import java.util.Arrays;
+
+import bftsmart.tom.util.io.StateCodecs;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -229,11 +229,8 @@ public class FileRecoverer {
 							byte[] bytes = new byte[size];
 							int read = log.read(bytes);
 							if (read == size) {
-								ByteArrayInputStream bis = new ByteArrayInputStream(
-										bytes);
-								ObjectInputStream ois = new ObjectInputStream(
-										bis);
-								state.add((CommandsInfo) ois.readObject());
+								CommandsInfo recovered = StateCodecs.commandsInfoFromBytes(bytes);
+								state.add(recovered);
 								if (++recoveredBatches == endOffset) {
 									logger.debug("read all " + endOffset + " log messages");
 									return state.toArray(new CommandsInfo[state.size()]);
@@ -296,12 +293,9 @@ public class FileRecoverer {
 							byte[] bytes = new byte[size];
 							int read = log.read(bytes);
 							if (read == size) {
-								ByteArrayInputStream bis = new ByteArrayInputStream(
-										bytes);
-								ObjectInputStream ois = new ObjectInputStream(
-										bis);
+								CommandsInfo recovered = StateCodecs.commandsInfoFromBytes(bytes);
 
-								state.add((CommandsInfo) ois.readObject());
+								state.add(recovered);
 
 								if (++recoveredBatches == number) {
 									return state.toArray(new CommandsInfo[state.size()]);

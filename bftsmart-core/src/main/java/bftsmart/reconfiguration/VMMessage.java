@@ -45,14 +45,24 @@ public class VMMessage extends SystemMessage{
     @Override
     public void writeExternal(ObjectOutput out) throws IOException {
         super.writeExternal(out);
-        out.writeObject(reply);
+        if (reply == null) {
+            out.writeBoolean(false);
+        } else {
+            out.writeBoolean(true);
+            reply.writeExternal(out);
+        }
     }
 
     // Implemented method of the Externalizable interface
     @Override
     public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
         super.readExternal(in);
-        this.reply = (ReconfigureReply) in.readObject();
+        if (in.readBoolean()) {
+            this.reply = new ReconfigureReply();
+            this.reply.readExternal(in);
+        } else {
+            this.reply = null;
+        }
     }
 
     public ReconfigureReply getReply() {

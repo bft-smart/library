@@ -44,6 +44,10 @@ public abstract class CSTRequest implements Serializable {
 		return checkpointReplica;
 	}
 
+	public void setCheckpointReplica(int checkpointReplica) {
+		this.checkpointReplica = checkpointReplica;
+	}
+
 	public abstract void defineReplicas(int[] processes, int globalCkpPeriod, int replicaId);
 
 }

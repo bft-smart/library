@@ -15,9 +15,6 @@ limitations under the License.
 */
 package bftsmart.consensus.roles;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.ObjectOutputStream;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.util.Arrays;
@@ -40,6 +37,7 @@ import bftsmart.tom.core.ExecutionManager;
 import bftsmart.tom.core.TOMLayer;
 import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.util.TOMUtil;
+import bftsmart.tom.util.io.StateCodecs;
 
 /**
  * This class represents the acceptor role in the consensus protocol. This class
@@ -386,17 +384,7 @@ public final class Acceptor {
 	 * @param msgs tom messages
 	 */
 	private void insertProof(ConsensusMessage cm, TOMMessage[] msgs) {
-		ByteArrayOutputStream bOut = new ByteArrayOutputStream(248);
-		try {
-			ObjectOutputStream obj = new ObjectOutputStream(bOut);
-			obj.writeObject(cm);
-			obj.flush();
-			bOut.flush();
-		} catch (IOException ex) {
-			logger.error("Failed to serialize consensus message", ex);
-		}
-
-		byte[] data = bOut.toByteArray();
+		byte[] data = StateCodecs.consensusMessageSignableBytes(cm);
 
 		// Always sign a consensus proof.
 		byte[] signature = TOMUtil.signMessage(privKey, data);
@@ -621,14 +609,7 @@ public final class Acceptor {
 				ConsensusMessage cm = new ConsensusMessage(accept.getType(), accept.getNumber(), accept.getEpoch(),
 						 accept.getSender(), accept.getValue());
 
-				ByteArrayOutputStream bOut = new ByteArrayOutputStream(248);
-				try {
-					new ObjectOutputStream(bOut).writeObject(cm);
-				} catch (IOException ex) {
-					logger.error("ACCEPTOR.verifyDecision: Could not serialize message", ex);
-				}
-
-				byte[] data = bOut.toByteArray();
+				byte[] data = StateCodecs.consensusMessageSignableBytes(cm);
 				byte[] signature = (byte[]) accept.getProof();
 
 				logger.debug("ACCEPTOR.verifyDecision: Proof made of Signatures");

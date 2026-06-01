@@ -26,7 +26,7 @@ import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.core.messages.TOMMessageType;
 import bftsmart.tom.util.Extractor;
 import bftsmart.tom.util.KeyLoader;
-import bftsmart.tom.util.TOMUtil;
+import bftsmart.tom.util.io.StateCodecs;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -273,7 +273,7 @@ public class ServiceProxy extends TOMSender {
 					return response.getContent();
 				} else if (response.getViewID() > getViewManager().getCurrentViewId()) {
 					if (reqType == TOMMessageType.ORDERED_REQUEST) {
-						reconfigureTo((View) TOMUtil.getObject(response.getContent()));
+						reconfigureTo((View) StateCodecs.reconfigReplyContentFromBytes(response.getContent()));
 						return invokeOrdered(request);
 					} else if (reqType == TOMMessageType.UNORDERED_REQUEST
 							|| reqType == TOMMessageType.UNORDERED_HASHED_REQUEST) {
@@ -281,7 +281,7 @@ public class ServiceProxy extends TOMSender {
 						return invokeOrdered(request);
 					} else {// Reply to a reconfigure request!
 						logger.debug("Reconfiguration request' reply received!");
-						Object r = TOMUtil.getObject(response.getContent());
+						Object r = StateCodecs.reconfigReplyContentFromBytes(response.getContent());
 						if (r instanceof View) { //did not execute the request because it is using an outdated view
 							reconfigureTo((View) r);
 							return invoke(request, reqType);

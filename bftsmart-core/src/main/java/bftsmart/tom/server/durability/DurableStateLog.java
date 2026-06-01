@@ -15,11 +15,9 @@ limitations under the License.
 */
 package bftsmart.tom.server.durability;
 
-import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.ObjectOutputStream;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
@@ -34,6 +32,7 @@ import bftsmart.tom.server.defaultservices.CommandsInfo;
 import bftsmart.tom.server.defaultservices.FileRecoverer;
 import bftsmart.tom.server.defaultservices.StateLog;
 import bftsmart.tom.util.TOMUtil;
+import bftsmart.tom.util.io.StateCodecs;
 
 public class DurableStateLog extends StateLog {
 
@@ -99,13 +98,8 @@ public class DurableStateLog extends StateLog {
 	}
 
 	private void writeCommandToDisk(CommandsInfo commandsInfo, int consensusId) {
-		ByteArrayOutputStream bos = new ByteArrayOutputStream();
 		try {
-			ObjectOutputStream oos = new ObjectOutputStream(bos);
-			oos.writeObject(commandsInfo);
-			oos.flush();
-
-			byte[] batchBytes = bos.toByteArray();
+			byte[] batchBytes = StateCodecs.commandsInfoToBytes(commandsInfo);
 
 			ByteBuffer bf = ByteBuffer.allocate(3 * INT_BYTE_SIZE
 					+ batchBytes.length);
@@ -204,10 +198,10 @@ public class DurableStateLog extends StateLog {
 	    		logger.info("sending checkpoint: " + ckpState.length);
 	    		CommandsInfo[] logLower = fr.getLogState(requestF1.getLogLowerSize(), logPath);
 	    		CommandsInfo[] logUpper = fr.getLogState(logPointers.get(requestF1.getLogUpper()), 0, requestF1.getLogUpperSize(), logPath);
-	    		byte[] logLowerBytes = TOMUtil.getBytes(logLower);
+	    		byte[] logLowerBytes = StateCodecs.commandsInfoArrayToBytes(logLower);
 	    		logger.debug(logLower.length + " Log lower bytes size: " + logLowerBytes.length);
 	    		byte[] logLowerHash = TOMUtil.computeHash(logLowerBytes);
-	    		byte[] logUpperBytes = TOMUtil.getBytes(logUpper);
+	    		byte[] logUpperBytes = StateCodecs.commandsInfoArrayToBytes(logUpper);
 	    		logger.debug(logUpper.length + " Log upper bytes size: " + logUpperBytes.length);
 	    		byte[] logUpperHash = TOMUtil.computeHash(logUpperBytes);
 	    		CSTState cstState = new CSTState(ckpState, null, null, logLowerHash, null, logUpperHash, lastCheckpointCID, lastCID, this.id);
@@ -216,7 +210,7 @@ public class DurableStateLog extends StateLog {
 				// This replica is expected to send the lower part of the log
 	    		logger.info("Sending lower log: " + requestF1.getLogLowerSize() + " from " + logPointers.get(requestF1.getCheckpointReplica())) ;
 	    		CommandsInfo[] logLower = fr.getLogState(logPointers.get(requestF1.getCheckpointReplica()), 0, requestF1.getLogLowerSize(), logPath);
-	    		logger.debug(" " + TOMUtil.getBytes(logLower).length + " bytes");
+	    		logger.debug(" " + StateCodecs.commandsInfoArrayToBytes(logLower).length + " bytes");
 	    		CSTState cstState = new CSTState(null, null, logLower, null, null, null, lastCheckpointCID, lastCID, this.id);
 	    		return cstState;
 			} else {
