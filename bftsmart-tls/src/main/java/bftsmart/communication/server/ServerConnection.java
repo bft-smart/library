@@ -56,7 +56,9 @@ public class ServerConnection implements ReplicaConnection {
 	private final int remoteId;
 	private final boolean useSenderThread;
 	protected LinkedBlockingQueue<byte[]> outQueue;// = new LinkedBlockingQueue<byte[]>(SEND_QUEUE_SIZE);
-	private final LinkedBlockingQueue<SystemMessage> inQueue;
+	// Received messages are handed to this sink, which the communication layer uses to
+	// demultiplex by groupId to the right consensus group's inqueue (multi-group support).
+	private final java.util.function.Consumer<SystemMessage> messageSink;
 
 	private final Lock connectLock = new ReentrantLock();
 	/** Only used when there is no sender Thread */
@@ -76,7 +78,7 @@ public class ServerConnection implements ReplicaConnection {
 
 	public ServerConnection(ServerViewController controller,
 							SSLSocket socket, int remoteId,
-							LinkedBlockingQueue<SystemMessage> inQueue,
+							java.util.function.Consumer<SystemMessage> messageSink,
 							ServiceReplica replica) {
 
 		this.controller = controller;
@@ -85,7 +87,7 @@ public class ServerConnection implements ReplicaConnection {
 
 		this.remoteId = remoteId;
 
-		this.inQueue = inQueue;
+		this.messageSink = messageSink;
 
 		this.outQueue = new LinkedBlockingQueue<>(this.controller.getStaticConf().getOutQueueSize());
 
@@ -391,12 +393,8 @@ public class ServerConnection implements ReplicaConnection {
 						//The verification it is done for the SSL/TLS protocol.
 						sm.authenticated = true;
 
-						if (sm.getSender() == remoteId) {
-							if (!inQueue.offer(sm)) {
-								logger.warn("Inqueue full (message from " + remoteId + " discarded).");
-							}/* else {
-								logger.trace("Message: {} queued, remoteId: {}", sm.toString(), sm.getSender());
-							}*/
+						if (sm.getSender() == remoteId && messageSink != null) {
+							messageSink.accept(sm);
 						}
 					} catch (ClassNotFoundException ex) {
 						logger.info("Invalid message received. Ignoring!");

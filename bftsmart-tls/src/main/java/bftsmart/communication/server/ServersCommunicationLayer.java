@@ -60,6 +60,11 @@ public class ServersCommunicationLayer extends Thread implements ServerCommunica
 
 	private final ServerViewController controller;
 	private final LinkedBlockingQueue<SystemMessage> inQueue;
+	// Multi-group demultiplexing: groupId -> that group's inqueue (group 0 = the default
+	// inQueue). A shared transport can feed several consensus groups by registering their
+	// queues here; received messages are routed by their envelope groupId.
+	private final java.util.concurrent.ConcurrentHashMap<Integer, LinkedBlockingQueue<SystemMessage>> groupInQueues
+			= new java.util.concurrent.ConcurrentHashMap<>();
 	private final HashMap<Integer, ServerConnection> connections = new HashMap<>();
 	private final int me;
 	private boolean doWork = true;
@@ -82,6 +87,7 @@ public class ServersCommunicationLayer extends Thread implements ServerCommunica
 
 		this.controller = controller;
 		this.inQueue = inQueue;
+		this.groupInQueues.put(0, inQueue); // default group
 		this.me = controller.getStaticConf().getProcessId();
 		this.replica = replica;
 		String ssltlsProtocolVersion = controller.getStaticConf().getSSLTLSProtocolVersion();
@@ -166,6 +172,26 @@ public class ServersCommunicationLayer extends Thread implements ServerCommunica
 		start();
 	}
 
+	/**
+	 * Registers (or replaces) the inqueue of a consensus group, so that this shared
+	 * transport delivers messages tagged with {@code groupId} to it. Group 0 is the
+	 * default group registered at construction.
+	 */
+	public void registerGroupInQueue(int groupId, LinkedBlockingQueue<SystemMessage> queue) {
+		groupInQueues.put(groupId, queue);
+	}
+
+	/**
+	 * Demultiplexes a received message to the inqueue of its group (falling back to the
+	 * default group's queue if the group is unknown).
+	 */
+	private void routeReceived(SystemMessage sm) {
+		LinkedBlockingQueue<SystemMessage> q = groupInQueues.getOrDefault(sm.getGroupId(), inQueue);
+		if (!q.offer(sm)) {
+			logger.warn("inQueue full for group {} (message from {} discarded)", sm.getGroupId(), sm.getSender());
+		}
+	}
+
 	public SecretKey getSecretKey(int id) {
 		if (id == controller.getStaticConf().getProcessId())
 			return selfPwd;
@@ -211,7 +237,7 @@ public class ServersCommunicationLayer extends Thread implements ServerCommunica
 		ServerConnection ret = this.connections.get(remoteId);
 		if (ret == null) {
 			ret = new ServerConnection(controller, null,
-					remoteId, this.inQueue, this.replica);
+					remoteId, this::routeReceived, this.replica);
 			this.connections.put(remoteId, ret);
 		}
 		connectionsLock.unlock();
@@ -240,7 +266,8 @@ public class ServersCommunicationLayer extends Thread implements ServerCommunica
 			try {
 				if (target == me) {
 					sm.authenticated = true;
-					inQueue.put(sm);
+					// route own message to its group's inqueue (group 0 by default)
+					groupInQueues.getOrDefault(sm.getGroupId(), inQueue).put(sm);
 					logger.debug("Queueing (delivering) my own message, me:{}", target);
 				} else {
 					logger.debug("Sending message from:{} -> to:{}.", me,  target);
@@ -335,7 +362,7 @@ public class ServersCommunicationLayer extends Thread implements ServerCommunica
 				//first time that this connection is being established
 				//System.out.println("THIS DOES NOT HAPPEN....."+remoteId);
 				this.connections.put(remoteId,
-						new ServerConnection(controller, newSocket, remoteId, inQueue, replica));
+						new ServerConnection(controller, newSocket, remoteId, this::routeReceived, replica));
 			} else {
 				//reconnection
 				logger.debug("ReConnecting with replica: {}", remoteId);

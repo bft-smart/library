@@ -56,6 +56,9 @@ public final class SystemMessageCodec {
     public static byte[] toBytes(SystemMessage sm) throws IOException {
         ByteArrayOutputStream bos = new ByteArrayOutputStream(256);
         DataOutputStream dos = new DataOutputStream(bos);
+        // Envelope = [groupId][type tag][message body]. The groupId lets the transport
+        // demultiplex incoming messages to the right consensus group (0 = default group).
+        dos.writeInt(sm.getGroupId());
         dos.writeByte(tagOf(sm));
         sm.writeExternal(new DataObjectOutput(dos));
         dos.flush();
@@ -64,10 +67,17 @@ public final class SystemMessageCodec {
 
     public static SystemMessage fromBytes(byte[] data) throws IOException, ClassNotFoundException {
         DataInputStream dis = new DataInputStream(new ByteArrayInputStream(data));
+        int groupId = dis.readInt();
         byte tag = dis.readByte();
         SystemMessage sm = instantiate(tag);
         sm.readExternal(new DataObjectInput(dis));
+        sm.setGroupId(groupId);
         return sm;
+    }
+
+    /** Reads only the groupId from an encoded envelope, without deserializing the body. */
+    public static int peekGroupId(byte[] data) throws IOException {
+        return new DataInputStream(new ByteArrayInputStream(data)).readInt();
     }
 
     private static byte tagOf(SystemMessage sm) {

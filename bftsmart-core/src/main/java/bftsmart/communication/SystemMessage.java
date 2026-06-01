@@ -33,6 +33,12 @@ public abstract class SystemMessage implements Externalizable {
                                             // note that if the message arrives with an
                                             // invalid MAC, it won't be delivered
 
+    // Consensus group this message belongs to (multi-group / multi-raft support).
+    // 0 is the default group, so single-group deployments are unaffected. It is carried
+    // by the transport envelope (see SystemMessageCodec), not by the per-message
+    // Externalizable fields, so existing message formats are unchanged.
+    protected transient int groupId = 0;
+
     /**
      * Creates a new instance of SystemMessage
      */
@@ -52,6 +58,16 @@ public abstract class SystemMessage implements Externalizable {
      */
     public final int getSender() {
         return sender;
+    }
+
+    /** @return the consensus group id this message belongs to (0 = default group). */
+    public final int getGroupId() {
+        return groupId;
+    }
+
+    /** Sets the consensus group id this message belongs to. */
+    public final void setGroupId(int groupId) {
+        this.groupId = groupId;
     }
 
     // This methods implement the Externalizable interface
