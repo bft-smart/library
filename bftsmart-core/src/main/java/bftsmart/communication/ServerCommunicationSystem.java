@@ -52,6 +52,11 @@ public class ServerCommunicationSystem extends Thread {
     private int groupId = 0; // consensus group this stack belongs to (0 = default)
     private boolean ownsServersConn = true; // false when attached to a shared transport
 
+    // Multi-group fairness: when attached to a shared worker pool, this stack does NOT run its own
+    // dedicated thread; instead the pool fairly drains this group's inQueue via the Channel below.
+    private SharedWorkerPool workerPool = null;
+    private SharedWorkerPool.Channel poolChannel = null;
+
     /**
      * Creates a new instance of ServerCommunicationSystem using the default
      * {@link CommunicationFactory} registered in {@link CommunicationFactoryProvider}.
@@ -138,11 +143,75 @@ public class ServerCommunicationSystem extends Thread {
     }
 
     /**
+     * Attaches this communication system to a shared worker pool so that, instead of running its
+     * own dedicated thread, this group's {@code inQueue} is drained fairly (round-robin) by the
+     * pool's bounded set of workers. Used by the multi-group host to scale the number of hosted
+     * groups beyond the number of available threads while preventing any busy group from starving
+     * the others. Must be called before {@link #start()}. Has no effect on single-group / single
+     * replica deployments, which never attach to a pool and keep their dedicated-thread behaviour.
+     *
+     * @param pool the shared worker pool (may be {@code null}, leaving the default behaviour)
+     */
+    public void attachToSharedPool(SharedWorkerPool pool) {
+        this.workerPool = pool;
+    }
+
+    /**
+     * Starts this communication system. In the default (single-group) case this starts the
+     * dedicated processing thread, exactly as before. When attached to a {@link SharedWorkerPool}
+     * the dedicated thread is NOT started; instead this group registers a fair-drain channel with
+     * the pool.
+     */
+    @Override
+    public synchronized void start() {
+        if (workerPool == null) {
+            super.start();
+            return;
+        }
+        poolChannel = new SharedWorkerPool.Channel() {
+            @Override
+            public int drain(int budget) {
+                return drainQueue(budget);
+            }
+
+            @Override
+            public boolean isActive() {
+                return doWork;
+            }
+        };
+        workerPool.register(poolChannel);
+    }
+
+    /**
+     * Processes up to {@code budget} immediately-available messages from {@code inQueue} without
+     * blocking, returning the number processed. When the queue is idle, performs the same periodic
+     * maintenance ({@code verifyPending}) the dedicated run loop does. Invoked by a shared worker
+     * pool; the fixed budget per call is what bounds how long one group can hold a worker, giving
+     * fairness across groups.
+     */
+    private int drainQueue(int budget) {
+        int processed = 0;
+        for (int i = 0; i < budget && doWork; i++) {
+            SystemMessage sm = inQueue.poll();
+            if (sm == null) {
+                break;
+            }
+            logger.debug("<-- receiving, msg:" + sm);
+            messageHandler.processData(sm);
+            processed++;
+        }
+        if (processed == 0 && doWork) {
+            messageHandler.verifyPending();
+        }
+        return processed;
+    }
+
+    /**
      * Thread method responsible for receiving messages sent by other servers.
      */
     @Override
     public void run() {
-        
+
         long count = 0;
         while (doWork) {
             try {
@@ -156,11 +225,11 @@ public class ServerCommunicationSystem extends Thread {
                     logger.debug("<-- receiving, msg:" + sm);
                     messageHandler.processData(sm);
                     count++;
-                } else {                
-                    messageHandler.verifyPending();               
+                } else {
+                    messageHandler.verifyPending();
                 }
             } catch (InterruptedException e) {
-                
+
                 logger.error("Error processing message",e);
             }
         }

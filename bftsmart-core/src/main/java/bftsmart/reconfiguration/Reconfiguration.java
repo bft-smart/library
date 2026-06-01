@@ -15,6 +15,9 @@ limitations under the License.
 */
 package bftsmart.reconfiguration;
 
+import bftsmart.communication.CommunicationFactory;
+import bftsmart.reconfiguration.util.TOMConfiguration;
+import bftsmart.reconfiguration.views.ViewStorage;
 import bftsmart.tom.ServiceProxy;
 import bftsmart.tom.core.messages.TOMMessageType;
 import bftsmart.tom.util.io.StateCodecs;
@@ -30,19 +33,45 @@ public class Reconfiguration {
     private ReconfigureRequest request;
     private ServiceProxy proxy;
     private int id;
-    
+
     private KeyLoader keyLoader;
     private String configDir;
-    
+
+    // Programmatic (per-group / file-less) reconfiguration: when {@code conf} is set the
+    // proxy is built from it (and its transport/view storage) instead of from disk.
+    private TOMConfiguration conf;
+    private CommunicationFactory communicationFactory;
+    private ViewStorage viewStore;
+
     public Reconfiguration(int id, String configDir, KeyLoader loader) {
-        this.id = id;        
+        this.id = id;
         this.keyLoader = loader;
         this.configDir = configDir;
     }
-    
+
+    /**
+     * Constructor for programmatic, per-group reconfiguration. The reconfiguration client
+     * is built from the given group {@link TOMConfiguration} (its ports/keys/view) and talks
+     * to that group's replicas over the supplied transport, independently of any other group.
+     *
+     * @param conf the target group's configuration (its processId is used as the reconfiguration sender)
+     * @param communicationFactory the transport factory used to reach that group's replicas
+     * @param viewStore per-instance view storage so groups never collide on a shared view ({@code null} uses the default)
+     */
+    public Reconfiguration(TOMConfiguration conf, CommunicationFactory communicationFactory, ViewStorage viewStore) {
+        this.conf = conf;
+        this.id = conf.getProcessId();
+        this.communicationFactory = communicationFactory;
+        this.viewStore = viewStore;
+    }
+
     public void connect(){
         if(proxy == null){
-        	proxy = new ServiceProxy(id, configDir, null, null, keyLoader);
+            if (conf != null) {
+                proxy = new ServiceProxy(conf, null, null, communicationFactory, viewStore);
+            } else {
+                proxy = new ServiceProxy(id, configDir, null, null, keyLoader);
+            }
         }
     }
     
