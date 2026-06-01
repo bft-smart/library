@@ -236,9 +236,15 @@ mgr.addInMemoryGroup(1, group1Conf, svcB, svcB, new TLSNettyCommunicationFactory
 ServiceReplica g0 = mgr.group(0);
 ```
 Each group is fully isolated (own view, consensus sequence, leader, state machine and
-view storage). Use distinct ports per group. A node may be a voter in one group and a
-listener in another. (An experimental `addSharedGroup(...)` multiplexes groups over a
-single replica-to-replica port; see the multi-group branch.)
+view storage). A node may be a voter in one group and a listener in another.
+
+Two layouts are supported:
+- `addGroup` / `addInMemoryGroup` — each group has its **own** replica-to-replica
+  transport (its own ports). Simple; ports grow with the number of groups.
+- `addSharedGroup` — all groups multiplex over a **single** shared replica-to-replica
+  TLS port per node (messages demultiplexed by groupId), so one server-to-server port
+  serves every group (multi-raft densification). The groups must share membership /
+  server-to-server ports (the common multi-shard case) and may use distinct client ports.
 
 **The state machine** to implement (`DefaultSingleRecoverable`):
 ```java
