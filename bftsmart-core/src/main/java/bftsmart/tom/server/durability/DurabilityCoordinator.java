@@ -367,7 +367,8 @@ public abstract class DurabilityCoordinator implements Recoverable, BatchExecuta
 				boolean syncLog = config.isToWriteSyncLog();
 				boolean syncCkp = config.isToWriteSyncCkp();
 //				log = new DurableStateLog(replicaId, state, computeHash(state), isToLog, syncLog, syncCkp);
-				log = new DurableStateLog(replicaId, null, null, isToLog, syncLog, syncCkp);
+				log = new DurableStateLog(replicaId, null, null, isToLog, syncLog, syncCkp,
+						config.getStorageDir());
 				CSTState storedState = log.loadDurableState();
 				if(storedState.getLastCID() > -1) {
 					logger.info("LAST CID RECOVERED FROM LOG: " + storedState.getLastCID());

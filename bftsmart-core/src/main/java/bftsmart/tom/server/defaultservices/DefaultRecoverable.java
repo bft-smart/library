@@ -442,7 +442,8 @@ public abstract class DefaultRecoverable implements Recoverable, BatchExecutable
                 boolean isToLog = config.isToLog();
                 boolean syncLog = config.isToWriteSyncLog();
                 boolean syncCkp = config.isToWriteSyncCkp();
-                log = new DiskStateLog(replicaId, state, computeHash(state), isToLog, syncLog, syncCkp);
+                log = new DiskStateLog(replicaId, state, computeHash(state), isToLog, syncLog, syncCkp,
+                        config.getStorageDir());
 
                 ApplicationState storedState = ((DiskStateLog) log).loadDurableState();
                 if (storedState.getLastCID() > 0) {

@@ -17,7 +17,6 @@ package bftsmart.multigroup;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-
 import java.util.concurrent.LinkedBlockingQueue;
 
 import bftsmart.communication.CommunicationFactory;
@@ -38,13 +37,27 @@ import bftsmart.tom.server.Recoverable;
  * {@link TOMConfiguration} / view, consensus sequence, leader, state machine and view
  * storage — so one server can take part in many groups (e.g. shards) at once.
  *
- * <p>This orchestrator wires each group as an independent {@link ServiceReplica} with a
- * per-instance {@link ViewStorage} (so groups never collide on the shared
- * {@code config/currentView} file) and a per-instance {@link CommunicationFactory}. With
- * distinct configurations (ports) per group this needs no shared transport. The
- * transport envelope already carries a {@code groupId} and {@code ServerCommunicationLayer}
- * supports {@code registerGroupInQueue}, which a future variant can use to multiplex all
- * groups over a single shared transport.</p>
+ * <h3>Storage layout</h3>
+ * <p>When durable state is enabled, pass a {@link GroupStorageLayout} so each group's
+ * checkpoint and log files land in an isolated sub-directory and never collide:</p>
+ * <pre>{@code
+ * GroupStorageLayout layout = new GroupStorageLayout("/data/disk1", "/data/disk2");
+ * replica.addGroup(0, conf0, exec, rec, factory, layout);  // → /data/disk1/0/
+ * replica.addGroup(1, conf1, exec, rec, factory, layout);  // → /data/disk2/1/
+ * }</pre>
+ * <p>The durable state-transfer port is also auto-assigned per group: the first group uses
+ * {@code portBase + replicaId} (default portBase = 4444), the second group uses
+ * {@code portBase + 1000 + replicaId}, and so on, so no manual port configuration is needed
+ * when all groups share the same JVM.</p>
+ *
+ * <h3>Transport layouts</h3>
+ * <p><b>A1</b> ({@link #addGroup}): each group has its own replica-to-replica transport
+ * (its own TLS server port and connection mesh). Simple; use when groups have different
+ * memberships or when simplicity matters more than connection count.</p>
+ *
+ * <p><b>A2</b> ({@link #addSharedGroup}): all groups share a single replica-to-replica
+ * transport multiplexed by {@code groupId} in the binary message envelope. One connection
+ * per replica pair regardless of how many groups are hosted.</p>
  */
 public final class MultiGroupReplica {
 
@@ -65,31 +78,55 @@ public final class MultiGroupReplica {
     /**
      * Adds and starts a consensus group, persisting its view in a per-group file
      * ({@code currentView.<groupId>}) so the group survives restarts.
+     * Uses {@link GroupStorageLayout#defaultLayout()} for durable state files.
      */
     public synchronized ServiceReplica addGroup(int groupId, TOMConfiguration conf, Executable executor,
                                                 Recoverable recoverer, CommunicationFactory factory) {
         return addGroup(groupId, conf, executor, recoverer, factory,
-                new NamespacedFileViewStorage(configHome, Integer.toString(groupId)));
+                new NamespacedFileViewStorage(configHome, Integer.toString(groupId)),
+                GroupStorageLayout.defaultLayout());
+    }
+
+    /**
+     * Adds and starts a consensus group with an explicit {@link GroupStorageLayout} for
+     * durable state files. The layout assigns each group an isolated sub-directory and
+     * balances groups across the provided base directories.
+     */
+    public synchronized ServiceReplica addGroup(int groupId, TOMConfiguration conf, Executable executor,
+                                                Recoverable recoverer, CommunicationFactory factory,
+                                                GroupStorageLayout storageLayout) {
+        return addGroup(groupId, conf, executor, recoverer, factory,
+                new NamespacedFileViewStorage(configHome, Integer.toString(groupId)),
+                storageLayout);
     }
 
     /**
      * Adds and starts an ephemeral consensus group whose view is kept in memory only
-     * (tests / demos).
+     * (tests / demos). Durable state uses {@link GroupStorageLayout#defaultLayout()}.
      */
     public synchronized ServiceReplica addInMemoryGroup(int groupId, TOMConfiguration conf, Executable executor,
                                                         Recoverable recoverer, CommunicationFactory factory) {
-        return addGroup(groupId, conf, executor, recoverer, factory, new InMemoryViewStorage());
+        return addGroup(groupId, conf, executor, recoverer, factory,
+                new InMemoryViewStorage(), GroupStorageLayout.defaultLayout());
     }
 
     /**
-     * Adds and starts a consensus group with an explicit per-instance {@link ViewStorage}.
+     * Adds and starts a consensus group with an explicit per-instance {@link ViewStorage}
+     * and a {@link GroupStorageLayout} for durable state.
+     *
+     * <p>The {@code storageLayout} assigns an isolated directory to {@code groupId} and
+     * sets it on {@code conf} ({@link TOMConfiguration#setStorageDir}) before the replica
+     * starts, so {@code DefaultSingleRecoverable} / {@code DefaultRecoverable} pick it up
+     * via {@code ReplicaContext}. The durable state-transfer port base is also auto-assigned
+     * to avoid port collisions between groups in the same JVM.</p>
      */
     public synchronized ServiceReplica addGroup(int groupId, TOMConfiguration conf, Executable executor,
                                                 Recoverable recoverer, CommunicationFactory factory,
-                                                ViewStorage viewStore) {
+                                                ViewStorage viewStore, GroupStorageLayout storageLayout) {
         if (groups.containsKey(groupId)) {
             throw new IllegalArgumentException("Group already present: " + groupId);
         }
+        applyStorageLayout(groupId, conf, storageLayout);
         ServiceReplica replica = new ServiceReplica(conf, executor, recoverer, null, null, factory, viewStore);
         groups.put(groupId, replica);
         return replica;
@@ -106,11 +143,22 @@ public final class MultiGroupReplica {
     public synchronized ServiceReplica addSharedGroup(int groupId, TOMConfiguration conf, Executable executor,
                                                       Recoverable recoverer, CommunicationFactory factory,
                                                       ViewStorage viewStore) throws Exception {
+        return addSharedGroup(groupId, conf, executor, recoverer, factory,
+                viewStore, GroupStorageLayout.defaultLayout());
+    }
+
+    /**
+     * Adds a shared-transport group with an explicit {@link GroupStorageLayout}.
+     */
+    public synchronized ServiceReplica addSharedGroup(int groupId, TOMConfiguration conf, Executable executor,
+                                                      Recoverable recoverer, CommunicationFactory factory,
+                                                      ViewStorage viewStore,
+                                                      GroupStorageLayout storageLayout) throws Exception {
         if (groups.containsKey(groupId)) {
             throw new IllegalArgumentException("Group already present: " + groupId);
         }
+        applyStorageLayout(groupId, conf, storageLayout);
         if (sharedServersConn == null) {
-            // Build the shared transport once, from the (membership-equivalent) first group.
             ServerViewController transportController = new ServerViewController(conf, new InMemoryViewStorage());
             sharedServersConn = factory.newServerCommunicationLayer(
                     transportController, new LinkedBlockingQueue<SystemMessage>(), null);
@@ -129,5 +177,20 @@ public final class MultiGroupReplica {
     /** @return the ids of the groups currently hosted. */
     public java.util.Set<Integer> groupIds() {
         return groups.keySet();
+    }
+
+    /**
+     * Sets the per-group storage dir from the layout and auto-assigns a non-colliding
+     * durable state-transfer port base (default 4444, incremented by 1000 per group slot).
+     */
+    private void applyStorageLayout(int groupId, TOMConfiguration conf, GroupStorageLayout layout) {
+        conf.setStorageDir(layout.dirFor(groupId));
+        // Auto-assign a distinct port base per group so durable state-transfer sockets
+        // (port = base + replicaId) don't collide when multiple groups share a JVM.
+        int slot = groups.size(); // current number of groups already registered
+        if (conf.getStateTransferPortBase() == 4444) {
+            // only override if still at the default (user hasn't set a custom base)
+            conf.setStateTransferPortBase(4444 + slot * 1000);
+        }
     }
 }

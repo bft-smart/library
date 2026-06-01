@@ -41,6 +41,7 @@ public class DurableStateLog extends StateLog {
 			.getProperty("file.separator"));
 	private static final int INT_BYTE_SIZE = 4;
 	private static final int EOF = 0;
+	private String baseDir;
 
 	private RandomAccessFile log;
 	private boolean syncLog;
@@ -51,24 +52,38 @@ public class DurableStateLog extends StateLog {
 	private ReentrantLock checkpointLock = new ReentrantLock();
 	private Map<Integer, Long> logPointers;
 	private FileRecoverer fr;
-	
+
 	public DurableStateLog(int id, byte[] initialState, byte[] initialHash,
 			boolean isToLog, boolean syncLog, boolean syncCkp) {
+		this(id, initialState, initialHash, isToLog, syncLog, syncCkp, DEFAULT_DIR);
+	}
+
+	/**
+	 * Constructor with an explicit storage directory. Use in multi-group deployments
+	 * so each group writes its durable checkpoint/log files to an isolated sub-directory.
+	 */
+	public DurableStateLog(int id, byte[] initialState, byte[] initialHash,
+			boolean isToLog, boolean syncLog, boolean syncCkp, String baseDir) {
 		super(id, initialState, initialHash);
 		this.id = id;
 		this.isToLog = isToLog;
 		this.syncLog = syncLog;
 		this.syncCkp = syncCkp;
 		this.logPointers = new HashMap<Integer, Long>();
-                
-                File directory = new File(DEFAULT_DIR);
-                if (!directory.exists()) directory.mkdir();
-                
-		this.fr = new FileRecoverer(id, DEFAULT_DIR);
+		this.baseDir = normalizeDir(baseDir);
+		File directory = new File(this.baseDir);
+		if (!directory.exists()) directory.mkdirs();
+		this.fr = new FileRecoverer(id, this.baseDir);
+	}
+
+	private static String normalizeDir(String dir) {
+		if (dir == null || dir.isEmpty()) return DEFAULT_DIR;
+		String sep = System.getProperty("file.separator");
+		return (dir.endsWith(sep) || dir.endsWith("/")) ? dir : dir + sep;
 	}
 
 	private void createLogFile() {
-		logPath = DEFAULT_DIR + String.valueOf(id) + "."
+		logPath = baseDir + String.valueOf(id) + "."
 				+ System.currentTimeMillis() + ".log";
 		try {
 			log = new RandomAccessFile(logPath, (syncLog ? "rwd" : "rw"));
@@ -119,7 +134,7 @@ public class DurableStateLog extends StateLog {
 	
         @Override
 	public void newCheckpoint(byte[] state, byte[] stateHash, int consensusId) {
-		String ckpPath = DEFAULT_DIR + String.valueOf(id) + "."
+		String ckpPath = baseDir + String.valueOf(id) + "."
 				+ System.currentTimeMillis() + ".tmp";
 		try {
 			checkpointLock.lock();
@@ -278,7 +293,7 @@ public class DurableStateLog extends StateLog {
 	}
 
 	protected CSTState loadDurableState() {
-		FileRecoverer fr = new FileRecoverer(id, DEFAULT_DIR);
+		FileRecoverer fr = new FileRecoverer(id, baseDir);
 		lastCkpPath = fr.getLatestFile(".ckp");
 		logPath = fr.getLatestFile(".log");
 		byte[] checkpoint = null;

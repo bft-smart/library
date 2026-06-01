@@ -128,7 +128,7 @@ public class DurableStateManager extends StateManager {
                     SVController.getStaticConf().getProcessId());
             String myIp = address.getHostName();
             int myId = SVController.getStaticConf().getProcessId();
-            int port = 4444 + myId;
+            int port = SVController.getStaticConf().getStateTransferPortBase() + myId;
             address = new InetSocketAddress(myIp, port);
             cstConfig.setAddress(address);
             CSTSMMessage reply = new CSTSMMessage(myId, msg.getCID(),
