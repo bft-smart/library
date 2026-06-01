@@ -21,9 +21,8 @@ import java.util.concurrent.TimeUnit;
 import javax.crypto.SecretKey;
 
 import bftsmart.communication.client.CommunicationSystemServerSide;
-import bftsmart.communication.client.CommunicationSystemServerSideFactory;
 import bftsmart.communication.client.RequestReceiver;
-import bftsmart.communication.server.ServersCommunicationLayer;
+import bftsmart.communication.server.ServerCommunicationLayer;
 import bftsmart.consensus.roles.Acceptor;
 import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.tom.ServiceReplica;
@@ -46,26 +45,37 @@ public class ServerCommunicationSystem extends Thread {
     private LinkedBlockingQueue<SystemMessage> inQueue = null;//new LinkedBlockingQueue<SystemMessage>(IN_QUEUE_SIZE);
     protected MessageHandler messageHandler;
     
-    private ServersCommunicationLayer serversConn;
+    private ServerCommunicationLayer serversConn;
     private CommunicationSystemServerSide clientsConn;
     private ServerViewController controller;
+    private final CommunicationFactory communicationFactory;
 
     /**
-     * Creates a new instance of ServerCommunicationSystem
+     * Creates a new instance of ServerCommunicationSystem using the default
+     * {@link CommunicationFactory} registered in {@link CommunicationFactoryProvider}.
      */
     public ServerCommunicationSystem(ServerViewController controller, ServiceReplica replica) throws Exception {
+        this(controller, replica, CommunicationFactoryProvider.getDefaultFactory());
+    }
+
+    /**
+     * Creates a new instance of ServerCommunicationSystem with an explicit transport factory.
+     */
+    public ServerCommunicationSystem(ServerViewController controller, ServiceReplica replica,
+                                     CommunicationFactory communicationFactory) throws Exception {
         super("Server Comm. System");
 
         this.controller = controller;
-        
+        this.communicationFactory = communicationFactory;
+
         messageHandler = new MessageHandler();
 
         inQueue = new LinkedBlockingQueue<SystemMessage>(controller.getStaticConf().getInQueueSize());
 
-        serversConn = new ServersCommunicationLayer(controller, inQueue, replica);
+        serversConn = communicationFactory.newServerCommunicationLayer(controller, inQueue, replica);
 
         //******* EDUARDO BEGIN **************//
-            clientsConn = CommunicationSystemServerSideFactory.getCommunicationSystemServerSide(controller);
+            clientsConn = communicationFactory.newCommunicationSystemServerSide(controller);
         //******* EDUARDO END **************//
     }
 
@@ -77,7 +87,7 @@ public class ServerCommunicationSystem extends Thread {
     public void updateServersConnections() {
         this.serversConn.updateConnections();
         if (clientsConn == null) {
-            clientsConn = CommunicationSystemServerSideFactory.getCommunicationSystemServerSide(controller);
+            clientsConn = communicationFactory.newCommunicationSystemServerSide(controller);
         }
 
     }
@@ -93,7 +103,7 @@ public class ServerCommunicationSystem extends Thread {
 
     public void setRequestReceiver(RequestReceiver requestReceiver) {
         if (clientsConn == null) {
-            clientsConn = CommunicationSystemServerSideFactory.getCommunicationSystemServerSide(controller);
+            clientsConn = communicationFactory.newCommunicationSystemServerSide(controller);
         }
         clientsConn.setRequestReceiver(requestReceiver);
     }
@@ -146,7 +156,7 @@ public class ServerCommunicationSystem extends Thread {
         }
     }
 
-    public ServersCommunicationLayer getServersConn() {
+    public ServerCommunicationLayer getServersConn() {
         return serversConn;
     }
     

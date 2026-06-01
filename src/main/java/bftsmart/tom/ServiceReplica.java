@@ -21,6 +21,8 @@ import java.util.List;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
+import bftsmart.communication.CommunicationFactory;
+import bftsmart.communication.CommunicationFactoryProvider;
 import bftsmart.communication.ServerCommunicationSystem;
 import bftsmart.tom.core.ExecutionManager;
 import bftsmart.consensus.messages.MessageFactory;
@@ -78,6 +80,7 @@ public class ServiceReplica {
     private ReplicaContext replicaCtx = null;
     private Replier replier = null;
     private RequestVerifier verifier = null;
+    private final CommunicationFactory communicationFactory;
 
     /**
      * Constructor
@@ -131,7 +134,25 @@ public class ServiceReplica {
      * @param loader Used to load signature keys from disk
      */
     public ServiceReplica(int id, String configHome, Executable executor, Recoverable recoverer, RequestVerifier verifier, Replier replier, KeyLoader loader) {
+        this(id, configHome, executor, recoverer, verifier, replier, loader, CommunicationFactoryProvider.getDefaultFactory());
+    }
+
+    /**
+     * Constructor that takes an explicit transport {@link CommunicationFactory},
+     * bypassing the default registered in {@link CommunicationFactoryProvider}.
+     *
+     * @param id Replica ID
+     * @param configHome Configuration directory for BFT-SMART
+     * @param executor The executor implementation
+     * @param recoverer The recoverer implementation
+     * @param verifier Requests Verifier
+     * @param replier Can be used to override the targets of the replies associated to each request.
+     * @param loader Used to load signature keys from disk
+     * @param communicationFactory The transport factory used to build the communication systems
+     */
+    public ServiceReplica(int id, String configHome, Executable executor, Recoverable recoverer, RequestVerifier verifier, Replier replier, KeyLoader loader, CommunicationFactory communicationFactory) {
         this.id = id;
+        this.communicationFactory = communicationFactory;
         this.SVController = new ServerViewController(id, configHome, loader);
         this.executor = executor;
         this.recoverer = recoverer;
@@ -145,7 +166,7 @@ public class ServiceReplica {
     // this method initializes the object
     private void init() {
         try {
-            cs = new ServerCommunicationSystem(this.SVController, this);
+            cs = new ServerCommunicationSystem(this.SVController, this, this.communicationFactory);
         } catch (Exception ex) {
             logger.error("Failed to initialize replica-to-replica communication system", ex);
             throw new RuntimeException("Unable to build a communication system.");

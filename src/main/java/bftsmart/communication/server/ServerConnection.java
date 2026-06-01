@@ -44,7 +44,7 @@ import java.util.concurrent.locks.ReentrantLock;
  *
  * @author alysson
  */
-public class ServerConnection {
+public class ServerConnection implements ReplicaConnection {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	private static final long POOL_TIME = 5000;

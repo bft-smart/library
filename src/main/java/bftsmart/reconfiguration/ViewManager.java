@@ -27,7 +27,8 @@ import java.util.StringTokenizer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import bftsmart.communication.server.ServerConnection;
+import bftsmart.communication.CommunicationFactoryProvider;
+import bftsmart.communication.server.ReplicaConnection;
 import bftsmart.reconfiguration.views.View;
 import bftsmart.tom.util.KeyLoader;
 
@@ -121,8 +122,8 @@ public class ViewManager {
         }
     }
 
-    private ServerConnection getConnection(int remoteId) {
-         return new ServerConnection(controller, null, remoteId, null, null);
+    private ReplicaConnection getConnection(int remoteId) {
+         return CommunicationFactoryProvider.getDefaultFactory().newReplicaConnection(controller, remoteId);
     }
 
     public void sendResponse(Integer[] targets, VMMessage sm) {

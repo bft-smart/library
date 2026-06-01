@@ -53,7 +53,7 @@ import java.util.concurrent.locks.ReentrantLock;
 //$keytool -importkeystore -srckeystore ./RSA_KeyPair_2048.pkcs12 -destkeystore ./RSA_KeyPair_2048.pkcs12 -deststoretype pkcs12
 
 
-public class ServersCommunicationLayer extends Thread {
+public class ServersCommunicationLayer extends Thread implements ServerCommunicationLayer {
 
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 

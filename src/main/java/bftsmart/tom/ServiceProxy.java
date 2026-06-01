@@ -15,6 +15,7 @@
  */
 package bftsmart.tom;
 
+import bftsmart.communication.CommunicationFactory;
 import bftsmart.reconfiguration.ReconfigureReply;
 import bftsmart.reconfiguration.views.View;
 import bftsmart.tom.client.AbstractRequestHandler;
@@ -95,6 +96,32 @@ public class ServiceProxy extends TOMSender {
 	public ServiceProxy(int processId, String configHome,
 						Comparator<byte[]> replyComparator, Extractor replyExtractor, KeyLoader loader) {
 		super(processId, configHome, loader);
+		this.invokeTimeout = getViewManager().getStaticConf().getClientInvokeOrderedTimeout();
+
+		comparator = (replyComparator != null) ? replyComparator
+				: (o1, o2) -> Arrays.equals(o1, o2) ? 0 : -1;
+		extractor = (replyExtractor != null) ? replyExtractor
+				: (replies, sameContent, lastReceived) -> replies[lastReceived];
+	}
+
+	/**
+	 * Constructor that takes an explicit transport {@link CommunicationFactory},
+	 * bypassing the default registered in
+	 * {@link bftsmart.communication.CommunicationFactoryProvider}.
+	 *
+	 * @param processId Process id for this client (should be different from replicas)
+	 * @param configHome Configuration directory for BFT-SMART
+	 * @param replyComparator Used for comparing replies from different servers
+	 *                        to extract one returned by f+1
+	 * @param replyExtractor Used for extracting the response from the matching
+	 *                       quorum of replies
+	 * @param loader Used to load signature keys from disk
+	 * @param communicationFactory The transport factory used to build the client side
+	 */
+	public ServiceProxy(int processId, String configHome,
+						Comparator<byte[]> replyComparator, Extractor replyExtractor, KeyLoader loader,
+						CommunicationFactory communicationFactory) {
+		super(processId, configHome, loader, communicationFactory);
 		this.invokeTimeout = getViewManager().getStaticConf().getClientInvokeOrderedTimeout();
 
 		comparator = (replyComparator != null) ? replyComparator

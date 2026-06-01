@@ -1,5 +1,6 @@
 package bftsmart.tom;
 
+import bftsmart.communication.CommunicationFactory;
 import bftsmart.communication.client.ReplyListener;
 import bftsmart.reconfiguration.views.View;
 import bftsmart.tom.core.messages.TOMMessage;
@@ -70,8 +71,30 @@ public class AsynchServiceProxy extends ServiceProxy {
      */
     public AsynchServiceProxy(int processId, String configHome,
             Comparator<byte[]> replyComparator, Extractor replyExtractor, KeyLoader loader) {
-        
+
         super(processId, configHome, replyComparator, replyExtractor, loader);
+        init();
+    }
+
+    /**
+     * Constructor that takes an explicit transport {@link CommunicationFactory},
+     * bypassing the default registered in
+     * {@link bftsmart.communication.CommunicationFactoryProvider}.
+     *
+     * @param processId Process id for this client (should be different from replicas)
+     * @param configHome Configuration directory for BFT-SMART
+     * @param replyComparator Used for comparing replies from different servers
+     *                        to extract one returned by f+1
+     * @param replyExtractor Used for extracting the response from the matching
+     *                       quorum of replies
+     * @param loader Used to load signature keys from disk
+     * @param communicationFactory The transport factory used to build the client side
+     */
+    public AsynchServiceProxy(int processId, String configHome,
+            Comparator<byte[]> replyComparator, Extractor replyExtractor, KeyLoader loader,
+            CommunicationFactory communicationFactory) {
+
+        super(processId, configHome, replyComparator, replyExtractor, loader, communicationFactory);
         init();
     }
 

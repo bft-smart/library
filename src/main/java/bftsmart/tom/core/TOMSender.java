@@ -15,8 +15,9 @@ limitations under the License.
 */
 package bftsmart.tom.core;
 
+import bftsmart.communication.CommunicationFactory;
+import bftsmart.communication.CommunicationFactoryProvider;
 import bftsmart.communication.client.CommunicationSystemClientSide;
-import bftsmart.communication.client.CommunicationSystemClientSideFactory;
 import bftsmart.communication.client.ReplyReceiver;
 import bftsmart.reconfiguration.ClientViewController;
 import bftsmart.tom.core.messages.TOMMessage;
@@ -45,19 +46,31 @@ public abstract class TOMSender implements ReplyReceiver, Closeable, AutoCloseab
 	private final AtomicInteger opCounter = new AtomicInteger(0);
 
 	/**
-	 * Creates a new instance of TOMulticastSender
+	 * Creates a new instance of TOMulticastSender using the default
+	 * {@link CommunicationFactory} registered in {@link CommunicationFactoryProvider}.
 	 * @param processId Process id for this client
 	 * @param configHome Configuration directory for BFT-SMART
 	 * @param loader Used to load signature keys from disk
 	 */
 	public TOMSender(int processId, String configHome, KeyLoader loader) {
+		this(processId, configHome, loader, CommunicationFactoryProvider.getDefaultFactory());
+	}
+
+	/**
+	 * Creates a new instance of TOMulticastSender with an explicit transport factory.
+	 * @param processId Process id for this client
+	 * @param configHome Configuration directory for BFT-SMART
+	 * @param loader Used to load signature keys from disk
+	 * @param communicationFactory The transport factory used to build the client side
+	 */
+	public TOMSender(int processId, String configHome, KeyLoader loader, CommunicationFactory communicationFactory) {
 		if (configHome == null) {
 			this.viewController = new ClientViewController(processId, loader);
 		} else {
 			this.viewController = new ClientViewController(processId, configHome, loader);
 		}
 		this.me = this.viewController.getStaticConf().getProcessId();
-		this.cs = CommunicationSystemClientSideFactory.getCommunicationSystemClientSide(processId, this.viewController);
+		this.cs = communicationFactory.newCommunicationSystemClientSide(processId, this.viewController);
 		this.cs.setReplyReceiver(this); // This object itself shall be a reply receiver
 		this.useSignatures = this.viewController.getStaticConf().getUseSignatures() == 1;
 		this.session = new Random().nextInt();
