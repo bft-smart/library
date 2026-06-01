@@ -187,10 +187,11 @@ public final class MultiGroupReplica {
         conf.setStorageDir(layout.dirFor(groupId));
         // Auto-assign a distinct port base per group so durable state-transfer sockets
         // (port = base + replicaId) don't collide when multiple groups share a JVM.
-        int slot = groups.size(); // current number of groups already registered
+        // The formula is deterministic on groupId so a restarting node always binds
+        // the same port, regardless of the order groups are registered.
         if (conf.getStateTransferPortBase() == 4444) {
             // only override if still at the default (user hasn't set a custom base)
-            conf.setStateTransferPortBase(4444 + slot * 1000);
+            conf.setStateTransferPortBase(4444 + Math.abs(groupId) * 1000);
         }
     }
 }

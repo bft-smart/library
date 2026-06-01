@@ -17,7 +17,6 @@ package bftsmart.multigroup;
 
 import java.io.File;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Ratis-style storage directory manager for multi-group deployments.
@@ -52,7 +51,7 @@ public final class GroupStorageLayout {
     public static final String DEFAULT_BASE = "files" + File.separator;
 
     private final String[] baseDirs;
-    private final AtomicInteger counter = new AtomicInteger(0);
+    // Cache to avoid repeated filesystem mkdir checks on hot paths.
     private final ConcurrentHashMap<Integer, String> assigned = new ConcurrentHashMap<>();
 
     /**
@@ -87,16 +86,17 @@ public final class GroupStorageLayout {
 
     /**
      * Returns the storage directory assigned to {@code groupId}, creating the directory
-     * on the filesystem if it does not yet exist. Repeated calls for the same group always
-     * return the same path (idempotent).
+     * on the filesystem if it does not yet exist. The mapping is <b>deterministic</b>:
+     * {@code baseDirs[groupId % numDirs]/<groupId>/}. This means the assignment is
+     * identical across restarts, regardless of the order in which groups are registered,
+     * so a restarting node always finds its state in the same place.
      *
      * @param groupId the consensus group id
-     * @return an absolute-or-relative path ending with a file separator, e.g. {@code /data/disk1/3/}
+     * @return path ending with a file separator, e.g. {@code /data/disk1/3/}
      */
     public String dirFor(int groupId) {
         return assigned.computeIfAbsent(groupId, gid -> {
-            int slot = counter.getAndIncrement();
-            String base = baseDirs[slot % baseDirs.length];
+            String base = baseDirs[Math.abs(gid) % baseDirs.length];
             String dir = base + gid + File.separator;
             File f = new File(dir);
             if (!f.exists()) {
