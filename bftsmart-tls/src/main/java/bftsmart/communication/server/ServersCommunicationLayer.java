@@ -65,6 +65,10 @@ public class ServersCommunicationLayer extends Thread implements ServerCommunica
 	// queues here; received messages are routed by their envelope groupId.
 	private final java.util.concurrent.ConcurrentHashMap<Integer, LinkedBlockingQueue<SystemMessage>> groupInQueues
 			= new java.util.concurrent.ConcurrentHashMap<>();
+	// Messages received for a not-yet-registered group are buffered here and flushed on
+	// registration (avoids losing messages during the startup registration race).
+	private final java.util.HashMap<Integer, java.util.List<SystemMessage>> pendingByGroup = new java.util.HashMap<>();
+	private final Object demuxLock = new Object();
 	private final HashMap<Integer, ServerConnection> connections = new HashMap<>();
 	private final int me;
 	private boolean doWork = true;
@@ -178,17 +182,37 @@ public class ServersCommunicationLayer extends Thread implements ServerCommunica
 	 * default group registered at construction.
 	 */
 	public void registerGroupInQueue(int groupId, LinkedBlockingQueue<SystemMessage> queue) {
-		groupInQueues.put(groupId, queue);
+		synchronized (demuxLock) {
+			groupInQueues.put(groupId, queue);
+			// Deliver anything that arrived before this group was registered (startup race:
+			// a shared transport begins receiving as soon as the first group creates it).
+			List<SystemMessage> buffered = pendingByGroup.remove(groupId);
+			if (buffered != null) {
+				for (SystemMessage sm : buffered) {
+					if (!queue.offer(sm)) {
+						logger.warn("inQueue full for group {} while flushing buffered messages", groupId);
+					}
+				}
+			}
+		}
 	}
 
 	/**
-	 * Demultiplexes a received message to the inqueue of its group (falling back to the
-	 * default group's queue if the group is unknown).
+	 * Demultiplexes a received message to its group's inqueue. Messages for a group that
+	 * is not yet registered are buffered (not dropped) and flushed on registration, so the
+	 * startup race between creating the shared transport and registering each group cannot
+	 * lose consensus messages.
 	 */
 	private void routeReceived(SystemMessage sm) {
-		LinkedBlockingQueue<SystemMessage> q = groupInQueues.getOrDefault(sm.getGroupId(), inQueue);
-		if (!q.offer(sm)) {
-			logger.warn("inQueue full for group {} (message from {} discarded)", sm.getGroupId(), sm.getSender());
+		synchronized (demuxLock) {
+			LinkedBlockingQueue<SystemMessage> q = groupInQueues.get(sm.getGroupId());
+			if (q == null) {
+				pendingByGroup.computeIfAbsent(sm.getGroupId(), k -> new LinkedList<>()).add(sm);
+				return;
+			}
+			if (!q.offer(sm)) {
+				logger.warn("inQueue full for group {} (message from {} discarded)", sm.getGroupId(), sm.getSender());
+			}
 		}
 	}
 
