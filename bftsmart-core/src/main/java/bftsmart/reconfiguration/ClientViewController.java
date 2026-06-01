@@ -55,7 +55,12 @@ public class ClientViewController extends ViewController {
      * Uses a pre-built (e.g. programmatic/file-less) configuration.
      */
     public ClientViewController(TOMConfiguration conf) {
-        super(conf);
+        this(conf, null);
+    }
+
+    /** Programmatic configuration with an explicit, per-instance view storage. */
+    public ClientViewController(TOMConfiguration conf, bftsmart.reconfiguration.views.ViewStorage viewStore) {
+        super(conf, viewStore);
         View cv = getViewStore().readView();
         if (cv == null) {
             reconfigureTo(new View(0, getStaticConf().getInitialView(),

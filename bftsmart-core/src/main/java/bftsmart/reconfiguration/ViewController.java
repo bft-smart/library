@@ -52,6 +52,17 @@ public class ViewController {
         this.staticConf = staticConf;
     }
 
+    /**
+     * Uses a pre-built configuration AND an explicit, per-instance {@link ViewStorage}.
+     * This is what lets several consensus groups coexist in one JVM: each group is given
+     * its own view storage (e.g. an {@link bftsmart.reconfiguration.views.InMemoryViewStorage}),
+     * so they do not collide on the shared {@code config/currentView} file.
+     */
+    public ViewController(TOMConfiguration staticConf, ViewStorage viewStore) {
+        this.staticConf = staticConf;
+        this.viewStore = viewStore;
+    }
+
     
     public final ViewStorage getViewStore() {
         if (this.viewStore == null) {

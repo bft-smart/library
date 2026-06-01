@@ -137,7 +137,14 @@ public class ServiceProxy extends TOMSender {
 	 */
 	public ServiceProxy(TOMConfiguration conf, Comparator<byte[]> replyComparator,
 						Extractor replyExtractor, CommunicationFactory communicationFactory) {
-		super(conf, communicationFactory);
+		this(conf, replyComparator, replyExtractor, communicationFactory, null);
+	}
+
+	/** Programmatic proxy with an explicit, per-instance view storage (multi-group clients). */
+	public ServiceProxy(TOMConfiguration conf, Comparator<byte[]> replyComparator,
+						Extractor replyExtractor, CommunicationFactory communicationFactory,
+						bftsmart.reconfiguration.views.ViewStorage viewStore) {
+		super(conf, communicationFactory, viewStore);
 		this.invokeTimeout = getViewManager().getStaticConf().getClientInvokeOrderedTimeout();
 
 		comparator = (replyComparator != null) ? replyComparator

@@ -82,7 +82,16 @@ public class ServerViewController extends ViewController {
      * Uses a pre-built (e.g. programmatic/file-less) configuration.
      */
     public ServerViewController(TOMConfiguration conf) {
-        super(conf);
+        this(conf, null);
+    }
+
+    /**
+     * Programmatic configuration with an explicit, per-instance {@link bftsmart.reconfiguration.views.ViewStorage}
+     * (e.g. {@link bftsmart.reconfiguration.views.InMemoryViewStorage}) so multiple groups can coexist in one JVM.
+     * A {@code null} storage falls back to the configured/default one.
+     */
+    public ServerViewController(TOMConfiguration conf, bftsmart.reconfiguration.views.ViewStorage viewStore) {
+        super(conf, viewStore);
         View cv = getViewStore().readView();
         if (cv == null) {
             logger.info("Creating current view from programmatic configuration");

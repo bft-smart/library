@@ -84,7 +84,16 @@ public abstract class TOMSender implements ReplyReceiver, Closeable, AutoCloseab
 	 * @param communicationFactory The transport factory used to build the client side
 	 */
 	public TOMSender(TOMConfiguration conf, CommunicationFactory communicationFactory) {
-		this.viewController = new ClientViewController(conf);
+		this(conf, communicationFactory, null);
+	}
+
+	/**
+	 * Programmatic client with an explicit, per-instance view storage (for multi-group
+	 * clients that must not share the file-based currentView). {@code null} uses the default.
+	 */
+	public TOMSender(TOMConfiguration conf, CommunicationFactory communicationFactory,
+					 bftsmart.reconfiguration.views.ViewStorage viewStore) {
+		this.viewController = new ClientViewController(conf, viewStore);
 		this.me = this.viewController.getStaticConf().getProcessId();
 		this.cs = communicationFactory.newCommunicationSystemClientSide(this.me, this.viewController);
 		this.cs.setReplyReceiver(this);

@@ -177,9 +177,20 @@ public class ServiceReplica {
      * @param communicationFactory The transport factory used to build the communication systems
      */
     public ServiceReplica(TOMConfiguration conf, Executable executor, Recoverable recoverer, RequestVerifier verifier, Replier replier, CommunicationFactory communicationFactory) {
+        this(conf, executor, recoverer, verifier, replier, communicationFactory, null);
+    }
+
+    /**
+     * Fully programmatic constructor with an explicit, per-instance
+     * {@link bftsmart.reconfiguration.views.ViewStorage}. Together with a per-instance
+     * {@link CommunicationFactory} and an in-memory configuration, this lets several
+     * independent consensus groups be hosted in one JVM without colliding on the shared
+     * {@code config/currentView} file. A {@code null} storage uses the default.
+     */
+    public ServiceReplica(TOMConfiguration conf, Executable executor, Recoverable recoverer, RequestVerifier verifier, Replier replier, CommunicationFactory communicationFactory, bftsmart.reconfiguration.views.ViewStorage viewStore) {
         this.id = conf.getProcessId();
         this.communicationFactory = communicationFactory;
-        this.SVController = new ServerViewController(conf);
+        this.SVController = new ServerViewController(conf, viewStore);
         this.executor = executor;
         this.recoverer = recoverer;
         this.replier = (replier != null ? replier : new DefaultReplier());
