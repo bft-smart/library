@@ -105,4 +105,21 @@ public class ViewController {
     public int[] getCurrentViewProcesses() {
         return getCurrentView().getProcesses();
     }
+
+    /**
+     * @return the non-voting members (listeners) of the current view. These replicate
+     *         state but do not participate in consensus and are not counted in any
+     *         quorum. Never null.
+     */
+    public int[] getCurrentViewListeners() {
+        return getCurrentView().getListeners();
+    }
+
+    /**
+     * @param id a process id
+     * @return whether the id is a non-voting member (listener) of the current view.
+     */
+    public boolean isCurrentViewListener(int id) {
+        return getCurrentView().isListener(id);
+    }
 }

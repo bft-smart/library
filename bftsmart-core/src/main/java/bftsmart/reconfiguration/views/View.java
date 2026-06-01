@@ -33,8 +33,17 @@ public class View implements Serializable {
  	private int f;
  	private int[] processes;
  	private Map<Integer,InetSocketAddress> addresses;
+ 	// Non-voting members ("listeners"/learners): they replicate state but do not take
+ 	// part in consensus and are not counted in any quorum. Kept separate from
+ 	// 'processes' (the voters) so that n, f and the quorum math remain voter-only.
+ 	private int[] listeners;
 
  	public View(int id, int[] processes, int f, InetSocketAddress[] addresses){
+ 		this(id, processes, f, addresses, new int[0], new InetSocketAddress[0]);
+ 	}
+
+ 	public View(int id, int[] processes, int f, InetSocketAddress[] addresses,
+ 				int[] listeners, InetSocketAddress[] listenerAddresses){
  		this.id = id;
  		this.processes = processes;
  		this.addresses = new HashMap<Integer, InetSocketAddress>();
@@ -43,6 +52,13 @@ public class View implements Serializable {
  			this.addresses.put(processes[i],addresses[i]);
  		Arrays.sort(this.processes);
  		this.f = f;
+
+ 		this.listeners = (listeners != null) ? listeners.clone() : new int[0];
+ 		if (listenerAddresses != null) {
+ 			for(int i = 0; i < this.listeners.length && i < listenerAddresses.length; i++)
+ 				this.addresses.put(this.listeners[i], listenerAddresses[i]);
+ 		}
+ 		Arrays.sort(this.listeners);
  	}
 
  	public boolean isMember(int id){
@@ -80,11 +96,55 @@ public class View implements Serializable {
  		return processes;
  	}
 
+ 	/**
+ 	 * @return the ids of the non-voting members (listeners). Never null
+ 	 *         (an old view deserialized without this field reports no listeners).
+ 	 */
+ 	public int[] getListeners() {
+ 		return (this.listeners != null) ? this.listeners : new int[0];
+ 	}
+
+ 	/**
+ 	 * @return the number of non-voting members (listeners) in this view.
+ 	 */
+ 	public int getNumberOfListeners() {
+ 		return getListeners().length;
+ 	}
+
+ 	/**
+ 	 * @param id a process id
+ 	 * @return whether the given id is a non-voting member (listener) of this view.
+ 	 */
+ 	public boolean isListener(int id){
+ 		for(int l : getListeners()){
+ 			if(l == id){
+ 				return true;
+ 			}
+ 		}
+ 		return false;
+ 	}
+
+ 	/**
+ 	 * @param id a process id
+ 	 * @return whether the id belongs to this view, either as a voter
+ 	 *         ({@link #isMember(int)}) or as a listener ({@link #isListener(int)}).
+ 	 */
+ 	public boolean isInView(int id){
+ 		return isMember(id) || isListener(id);
+ 	}
+
  	@Override
  	public String toString(){
  		String ret = "ID:"+id+"; F:"+f+"; Processes:";
  		for(int i = 0; i < processes.length;i++){
  			ret = ret+processes[i]+"("+addresses.get(processes[i])+"),";
+ 		}
+ 		int[] ls = getListeners();
+ 		if(ls.length > 0){
+ 			ret = ret+" Listeners:";
+ 			for(int i = 0; i < ls.length;i++){
+ 				ret = ret+ls[i]+"("+addresses.get(ls[i])+"),";
+ 			}
  		}
 
  		return ret;
