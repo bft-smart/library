@@ -2,7 +2,65 @@
 
 This is a Byzantine fault-tolerant state machine replication project named BFT-SMaRt, a Java open source library maintained by the LASIGE Computer Science and Engineering Research Centre at the University of Lisbon.
 
-This package contains the source code (src/), dependencies (lib/), documentation (docs/), running scripts (runscripts/), and configuration files (config/) for version 2.0 of the project.
+This package contains the source code, dependencies (lib/), documentation (docs/), running scripts (runscripts/), and configuration files (config/) for version 2.0 of the project.
+
+---
+
+## What's different from upstream BFT-SMaRt (this fork)
+
+This fork keeps the BFT-SMaRt protocol behaviour and public programming model intact,
+but introduces a set of **surgical, additive** changes. With the default configuration
+and the legacy constructors, behaviour is unchanged; the new capabilities are opt-in.
+
+1. **Gradle multi-module build.** The single project was split into two modules so the
+   networking transport can be swapped without touching the protocol code:
+   - `bftsmart-core` — consensus / TOM / reconfiguration / state transfer + the
+     networking SPI. No dependency on any networking library.
+   - `bftsmart-tls` — the default transport (TLS server sockets + Netty) and the
+     runnable demos / tests / benchmarks.
+
+   `./gradlew installDist` now produces `bftsmart-tls/build/install/bftsmart-tls`
+   (see *Project structure* and *Compiling* below). A future transport (e.g. Apache
+   Pekko) is just a new module providing its own `CommunicationFactory`.
+
+2. **Pluggable networking layer (SPI).** All networking goes through
+   `bftsmart.communication.CommunicationFactory`: replica-to-replica transport
+   (`ServerCommunicationLayer`), client-to-server transport (`CommunicationSystem*`),
+   one-shot replica connections (`ReplicaConnection`) and the bulk state-transfer
+   channel (`StateTransferSender` / `fetchState`). Wiring is **programmatic** (no
+   `ServiceLoader`). Netty was removed from the core (it had only a dead reference).
+
+3. **Programmatic, file-less configuration.** Besides `system.config` / `hosts.config`,
+   the system can now be configured entirely in memory via `TOMConfigurationBuilder`
+   and the new `TOMConfiguration(...)`-accepting constructors of `ServiceReplica` /
+   `ServiceProxy`. See *Programmatic configuration* and
+   `bftsmart.demo.programmatic.ProgrammaticConfigDemo`.
+
+4. **View storage without reflection.** The `view.storage.handler` reflective plug-in
+   was replaced by programmatic injection (`ViewStorageProvider.setFactory(...)`),
+   defaulting to the file-based `DefaultViewStorage`.
+
+5. **Non-voting members ("listeners" / learners).** A replica can join as a *listener*:
+   it replicates the service state (from forwarded, proof-verified decisions) but does
+   **not** vote in consensus and is never counted in any quorum. A node can be
+   **promoted to voter or demoted to listener at runtime** through a view change
+   (`VMServices.addListener / promoteToVoter / demoteToListener`). See *Listeners*.
+
+6. **Custom binary serialization.** Java object serialization
+   (`ObjectOutputStream`/`ObjectInputStream`) was replaced by a compact binary codec
+   (`bftsmart.tom.util.io.*`) for application state, consensus / leader-change /
+   reconfiguration messages, the decision proofs, and the **replica-to-replica
+   transport envelope** (`SystemMessageCodec`). This removes the reflective-serialization
+   bottleneck on the hot path (large deserialization speed-ups; see
+   `docs/state-serialization-benchmark.md`).
+
+7. **Dead-code cleanup.** Removed an unwired NIO `SocketChannel` state-transfer path.
+
+> Status note: items 1–4 and 7 are merged into `master`; items 5 (listeners) and 6
+> (binary serialization, including the transport envelope) are integrated together on
+> the `claude/integration-binary-serialization` branch.
+
+---
 
 ## Quick start
 
@@ -67,6 +125,61 @@ TLSNettyCommunicationFactory.installAsDefault();
 To use a different transport (e.g. Apache Pekko), add a new module that depends on
 `bftsmart-core` and provides its own `CommunicationFactory` implementation, then wire
 it in the same way.
+
+## Programmatic configuration
+
+In addition to `config/system.config` + `config/hosts.config`, the system parameters
+and host addresses can be supplied entirely from code, with no configuration files on
+disk, using `TOMConfigurationBuilder`:
+
+```java
+TOMConfiguration conf = new TOMConfigurationBuilder()
+        .servers(4).f(1).initialView(0, 1, 2, 3)
+        .defaultKeys(true).useSignatures(false)
+        .enabledCiphers("TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256")
+        .host(0, "127.0.0.1", 11000, 11001)
+        .host(1, "127.0.0.1", 11010, 11011)
+        .host(2, "127.0.0.1", 11020, 11021)
+        .host(3, "127.0.0.1", 11030, 11031)
+        .build(myId);
+
+new ServiceReplica(conf, service, service, null, null, new TLSNettyCommunicationFactory());
+// client: new ServiceProxy(conf, null, null, new TLSNettyCommunicationFactory());
+```
+
+Runnable example: `bftsmart.demo.programmatic.ProgrammaticConfigDemo`. (For the default
+TLS transport the keystore under `config/keysSSL_TLS/` is still read from disk — that is
+crypto material, not BFT-SMaRt configuration.)
+
+## Listeners (non-voting members)
+
+A node can participate as a **listener** (learner): it replicates the service state but
+does not vote in consensus and is never counted in any quorum. Listeners receive each
+decided value together with its quorum certificate (a set of signed `ACCEPT`s) and apply
+it only after verifying that proof, so they cannot be fed a forged state by a single
+replica.
+
+Declare listeners statically in `config/system.config`:
+
+```
+system.servers.num = 4            # voters
+system.initial.view = 0,1,2,3
+system.servers.listeners = 4      # non-voting member(s), comma-separated ids
+```
+
+…or change a node's role at runtime, through a (consensus-ordered) view change:
+
+```java
+VMServices vm = new VMServices();
+vm.addListener(5, "127.0.0.1", 11050, 11051); // join as a listener
+vm.promoteToVoter(5);                          // listener -> voter
+vm.demoteToListener(0);                        // voter   -> listener
+```
+
+Promotion is cheap because a listener is already state-synchronised. Demotion/removal of
+a voter reduces `n`, so the remaining voters must still satisfy `n >= 3f+1` (BFT).
+Reproducible tests: `bftsmart-tls/scripts/listener-replication-test.sh` and
+`listener-hardening-test.sh` (late-join state transfer + leader change with a listener).
 
 ## Running the counter demonstration
 You can run the counter demonstration by executing the following commands, from within the folders containing compiled code across four different consoles (4 replicas, to tolerate 1 fault):
