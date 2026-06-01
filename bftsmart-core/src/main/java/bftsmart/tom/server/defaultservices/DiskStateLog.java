@@ -22,7 +22,6 @@ import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
-import java.nio.channels.SocketChannel;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.locks.ReentrantLock;
@@ -230,17 +229,6 @@ public class DiskStateLog extends StateLog {
 		return null;
 	}
 	
-	public void transferApplicationState(SocketChannel sChannel, int cid) {
-		FileRecoverer fr = new FileRecoverer(id, DEFAULT_DIR);
-		fr.transferCkpState(sChannel, lastCkpPath);
-//		int lastCheckpointCID = getLastCheckpointCID();
-//		int lastCID = getLastCID();
-//		if (cid >= lastCheckpointCID && cid <= lastCID) {
-//			int size = cid - lastCheckpointCID;
-//			fr.transferLog(sChannel, size);
-//		}
-	}
-
 	public void setLastCID(int cid, int checkpointPeriod, int checkpointPortion) {
 		super.setLastCID(cid);
 		// save the file pointer to retrieve log information later
