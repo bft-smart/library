@@ -17,6 +17,7 @@ package bftsmart.consensus;
 
 import org.apache.commons.codec.binary.Base64;
 
+import bftsmart.tom.util.io.BinaryIO;
 import java.io.Externalizable;
 import java.io.IOException;
 import java.io.ObjectInput;
@@ -115,14 +116,14 @@ public class TimestampValuePair implements Externalizable {
     public void writeExternal(ObjectOutput out) throws IOException{
 
         out.writeInt(timestamp);
-        out.writeObject(value);
+        BinaryIO.writeBytes(out, value);
     }
 
     @Override
     public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException{
 
         timestamp = in.readInt();
-        value = (byte[]) in.readObject();
+        value = BinaryIO.readBytes(in);
     }
     
     private String str(byte[] obj) {

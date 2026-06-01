@@ -22,6 +22,7 @@ import java.io.ObjectOutput;
 import bftsmart.reconfiguration.views.View;
 import bftsmart.statemanagement.ApplicationState;
 import bftsmart.statemanagement.SMMessage;
+import bftsmart.tom.util.io.StateCodecs;
 
 public class CSTSMMessage extends SMMessage {
 
@@ -43,13 +44,13 @@ public class CSTSMMessage extends SMMessage {
     @Override
     public void writeExternal(ObjectOutput out) throws IOException{
         super.writeExternal(out);
-        out.writeObject(cstConfig);
+        StateCodecs.writeCSTRequestF1(cstConfig, out);
     }
 
     @Override
     public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException{
         super.readExternal(in);
-        cstConfig = (CSTRequestF1)in.readObject();
+        cstConfig = StateCodecs.readCSTRequestF1(in);
     }
 	
 }

@@ -15,9 +15,7 @@ limitations under the License.
 */
 package bftsmart.tom.leaderchange;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.ObjectOutputStream;
 import java.security.MessageDigest;
 import java.security.PublicKey;
 import java.security.SignedObject;
@@ -33,6 +31,7 @@ import org.slf4j.LoggerFactory;
 
 import bftsmart.consensus.TimestampValuePair;
 import bftsmart.consensus.messages.ConsensusMessage;
+import bftsmart.tom.util.io.StateCodecs;
 import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.tom.core.TOMLayer;
 import bftsmart.tom.core.messages.TOMMessage;
@@ -807,14 +806,7 @@ public class LCManager {
             ConsensusMessage cm = new ConsensusMessage(consMsg.getType(),consMsg.getNumber(),
                     consMsg.getEpoch(), consMsg.getSender(), consMsg.getValue());
 
-            ByteArrayOutputStream bOut = new ByteArrayOutputStream(248);
-            try {
-                new ObjectOutputStream(bOut).writeObject(cm);
-            } catch (IOException ex) {
-                logger.error("Could not serialize message",ex);
-            }
-
-            byte[] data = bOut.toByteArray();
+            byte[] data = StateCodecs.consensusMessageSignableBytes(cm);
 
             if (consMsg.getProof() instanceof byte[]) { // certificate is made of signatures
                 

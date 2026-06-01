@@ -16,6 +16,8 @@ limitations under the License.
 package bftsmart.tom.leaderchange;
 
 import bftsmart.consensus.messages.ConsensusMessage;
+import bftsmart.tom.util.io.BinaryIO;
+import bftsmart.tom.util.io.StateCodecs;
 import java.io.Externalizable;
 import java.io.IOException;
 import java.io.ObjectInput;
@@ -111,15 +113,15 @@ public class CertifiedDecision implements Externalizable {
 
         out.writeInt(pid);
         out.writeInt(cid);
-        out.writeObject(decision);
-        out.writeObject(consMsgs);
+        BinaryIO.writeBytes(out, decision);
+        StateCodecs.writeConsensusMessageSet(consMsgs, out);
     }
 
     public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
 
         pid = in.readInt();
         cid = in.readInt();
-        decision = (byte[]) in.readObject();
-        consMsgs = (Set<ConsensusMessage>) in.readObject();
+        decision = BinaryIO.readBytes(in);
+        consMsgs = StateCodecs.readConsensusMessageSet(in);
     }
 }

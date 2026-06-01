@@ -31,9 +31,11 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 
+import bftsmart.consensus.TimestampValuePair;
 import bftsmart.consensus.messages.ConsensusMessage;
 import bftsmart.reconfiguration.views.View;
 import bftsmart.statemanagement.ApplicationState;
+import bftsmart.statemanagement.durability.CSTRequestF1;
 import bftsmart.statemanagement.durability.CSTState;
 import bftsmart.tom.MessageContext;
 import bftsmart.tom.core.messages.TOMMessage;
@@ -171,20 +173,28 @@ public final class StateCodecs {
     // Concrete codecs
     // ------------------------------------------------------------------
 
-    /** Opaque {@code ConsensusMessage.proof} object: usually a signature ({@code byte[]}). */
+    /** Opaque {@code ConsensusMessage.proof} object. */
     private static final byte PROOF_NULL = 0;
-    private static final byte PROOF_BYTES = 1;
-    private static final byte PROOF_JAVA = 2; // safety fallback for any other (e.g. MAC vector)
+    private static final byte PROOF_BYTES = 1;       // signature
+    private static final byte PROOF_CM_SET = 2;      // Set<ConsensusMessage> (forwarded decision proof)
+    private static final byte PROOF_JAVA = 3;        // safety fallback for any other representation
 
-    private static void writeProofObject(Object proof, DataOutput out) throws IOException {
+    /**
+     * Writes the opaque {@code ConsensusMessage.proof} object. In this codebase it is
+     * always {@code null}, a {@code byte[]} signature, or a {@code Set<ConsensusMessage>}
+     * (forwarded-decision proof); any other representation falls back to a length-prefixed
+     * Java-serialized blob so correctness is preserved.
+     */
+    public static void writeProofObject(Object proof, DataOutput out) throws IOException {
         if (proof == null) {
             out.writeByte(PROOF_NULL);
         } else if (proof instanceof byte[]) {
             out.writeByte(PROOF_BYTES);
             BinaryIO.writeBytes(out, (byte[]) proof);
+        } else if (proof instanceof Set && allConsensusMessages((Set<?>) proof)) {
+            out.writeByte(PROOF_CM_SET);
+            writeConsensusMessageSet((Set<ConsensusMessage>) proof, out);
         } else {
-            // Rare path (e.g. MAC vectors): keep correctness with a length-prefixed
-            // Java-serialized blob rather than failing.
             out.writeByte(PROOF_JAVA);
             ByteArrayOutputStream bos = new ByteArrayOutputStream();
             try (ObjectOutputStream oos = new ObjectOutputStream(bos)) {
@@ -194,13 +204,25 @@ public final class StateCodecs {
         }
     }
 
-    private static Object readProofObject(DataInput in) throws IOException {
+    private static boolean allConsensusMessages(Set<?> set) {
+        for (Object o : set) {
+            if (!(o instanceof ConsensusMessage)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /** Reads an opaque proof object written by {@link #writeProofObject}. */
+    public static Object readProofObject(DataInput in) throws IOException {
         byte tag = in.readByte();
         switch (tag) {
             case PROOF_NULL:
                 return null;
             case PROOF_BYTES:
                 return BinaryIO.readBytes(in);
+            case PROOF_CM_SET:
+                return readConsensusMessageSet(in);
             case PROOF_JAVA:
                 byte[] blob = BinaryIO.readBytes(in);
                 try (ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(blob))) {
@@ -237,6 +259,150 @@ public final class StateCodecs {
             return m;
         }
     };
+
+    // ------------------------------------------------------------------
+    // Public reusable element codecs (consensus / leader-change / reconfig)
+    // ------------------------------------------------------------------
+
+    /** Writes a single {@link ConsensusMessage} (including its proof). */
+    public static void writeConsensusMessage(ConsensusMessage m, DataOutput out) throws IOException {
+        CONSENSUS_MESSAGE.encode(m, out);
+    }
+
+    /** Reads a single {@link ConsensusMessage} written by {@link #writeConsensusMessage}. */
+    public static ConsensusMessage readConsensusMessage(DataInput in) throws IOException {
+        return CONSENSUS_MESSAGE.decode(in);
+    }
+
+    /** Writes a (possibly null) {@code Set<ConsensusMessage>} ({@code -1} encodes {@code null}). */
+    public static void writeConsensusMessageSet(Set<ConsensusMessage> set, DataOutput out) throws IOException {
+        if (set == null) {
+            out.writeInt(-1);
+            return;
+        }
+        out.writeInt(set.size());
+        for (ConsensusMessage cm : set) {
+            CONSENSUS_MESSAGE.encode(cm, out);
+        }
+    }
+
+    /** Reads a (possibly null) {@code Set<ConsensusMessage>} as a {@link HashSet}. */
+    public static Set<ConsensusMessage> readConsensusMessageSet(DataInput in) throws IOException {
+        int n = in.readInt();
+        if (n < 0) {
+            return null;
+        }
+        Set<ConsensusMessage> set = new HashSet<>(Math.max(2, n));
+        for (int i = 0; i < n; i++) {
+            set.add(CONSENSUS_MESSAGE.decode(in));
+        }
+        return set;
+    }
+
+    /**
+     * Deterministic encoding of the authenticated fields of a {@link ConsensusMessage}
+     * (sender, number, epoch, paxosType, value), used to produce the bytes that are
+     * signed/verified for a consensus proof. The {@code proof} field is intentionally
+     * excluded. Signer and verifier must both use this method.
+     */
+    public static byte[] consensusMessageSignableBytes(ConsensusMessage cm) {
+        ByteArrayOutputStream bos = new ByteArrayOutputStream(256);
+        DataOutputStream dos = new DataOutputStream(bos);
+        try {
+            dos.writeInt(cm.getSender());
+            dos.writeInt(cm.getNumber());
+            dos.writeInt(cm.getEpoch());
+            dos.writeInt(cm.getType());
+            BinaryIO.writeBytes(dos, cm.getValue());
+            dos.flush();
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to encode consensus message for signing", e);
+        }
+        return bos.toByteArray();
+    }
+
+    /** Writes a (possibly null) {@link TimestampValuePair} (a leading boolean flags presence). */
+    public static void writeTimestampValuePair(TimestampValuePair tv, DataOutput out) throws IOException {
+        if (tv == null) {
+            out.writeBoolean(false);
+            return;
+        }
+        out.writeBoolean(true);
+        out.writeInt(tv.getTimestamp());
+        BinaryIO.writeBytes(out, tv.getValue());
+    }
+
+    /** Reads a (possibly null) {@link TimestampValuePair} written by {@link #writeTimestampValuePair}. */
+    public static TimestampValuePair readTimestampValuePair(DataInput in) throws IOException {
+        if (!in.readBoolean()) {
+            return null;
+        }
+        int timestamp = in.readInt();
+        byte[] value = BinaryIO.readBytes(in);
+        return new TimestampValuePair(timestamp, value);
+    }
+
+    /** Writes a (possibly null) {@code Set<TimestampValuePair>} ({@code -1} encodes {@code null}). */
+    public static void writeTimestampValuePairSet(Set<TimestampValuePair> set, DataOutput out) throws IOException {
+        if (set == null) {
+            out.writeInt(-1);
+            return;
+        }
+        out.writeInt(set.size());
+        for (TimestampValuePair tv : set) {
+            // non-null elements by construction; reuse the nullable element writer for symmetry
+            writeTimestampValuePair(tv, out);
+        }
+    }
+
+    /** Reads a (possibly null) {@code Set<TimestampValuePair>} as a {@link HashSet}. */
+    public static HashSet<TimestampValuePair> readTimestampValuePairSet(DataInput in) throws IOException {
+        int n = in.readInt();
+        if (n < 0) {
+            return null;
+        }
+        HashSet<TimestampValuePair> set = new HashSet<>(Math.max(2, n));
+        for (int i = 0; i < n; i++) {
+            set.add(readTimestampValuePair(in));
+        }
+        return set;
+    }
+
+    /** Writes a (possibly null) {@link CSTRequestF1} (a leading boolean flags presence). */
+    public static void writeCSTRequestF1(CSTRequestF1 r, DataOutput out) throws IOException {
+        if (r == null) {
+            out.writeBoolean(false);
+            return;
+        }
+        out.writeBoolean(true);
+        out.writeInt(r.getCID());
+        out.writeInt(r.getCheckpointReplica());
+        out.writeInt(r.getLogUpper());
+        out.writeInt(r.getLogLower());
+        out.writeInt(r.getLogUpperSize());
+        out.writeInt(r.getLogLowerSize());
+        InetSocketAddress addr = r.getAddress();
+        BinaryIO.writeNullableString(out, addr == null ? null : addr.getHostString());
+        out.writeInt(addr == null ? -1 : addr.getPort());
+    }
+
+    /** Reads a (possibly null) {@link CSTRequestF1} written by {@link #writeCSTRequestF1}. */
+    public static CSTRequestF1 readCSTRequestF1(DataInput in) throws IOException {
+        if (!in.readBoolean()) {
+            return null;
+        }
+        int cid = in.readInt();
+        CSTRequestF1 r = new CSTRequestF1(cid);
+        r.setCheckpointReplica(in.readInt());
+        r.setLogUpper(in.readInt());
+        r.setLogLower(in.readInt());
+        r.setLogUpperSize(in.readInt());
+        r.setLogLowerSize(in.readInt());
+        String host = BinaryIO.readNullableString(in);
+        int port = in.readInt();
+        r.setAddress(host == null ? null : new InetSocketAddress(host, port));
+        return r;
+    }
 
     static final BinaryCodec<TOMMessage> TOM_MESSAGE = new BinaryCodec<TOMMessage>() {
         @Override

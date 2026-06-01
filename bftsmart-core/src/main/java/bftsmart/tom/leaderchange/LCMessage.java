@@ -21,6 +21,7 @@ import java.io.ObjectOutput;
 
 import bftsmart.communication.SystemMessage;
 import bftsmart.tom.util.TOMUtil;
+import bftsmart.tom.util.io.BinaryIO;
 
 /**
  * Message used during leader change and synchronization
@@ -89,7 +90,7 @@ public class LCMessage extends SystemMessage {
 
         out.writeInt(type);
         out.writeInt(ts);
-        out.writeObject(payload);
+        BinaryIO.writeBytes(out, payload);
     }
 
     @Override
@@ -98,6 +99,6 @@ public class LCMessage extends SystemMessage {
 
         type = in.readInt();
         ts = in.readInt();
-        payload = (byte[]) in.readObject();
+        payload = BinaryIO.readBytes(in);
     }
 }
