@@ -73,6 +73,10 @@ import bftsmart.tom.server.defaultservices.DefaultApplicationState;
  */
 public final class StateCodecs {
 
+    /** Sanity bound on member/listener counts, to turn a corrupt/partial read into an
+     *  IOException instead of a huge allocation (OOM). Far above any realistic group size. */
+    private static final int MAX_MEMBERS = 100_000;
+
     private StateCodecs() {
     }
 
@@ -610,6 +614,10 @@ public final class StateCodecs {
             int id = in.readInt();
             int f = in.readInt();
             int n = in.readInt();
+            // Defensive bound: a partial/corrupt read (e.g. a concurrently-written
+            // currentView) must fail as an IOException (caller treats it as "no view"),
+            // never allocate a huge array and OOM.
+            if (n < 0 || n > MAX_MEMBERS) throw new IOException("Invalid view size: " + n);
             int[] processes = new int[n];
             InetSocketAddress[] addresses = new InetSocketAddress[n];
             for (int i = 0; i < n; i++) {
@@ -619,6 +627,7 @@ public final class StateCodecs {
                 addresses[i] = host == null ? null : new InetSocketAddress(host, port);
             }
             int ln = in.readInt();
+            if (ln < 0 || ln > MAX_MEMBERS) throw new IOException("Invalid listener count: " + ln);
             int[] listeners = new int[ln];
             InetSocketAddress[] listenerAddresses = new InetSocketAddress[ln];
             for (int i = 0; i < ln; i++) {
