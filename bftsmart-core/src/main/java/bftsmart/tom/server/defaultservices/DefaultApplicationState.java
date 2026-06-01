@@ -75,6 +75,26 @@ public class DefaultApplicationState implements ApplicationState {
     	this.logHash = logHash;
     }
 
+    /**
+     * Full-field constructor used by the custom binary codec ({@link bftsmart.tom.util.io.StateCodecs})
+     * to reconstruct an instance from its serialized form.
+     */
+    public DefaultApplicationState(CommandsInfo[] messageBatches, int lastCheckpointCID, int lastCID,
+                                   byte[] state, byte[] stateHash, int pid,
+                                   TreeMap<Integer, TOMMessage> lastReplies, byte[] lastRepliesHash,
+                                   byte[] logHash, boolean hasState) {
+        this.messageBatches = messageBatches;
+        this.lastCheckpointCID = lastCheckpointCID;
+        this.lastCID = lastCID;
+        this.state = state;
+        this.stateHash = stateHash;
+        this.pid = pid;
+        this.lastReplies = (lastReplies != null) ? lastReplies : new TreeMap<>();
+        this.lastRepliesHash = lastRepliesHash;
+        this.logHash = logHash;
+        this.hasState = hasState;
+    }
+
 
     /**
      * Constructs a TansferableState
@@ -294,6 +314,21 @@ public class DefaultApplicationState implements ApplicationState {
 
     public  TreeMap<Integer, TOMMessage> getLastReplies() {
         return this.lastReplies;
+    }
+
+    /** Hash of the {@code lastReplies} map, used by the binary codec. */
+    public byte[] getLastRepliesHash() {
+        return this.lastRepliesHash;
+    }
+
+    /** Hash of the message log, used by the binary codec. */
+    public byte[] getLogHash() {
+        return this.logHash;
+    }
+
+    /** Process id that produced this state, used by the binary codec. */
+    public int getPid() {
+        return this.pid;
     }
 
 }

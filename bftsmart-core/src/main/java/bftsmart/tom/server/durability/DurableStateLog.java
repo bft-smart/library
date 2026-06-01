@@ -15,11 +15,9 @@ limitations under the License.
 */
 package bftsmart.tom.server.durability;
 
-import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.ObjectOutputStream;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
@@ -35,6 +33,7 @@ import bftsmart.tom.server.defaultservices.CommandsInfo;
 import bftsmart.tom.server.defaultservices.FileRecoverer;
 import bftsmart.tom.server.defaultservices.StateLog;
 import bftsmart.tom.util.TOMUtil;
+import bftsmart.tom.util.io.StateCodecs;
 
 public class DurableStateLog extends StateLog {
 
@@ -100,13 +99,8 @@ public class DurableStateLog extends StateLog {
 	}
 
 	private void writeCommandToDisk(CommandsInfo commandsInfo, int consensusId) {
-		ByteArrayOutputStream bos = new ByteArrayOutputStream();
 		try {
-			ObjectOutputStream oos = new ObjectOutputStream(bos);
-			oos.writeObject(commandsInfo);
-			oos.flush();
-
-			byte[] batchBytes = bos.toByteArray();
+			byte[] batchBytes = StateCodecs.commandsInfoToBytes(commandsInfo);
 
 			ByteBuffer bf = ByteBuffer.allocate(3 * INT_BYTE_SIZE
 					+ batchBytes.length);

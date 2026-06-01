@@ -22,6 +22,7 @@ import java.io.ObjectOutput;
 import bftsmart.communication.SystemMessage;
 import bftsmart.reconfiguration.views.View;
 import bftsmart.tom.util.TOMUtil;
+import bftsmart.tom.util.io.StateCodecs;
 
 /**
  * This class represents a message used in the state transfer protocol
@@ -121,8 +122,8 @@ public abstract class SMMessage extends SystemMessage {
         out.writeInt(type);
         out.writeInt(regency);
         out.writeInt(leader);
-        out.writeObject(state);
-        out.writeObject(view);
+        StateCodecs.writeApplicationState(state, out);
+        StateCodecs.writeView(view, out);
     }
 
     @Override
@@ -133,7 +134,7 @@ public abstract class SMMessage extends SystemMessage {
         type = in.readInt();
         regency = in.readInt();
         leader = in.readInt();
-        state = (ApplicationState) in.readObject();
-        view = (View) in.readObject();
+        state = StateCodecs.readApplicationState(in);
+        view = StateCodecs.readView(in);
     }
 }
