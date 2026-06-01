@@ -67,3 +67,53 @@ handling, `CSTState`, `View` and the end-to-end `SMMessage` path.
 CP="bftsmart-core/build/classes/java/main:bftsmart-tls/build/classes/java/main:<slf4j/logback jars>"
 java -Xms512m -Xmx2g -cp "$CP" bftsmart.benchmark.StateSerializationBenchmark
 ```
+
+---
+
+# Consensus & leader-change messages — performance report
+
+After extending the binary codec to the consensus, leader-change and
+reconfiguration paths, this section measures the parts that moved off reflective
+Java serialization. Benchmark: `bftsmart.benchmark.MessageSerializationBenchmark`
+(OLD = `ObjectOutputStream`/`ObjectInputStream`, NEW = binary codec; medians over
+200 iterations after 50 warmup; OpenJDK 21).
+
+| Scenario | What | Encode | Decode | Size |
+|---|---|---|---|---|
+| **sign 1 CM** | per-consensus signable bytes (Acceptor/LCManager) | **~14–19×** | **~49×** | **3.3×** |
+| proofSet 3× | forwarded-decision / CertifiedDecision proof, f=1 | ~4× | ~9× | 1.20× |
+| proofSet 7× | proof set, f=3 | ~3× | ~5× | 1.11× |
+| proofSet 21× | proof set, f=10 | ~1.0× (par) | ~3.4× | 1.06× |
+| proofSet 100× | very large proof set | ~0.85× (slightly slower) | ~2.0× | 1.04× |
+| writeSet 10× | COLLECT write-set (leader change) | ~2× | ~3× | 1.13× |
+| writeSet 100× | large COLLECT write-set | ~1–3× | ~1.6–3× | 1.07× |
+
+## Analysis
+
+- **The per-consensus signing path is the standout.** Producing the bytes to sign
+  was a fresh `ObjectOutputStream.writeObject(cm)` per message — stream header plus a
+  full class descriptor for a ~50-byte object. The binary form is ~15× faster to
+  encode, ~49× faster to read back, and 3.3× smaller.
+- **Decode wins everywhere** (~2–50×): verification no longer parses class descriptors
+  or reflects fields. This matters for proof/COLLECT verification during leader change.
+- **Encode for large proof sets is a wash** (par to ~15% slower at 100 elements):
+  reflective serialization amortizes the class descriptor across many elements via
+  back-references, while the codec writes a full per-element encoding. These large
+  sets only occur at high `f` (21+ replicas) and are rare; decode and size still favor
+  the codec.
+
+## Honest caveats
+
+- The per-consensus **signable-bytes** win, while large in ratio, is small in absolute
+  terms (~20 µs) next to the **RSA signature** that immediately follows it (often
+  ~100 µs–1 ms). It is a free improvement, not a throughput multiplier on its own.
+- `perf(1)` was unavailable in the sandbox; these are JVM wall-clock + size numbers on
+  a shared host, so treat the ratios — not the absolute microseconds — as the result.
+
+## Reproduce
+
+```bash
+./gradlew :bftsmart-tls:compileJava
+CP="bftsmart-core/build/classes/java/main:bftsmart-tls/build/classes/java/main:<slf4j/logback/bouncycastle/commons-codec jars>"
+java -Xms256m -Xmx1g -cp "$CP" bftsmart.benchmark.MessageSerializationBenchmark
+```
