@@ -452,6 +452,14 @@ public class TOMConfiguration extends Configuration {
 
     }
 
+    /**
+     * @deprecated The {@code view.storage.handler} property is no longer honored: the
+     * {@link bftsmart.reconfiguration.views.ViewStorage} implementation is now selected
+     * programmatically and without reflection through
+     * {@link bftsmart.reconfiguration.views.ViewStorageProvider#setFactory}. This method
+     * is kept only for source compatibility and is no longer used internally.
+     */
+    @Deprecated
     public String getViewStoreClass() {
         String s = (String) configs.remove("view.storage.handler");
         if (s == null) {

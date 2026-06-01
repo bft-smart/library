@@ -18,9 +18,9 @@ package bftsmart.reconfiguration;
 import java.net.SocketAddress;
 
 import bftsmart.reconfiguration.util.TOMConfiguration;
-import bftsmart.reconfiguration.views.DefaultViewStorage;
 import bftsmart.reconfiguration.views.View;
 import bftsmart.reconfiguration.views.ViewStorage;
+import bftsmart.reconfiguration.views.ViewStorageProvider;
 import bftsmart.tom.util.KeyLoader;
 import java.security.Provider;
 
@@ -55,13 +55,7 @@ public class ViewController {
     
     public final ViewStorage getViewStore() {
         if (this.viewStore == null) {
-            String className = staticConf.getViewStoreClass();
-            try {
-                this.viewStore = (ViewStorage) Class.forName(className).newInstance();
-            } catch (Exception e) {
-                this.viewStore = new DefaultViewStorage(this.staticConf.getConfigHome());
-            }
-
+            this.viewStore = ViewStorageProvider.newViewStorage(this.staticConf.getConfigHome());
         }
         return this.viewStore;
     }
