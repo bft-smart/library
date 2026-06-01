@@ -20,6 +20,7 @@ import bftsmart.communication.CommunicationFactoryProvider;
 import bftsmart.communication.client.CommunicationSystemClientSide;
 import bftsmart.communication.client.ReplyReceiver;
 import bftsmart.reconfiguration.ClientViewController;
+import bftsmart.reconfiguration.util.TOMConfiguration;
 import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.core.messages.TOMMessageType;
 import bftsmart.tom.util.KeyLoader;
@@ -72,6 +73,21 @@ public abstract class TOMSender implements ReplyReceiver, Closeable, AutoCloseab
 		this.me = this.viewController.getStaticConf().getProcessId();
 		this.cs = communicationFactory.newCommunicationSystemClientSide(processId, this.viewController);
 		this.cs.setReplyReceiver(this); // This object itself shall be a reply receiver
+		this.useSignatures = this.viewController.getStaticConf().getUseSignatures() == 1;
+		this.session = new Random().nextInt();
+	}
+
+	/**
+	 * Creates a new instance from a pre-built, programmatic (file-less)
+	 * {@link TOMConfiguration} and an explicit transport factory.
+	 * @param conf The programmatic configuration (e.g. from TOMConfigurationBuilder)
+	 * @param communicationFactory The transport factory used to build the client side
+	 */
+	public TOMSender(TOMConfiguration conf, CommunicationFactory communicationFactory) {
+		this.viewController = new ClientViewController(conf);
+		this.me = this.viewController.getStaticConf().getProcessId();
+		this.cs = communicationFactory.newCommunicationSystemClientSide(this.me, this.viewController);
+		this.cs.setReplyReceiver(this);
 		this.useSignatures = this.viewController.getStaticConf().getUseSignatures() == 1;
 		this.session = new Random().nextInt();
 	}
