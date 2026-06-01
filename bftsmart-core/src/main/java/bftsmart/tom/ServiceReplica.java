@@ -24,6 +24,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import bftsmart.communication.CommunicationFactory;
 import bftsmart.communication.CommunicationFactoryProvider;
 import bftsmart.communication.ServerCommunicationSystem;
+import bftsmart.communication.SharedWorkerPool;
 import bftsmart.tom.core.ExecutionManager;
 import bftsmart.consensus.messages.MessageFactory;
 import bftsmart.consensus.roles.Acceptor;
@@ -86,6 +87,8 @@ public class ServiceReplica {
     // transport instead of opening its own (see MultiGroupReplica).
     private int groupId = 0;
     private bftsmart.communication.server.ServerCommunicationLayer sharedServersConn = null;
+    // Multi-group fairness: when set, the SCS is attached to this pool instead of running its own thread.
+    private SharedWorkerPool workerPool = null;
 
     /**
      * Constructor
@@ -192,7 +195,7 @@ public class ServiceReplica {
      * {@code config/currentView} file. A {@code null} storage uses the default.
      */
     public ServiceReplica(TOMConfiguration conf, Executable executor, Recoverable recoverer, RequestVerifier verifier, Replier replier, CommunicationFactory communicationFactory, bftsmart.reconfiguration.views.ViewStorage viewStore) {
-        this(conf, executor, recoverer, verifier, replier, communicationFactory, viewStore, 0, null);
+        this(conf, executor, recoverer, verifier, replier, communicationFactory, viewStore, 0, null, null);
     }
 
     /**
@@ -200,12 +203,15 @@ public class ServiceReplica {
      * transport ({@code sharedServersConn}) under {@code groupId}, instead of opening its own.
      * Used by {@link bftsmart.multigroup.MultiGroupReplica} for the shared-transport (A2)
      * layout. A {@code null} sharedServersConn means a private transport (default).
+     * When {@code workerPool} is non-null the SCS will be attached to the pool (for fair
+     * round-robin scheduling) instead of running its own dedicated thread.
      */
-    public ServiceReplica(TOMConfiguration conf, Executable executor, Recoverable recoverer, RequestVerifier verifier, Replier replier, CommunicationFactory communicationFactory, bftsmart.reconfiguration.views.ViewStorage viewStore, int groupId, bftsmart.communication.server.ServerCommunicationLayer sharedServersConn) {
+    public ServiceReplica(TOMConfiguration conf, Executable executor, Recoverable recoverer, RequestVerifier verifier, Replier replier, CommunicationFactory communicationFactory, bftsmart.reconfiguration.views.ViewStorage viewStore, int groupId, bftsmart.communication.server.ServerCommunicationLayer sharedServersConn, SharedWorkerPool workerPool) {
         this.id = conf.getProcessId();
         this.communicationFactory = communicationFactory;
         this.groupId = groupId;
         this.sharedServersConn = sharedServersConn;
+        this.workerPool = workerPool;
         this.SVController = new ServerViewController(conf, viewStore);
         this.executor = executor;
         this.recoverer = recoverer;
@@ -269,6 +275,9 @@ public class ServiceReplica {
     }
 
     private void initReplica() {
+        if (workerPool != null) {
+            cs.attachToSharedPool(workerPool);
+        }
         cs.start();
         repMan = new ReplyManager(SVController.getStaticConf().getNumRepliers(), cs);
     }

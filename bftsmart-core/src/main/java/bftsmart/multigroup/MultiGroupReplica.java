@@ -20,6 +20,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 
 import bftsmart.communication.CommunicationFactory;
+import bftsmart.communication.SharedWorkerPool;
 import bftsmart.communication.SystemMessage;
 import bftsmart.communication.server.ServerCommunicationLayer;
 import bftsmart.reconfiguration.ServerViewController;
@@ -65,6 +66,9 @@ public final class MultiGroupReplica {
     private final String configHome;
     // A2 (shared transport): a single replica-to-replica transport multiplexed across groups.
     private ServerCommunicationLayer sharedServersConn = null;
+    // A2 fairness: shared worker pool for fair round-robin message dispatch across A2 groups.
+    // Created lazily when the first shared group is added (same pattern as sharedServersConn).
+    private SharedWorkerPool sharedWorkerPool = null;
 
     /** @param configHome directory for the per-group persistent view files (production). */
     public MultiGroupReplica(String configHome) {
@@ -163,8 +167,11 @@ public final class MultiGroupReplica {
             sharedServersConn = factory.newServerCommunicationLayer(
                     transportController, new LinkedBlockingQueue<SystemMessage>(), null);
         }
+        if (sharedWorkerPool == null) {
+            sharedWorkerPool = new SharedWorkerPool();
+        }
         ServiceReplica replica = new ServiceReplica(conf, executor, recoverer, null, null,
-                factory, viewStore, groupId, sharedServersConn);
+                factory, viewStore, groupId, sharedServersConn, sharedWorkerPool);
         groups.put(groupId, replica);
         return replica;
     }
@@ -177,6 +184,19 @@ public final class MultiGroupReplica {
     /** @return the ids of the groups currently hosted. */
     public java.util.Set<Integer> groupIds() {
         return groups.keySet();
+    }
+
+    /**
+     * Shuts down the shared worker pool used by A2 (shared-transport) groups.
+     * Should be called after all shared groups have been stopped (e.g. via
+     * {@link bftsmart.tom.ServiceReplica#kill()}). Has no effect if no shared
+     * groups were ever added.
+     */
+    public synchronized void shutdownSharedPool() {
+        if (sharedWorkerPool != null) {
+            sharedWorkerPool.shutdown();
+            sharedWorkerPool = null;
+        }
     }
 
     /**
