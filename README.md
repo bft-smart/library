@@ -217,7 +217,7 @@ proxy.close();
 **3. Add voters / listeners at runtime (consensus-ordered view change):**
 ```java
 VMServices vm = new VMServices();                  // issued by the configured TTP
-vm.addServer(4, "127.0.0.1", 11040, 11041);        // add a VOTER (participates in consensus)
+vm.addVoter(4, "127.0.0.1", 11040, 11041);         // add a VOTER (participates in consensus)
 vm.addListener(5, "127.0.0.1", 11050, 11051);      // add a LISTENER (replicates, no vote)
 vm.promoteToVoter(5);                              // LISTENER -> VOTER (already state-synced)
 vm.demoteToListener(4);                            // VOTER -> LISTENER (keep n >= 3f+1)

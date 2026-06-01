@@ -46,13 +46,19 @@ public class Reconfiguration {
         }
     }
     
-    public void addServer(int id, String ip, int port, int portRR){
+    public void addVoter(int id, String ip, int port, int portRR){
     	this.setReconfiguration(
-        			ServerViewController.ADD_SERVER, 
-        			id + ":" + 
-        			ip + ":" + 
-        			port + ":" + 
+        			ServerViewController.ADD_SERVER,
+        			id + ":" +
+        			ip + ":" +
+        			port + ":" +
         			portRR);
+    }
+
+    /** @deprecated use {@link #addVoter(int, String, int, int)}. */
+    @Deprecated
+    public void addServer(int id, String ip, int port, int portRR){
+        addVoter(id, ip, port, portRR);
     }
     
     public void removeServer(int id){

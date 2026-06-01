@@ -94,10 +94,16 @@ public class ViewManager {
         }
     }
 
-    public void addServer(int id, String ip, int port, int portRR) {
+    public void addVoter(int id, String ip, int port, int portRR) {
         this.controller.getStaticConf().addHostInfo(id, ip, port, portRR);
-        rec.addServer(id, ip, port, portRR);
+        rec.addVoter(id, ip, port, portRR);
         addIds.add(id);
+    }
+
+    /** @deprecated use {@link #addVoter(int, String, int, int)}. */
+    @Deprecated
+    public void addServer(int id, String ip, int port, int portRR) {
+        addVoter(id, ip, port, portRR);
     }
 
     public void removeServer(int id) {

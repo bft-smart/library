@@ -48,20 +48,30 @@ public class VMServices {
     }
     
     /**
-     * Adds a new server to the group
-     * 
-     * @param id ID of the server to be added (needs to match the value in config/hosts.config)
-     * @param ipAddress IP address of the server to be added (needs to match the value in config/hosts.config)
-     * @param port Port of the server to be added (needs to match the value in config/hosts.config)
+     * Adds a new voter (a consensus-participating replica) to the group.
+     *
+     * @param id ID of the voter to add (needs to match the value in config/hosts.config)
+     * @param ipAddress IP address of the voter to add
+     * @param port client port of the voter
+     * @param portRR server-to-server port of the voter
      */
-    public void addServer(int id, String ipAddress, int port, int portRR) {
-        
+    public void addVoter(int id, String ipAddress, int port, int portRR) {
+
         ViewManager viewManager = new ViewManager(configDir, keyLoader);
-        
-        viewManager.addServer(id, ipAddress, port, portRR);
-        
+
+        viewManager.addVoter(id, ipAddress, port, portRR);
+
         execute(viewManager);
 
+    }
+
+    /**
+     * @deprecated ambiguous now that the group also has listeners; use
+     * {@link #addVoter(int, String, int, int)} (adds a consensus-participating replica).
+     */
+    @Deprecated
+    public void addServer(int id, String ipAddress, int port, int portRR) {
+        addVoter(id, ipAddress, port, portRR);
     }
     
     /**
