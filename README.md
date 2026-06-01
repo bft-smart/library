@@ -56,9 +56,19 @@ and the legacy constructors, behaviour is unchanged; the new capabilities are op
 
 7. **Dead-code cleanup.** Removed an unwired NIO `SocketChannel` state-transfer path.
 
+8. **Multi-group consensus with durable per-group storage.** `MultiGroupReplica` now
+   accepts a `GroupStorageLayout` that isolates each group's checkpoint and log files in
+   its own sub-directory, with optional balancing across multiple disks. At startup the
+   layout scans the base directories so each group resumes from its previous state
+   regardless of registration order (restart safety). State-transfer ports are
+   auto-assigned per group to prevent collisions. `SharedWorkerPool` adds fair
+   round-robin scheduling for groups sharing a single replica-to-replica transport
+   (A2 / `addSharedGroup`). See *Programmatic API — sections 4a and 4b* below.
+
 > Status note: items 1–4 and 7 are merged into `master`; items 5 (listeners) and 6
 > (binary serialization, including the transport envelope) are integrated together on
-> the `claude/integration-binary-serialization` branch.
+> the `claude/integration-binary-serialization` branch; item 8 is on
+> `claude/multigroup-consensus`.
 
 ---
 
@@ -238,13 +248,65 @@ ServiceReplica g0 = mgr.group(0);
 Each group is fully isolated (own view, consensus sequence, leader, state machine and
 view storage). A node may be a voter in one group and a listener in another.
 
-Two layouts are supported:
+Two transport layouts are supported:
 - `addGroup` / `addInMemoryGroup` — each group has its **own** replica-to-replica
   transport (its own ports). Simple; ports grow with the number of groups.
 - `addSharedGroup` — all groups multiplex over a **single** shared replica-to-replica
   TLS port per node (messages demultiplexed by groupId), so one server-to-server port
   serves every group (multi-raft densification). The groups must share membership /
   server-to-server ports (the common multi-shard case) and may use distinct client ports.
+
+**4a. Durable state storage — GroupStorageLayout:**
+
+When groups use durable state (`DefaultRecoverable` / `DurabilityCoordinator`), each
+group must write its checkpoint and log files to an isolated directory. Pass a
+`GroupStorageLayout` (`bftsmart.multigroup.GroupStorageLayout`) to route each group's
+files to a dedicated sub-directory and, optionally, balance groups across multiple disks:
+
+```java
+// Balance groups across two disks; sub-directories are created automatically.
+GroupStorageLayout layout = new GroupStorageLayout("/data/disk1", "/data/disk2");
+
+mgr.addGroup(0, conf0, svc0, svc0, factory, layout);  // first run  -> /data/disk1/0/
+mgr.addGroup(1, conf1, svc1, svc1, factory, layout);  // first run  -> /data/disk2/1/
+mgr.addGroup(2, conf2, svc2, svc2, factory, layout);  // first run  -> /data/disk1/2/
+```
+
+`GroupStorageLayout` scans all base directories at construction time. On restart it
+finds existing `<baseDir>/<groupId>/` sub-directories and reuses them regardless of the
+order in which groups are registered, so a group always resumes from the files left by
+its previous run. Only genuinely new groups (no directory on disk) consume a round-robin
+balancing slot. The groups found on disk at startup are available via
+`layout.discoveredGroups()` (`Map<Integer, String>` of groupId to path).
+
+The durable state-transfer port is also auto-assigned per group: group N uses port base
+`4444 + N*1000`, with `replicaId` added at bind time. This is applied only when the
+configuration is still at the default of 4444, so an explicit override always wins.
+
+To set either value explicitly in the builder (before passing to `addGroup`):
+```java
+conf = new TOMConfigurationBuilder()
+        ...
+        .storageDir("/data/disk1/mygroup/")   // absolute path; trailing separator optional
+        .stateTransferPortBase(6000)           // port = 6000 + replicaId
+        .build(myId);
+```
+
+`TOMConfiguration` also exposes `getStorageDir()` and `getStateTransferPortBase()` for
+inspection at runtime. The storage dir defaults to `files/` when not set.
+
+**4b. SharedWorkerPool (fair scheduling for shared-transport groups):**
+
+`addSharedGroup` (A2 transport) automatically creates and wires a `SharedWorkerPool`
+(`bftsmart.communication.SharedWorkerPool`) that replaces the per-group dedicated
+processing thread with a small, shared pool. Workers visit every registered group in
+strict round-robin order, draining at most a configurable budget of messages per visit
+(default 128) before moving on. This prevents a single high-throughput group from
+starving the others. When all groups are idle, workers park on a condition variable and
+are woken cheaply when any message arrives.
+
+A1 groups (`addGroup` / `addInMemoryGroup`) are unaffected; they retain their original
+per-group dedicated thread.
 
 **The state machine** to implement (`DefaultSingleRecoverable`):
 ```java
