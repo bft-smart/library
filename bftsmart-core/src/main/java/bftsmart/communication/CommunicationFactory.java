@@ -15,14 +15,19 @@ limitations under the License.
 */
 package bftsmart.communication;
 
+import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.function.Supplier;
 
 import bftsmart.communication.client.CommunicationSystemClientSide;
 import bftsmart.communication.client.CommunicationSystemServerSide;
 import bftsmart.communication.server.ReplicaConnection;
 import bftsmart.communication.server.ServerCommunicationLayer;
+import bftsmart.communication.server.StateTransferSender;
 import bftsmart.reconfiguration.ClientViewController;
 import bftsmart.reconfiguration.ServerViewController;
+import bftsmart.statemanagement.ApplicationState;
 import bftsmart.tom.ServiceReplica;
 
 /**
@@ -75,4 +80,27 @@ public interface CommunicationFactory {
      * @return a new {@link ReplicaConnection}
      */
     ReplicaConnection newReplicaConnection(ServerViewController controller, int remoteId);
+
+    /**
+     * Creates the provider endpoint of the bulk state-transfer channel (durable state
+     * manager). The returned endpoint listens at {@code bindAddress} and, when the
+     * recovering replica connects, streams the {@link ApplicationState} produced by
+     * {@code stateSupplier} (evaluated lazily, at connection time).
+     *
+     * @param bindAddress the address/port the provider listens on
+     * @param stateSupplier supplies the state to stream once a peer connects
+     * @return a new {@link StateTransferSender}
+     */
+    StateTransferSender newStateTransferSender(InetSocketAddress bindAddress,
+                                               Supplier<ApplicationState> stateSupplier);
+
+    /**
+     * Receive side of the bulk state-transfer channel: connects to a provider endpoint
+     * and reads a single {@link ApplicationState}.
+     *
+     * @param address the provider endpoint advertised by the state provider
+     * @return the received application state
+     * @throws IOException if the state cannot be fetched or deserialized
+     */
+    ApplicationState fetchState(InetSocketAddress address) throws IOException;
 }

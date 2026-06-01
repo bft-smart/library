@@ -44,8 +44,10 @@ transport can be swapped without touching the consensus/replication logic:
   `bftsmart.communication.CommunicationFactory`, which abstracts every networking
   component: the replica-to-replica transport (`ServerCommunicationLayer`), the
   client-to-server transport (`CommunicationSystemServerSide` /
-  `CommunicationSystemClientSide`) and one-shot replica connections
-  (`ReplicaConnection`).
+  `CommunicationSystemClientSide`), one-shot replica connections
+  (`ReplicaConnection`) and the bulk state-transfer channel used by the durable
+  state manager (`StateTransferSender` / `CommunicationFactory.fetchState`). The
+  core has no dependency on any networking library.
 * **`bftsmart-tls`** — the default transport implementation, built on TLS server
   sockets (replica-to-replica) and Netty (client-to-server), exposed through
   `bftsmart.communication.tls.TLSNettyCommunicationFactory`. This module also hosts

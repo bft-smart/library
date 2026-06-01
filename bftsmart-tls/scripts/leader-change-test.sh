@@ -43,9 +43,11 @@ cleanup
 sleep 1
 rm -f config/currentView
 
-# --- start 4 replicas -------------------------------------------------------
+# --- start 4 replicas (tracking each PID so we can kill the leader precisely) --
+declare -a REP_PID
 for i in 0 1 2 3; do
   java $JOPTS -cp "lib/*" bftsmart.demo.counter.CounterServer "$i" > "$LOG_DIR/rep$i.log" 2>&1 &
+  REP_PID[$i]=$!
 done
 
 echo "Waiting for all 4 replicas to be ready..."
@@ -63,10 +65,14 @@ timeout 30 java $JOPTS -cp "lib/*" bftsmart.demo.counter.CounterClient 1001 1 5 
 grep "returned value" "$LOG_DIR/cli_before.log" | tail -2
 
 # --- kill the leader --------------------------------------------------------
-echo "=== KILLING LEADER (replica 0) ==="
-pkill -9 -f "CounterServer 0"
-echo "Leader killed; waiting 15s for the leader-change protocol to settle..."
+echo "=== KILLING LEADER (replica 0, pid ${REP_PID[0]}) ==="
+kill -9 "${REP_PID[0]}" 2>/dev/null
+echo "Leader killed; surviving replicas: 1=${REP_PID[1]} 2=${REP_PID[2]} 3=${REP_PID[3]}"
+echo "Waiting 15s for the leader-change protocol to settle..."
 sleep 15
+alive=0
+for i in 1 2 3; do kill -0 "${REP_PID[$i]}" 2>/dev/null && alive=$((alive+1)); done
+echo "Surviving replicas still alive: $alive/3"
 
 # --- after the kill: a new leader must serve requests -----------------------
 echo "--- client 1002 AFTER kill (5 increments) ---"

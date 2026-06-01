@@ -16,16 +16,15 @@
 package bftsmart.statemanagement.durability;
 
 import java.io.IOException;
-import java.io.ObjectInputStream;
 import java.net.InetSocketAddress;
-import java.net.Socket;
-import java.net.UnknownHostException;
 import java.util.Arrays;
 import java.util.Queue;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.locks.ReentrantLock;
 
+import bftsmart.communication.CommunicationFactoryProvider;
+import bftsmart.communication.server.StateTransferSender;
 import bftsmart.consensus.messages.ConsensusMessage;
 import bftsmart.reconfiguration.views.View;
 import bftsmart.statemanagement.ApplicationState;
@@ -53,7 +52,7 @@ public class DurableStateManager extends StateManager {
     private CSTState stateLower;
     private CSTState stateUpper;
     
-    private Thread stateThread = null;
+    private StateTransferSender stateSender = null;
     
     @Override
     protected void requestState() {
@@ -137,14 +136,12 @@ public class DurableStateManager extends StateManager {
                     tomLayer.execManager.getCurrentLeader());
 
             tomLayer.getCommunication().send(targets, reply);
-            
-            if (stateThread == null) {
-                
-                StateSenderServer stateServer = new StateSenderServer(port);
-                stateServer.setRecoverable(dt.getRecoverer());
-                stateServer.setRequest(cstConfig);
-                stateThread = new Thread(stateServer);
-                stateThread.start();
+
+            if (stateSender == null) {
+                final DurabilityCoordinator coordinator = (DurabilityCoordinator) dt.getRecoverer();
+                final CSTRequestF1 request = cstConfig;
+                stateSender = CommunicationFactoryProvider.getDefaultFactory()
+                        .newStateTransferSender(address, () -> coordinator.getState(request));
             }
         }
     }
@@ -198,23 +195,11 @@ public class DurableStateManager extends StateManager {
                 logger.debug("The reply is for the CID that I want!");
 
                 InetSocketAddress address = reply.getCstConfig().getAddress();
-                Socket clientSocket;
                 ApplicationState stateReceived = null;
                 try {
-                    clientSocket = new Socket(address.getHostName(),
-                            address.getPort());
-                    ObjectInputStream in = new ObjectInputStream(
-                            clientSocket.getInputStream());
-                    stateReceived = (ApplicationState) in.readObject();
-                } catch (UnknownHostException e) {
-                    // TODO Auto-generated catch block
-                    logger.error("Failed to connect to address", e);
+                    stateReceived = CommunicationFactoryProvider.getDefaultFactory().fetchState(address);
                 } catch (IOException e) {
-                    // TODO Auto-generated catch block
-                    logger.error("Failed to connect to address", e);
-                } catch (ClassNotFoundException e) {
-                    // TODO Auto-generated catch block
-                    logger.error("Failed to deserialize application state object", e);
+                    logger.error("Failed to fetch state from " + address, e);
                 }
 
                 if (stateReceived instanceof CSTState) {

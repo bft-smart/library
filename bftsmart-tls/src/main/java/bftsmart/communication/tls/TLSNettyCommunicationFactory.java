@@ -15,7 +15,10 @@ limitations under the License.
 */
 package bftsmart.communication.tls;
 
+import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.function.Supplier;
 
 import bftsmart.communication.CommunicationFactory;
 import bftsmart.communication.SystemMessage;
@@ -27,8 +30,10 @@ import bftsmart.communication.server.ReplicaConnection;
 import bftsmart.communication.server.ServerCommunicationLayer;
 import bftsmart.communication.server.ServerConnection;
 import bftsmart.communication.server.ServersCommunicationLayer;
+import bftsmart.communication.server.StateTransferSender;
 import bftsmart.reconfiguration.ClientViewController;
 import bftsmart.reconfiguration.ServerViewController;
+import bftsmart.statemanagement.ApplicationState;
 import bftsmart.tom.ServiceReplica;
 
 /**
@@ -70,5 +75,16 @@ public class TLSNettyCommunicationFactory implements CommunicationFactory {
     @Override
     public ReplicaConnection newReplicaConnection(ServerViewController controller, int remoteId) {
         return new ServerConnection(controller, null, remoteId, null, null);
+    }
+
+    @Override
+    public StateTransferSender newStateTransferSender(InetSocketAddress bindAddress,
+                                                      Supplier<ApplicationState> stateSupplier) {
+        return SocketStateTransfer.serve(bindAddress, stateSupplier);
+    }
+
+    @Override
+    public ApplicationState fetchState(InetSocketAddress address) throws IOException {
+        return SocketStateTransfer.fetch(address);
     }
 }
