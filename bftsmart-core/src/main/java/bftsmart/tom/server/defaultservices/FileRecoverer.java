@@ -21,8 +21,6 @@ import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.RandomAccessFile;
-import java.nio.channels.FileChannel;
-import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
 import java.util.Arrays;
 
@@ -193,80 +191,6 @@ public class FileRecoverer {
 		}
 
 		return ckpState;
-	}
-
-	public void transferLog(SocketChannel sChannel, int index, String logPath) {
-		RandomAccessFile log = null;
-
-		logger.info("GETTING STATE FROM LOG " + logPath);
-		if ((log = openLogFile(logPath)) != null) {
-			transferLog(log, sChannel, index);
-		}
-	}
-
-	private void transferLog(RandomAccessFile logFile, SocketChannel sChannel, int index) {
-		try {
-			long totalBytes = logFile.length();
-			logger.info("Called transferLog." + totalBytes + " " + (sChannel == null));
-			FileChannel fileChannel = logFile.getChannel();
-			long bytesTransfered = 0;
-			while(bytesTransfered < totalBytes) {
-				long bufferSize = 65536;
-				if(totalBytes  - bytesTransfered < bufferSize) {
-					bufferSize = (int)(totalBytes - bytesTransfered);
-					if(bufferSize <= 0)
-						bufferSize = (int)totalBytes;
-				}
-				long bytesSent = fileChannel.transferTo(bytesTransfered, bufferSize, sChannel);
-				if(bytesSent > 0) {
-					bytesTransfered += bytesSent;
-				}
-			}
-		} catch (Exception e) {
-			logger.error("State recover was aborted due to an unexpected exception", e);
-		}
-	}
-
-	public void transferCkpState(SocketChannel sChannel, String ckpPath) {
-		RandomAccessFile ckp = null;
-
-		logger.info("GETTING CHECKPOINT FROM " + ckpPath);
-		if ((ckp = openLogFile(ckpPath)) != null) {
-
-			transferCkpState(ckp, sChannel);
-
-			try {
-				ckp.close();
-			} catch (IOException e) {
-				logger.error("Failed to get checkpoint",e);
-			}
-		}
-	}
-
-	private void transferCkpState(RandomAccessFile ckp, SocketChannel sChannel) {
-		try {
-			long milliInit = System.currentTimeMillis();
-			logger.info("Sending checkpoint." + ckp.length() + " " + (sChannel == null));
-			FileChannel fileChannel = ckp.getChannel();
-			long totalBytes = ckp.length();
-			long bytesTransfered = 0;
-			while(bytesTransfered < totalBytes) {
-				long bufferSize = 65536;
-				if(totalBytes  - bytesTransfered < bufferSize) {
-					bufferSize = (int)(totalBytes - bytesTransfered);
-					if(bufferSize <= 0)
-						bufferSize = (int)totalBytes;
-				}
-				long bytesRead = fileChannel.transferTo(bytesTransfered, bufferSize, sChannel);
-				if(bytesRead > 0) {
-					bytesTransfered += bytesRead;
-				}
-			}
-			logger.debug("Took " + (System.currentTimeMillis() - milliInit) + " milliseconds to transfer the checkpoint");
-			fileChannel.close();
-		} catch (Exception e) {
-			logger.error("State recover was aborted due to an unexpected exception", e);
-		}
 	}
 
 	public byte[] getCkpStateHash() {
