@@ -43,7 +43,8 @@ and the legacy constructors, behaviour is unchanged; the new capabilities are op
    it replicates the service state (from forwarded, proof-verified decisions) but does
    **not** vote in consensus and is never counted in any quorum. A node can be
    **promoted to voter or demoted to listener at runtime** through a view change
-   (`VMServices.addListener / promoteToVoter / demoteToListener`). See *Listeners*.
+   (`VMServices.addVoter / addListener / promoteToVoter / demoteToListener`; the old
+   `addServer` is kept as a deprecated alias of `addVoter`). See *Listeners*.
 
 6. **Custom binary serialization.** Java object serialization
    (`ObjectOutputStream`/`ObjectInputStream`) was replaced by a compact binary codec
