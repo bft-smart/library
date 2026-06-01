@@ -1,1 +1,9 @@
-rootProject.name = 'library'
+rootProject.name = 'bftsmart'
+
+// bftsmart-core   : protocol layers + the networking SPI (CommunicationFactory).
+// bftsmart-tls    : the default transport implementation (TLS sockets + Netty),
+//                   plus the runnable demos/tests/benchmarks that wire it.
+// A future transport (e.g. Apache Pekko) would be added here as another module
+// providing its own CommunicationFactory implementation.
+include 'bftsmart-core'
+include 'bftsmart-tls'

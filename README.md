@@ -28,11 +28,43 @@ The system configurations also have to be specified (see`config/system.config`).
 
 ## Compiling
 
-Type `./gradlew installDist` in the main directory. The required jar files and default configuration files will be available in the `build/install/library` directory.
+Type `./gradlew installDist` in the main directory. The required jar files and default configuration files will be available in the `bftsmart-tls/build/install/bftsmart-tls` directory.
 
 **WARNING:** You might need to give execution permission to the `gradlew` script.
 
-Copy content of `build/install/library` into multiple folders for local testing or machines for distributed testing.
+Copy content of `bftsmart-tls/build/install/bftsmart-tls` into multiple folders for local testing or machines for distributed testing.
+
+## Project structure (networking abstraction)
+
+The project is organized as a Gradle multi-module build so that the networking
+transport can be swapped without touching the consensus/replication logic:
+
+* **`bftsmart-core`** — the protocol layers (consensus, total order multicast,
+  reconfiguration, state transfer) and the networking SPI. The key interface is
+  `bftsmart.communication.CommunicationFactory`, which abstracts every networking
+  component: the replica-to-replica transport (`ServerCommunicationLayer`), the
+  client-to-server transport (`CommunicationSystemServerSide` /
+  `CommunicationSystemClientSide`) and one-shot replica connections
+  (`ReplicaConnection`).
+* **`bftsmart-tls`** — the default transport implementation, built on TLS server
+  sockets (replica-to-replica) and Netty (client-to-server), exposed through
+  `bftsmart.communication.tls.TLSNettyCommunicationFactory`. This module also hosts
+  the runnable demos, integration tests and benchmarks.
+
+The transport is selected **programmatically** (there is no `ServiceLoader`-based
+discovery). An application either passes a `CommunicationFactory` to the relevant
+constructor (`ServiceReplica`, `ServiceProxy`, `AsynchServiceProxy`, ...) or registers
+a default once at start-up:
+
+```java
+CommunicationFactoryProvider.setDefaultFactory(new TLSNettyCommunicationFactory());
+// shorthand:
+TLSNettyCommunicationFactory.installAsDefault();
+```
+
+To use a different transport (e.g. Apache Pekko), add a new module that depends on
+`bftsmart-core` and provides its own `CommunicationFactory` implementation, then wire
+it in the same way.
 
 ## Running the counter demonstration
 You can run the counter demonstration by executing the following commands, from within the folders containing compiled code across four different consoles (4 replicas, to tolerate 1 fault):
