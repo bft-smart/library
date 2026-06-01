@@ -386,8 +386,7 @@ public class ServerConnection implements ReplicaConnection {
 
 						logger.trace("Read: {}, HasMAC: {}", read, hasMAC);
 
-						SystemMessage sm = (SystemMessage) (new ObjectInputStream(new ByteArrayInputStream(data))
-								.readObject());
+						SystemMessage sm = bftsmart.tom.util.io.SystemMessageCodec.fromBytes(data);
 
 						//The verification it is done for the SSL/TLS protocol.
 						sm.authenticated = true;
@@ -451,8 +450,7 @@ public class ServerConnection implements ReplicaConnection {
 							read += socketInStream.read(data, read, dataLength - read);
 						} while (read < dataLength);
 
-						SystemMessage sm = (SystemMessage) (new ObjectInputStream(new ByteArrayInputStream(data))
-								.readObject());
+						SystemMessage sm = bftsmart.tom.util.io.SystemMessageCodec.fromBytes(data);
 
 						if (sm.getSender() == remoteId) {
 							this.replica.joinMsgReceived((VMMessage) sm);

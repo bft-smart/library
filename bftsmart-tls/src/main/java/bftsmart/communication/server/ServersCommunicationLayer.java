@@ -221,14 +221,13 @@ public class ServersCommunicationLayer extends Thread implements ServerCommunica
 
 
 	public final void send(int[] targets, SystemMessage sm, boolean useMAC) {
-		ByteArrayOutputStream bOut = new ByteArrayOutputStream(248);
+		byte[] data;
 		try {
-			new ObjectOutputStream(bOut).writeObject(sm);
+			data = bftsmart.tom.util.io.SystemMessageCodec.toBytes(sm);
 		} catch (IOException ex) {
 			logger.error("Failed to serialize message", ex);
+			return;
 		}
-
-		byte[] data = bOut.toByteArray();
 
 		// this shuffling is done to prevent the replica with the lowest ID/index  from being always
 		// the last one receiving the messages, which can result in that replica  to become consistently

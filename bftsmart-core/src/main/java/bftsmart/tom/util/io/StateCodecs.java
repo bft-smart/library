@@ -594,6 +594,15 @@ public final class StateCodecs {
                 BinaryIO.writeNullableString(out, addr == null ? null : addr.getHostString());
                 out.writeInt(addr == null ? -1 : addr.getPort());
             }
+            // Non-voting members (listeners), after the voters; empty list is the common case.
+            int[] listeners = view.getListeners();
+            out.writeInt(listeners.length);
+            for (int listener : listeners) {
+                out.writeInt(listener);
+                InetSocketAddress addr = view.getAddress(listener);
+                BinaryIO.writeNullableString(out, addr == null ? null : addr.getHostString());
+                out.writeInt(addr == null ? -1 : addr.getPort());
+            }
         }
 
         @Override
@@ -609,7 +618,16 @@ public final class StateCodecs {
                 int port = in.readInt();
                 addresses[i] = host == null ? null : new InetSocketAddress(host, port);
             }
-            return new View(id, processes, f, addresses);
+            int ln = in.readInt();
+            int[] listeners = new int[ln];
+            InetSocketAddress[] listenerAddresses = new InetSocketAddress[ln];
+            for (int i = 0; i < ln; i++) {
+                listeners[i] = in.readInt();
+                String host = BinaryIO.readNullableString(in);
+                int port = in.readInt();
+                listenerAddresses[i] = host == null ? null : new InetSocketAddress(host, port);
+            }
+            return new View(id, processes, f, addresses, listeners, listenerAddresses);
         }
     };
 

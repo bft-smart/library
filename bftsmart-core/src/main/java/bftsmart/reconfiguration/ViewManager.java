@@ -141,15 +141,13 @@ public class ViewManager {
     }
 
     public void sendResponse(Integer[] targets, VMMessage sm) {
-        ByteArrayOutputStream bOut = new ByteArrayOutputStream();
-
+        byte[] data;
         try {
-            new ObjectOutputStream(bOut).writeObject(sm);
+            data = bftsmart.tom.util.io.SystemMessageCodec.toBytes(sm);
         } catch (IOException ex) {
             logger.error("Could not serialize message", ex);
+            return;
         }
-
-        byte[] data = bOut.toByteArray();
 
         for (Integer i : targets) {
             try {

@@ -39,9 +39,18 @@ final class DataObjectInput implements ObjectInput {
                 "readObject is not supported by the binary codec; read fields explicitly");
     }
 
-    @Override public int read() { throw new UnsupportedOperationException(); }
-    @Override public int read(byte[] b) { throw new UnsupportedOperationException(); }
-    @Override public int read(byte[] b, int off, int len) { throw new UnsupportedOperationException(); }
+    // Backed by a DataInput, so the InputStream-style reads are fulfilled via readFully
+    // (the payloads are length-prefixed and fully present), letting Externalizable types
+    // that call read(byte[], ...) — e.g. ConsensusMessage — be driven without ObjectInputStream.
+    @Override public int read() throws IOException {
+        try {
+            return in.readUnsignedByte();
+        } catch (java.io.EOFException eof) {
+            return -1;
+        }
+    }
+    @Override public int read(byte[] b) throws IOException { in.readFully(b); return b.length; }
+    @Override public int read(byte[] b, int off, int len) throws IOException { in.readFully(b, off, len); return len; }
     @Override public long skip(long n) { throw new UnsupportedOperationException(); }
     @Override public int available() { throw new UnsupportedOperationException(); }
     @Override public void close() { /* underlying stream is closed by the caller */ }
