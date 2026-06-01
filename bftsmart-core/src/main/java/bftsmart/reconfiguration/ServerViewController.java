@@ -38,6 +38,10 @@ public class ServerViewController extends ViewController {
     public static final int ADD_SERVER = 0;
     public static final int REMOVE_SERVER = 1;
     public static final int CHANGE_F = 2;
+    // Role-aware reconfiguration (listeners / learners):
+    public static final int ADD_LISTENER = 3;        // add a new non-voting member (id:ip:port:portRR)
+    public static final int PROMOTE_TO_VOTER = 4;    // listener -> voter (id)
+    public static final int DEMOTE_TO_LISTENER = 5;  // voter -> listener (id)
     
     private int quorumBFT; // ((n + f) / 2) replicas
     private int quorumCFT; // (n / 2) replicas
@@ -160,10 +164,16 @@ public class ServerViewController extends ViewController {
         List<Integer> jSet = new LinkedList<>();
         List<Integer> rSet = new LinkedList<>();
         int f = -1;
-        
+
         List<String> jSetInfo = new LinkedList<>();
-        
-        
+
+        // Role-aware reconfiguration sets (listeners / learners):
+        List<Integer> listenerJSet = new LinkedList<>();   // new listeners to add
+        List<String> listenerJSetInfo = new LinkedList<>();
+        List<Integer> promoteSet = new LinkedList<>();     // listener -> voter
+        List<Integer> demoteSet = new LinkedList<>();      // voter -> listener
+
+
         for (int i = 0; i < updates.size(); i++) {
             ReconfigureRequest request = (ReconfigureRequest) TOMUtil.getObject(updates.get(i).getContent());
             Iterator<Integer> it = request.getProperties().keySet().iterator();
@@ -185,16 +195,39 @@ public class ServerViewController extends ViewController {
                             this.getStaticConf().addHostInfo(id, host, port, portRR);                        }
                     }
                 } else if (key == REMOVE_SERVER) {
-                    if (isCurrentViewMember(Integer.parseInt(value))) {
+                    if (isCurrentViewMemberOrListener(Integer.parseInt(value))) {
                         rSet.add(Integer.parseInt(value));
                     }
                 } else if (key == CHANGE_F) {
                     f = Integer.parseInt(value);
+                } else if (key == ADD_LISTENER) {
+                    StringTokenizer str = new StringTokenizer(value, ":");
+                    if (str.countTokens() > 2) {
+                        int id = Integer.parseInt(str.nextToken());
+                        if (!isCurrentViewMemberOrListener(id) && !contains(id, listenerJSet)) {
+                            listenerJSetInfo.add(value);
+                            listenerJSet.add(id);
+                            String host = str.nextToken();
+                            int port = Integer.valueOf(str.nextToken());
+                            int portRR = Integer.valueOf(str.nextToken());
+                            this.getStaticConf().addHostInfo(id, host, port, portRR);
+                        }
+                    }
+                } else if (key == PROMOTE_TO_VOTER) {
+                    int id = Integer.parseInt(value);
+                    if (isCurrentViewListener(id) && !contains(id, promoteSet)) {
+                        promoteSet.add(id);
+                    }
+                } else if (key == DEMOTE_TO_LISTENER) {
+                    int id = Integer.parseInt(value);
+                    if (isCurrentViewMember(id) && !contains(id, demoteSet)) {
+                        demoteSet.add(id);
+                    }
                 }
             }
 
         }
-        return reconfigure(jSetInfo, jSet, rSet, f, cid);
+        return reconfigure(jSetInfo, jSet, rSet, f, cid, listenerJSetInfo, listenerJSet, promoteSet, demoteSet);
     }
 
     private boolean contains(int id, List<Integer> list) {
@@ -207,36 +240,68 @@ public class ServerViewController extends ViewController {
     }
 
     private byte[] reconfigure(List<String> jSetInfo, List<Integer> jSet, List<Integer> rSet, int f, int cid) {
-        lastJoinStet = new int[jSet.size()];
-        int[] nextV = new int[currentView.getN() + jSet.size() - rSet.size()];
-        int p = 0;
-        
-        boolean forceLC = false;
-        for (int i = 0; i < jSet.size(); i++) {
-            lastJoinStet[i] = jSet.get(i);
-            nextV[p++] = jSet.get(i);
-        }
+        return reconfigure(jSetInfo, jSet, rSet, f, cid,
+                new LinkedList<String>(), new LinkedList<Integer>(),
+                new LinkedList<Integer>(), new LinkedList<Integer>());
+    }
 
-        for (int i = 0; i < currentView.getProcesses().length; i++) {
-            if (!contains(currentView.getProcesses()[i], rSet)) {
-                nextV[p++] = currentView.getProcesses()[i];
-            } else if (tomLayer.execManager.getCurrentLeader() == currentView.getProcesses()[i]) {
-                
-                forceLC = true;
- 
+    private byte[] reconfigure(List<String> jSetInfo, List<Integer> jSet, List<Integer> rSet, int f, int cid,
+                               List<String> listenerJSetInfo, List<Integer> listenerJSet,
+                               List<Integer> promoteSet, List<Integer> demoteSet) {
+
+        boolean forceLC = false;
+
+        // ----- Compute the new voter set -----
+        // voters = (current voters + new voters + promoted listeners) - removed - demoted
+        LinkedHashSet<Integer> voters = new LinkedHashSet<>();
+        for (int v : jSet) voters.add(v);                 // new voters first (kept in lastJoinSet)
+        for (int v : promoteSet) voters.add(v);           // promoted listeners become voters
+        for (int v : currentView.getProcesses()) {
+            if (!contains(v, rSet) && !contains(v, demoteSet)) {
+                voters.add(v);
+            } else if (tomLayer.execManager.getCurrentLeader() == v) {
+                forceLC = true; // the current leader is leaving the voter set
             }
         }
+
+        // ----- Compute the new listener set -----
+        // listeners = (current listeners + new listeners + demoted voters) - removed - promoted
+        LinkedHashSet<Integer> listeners = new LinkedHashSet<>();
+        for (int l : listenerJSet) listeners.add(l);
+        for (int l : demoteSet) listeners.add(l);
+        for (int l : currentView.getListeners()) {
+            if (!contains(l, rSet) && !contains(l, promoteSet)) {
+                listeners.add(l);
+            }
+        }
+        // A node cannot be both a voter and a listener: voters win.
+        listeners.removeAll(voters);
+
+        // Newly joining nodes (voters + listeners) for the connection/join heuristics.
+        lastJoinStet = new int[jSet.size()];
+        for (int i = 0; i < jSet.size(); i++) lastJoinStet[i] = jSet.get(i);
+
+        int[] nextV = toIntArray(voters);
+        int[] nextL = toIntArray(listeners);
 
         if (f < 0) {
             f = currentView.getF();
         }
 
         InetSocketAddress[] addresses = new InetSocketAddress[nextV.length];
+        for (int i = 0; i < nextV.length; i++)
+            addresses[i] = getStaticConf().getRemoteAddress(nextV[i]);
 
-        for(int i = 0 ;i < nextV.length ;i++)
-        	addresses[i] = getStaticConf().getRemoteAddress(nextV[i]);
+        InetSocketAddress[] listenerAddresses = new InetSocketAddress[nextL.length];
+        for (int i = 0; i < nextL.length; i++)
+            listenerAddresses[i] = getStaticConf().getRemoteAddress(nextL[i]);
 
-        View newV = new View(currentView.getId() + 1, nextV, f,addresses);
+        View newV = new View(currentView.getId() + 1, nextV, f, addresses, nextL, listenerAddresses);
+
+        // The reply must advertise every node that needs to install the new view: new voters,
+        // new listeners and promoted/demoted nodes.
+        List<String> joinInfo = new LinkedList<>(jSetInfo);
+        joinInfo.addAll(listenerJSetInfo);
 
         logger.info("New view: " + newV);
         logger.info("Installed on CID: " + cid);
@@ -246,22 +311,31 @@ public class ServerViewController extends ViewController {
         //processes execute the leave!!!
         reconfigureTo(newV);
 
-        for (int process : newV.getProcesses()) {
+        // Load the public keys of every member (voters and listeners) so that messages
+        // and decision proofs from/to them can be authenticated.
+        for (int process : newV.getAllMembers()) {
             tomLayer.loadPublicKey(process);
         }
-        
+
         if (forceLC) {
-            
+
             //TODO: Reactive it and make it work
             logger.info("Shortening LC timeout");
             tomLayer.requestsTimer.stopTimer();
             tomLayer.requestsTimer.setShortTimeout(3000);
             tomLayer.requestsTimer.startTimer();
             //tomLayer.triggerTimeout(new LinkedList<TOMMessage>());
-                
-        } 
-        return TOMUtil.getBytes(new ReconfigureReply(newV, jSetInfo.toArray(new String[0]),
+
+        }
+        return TOMUtil.getBytes(new ReconfigureReply(newV, joinInfo.toArray(new String[0]),
                  cid, tomLayer.execManager.getCurrentLeader()));
+    }
+
+    private static int[] toIntArray(Collection<Integer> c) {
+        int[] a = new int[c.size()];
+        int i = 0;
+        for (int v : c) a[i++] = v;
+        return a;
     }
 
     public TOMMessage[] clearUpdates() {

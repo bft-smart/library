@@ -57,7 +57,31 @@ public class Reconfiguration {
     public void removeServer(int id){
         this.setReconfiguration(ServerViewController.REMOVE_SERVER, String.valueOf(id));
     }
-    
+
+    /**
+     * Adds a non-voting member (listener) to the group. Like {@link #addServer}, the
+     * address must also be present in config/hosts.config of the existing replicas.
+     */
+    public void addListener(int id, String ip, int port, int portRR){
+        this.setReconfiguration(
+                ServerViewController.ADD_LISTENER,
+                id + ":" + ip + ":" + port + ":" + portRR);
+    }
+
+    /**
+     * Promotes an existing listener to a voter (it starts participating in consensus).
+     */
+    public void promoteToVoter(int id){
+        this.setReconfiguration(ServerViewController.PROMOTE_TO_VOTER, String.valueOf(id));
+    }
+
+    /**
+     * Demotes an existing voter to a listener (stops voting, keeps replicating state).
+     */
+    public void demoteToListener(int id){
+        this.setReconfiguration(ServerViewController.DEMOTE_TO_LISTENER, String.valueOf(id));
+    }
+
 
     public void setF(int f){
       this.setReconfiguration(ServerViewController.CHANGE_F,String.valueOf(f));  

@@ -200,7 +200,8 @@ public class ServiceReplica {
     public void joinMsgReceived(VMMessage msg) {
         ReconfigureReply r = msg.getReply();
 
-        if (r.getView().isMember(id)) {
+        // A node that joins either as a voter (isMember) or as a listener completes the join here.
+        if (r.getView().isInView(id)) {
             this.SVController.processJoinResult(r);
 
             initTOMLayer(); // initiaze the TOM layer

@@ -70,13 +70,50 @@ public class VMServices {
      * @param id ID of the server to be removed 
      */
     public void removeServer (int id) {
-        
+
         ViewManager viewManager = new ViewManager(keyLoader);
-        
+
         viewManager.removeServer(id);
-        
+
         execute(viewManager);
 
+    }
+
+    /**
+     * Adds a non-voting member (listener) to the group. The listener replicates state
+     * but does not participate in consensus until it is promoted.
+     *
+     * @param id Id of the listener to add (must match config/hosts.config)
+     * @param ipAddress Address of the listener
+     * @param port Client port of the listener
+     * @param portRR Server-to-server port of the listener
+     */
+    public void addListener(int id, String ipAddress, int port, int portRR) {
+        ViewManager viewManager = new ViewManager(configDir, keyLoader);
+        viewManager.addListener(id, ipAddress, port, portRR);
+        execute(viewManager);
+    }
+
+    /**
+     * Promotes an existing listener to a voter (it starts participating in consensus).
+     *
+     * @param id Id of the listener to promote
+     */
+    public void promoteToVoter(int id) {
+        ViewManager viewManager = new ViewManager(configDir, keyLoader);
+        viewManager.promoteToVoter(id);
+        execute(viewManager);
+    }
+
+    /**
+     * Demotes an existing voter to a listener (it stops voting but keeps replicating state).
+     *
+     * @param id Id of the voter to demote
+     */
+    public void demoteToListener(int id) {
+        ViewManager viewManager = new ViewManager(configDir, keyLoader);
+        viewManager.demoteToListener(id);
+        execute(viewManager);
     }
     
     private void execute(ViewManager viewManager) {
